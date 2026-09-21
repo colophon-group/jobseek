@@ -110,6 +110,7 @@ class TestBoardSourceChangeReset:
         assert "JOIN company c ON c.slug = b.company_slug" in sql
         assert "RETURNING id::text AS board_id, company_id::text AS company_id" in sql
         assert "VALUES ($1" not in sql
+        assert "job_board.metadata -> '_confirmed_drop_candidate'" in sql
 
     def test_slug_stable_realign_preserves_id_and_resets_runtime_state(self):
         sql = " ".join(_REALIGN_RENAMED_BOARD_URLS_LOCAL.split())

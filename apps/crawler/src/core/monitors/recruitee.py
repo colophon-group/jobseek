@@ -365,4 +365,11 @@ async def save_raw(
     )
 
 
-register("recruitee", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)
+register(
+    "recruitee",
+    discover,
+    cost=10,
+    can_handle=can_handle,
+    rich=True,
+    save_raw=save_raw,
+)

@@ -22,6 +22,7 @@ from src.batch import (
     _INSERT_RICH_JOB,
     _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
+    _LOCK_BOARD_FINALIZE_STATE,
     _RECORD_BOARD_GONE,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
@@ -56,7 +57,11 @@ from src.batch import (
 )
 from src.core.location_resolve import LocationResolver, ResolvedLocation
 from src.core.monitor import MonitorResult, _apply_url_allowlist, monitor_one
-from src.core.monitors import DiscoveredJob, api_monitor_types
+from src.core.monitors import (
+    DiscoveredJob,
+    api_monitor_types,
+    complete_inventory_monitor_types,
+)
 from src.core.scrapers import JobContent
 from src.processing.board import (
     _INSERT_MONITOR_DESCRIPTION_FALLBACK,
@@ -170,6 +175,25 @@ class TestThrottleKey:
                 board = self._board(crawler_type=api_type)
                 assert _throttle_key(board) == api_type
 
+    def test_complete_inventory_contract_is_code_owned_and_narrow(self):
+        complete = complete_inventory_monitor_types()
+
+        assert complete == {"greenhouse"}
+        assert {
+            "api_sniffer",
+            "ashby",
+            "dom",
+            "gem",
+            "hirehive",
+            "hireology",
+            "lever",
+            "recruitee",
+            "rippling",
+            "sitemap",
+            "workable",
+            "workday",
+        }.isdisjoint(complete)
+
     def test_url_monitor_returns_hostname(self):
         board = self._board(crawler_type="sitemap", board_url="https://acme.com/jobs")
         assert _throttle_key(board) == "acme.com"
@@ -245,6 +269,8 @@ def mock_pool():
     async def _default_fetchrow(sql, *args, **kwargs):
         if sql == _COUNT_BOARD_ACTIVE_AND_MISSING:
             return {"active": 0, "missing": 0}
+        if sql == _LOCK_BOARD_FINALIZE_STATE:
+            return {"metadata": {}, "config_matches": True}
         return DEFAULT
 
     conn.fetchrow = AsyncMock(side_effect=_default_fetchrow)
@@ -664,7 +690,7 @@ class TestProcessOneBoard:
 
         await _process_one_board(board, pool, mock_http)
 
-        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1")
+        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1", None)
         mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
@@ -691,9 +717,10 @@ class TestProcessOneBoard:
         ]
         assert len(metadata_calls) == 1
         assert json.loads(metadata_calls[0].args[2]) == {
-            "sitemap_url": "https://example.com/current-sitemap.xml"
+            "_confirmed_drop_candidate": None,
+            "sitemap_url": "https://example.com/current-sitemap.xml",
         }
-        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1")
+        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1", None)
         mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
@@ -1063,6 +1090,8 @@ class TestProcessOneBoard:
         async def _stateful_fetchrow(sql, *args):
             if sql == _COUNT_BOARD_ACTIVE_AND_MISSING:
                 return {"active": 0, "missing": 0}
+            if sql == _LOCK_BOARD_FINALIZE_STATE:
+                return {"metadata": {}, "config_matches": True}
             if sql == _UPSERT_DESCRIPTION:
                 descriptions[(args[0], args[1])] = args[2]
                 return {
@@ -1751,7 +1780,7 @@ class TestProcessOneBoard:
             call.args and call.args[0] == _DELIST_BOARD_POSTINGS
             for call in conn.fetch.await_args_list
         )
-        conn.fetchval.assert_awaited_with(_RECORD_SUCCESS_NONEMPTY, "board-1")
+        conn.fetchval.assert_awaited_with(_RECORD_SUCCESS_NONEMPTY, "board-1", None)
         mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
@@ -2685,6 +2714,8 @@ class TestDuplicateSourceUrl:
             # via fetchrow too — return a benign row so the guard short-circuits.
             if sql == _COUNT_BOARD_ACTIVE_AND_MISSING:
                 return {"active": 0, "missing": 0}
+            if sql == _LOCK_BOARD_FINALIZE_STATE:
+                return {"metadata": {}, "config_matches": True}
             # _INSERT_RICH_JOB uses $4 for source_url (1-indexed → args[3]).
             source_url = args[3]
             insert_order.append(source_url)
@@ -2760,15 +2791,25 @@ class TestDuplicateSourceUrl:
                 new_sitemap_url="https://example.com/garbage-sitemap.xml",
             )
         )
-        conn.fetch.return_value = [{"board_status": "active"}]
+        conn.fetch.return_value = [
+            {
+                "board_status": "active",
+                "should_delist": False,
+                "recovered_from": None,
+            }
+        ]
         board = _mock_board(board_url="https://example.com/careers")
 
         await _process_one_board(board, pool, mock_http)
 
         # Only _RECORD_EMPTY_CHECK was called — not _DIFF_BATCH or MARK_GONE.
         assert conn.fetch.await_count == 1
-        conn.fetch.assert_awaited_with(_RECORD_EMPTY_CHECK, "board-1")
-        assert not any(call.args[0] == _UPDATE_METADATA for call in conn.execute.await_args_list)
+        conn.fetch.assert_awaited_with(_RECORD_EMPTY_CHECK, "board-1", None)
+        metadata_calls = [
+            call for call in conn.execute.await_args_list if call.args[0] == _UPDATE_METADATA
+        ]
+        assert len(metadata_calls) == 1
+        assert json.loads(metadata_calls[0].args[2]) == {"_confirmed_drop_candidate": None}
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -5316,6 +5357,77 @@ class TestMarkGoneGuards:
         assert "count(*) as active" in normalized
         assert "count(*) filter (where last_seen_at < $2) as missing" in normalized
 
+    def test_terminal_queries_are_bound_to_cycle_configuration(self):
+        from src.queries.monitor import (
+            _LOCK_BOARD_FINALIZE_STATE,
+            _RECORD_EMPTY_CHECK,
+            _RECORD_SUCCESS_NONEMPTY,
+        )
+
+        lock_sql = " ".join(_LOCK_BOARD_FINALIZE_STATE.split()).lower()
+        assert "for update" in lock_sql
+        assert "_monitor_config_fingerprint" in lock_sql
+        assert "is not distinct from $2::text as config_matches" in lock_sql
+        for query in (_RECORD_EMPTY_CHECK, _RECORD_SUCCESS_NONEMPTY):
+            normalized = " ".join(query.split()).lower()
+            assert "_monitor_config_fingerprint" in normalized
+            assert "is not distinct from $2::text" in normalized
+
+    async def test_finalize_lock_rejects_obsolete_cycle_configuration(self):
+        from src.processing.board import _lock_board_finalize_state
+        from src.queries.monitor import _LOCK_BOARD_FINALIZE_STATE
+
+        conn = AsyncMock()
+        conn.fetchrow.return_value = {
+            "metadata": {"_monitor_config_fingerprint": "config-v2"},
+            "config_matches": False,
+        }
+        board_log = MagicMock()
+
+        current = await _lock_board_finalize_state(
+            conn,
+            "board-1",
+            {"_monitor_config_fingerprint": "config-v1"},
+            board_log,
+        )
+
+        assert current is None
+        conn.fetchrow.assert_awaited_once_with(
+            _LOCK_BOARD_FINALIZE_STATE,
+            "board-1",
+            "config-v1",
+        )
+        board_log.warning.assert_called_once_with(
+            "batch.monitor.finalize_config_changed",
+            cycle_config_fingerprint="config-v1",
+            current_config_fingerprint="config-v2",
+        )
+
+    async def test_finalize_lock_returns_current_candidate_state(self):
+        from src.processing.board import _lock_board_finalize_state
+
+        current_metadata = {
+            "_monitor_config_fingerprint": "config-v1",
+            "_confirmed_drop_candidate": {"confirmations": 2},
+        }
+        conn = AsyncMock()
+        conn.fetchrow.return_value = {
+            "metadata": current_metadata,
+            "config_matches": True,
+        }
+
+        current = await _lock_board_finalize_state(
+            conn,
+            "board-1",
+            {
+                "_monitor_config_fingerprint": "config-v1",
+                "_confirmed_drop_candidate": {"confirmations": 1},
+            },
+            MagicMock(),
+        )
+
+        assert current == current_metadata
+
     async def test_count_timeout_logs_safe_cycle_context_and_fails_closed(self):
         from src.processing.board import _mark_gone_with_guards
 
@@ -5569,6 +5681,188 @@ class TestMarkGoneGuards:
         assert patch_dict["suspect_streak"] == 0
         assert patch_dict["recent_discovered_counts"][-1] == 95
 
+    async def test_confirmed_drop_records_exact_candidate_without_delisting(self):
+        """A complete-inventory contraction gets two protected observations."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=1145, missing=890)
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "suspect_streak": 0,
+            "_monitor_config_fingerprint": "config-v1",
+        }
+
+        gone, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="complete-api-board",
+            discovered=255,
+            monitor_start_ts="2026-09-17T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=MagicMock(),
+            inventory_fingerprint="inventory-v1",
+            complete_inventory=True,
+        )
+
+        assert (gone, reason) == (0, "drop")
+        assert _MARK_GONE_BY_TIMESTAMP not in [c.args[0] for c in conn.fetch.await_args_list]
+        candidate = self._md_patch(conn)["_confirmed_drop_candidate"]
+        assert candidate == {
+            "inventory_fingerprint": "inventory-v1",
+            "config_fingerprint": "config-v1",
+            "discovered": 255,
+            "confirmations": 1,
+        }
+
+    async def test_confirmed_drop_accepts_third_identical_bounded_inventory(self):
+        """Three exact complete inventories replace the stale baseline atomically."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=1145, missing=890)
+        conn.fetch.return_value = [{"id": f"gone-{index}"} for index in range(890)]
+        log = MagicMock()
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "suspect_streak": 2,
+            "_monitor_config_fingerprint": "config-v1",
+            "_confirmed_drop_candidate": {
+                "inventory_fingerprint": "inventory-v1",
+                "config_fingerprint": "config-v1",
+                "discovered": 255,
+                "confirmations": 2,
+            },
+        }
+
+        gone, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="complete-api-board",
+            discovered=255,
+            monitor_start_ts="2026-09-20T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=log,
+            inventory_fingerprint="inventory-v1",
+            complete_inventory=True,
+        )
+
+        assert (gone, reason) == (890, None)
+        conn.fetch.assert_awaited_once_with(
+            _MARK_GONE_BY_TIMESTAMP,
+            "complete-api-board",
+            "2026-09-20T00:00:00+00:00",
+            1,
+        )
+        patch_dict = self._md_patch(conn)
+        assert patch_dict == {
+            "recent_discovered_counts": [255],
+            "suspect_streak": 0,
+            "_confirmed_drop_candidate": None,
+        }
+        assert log.warning.call_args_list[-1].args[0] == ("batch.monitor.confirmed_drop_accepted")
+
+    async def test_confirmed_drop_never_crosses_absolute_missing_cap(self):
+        """Stable evidence cannot authorize a mutation beyond the global cap."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=5255, missing=5001)
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "suspect_streak": 2,
+            "_monitor_config_fingerprint": "config-v1",
+            "_confirmed_drop_candidate": {
+                "inventory_fingerprint": "inventory-v1",
+                "config_fingerprint": "config-v1",
+                "discovered": 255,
+                "confirmations": 2,
+            },
+        }
+
+        gone, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="complete-api-board",
+            discovered=255,
+            monitor_start_ts="2026-09-20T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=MagicMock(),
+            inventory_fingerprint="inventory-v1",
+            complete_inventory=True,
+        )
+
+        assert (gone, reason) == (0, "drop")
+        assert _MARK_GONE_BY_TIMESTAMP not in [c.args[0] for c in conn.fetch.await_args_list]
+        assert self._md_patch(conn)["_confirmed_drop_candidate"]["confirmations"] == 3
+
+    async def test_changed_inventory_restarts_confirmation(self):
+        """Equal counts with different posting identities are not confirmation."""
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=1145, missing=890)
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "_monitor_config_fingerprint": "config-v1",
+            "_confirmed_drop_candidate": {
+                "inventory_fingerprint": "inventory-v1",
+                "config_fingerprint": "config-v1",
+                "discovered": 255,
+                "confirmations": 2,
+            },
+        }
+
+        await _mark_gone_with_guards(
+            conn,
+            board_id="complete-api-board",
+            discovered=255,
+            monitor_start_ts="2026-09-20T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=MagicMock(),
+            inventory_fingerprint="inventory-v2",
+            complete_inventory=True,
+        )
+
+        candidate = self._md_patch(conn)["_confirmed_drop_candidate"]
+        assert candidate["inventory_fingerprint"] == "inventory-v2"
+        assert candidate["confirmations"] == 1
+
+    async def test_best_effort_monitor_never_auto_accepts_stable_candidate(self):
+        """Stable partial pages are not evidence without a completeness contract."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=1145, missing=890)
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "suspect_streak": 2,
+            "_confirmed_drop_candidate": {
+                "inventory_fingerprint": "inventory-v1",
+                "config_fingerprint": None,
+                "discovered": 255,
+                "confirmations": 2,
+            },
+        }
+
+        gone, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="best-effort-board",
+            discovered=255,
+            monitor_start_ts="2026-09-20T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=MagicMock(),
+            inventory_fingerprint="inventory-v1",
+            complete_inventory=False,
+        )
+
+        assert (gone, reason) == (0, "drop")
+        assert _MARK_GONE_BY_TIMESTAMP not in [c.args[0] for c in conn.fetch.await_args_list]
+        patch_dict = self._md_patch(conn)
+        assert patch_dict["suspect_streak"] == 3
+        assert patch_dict["_confirmed_drop_candidate"] is None
+
     async def test_history_window_caps_at_max(self):
         """``recent_discovered_counts`` never exceeds the window size."""
         from src.processing.board import _mark_gone_with_guards
@@ -5716,6 +6010,42 @@ class TestMarkGoneGuards:
 class TestMarkGoneGuardsIntegration:
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_obsolete_config_cannot_delist_or_record_success(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A sync that wins the row lock leaves its quarantine authoritative."""
+        from src.queries.monitor import _MARK_GONE_BY_TIMESTAMP
+
+        pool, conn = mock_pool
+        url = "https://example.com/job/1"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url}, jobs_by_url=None))
+        conn.fetch.return_value = [_diff_row("touched", row_id="jp-1", url=url)]
+        board = _mock_board(
+            metadata={"_monitor_config_fingerprint": "config-v1"},
+        )
+
+        async def _fetchrow_after_sync(sql, *args, **kwargs):
+            if sql == _LOCK_BOARD_FINALIZE_STATE:
+                return {
+                    "metadata": {"_monitor_config_fingerprint": "config-v2"},
+                    "config_matches": False,
+                }
+            raise AssertionError(f"unexpected fetchrow query: {sql}")
+
+        conn.fetchrow.side_effect = _fetchrow_after_sync
+
+        outcome = await _process_one_board(board, pool, mock_http)
+
+        assert outcome.success is True
+        assert _MARK_GONE_BY_TIMESTAMP not in [call.args[0] for call in conn.fetch.await_args_list]
+        assert not any(
+            call.args and call.args[0] == _RECORD_SUCCESS_NONEMPTY
+            for call in conn.fetchval.await_args_list
+        )
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_drop_guard_skips_mark_gone_in_pipeline(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -5738,6 +6068,18 @@ class TestMarkGoneGuardsIntegration:
         board = _mock_board(
             metadata={"recent_discovered_counts": baseline, "suspect_streak": 0},
         )
+
+        async def _fetchrow_with_current_metadata(sql, *args, **kwargs):
+            if sql == _LOCK_BOARD_FINALIZE_STATE:
+                return {
+                    "metadata": board["metadata"],
+                    "config_matches": True,
+                }
+            if sql == _COUNT_BOARD_ACTIVE_AND_MISSING:
+                return {"active": 0, "missing": 0}
+            raise AssertionError(f"unexpected fetchrow query: {sql}")
+
+        conn.fetchrow.side_effect = _fetchrow_with_current_metadata
         # Counter labels must be registered before reading.
         monitor_gone_skipped_total.labels(reason="drop")
         before_skipped = _counter_value(monitor_gone_skipped_total, reason="drop")

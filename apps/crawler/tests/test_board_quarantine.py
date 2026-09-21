@@ -54,6 +54,13 @@ def test_quarantined_boards_remain_due_and_success_self_recovers() -> None:
         assert "quarantine_probe_count = 0" in sql
 
 
+def test_repeated_gone_guard_skips_remain_visibly_suspect() -> None:
+    sql = " ".join(_RECORD_SUCCESS_NONEMPTY.split())
+
+    assert "metadata ->> 'suspect_streak'" in sql
+    assert ">= 3 THEN 'suspect'" in sql
+
+
 def test_legacy_disable_migration_prioritizes_ashby_and_splays_the_rest() -> None:
     migration = importlib.import_module("src.migrations.versions.0015_recover_disabled_boards")
     sql = " ".join(migration._REACTIVATE_DISABLED_BOARDS.split())
