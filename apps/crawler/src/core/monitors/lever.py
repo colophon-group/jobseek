@@ -375,6 +375,5 @@ register(
     cost=10,
     can_handle=can_handle,
     rich=True,
-    complete_inventory=True,
     save_raw=save_raw,
 )

@@ -25,6 +25,7 @@ __all__ = [
     "_INSERT_RICH_JOB_ENRICH_DURABLE",
     "_INSERT_URL_ONLY_JOBS",
     "_INSERT_URL_ONLY_JOBS_DURABLE",
+    "_LOCK_BOARD_FINALIZE_STATE",
     "_MARK_GONE",
     "_MARK_GONE_BY_TIMESTAMP",
     "_RECORD_BOARD_GONE",
@@ -119,6 +120,19 @@ SELECT
 FROM job_posting
 WHERE board_id = $1
   AND is_active = true
+"""
+
+# Serialize the terminal decision for a monitor cycle with crawler sync.  The
+# fingerprint comparison makes an in-flight result from an old board URL or
+# monitor configuration ineligible to mutate lifecycle state after sync has
+# quarantined the replacement configuration.
+_LOCK_BOARD_FINALIZE_STATE = """
+SELECT metadata,
+       metadata ->> '_monitor_config_fingerprint'
+           IS NOT DISTINCT FROM $2::text AS config_matches
+FROM job_board
+WHERE id = $1
+FOR UPDATE
 """
 
 # Bounded, receipt-backed adoption of Unisanté provider-reference identities.
@@ -537,6 +551,7 @@ WITH previous AS MATERIALIZED (
     SELECT id, board_status
     FROM job_board
     WHERE id = $1
+      AND metadata ->> '_monitor_config_fingerprint' IS NOT DISTINCT FROM $2::text
     FOR UPDATE
 ), updated AS (
     UPDATE job_board jb
@@ -587,6 +602,7 @@ WITH previous AS MATERIALIZED (
     SELECT id, board_status
     FROM job_board
     WHERE id = $1
+      AND metadata ->> '_monitor_config_fingerprint' IS NOT DISTINCT FROM $2::text
     FOR UPDATE
 ), updated AS (
     UPDATE job_board jb

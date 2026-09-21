@@ -169,6 +169,5 @@ register(
     cost=10,
     can_handle=can_handle,
     rich=False,
-    complete_inventory=True,
     save_raw=save_raw,
 )

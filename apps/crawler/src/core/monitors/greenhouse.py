@@ -225,13 +225,20 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     response.raise_for_status()
 
     data = response.json()
-    raw_jobs = data.get("jobs", [])
+    if not isinstance(data, dict):
+        raise ValueError("Greenhouse jobs response must be a JSON object")
+    raw_jobs = data.get("jobs")
+    if not isinstance(raw_jobs, list):
+        raise ValueError("Greenhouse jobs response must contain a jobs list")
 
     jobs: list[DiscoveredJob] = []
-    for raw in raw_jobs:
+    for index, raw in enumerate(raw_jobs):
+        if not isinstance(raw, dict):
+            raise ValueError(f"Greenhouse job at index {index} must be an object")
         parsed = _parse_job(raw)
-        if parsed:
-            jobs.append(parsed)
+        if parsed is None:
+            raise ValueError(f"Greenhouse job at index {index} has no absolute_url")
+        jobs.append(parsed)
 
     if len(jobs) > MAX_JOBS:
         log.warning("greenhouse.truncated", url=url, total=len(jobs), cap=MAX_JOBS)

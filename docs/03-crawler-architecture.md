@@ -209,16 +209,24 @@ in `board_status = 'suspect'` instead of reporting it as healthy. A normal
 complete cycle resets the streak and returns the board to `active`.
 
 Automatic convergence is limited to monitor implementations with a
-code-reviewed `complete_inventory` contract. The initial set is Greenhouse,
-Ashby, Gem, Recruitee, Lever, HireHive, Hireology, Rippling, and Workable:
-their implementations either read one complete provider collection or verify
-pagination to exhaustion, and all report their hard cap as `truncated`.
-For those monitors only, three consecutive complete, unfiltered inventories
+code-reviewed `complete_inventory` contract. Greenhouse is the initial
+eligible provider: it reads one provider collection, rejects malformed rows
+instead of silently dropping them, and reports its hard cap as `truncated`.
+For eligible monitors only, three consecutive complete, unfiltered inventories
 with the exact same identity fingerprint may confirm a contraction. The
 confirmed update is atomic, resets the baseline, and is capped at 5,000
-affected active rows. Best-effort DOM, sitemap, Workday, and API-sniffer
-monitors never auto-accept a guarded contraction; they remain `suspect` for
-review rather than turning a repeatable partial page into mass deletion.
+affected active rows. All other monitors, including DOM, sitemap, Workday,
+API-sniffer, Ashby, Gem, Lever, Recruitee, Rippling, HireHive, Hireology, and
+Workable, never auto-accept a guarded
+contraction; they remain `suspect` for review rather than turning a repeatable
+partial page into mass deletion. An empty or truncated intervening cycle
+clears any pending contraction candidate, so the three matching inventories
+are genuinely consecutive.
+
+Every terminal empty, truncated, or non-empty cycle locks the board row and
+compares the configuration fingerprint that started the crawl with the current
+database fingerprint. A result from an obsolete URL or monitor configuration
+cannot delist postings or reactivate the quarantined replacement configuration.
 
 ### 2. Scrape authority (fallback) — three failure classes
 

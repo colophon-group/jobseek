@@ -89,6 +89,7 @@ from src.queries.monitor import (
     _INSERT_RICH_JOB_ENRICH_DURABLE,
     _INSERT_URL_ONLY_JOBS,
     _INSERT_URL_ONLY_JOBS_DURABLE,
+    _LOCK_BOARD_FINALIZE_STATE,
     _MARK_GONE_BY_TIMESTAMP,
     _MIGRATE_UNISANTE_PROVIDER_IDENTITIES,
     _RECORD_BOARD_GONE,
@@ -985,6 +986,45 @@ async def _retire_canonicalized_provider_identities(
     return retired
 
 
+def _cycle_config_fingerprint(metadata: dict | None) -> str | None:
+    value = (metadata or {}).get("_monitor_config_fingerprint")
+    return value if isinstance(value, str) and value else None
+
+
+async def _lock_board_finalize_state(
+    conn: asyncpg.Connection,
+    board_id: str,
+    cycle_metadata: dict | None,
+    board_log: structlog.stdlib.BoundLogger,
+) -> dict | None:
+    """Lock lifecycle finalization and reject results from obsolete config.
+
+    ``crawler sync`` quarantines a board when its URL, monitor type, or
+    monitor-owned configuration changes. A crawl that started before that
+    sync must not subsequently delist postings or turn the replacement board
+    active. The row lock serializes the two writers; the fingerprint binds
+    every terminal mutation to the configuration that produced the result.
+    """
+    expected_fingerprint = _cycle_config_fingerprint(cycle_metadata)
+    row = await conn.fetchrow(
+        _LOCK_BOARD_FINALIZE_STATE,
+        board_id,
+        expected_fingerprint,
+    )
+    if row is None:
+        board_log.warning("batch.monitor.finalize_board_missing")
+        return None
+    if not bool(row["config_matches"]):
+        current_metadata = _parse_metadata(row["metadata"])
+        board_log.warning(
+            "batch.monitor.finalize_config_changed",
+            cycle_config_fingerprint=expected_fingerprint,
+            current_config_fingerprint=_cycle_config_fingerprint(current_metadata),
+        )
+        return None
+    return _parse_metadata(row["metadata"])
+
+
 async def _mark_gone_with_guards(
     conn: asyncpg.Connection,
     board_id: str,
@@ -1035,8 +1075,11 @@ async def _mark_gone_with_guards(
 
     drop_threshold = _setting(md, "drop_threshold", _DROP_GUARD_THRESHOLD_DEFAULT)
     blast_floor = _setting(md, "blast_radius_floor", _BLAST_RADIUS_FLOOR_DEFAULT)
+    config_fingerprint = _cycle_config_fingerprint(md)
     confirmed_drop_policy = (
-        (_CONFIRMED_DROP_CYCLES, _CONFIRMED_DROP_MAX_MISSING) if complete_inventory else None
+        (_CONFIRMED_DROP_CYCLES, _CONFIRMED_DROP_MAX_MISSING)
+        if complete_inventory and config_fingerprint is not None
+        else None
     )
 
     skip_reason: str | None = None
@@ -1104,7 +1147,6 @@ async def _mark_gone_with_guards(
         candidate = md.get("_confirmed_drop_candidate")
         if confirmed_drop_policy is not None and inventory_fingerprint is not None:
             required_cycles, max_missing = confirmed_drop_policy
-            config_fingerprint = md.get("_monitor_config_fingerprint")
             same_candidate = (
                 isinstance(candidate, dict)
                 and candidate.get("inventory_fingerprint") == inventory_fingerprint
@@ -1976,20 +2018,27 @@ async def _process_one_board_streaming(
                 and not unisante_identity_migration_attempted
             ):
                 async with pool.acquire() as conn, conn.transaction():
-                    identity_migration_retired += await _migrate_unisante_provider_identities(
+                    current_metadata = await _lock_board_finalize_state(
                         conn,
-                        board_id=board_id,
-                        company_id=company_id,
-                        board_slug=board_slug,
-                        board_url=board_url,
-                        crawler_type=crawler_type,
-                        metadata=metadata,
-                        jobs_by_url=result.jobs_by_url,
-                        truncated=bool(getattr(result, "truncated", False)),
-                        extraction_filtered=extraction_filtered,
-                        security_filtered=security_filtered,
-                        board_log=board_log,
+                        board_id,
+                        metadata,
+                        board_log,
                     )
+                    if current_metadata is not None:
+                        identity_migration_retired += await _migrate_unisante_provider_identities(
+                            conn,
+                            board_id=board_id,
+                            company_id=company_id,
+                            board_slug=board_slug,
+                            board_url=board_url,
+                            crawler_type=crawler_type,
+                            metadata=current_metadata,
+                            jobs_by_url=result.jobs_by_url,
+                            truncated=bool(getattr(result, "truncated", False)),
+                            extraction_filtered=extraction_filtered,
+                            security_filtered=security_filtered,
+                            board_log=board_log,
+                        )
                 unisante_identity_migration_attempted = True
             if collect_migration_canonicals:
                 for url in result.urls:
@@ -2442,17 +2491,36 @@ async def _process_one_board_streaming(
             recovered_from: str | None = None
             try:
                 async with pool.acquire() as conn, conn.transaction():
-                    # Persist metadata for a genuinely empty inventory, such
-                    # as a recovered but currently vacant sitemap. Do not
-                    # advance state when raw URLs were present but all were
-                    # rejected as implausible.
-                    if total_discovered == 0 and pending_metadata_patch:
+                    current_metadata = await _lock_board_finalize_state(
+                        conn,
+                        board_id,
+                        metadata,
+                        board_log,
+                    )
+                    if current_metadata is None:
+                        rows = []
+                    else:
+                        # Persist metadata for a genuinely empty inventory, such
+                        # as a recovered but currently vacant sitemap. Do not
+                        # advance monitor-provided state when raw URLs were
+                        # present but all were rejected as implausible. Either
+                        # empty shape contradicts a prior non-empty contraction,
+                        # so it always breaks that confirmation sequence.
+                        empty_metadata_patch: dict[str, object] = {
+                            "_confirmed_drop_candidate": None
+                        }
+                        if total_discovered == 0 and pending_metadata_patch:
+                            empty_metadata_patch.update(pending_metadata_patch)
                         await conn.execute(
                             _UPDATE_METADATA,
                             board_id,
-                            json.dumps(pending_metadata_patch),
+                            json.dumps(empty_metadata_patch),
                         )
-                    rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
+                        rows = await conn.fetch(
+                            _RECORD_EMPTY_CHECK,
+                            board_id,
+                            _cycle_config_fingerprint(metadata),
+                        )
                     if rows:
                         recovered_from = rows[0]["recovered_from"]
                         if rows[0]["should_delist"]:
@@ -2495,7 +2563,27 @@ async def _process_one_board_streaming(
         # cycle proceeds normally.
         if any_truncated:
             async with pool.acquire() as conn, conn.transaction():
-                recovered_from = await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
+                current_metadata = await _lock_board_finalize_state(
+                    conn,
+                    board_id,
+                    metadata,
+                    board_log,
+                )
+                if current_metadata is None:
+                    recovered_from = None
+                else:
+                    # A partial inventory cannot sit between confirmations of an
+                    # allegedly consecutive exact contraction.
+                    await conn.execute(
+                        _UPDATE_METADATA,
+                        board_id,
+                        json.dumps({"_confirmed_drop_candidate": None}),
+                    )
+                    recovered_from = await conn.fetchval(
+                        _RECORD_SUCCESS_NONEMPTY,
+                        board_id,
+                        _cycle_config_fingerprint(metadata),
+                    )
             _emit_board_recovery(recovered_from, board_log, discovered=total_discovered)
             board_log.warning(
                 "batch.monitor.truncated_partial",
@@ -2505,47 +2593,62 @@ async def _process_one_board_streaming(
             monitor_truncated_total.labels(board_id=board_id).inc()
         else:
             async with pool.acquire() as conn, conn.transaction():
-                identity_migration_gone = await _retire_canonicalized_provider_identities(
-                    conn,
-                    board_id=board_id,
-                    company_id=company_id,
-                    board_slug=board_slug,
-                    board_url=board_url,
-                    crawler_type=crawler_type,
-                    monitor_start_ts=monitor_start_ts,
-                    metadata=metadata,
-                    discovered=total_discovered,
-                    canonical_urls=canonical_urls,
-                    truncated=any_truncated,
-                    extraction_filtered=extraction_filtered,
-                    security_filtered=security_filtered,
-                    processing_filtered=processing_filtered,
-                    all_canonical=all_canonical,
-                    board_log=board_log,
-                )
-                guarded_gone_count, gone_skipped_reason = await _mark_gone_with_guards(
+                current_metadata = await _lock_board_finalize_state(
                     conn,
                     board_id,
-                    total_discovered,
-                    monitor_start_ts,
                     metadata,
-                    delist_threshold,
                     board_log,
-                    inventory_fingerprint=(
-                        _inventory_fingerprint(guard_inventory_identities)
-                        if extraction_filtered == 0
-                        and security_filtered == 0
-                        and processing_filtered == 0
-                        and total_discovered == total_processed
-                        and total_processed == len(guard_inventory_identities)
-                        else None
-                    ),
-                    complete_inventory=crawler_type in _COMPLETE_INVENTORY_MONITOR_TYPES,
                 )
-                gone_count = (
-                    identity_migration_retired + identity_migration_gone + guarded_gone_count
-                )
-                recovered_from = await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
+                if current_metadata is None:
+                    gone_skipped_reason = "config_changed"
+                    gone_count = identity_migration_retired
+                    recovered_from = None
+                else:
+                    identity_migration_gone = await _retire_canonicalized_provider_identities(
+                        conn,
+                        board_id=board_id,
+                        company_id=company_id,
+                        board_slug=board_slug,
+                        board_url=board_url,
+                        crawler_type=crawler_type,
+                        monitor_start_ts=monitor_start_ts,
+                        metadata=current_metadata,
+                        discovered=total_discovered,
+                        canonical_urls=canonical_urls,
+                        truncated=any_truncated,
+                        extraction_filtered=extraction_filtered,
+                        security_filtered=security_filtered,
+                        processing_filtered=processing_filtered,
+                        all_canonical=all_canonical,
+                        board_log=board_log,
+                    )
+                    guarded_gone_count, gone_skipped_reason = await _mark_gone_with_guards(
+                        conn,
+                        board_id,
+                        total_discovered,
+                        monitor_start_ts,
+                        current_metadata,
+                        delist_threshold,
+                        board_log,
+                        inventory_fingerprint=(
+                            _inventory_fingerprint(guard_inventory_identities)
+                            if extraction_filtered == 0
+                            and security_filtered == 0
+                            and processing_filtered == 0
+                            and total_discovered == total_processed
+                            and total_processed == len(guard_inventory_identities)
+                            else None
+                        ),
+                        complete_inventory=crawler_type in _COMPLETE_INVENTORY_MONITOR_TYPES,
+                    )
+                    gone_count = (
+                        identity_migration_retired + identity_migration_gone + guarded_gone_count
+                    )
+                    recovered_from = await conn.fetchval(
+                        _RECORD_SUCCESS_NONEMPTY,
+                        board_id,
+                        _cycle_config_fingerprint(metadata),
+                    )
 
             _emit_board_recovery(recovered_from, board_log, discovered=total_discovered)
 

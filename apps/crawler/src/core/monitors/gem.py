@@ -230,4 +230,4 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     )
 
 
-register("gem", discover, cost=10, can_handle=can_handle, rich=True, complete_inventory=True)
+register("gem", discover, cost=10, can_handle=can_handle, rich=True)

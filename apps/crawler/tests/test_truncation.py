@@ -276,7 +276,7 @@ class TestTruncatedSuppressesGoneDetection:
         assert _INSERT_URL_ONLY_JOBS in fetch_sqls
 
         # The cycle is still recorded as success — failure budget unchanged.
-        conn.fetchval.assert_any_await(_RECORD_SUCCESS_NONEMPTY, "board-1")
+        conn.fetchval.assert_any_await(_RECORD_SUCCESS_NONEMPTY, "board-1", None)
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -305,7 +305,7 @@ class TestTruncatedSuppressesGoneDetection:
         fetchrow_sqls = [c.args[0] for c in conn.fetchrow.await_args_list]
         assert _INSERT_RICH_JOB in fetchrow_sqls
         # Success still recorded.
-        conn.fetchval.assert_any_await(_RECORD_SUCCESS_NONEMPTY, "board-1")
+        conn.fetchval.assert_any_await(_RECORD_SUCCESS_NONEMPTY, "board-1", None)
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
