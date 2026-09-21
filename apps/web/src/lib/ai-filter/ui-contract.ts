@@ -38,4 +38,3 @@ export type AiFilterAcceptedPage = Readonly<{
   nextOffset: number;
   hasMore: boolean;
 }>;
-
