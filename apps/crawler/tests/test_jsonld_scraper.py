@@ -24,6 +24,7 @@ from src.core.scrapers.jsonld import (
     scrape,
 )
 from src.shared.http import track_request_hosts
+from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 from src.shared.proxy import ProxyPoolExhaustedError
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -1151,6 +1152,43 @@ class TestScrape:
             args.kwargs["content_guard"] is _guard_rendered_content
             for args in mock_render.await_args_list
         )
+        assert sleep.await_args_list == [call(1.0)]
+
+    async def test_render_rotates_navigation_403_to_a_fresh_proxy(self):
+        page_html = """<script type="application/ld+json">
+        {"@type": "JobPosting", "title": "Recovered"}
+        </script>"""
+        blocked = BrowserNavigationHTTPStatusError(
+            requested_url="https://jobs.example.com/job/1",
+            response_url="https://jobs.example.com/job/1",
+            status=403,
+            phase="primary",
+        )
+
+        with (
+            patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render,
+            patch("src.core.scrapers.jsonld.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            mock_render.side_effect = [blocked, page_html]
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500))
+            ) as client:
+                result = await scrape(
+                    "https://jobs.example.com/job/1",
+                    {
+                        "render": True,
+                        "proxy": True,
+                        "transport_attempts": 2,
+                    },
+                    client,
+                    pw="fake_pw",
+                )
+
+        assert result.title == "Recovered"
+        assert [args.args[1]["proxy"] for args in mock_render.await_args_list] == [
+            True,
+            True,
+        ]
         assert sleep.await_args_list == [call(1.0)]
 
     async def test_render_never_bypasses_unavailable_proxy_without_typed_block(self):

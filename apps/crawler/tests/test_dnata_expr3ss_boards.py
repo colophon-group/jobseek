@@ -37,23 +37,16 @@ def test_dnata_australia_expr3ss_boards_use_canonical_headful_proxy_paths() -> N
         assert monitor_config["url_filter"].startswith(f"^https://{re.escape(host)}")
 
         transform = monitor_config["url_transform"]
-        expected = f"https://{host}/jobDetailsModern?selectJob=1208&modern=1"
-        assert (
-            re.sub(
-                transform["find"],
-                transform["replace"],
-                f"https://{host}/jobDetailsModern?selectJob=1208&ppt=deadbeef&modern=1",
-            )
-            == expected
-        )
-        assert (
-            re.sub(
-                transform["find"],
-                transform["replace"],
-                f"https://{host}/jobDetailsModern?selectJob=1208&s=250&modern=1",
-            )
-            == expected
-        )
+        expected = f"https://{host}/jobDetailsModern?selectJob=1208&s=250&modern=1"
+        aliases = [
+            f"https://{host}/jobDetailsModern?selectJob=1208&ppt=deadbeef&modern=1",
+            f"https://{host}/jobDetailsModern?selectJob=1208&s=248&modern=1",
+            f"https://{host}/jobDetailsModern?selectJob=1208&s=249&modern=1",
+            f"https://{host}/jobDetailsModern?selectJob=1208&s=250&modern=1",
+        ]
+        assert {re.sub(transform["find"], transform["replace"], alias) for alias in aliases} == {
+            expected
+        }
 
         assert scraper_config == {
             "render": True,
