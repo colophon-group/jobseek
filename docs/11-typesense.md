@@ -181,15 +181,16 @@ Both are idempotent. On every run, the setup logic:
 
 ### Stable candidate-order rollout
 
-Frozen AI-filter feeds use a total newest-first order:
+Frozen precise-matching feeds will use a total newest-first order after the
+separately gated producer rollout:
 `first_seen_at DESC, candidate ID ASC`. Typesense's implicit `id` cannot be
 configured for string sorting, so each `job_posting` document carries
 `candidate_order_key`: a 22-character, fixed-width, ASCII-lexicographic base-64
 encoding of the UUID's unsigned 128-bit value (`uuid-b64lex-v1`). It preserves
 canonical lowercase UUID order while being 39% shorter than a copied 36-byte
 UUID. The field is `index: true, sort: true` and optional only for the in-place
-transition. The steady exporter, full backfill, reconciliation repairs, and
-local development backfill all emit it.
+transition. The activation change must update the steady exporter, full
+backfill, reconciliation repairs, and local development backfill to emit it.
 
 Do not infer memory safety from the compact representation. A sortable string
 still has an in-memory sort structure. Activation therefore has two independent

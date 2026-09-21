@@ -97,7 +97,6 @@ Legend: Q = `query_by`; F = filter; A = facet; G = group; S = sort; R = returned
 | `locales` | F, A, R, C | language preferences, watchlists, description-locale selection | retain facet/index |
 | `source_url` | R, C | posting redirect and saved-job snapshot | already stored-only |
 | `first_seen_at` | F, S, R, C | historical/year cutoff, freshness ordering, rendered timestamp | retain sort/index and default sorting field |
-| `candidate_order_key` | S, C | deterministic tie-break for resumable precise-matching candidate feeds | retain sort index; activation requires the separate benchmark, full backfill, and readiness receipt |
 | `last_seen_at` | C | emitted by exporter but not in the reconciliation payload or a current web projection | stored-only candidate; later consider removing from Typesense |
 
 ### Read-path coverage behind the matrix

@@ -158,9 +158,11 @@ representations, and metadata do not include AI state.
 
 ## Remaining gates
 
-Activation still requires applying migration `0092`, completing the stable
-Typesense candidate-order backfill/readiness receipt, setting production
-secrets/budgets, and completing operator dashboard/canary/pilot gates. Hourly
+Migration `0092` and the web/API surfaces are deployed independently of
+activation. Enabling precise matching still requires the separately held
+Typesense producer change, its reviewed production-shaped memory benchmark,
+the complete candidate-order backfill/readiness receipt, production
+secrets/budgets, and the operator canary/pilot gates. Hourly
 catch-up/budget-resume and bounded retention cleanup are already wired through
 the authenticated maintenance cron.
 
@@ -171,8 +173,7 @@ notifications consume Jev decisions needs its own delivery/readiness contract;
 ordinary notification matching must not silently become an AI execution
 trigger.
 
-The next product work is rendered UI and requires explicit human taste
-approval: owned-watchlist controls/spend guidance, accepted and rejected views,
-truthful progress/reconnect states, and move/Undo/report interactions. No eval
-dataset, provider bakeoff, expensive fallback, or formal privacy/legal
-workstream is part of this MVP.
+The rendered UI covers Explore, company, and owned-watchlist search surfaces,
+including login/subscription return-state restoration, lazy catch-up progress,
+and accepted-result controls. No eval dataset, provider bakeoff, expensive
+fallback, or formal privacy/legal workstream is part of this MVP.
