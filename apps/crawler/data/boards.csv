@@ -5255,6 +5255,8 @@ pacs,pacs-careers,https://pacs.wd108.myworkdayjobs.com/pacs,workday,,workday,
 pacvue,pacvue-greenhouse,https://job-boards.greenhouse.io/pacvue,greenhouse,"{""token"": ""pacvue""}",skip,
 paddle,paddle-ashby,https://jobs.ashbyhq.com/paddle,ashby,"{""token"": ""paddle""}",skip,
 pagaya,pagaya-greenhouse,https://job-boards.greenhouse.io/pagaya,greenhouse,"{""token"": ""pagaya""}",skip,
+pagbank,pagbank-careers,https://pagseguro.gupy.io/,gupy,"{""tenant"": ""pagseguro""}",nextdata,"{""path"": ""props.pageProps.job"", ""fields"": {""title"": ""name"", ""description"": ""description"", ""locations"": ""addressCity"", ""job_location_type"": {""path"": ""workplaceType"", ""map"": {""on-site"": ""onsite"", ""hybrid"": ""hybrid"", ""remote"": ""remote""}}, ""date_posted"": ""publishedAt""}}"
+pagbank,pagbank-pandape,https://pagbank.pandape.infojobs.com.br/,computrabajo,"{""host"": ""pagbank.pandape.infojobs.com.br"", ""variant"": ""pandape""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""match_regex"": ""^.+\\s-\\s[A-Z]{2}$"", ""field"": ""locations""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Sobre PagBank"", ""stop_count"": 60}]}"
 pagerduty,pagerduty-greenhouse,https://job-boards.greenhouse.io/pagerduty,greenhouse,"{""token"": ""pagerduty""}",skip,
 pair-team,pair-team-greenhouse,https://job-boards.greenhouse.io/pairteam,greenhouse,"{""token"": ""pairteam""}",skip,
 palabra-ai,palabra-ai-notion,https://palabraai.notion.site/Palabra-ai-Careers-ba2415650161444e8c4e7dedf2fc3631,notion,,notion,
