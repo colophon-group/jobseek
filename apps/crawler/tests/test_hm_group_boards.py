@@ -268,6 +268,49 @@ async def test_incomplete_page_fails_instead_of_tombstoning_unseen_jobs(monkeypa
             await discover(board, client)
 
 
+@pytest.mark.asyncio
+async def test_inactive_detail_restarts_from_a_fresh_list_snapshot(monkeypatch):
+    valid = _detail("701", _JOB_A, "Still listed", "en")
+    retired = _detail("702", _JOB_B, "Retired during discovery", "en")
+    retired["active"] = False
+    list_calls = 0
+    detail_calls: list[str] = []
+
+    async def no_sleep(_delay: float) -> None:
+        return None
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal list_calls
+        if request.url.path.endswith("/postings"):
+            list_calls += 1
+            publications = [{"id": "701"}, {"id": "702"}] if list_calls == 1 else [{"id": "701"}]
+            return httpx.Response(
+                200,
+                json={"content": publications, "totalFound": len(publications)},
+                request=request,
+            )
+        publication_id = request.url.path.rsplit("/", 1)[-1]
+        detail_calls.append(publication_id)
+        detail = valid if publication_id == "701" else retired
+        return httpx.Response(200, json=detail, request=request)
+
+    monkeypatch.setattr(smartrecruiters_module.asyncio, "sleep", no_sleep)
+    board = {
+        "board_url": "https://careers.smartrecruiters.com/HMGroup",
+        "metadata": {
+            "token": "HMGroup",
+            "canonical_job_id_url_template": _CANONICAL_TEMPLATE,
+        },
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        jobs = await discover(board, client)
+
+    assert isinstance(jobs, list)
+    assert [job.url for job in jobs] == [f"https://career.hm.com/job/{_JOB_A}/"]
+    assert list_calls == 2
+    assert detail_calls.count("702") == 1
+
+
 @pytest.mark.parametrize(
     "active",
     [
@@ -279,9 +322,14 @@ async def test_incomplete_page_fails_instead_of_tombstoning_unseen_jobs(monkeypa
         pytest.param(False, id="false"),
     ],
 )
-async def test_non_boolean_or_non_live_detail_aborts_entire_localized_cycle(active):
+async def test_non_boolean_or_non_live_detail_aborts_entire_localized_cycle(active, monkeypatch):
     valid = _detail("701", _JOB_A, "Valid", "en")
     invalid = _detail("702", _JOB_B, "Unproven live state", "en")
+
+    async def no_sleep(_delay: float) -> None:
+        return None
+
+    monkeypatch.setattr(smartrecruiters_module.asyncio, "sleep", no_sleep)
     if active is _MISSING:
         invalid.pop("active")
     else:
