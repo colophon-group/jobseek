@@ -99,6 +99,7 @@ _MONITOR_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "request_headers",
             "require_pdf_pattern",
             "require_unexpired_pdf",
+            "resource_policy",
             "rescrape_policy",
             "response_decrypt",
             "route_params",
