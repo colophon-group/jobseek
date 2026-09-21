@@ -59,6 +59,8 @@ def test_recursive_census_is_sanitized_and_deterministic(tmp_path: Path) -> None
                         {"action": "evaluate", "script": "window.__secret = 'value'"},
                     ],
                     "bot_protection": False,
+                    "delist_threshold": 1,
+                    "drop_threshold": 0.5,
                     "render": True,
                     "resource_policy": "auto",
                     "pagination": {

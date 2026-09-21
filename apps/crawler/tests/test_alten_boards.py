@@ -54,6 +54,8 @@ def test_alten_spain_uses_live_inventory_and_optional_upstream_location() -> Non
     inventory_guard = monitor_config["actions"][-1]["script"]
     assert "page advertises" in inventory_guard
     assert "n<90" not in inventory_guard
+    assert monitor_config["drop_threshold"] == 0.5
+    assert monitor_config["delist_threshold"] == 1
 
     scraper_config = json.loads(row["scraper_config"])
     assert "missing job date" in scraper_config["actions"][0]["script"]
