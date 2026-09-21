@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import nextConfig from "../../../next.config";
+import { nextConfig } from "../../../next.config";
 import { SITE_OG_PUBLIC_URL } from "../og/site-og-key";
 
 describe("root asset redirects", () => {

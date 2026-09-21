@@ -39,6 +39,7 @@
     "test:coverage": "pnpm proxy-matchers:update && vitest run --config vitest.coverage.config.ts",
     "test:watch": "pnpm proxy-matchers:update && vitest",
     "test:isr": "vitest run --config vitest.isr.config.ts",
+    "test:jev-live": "tsx scripts/test-jev-ai-filter-live.ts",
     "typecheck": "next typegen && tsc"
   },
   "dependencies": {
@@ -85,7 +86,8 @@
     "sharp": "^0.35.4",
     "stripe": "^22.6.2",
     "tailwindcss": "^4.3.3",
-    "typesense": "^3.0.6"
+    "typesense": "^3.0.6",
+    "workflow": "^4.8.9"
   },
   "devDependencies": {
     "@lingui/babel-plugin-lingui-macro": "^6.6.0",

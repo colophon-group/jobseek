@@ -7,6 +7,8 @@ import {
   boolean,
   smallint,
   integer,
+  bigint,
+  bigserial,
   real,
   numeric,
   timestamp,
@@ -909,6 +911,409 @@ export const watchlistCompany = pgTable(
     ),
     index("idx_wlc_company").on(table.companyId),
   ],
+);
+
+// ── Jev AI filter tables ───────────────────────────────────────────
+
+export const aiFilterConfiguration = pgTable(
+  "ai_filter_configuration",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    watchlistId: uuid("watchlist_id")
+      .notNull()
+      .unique()
+      .references(() => watchlist.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["enabled", "disabled"] })
+      .default("enabled")
+      .notNull(),
+    currentRevision: integer("current_revision").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    lastCaughtUpAt: timestamp("last_caught_up_at", { withTimezone: true }),
+    lastSweepAt: timestamp("last_sweep_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("ai_filter_configuration_owner_idx").on(table.ownerId),
+    index("ai_filter_configuration_sweep_idx").on(
+      table.status,
+      table.lastSweepAt,
+    ),
+    check(
+      "ai_filter_configuration_revision_check",
+      sql`${table.currentRevision} > 0`,
+    ),
+    check(
+      "ai_filter_configuration_disabled_check",
+      sql`(${table.status} = 'disabled') = (${table.disabledAt} IS NOT NULL)`,
+    ),
+  ],
+);
+
+export const aiFilterQueryVersion = pgTable(
+  "ai_filter_query_version",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    configurationId: uuid("configuration_id")
+      .notNull()
+      .references(() => aiFilterConfiguration.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    queryText: text("query_text").notNull(),
+    normalizedQuery: text("normalized_query").notNull(),
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    schemaVersion: text("schema_version").notNull(),
+    normalizerVersion: text("normalizer_version").notNull(),
+    filterFingerprint: text("filter_fingerprint").notNull(),
+    horizonStartedAt: timestamp("horizon_started_at", { withTimezone: true })
+      .notNull(),
+    horizonEndsAt: timestamp("horizon_ends_at", { withTimezone: true })
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ai_filter_query_version_revision_uidx").on(
+      table.configurationId,
+      table.revision,
+    ),
+    index("ai_filter_query_version_configuration_idx").on(
+      table.configurationId,
+      table.createdAt,
+    ),
+    check("ai_filter_query_version_revision_check", sql`${table.revision} > 0`),
+    check(
+      "ai_filter_query_version_horizon_check",
+      sql`${table.horizonStartedAt} < ${table.horizonEndsAt}`,
+    ),
+  ],
+);
+
+export const aiFilterSegment = pgTable(
+  "ai_filter_segment",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    watchlistId: uuid("watchlist_id")
+      .notNull()
+      .references(() => watchlist.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    queryVersionId: uuid("query_version_id")
+      .notNull()
+      .references(() => aiFilterQueryVersion.id, { onDelete: "cascade" }),
+    status: text("status", {
+      enum: [
+        "pending",
+        "processing",
+        "completed",
+        "caught_up",
+        "paused_entitlement",
+        "paused_budget",
+        "paused_provider",
+        "paused_kill",
+        "cancelled",
+        "failed",
+      ],
+    }).default("pending").notNull(),
+    selectionOffset: integer("selection_offset").default(0).notNull(),
+    scannedCount: integer("scanned_count").default(0).notNull(),
+    selectionSnapshot: jsonb("selection_snapshot").default([]).notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    windowEnd: timestamp("window_end", { withTimezone: true }).notNull(),
+    cursor: integer("cursor").default(0).notNull(),
+    attempt: integer("attempt").default(0).notNull(),
+    leaseOwner: text("lease_owner"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    stopReason: text("stop_reason"),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("ai_filter_segment_query_idx").on(
+      table.queryVersionId,
+      table.selectionOffset,
+    ),
+    index("ai_filter_segment_resume_idx").on(table.status, table.updatedAt),
+    uniqueIndex("ai_filter_segment_active_watchlist_uidx")
+      .on(table.watchlistId)
+      .where(sql`status IN ('pending', 'processing', 'paused_entitlement', 'paused_budget', 'paused_provider', 'paused_kill')`),
+    check(
+      "ai_filter_segment_cursor_check",
+      sql`${table.cursor} >= 0 AND ${table.cursor} <= 50`,
+    ),
+    check(
+      "ai_filter_segment_offset_check",
+      sql`${table.selectionOffset} >= 0 AND ${table.scannedCount} >= 0 AND ${table.attempt} >= 0`,
+    ),
+    check(
+      "ai_filter_segment_window_check",
+      sql`${table.windowStart} < ${table.windowEnd}`,
+    ),
+    check(
+      "ai_filter_segment_lease_check",
+      sql`(${table.status} = 'processing') =
+        (${table.leaseOwner} IS NOT NULL AND ${table.leaseExpiresAt} IS NOT NULL)`,
+    ),
+  ],
+);
+
+export const aiFilterGlobalCache = pgTable(
+  "ai_filter_global_cache",
+  {
+    cacheKey: text("cache_key").primaryKey(),
+    keyVersion: text("key_version").notNull(),
+    contentIdentity: text("content_identity").notNull(),
+    status: text("status", { enum: ["pending", "ready", "failed"] })
+      .default("pending")
+      .notNull(),
+    decision: text("decision", { enum: ["accepted", "rejected"] }),
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    schemaVersion: text("schema_version").notNull(),
+    normalizerVersion: text("normalizer_version").notNull(),
+    leaseOwner: text("lease_owner"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    priceVersion: text("price_version"),
+    failureCode: text("failure_code"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("ai_filter_global_cache_expiry_idx").on(table.expiresAt),
+    index("ai_filter_global_cache_pending_idx")
+      .on(table.leaseExpiresAt)
+      .where(sql`status = 'pending'`),
+    check("ai_filter_global_cache_key_check", sql`${table.cacheKey} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "ai_filter_global_cache_content_check",
+      sql`${table.contentIdentity} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ai_filter_global_cache_ready_check",
+      sql`(${table.status} = 'ready') = (${table.decision} IS NOT NULL)`,
+    ),
+    check(
+      "ai_filter_global_cache_lease_check",
+      sql`(${table.status} = 'pending') =
+        (${table.leaseOwner} IS NOT NULL AND ${table.leaseExpiresAt} IS NOT NULL)`,
+    ),
+    check(
+      "ai_filter_global_cache_usage_check",
+      sql`(${table.inputTokens} IS NULL OR ${table.inputTokens} >= 0)
+        AND (${table.outputTokens} IS NULL OR ${table.outputTokens} >= 0)`,
+    ),
+  ],
+);
+
+export const aiFilterDecision = pgTable(
+  "ai_filter_decision",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    watchlistId: uuid("watchlist_id")
+      .notNull()
+      .references(() => watchlist.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    queryVersionId: uuid("query_version_id")
+      .notNull()
+      .references(() => aiFilterQueryVersion.id, { onDelete: "cascade" }),
+    segmentId: uuid("segment_id")
+      .notNull()
+      .references(() => aiFilterSegment.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id").notNull(),
+    contentIdentity: text("content_identity").notNull(),
+    cacheKey: text("cache_key")
+      .notNull()
+      .references(() => aiFilterGlobalCache.cacheKey),
+    modelDecision: text("model_decision", { enum: ["accepted", "rejected"] })
+      .notNull(),
+    userOverride: text("user_override", { enum: ["accepted", "rejected"] }),
+    postingFirstSeenAt: timestamp("posting_first_seen_at", { withTimezone: true })
+      .notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("ai_filter_decision_semantic_uidx").on(
+      table.watchlistId,
+      table.queryVersionId,
+      table.candidateId,
+      table.contentIdentity,
+    ),
+    index("ai_filter_decision_view_idx").on(
+      table.watchlistId,
+      table.queryVersionId,
+      table.modelDecision,
+      table.postingFirstSeenAt,
+    ),
+    index("ai_filter_decision_expiry_idx").on(table.expiresAt),
+    check(
+      "ai_filter_decision_content_check",
+      sql`${table.contentIdentity} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "ai_filter_decision_retention_check",
+      sql`${table.expiresAt} <= ${table.postingFirstSeenAt} + interval '30 days'`,
+    ),
+  ],
+);
+
+export const aiFilterBudgetAccount = pgTable(
+  "ai_filter_budget_account",
+  {
+    scope: text("scope", { enum: ["user", "project"] }).notNull(),
+    scopeKey: text("scope_key").notNull(),
+    monthStart: timestamp("month_start", { withTimezone: true }).notNull(),
+    actualNanodollars: bigint("actual_nanodollars", { mode: "number" })
+      .default(0)
+      .notNull(),
+    reservedNanodollars: bigint("reserved_nanodollars", { mode: "number" })
+      .default(0)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.scope, table.scopeKey, table.monthStart] }),
+    check(
+      "ai_filter_budget_account_nonnegative_check",
+      sql`${table.actualNanodollars} >= 0 AND ${table.reservedNanodollars} >= 0`,
+    ),
+    check(
+      "ai_filter_budget_account_month_check",
+      sql`${table.monthStart} = date_trunc('month', ${table.monthStart})`,
+    ),
+  ],
+);
+
+export const aiFilterUsageLedger = pgTable(
+  "ai_filter_usage_ledger",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    segmentId: uuid("segment_id")
+      .notNull()
+      .references(() => aiFilterSegment.id, { onDelete: "cascade" }),
+    status: text("status", {
+      enum: ["reserved", "reconciled", "released", "uncertain"],
+    }).default("reserved").notNull(),
+    monthStart: timestamp("month_start", { withTimezone: true }).notNull(),
+    model: text("model").notNull(),
+    priceVersion: text("price_version").notNull(),
+    cacheKeys: text("cache_keys").array().notNull(),
+    reservedNanodollars: bigint("reserved_nanodollars", { mode: "number" })
+      .notNull(),
+    actualNanodollars: bigint("actual_nanodollars", { mode: "number" })
+      .default(0)
+      .notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    providerAttempts: integer("provider_attempts").default(0).notNull(),
+    ambiguousAttempts: integer("ambiguous_attempts").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    reconciledAt: timestamp("reconciled_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("ai_filter_usage_owner_month_idx").on(table.ownerId, table.monthStart),
+    check(
+      "ai_filter_usage_money_check",
+      sql`${table.reservedNanodollars} > 0 AND ${table.actualNanodollars} >= 0`,
+    ),
+    check(
+      "ai_filter_usage_tokens_check",
+      sql`(${table.inputTokens} IS NULL OR ${table.inputTokens} >= 0)
+        AND (${table.outputTokens} IS NULL OR ${table.outputTokens} >= 0)
+        AND ${table.providerAttempts} >= 0
+        AND ${table.ambiguousAttempts} >= 0`,
+    ),
+    check(
+      "ai_filter_usage_cache_keys_check",
+      sql`cardinality(${table.cacheKeys}) BETWEEN 1 AND 5`,
+    ),
+    check(
+      "ai_filter_usage_reconciled_check",
+      sql`(${table.status} = 'reserved') = (${table.reconciledAt} IS NULL)`,
+    ),
+  ],
+);
+
+export const aiFilterEvent = pgTable(
+  "ai_filter_event",
+  {
+    sequence: bigserial("sequence", { mode: "number" }).primaryKey(),
+    watchlistId: uuid("watchlist_id")
+      .notNull()
+      .references(() => watchlist.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    queryVersionId: uuid("query_version_id")
+      .notNull()
+      .references(() => aiFilterQueryVersion.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    payload: jsonb("payload").default({}).notNull(),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("ai_filter_event_stream_idx").on(table.watchlistId, table.sequence)],
+);
+
+export const aiFilterFeedback = pgTable(
+  "ai_filter_feedback",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    decisionId: uuid("decision_id")
+      .notNull()
+      .references(() => aiFilterDecision.id, { onDelete: "cascade" }),
+    ownerId: text("owner_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["move", "undo", "mistake"] }).notNull(),
+    fromDecision: text("from_decision", { enum: ["accepted", "rejected"] }),
+    toDecision: text("to_decision", { enum: ["accepted", "rejected"] }),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [index("ai_filter_feedback_decision_idx").on(table.decisionId, table.createdAt)],
 );
 
 // ── Murmur per-claim KV (named-config state, jobseek#2757) ───────────

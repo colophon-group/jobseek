@@ -1,5 +1,5 @@
 /**
- * UI-free domain boundary for the first bounded AI-filter pilot.
+ * UI-free domain boundary for the Jev-powered watchlist filter.
  *
  * This module validates and serializes data that an authoritative repository
  * has already loaded. It does not authenticate a caller, authorize a run,
@@ -31,7 +31,6 @@ export type AiFilterDecisionValue = "accepted" | "rejected";
 
 export type AiFilterStopReason =
   | "entitlement_unavailable"
-  | "watchlist_too_broad"
   | "budget_exhausted"
   | "kill_switch_active"
   | "cancelled"
@@ -555,7 +554,6 @@ function parseDecision(value: unknown): AiFilterClassifierDecision {
 
 const STOP_REASONS = new Set<AiFilterStopReason>([
   "entitlement_unavailable",
-  "watchlist_too_broad",
   "budget_exhausted",
   "kill_switch_active",
   "cancelled",
