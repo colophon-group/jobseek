@@ -135,6 +135,15 @@ updates:
       day: "monday"
       time: "06:15"
       timezone: "Etc/UTC"
+    ignore:
+      # Python 3.14 currently forces fasttext-predict to build from source;
+      # the production slim image deliberately carries no compiler toolchain.
+      # Keep receiving 3.13 patch releases until that dependency publishes a
+      # compatible wheel or is replaced through a deliberate runtime change.
+      - dependency-name: "python"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
 
   - package-ecosystem: "docker-compose"
     directory: "/"

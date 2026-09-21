@@ -845,8 +845,8 @@ test("PR-context CI gates distinguish pull requests from dispatched PRs", () => 
     crawlerImageJob,
     /if: github\.event_name == 'pull_request' && needs\.changes\.outputs\.is_pr == 'true' && needs\.changes\.outputs\.crawler_code == 'true'/,
   );
-  assert.match(crawlerImageJob, /docker\/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e/);
-  assert.match(crawlerImageJob, /docker\/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a/);
+  assert.match(crawlerImageJob, /docker\/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069/);
+  assert.match(crawlerImageJob, /docker\/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc/);
   assert.match(crawlerImageJob, /context: apps\/crawler/);
   assert.match(crawlerImageJob, /name: Build slim crawler image[\s\S]*target: slim/);
   assert.match(crawlerImageJob, /platforms: linux\/amd64/);
@@ -937,11 +937,11 @@ test("Go HTTP pilot CI is path-aware, builds ARM64, and is required when selecte
   );
   assert.match(
     goPilotJob,
-    /docker\/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e/,
+    /docker\/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069/,
   );
   assert.match(
     goPilotJob,
-    /docker\/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a/,
+    /docker\/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc/,
   );
   assert.match(goPilotJob, /file: pilots\/go-http-sitemap\/Dockerfile\.shadow/);
   assert.match(goPilotJob, /platforms: linux\/arm64/);

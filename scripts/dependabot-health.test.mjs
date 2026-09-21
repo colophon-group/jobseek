@@ -40,6 +40,18 @@ test("Dependabot config monitors every configured ecosystem and directory", () =
   ]);
 });
 
+test("crawler Docker keeps Python on the supported minor runtime", () => {
+  const crawlerDockerConfig = config.match(
+    /  - package-ecosystem: "docker"\n([\s\S]*?directory: "\/apps\/crawler"[\s\S]*?)(?=\n  - package-ecosystem:)/,
+  )?.[1];
+
+  assert.ok(crawlerDockerConfig, "missing crawler Docker Dependabot configuration");
+  assert.match(
+    crawlerDockerConfig,
+    /- dependency-name: "python"\n        update-types:\n          - "version-update:semver-minor"\n          - "version-update:semver-major"/,
+  );
+});
+
 test("version run parser ignores dependency-specific security and rebase jobs", () => {
   assert.equal(
     parseVersionUpdateRun({
