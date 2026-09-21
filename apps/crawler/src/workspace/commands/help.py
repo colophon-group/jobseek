@@ -2093,6 +2093,12 @@ dom — Link or Listing-Row Extraction (fallback)
     ``require_jsonld_jobposting: true``. Their complete detail data is read by
     the auto-configured ``json-ld`` scraper.
 
+  TalentsConnect My Job Shop boards:
+    Static search pages loading assets from ``api.my-job-shop.com`` are
+    auto-configured to read the provider's server-rendered ``offer-redirect``
+    links. Redirect targets are verified as current JobPosting JSON-LD and the
+    ``json-ld`` scraper is selected automatically.
+
   Lucca/Poplee boards:
     Listing roots on ``*.luccasoftware.com/<tenant>`` are auto-configured with
     strict static rich-row selectors. Titles and locations come from the
