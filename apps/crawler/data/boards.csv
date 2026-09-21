@@ -4607,6 +4607,7 @@ mhi,mhi-primetals,https://careers.primetals.com/global/en/search-results,sitemap
 michael-bonsby-hvac-plumbing-electrical,michael-bonsby-hvac-plumbing-electrical-greenhouse,https://job-boards.greenhouse.io/bonsbyhvacplumbing,greenhouse,"{""token"": ""bonsbyhvacplumbing""}",skip,
 michaels,michaels-careers,https://careers.michaels.com/,phenom,,json-ld,
 michelin,michelin-careers,https://michelinhr.wd3.myworkdayjobs.com/michelin,workday,,workday,
+michels-corporation,michels-corporation-careers,https://job-boards.greenhouse.io/michelscorporation,greenhouse,,skip,
 micron,micron-careers,https://micron.wd1.myworkdayjobs.com/external,workday,,workday,
 microsoft,microsoft-careers2,https://apply.careers.microsoft.com/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""pcsx_watermark"": {""auto_full_crawl"": false}}",eightfold,"{""enrich"": [""description""]}"
 microsure,microsure-homerun,https://microsure.homerun.co/,sitemap,"{""sitemap_url"": ""https://microsure.homerun.co/sitemap.xml"", ""url_filter"": ""^https://microsure\\.homerun\\.co/(?!$)(?!.*(?:/apply/?$)).+""}",json-ld,
