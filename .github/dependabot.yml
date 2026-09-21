@@ -142,6 +142,7 @@ updates:
       # compatible wheel or is replaced through a deliberate runtime change.
       - dependency-name: "python"
         update-types:
+          - "version-update:semver-minor"
           - "version-update:semver-major"
 
   - package-ecosystem: "docker-compose"
