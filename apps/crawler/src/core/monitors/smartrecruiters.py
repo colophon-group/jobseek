@@ -31,10 +31,21 @@ MAX_JOBS = 50_000
 PAGE_SIZE = 100
 _SNAPSHOT_ATTEMPTS = 2
 _SNAPSHOT_RETRY_DELAY = 1.0
+_DETAIL_SNAPSHOT_ATTEMPTS = 2
 
 
 class _SnapshotChanged(ValueError):
     """The publication inventory changed while pagination was in progress."""
+
+
+class _InactiveDetail(ValueError):
+    """A publication disappeared between the list and detail snapshots."""
+
+    def __init__(self, publication_id: str) -> None:
+        self.publication_id = publication_id
+        super().__init__(
+            f"SmartRecruiters detail is not affirmatively active for {publication_id!r}"
+        )
 
 
 # SmartRecruiters exposes a stable requisition ``jobId`` only on its detail
@@ -517,7 +528,10 @@ def _validate_detail(detail: dict, *, token: str, publication_id: str) -> str:
         raise ValueError(
             f"SmartRecruiters detail tenant mismatch for {publication_id!r}: {identifier!r}"
         )
-    if detail.get("active") is not True:
+    active = detail.get("active")
+    if active is False:
+        raise _InactiveDetail(publication_id)
+    if active is not True:
         raise ValueError(
             f"SmartRecruiters detail is not affirmatively active for {publication_id!r}"
         )
@@ -544,7 +558,46 @@ async def _fetch_details(
         _validate_detail(detail, token=token, publication_id=publication_id)
         return detail
 
-    return list(await asyncio.gather(*(fetch_one(item) for item in publications)))
+    tasks = [asyncio.create_task(fetch_one(item)) for item in publications]
+    try:
+        return list(await asyncio.gather(*tasks))
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+
+
+async def _fetch_localized_snapshot(
+    token: str,
+    client: httpx.AsyncClient,
+) -> tuple[list[dict], bool, int, list[dict]]:
+    """Fetch one coherent list/detail snapshot with one churn retry.
+
+    SmartRecruiters can retire a publication after returning it from the list
+    endpoint but before its detail request runs.  An explicit ``active=false``
+    is the provider's affirmative signal for that race, so restart the entire
+    snapshot once.  Every ambiguous detail shape and a repeated inactive
+    detail still fail closed.
+    """
+    for attempt in range(1, _DETAIL_SNAPSHOT_ATTEMPTS + 1):
+        publications, truncated, total_found = await _fetch_publications(token, client)
+        try:
+            details = await _fetch_details(token, publications, client)
+        except _InactiveDetail as exc:
+            if attempt == _DETAIL_SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "smartrecruiters.detail_snapshot_changed",
+                company=token,
+                publication_id=exc.publication_id,
+                attempt=attempt,
+            )
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+            continue
+        return publications, truncated, total_found, details
+    raise AssertionError("unreachable")
 
 
 def _job_id_variant_key(detail: dict, language_preference: tuple[str, ...]) -> tuple:
@@ -964,9 +1017,10 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         jobs_by_url = {job.url: job for job in jobs}
         return MonitorResult(urls=set(jobs_by_url), jobs_by_url=jobs_by_url)
 
-    publications, truncated, total_found = await _fetch_publications(token, client)
     if template is not None or canonical_identity == CANONICAL_IDENTITY_JOB_V1:
-        details = await _fetch_details(token, publications, client)
+        publications, truncated, total_found, details = await _fetch_localized_snapshot(
+            token, client
+        )
         jobs = _collapse_details(
             details,
             token=token,
@@ -986,6 +1040,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             return truncated_rich_result(jobs)
         return jobs
 
+    publications, truncated, total_found = await _fetch_publications(token, client)
     urls = {_posting_url(token, str(item["id"]).strip()) for item in publications}
     log.info(
         "smartrecruiters.listed",
