@@ -504,8 +504,9 @@ ON CONFLICT (board_url) DO UPDATE SET
     -- ``delist_threshold`` (#2725), ``drop_threshold``, and ``blast_radius_floor``
     -- are CSV-controllable per-board overrides. CSV wins when set; otherwise
     -- the existing runtime value (typically unset) is kept.
-    -- ``recent_discovered_counts`` and ``suspect_streak`` are runtime state
-    -- preserved verbatim from the existing row.
+    -- ``recent_discovered_counts``, ``suspect_streak``, and
+    -- ``_confirmed_drop_candidate`` are runtime state preserved verbatim
+    -- from the existing row.
     -- A URL or monitor-type change is a new source. Runtime discovery
     -- history, watermarks, and gone-detection streaks belong to the old
     -- source and would poison the replacement (issue #5716).
@@ -523,6 +524,8 @@ ON CONFLICT (board_url) DO UPDATE SET
             'sitemap_url', job_board.metadata -> 'sitemap_url',
             'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
             'suspect_streak', job_board.metadata -> 'suspect_streak',
+            '_confirmed_drop_candidate',
+                job_board.metadata -> '_confirmed_drop_candidate',
             'delist_threshold', COALESCE(
                 EXCLUDED.metadata -> 'delist_threshold',
                 job_board.metadata -> 'delist_threshold'

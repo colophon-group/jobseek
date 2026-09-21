@@ -255,7 +255,7 @@ class TestDiscover:
             jobs = await discover(board, client)
             assert len(jobs) == 0
 
-    async def test_skips_jobs_without_url(self):
+    async def test_rejects_jobs_without_url_so_inventory_is_not_partial(self):
         def handler(request):
             return httpx.Response(
                 200,
@@ -272,9 +272,19 @@ class TestDiscover:
                 "board_url": "https://boards.greenhouse.io/testco",
                 "metadata": {"token": "testco"},
             }
-            jobs = await discover(board, client)
-            assert len(jobs) == 1
-            assert jobs[0].title == "Has URL"
+            with pytest.raises(ValueError, match="index 0 has no absolute_url"):
+                await discover(board, client)
+
+    @pytest.mark.parametrize("payload", [[], {}, {"jobs": None}, {"jobs": ["bad-row"]}])
+    async def test_rejects_malformed_inventory_shape(self, payload):
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+        async with httpx.AsyncClient(transport=transport) as client:
+            board = {
+                "board_url": "https://boards.greenhouse.io/testco",
+                "metadata": {"token": "testco"},
+            }
+            with pytest.raises(ValueError, match="Greenhouse"):
+                await discover(board, client)
 
     async def test_http_error_raises(self):
         def handler(request):
