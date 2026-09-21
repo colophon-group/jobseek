@@ -986,6 +986,10 @@ _LUCCA_RICH_ROWS = {
 _LUCCA_EMPTY_SELECTOR = ".jobBoard-offers-empty"
 _LUCCA_EMPTY_TEXT = "There are no job vacancies at the moment."
 
+_MY_JOB_SHOP_MARKER = "api.my-job-shop.com"
+_MY_JOB_SHOP_BOOTSTRAP_MARKER = "https://cdn.job-shop.com/"
+_MY_JOB_SHOP_LINK_SELECTOR = 'a[href*="/offer-redirect/"][href*="offerApiId="]'
+
 _LG_HOST_SUFFIX = ".lg.com.br"
 _LG_BOARD_PATH_RE = re.compile(
     r"(?P<prefix>/Vagas/c/[0-9A-Fa-f-]{36}/p/[A-Za-z0-9_-]+/"
@@ -1257,6 +1261,53 @@ def _dualoo_probe_config(html: str, url: str) -> dict | None:
         "dualoo_portal": portal,
         "urls": len(urls),
         "link_selector": link_selector,
+        "url_filter": url_filter,
+        "require_jsonld_jobposting": True,
+    }
+
+
+def _my_job_shop_probe_config(html: str, url: str) -> dict | None:
+    """Return a scoped static preset for TalentsConnect My Job Shop boards.
+
+    My Job Shop server-renders the complete active result set into fallback
+    anchors, but its detail links use ``offer-redirect`` rather than a generic
+    job keyword. The generic DOM heuristic therefore ignores them. Keep the
+    redirect URLs: the provider resolves them to canonical detail pages that
+    publish complete JobPosting JSON-LD.
+    """
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or _MY_JOB_SHOP_MARKER not in html
+    ):
+        return None
+
+    origin = f"https://{parsed.netloc}"
+    url_filter = (
+        rf"^{re.escape(origin)}/(?:[^/?#]+/)*offer-redirect/\?"
+        r"offerApiId=[A-Za-z0-9_+%/=-]{4,512}"
+        r"(?:&showApplicationForm=(?:true|false))?$"
+    )
+    urls = _extract_links_static(
+        html,
+        url,
+        url_matcher=re.compile(url_filter),
+        link_selector=_MY_JOB_SHOP_LINK_SELECTOR,
+    )
+    if not urls:
+        return None
+    return {
+        "my_job_shop": True,
+        "urls": len(urls),
+        "link_selector": _MY_JOB_SHOP_LINK_SELECTOR,
         "url_filter": url_filter,
         "require_jsonld_jobposting": True,
     }
@@ -5325,6 +5376,17 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     if not html:
         return None
 
+    if _MY_JOB_SHOP_BOOTSTRAP_MARKER in html:
+        # Provider pages place a large inline design-system stylesheet before
+        # their SSR job-link payload. The generic 500k probe preview ends in
+        # that stylesheet, so fetch the complete bounded page before deciding
+        # whether current offer links are present.
+        from src.shared.http_retry import fetch_with_retry
+
+        html = await fetch_with_retry(client, url, max_chars=None)
+        if not html:
+            return None
+
     nyc_council_jobs = _nyc_council_jobs_probe_config(html, url)
     if nyc_council_jobs is not None:
         return nyc_council_jobs
@@ -5344,6 +5406,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     dualoo = _dualoo_probe_config(html, url)
     if dualoo is not None:
         return dualoo
+
+    my_job_shop = _my_job_shop_probe_config(html, url)
+    if my_job_shop is not None:
+        return my_job_shop
 
     yousty = _yousty_probe_config(html, url)
     if yousty is not None:
@@ -5811,6 +5877,7 @@ async def _dom_discover_once(
                     or script_json_links is not None
                     or onclick_selector is not None
                     or title_matched_url_scan is not None
+                    or metadata.get("my_job_shop")
                     else 500_000,
                     retries=transport_attempts or 3,
                 )
