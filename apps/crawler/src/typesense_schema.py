@@ -21,8 +21,6 @@ import httpx
 import structlog
 from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound, ObjectUnprocessable
 
-from src.typesense_candidate_order import CANDIDATE_ORDER_KEY_FIELD
-
 log = structlog.get_logger()
 
 _SETUP_CONNECTION_TIMEOUT_SECONDS = 3600
@@ -145,7 +143,9 @@ COLLECTIONS: list[dict] = [
             # activation still requires measured memory headroom and a complete
             # verified backfill.
             {
-                "name": CANDIDATE_ORDER_KEY_FIELD,
+                # Keep this literal: the production footprint lab parses
+                # COLLECTIONS without importing crawler runtime dependencies.
+                "name": "candidate_order_key",
                 "type": "string",
                 "index": True,
                 "sort": True,
