@@ -56,7 +56,11 @@ from src.batch import (
 )
 from src.core.location_resolve import LocationResolver, ResolvedLocation
 from src.core.monitor import MonitorResult, _apply_url_allowlist, monitor_one
-from src.core.monitors import DiscoveredJob, api_monitor_types
+from src.core.monitors import (
+    DiscoveredJob,
+    api_monitor_types,
+    complete_inventory_monitor_types,
+)
 from src.core.scrapers import JobContent
 from src.processing.board import (
     _INSERT_MONITOR_DESCRIPTION_FALLBACK,
@@ -169,6 +173,22 @@ class TestThrottleKey:
             else:
                 board = self._board(crawler_type=api_type)
                 assert _throttle_key(board) == api_type
+
+    def test_complete_inventory_contract_is_code_owned_and_narrow(self):
+        complete = complete_inventory_monitor_types()
+
+        assert {
+            "ashby",
+            "gem",
+            "greenhouse",
+            "hirehive",
+            "hireology",
+            "lever",
+            "recruitee",
+            "rippling",
+            "workable",
+        } <= complete
+        assert {"dom", "sitemap", "workday", "api_sniffer"}.isdisjoint(complete)
 
     def test_url_monitor_returns_hostname(self):
         board = self._board(crawler_type="sitemap", board_url="https://acme.com/jobs")
@@ -5568,6 +5588,186 @@ class TestMarkGoneGuards:
         patch_dict = self._md_patch(conn)
         assert patch_dict["suspect_streak"] == 0
         assert patch_dict["recent_discovered_counts"][-1] == 95
+
+    async def test_confirmed_drop_records_exact_candidate_without_delisting(self):
+        """A complete-inventory contraction gets two protected observations."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=1145, missing=890)
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "suspect_streak": 0,
+            "_monitor_config_fingerprint": "config-v1",
+        }
+
+        gone, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="complete-api-board",
+            discovered=255,
+            monitor_start_ts="2026-09-17T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=MagicMock(),
+            inventory_fingerprint="inventory-v1",
+            complete_inventory=True,
+        )
+
+        assert (gone, reason) == (0, "drop")
+        assert _MARK_GONE_BY_TIMESTAMP not in [c.args[0] for c in conn.fetch.await_args_list]
+        candidate = self._md_patch(conn)["_confirmed_drop_candidate"]
+        assert candidate == {
+            "inventory_fingerprint": "inventory-v1",
+            "config_fingerprint": "config-v1",
+            "discovered": 255,
+            "confirmations": 1,
+        }
+
+    async def test_confirmed_drop_accepts_third_identical_bounded_inventory(self):
+        """Three exact complete inventories replace the stale baseline atomically."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=1145, missing=890)
+        conn.fetch.return_value = [{"id": f"gone-{index}"} for index in range(890)]
+        log = MagicMock()
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "suspect_streak": 2,
+            "_monitor_config_fingerprint": "config-v1",
+            "_confirmed_drop_candidate": {
+                "inventory_fingerprint": "inventory-v1",
+                "config_fingerprint": "config-v1",
+                "discovered": 255,
+                "confirmations": 2,
+            },
+        }
+
+        gone, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="complete-api-board",
+            discovered=255,
+            monitor_start_ts="2026-09-20T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=log,
+            inventory_fingerprint="inventory-v1",
+            complete_inventory=True,
+        )
+
+        assert (gone, reason) == (890, None)
+        conn.fetch.assert_awaited_once_with(
+            _MARK_GONE_BY_TIMESTAMP,
+            "complete-api-board",
+            "2026-09-20T00:00:00+00:00",
+            1,
+        )
+        patch_dict = self._md_patch(conn)
+        assert patch_dict == {
+            "recent_discovered_counts": [255],
+            "suspect_streak": 0,
+            "_confirmed_drop_candidate": None,
+        }
+        assert log.warning.call_args_list[-1].args[0] == ("batch.monitor.confirmed_drop_accepted")
+
+    async def test_confirmed_drop_never_crosses_absolute_missing_cap(self):
+        """Stable evidence cannot authorize a mutation beyond the global cap."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=5255, missing=5001)
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "suspect_streak": 2,
+            "_confirmed_drop_candidate": {
+                "inventory_fingerprint": "inventory-v1",
+                "config_fingerprint": None,
+                "discovered": 255,
+                "confirmations": 2,
+            },
+        }
+
+        gone, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="complete-api-board",
+            discovered=255,
+            monitor_start_ts="2026-09-20T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=MagicMock(),
+            inventory_fingerprint="inventory-v1",
+            complete_inventory=True,
+        )
+
+        assert (gone, reason) == (0, "drop")
+        assert _MARK_GONE_BY_TIMESTAMP not in [c.args[0] for c in conn.fetch.await_args_list]
+        assert self._md_patch(conn)["_confirmed_drop_candidate"]["confirmations"] == 3
+
+    async def test_changed_inventory_restarts_confirmation(self):
+        """Equal counts with different posting identities are not confirmation."""
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=1145, missing=890)
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "_confirmed_drop_candidate": {
+                "inventory_fingerprint": "inventory-v1",
+                "config_fingerprint": None,
+                "discovered": 255,
+                "confirmations": 2,
+            },
+        }
+
+        await _mark_gone_with_guards(
+            conn,
+            board_id="complete-api-board",
+            discovered=255,
+            monitor_start_ts="2026-09-20T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=MagicMock(),
+            inventory_fingerprint="inventory-v2",
+            complete_inventory=True,
+        )
+
+        candidate = self._md_patch(conn)["_confirmed_drop_candidate"]
+        assert candidate["inventory_fingerprint"] == "inventory-v2"
+        assert candidate["confirmations"] == 1
+
+    async def test_best_effort_monitor_never_auto_accepts_stable_candidate(self):
+        """Stable partial pages are not evidence without a completeness contract."""
+        from src.batch import _MARK_GONE_BY_TIMESTAMP
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn(active=1145, missing=890)
+        metadata = {
+            "recent_discovered_counts": [1080, 1080, 1081],
+            "suspect_streak": 2,
+            "_confirmed_drop_candidate": {
+                "inventory_fingerprint": "inventory-v1",
+                "config_fingerprint": None,
+                "discovered": 255,
+                "confirmations": 2,
+            },
+        }
+
+        gone, reason = await _mark_gone_with_guards(
+            conn,
+            board_id="best-effort-board",
+            discovered=255,
+            monitor_start_ts="2026-09-20T00:00:00+00:00",
+            metadata=metadata,
+            delist_threshold=1,
+            board_log=MagicMock(),
+            inventory_fingerprint="inventory-v1",
+            complete_inventory=False,
+        )
+
+        assert (gone, reason) == (0, "drop")
+        assert _MARK_GONE_BY_TIMESTAMP not in [c.args[0] for c in conn.fetch.await_args_list]
+        patch_dict = self._md_patch(conn)
+        assert patch_dict["suspect_streak"] == 3
+        assert patch_dict["_confirmed_drop_candidate"] is None
 
     async def test_history_window_caps_at_max(self):
         """``recent_discovered_counts`` never exceeds the window size."""

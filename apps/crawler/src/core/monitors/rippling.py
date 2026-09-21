@@ -163,4 +163,12 @@ async def save_raw(
     await save_json_response(artifact_dir, client, _api_list_url(slug))
 
 
-register("rippling", discover, cost=10, can_handle=can_handle, rich=False, save_raw=save_raw)
+register(
+    "rippling",
+    discover,
+    cost=10,
+    can_handle=can_handle,
+    rich=False,
+    complete_inventory=True,
+    save_raw=save_raw,
+)

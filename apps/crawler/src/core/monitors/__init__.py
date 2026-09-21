@@ -120,6 +120,11 @@ class MonitorType:
     discover: DiscoverFunc
     can_handle: CanHandleFunc | None = None
     rich: bool = False  # True for API monitors that return full job data
+    # Code-owned guarantee that a successful, non-truncated result represents
+    # the provider's complete current inventory. This is stricter than
+    # ``rich``: paginated/browser monitors can return full content while still
+    # lacking a trustworthy inventory boundary.
+    complete_inventory: bool = False
     stream: Callable | None = None  # async generator yielding batches
     save_raw: SaveRawFunc | None = None
 
@@ -199,6 +204,7 @@ def register(
     can_handle: CanHandleFunc | None = None,
     *,
     rich: bool = False,
+    complete_inventory: bool = False,
     stream: Callable | None = None,
     save_raw: SaveRawFunc | None = None,
 ) -> None:
@@ -217,6 +223,7 @@ def register(
             discover=discover,
             can_handle=can_handle,
             rich=rich,
+            complete_inventory=complete_inventory,
             stream=stream,
             save_raw=save_raw,
         )
@@ -242,6 +249,11 @@ def slug_guess_allowed() -> bool:
 def api_monitor_types() -> frozenset[str]:
     """Return the set of monitor type names that return rich (full) job data."""
     return frozenset(m.name for m in _REGISTRY if m.rich)
+
+
+def complete_inventory_monitor_types() -> frozenset[str]:
+    """Return monitors with a code-reviewed complete-inventory contract."""
+    return frozenset(m.name for m in _REGISTRY if m.complete_inventory)
 
 
 def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:

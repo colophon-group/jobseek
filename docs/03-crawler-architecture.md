@@ -202,6 +202,24 @@ For every board cycle, the monitor produces the current per-board URL set (sitem
 
 This path implements the natural model: *"the listing is the source of truth — if the upstream listing stops mentioning the URL, the posting is gone."* It works whenever monitor and listing agree.
 
+Large inventory contractions first pass through the proportional-drop and
+blast-radius guards. A guarded cycle increments `metadata.suspect_streak`; at
+three consecutive guarded cycles `_RECORD_SUCCESS_NONEMPTY` leaves the board
+in `board_status = 'suspect'` instead of reporting it as healthy. A normal
+complete cycle resets the streak and returns the board to `active`.
+
+Automatic convergence is limited to monitor implementations with a
+code-reviewed `complete_inventory` contract. The initial set is Greenhouse,
+Ashby, Gem, Recruitee, Lever, HireHive, Hireology, Rippling, and Workable:
+their implementations either read one complete provider collection or verify
+pagination to exhaustion, and all report their hard cap as `truncated`.
+For those monitors only, three consecutive complete, unfiltered inventories
+with the exact same identity fingerprint may confirm a contraction. The
+confirmed update is atomic, resets the baseline, and is capped at 5,000
+affected active rows. Best-effort DOM, sitemap, Workday, and API-sniffer
+monitors never auto-accept a guarded contraction; they remain `suspect` for
+review rather than turning a repeatable partial page into mass deletion.
+
 ### 2. Scrape authority (fallback) — three failure classes
 
 Some upstream platforms violate the natural model. Avature's US Deloitte tenant is the documented case (issue #2708): the `apply.deloitte.com` SearchJobs SPA continues to list JobDetail URLs that the application then refuses to serve at the per-posting endpoint, returning 403 with a real Avature error page body. The monitor sees "URL still listed → not gone"; the scraper sees "403 → not fetchable". Without a fallback, the posting stays `is_active = true` forever — a dead link in the web app — because the monitor's signal never trips the delist threshold.

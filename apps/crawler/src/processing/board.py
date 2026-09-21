@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import random
 import re
@@ -24,6 +25,7 @@ from src.core.enum_normalize import normalize_employment_type
 from src.core.monitors import (
     BoardGoneError,
     api_monitor_types,
+    complete_inventory_monitor_types,
     validate_explicit_source_identity,
 )
 from src.core.scrapers import enrich_description
@@ -312,12 +314,15 @@ def _identity_migration_spec(
 
 # API monitor types share a single API host per type (throttle-domain keys).
 _API_MONITOR_TYPES = api_monitor_types()
+_COMPLETE_INVENTORY_MONITOR_TYPES = complete_inventory_monitor_types()
 
 # Max R2 backfill uploads per board run (touched postings without hashes).
 # Prevents huge first-time runs from timing out. Backfill completes incrementally.
 _SLOW_MONITOR_SECONDS = 30.0
 _DIFF_TRANSACTION_MAX_ATTEMPTS = 3
 _DIFF_TRANSACTION_RETRY_BASE_SECONDS = 0.05
+_CONFIRMED_DROP_CYCLES = 3
+_CONFIRMED_DROP_MAX_MISSING = 5_000
 
 
 # ── URL sanity check ─────────────────────────────────────────────────
@@ -610,6 +615,15 @@ def _setting(md: dict, key: str, default: float) -> float:
     """
     val = md.get(key)
     return default if val is None else float(val)
+
+
+def _inventory_fingerprint(identities: set[str]) -> str:
+    """Hash a complete inventory independently of stream/batch order."""
+    digest = hashlib.sha256()
+    for identity in sorted(identities):
+        digest.update(identity.encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()
 
 
 def _unisante_receipt_matches(receipt: object) -> bool:
@@ -979,6 +993,9 @@ async def _mark_gone_with_guards(
     metadata: dict | None,
     delist_threshold: int,
     board_log: structlog.stdlib.BoundLogger,
+    *,
+    inventory_fingerprint: str | None = None,
+    complete_inventory: bool = False,
 ) -> tuple[int, str | None]:
     """Run :data:`_MARK_GONE_BY_TIMESTAMP` behind two resilience guards.
 
@@ -997,10 +1014,15 @@ async def _mark_gone_with_guards(
        :data:`_BLAST_RADIUS_FLOOR_DEFAULT`) of the board's active postings
        would be marked missing this cycle, skip. Last-line defense.
 
-    On a skipped cycle the board's metadata gets ``suspect_streak`` bumped
-    so consecutive flaps are visible in the dashboard. On a passing cycle
-    the streak resets to zero and ``recent_discovered_counts`` rolls
-    forward (cap :data:`_DROP_GUARD_HISTORY_WINDOW`).
+    On a skipped cycle the board's metadata gets ``suspect_streak`` bumped.
+    The success recorder promotes the board to ``suspect`` after three such
+    cycles. Monitors with a code-reviewed complete-inventory contract may
+    accept a contraction only after the exact inventory repeats for three
+    cycles and no more than :data:`_CONFIRMED_DROP_MAX_MISSING` active rows
+    would be affected. Best-effort monitors never auto-accept a guarded drop.
+    On a passing cycle the streak resets to zero and
+    ``recent_discovered_counts`` rolls forward (cap
+    :data:`_DROP_GUARD_HISTORY_WINDOW`).
 
     Returns ``(gone_count, skip_reason)``. ``skip_reason`` is one of
     ``"drop"`` / ``"blast_radius"`` / ``None``. Caller must increment
@@ -1013,8 +1035,13 @@ async def _mark_gone_with_guards(
 
     drop_threshold = _setting(md, "drop_threshold", _DROP_GUARD_THRESHOLD_DEFAULT)
     blast_floor = _setting(md, "blast_radius_floor", _BLAST_RADIUS_FLOOR_DEFAULT)
+    confirmed_drop_policy = (
+        (_CONFIRMED_DROP_CYCLES, _CONFIRMED_DROP_MAX_MISSING) if complete_inventory else None
+    )
 
     skip_reason: str | None = None
+    active: int | None = None
+    missing: int | None = None
 
     # (1) Drop guard — only fires once we have enough history to compute
     # a stable expected count.
@@ -1036,7 +1063,9 @@ async def _mark_gone_with_guards(
     # (2) Blast-radius guard. Always run when (1) didn't fire so a fresh
     # board (no history yet) is still protected against catastrophic
     # truncation.
-    if skip_reason is None:
+    if skip_reason is None or (
+        confirmed_drop_policy is not None and inventory_fingerprint is not None
+    ):
         try:
             row = await conn.fetchrow(
                 _COUNT_BOARD_ACTIVE_AND_MISSING,
@@ -1059,7 +1088,7 @@ async def _mark_gone_with_guards(
         # default ``conn.fetchrow`` side_effect dispatcher.
         active = int(row["active"]) if row is not None else 0
         missing = int(row["missing"]) if row is not None else 0
-        if active > 0 and missing / active > blast_floor:
+        if skip_reason is None and active > 0 and missing / active > blast_floor:
             board_log.warning(
                 "batch.monitor.blast_radius_exceeded",
                 active=active,
@@ -1071,10 +1100,74 @@ async def _mark_gone_with_guards(
             skip_reason = "blast_radius"
 
     if skip_reason is not None:
+        metadata_patch: dict[str, object] = {"suspect_streak": streak + 1}
+        candidate = md.get("_confirmed_drop_candidate")
+        if confirmed_drop_policy is not None and inventory_fingerprint is not None:
+            required_cycles, max_missing = confirmed_drop_policy
+            config_fingerprint = md.get("_monitor_config_fingerprint")
+            same_candidate = (
+                isinstance(candidate, dict)
+                and candidate.get("inventory_fingerprint") == inventory_fingerprint
+                and candidate.get("discovered") == discovered
+                and candidate.get("config_fingerprint") == config_fingerprint
+            )
+            try:
+                prior_confirmations = int(candidate.get("confirmations") or 0)
+            except (AttributeError, TypeError, ValueError):
+                prior_confirmations = 0
+            confirmations = prior_confirmations + 1 if same_candidate else 1
+            candidate_state = {
+                "inventory_fingerprint": inventory_fingerprint,
+                "config_fingerprint": config_fingerprint,
+                "discovered": discovered,
+                "confirmations": confirmations,
+            }
+            metadata_patch["_confirmed_drop_candidate"] = candidate_state
+
+            if confirmations >= required_cycles and missing is not None and missing <= max_missing:
+                gone_rows = await conn.fetch(
+                    _MARK_GONE_BY_TIMESTAMP,
+                    board_id,
+                    monitor_start_ts,
+                    delist_threshold,
+                )
+                await conn.execute(
+                    _UPDATE_METADATA,
+                    board_id,
+                    json.dumps(
+                        {
+                            "recent_discovered_counts": [discovered],
+                            "suspect_streak": 0,
+                            "_confirmed_drop_candidate": None,
+                        }
+                    ),
+                )
+                board_log.warning(
+                    "batch.monitor.confirmed_drop_accepted",
+                    discovered=discovered,
+                    active=active,
+                    missing=missing,
+                    confirmations=confirmations,
+                    required_cycles=required_cycles,
+                    max_missing=max_missing,
+                )
+                return len(gone_rows), None
+
+            board_log.warning(
+                "batch.monitor.confirmed_drop_pending",
+                discovered=discovered,
+                active=active,
+                missing=missing,
+                confirmations=confirmations,
+                required_cycles=required_cycles,
+                max_missing=max_missing,
+            )
+        elif candidate is not None:
+            metadata_patch["_confirmed_drop_candidate"] = None
         await conn.execute(
             _UPDATE_METADATA,
             board_id,
-            json.dumps({"suspect_streak": streak + 1}),
+            json.dumps(metadata_patch),
         )
         return 0, skip_reason
 
@@ -1089,7 +1182,13 @@ async def _mark_gone_with_guards(
     await conn.execute(
         _UPDATE_METADATA,
         board_id,
-        json.dumps({"recent_discovered_counts": new_history, "suspect_streak": 0}),
+        json.dumps(
+            {
+                "recent_discovered_counts": new_history,
+                "suspect_streak": 0,
+                "_confirmed_drop_candidate": None,
+            }
+        ),
     )
     return len(gone_rows), None
 
@@ -1838,6 +1937,10 @@ async def _process_one_board_streaming(
         # streaming; seeing the same identity later is ambiguous and fails the
         # cycle before gone detection.
         streamed_explicit_identities: set[str] = set()
+        # Complete accepted identity set used only to confirm a contraction
+        # from a code-reviewed complete-inventory monitor. This stays bounded
+        # by the monitor's own MAX_JOBS cap and is discarded after the cycle.
+        guard_inventory_identities: set[str] = set()
 
         runtime = monitor_runtime or PythonMonitorRuntime(_batch.monitor_one_stream)
         monitor_stream = runtime.stream(
@@ -1940,6 +2043,9 @@ async def _process_one_board_streaming(
             if not filtered_sources:
                 continue
             total_processed += len(filtered_sources)
+            guard_inventory_identities.update(
+                identity for identity, _url, _explicit in filtered_sources
+            )
 
             # Match rich-data keys against the canonicalized URL set so
             # a rich monitor targeting a canonicalized platform (none
@@ -2425,6 +2531,16 @@ async def _process_one_board_streaming(
                     metadata,
                     delist_threshold,
                     board_log,
+                    inventory_fingerprint=(
+                        _inventory_fingerprint(guard_inventory_identities)
+                        if extraction_filtered == 0
+                        and security_filtered == 0
+                        and processing_filtered == 0
+                        and total_discovered == total_processed
+                        and total_processed == len(guard_inventory_identities)
+                        else None
+                    ),
+                    complete_inventory=crawler_type in _COMPLETE_INVENTORY_MONITOR_TYPES,
                 )
                 gone_count = (
                     identity_migration_retired + identity_migration_gone + guarded_gone_count

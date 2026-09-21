@@ -297,4 +297,12 @@ async def save_raw(
     )
 
 
-register("hireology", discover, cost=10, can_handle=can_handle, rich=True, save_raw=save_raw)
+register(
+    "hireology",
+    discover,
+    cost=10,
+    can_handle=can_handle,
+    rich=True,
+    complete_inventory=True,
+    save_raw=save_raw,
+)

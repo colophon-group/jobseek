@@ -545,7 +545,11 @@ WITH previous AS MATERIALIZED (
         last_success_at = now(),
         next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
         empty_check_count = 0,
-        board_status = 'active',
+        board_status = CASE
+            WHEN COALESCE((jb.metadata ->> 'suspect_streak')::int, 0) >= 3
+            THEN 'suspect'
+            ELSE 'active'
+        END,
         is_enabled = true,
         last_non_empty_at = now(),
         last_recovered_at = CASE
