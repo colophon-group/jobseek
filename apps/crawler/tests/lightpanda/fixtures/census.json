@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 7786,
-    "boards_sha256": "d9a8a664e533617533c26bb230f31cd89acc36e209878de46d12c4adf529579b",
+    "boards_row_count": 7788,
+    "boards_sha256": "cb23250357299a33a528ddec18b0241fa83ff01034ac7c23a88bfff7ef80e6c9",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "5de4f6d7b351720216a3133dc9c56d679aca4c86f358d05a26282a3c4cc4912b",
+  "manifest_sha256": "ea21def1228c4c4c5dfaf23d75d73ab8f80a12098053cf3141c0081777ba7222",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -1215,12 +1215,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "e600755dd2381049a924023c7ce9d58b3f1ee7fbb200d5406148c487e657026f",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "ca040e504f0caec11a7e27a598f1fe205eaff3a96218c083ba29e9a596ddf543",
+      "digest_sha256": "6b81b077ec86030bba3ba0fd8e29f05786f410071e550d374f8e92e932d1c0f7",
       "fixture": "synthetic.network_session.v1",
       "id": "profile.monitor.api_sniffer.d23d40054ceaa368",
       "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "dfe40eb219d3043a5259ee985026e20cd63bb72d9978394b799ab9bcd43817f2",
+      "source_count": 2,
+      "source_refs_sha256": "6f73ce7ab2213063ae97d13b0789ebbfaad4df0895ae2832192d00cae3ce7991",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -7327,12 +7327,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "71af8679effa34adf4669829bff2a837eecd1ac6f02252dedf7c0ce91a3314de",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "127574da34f1ba947bf4a0cdbdf526981a764b8628dd91583cc5e601868d1275",
+      "digest_sha256": "80cb937b7c67c035d91faceb28edcca99ce2478f452f61d8e3b54c8088331127",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.monitor.api_sniffer",
       "profile_kind": "registry",
-      "source_count": 318,
-      "source_refs_sha256": "35a2893c48d4f414208ef298f38ad25d124b29495b2bf4a8344383f96fe5cdd1",
+      "source_count": 319,
+      "source_refs_sha256": "efb4e982904c7508b3869a4134d1631a5473145dc52ea9a6753756c713513d81",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -7671,9 +7671,9 @@
     }
   ],
   "summary": {
-    "browser_board_count": 515,
-    "browser_required_step_count": 676,
-    "configured_profile_occurrence_count": 677,
+    "browser_board_count": 516,
+    "browser_required_step_count": 677,
+    "configured_profile_occurrence_count": 678,
     "configured_record_count": 304,
     "registry_record_count": 17,
     "total_record_count": 321,
