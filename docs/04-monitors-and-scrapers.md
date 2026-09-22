@@ -72,6 +72,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `job51` | Rich | skip | 51job employer microsite listing and detail CoAPI |
 | `jobbank104` | URL-only | json-ld | 104 Job Bank server-rendered company listings, proxy-capable for Cloudflare challenges |
+| `jobconvo` | URL-only | jobconvo | JobConvo server-rendered career pages with advertised pagination and public detail API enrichment |
 | `jobdiva` | URL-only | api_sniffer | JobDiva candidate portals with token bootstrap and native range pagination |
 | `jobstreet` | Rich + enrichment | jobstreet | JobStreet employer-scoped public search plus GraphQL detail enrichment |
 | `seek` | URL-only | seek | SEEK AU/NZ advertiser-scoped public search plus GraphQL detail enrichment |
@@ -402,6 +403,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `headhunter` | Static | Fetches proxy-routed HeadHunter vacancy detail JSON |
 | `jobstreet` | Static | Fetches JobStreet vacancy detail GraphQL data |
 | `johdi` | Static | Fetches Johdi Suite public offer-detail JSON |
+| `jobconvo` | Static | Fetches JobConvo public detail API records |
 | `json-ld` | Static | Parses `<script type="application/ld+json">` |
 | `linkedin` | Static | Fetches LinkedIn public guest-job detail fragments |
 | `mokahr` | Static | Fetches and decrypts Mokahr detail API records |
