@@ -3433,6 +3433,9 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      the cycle. Must be paired with require_pdf_pattern.
     pagination       Pagination config (auto-detected from multiple requests)
                      style is "offset" or "page" for ordinary pagination.
+                     ``value_template`` optionally wraps the numeric cursor
+                     inside one query/body parameter value and must contain
+                     exactly one ``{value}`` placeholder.
                      Use "cumulative_limit" when a load-more API accepts only
                      an increasing limit and repeats the earlier result prefix;
                      the monitor makes one bounded request using the advertised

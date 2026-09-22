@@ -318,6 +318,8 @@ def _parse_pandape_listing(
 
 
 def _page_url(board_url: str, page: int) -> str:
+    if _pandape_from_url(board_url) is not None and httpx.URL(board_url).path in {"", "/"}:
+        board_url = f"{board_url.rstrip('/')}/Vacancies"
     if page == 1:
         return board_url
     param = "pageNumber" if _pandape_from_url(board_url) is not None else "p"

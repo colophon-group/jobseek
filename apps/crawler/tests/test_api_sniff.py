@@ -1087,6 +1087,41 @@ class TestFetchFactories:
 
 class TestPaginateAllWithFetchFn:
     @pytest.mark.asyncio
+    async def test_formats_nested_pagination_parameter_value(self):
+        page1_items = [{"id": index} for index in range(10)]
+        calls = []
+
+        async def mock_fetch(method, url, headers, body):
+            calls.append(url)
+            page = int(httpx.URL(url).params["query"].removeprefix("page="))
+            start = (page - 1) * 10
+            return {"jobs": [{"id": index} for index in range(start, min(start + 10, 23))]}
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs?query=page%3D1",
+            body={"jobs": page1_items, "total": 23},
+        )
+        pag = PaginationInfo(
+            param_name="query",
+            style="page",
+            start_value=1,
+            increment=1,
+            location="query",
+            value_template="page={value}",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=23,
+            pagination=pag,
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=5)
+
+        assert [item["id"] for item in items] == list(range(23))
+        assert [httpx.URL(url).params["query"] for url in calls] == ["page=2", "page=3"]
+
+    @pytest.mark.asyncio
     async def test_required_object_items_rejects_paginated_non_object(self):
         page1_items = [{"id": 1}]
 
