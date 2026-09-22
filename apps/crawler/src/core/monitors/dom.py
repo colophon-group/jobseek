@@ -150,6 +150,7 @@ _JOB_KEYWORDS = frozenset(
         "opening",
         "role",
         "vacancy",
+        "vacancies",
         "stellenangebot",
         "advertisement_display",
     }
@@ -2001,6 +2002,10 @@ _BNI_VALIDATION_MARKERS = (
     "user validation required to continue",
     'action="/captcha_resp"',
 )
+_LIEPIN_CHALLENGE_MARKERS = (
+    "safe.liepin.com/",
+    "captchapage_ip_pc",
+)
 
 
 class BotChallengeError(RuntimeError):
@@ -2039,6 +2044,11 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
     # form signature so an ordinary page mentioning validation or CAPTCHA does
     # not become a false positive.
     is_bni_validation = all(marker in haystack for marker in _BNI_VALIDATION_MARKERS)
+    # Liepin redirects both listing and detail requests to a HTTP-200 safety
+    # centre page when it blocks the current egress IP. Treat that response as
+    # transient instead of accepting an empty board or scraping the challenge
+    # title as job content.
+    is_liepin = all(marker in haystack for marker in _LIEPIN_CHALLENGE_MARKERS)
     if (
         is_siteground
         or is_cloudflare
@@ -2046,6 +2056,7 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
         or is_incapsula_interstitial
         or is_radware
         or is_bni_validation
+        or is_liepin
     ):
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
