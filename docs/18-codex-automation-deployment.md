@@ -11,7 +11,7 @@ deployment artifacts; do not treat them as source of truth.
 |---|---:|---|---|---|
 | `jobseek-codex-daily-annotations.timer` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol/high orchestrator; Luna and Terra labeller subagents |
 | `jobseek-codex-daily-error-review.timer` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol/high orchestrator; no default subagents |
-| `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
+| `jobseek-codex-governor.timer` | self-regulated, checked four minutes after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
 | `jobseek-codex-docker-lifecycle.service` | continuous | root read-only event watcher producing allowlisted evidence for the isolated runner | this runbook and the committed unit/script | no model invocation |
 
 The recurring company resolver and daily routines run on the Hetzner crawler
@@ -240,8 +240,8 @@ Committed deployment templates:
   and writable paths limited to `/srv/jobseek-codex` and
   `/home/codex-runner`.
 - [`../deploy/systemd/jobseek-codex-governor.timer`](../deploy/systemd/jobseek-codex-governor.timer)
-  - starts 2 minutes after boot, then 1 minute after the previous service
-  finishes with up to 30 seconds of jitter.
+  - starts 2 minutes after boot, then 4 minutes after the previous service
+    finishes with up to 30 seconds of jitter.
 - [`../deploy/systemd/jobseek-codex-daily-annotations.service`](../deploy/systemd/jobseek-codex-daily-annotations.service)
   - runs one daily labelled-postings routine from an isolated worktree, with
     DB access limited to `/etc/jobseek-codex/labeller.env`.
@@ -360,14 +360,17 @@ The workflow copies
 Hetzner, runs it as root, acquires
 `/srv/jobseek-codex/state/codex-runner.lock`, updates the detached deployment
 checkout at `/srv/jobseek-codex/repo` to the exact triggering SHA, installs and
-verifies units, and enables timers for boot persistence. The clone remains
+verifies units, and restores each timer's pre-deployment boot enablement and
+activation state. The clone remains
 detached because its Git common directory also creates resolver worktrees;
 moving a local `main` ref must not manufacture tracked changes in the
 deployment checkout. Resolver worktrees start from freshly fetched
 `origin/main`. A genuine tracked edit still blocks deployment fail-closed.
-The workflow sets `JOBSEEK_CODEX_START_TIMERS=0`, so deployment restores the
-existing timer state without opting in a previously inactive timer or directly
-starting a routine.
+The workflow sets `JOBSEEK_CODEX_START_TIMERS=0`, so deployment restores both
+the existing enabled/disabled set and the existing active/inactive set without
+opting in a paused timer or directly starting a routine. An operator pause uses
+`systemctl disable --now <timer>` and remains effective across runner deploys
+and host reboots.
 
 The deploy never interrupts a live Codex routine. Before waiting for the shared
 runner lock, it records which Codex timers are active and stops those timer
@@ -417,7 +420,7 @@ installation during setup, and HuggingFace trace upload if enabled.
 
 ### Phase 3 - governor decision loop
 
-The systemd timer polls about every 1-1.5 minutes after the previous service
+The systemd timer polls about every 4-4.5 minutes after the previous service
 run exits. The governor still starts at most one resolver per service run and
 uses ledger-backed pacing plus rolling five-hour caps to decide whether a wake
 should actually start work.

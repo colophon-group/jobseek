@@ -5,7 +5,7 @@ Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment
 
 [Timer]
 OnBootSec=2min
-OnUnitInactiveSec=1min
+OnUnitInactiveSec=4min
 RandomizedDelaySec=30s
 AccuracySec=15s
 Persistent=false

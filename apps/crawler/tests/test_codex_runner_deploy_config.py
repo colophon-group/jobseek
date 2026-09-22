@@ -133,6 +133,14 @@ def test_daily_timers_catch_up_missed_calendar_activations_under_the_shared_lock
         assert "/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock" in exec_start
 
 
+def test_governor_checks_at_one_quarter_of_the_previous_timer_rate() -> None:
+    timer = GOVERNOR_TIMER.read_text()
+
+    assert "OnUnitInactiveSec=4min" in timer
+    assert "OnUnitInactiveSec=1min" not in timer
+    assert "RandomizedDelaySec=30s" in timer
+
+
 def test_all_crawler_runner_units_use_the_python_313_virtualenv() -> None:
     expected_python = "/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python"
 
