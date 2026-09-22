@@ -202,6 +202,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |
 | 10   | `job51`           | Rich     | skip        | 51job employer microsite listing and detail CoAPI |
 | 10   | `jobbank104`      | URL-only | json-ld     | 104 Job Bank company-page links through optional proxy transport |
+| 10   | `jobconvo`        | URL-only | jobconvo    | JobConvo server-rendered inventory + public detail API |
 | 10   | `jobdiva`         | URL-only | api_sniffer | JobDiva token bootstrap + native range pagination |
 | 10   | `jobstreet`       | Rich     | jobstreet   | JobStreet employer search summaries + GraphQL detail enrichment |
 | 10   | `seek`            | URL-only | seek        | SEEK AU/NZ advertiser search + GraphQL detail enrichment |
@@ -313,6 +314,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `headhunter`   | Fetch proxy-routed HeadHunter vacancy detail JSON  | None                   |
 | `jobstreet`    | Fetch JobStreet vacancy detail GraphQL data        | None                   |
 | `johdi`        | Fetch Johdi Suite public offer-detail JSON         | `{company_key, flow, locale}` |
+| `jobconvo`     | Fetch JobConvo public detail API records            | `{locale}`             |
 | `json-ld`      | Parse `<script type="application/ld+json">` (JobPosting schema) | None (auto)    |
 | `mokahr`       | Fetch and decrypt Mokahr detail API records        | None                   |
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |

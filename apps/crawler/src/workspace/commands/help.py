@@ -2490,6 +2490,25 @@ smartrecruiters — SmartRecruiters Posting API (URL-only or localized rich data
   Detection:  ws probe shows "SmartRecruiters API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
 
+MONITOR_JOBCONVO = """\
+jobconvo — JobConvo server-rendered career-page monitor
+
+  Listing:  GET https://jobs.jobconvo.com/{locale}/careers/{company}/{career_page}/
+  Returns:  Complete stable JobConvo job-detail URL set
+  Scraper:  Auto-configured JobConvo public detail API scraper
+  Cost:     10
+  Browser:  No
+  Cap:      50,000 jobs / 1,000 advertised pages
+
+  Config:
+    {"listing_url":"https://jobs.jobconvo.com/pt-br/careers/Acme/<uuid>/",
+     "locale":"pt-br","career_page":"<uuid>"}
+
+  Discovery follows only pagination links explicitly advertised by the career
+  page, validates every row and provider UUID, and fails closed on malformed or
+  cross-tenant links. Empty boards are accepted only when the authoritative
+  server-rendered jobs table is present."""
+
 MONITOR_SOFTGARDEN = """\
 softgarden — Softgarden ATS (HTML scraping, no auth)
 
@@ -4639,6 +4658,7 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
     "taleo": MONITOR_TALEO,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
+    "jobconvo": MONITOR_JOBCONVO,
     "softgarden": MONITOR_SOFTGARDEN,
     "traffit": MONITOR_TRAFFIT,
     "earcu": MONITOR_EARCU,
@@ -4798,6 +4818,17 @@ smartrecruiters — SmartRecruiters Detail API scraper
   Config:   None needed — token from board config, posting_id parsed from URL
   Note:     Auto-configured when selecting the smartrecruiters monitor.
             Runs on the daily scrape schedule (not every monitor cycle).
+"""
+
+SCRAPER_JOBCONVO = """\
+jobconvo — JobConvo public detail API scraper
+
+  API:      GET https://app.jobconvo.com/{locale}/api/job/{job_id}/{slug}/
+  Returns:  title, HTML description and requirements, location,
+            employment_type, job_location_type, date_posted, salary and metadata
+  Config:   {"locale":"pt-br"} (auto-filled from the listing URL)
+  Note:     Auto-configured when selecting the jobconvo monitor.
+            No browser is required.
 """
 
 SCRAPER_WORKABLE = """\
@@ -5122,6 +5153,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "veryeast": SCRAPER_VERYEAST,
     "tupu360": SCRAPER_TUPU360,
     "onlyfy": SCRAPER_ONLYFY,
+    "jobconvo": SCRAPER_JOBCONVO,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
     "taleo": """\

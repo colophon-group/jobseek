@@ -153,6 +153,11 @@ class TestNormalizeEmploymentTypeEnglish:
         assert normalize_employment_type(raw) == "full_or_part"
 
 
+class TestNormalizeEmploymentTypePortuguese:
+    def test_brazilian_clt_full_time(self):
+        assert normalize_employment_type("CLT - Tempo Integral") == "full_time"
+
+
 class TestNormalizeEmploymentTypeChinese:
     """Mokahr (mainland) and 51job-style traditional Chinese ATSes."""
 

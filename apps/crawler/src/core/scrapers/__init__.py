@@ -361,6 +361,7 @@ from src.core.scrapers import (  # noqa: E402
     headhunter,  # noqa: F401
     infor,  # noqa: F401
     jazzhr,  # noqa: F401
+    jobconvo,  # noqa: F401
     jobstreet,  # noqa: F401
     johdi,  # noqa: F401
     jsonld,  # noqa: F401
