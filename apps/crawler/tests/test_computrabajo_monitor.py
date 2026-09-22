@@ -286,6 +286,8 @@ class TestMonitor:
     @pytest.mark.parametrize("board_url", [PANDAPE_ROOT_URL, PANDAPE_NESTED_URL])
     async def test_paginates_pandape_route_variants(self, board_url: str) -> None:
         def handler(request: httpx.Request) -> httpx.Response:
+            if board_url == PANDAPE_ROOT_URL:
+                assert request.url.path == "/Vacancies"
             page = int(request.url.params.get("pageNumber", "1"))
             indexes = range(1, 21) if page == 1 else [21]
             body = _pandape_listing(21, indexes, page=page, board_url=board_url)

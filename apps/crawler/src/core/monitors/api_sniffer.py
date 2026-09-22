@@ -2247,6 +2247,7 @@ async def _paginate_until_converged(
             start_value=pagination_config.get("start_value", 0),
             increment=pagination_config.get("increment", 1),
             location=pagination_config.get("location", "query"),
+            value_template=pagination_config.get("value_template"),
         )
         result = JobListResult(
             candidate=ArrayCandidate(
@@ -3134,6 +3135,7 @@ async def _discover_http(
                 start_value=pagination_config.get("start_value", 0),
                 increment=pagination_config.get("increment", 1),
                 location=pagination_config.get("location", "query"),
+                value_template=pagination_config.get("value_template"),
             )
             ex = Exchange(
                 method=method,
@@ -3705,6 +3707,7 @@ async def _discover_replay_once(
                 start_value=pagination_config["start_value"],
                 increment=pagination_config["increment"],
                 location=pagination_config["location"],
+                value_template=pagination_config.get("value_template"),
             )
             ex = Exchange(
                 method=method,
