@@ -5670,6 +5670,8 @@ pubnub,pubnub-careers,https://careers.smartrecruiters.com/PubNub,smartrecruiters
 pulley,pulley-greenhouse,https://job-boards.greenhouse.io/pulley,greenhouse,"{""token"": ""pulley""}",skip,
 pulse,pulse-ashby,https://jobs.ashbyhq.com/pulse,ashby,"{""token"": ""pulse""}",skip,
 pulumi,pulumi-greenhouse,https://job-boards.greenhouse.io/pulumicorporation,greenhouse,"{""token"": ""pulumicorporation""}",skip,
+puma,puma-careers,https://puma.wd502.myworkdayjobs.com/jobs_at_puma,workday,"{""company"": ""puma"", ""wd_instance"": ""wd502"", ""site"": ""jobs_at_puma"", ""all_sites"": false}",workday,
+puma,puma-careers-stichd,https://puma.wd502.myworkdayjobs.com/Work_at_stichd,workday,"{""company"": ""puma"", ""wd_instance"": ""wd502"", ""site"": ""Work_at_stichd"", ""all_sites"": false}",workday,
 pump-co,pump-co-greenhouse,https://job-boards.greenhouse.io/pumpcareers,greenhouse,"{""token"": ""pumpcareers""}",skip,
 pure,pure-ashby,https://jobs.ashbyhq.com/pure,ashby,"{""token"": ""pure""}",skip,
 pvh,pvh-calvin-klein-brasil,https://calvinkleinbrasil.pandape.infojobs.com.br/Vacancies,dom,"{""render"": true, ""resource_policy"": ""none"", ""link_selector"": ""a[href*='/Detail']"", ""require_jsonld_jobposting"": true}",json-ld,
