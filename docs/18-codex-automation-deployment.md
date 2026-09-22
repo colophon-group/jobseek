@@ -11,7 +11,7 @@ deployment artifacts; do not treat them as source of truth.
 |---|---:|---|---|---|
 | `jobseek-codex-daily-annotations.timer` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol/high orchestrator; Luna and Terra labeller subagents |
 | `jobseek-codex-daily-error-review.timer` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol/high orchestrator; no default subagents |
-| `jobseek-codex-governor.timer` | self-regulated, checked four minutes after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
+| `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
 | `jobseek-codex-docker-lifecycle.service` | continuous | root read-only event watcher producing allowlisted evidence for the isolated runner | this runbook and the committed unit/script | no model invocation |
 
 The recurring company resolver and daily routines run on the Hetzner crawler
@@ -240,7 +240,7 @@ Committed deployment templates:
   and writable paths limited to `/srv/jobseek-codex` and
   `/home/codex-runner`.
 - [`../deploy/systemd/jobseek-codex-governor.timer`](../deploy/systemd/jobseek-codex-governor.timer)
-  - starts 2 minutes after boot, then 4 minutes after the previous service
+  - starts 2 minutes after boot, then 1 minute after the previous service
     finishes with up to 30 seconds of jitter.
 - [`../deploy/systemd/jobseek-codex-daily-annotations.service`](../deploy/systemd/jobseek-codex-daily-annotations.service)
   - runs one daily labelled-postings routine from an isolated worktree, with
@@ -420,7 +420,7 @@ installation during setup, and HuggingFace trace upload if enabled.
 
 ### Phase 3 - governor decision loop
 
-The systemd timer polls about every 4-4.5 minutes after the previous service
+The systemd timer polls about every 1-1.5 minutes after the previous service
 run exits. The governor still starts at most one resolver per service run and
 uses ledger-backed pacing plus rolling five-hour caps to decide whether a wake
 should actually start work.
@@ -445,14 +445,16 @@ Usage inputs:
 Scheduling policy:
 
 - Default concurrency is `1`.
+- A code-enforced hard floor permits at most one company resolver start per
+  rolling four hours. Usage telemetry, fast mode, and local environment values
+  may lengthen that interval but cannot shorten it.
 - The systemd lock is global across company resolver, daily annotations, and
   daily error review. A recurring resolver wake exits immediately if a daily
   routine is active; daily routines wait for an in-flight resolver up to six
   hours.
 - Always keep a hard safety cap of at most
   `JOBSEEK_CODEX_MAX_RUNS_PER_5H` resolver issues per five-hour rolling window.
-  The default `50` allows roughly 10 runs per hour when weekly usage remains
-  above the fast threshold.
+  This is a secondary ceiling behind the four-hour admission floor.
 - Hard-block all new runs when either five-hour or weekly remaining usage is
   below `20%` by default (`JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT` and
   `JOBSEEK_CODEX_MIN_WEEKLY_REMAINING_PERCENT`).
@@ -461,12 +463,11 @@ Scheduling policy:
 - When weekly remaining usage is at least
   `JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT` (default `50`), use the fast
   five-hour budget, `JOBSEEK_CODEX_MAX_RUNS_PER_5H`, and the fast minimum
-  start interval, `JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S` (default `360`,
-  roughly 10 runs per hour).
+  start interval, `JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S` (default `14400`).
 - When weekly remaining usage is below that threshold, use the slower
   conservative five-hour budget, `JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H`, and
   the conservative minimum start interval,
-  `JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S` (default `3600`).
+  `JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S` (default `14400`).
 - When usage telemetry is unavailable, run at the conservative floor instead
   of failing the scheduler permanently.
 - Record every scheduler decision and usage window in the local SQLite

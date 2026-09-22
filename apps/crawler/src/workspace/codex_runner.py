@@ -70,6 +70,7 @@ DEFAULT_MAX_RETRY_BACKOFF_S = 6 * 60 * 60
 DEFAULT_CLAIM_MARKER = "<!-- ws-claim -->"
 FIVE_HOURS_S = 5 * 60 * 60
 ONE_WEEK_S = 7 * 24 * 60 * 60
+HARD_MIN_RESOLVER_START_INTERVAL_S = 4 * 60 * 60
 UNKNOWN_USAGE_RETRY_S = 30 * 60
 _TERMINAL_RECEIPT_MAX_BYTES = 64 * 1024
 _ACTIVE_MARKER_MAX_BYTES = 4 * 1024
@@ -171,8 +172,8 @@ class RunnerConfig:
     max_runs_per_5h: int = 50
     conservative_runs_per_5h: int = 5
     fast_weekly_remaining_percent: float = 50.0
-    fast_min_start_interval_s: int = 6 * 60
-    conservative_min_start_interval_s: int = 60 * 60
+    fast_min_start_interval_s: int = HARD_MIN_RESOLVER_START_INTERVAL_S
+    conservative_min_start_interval_s: int = HARD_MIN_RESOLVER_START_INTERVAL_S
     min_five_hour_remaining_percent: float = 20.0
     min_weekly_remaining_percent: float = 20.0
     min_disk_free_gib: float = 5.0
@@ -294,10 +295,16 @@ class RunnerConfig:
                 env.get("JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT", "50")
             ),
             fast_min_start_interval_s=int(
-                env.get("JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S", "360")
+                env.get(
+                    "JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S",
+                    str(HARD_MIN_RESOLVER_START_INTERVAL_S),
+                )
             ),
             conservative_min_start_interval_s=int(
-                env.get("JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S", "3600")
+                env.get(
+                    "JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S",
+                    str(HARD_MIN_RESOLVER_START_INTERVAL_S),
+                )
             ),
             min_five_hour_remaining_percent=float(
                 env.get("JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT", "20")
@@ -2151,8 +2158,10 @@ class CompanyResolverGovernor:
 
     def _pacing_interval(self, usage: UsageProbeResult | None) -> int:
         if self._fast_mode_enabled(usage):
-            return max(0, self.config.fast_min_start_interval_s)
-        return max(0, self.config.conservative_min_start_interval_s)
+            configured_interval = self.config.fast_min_start_interval_s
+        else:
+            configured_interval = self.config.conservative_min_start_interval_s
+        return max(HARD_MIN_RESOLVER_START_INTERVAL_S, configured_interval)
 
     def _fast_mode_enabled(self, usage: UsageProbeResult | None) -> bool:
         if not usage or not usage.ok:

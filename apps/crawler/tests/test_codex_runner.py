@@ -168,6 +168,8 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
     assert config.max_unlinked_session_age_days == 7
     assert config.max_terminal_worktrees == 3
     assert config.max_terminal_worktree_gib == 2
+    assert config.fast_min_start_interval_s == 4 * 60 * 60
+    assert config.conservative_min_start_interval_s == 4 * 60 * 60
     assert config.managed_repo_dir == Path.home() / ".jobseek" / "repo"
     assert config.managed_worktrees_dir == Path.home() / ".jobseek" / "worktrees"
     assert build_codex_command(config, "do the task") == [
@@ -1067,11 +1069,11 @@ def test_scheduler_records_usage_snapshots(monkeypatch, tmp_path: Path) -> None:
     assert by_window["weekly"]["used_percent"] == 45
     assert by_window["weekly"]["recent_limit"] == 50
     assert by_window["weekly"]["decision_reason"] == "admitted"
-    assert by_window["weekly"]["pacing_interval_s"] == 360
+    assert by_window["weekly"]["pacing_interval_s"] == 4 * 60 * 60
     assert by_window["five_hour"]["reset_in_seconds"] == 3600
 
 
-def test_fast_mode_paces_starts_between_timer_wakes(monkeypatch, tmp_path: Path) -> None:
+def test_fast_mode_hard_caps_starts_at_once_per_four_hours(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=True)
     ledger = RunnerLedger(config.ledger_path)
     monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 1000)
@@ -1093,10 +1095,26 @@ def test_fast_mode_paces_starts_between_timer_wakes(monkeypatch, tmp_path: Path)
 
     assert not decision.should_run
     assert decision.reason == "start pacing interval active"
-    assert decision.retry_after_s == 300
-    assert decision.pacing_interval_s == 360
+    assert decision.retry_after_s == 4 * 60 * 60 - 60
+    assert decision.pacing_interval_s == 4 * 60 * 60
     assert decision.last_started_at == 1000
-    assert {snapshot["retry_after_s"] for snapshot in snapshots} == {300}
+    assert {snapshot["retry_after_s"] for snapshot in snapshots} == {4 * 60 * 60 - 60}
+
+
+def test_local_pacing_configuration_cannot_lower_four_hour_hard_cap(tmp_path: Path) -> None:
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        fast_min_start_interval_s=0,
+        conservative_min_start_interval_s=1,
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
+    fast_usage = UsageProbeResult(
+        ok=True,
+        windows=(UsageWindow(name="weekly", remaining_percent=100),),
+    )
+
+    assert governor._pacing_interval(fast_usage) == 4 * 60 * 60
+    assert governor._pacing_interval(None) == 4 * 60 * 60
 
 
 def test_low_usage_window_pauses_until_reset(monkeypatch, tmp_path: Path) -> None:
