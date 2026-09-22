@@ -16,7 +16,7 @@ def _rows(filename: str, key: str, value: str) -> list[dict[str, str]]:
         return [row for row in csv.DictReader(handle) if row[key] == value]
 
 
-def test_suez_metadata_descriptions_and_staged_assets_are_complete() -> None:
+def test_suez_metadata_descriptions_and_published_assets_are_complete() -> None:
     company = _rows("companies.csv", "slug", "suez")[0]
     description = _rows("company_descriptions.csv", "slug", "suez")[0]
 
@@ -27,8 +27,9 @@ def test_suez_metadata_descriptions_and_staged_assets_are_complete() -> None:
     assert company["employee_count_range"] == "8"
     assert company["founded_year"] == "1858"
     assert all(description[locale] for locale in ("en", "de", "fr", "it"))
-    assert (DATA_DIR / "images/suez/logo.png").is_file()
-    assert (DATA_DIR / "images/suez/icon.png").is_file()
+    asset_root = "https://jobseek-assets.colophon-group.org/companies/suez/"
+    assert company["logo_url"].startswith(f"{asset_root}logo-")
+    assert company["icon_url"].startswith(f"{asset_root}icon-")
 
 
 def test_suez_boards_cover_global_and_regional_career_surfaces() -> None:
