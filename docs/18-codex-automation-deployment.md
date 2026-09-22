@@ -241,7 +241,7 @@ Committed deployment templates:
   `/home/codex-runner`.
 - [`../deploy/systemd/jobseek-codex-governor.timer`](../deploy/systemd/jobseek-codex-governor.timer)
   - starts 2 minutes after boot, then 1 minute after the previous service
-  finishes with up to 30 seconds of jitter.
+    finishes with up to 30 seconds of jitter.
 - [`../deploy/systemd/jobseek-codex-daily-annotations.service`](../deploy/systemd/jobseek-codex-daily-annotations.service)
   - runs one daily labelled-postings routine from an isolated worktree, with
     DB access limited to `/etc/jobseek-codex/labeller.env`.
@@ -360,14 +360,17 @@ The workflow copies
 Hetzner, runs it as root, acquires
 `/srv/jobseek-codex/state/codex-runner.lock`, updates the detached deployment
 checkout at `/srv/jobseek-codex/repo` to the exact triggering SHA, installs and
-verifies units, and enables timers for boot persistence. The clone remains
+verifies units, and restores each timer's pre-deployment boot enablement and
+activation state. The clone remains
 detached because its Git common directory also creates resolver worktrees;
 moving a local `main` ref must not manufacture tracked changes in the
 deployment checkout. Resolver worktrees start from freshly fetched
 `origin/main`. A genuine tracked edit still blocks deployment fail-closed.
-The workflow sets `JOBSEEK_CODEX_START_TIMERS=0`, so deployment restores the
-existing timer state without opting in a previously inactive timer or directly
-starting a routine.
+The workflow sets `JOBSEEK_CODEX_START_TIMERS=0`, so deployment restores both
+the existing enabled/disabled set and the existing active/inactive set without
+opting in a paused timer or directly starting a routine. An operator pause uses
+`systemctl disable --now <timer>` and remains effective across runner deploys
+and host reboots.
 
 The deploy never interrupts a live Codex routine. Before waiting for the shared
 runner lock, it records which Codex timers are active and stops those timer
@@ -442,14 +445,16 @@ Usage inputs:
 Scheduling policy:
 
 - Default concurrency is `1`.
+- A code-enforced hard floor permits at most one company resolver start per
+  rolling four hours. Usage telemetry, fast mode, and local environment values
+  may lengthen that interval but cannot shorten it.
 - The systemd lock is global across company resolver, daily annotations, and
   daily error review. A recurring resolver wake exits immediately if a daily
   routine is active; daily routines wait for an in-flight resolver up to six
   hours.
 - Always keep a hard safety cap of at most
   `JOBSEEK_CODEX_MAX_RUNS_PER_5H` resolver issues per five-hour rolling window.
-  The default `50` allows roughly 10 runs per hour when weekly usage remains
-  above the fast threshold.
+  This is a secondary ceiling behind the four-hour admission floor.
 - Hard-block all new runs when either five-hour or weekly remaining usage is
   below `20%` by default (`JOBSEEK_CODEX_MIN_5H_REMAINING_PERCENT` and
   `JOBSEEK_CODEX_MIN_WEEKLY_REMAINING_PERCENT`).
@@ -458,12 +463,11 @@ Scheduling policy:
 - When weekly remaining usage is at least
   `JOBSEEK_CODEX_FAST_WEEKLY_REMAINING_PERCENT` (default `50`), use the fast
   five-hour budget, `JOBSEEK_CODEX_MAX_RUNS_PER_5H`, and the fast minimum
-  start interval, `JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S` (default `360`,
-  roughly 10 runs per hour).
+  start interval, `JOBSEEK_CODEX_FAST_MIN_START_INTERVAL_S` (default `14400`).
 - When weekly remaining usage is below that threshold, use the slower
   conservative five-hour budget, `JOBSEEK_CODEX_CONSERVATIVE_RUNS_PER_5H`, and
   the conservative minimum start interval,
-  `JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S` (default `3600`).
+  `JOBSEEK_CODEX_CONSERVATIVE_MIN_START_INTERVAL_S` (default `14400`).
 - When usage telemetry is unavailable, run at the conservative floor instead
   of failing the scheduler permanently.
 - Record every scheduler decision and usage window in the local SQLite

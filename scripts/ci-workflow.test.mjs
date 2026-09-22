@@ -2064,7 +2064,15 @@ test("Codex deploy reserves the next runner-lock handoff", () => {
   assert.ok(lockWait > pauseCall, "timers must pause before waiting for the lock");
   assert.match(
     deployCodexRunnerHostScript,
-    /systemctl is-active --quiet "\$\{timer\}"[\s\S]*systemctl stop "\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"/,
+    /systemctl is-enabled --quiet "\$\{timer\}"[\s\S]*systemctl is-active --quiet "\$\{timer\}"[\s\S]*systemctl stop "\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /systemctl enable "\$\{enable_candidates\[@\]\}"/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /systemctl disable "\$\{disable_candidates\[@\]\}"/,
   );
   assert.match(
     deployCodexRunnerHostScript,
@@ -2168,6 +2176,10 @@ START_TIMERS=0
 LABELLER_CONTRACT_VERIFIED=0
 systemctl() {
   printf '%s\\n' "$*" >> "$MOCK_SYSTEMCTL_LOG"
+  if [[ "$1" == "is-enabled" ]]; then
+    [[ "$3" == "alpha.timer" || "$3" == "jobseek-codex-daily-annotations.timer" ]]
+    return
+  fi
   if [[ "$1" == "is-active" ]]; then
     [[ "$3" == "alpha.timer" || "$3" == "jobseek-codex-daily-annotations.timer" ]]
     return
@@ -2220,6 +2232,10 @@ START_TIMERS=0
 LABELLER_CONTRACT_VERIFIED=1
 systemctl() {
   printf '%s\\n' "$*" >> "$MOCK_SYSTEMCTL_LOG"
+  if [[ "$1" == "is-enabled" ]]; then
+    [[ "$3" != "inactive.timer" ]]
+    return
+  fi
   if [[ "$1" == "is-active" ]]; then
     [[ "$3" == "alpha.timer" || "$3" == "jobseek-codex-daily-annotations.timer" || "$3" == "jobseek-codex-daily-error-review.timer" ]]
     return
@@ -2249,6 +2265,50 @@ exit 23
     /^start alpha\.timer jobseek-codex-daily-annotations\.timer jobseek-codex-daily-error-review\.timer$/m,
   );
   assert.doesNotMatch(calls, /^start .*inactive\.timer/m);
+});
+
+test("Codex deploy preserves disabled timers while restoring enabled timers", () => {
+  const dir = mkdtempSync(join(tmpdir(), "codex-deploy-enabled-timers-"));
+  const log = join(dir, "systemctl.log");
+  const result = spawnSync(
+    "bash",
+    [
+      "-c",
+      `set -euo pipefail
+source scripts/deploy-codex-runner-host.sh
+TIMERS=(governor.timer annotations.timer error-review.timer)
+START_TIMERS=0
+systemctl() {
+  printf '%s\\n' "$*" >> "$MOCK_SYSTEMCTL_LOG"
+  if [[ "$1" == "is-enabled" ]]; then
+    [[ "$3" == "governor.timer" ]]
+    return
+  fi
+  if [[ "$1" == "is-active" ]]; then
+    [[ "$3" == "governor.timer" ]]
+    return
+  fi
+  return 0
+}
+pause_timer_activations
+restore_timer_enablement
+trap - EXIT
+`,
+    ],
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, MOCK_SYSTEMCTL_LOG: log },
+      encoding: "utf8",
+    },
+  );
+  const calls = readFileSync(log, "utf8");
+  rmSync(dir, { recursive: true, force: true });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(calls, /^enable governor\.timer$/m);
+  assert.match(calls, /^disable annotations\.timer error-review\.timer$/m);
+  assert.doesNotMatch(calls, /^enable .*annotations\.timer/m);
+  assert.doesNotMatch(calls, /^enable .*error-review\.timer/m);
 });
 
 test("scheduled maintenance always reports host hygiene independently", () => {

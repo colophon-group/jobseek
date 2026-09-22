@@ -40,6 +40,7 @@ ALWAYS_ON_SERVICES=(
 )
 
 ACTIVE_TIMERS_BEFORE_DEPLOY=()
+ENABLED_TIMERS_BEFORE_DEPLOY=()
 TIMER_RESTORE_ARMED=0
 LABELLER_CONTRACT_VERIFIED=0
 
@@ -265,8 +266,45 @@ install_units() {
 
   systemctl daemon-reload
   systemd-analyze verify "${UNITS[@]/#//etc/systemd/system/}"
-  systemctl enable "${TIMERS[@]}"
+  restore_timer_enablement
   systemctl enable "${ALWAYS_ON_SERVICES[@]}"
+}
+
+timer_in_list() {
+  local expected="$1"
+  shift
+  local timer
+  for timer in "$@"; do
+    if [[ "${timer}" == "${expected}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+restore_timer_enablement() {
+  local timer
+  local -a enable_candidates=()
+  local -a disable_candidates=()
+
+  if [[ "${START_TIMERS}" == "1" ]]; then
+    enable_candidates=("${TIMERS[@]}")
+  else
+    for timer in "${TIMERS[@]}"; do
+      if timer_in_list "${timer}" "${ENABLED_TIMERS_BEFORE_DEPLOY[@]}"; then
+        enable_candidates+=("${timer}")
+      else
+        disable_candidates+=("${timer}")
+      fi
+    done
+  fi
+
+  if ((${#enable_candidates[@]} > 0)); then
+    systemctl enable "${enable_candidates[@]}"
+  fi
+  if ((${#disable_candidates[@]} > 0)); then
+    systemctl disable "${disable_candidates[@]}"
+  fi
 }
 
 start_always_on_services() {
@@ -338,6 +376,9 @@ report_trace_retention() {
 pause_timer_activations() {
   local timer
   for timer in "${TIMERS[@]}"; do
+    if systemctl is-enabled --quiet "${timer}"; then
+      ENABLED_TIMERS_BEFORE_DEPLOY+=("${timer}")
+    fi
     if systemctl is-active --quiet "${timer}"; then
       ACTIVE_TIMERS_BEFORE_DEPLOY+=("${timer}")
     fi
