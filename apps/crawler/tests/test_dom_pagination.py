@@ -422,6 +422,7 @@ class TestExtractLinksStatic:
     def test_filters_job_keywords(self):
         html = _html_with_links(
             "https://example.com/jobs/123",
+            "https://example.com/vacancies/24649/maintenance-technician/",
             "https://example.com/about",
             "https://example.com/career/456",
             "https://example.com/stellenangebote/detail/789",
@@ -429,6 +430,7 @@ class TestExtractLinksStatic:
         urls = _extract_links_static(html, "https://example.com")
         assert urls == {
             "https://example.com/jobs/123",
+            "https://example.com/vacancies/24649/maintenance-technician/",
             "https://example.com/career/456",
             "https://example.com/stellenangebote/detail/789",
         }
@@ -3954,19 +3956,20 @@ class TestCanHandle:
             "https://jobs.example.com/stores/offer-redirect/"
             "?offerApiId=MTEyODQ=&showApplicationForm=false"
         )
-        assert not matcher.fullmatch(
-            "https://other.example/offer-redirect/?offerApiId=MTEyODQ="
-        )
+        assert not matcher.fullmatch("https://other.example/offer-redirect/?offerApiId=MTEyODQ=")
 
     def test_my_job_shop_requires_provider_marker_and_live_links(self):
         url = "https://jobs.example.com/search"
         link = '<a href="/offer-redirect/?offerApiId=MTEyODQ=">Role</a>'
 
         assert _my_job_shop_probe_config(link, url) is None
-        assert _my_job_shop_probe_config(
-            '<script src="https://api.my-job-shop.com/app.js"></script>',
-            url,
-        ) is None
+        assert (
+            _my_job_shop_probe_config(
+                '<script src="https://api.my-job-shop.com/app.js"></script>',
+                url,
+            )
+            is None
+        )
 
     async def test_my_job_shop_can_handle_returns_provider_preset(self):
         url = "https://jobs.example.com/search"
@@ -6011,6 +6014,28 @@ class TestDomDiscoverInitialFetch:
                     {
                         "board_url": "https://blocked.example/careers",
                         "metadata": {"url_filter": "/job/"},
+                    },
+                    client,
+                )
+
+    async def test_static_liepin_safety_centre_raises(self):
+        """Liepin's HTTP-200 IP CAPTCHA must not become an empty board."""
+
+        challenge = (
+            "<html><head><title>猎聘安全中心</title></head>"
+            '<body><iframe src="https://safe.liepin.com/page/liepin/'
+            'captchaPage_ip_PC?backurl=opaque"></iframe></body></html>'
+        )
+
+        def handler(request):
+            return httpx.Response(200, text=challenge, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BotChallengeError, match="proxy transport"):
+                await dom_discover(
+                    {
+                        "board_url": "https://m.liepin.com/company/10005643/",
+                        "metadata": {"link_selector": "a[href*='/job/']"},
                     },
                     client,
                 )
