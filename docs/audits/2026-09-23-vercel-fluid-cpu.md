@@ -138,3 +138,7 @@ the latest next/og security fix. The existing metadata-tree alignment backport
 is reapplied to all three compiled production checks and the readable server
 implementation; the existing patch regression test verifies those checks.
 The original CPU experiment remains explicitly a 16.3.4 measurement.
+The analyzer package imports `NextConfig` in its declarations but declares no
+Next peer. With two workspace Next versions, its hoisted type import selected
+the shim's 16.3.4 and failed the web build. A version-scoped pnpm package
+extension declares the missing peer, so the web analyzer resolves 16.3.6.

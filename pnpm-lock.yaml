@@ -5,13 +5,13 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@babel/core': '>=7.29.6'
   '@hono/node-server': 2.0.10
+  '@babel/core': '>=7.29.6'
   axios: 1.18.0
   basic-ftp: '>=5.3.1'
   body-parser: 2.3.0
-  brace-expansion: 5.0.9
   defu: '>=6.1.5'
+  brace-expansion: 5.0.9
   esbuild: 0.28.1
   fast-uri@>=3.0.0 <4.0.0: 3.1.6
   fast-uri@>=4.0.0 <5.0.0: 4.1.2
@@ -26,9 +26,9 @@ overrides:
   kysely: 0.29.2
   lodash: 4.18.1
   minimatch: '>=10.2.3'
+  path-to-regexp: '>=8.4.0'
   nanoid@<3.3.17: 3.3.17
   nanoid@>=4.0.0 <5.1.16: 5.1.16
-  path-to-regexp: '>=8.4.0'
   postcss: 8.5.26
   qs: 6.16.0
   sharp: '>=0.35.4'
@@ -36,6 +36,8 @@ overrides:
   uuid: 11.1.1
   ws@>=7.0.0 <7.5.11: 7.5.11
   ws@>=8.0.0 <8.21.0: 8.21.0
+
+packageExtensionsChecksum: sha256-Io5VD/Xam0tumaV8M4BMSo01xt834lUGrf6//z2qVfY=
 
 patchedDependencies:
   next@16.3.4:
@@ -334,7 +336,7 @@ importers:
         version: 6.6.0(babel-plugin-macros@3.1.0)(esbuild@0.28.1)(rolldown@1.2.8)(webpack@5.105.2(@swc/core@1.15.3(@swc/helpers@0.5.23))(esbuild@0.28.1))
       '@next/bundle-analyzer':
         specifier: ^16.3.6
-        version: 16.3.6
+        version: 16.3.6(next@16.3.6(patch_hash=a50aa333eac32b4f7d23efcbdf90dfffe60b83c88d74d598f67ce87a0592029c)(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@types/node@22.20.2)(babel-plugin-macros@3.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
       '@next/eslint-plugin-next':
         specifier: ^16.3.6
         version: 16.3.6(eslint@10.10.0(jiti@2.7.0))
@@ -1515,6 +1517,8 @@ packages:
 
   '@next/bundle-analyzer@16.3.6':
     resolution: {integrity: sha512-RArYF3j4Lpuv+Wc4sis6SBeeqBQdz6M/SUcU182D/NXtpvK8sEwZN2rhxWTGJXLVELwqFSWKNaGUad3b2NYwTw==}
+    peerDependencies:
+      next: ^16.3.6
 
   '@next/env@16.3.4':
     resolution: {integrity: sha512-cjWZnUUa6jZq2kFaNe/ZyJdZonOZ/QoN0Zka2nz/FLOrfx14pQuM9c5RaSVkWMqgdt4ksgPAMWPyHSs/CyV48Q==}
@@ -7764,8 +7768,9 @@ snapshots:
       tslib: 2.8.1
       uid: 2.0.2
 
-  '@next/bundle-analyzer@16.3.6':
+  '@next/bundle-analyzer@16.3.6(next@16.3.6(patch_hash=a50aa333eac32b4f7d23efcbdf90dfffe60b83c88d74d598f67ce87a0592029c)(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@types/node@22.20.2)(babel-plugin-macros@3.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))':
     dependencies:
+      next: 16.3.6(patch_hash=a50aa333eac32b4f7d23efcbdf90dfffe60b83c88d74d598f67ce87a0592029c)(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@types/node@22.20.2)(babel-plugin-macros@3.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       webpack-bundle-analyzer: 4.10.1
     transitivePeerDependencies:
       - bufferutil
