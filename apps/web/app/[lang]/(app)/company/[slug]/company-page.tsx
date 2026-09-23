@@ -9,10 +9,7 @@ import { getCompanyPostingListState } from "./company-posting-state";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
-import {
-  AiSearchFilter,
-  parseAiSearchFilterDemoState,
-} from "@/components/search/ai-search-filter";
+import { AiSearchFilter } from "@/components/search/ai-search-filter";
 import {
   runGetCompanyPostings,
   tryGetCompanyPostingsDirect,
@@ -147,12 +144,6 @@ export function CompanyPage({
 
   const hasMore = !exhausted && !isTruncated && postings.length < yearCount;
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
-  const aiFilterDemoState = process.env.NODE_ENV === "development"
-    ? parseAiSearchFilterDemoState(searchParams.get("ai-demo"))
-    : undefined;
-  const aiFilterUiEnabled =
-    process.env.NEXT_PUBLIC_AI_FILTER_UI_ENABLED === "true" ||
-    aiFilterDemoState !== undefined;
   const aiWatchlistDraft = useMemo(() => buildSearchWatchlistDraft({
     fallbackTitle: t({
       id: "watchlists.savedSearch.defaultTitle",
@@ -739,23 +730,17 @@ export function CompanyPage({
         searchAccessibleLabel={searchAccessibleLabel}
         statsSlot={statsSlot}
         companyScope={{ id: company.id, name: company.name }}
-        aiFilterSlot={aiFilterUiEnabled ? (
+        aiFilterSlot={(
           <AiSearchFilter
             isSubscribed={plan === "unlimited"}
             hasSearchFilters
             candidateCount={activeCount}
             isSearchPending={isSearching || searchUnavailable}
-            demoState={aiFilterDemoState}
             createsWatchlist
             watchlistDraft={aiWatchlistDraft}
             align="right"
-            onApply={aiFilterDemoState === "eligible"
-              ? async () => {
-                  await new Promise((resolve) => setTimeout(resolve, 650));
-                }
-              : undefined}
           />
-        ) : undefined}
+        )}
       />
 
       {statsRowMobile}

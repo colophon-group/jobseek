@@ -2,14 +2,10 @@
 
 import { Trans } from "@lingui/react/macro";
 import { useParams } from "next/navigation";
-import { useSession } from "@/components/providers/SessionProvider";
 
 export function TruncationPrompt({ type }: { type: "companies" | "postings" }) {
-  const { isPending } = useSession();
   const params = useParams();
   const lang = (params.lang as string) ?? "en";
-
-  if (isPending) return null;
 
   return (
     <div className="py-4">

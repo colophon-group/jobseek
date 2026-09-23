@@ -69,6 +69,7 @@ export function WatchlistCard({
   watchlist,
   activity,
   activityPending = true,
+  shareDisabledReason,
   href,
   onShare,
   onDelete,
@@ -76,6 +77,8 @@ export function WatchlistCard({
   watchlist: UserWatchlistOverview;
   activity: UserWatchlistActivityPreview | null;
   activityPending?: boolean;
+  /** Keeps the normal Share control visible but disabled with this explanation. */
+  shareDisabledReason?: string;
   href: string;
   onShare?: () => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -177,7 +180,7 @@ export function WatchlistCard({
   }
 
   async function handleShare(surface: "mobile" | "desktop") {
-    if (!onShare || shareState === "sharing") return;
+    if (!onShare || shareState === "sharing" || shareDisabledReason) return;
     clearTimeout(shareResetRef.current);
     setShareSurface(surface);
     setShareState("sharing");
@@ -212,15 +215,16 @@ export function WatchlistCard({
     }
   }
 
-  const shareLabel = shareState === "copied"
+  const shareLabel = shareDisabledReason ?? (shareState === "copied"
     ? t({ id: "watchlists.actions.copied", comment: "Confirmation after copying an unlisted watchlist link", message: "Link copied" })
     : shareState === "error"
       ? t({ id: "watchlists.actions.shareFailed", comment: "Error after an unlisted watchlist link cannot be copied", message: "Copy failed" })
-      : t({ id: "watchlists.actions.share", comment: "Action to share a watchlist by unlisted link", message: "Share" });
+      : t({ id: "watchlists.actions.share", comment: "Action to share a watchlist by unlisted link", message: "Share" }));
   const deleteLabel = t({ id: "watchlists.actions.delete", comment: "Delete watchlist action", message: "Delete" });
 
   const actionButtons = (mobile: boolean) => {
     const sharing = shareState === "sharing";
+    const shareDisabled = Boolean(shareDisabledReason);
     const shareButton = (
       <button
         ref={mobile ? mobileShareRef : undefined}
@@ -229,11 +233,11 @@ export function WatchlistCard({
         onFocus={() => {
           if (mobile) setMobileActions(true);
         }}
-        aria-disabled={sharing}
+        aria-disabled={sharing || shareDisabled}
         aria-busy={sharing}
         className={mobile
-          ? `relative z-0 flex min-h-full w-14 shrink-0 flex-col items-center justify-center gap-1 rounded-l-xl bg-transparent px-2 text-[10px] font-medium text-foreground transition-colors focus-visible:z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sharing ? "cursor-wait" : "cursor-pointer"}`
-          : `inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-border-soft hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sharing ? "cursor-wait" : "cursor-pointer"}`}
+          ? `relative z-0 flex min-h-full w-14 shrink-0 flex-col items-center justify-center gap-1 rounded-l-xl bg-transparent px-2 text-[10px] font-medium text-foreground transition-colors focus-visible:z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sharing ? "cursor-wait" : shareDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`
+          : `inline-flex size-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-border-soft hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sharing ? "cursor-wait" : shareDisabled ? "cursor-not-allowed opacity-50 hover:bg-transparent hover:text-muted" : "cursor-pointer"}`}
         aria-label={shareLabel}
       >
         {shareState === "sharing" ? (

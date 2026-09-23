@@ -11,6 +11,7 @@ import { createWatchlist, deleteWatchlist } from "@/lib/services/watchlists";
 import type { SearchWatchlistDraft } from "@/lib/search/watchlist-draft";
 import { isWatchlistId } from "@/lib/watchlist-id";
 import { logExternalError } from "@/lib/safe-external-error";
+import { assertAiFilterCandidateScope } from "@/lib/ai-filter/candidate-loader";
 
 type AiFilterMutationError =
   | "invalid_request"
@@ -33,12 +34,14 @@ export async function configureAiFilter(
   if (!isWatchlistId(watchlistId)) return { error: "not_found" };
 
   try {
+    await assertAiFilterCandidateScope({ ownerId, watchlistId });
     const state = await putAiFilterConfiguration({ ownerId, watchlistId, query });
     return { ok: true, state };
   } catch (error) {
     if (error instanceof AiFilterEntitlementError) {
       return { error: "subscription_required" };
     }
+    if (error instanceof TypeError) return { error: "invalid_request" };
     logExternalError(
       "error",
       { service: "database", operation: "configure_ai_filter_watchlist" },
@@ -80,6 +83,10 @@ export async function createAiFilteredWatchlist(input: {
   if ("error" in created) return { error: mappedCreationError(created.error) };
 
   try {
+    await assertAiFilterCandidateScope({
+      ownerId,
+      watchlistId: created.id,
+    });
     await putAiFilterConfiguration({
       ownerId,
       watchlistId: created.id,
@@ -103,6 +110,7 @@ export async function createAiFilteredWatchlist(input: {
     if (error instanceof AiFilterEntitlementError) {
       return { error: "subscription_required" };
     }
+    if (error instanceof TypeError) return { error: "invalid_request" };
     logExternalError(
       "error",
       { service: "database", operation: "create_ai_filter_watchlist" },

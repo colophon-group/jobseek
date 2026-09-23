@@ -13,6 +13,7 @@ import {
   readSmallJson,
 } from "@/lib/ai-filter/route-utils";
 import { getSessionUserIdFromHeaders } from "@/lib/sessionCache";
+import { assertAiFilterCandidateScope } from "@/lib/ai-filter/candidate-loader";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -43,6 +44,7 @@ export async function PUT(request: Request, context: Context) {
     if (Reflect.ownKeys(body).length !== 1 || !("query" in body)) {
       throw new TypeError("AI filter configuration contains unsupported fields");
     }
+    await assertAiFilterCandidateScope({ ...owner, signal: request.signal });
     const state = await putAiFilterConfiguration({ ...owner, query: body.query });
     return NextResponse.json(
       { state, workflow: null },

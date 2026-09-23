@@ -44,6 +44,7 @@ import {
 } from "./policy";
 
 const CACHE_LEASE_MS = 5 * 60 * 1_000;
+const UNCERTAIN_RETRY_COOLDOWN_MS = CACHE_LEASE_MS;
 const PROJECT_SCOPE_KEY = JEV_MODEL;
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -279,14 +280,72 @@ export class PostgresAiFilterExecutionRepository
         }
 
         const [unresolvedReservation] = await tx
-          .select({ id: aiFilterUsageLedger.id })
+          .select({
+            id: aiFilterUsageLedger.id,
+            status: aiFilterUsageLedger.status,
+            ownerId: aiFilterUsageLedger.ownerId,
+            monthStart: aiFilterUsageLedger.monthStart,
+            reservedNanodollars: aiFilterUsageLedger.reservedNanodollars,
+          })
           .from(aiFilterUsageLedger)
           .where(and(
             inArray(aiFilterUsageLedger.status, ["reserved", "uncertain"]),
             sql`${candidate.cacheKey} = ANY(${aiFilterUsageLedger.cacheKeys})`,
           ))
+          .for("update")
           .limit(1);
-        if (unresolvedReservation) {
+
+        const pendingLeaseExpired = Boolean(
+          existing?.status === "pending" &&
+          existing.leaseExpiresAt &&
+          existing.leaseExpiresAt.getTime() < input.now.getTime(),
+        );
+        const uncertainCooldownElapsed = Boolean(
+          existing?.status === "failed" &&
+          existing.failureCode === "uncertain_provider_unavailable" &&
+          existing.updatedAt.getTime() <=
+            input.now.getTime() - UNCERTAIN_RETRY_COOLDOWN_MS,
+        );
+        let reservationBlocksClaim = Boolean(unresolvedReservation);
+        if (
+          unresolvedReservation?.status === "reserved" &&
+          (pendingLeaseExpired || !existing)
+        ) {
+          // The worker disappeared after reserving spend. Conservatively
+          // charge the full reservation (the provider may have received the
+          // request), release the account reservation, and let a new worker
+          // retry the expired cache claim. Otherwise one orphaned ledger row
+          // strands these candidates forever on cache_singleflight_wait.
+          const reconciled = await tx
+            .update(aiFilterUsageLedger)
+            .set({
+              status: "uncertain",
+              actualNanodollars: unresolvedReservation.reservedNanodollars,
+              ambiguousAttempts: sql`${aiFilterUsageLedger.ambiguousAttempts} + 1`,
+              reconciledAt: input.now,
+            })
+            .where(and(
+              eq(aiFilterUsageLedger.id, unresolvedReservation.id),
+              eq(aiFilterUsageLedger.status, "reserved"),
+            ))
+            .returning({ id: aiFilterUsageLedger.id });
+          if (reconciled.length === 1) {
+            await this.reconcileAccounts(tx, {
+              ownerId: unresolvedReservation.ownerId,
+              monthStart: unresolvedReservation.monthStart,
+              reservedNanodollars: unresolvedReservation.reservedNanodollars,
+              actualNanodollars: unresolvedReservation.reservedNanodollars,
+              now: input.now,
+            });
+            reservationBlocksClaim = false;
+          }
+        } else if (
+          unresolvedReservation?.status === "uncertain" &&
+          (pendingLeaseExpired || uncertainCooldownElapsed || !existing)
+        ) {
+          reservationBlocksClaim = false;
+        }
+        if (reservationBlocksClaim) {
           waitingCacheKeys.push(candidate.cacheKey);
           continue;
         }
@@ -314,6 +373,18 @@ export class PostgresAiFilterExecutionRepository
                 or(
                   isNull(aiFilterGlobalCache.failureCode),
                   ne(aiFilterGlobalCache.failureCode, "uncertain_provider_unavailable"),
+                  and(
+                    eq(
+                      aiFilterGlobalCache.failureCode,
+                      "uncertain_provider_unavailable",
+                    ),
+                    lt(
+                      aiFilterGlobalCache.updatedAt,
+                      new Date(
+                        input.now.getTime() - UNCERTAIN_RETRY_COOLDOWN_MS,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

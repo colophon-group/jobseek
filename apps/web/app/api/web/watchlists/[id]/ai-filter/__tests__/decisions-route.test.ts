@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getSessionUserIdFromHeaders: vi.fn(),
   listAiFilterDecisions: vi.fn(),
+  listSharedAiFilterDecisions: vi.fn(),
   moveAiFilterDecision: vi.fn(),
   reportAiFilterMistake: vi.fn(),
   undoAiFilterDecisionMove: vi.fn(),
+  getAiFilterOwnerState: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionCache", () => ({
@@ -13,6 +15,7 @@ vi.mock("@/lib/sessionCache", () => ({
 }));
 vi.mock("@/lib/ai-filter/decision-service", () => ({
   listAiFilterDecisions: mocks.listAiFilterDecisions,
+  listSharedAiFilterDecisions: mocks.listSharedAiFilterDecisions,
   moveAiFilterDecision: mocks.moveAiFilterDecision,
   reportAiFilterMistake: mocks.reportAiFilterMistake,
   undoAiFilterDecisionMove: mocks.undoAiFilterDecisionMove,
@@ -20,6 +23,7 @@ vi.mock("@/lib/ai-filter/decision-service", () => ({
 vi.mock("@/lib/ai-filter/configuration-service", () => ({
   AiFilterNotFoundError: class AiFilterNotFoundError extends Error {},
   AiFilterEntitlementError: class AiFilterEntitlementError extends Error {},
+  getAiFilterOwnerState: mocks.getAiFilterOwnerState,
 }));
 vi.mock("@/lib/ai-filter/postgres-repository", () => ({
   AiFilterAuthorizationError: class AiFilterAuthorizationError extends Error {},
@@ -35,6 +39,7 @@ vi.mock("@/lib/ai-filter/candidate-loader", () => ({
 }));
 
 import { GET as listDecisions } from "../decisions/route";
+import { AiFilterNotFoundError } from "@/lib/ai-filter/configuration-service";
 import {
   DELETE as undoDecision,
   PATCH as moveDecision,
@@ -57,6 +62,11 @@ describe("owner-only AI filter decision routes", () => {
       nextOffset: 0,
       hasMore: false,
     });
+    mocks.listSharedAiFilterDecisions.mockResolvedValue({
+      decisions: [],
+      nextOffset: 0,
+      hasMore: false,
+    });
     mocks.moveAiFilterDecision.mockResolvedValue({
       decision: "accepted",
       changed: true,
@@ -66,6 +76,11 @@ describe("owner-only AI filter decision routes", () => {
       changed: true,
     });
     mocks.reportAiFilterMistake.mockResolvedValue({ reported: true });
+    mocks.getAiFilterOwnerState.mockResolvedValue({
+      watchlistId,
+      enabled: true,
+      status: "caught_up",
+    });
   });
 
   it("lists one bucket with bounded pagination and private caching", async () => {
@@ -84,6 +99,43 @@ describe("owner-only AI filter decision routes", () => {
       bucket: "accepted",
       offset: 5,
       limit: 10,
+    }));
+  });
+
+  it("lets an anonymous viewer page accepted results from a shared watchlist", async () => {
+    mocks.getSessionUserIdFromHeaders.mockResolvedValue(null);
+
+    const response = await listDecisions(
+      new Request(
+        `https://jseek.co/api/web/watchlists/${watchlistId}/ai-filter/decisions?bucket=accepted&offset=20&limit=20`,
+      ),
+      listContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.listAiFilterDecisions).not.toHaveBeenCalled();
+    expect(mocks.listSharedAiFilterDecisions).toHaveBeenCalledWith(expect.objectContaining({
+      watchlistId,
+      offset: 20,
+      limit: 20,
+    }));
+  });
+
+  it("falls back to shared accepted results for a signed-in non-owner", async () => {
+    mocks.listAiFilterDecisions.mockRejectedValueOnce(new AiFilterNotFoundError());
+
+    const response = await listDecisions(
+      new Request(
+        `https://jseek.co/api/web/watchlists/${watchlistId}/ai-filter/decisions?bucket=accepted&offset=0&limit=20`,
+      ),
+      listContext,
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.listSharedAiFilterDecisions).toHaveBeenCalledWith(expect.objectContaining({
+      watchlistId,
+      offset: 0,
+      limit: 20,
     }));
   });
 

@@ -14,6 +14,11 @@
       "tag": "0092_jev_ai_filter_foundation",
       "createdAt": 1789988400000,
       "hash": "2a1319cc5f28b6cede7924e38ea47ca38f9a45d46aef9a87e20f9530d7c71e7a"
+    },
+    {
+      "tag": "0093_ai_filter_historical_horizon",
+      "createdAt": 1790078400000,
+      "hash": "f6287811e602d8cf1dbc504d40c4ef5484d033d2c5ac5f26c0072e364a4ecdb8"
     }
   ]
 }

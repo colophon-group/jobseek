@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, lte, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -12,10 +12,16 @@ import {
   watchlist,
 } from "@/db/schema";
 import type { AiFilterDecisionValue } from "./contract";
-import { loadAiFilterDecisionCandidates } from "./candidate-loader";
-import { AiFilterNotFoundError } from "./configuration-service";
+import { readWatchlistCandidatesByIds } from "@/lib/services/watchlist-matcher";
+import {
+  AiFilterNotFoundError,
+  getSharedAiFilterOwnerId,
+} from "./configuration-service";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type AiFilterDecisionPosting = Awaited<
+  ReturnType<typeof readWatchlistCandidatesByIds>
+>[number];
 
 function requireIdempotencyKey(value: unknown): string {
   if (
@@ -84,6 +90,13 @@ function effectiveDecision(decision: {
   return decision.userOverride ?? decision.modelDecision;
 }
 
+async function hydrateCurrentDecisionPostings(
+  candidateIds: readonly string[],
+  signal?: AbortSignal,
+): Promise<AiFilterDecisionPosting[]> {
+  return readWatchlistCandidatesByIds(candidateIds, signal);
+}
+
 export async function listAiFilterDecisions(input: {
   ownerId: string;
   watchlistId: string;
@@ -92,6 +105,8 @@ export async function listAiFilterDecisions(input: {
   limit?: number;
   now?: Date;
   signal?: AbortSignal;
+  /** Shared viewers page durable decisions without extending evaluation. */
+  persistedOnly?: boolean;
 }) {
   const offset = input.offset ?? 0;
   const limit = input.limit ?? 25;
@@ -100,10 +115,13 @@ export async function listAiFilterDecisions(input: {
     throw new TypeError("Invalid limit");
   }
   const now = input.now ?? new Date();
-  const [coverage] = await db
+  const [resource] = await db
     .select({
-      resourceCount: sql<number>`count(DISTINCT ${aiFilterConfiguration.id})::integer`,
-      coveredOffset: sql<number>`COALESCE(MAX(${aiFilterSegment.selectionOffset} + ${aiFilterSegment.scannedCount}), 0)::integer`,
+      queryVersionId: aiFilterQueryVersion.id,
+      horizonStartedAt: aiFilterQueryVersion.horizonStartedAt,
+      horizonEndsAt: aiFilterQueryVersion.horizonEndsAt,
+      lastCaughtUpAt: aiFilterConfiguration.lastCaughtUpAt,
+      lastSweepAt: aiFilterConfiguration.lastSweepAt,
     })
     .from(aiFilterConfiguration)
     .innerJoin(
@@ -120,95 +138,93 @@ export async function listAiFilterDecisions(input: {
         eq(aiFilterQueryVersion.revision, aiFilterConfiguration.currentRevision),
       ),
     )
-    .leftJoin(
-      aiFilterSegment,
-      and(
-        eq(aiFilterSegment.watchlistId, watchlist.id),
-        eq(aiFilterSegment.queryVersionId, aiFilterQueryVersion.id),
-      ),
-    )
     .where(and(
       eq(watchlist.id, input.watchlistId),
       eq(watchlist.userId, input.ownerId),
-    ));
-  if (!coverage || coverage.resourceCount !== 1) throw new AiFilterNotFoundError();
-  const availableCandidates = coverage.coveredOffset - offset;
-  // Never move the product cursor beyond classified candidates. Advancing
-  // through an unevaluated range would permanently skip decisions that land
-  // there after the workflow catches up.
-  if (availableCandidates <= 0) {
-    return { decisions: [], nextOffset: offset, hasMore: true };
-  }
-  const candidatePage = await loadAiFilterDecisionCandidates({
-    ownerId: input.ownerId,
-    watchlistId: input.watchlistId,
-    offset,
-    limit: Math.min(100, limit * 4, availableCandidates),
-    now,
-    signal: input.signal,
-  });
-  const candidateIds = candidatePage.postings.map((posting) => posting.id);
-  if (candidateIds.length === 0) {
-    return { decisions: [], nextOffset: offset, hasMore: false };
-  }
-  const rows = await db
-    .select({
-      decisionId: aiFilterDecision.id,
-      candidateId: aiFilterDecision.candidateId,
-      modelDecision: aiFilterDecision.modelDecision,
-      userOverride: aiFilterDecision.userOverride,
-      postingFirstSeenAt: aiFilterDecision.postingFirstSeenAt,
-      decidedAt: aiFilterDecision.decidedAt,
-      expiresAt: aiFilterDecision.expiresAt,
-    })
-    .from(aiFilterDecision)
-    .innerJoin(
-      watchlist,
-      and(
-        eq(watchlist.id, aiFilterDecision.watchlistId),
-        eq(watchlist.userId, aiFilterDecision.ownerId),
-      ),
-    )
-    .innerJoin(
-      aiFilterConfiguration,
-      and(
-        eq(aiFilterConfiguration.watchlistId, watchlist.id),
-        eq(aiFilterConfiguration.ownerId, watchlist.userId),
-      ),
-    )
-    .innerJoin(
-      aiFilterQueryVersion,
-      and(
-        eq(aiFilterQueryVersion.configurationId, aiFilterConfiguration.id),
-        eq(aiFilterQueryVersion.revision, aiFilterConfiguration.currentRevision),
-        eq(aiFilterQueryVersion.id, aiFilterDecision.queryVersionId),
-      ),
-    )
-    .where(and(
-      eq(watchlist.id, input.watchlistId),
-      eq(watchlist.userId, input.ownerId),
-      inArray(aiFilterDecision.candidateId, candidateIds),
-      gt(aiFilterDecision.expiresAt, now),
-      sql`COALESCE(${aiFilterDecision.userOverride}, ${aiFilterDecision.modelDecision}) = ${input.bucket}`,
     ))
-    .limit(candidateIds.length);
-  const rowByCandidate = new Map(rows.map((row) => [row.candidateId, row]));
+    .limit(1);
+  if (!resource) throw new AiFilterNotFoundError();
+
+  const [rows, [bucketCount], [latestSegment], [historicalFoundation]] = await Promise.all([
+    db
+      .select({
+        decisionId: aiFilterDecision.id,
+        candidateId: aiFilterDecision.candidateId,
+        modelDecision: aiFilterDecision.modelDecision,
+        userOverride: aiFilterDecision.userOverride,
+        postingFirstSeenAt: aiFilterDecision.postingFirstSeenAt,
+        decidedAt: aiFilterDecision.decidedAt,
+        expiresAt: aiFilterDecision.expiresAt,
+      })
+      .from(aiFilterDecision)
+      .where(and(
+        eq(aiFilterDecision.watchlistId, input.watchlistId),
+        eq(aiFilterDecision.ownerId, input.ownerId),
+        eq(aiFilterDecision.queryVersionId, resource.queryVersionId),
+        gt(aiFilterDecision.expiresAt, now),
+        sql`COALESCE(${aiFilterDecision.userOverride}, ${aiFilterDecision.modelDecision}) = ${input.bucket}`,
+      ))
+      .orderBy(
+        desc(aiFilterDecision.postingFirstSeenAt),
+        asc(aiFilterDecision.candidateId),
+      )
+      .offset(offset)
+      .limit(limit + 1),
+    offset === 0
+      ? db
+          .select({ total: sql<number>`count(*)::integer` })
+          .from(aiFilterDecision)
+          .where(and(
+            eq(aiFilterDecision.watchlistId, input.watchlistId),
+            eq(aiFilterDecision.ownerId, input.ownerId),
+            eq(aiFilterDecision.queryVersionId, resource.queryVersionId),
+            gt(aiFilterDecision.expiresAt, now),
+            sql`COALESCE(${aiFilterDecision.userOverride}, ${aiFilterDecision.modelDecision}) = ${input.bucket}`,
+          ))
+      : Promise.resolve([{ total: 0 }]),
+    db
+      .select({
+        status: aiFilterSegment.status,
+        windowStart: aiFilterSegment.windowStart,
+        windowEnd: aiFilterSegment.windowEnd,
+      })
+      .from(aiFilterSegment)
+      .where(and(
+        eq(aiFilterSegment.watchlistId, input.watchlistId),
+        eq(aiFilterSegment.queryVersionId, resource.queryVersionId),
+      ))
+      .orderBy(desc(aiFilterSegment.createdAt))
+      .limit(1),
+    db
+      .select({ id: aiFilterSegment.id })
+      .from(aiFilterSegment)
+      .where(and(
+        eq(aiFilterSegment.watchlistId, input.watchlistId),
+        eq(aiFilterSegment.queryVersionId, resource.queryVersionId),
+        eq(aiFilterSegment.status, "caught_up"),
+        lte(aiFilterSegment.windowStart, resource.horizonStartedAt),
+      ))
+      .limit(1),
+  ]);
+  const pageRows = rows.slice(0, limit);
+  const hydrationIds = pageRows.map((row) => row.candidateId);
+  const postings = await hydrateCurrentDecisionPostings(hydrationIds, input.signal);
+  const postingById = new Map(postings.map((posting) => [posting.id, posting]));
   const decisions: Array<{
     effectiveDecision: AiFilterDecisionValue;
     postingFirstSeenAt: string;
     decidedAt: string;
     expiresAt: string;
-    posting: (typeof candidatePage.postings)[number];
+    posting: AiFilterDecisionPosting;
     decisionId: string;
     candidateId: string;
     modelDecision: AiFilterDecisionValue;
     userOverride: AiFilterDecisionValue | null;
   }> = [];
-  let scannedCount = 0;
-  for (const posting of candidatePage.postings) {
-    scannedCount += 1;
-    const row = rowByCandidate.get(posting.id);
-    if (row) decisions.push({
+  for (const row of pageRows) {
+    const posting = postingById.get(row.candidateId);
+    if (!posting) continue;
+    decisions.push({
       ...row,
       effectiveDecision: row.userOverride ?? row.modelDecision,
       postingFirstSeenAt: row.postingFirstSeenAt.toISOString(),
@@ -216,14 +232,43 @@ export async function listAiFilterDecisions(input: {
       expiresAt: row.expiresAt.toISOString(),
       posting,
     });
-    if (decisions.length === limit) break;
   }
-  const nextOffset = offset + scannedCount;
+
+  const caughtUpCoversQueryHorizon = Boolean(
+    latestSegment?.status === "caught_up" &&
+    historicalFoundation &&
+    resource.lastCaughtUpAt &&
+    resource.lastSweepAt &&
+    resource.lastCaughtUpAt.getTime() >= resource.horizonEndsAt.getTime() &&
+    latestSegment.windowEnd.getTime() >= resource.horizonEndsAt.getTime(),
+  );
+
   return {
     decisions,
-    nextOffset,
-    hasMore: nextOffset < candidatePage.total,
+    total: offset === 0 ? bucketCount?.total ?? 0 : undefined,
+    nextOffset: offset + pageRows.length,
+    hasMore: rows.length > limit || (!input.persistedOnly && !caughtUpCoversQueryHorizon),
   };
+}
+
+/** Read accepted decisions from an entitled owner's unlisted shared watchlist. */
+export async function listSharedAiFilterDecisions(input: {
+  watchlistId: string;
+  offset?: number;
+  limit?: number;
+  now?: Date;
+  signal?: AbortSignal;
+}) {
+  const ownerId = await getSharedAiFilterOwnerId({
+    watchlistId: input.watchlistId,
+    now: input.now,
+  });
+  return listAiFilterDecisions({
+    ...input,
+    ownerId,
+    bucket: "accepted",
+    persistedOnly: true,
+  });
 }
 
 export async function moveAiFilterDecision(input: {

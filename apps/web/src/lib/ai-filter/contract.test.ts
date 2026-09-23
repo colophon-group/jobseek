@@ -166,7 +166,7 @@ describe("parseAiFilterSegmentRequest", () => {
     }
   });
 
-  it("rejects future, incorrect, non-canonical, and overflowing lifetimes", () => {
+  it("rejects future, excessive, and non-canonical lifetimes", () => {
     expect(() =>
       parseAiFilterSegmentRequest({
         ...baseRequest,
@@ -181,11 +181,11 @@ describe("parseAiFilterSegmentRequest", () => {
         candidates: [
           {
             ...baseRequest.candidates[1],
-            productExpiresAt: "2026-09-13T12:00:00.000Z",
+            productExpiresAt: "2026-10-02T12:00:00.001Z",
           },
         ],
       }),
-    ).toThrow(/retention boundary/);
+    ).toThrow(/30-day product window/);
 
     expect(() =>
       parseAiFilterSegmentRequest({
@@ -207,10 +207,10 @@ describe("parseAiFilterSegmentRequest", () => {
           },
         ],
       }),
-    ).toThrow(/out of range/);
+    ).toThrow(/must precede/);
   });
 
-  it("composes strict retention with the whole-second half-open reader window", () => {
+  it("supports historical active candidates within the decision retention window", () => {
     const effectiveWindowStart = {
       candidateId: CANDIDATE_ONE,
       postingFirstSeenAt: "2026-08-02T12:00:01.000Z",
@@ -918,7 +918,7 @@ describe("parseAiFilterTerminalResult", () => {
 });
 
 describe("product decision retention", () => {
-  it("attaches run, owner, revisions, and the posting-derived lifetime", () => {
+  it("attaches run, owner, revisions, and the bounded decision lifetime", () => {
     const decisions = materializeAiFilterProductDecisions(
       baseRequest,
       {

@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import { Crown, Funnel, LoaderCircle, X } from "lucide-react";
-import { useLingui } from "@lingui/react/macro";
+import { Crown, Funnel, LoaderCircle, Pencil, Trash2, X } from "lucide-react";
+import { Plural, useLingui } from "@lingui/react/macro";
 
 import { Button } from "@/components/ui/Button";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -17,35 +25,16 @@ import {
 } from "@/lib/actions/ai-filter";
 import type { AiFilterUiState } from "@/lib/ai-filter/ui-contract";
 import type { SearchWatchlistDraft } from "@/lib/search/watchlist-draft";
+import { stagePendingWatchlist } from "@/lib/pending-watchlist";
 import {
   getAiSearchEligibility,
-  type AiSearchEligibility,
 } from "@/lib/ai-filter/search-eligibility";
-
-export type AiSearchFilterDemoState =
-  | "free"
-  | "add-filters"
-  | "too-broad"
-  | "eligible";
-
-export function parseAiSearchFilterDemoState(
-  value: string | null,
-): AiSearchFilterDemoState | undefined {
-  return value === "free" ||
-    value === "add-filters" ||
-    value === "too-broad" ||
-    value === "eligible"
-    ? value
-    : undefined;
-}
 
 type Props = {
   isSubscribed: boolean;
   hasSearchFilters: boolean;
   candidateCount?: number;
   isSearchPending?: boolean;
-  demoState?: AiSearchFilterDemoState;
-  onApply?: (query: string) => Promise<void>;
   /** The prompt creates a new watchlist rather than refining an existing one. */
   createsWatchlist?: boolean;
   /** Saved-search scope used when this control creates a watchlist. */
@@ -54,42 +43,198 @@ type Props = {
   watchlistId?: string;
   /** Persisted criteria for an already-configured watchlist. */
   initialQuery?: string | null;
+  /** Live number of active postings accepted by the saved request. */
+  narrowedResultCount?: number;
   /** Keeps the watchlist result surface in sync with configuration changes. */
   onStateChange?: (state: AiFilterUiState | null) => void;
   align?: "left" | "right";
+  presentation?: "popover" | "drawer";
+  /** Narrowed results rendered inside the drawer while the broad feed stays below. */
+  drawerContent?: ReactNode | ((isOpen: boolean) => ReactNode);
+  /** Lets the result stack remove the covered broad list from page layout. */
+  onDrawerOpenChange?: (open: boolean) => void;
+  /** Shared watchlists can expose saved results without owner mutation controls. */
+  readOnly?: boolean;
 };
 
-function demoEligibility(
-  state: AiSearchFilterDemoState | undefined,
-  fallback: AiSearchEligibility,
-): AiSearchEligibility {
-  if (!state) return fallback;
-  if (state === "free") {
-    return getAiSearchEligibility({
-      isSubscribed: false,
-      hasSearchFilters: true,
-      candidateCount: 24,
-    });
+const SCROLL_REMINDER_DISTANCE = 560;
+const SCROLL_REMINDER_MIN_Y = 480;
+
+function ScrollNarrowingReminder({
+  enabled,
+  storageKey,
+  subscriptionRequired,
+  signedOut,
+  hasNarrowedResults,
+  narrowedResultCount,
+  onAction,
+}: {
+  enabled: boolean;
+  storageKey: string;
+  subscriptionRequired: boolean;
+  signedOut: boolean;
+  hasNarrowedResults: boolean;
+  narrowedResultCount: number;
+  onAction: () => void;
+}) {
+  const { t } = useLingui();
+  const [dismissed, setDismissed] = useState<boolean | null>(null);
+  const [visible, setVisible] = useState(false);
+  const lastScrollYRef = useRef(0);
+  const downwardDistanceRef = useRef(0);
+
+  useEffect(() => {
+    try {
+      setDismissed(window.sessionStorage.getItem(storageKey) === "dismissed");
+    } catch {
+      setDismissed(false);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!enabled || dismissed !== false) {
+      setVisible(false);
+      return;
+    }
+
+    lastScrollYRef.current = window.scrollY;
+    downwardDistanceRef.current = 0;
+    const handleScroll = () => {
+      const nextScrollY = window.scrollY;
+      const delta = nextScrollY - lastScrollYRef.current;
+      lastScrollYRef.current = nextScrollY;
+
+      if (delta > 0) downwardDistanceRef.current += delta;
+      else if (delta < 0) downwardDistanceRef.current = 0;
+
+      if (
+        nextScrollY >= SCROLL_REMINDER_MIN_Y &&
+        downwardDistanceRef.current >= SCROLL_REMINDER_DISTANCE
+      ) {
+        setVisible(true);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [dismissed, enabled]);
+
+  function dismiss() {
+    setVisible(false);
+    setDismissed(true);
+    try {
+      window.sessionStorage.setItem(storageKey, "dismissed");
+    } catch {
+      // The reminder can still be dismissed for this render when storage is unavailable.
+    }
   }
-  if (state === "add-filters") {
-    return getAiSearchEligibility({
-      isSubscribed: true,
-      hasSearchFilters: false,
-      candidateCount: undefined,
-    });
-  }
-  if (state === "too-broad") {
-    return getAiSearchEligibility({
-      isSubscribed: true,
-      hasSearchFilters: true,
-      candidateCount: 12_500,
-    });
-  }
-  return getAiSearchEligibility({
-    isSubscribed: true,
-    hasSearchFilters: true,
-    candidateCount: 24,
-  });
+
+  if (!visible || dismissed !== false) return null;
+
+  const title = hasNarrowedResults
+    ? t({
+        id: "search.aiFilter.reminder.resultsTitle",
+        comment: "State-neutral title of the scroll reminder for an already-narrowed watchlist",
+        message: "Narrowed results",
+      })
+    : t({
+        id: "search.aiFilter.reminder.title",
+        comment: "Title of the scroll reminder advertising precise result matching",
+        message: "Narrow these results",
+      });
+
+  return (
+    <aside
+      role="dialog"
+      aria-label={t({
+        id: "search.aiFilter.reminder.ariaLabel",
+        comment: "Accessible label for the reminder shown after sustained result scrolling",
+        message: "Narrow results reminder",
+      })}
+      className="fixed bottom-16 left-1/2 z-40 flex w-[min(30rem,calc(100vw-2rem))] -translate-x-1/2 items-center gap-2.5 rounded-xl border border-border-soft bg-surface-alpha p-2 shadow-xl shadow-black/15 backdrop-blur-md motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 md:bottom-4"
+    >
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+        {subscriptionRequired ? (
+          <Crown size={15} aria-hidden="true" />
+        ) : (
+          <Funnel size={15} aria-hidden="true" />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-xs font-semibold text-foreground">{title}</span>
+          {subscriptionRequired ? (
+            <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+              {t({ id: "common.plan.pro", comment: "Short Pro subscription badge", message: "Pro" })}
+            </span>
+          ) : null}
+        </div>
+        <p className="truncate text-[11px] text-muted">
+          {subscriptionRequired
+            ? t({
+                id: "search.aiFilter.reminder.proBody",
+                comment: "Compact Pro teaser shown after sustained result scrolling",
+                message: "Evaluate every posting against what matters to you.",
+              })
+            : hasNarrowedResults
+              ? (
+                  <Plural
+                    id="search.aiFilter.reminder.matchCount"
+                    comment="Match count in the scroll reminder for an already-narrowed watchlist"
+                    value={narrowedResultCount}
+                    one="# match in this feed"
+                    other="# matches in this feed"
+                  />
+                )
+              : t({
+                  id: "search.aiFilter.reminder.body",
+                  comment: "Compact reminder that a focused watchlist can be narrowed precisely",
+                  message: "Describe what matters and focus this feed.",
+                })}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          dismiss();
+          onAction();
+        }}
+        className="shrink-0 cursor-pointer whitespace-nowrap rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-contrast transition-opacity hover:opacity-90"
+      >
+        {subscriptionRequired
+          ? signedOut
+            ? t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })
+            : t({
+                id: "search.aiFilter.subscription.cta.short",
+                comment: "Short link to the Pro subscription from the compact watchlist control",
+                message: "Explore Pro",
+              })
+          : hasNarrowedResults
+            ? t({
+                id: "search.aiFilter.viewResults",
+                comment: "Short button that opens narrowed watchlist results",
+                message: "View",
+              })
+            : t({
+                id: "search.aiFilter.reminder.action",
+                comment: "Short action in the scroll reminder that opens precise matching setup",
+                message: "Narrow results",
+              })}
+      </button>
+      <button
+        type="button"
+        onClick={dismiss}
+        className="shrink-0 cursor-pointer rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        aria-label={t({
+          id: "search.aiFilter.reminder.dismiss",
+          comment: "Accessible label for dismissing the precise matching scroll reminder",
+          message: "Dismiss narrow results reminder",
+        })}
+      >
+        <X size={14} aria-hidden="true" />
+      </button>
+    </aside>
+  );
 }
 
 export function AiSearchFilter({
@@ -97,63 +242,65 @@ export function AiSearchFilter({
   hasSearchFilters,
   candidateCount,
   isSearchPending = false,
-  demoState,
-  onApply,
   createsWatchlist = false,
   watchlistDraft,
   watchlistId,
   initialQuery,
+  narrowedResultCount,
   onStateChange,
   align = "left",
+  presentation = "popover",
+  drawerContent,
+  onDrawerOpenChange,
+  readOnly = false,
 }: Props) {
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
   const browserSearchParams = useBrowserSearchParams();
   const { isLoggedIn, isPending: isSessionPending } = useSession();
+  const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const queryId = useId();
   const resumeRequested = browserSearchParams.get("narrow") === "1";
-  const [open, setOpen] = useState(demoState !== undefined || resumeRequested);
   const persistedQuery = initialQuery?.trim() || null;
+  const isDrawer = presentation === "drawer";
+  const eligibility = getAiSearchEligibility({
+    isSubscribed: readOnly || isSubscribed,
+    hasSearchFilters,
+    candidateCount: isSearchPending ? undefined : candidateCount,
+  });
+  const resumeCanOpen = resumeRequested && eligibility.status === "eligible";
+  const [open, setOpen] = useState(resumeCanOpen);
   const [query, setQuery] = useState(persistedQuery ?? "");
   const [isApplying, setIsApplying] = useState(false);
   const [activeQuery, setActiveQuery] = useState<string | null>(persistedQuery);
+  const [isEditing, setIsEditing] = useState(false);
   const appliedQueryRef = useRef<string | null>(persistedQuery);
   const [mutationError, setMutationError] = useState("");
+  const drawerScrollYRef = useRef<number | null>(null);
+  const [drawerLayoutRevision, setDrawerLayoutRevision] = useState(0);
+  const resolvedDrawerContent = typeof drawerContent === "function"
+    ? drawerContent(open)
+    : drawerContent;
+  const setPanelOpen = useCallback((nextOpen: boolean) => {
+    const resolvedOpen = nextOpen && isDrawer &&
+      eligibility.status === "subscription_required"
+      ? false
+      : nextOpen;
+    if (isDrawer) {
+      drawerScrollYRef.current = window.scrollY;
+      setDrawerLayoutRevision((revision) => revision + 1);
+    }
+    setOpen(resolvedOpen);
+    if (isDrawer) {
+      onDrawerOpenChange?.(
+        resolvedOpen && appliedQueryRef.current !== null,
+      );
+    }
+  }, [eligibility.status, isDrawer, onDrawerOpenChange]);
 
-  useEffect(() => {
-    if (demoState !== undefined || resumeRequested) setOpen(true);
-  }, [demoState, resumeRequested]);
-
-  useEffect(() => {
-    appliedQueryRef.current = persistedQuery;
-    setQuery(persistedQuery ?? "");
-    setActiveQuery(persistedQuery);
-  }, [persistedQuery]);
-
-  const eligibility = demoEligibility(
-    demoState,
-    getAiSearchEligibility({
-      isSubscribed,
-      hasSearchFilters,
-      candidateCount: isSearchPending ? undefined : candidateCount,
-    }),
-  );
-  const eligible = eligibility.status === "eligible";
-  const canApply = Boolean(
-    onApply ||
-    (createsWatchlist && watchlistDraft) ||
-    (!createsWatchlist && watchlistId),
-  );
-
-  function resumePath(): string {
-    const url = new URL(window.location.href);
-    url.searchParams.set("narrow", "1");
-    return `${url.pathname}${url.search}${url.hash}`;
-  }
-
-  function clearResumeRequest() {
+  const clearResumeRequest = useCallback(() => {
     if (!resumeRequested) return;
     const url = new URL(window.location.href);
     url.searchParams.delete("narrow");
@@ -162,30 +309,128 @@ export function AiSearchFilter({
       "",
       `${url.pathname}${url.search}${url.hash}`,
     );
+  }, [resumeRequested]);
+
+  useLayoutEffect(() => {
+    if (!isDrawer || drawerScrollYRef.current == null) return;
+    const scrollY = drawerScrollYRef.current;
+    drawerScrollYRef.current = null;
+    window.scrollTo({ top: scrollY, behavior: "instant" });
+  }, [drawerLayoutRevision, isDrawer, open]);
+
+  useEffect(() => {
+    if (
+      resumeRequested &&
+      eligibility.status === "subscription_required" &&
+      !isSessionPending
+    ) {
+      setPanelOpen(false);
+      clearResumeRequest();
+      return;
+    }
+    if (resumeCanOpen) setPanelOpen(true);
+  }, [
+    eligibility.status,
+    isSessionPending,
+    resumeCanOpen,
+    resumeRequested,
+    clearResumeRequest,
+    setPanelOpen,
+  ]);
+
+  useEffect(() => {
+    appliedQueryRef.current = persistedQuery;
+    setQuery(persistedQuery ?? "");
+    setActiveQuery(persistedQuery);
+    setIsEditing(false);
+  }, [persistedQuery]);
+
+  const eligible = eligibility.status === "eligible";
+  const canMountDrawerContent =
+    isDrawer &&
+    resolvedDrawerContent != null &&
+    eligibility.status !== "subscription_required";
+  const canApply = Boolean(
+    (createsWatchlist && watchlistDraft) ||
+    (!createsWatchlist && watchlistId),
+  );
+  const safeNarrowedResultCount = Number.isFinite(narrowedResultCount)
+    ? Math.max(0, Math.trunc(narrowedResultCount!))
+    : 0;
+
+  function resumePath(): string {
+    const url = new URL(window.location.href);
+    url.searchParams.set("narrow", "1");
+    return `${url.pathname}${url.search}${url.hash}`;
   }
 
   function closePanel() {
-    setOpen(false);
+    setPanelOpen(false);
+    setIsEditing(false);
     if (!createsWatchlist) setActiveQuery(appliedQueryRef.current);
     clearResumeRequest();
   }
 
+  function openPanel() {
+    setPanelOpen(true);
+  }
+
+  function beginEditing(queryToEdit: string) {
+    if (isDrawer) {
+      drawerScrollYRef.current = window.scrollY;
+      setDrawerLayoutRevision((revision) => revision + 1);
+    }
+    setQuery(queryToEdit);
+    setIsEditing(true);
+    setPanelOpen(true);
+  }
+
+  function cancelEditing() {
+    if (!activeQuery) {
+      closePanel();
+      return;
+    }
+    if (isDrawer) {
+      drawerScrollYRef.current = window.scrollY;
+      setDrawerLayoutRevision((revision) => revision + 1);
+    }
+    setQuery(activeQuery);
+    setIsEditing(false);
+  }
+
   function goToSignIn() {
-    router.push(withAuthReturnPath(lp("/sign-in"), resumePath()));
+    const staged = createsWatchlist && watchlistDraft
+      ? stagePendingWatchlist({ kind: "create", draft: watchlistDraft })
+      : false;
+    router.push(withAuthReturnPath(
+      lp("/sign-in"),
+      staged ? lp("/watchlists") : resumePath(),
+    ));
   }
 
   function goToSubscription() {
+    const billingPath = lp("/settings/billing");
     const params = new URLSearchParams({ next: resumePath() });
-    router.push(`${lp("/settings/billing")}?${params.toString()}`);
+    router.push(`${billingPath}?${params.toString()}`);
+  }
+
+  function handleReminderAction() {
+    if (eligibility.status === "subscription_required") {
+      if (!isLoggedIn) goToSignIn();
+      else goToSubscription();
+      return;
+    }
+    openPanel();
+    window.requestAnimationFrame(() => {
+      rootRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    });
   }
 
   // The control is progressive disclosure: ordinary filters must first
-  // produce a non-empty, economically bounded candidate set. Demo states
-  // remain available locally so each gate can be reviewed deliberately.
+  // produce a non-empty, economically bounded candidate set.
   if (
     !activeQuery &&
     !persistedQuery &&
-    demoState === undefined &&
     (
       !hasSearchFilters ||
       isSearchPending ||
@@ -204,9 +449,7 @@ export function AiSearchFilter({
     setIsApplying(true);
     setMutationError("");
     try {
-      if (onApply) {
-        await onApply(normalized);
-      } else if (createsWatchlist && watchlistDraft) {
+      if (createsWatchlist && watchlistDraft) {
         const result = await createAiFilteredWatchlist({
           draft: watchlistDraft,
           query: normalized,
@@ -261,8 +504,14 @@ export function AiSearchFilter({
         appliedQueryRef.current = normalized;
         setQuery(normalized);
         setActiveQuery(normalized);
+        setIsEditing(false);
       }
-      closePanel();
+      if (isDrawer && !createsWatchlist) {
+        clearResumeRequest();
+        setPanelOpen(true);
+      } else {
+        closePanel();
+      }
     } finally {
       setIsApplying(false);
     }
@@ -276,7 +525,7 @@ export function AiSearchFilter({
       const result = await disableAiFilter(watchlistId);
       if ("error" in result) {
         setActiveQuery(null);
-        setOpen(true);
+        setPanelOpen(true);
         setMutationError(t({
           id: "search.aiFilter.removeFailed",
           comment: "Error shown when precise matching cannot be removed from a watchlist",
@@ -286,23 +535,21 @@ export function AiSearchFilter({
       }
       setActiveQuery(null);
       setQuery("");
+      setIsEditing(false);
       appliedQueryRef.current = null;
       onStateChange?.(null);
+      if (isDrawer) setPanelOpen(false);
     } finally {
       setIsApplying(false);
     }
   }
 
-  if (activeQuery) {
+  if (activeQuery && !isDrawer && !isEditing) {
     return (
       <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
-          onClick={() => {
-            setQuery(activeQuery);
-            setActiveQuery(null);
-            setOpen(true);
-          }}
+          onClick={() => beginEditing(activeQuery)}
           className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
           aria-label={t({
             id: "search.aiFilter.edit",
@@ -331,39 +578,269 @@ export function AiSearchFilter({
   }
 
   return (
-    <div className="relative">
-      <Button
-        type="button"
-        onClick={() => {
-          if (open) closePanel();
-          else setOpen(true);
-        }}
-        size="sm"
-        className="h-8 gap-1 px-3 text-xs"
-        aria-expanded={open}
-        aria-controls={panelId}
-      >
-        <Funnel size={14} aria-hidden="true" />
-        {t({
-          id: "search.aiFilter.toggle",
-          comment: "Button that opens the natural-language AI filter on a job-results surface",
-          message: "Narrow down search",
-        })}
-      </Button>
+    <div
+      ref={rootRef}
+      className={isDrawer
+      ? "w-full min-w-0 rounded-lg bg-surface ring-1 ring-inset ring-border-soft"
+      : "relative"}
+    >
+      {isDrawer ? (
+        <aside
+          aria-label={t({
+            id: "search.aiFilter.controlPanel",
+            comment: "Accessible label for the compact precise-matching control between watchlist stats and results",
+            message: "Precise matching",
+          })}
+          className="flex min-h-11 w-full min-w-0 items-center gap-2.5 bg-background/40 px-3 py-2"
+        >
+          <span className="grid size-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+            {eligibility.status === "subscription_required" ? (
+              <Crown size={14} aria-hidden="true" />
+            ) : (
+              <Funnel size={14} aria-hidden="true" />
+            )}
+          </span>
+          <div className="flex min-w-0 flex-1 items-baseline gap-2">
+            <span className="shrink-0 text-xs font-semibold text-foreground">
+              {activeQuery || persistedQuery
+                ? t({
+                    id: "search.aiFilter.resultsToggle",
+                    comment: "Label for the narrowed-results control on a watchlist",
+                    message: "Narrowed results",
+                  })
+                : t({
+                    id: "search.aiFilter.compactTitle",
+                    comment: "Short title for the compact precise-matching watchlist control",
+                    message: "Narrow results precisely",
+                  })}
+            </span>
+            {eligibility.status === "subscription_required" ? (
+              <>
+                <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                  {t({ id: "common.plan.pro", comment: "Short Pro subscription badge", message: "Pro" })}
+                </span>
+                <span className="hidden min-w-0 truncate text-[11px] text-muted sm:inline">
+                  {t({
+                    id: "search.aiFilter.compactSubscriptionBody",
+                    comment: "Compact Pro teaser explaining precise matching on a watchlist",
+                    message: "Evaluate every posting against your request.",
+                  })}
+                </span>
+              </>
+            ) : (activeQuery || persistedQuery) && !open ? (
+              <span className="min-w-0 truncate text-[11px] tabular-nums text-muted">
+                <Plural
+                  id="search.aiFilter.compactMatchCount"
+                  comment="Number of active jobs in the compact narrowed-results control"
+                  value={safeNarrowedResultCount}
+                  one="# match"
+                  other="# matches"
+                />
+              </span>
+            ) : !activeQuery && !persistedQuery ? (
+              <span className="hidden min-w-0 truncate text-[11px] text-muted sm:inline">
+                {t({
+                  id: "search.aiFilter.compactBody",
+                  comment: "Compact explanation of precise matching on a watchlist",
+                  message: "Evaluate every posting against your request.",
+                })}
+              </span>
+            ) : null}
+          </div>
+          {eligibility.status === "subscription_required" ? (
+            <button
+              type="button"
+              onClick={isSessionPending
+                ? undefined
+                : isLoggedIn
+                  ? goToSubscription
+                  : goToSignIn}
+              disabled={isSessionPending}
+              className="shrink-0 cursor-pointer whitespace-nowrap rounded-md border border-primary/25 px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-wait disabled:opacity-60"
+            >
+              {isSessionPending
+                ? t({
+                    id: "search.aiFilter.accessChecking.short",
+                    comment: "Short status while precise-matching account access is checked",
+                    message: "Checking…",
+                  })
+                : !isLoggedIn
+                  ? t({
+                      id: "common.auth.login",
+                      comment: "Login button label",
+                      message: "Log in",
+                    })
+                  : t({
+                      id: "search.aiFilter.subscription.cta.short",
+                      comment: "Short link to the Pro subscription from the compact watchlist control",
+                      message: "Explore Pro",
+                    })}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (open && isEditing) cancelEditing();
+                else if (open) closePanel();
+                else openPanel();
+              }}
+              className="shrink-0 cursor-pointer whitespace-nowrap rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-contrast transition-opacity hover:opacity-90"
+              aria-expanded={open}
+              aria-controls={panelId}
+            >
+              {open
+                ? isEditing || !activeQuery
+                  ? t({
+                      id: "common.actions.cancel",
+                      comment: "Button that cancels precise-matching setup or editing",
+                      message: "Cancel",
+                    })
+                  : t({
+                      id: "search.aiFilter.showAllResults",
+                      comment: "Button that closes narrowed results and returns to the broad watchlist feed",
+                      message: "All results",
+                    })
+                : activeQuery || persistedQuery
+                  ? t({
+                      id: "search.aiFilter.viewResults",
+                      comment: "Short button that opens narrowed watchlist results",
+                      message: "View",
+                    })
+                  : t({
+                      id: "search.aiFilter.setup",
+                      comment: "Short button that opens precise matching setup",
+                      message: "Set up",
+                    })}
+            </button>
+          )}
+        </aside>
+      ) : !open ? (
+        <Button
+          type="button"
+          onClick={() => {
+            if (open) closePanel();
+            else openPanel();
+          }}
+          size="sm"
+          className="h-8 gap-1 px-3 text-xs"
+          aria-expanded={open}
+          aria-controls={panelId}
+        >
+          <Funnel size={14} aria-hidden="true" />
+          {t({
+            id: "search.aiFilter.toggle",
+            comment: "Button that opens the natural-language AI filter on a job-results surface",
+            message: "Narrow down search",
+          })}
+        </Button>
+      ) : null}
 
-      {open && (
+      {(open || canMountDrawerContent) && (
         <>
-          <div
-            aria-hidden="true"
-            className="fixed inset-0 z-20 bg-black/30 backdrop-blur-[1px] sm:hidden"
-          />
+          {!isDrawer ? (
+            <div
+              aria-hidden="true"
+              className="fixed inset-0 z-20 bg-black/30 backdrop-blur-[1px] sm:hidden"
+            />
+          ) : null}
           <section
             id={panelId}
-            aria-labelledby={`${panelId}-title`}
-            className={`fixed inset-x-4 top-28 z-30 max-h-[calc(100vh-9rem)] w-auto overflow-y-auto rounded-lg border border-border-soft bg-surface p-4 shadow-xl shadow-black/10 sm:absolute sm:inset-x-auto sm:top-10 sm:max-h-none sm:w-[min(28rem,calc(100vw-2rem))] sm:overflow-visible ${
-              align === "right" ? "sm:right-0" : "sm:left-0"
-            }`}
+            aria-labelledby={isDrawer ? undefined : `${panelId}-title`}
+            aria-label={isDrawer && activeQuery
+              ? t({
+                  id: "search.aiFilter.resultsTitle",
+                  comment: "Title above the narrowed results inside a watchlist drawer",
+                  message: "Narrowed results",
+                })
+              : isDrawer
+                ? t({
+                    id: "search.aiFilter.compactTitle",
+                    comment: "Short title for the compact precise-matching watchlist control",
+                    message: "Narrow results precisely",
+                  })
+                : undefined}
+            data-state={open ? "open" : "closed"}
+            hidden={!open}
+            className={isDrawer
+              ? "relative z-20 w-full min-w-0 max-w-full bg-surface data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:duration-200 motion-reduce:animate-none"
+              : `fixed inset-x-4 top-28 z-30 max-h-[calc(100vh-9rem)] w-auto overflow-y-auto rounded-lg border border-border-soft bg-surface p-4 shadow-xl shadow-black/10 sm:absolute sm:inset-x-auto sm:top-10 sm:max-h-[calc(100vh-6rem)] sm:w-[min(28rem,calc(100vw-2rem))] sm:overflow-y-auto ${
+                  align === "right" ? "sm:right-0" : "sm:left-0"
+                }`}
           >
+          <div className={isDrawer ? "min-w-0 w-full" : undefined}>
+          {isDrawer && activeQuery && !isEditing ? (
+            <div className="border-b border-divider bg-background/40 p-3">
+              <div className="flex min-w-0 items-center gap-3 rounded-md border border-border-soft bg-surface px-3 py-2">
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-medium uppercase tracking-wider text-muted">
+                    {t({
+                      id: "search.aiFilter.requestLabel",
+                      comment: "Label above the natural-language request used to narrow watchlist results",
+                      message: "Matching request",
+                    })}
+                  </span>
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-foreground/90">
+                    {activeQuery}
+                  </p>
+                </div>
+                {!readOnly ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => beginEditing(activeQuery)}
+                      className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label={t({
+                        id: "search.aiFilter.edit",
+                        comment: "Accessible label for editing an active AI search filter",
+                        message: "Edit matching criteria",
+                      })}
+                      title={t({
+                        id: "search.aiFilter.editRequest",
+                        comment: "Tooltip for changing the matching request on a narrowed watchlist",
+                        message: "Edit request",
+                      })}
+                    >
+                      <Pencil size={16} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void removeActiveQuery()}
+                      disabled={isApplying}
+                      className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md p-1.5 text-muted transition-colors hover:bg-border-soft hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-wait disabled:opacity-50"
+                      aria-label={t({
+                        id: "search.aiFilter.remove",
+                        comment: "Accessible label for removing the active AI search filter",
+                        message: "Remove matching criteria",
+                      })}
+                      title={t({
+                        id: "search.aiFilter.remove.short",
+                        comment: "Tooltip for removing saved matching criteria from the drawer",
+                        message: "Remove",
+                      })}
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+          <div className={isDrawer ? "px-4 pb-4 pt-2" : undefined}>
+          {isDrawer ? (
+            <p className="text-xs leading-relaxed text-muted">
+              {createsWatchlist
+                ? t({
+                    id: "search.aiFilter.descriptionCreatesWatchlist",
+                    comment: "Explains that entering AI criteria creates a watchlist from the focused search",
+                    message: "Describe exactly what you are looking for. We’ll create a watchlist from this search and evaluate your request against every job posting in its feed to narrow the results precisely.",
+                  })
+                : t({
+                    id: "search.aiFilter.description",
+                    comment: "Explains that AI is a second-stage filter over the existing watchlist",
+                    message: "Describe exactly what you are looking for. Your request will be evaluated against every job posting in this feed to narrow the results precisely.",
+                  })}
+            </p>
+          ) : (
           <div className="flex items-start gap-3">
             <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
               <Funnel size={16} aria-hidden="true" />
@@ -377,9 +854,11 @@ export function AiSearchFilter({
                     message: "Narrow down this search",
                   })}
                 </h2>
-                <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                  {t({ id: "common.plan.pro", comment: "Short Pro subscription badge", message: "Pro" })}
-                </span>
+                {!isSubscribed ? (
+                  <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                    {t({ id: "common.plan.pro", comment: "Short Pro subscription badge", message: "Pro" })}
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 text-xs leading-relaxed text-muted">
                 {createsWatchlist
@@ -395,6 +874,25 @@ export function AiSearchFilter({
                     })}
               </p>
             </div>
+            {!isDrawer && persistedQuery && watchlistId ? (
+              <button
+                type="button"
+                onClick={() => void removeActiveQuery()}
+                disabled={isApplying}
+                className="cursor-pointer whitespace-nowrap rounded px-2 py-1 text-xs text-muted transition-colors hover:bg-border-soft hover:text-foreground disabled:cursor-wait disabled:opacity-50"
+                aria-label={t({
+                  id: "search.aiFilter.remove",
+                  comment: "Accessible label for removing the active AI search filter",
+                  message: "Remove matching criteria",
+                })}
+              >
+                {t({
+                  id: "search.aiFilter.remove.short",
+                  comment: "Short button label for removing saved matching criteria from the drawer",
+                  message: "Remove",
+                })}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={closePanel}
@@ -408,8 +906,9 @@ export function AiSearchFilter({
               <X size={15} aria-hidden="true" />
             </button>
           </div>
+          )}
 
-          {eligibility.status === "subscription_required" && isSessionPending && demoState === undefined ? (
+          {eligibility.status === "subscription_required" && isSessionPending ? (
             <div className="mt-4 flex items-center gap-2 rounded-md border border-border-soft bg-background p-3 text-sm text-muted" role="status">
               <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
               {t({
@@ -418,20 +917,20 @@ export function AiSearchFilter({
                 message: "Checking access…",
               })}
             </div>
-          ) : eligibility.status === "subscription_required" && !isLoggedIn && demoState === undefined ? (
+          ) : eligibility.status === "subscription_required" && !isLoggedIn ? (
             <div className="mt-4 rounded-md border border-border-soft bg-background p-3">
               <p className="text-sm font-medium">
                 {t({
                   id: "search.aiFilter.login.title",
                   comment: "Heading asking the viewer to sign in before creating a precisely matched watchlist",
-                  message: "Sign in to continue",
+                  message: "Narrowing is a Pro feature",
                 })}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-muted">
                 {t({
                   id: "search.aiFilter.login.body",
                   comment: "Explains that the current search will be restored after sign-in",
-                  message: "Your current search will be restored when you return.",
+                  message: "Log in to check your plan or upgrade. Your current search will be restored when you return.",
                 })}
               </p>
               <Button type="button" size="sm" className="mt-3" onClick={goToSignIn}>
@@ -566,9 +1065,9 @@ export function AiSearchFilter({
                 >
                   {isApplying ? (
                     <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />
-                  ) : (
+                  ) : createsWatchlist ? (
                     <Funnel size={13} aria-hidden="true" />
-                  )}
+                  ) : null}
                   {isApplying
                     ? createsWatchlist
                       ? t({
@@ -590,15 +1089,40 @@ export function AiSearchFilter({
                       : t({
                           id: "search.aiFilter.apply",
                           comment: "Button to apply the natural-language AI filter",
-                          message: "Narrow down results",
+                          message: "Apply",
                         })}
                 </button>
               </div>
             </form>
           )}
+          </div>
+          )}
+          {isDrawer && activeQuery && canMountDrawerContent ? (
+            <div className="min-w-0 max-w-full px-4 pb-2">
+              {resolvedDrawerContent}
+            </div>
+          ) : null}
+          </div>
           </section>
         </>
       )}
+      {isDrawer ? (
+        <ScrollNarrowingReminder
+          enabled={
+            !open &&
+            !isApplying &&
+            !activeQuery &&
+            !persistedQuery &&
+            !isSessionPending
+          }
+          storageKey={`jobseek:narrow-results-reminder:${watchlistId ?? "watchlist"}`}
+          subscriptionRequired={eligibility.status === "subscription_required"}
+          signedOut={!isLoggedIn}
+          hasNarrowedResults={Boolean(activeQuery || persistedQuery)}
+          narrowedResultCount={safeNarrowedResultCount}
+          onAction={handleReminderAction}
+        />
+      ) : null}
     </div>
   );
 }

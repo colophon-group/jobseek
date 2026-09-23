@@ -5,6 +5,7 @@ type TaxonomyItem = { slug: string; name: string };
 
 export type SearchWatchlistDraft = {
   title: string;
+  description?: string;
   companyIds: string[];
   filters: WatchlistFilters;
   isPublic: false;

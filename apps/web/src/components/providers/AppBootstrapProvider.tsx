@@ -53,7 +53,31 @@ export function AppBootstrapProvider({
       setData(ANON_BOOTSTRAP);
       return;
     }
-    refresh();
+    // A stale hint can make a page load attempt a Server Action without a
+    // matching session cookie. Bound the pending state so
+    // account controls always resolve to either the real session or an
+    // explicit anonymous/sign-in UI.
+    let settled = false;
+    const fallback = window.setTimeout(() => {
+      if (settled) return;
+      setData(ANON_BOOTSTRAP);
+    }, 4_000);
+    void refresh().then(() => {
+      settled = true;
+      window.clearTimeout(fallback);
+    }).catch(() => {
+      settled = true;
+      window.clearTimeout(fallback);
+      // Fail closed for this render so controls never remain pending, but do
+      // not erase the hint on a transport/database failure. Only a successful
+      // bootstrap response can prove that the real session is gone; retaining
+      // the hint lets the next navigation recover a still-valid session.
+      setData(ANON_BOOTSTRAP);
+    });
+    return () => {
+      settled = true;
+      window.clearTimeout(fallback);
+    };
   }, [refresh]);
 
   const isPending = data === null;

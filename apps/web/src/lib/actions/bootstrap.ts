@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSession } from "@/lib/sessionCache";
+import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import type { SavedJobStatus } from "@/lib/actions/saved-jobs";
 import type { PlanId } from "@/lib/plans";
 
@@ -131,6 +132,48 @@ async function _fetchBootstrapForUser(userId: string): Promise<{
   };
 }
 
+/**
+ * Carry an anonymous language choice across the authentication boundary.
+ *
+ * Until a user has a preferences row, authenticated search deliberately falls
+ * back to the browser cookie. Persisting that fallback here makes it durable
+ * and, importantly, gives shared watchlists an owner-side source of truth that
+ * does not depend on the viewer's browser. The conflict clause keeps this a
+ * one-time handoff and never overwrites an existing account preference.
+ */
+async function _inheritAnonymousJobLanguages(
+  userId: string,
+  jobLanguages: string[],
+): Promise<AppPreferences | null> {
+  const serializedJobLanguages = JSON.stringify(jobLanguages);
+  type Row = AppPreferences & Record<string, unknown>;
+  const rows = await withDbRetry(
+    () => db.execute(sql`
+      INSERT INTO user_preferences (user_id, job_languages)
+      VALUES (
+        ${userId},
+        ARRAY(
+          SELECT jsonb_array_elements_text(${serializedJobLanguages}::jsonb)
+        )
+      )
+      ON CONFLICT (user_id) DO UPDATE
+        SET user_id = EXCLUDED.user_id
+      RETURNING
+        theme,
+        theme_updated_at AS "themeUpdatedAt",
+        locale,
+        locale_updated_at AS "localeUpdatedAt",
+        cookie_consent AS "cookieConsent",
+        display_currency AS "displayCurrency",
+        salary_period AS "salaryPeriod",
+        dismissed_banners AS "dismissedBanners",
+        job_languages AS "jobLanguages"
+    `),
+    { label: "inheritAnonymousJobLanguages" },
+  );
+  return (rows as unknown as Row[])[0] ?? null;
+}
+
 export async function fetchAppBootstrap(): Promise<AppBootstrapData> {
   const session = await getSession();
   if (!session) {
@@ -143,9 +186,19 @@ export async function fetchAppBootstrap(): Promise<AppBootstrapData> {
     };
   }
 
-  const { plan, prefs, savedStatuses, starredIds } = await _fetchBootstrapForUser(
+  const { plan, prefs: storedPrefs, savedStatuses, starredIds } = await _fetchBootstrapForUser(
     session.user.id,
   );
+  let prefs = storedPrefs;
+  if (!prefs) {
+    const inheritedJobLanguages = await readAnonJobLanguagesCookie();
+    if (inheritedJobLanguages !== null) {
+      prefs = await _inheritAnonymousJobLanguages(
+        session.user.id,
+        inheritedJobLanguages,
+      );
+    }
+  }
 
   return {
     user: session.user as SessionUser,

@@ -33,12 +33,14 @@ function makeItems(count: number, offset = 0): Item[] {
 function Harness({
   initialItems,
   initialTotal,
+  initialTruncated = false,
   fetcher,
   onState,
   trigger,
 }: {
   initialItems: Item[];
   initialTotal: number;
+  initialTruncated?: boolean;
   fetcher: (params: { offset: number; limit: number }) => Promise<{
     postings: Item[];
     total: number;
@@ -50,6 +52,7 @@ function Harness({
   const state = usePaginatedLoadMore<Item>({
     initialItems,
     initialTotal,
+    initialTruncated,
     batchSize: 20,
     itemKey: (it) => it.id,
     fetcher,
@@ -67,6 +70,29 @@ function Harness({
 }
 
 describe("usePaginatedLoadMore — #3333 anon-cap regression", () => {
+  it("preserves a server-reported anonymous cap on the initial page", () => {
+    const fetcher = vi.fn();
+    let snapshot = { total: -1, hasMore: true, items: [] as Item[], truncated: false };
+
+    render(
+      <Harness
+        initialItems={makeItems(20)}
+        initialTotal={38_717}
+        initialTruncated
+        fetcher={fetcher}
+        onState={(state) => {
+          snapshot = state;
+        }}
+      />,
+    );
+
+    expect(snapshot.total).toBe(38_717);
+    expect(snapshot.items).toHaveLength(20);
+    expect(snapshot.truncated).toBe(true);
+    expect(snapshot.hasMore).toBe(false);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("does NOT shrink `total` when loadMore returns the anon-cap shortcut", async () => {
     const initialItems = makeItems(20);
     const fetcher = vi

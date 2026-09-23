@@ -61,9 +61,9 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 | Icon | Role | Used in |
 |---|---|---|
 | `Plus` | Add (job, keyword, watchlist) | `c/my-jobs/quick-actions.tsx`, `c/watchlist/watchlist-card.tsx` |
-| `Pencil` | Edit | `c/watchlist/watchlist-action-bar.tsx`, `a/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx` |
+| `Pencil` | Edit | `c/watchlist/watchlist-action-bar.tsx`, `c/watchlist/watchlist-view-page.tsx` |
 | `Trash2` | Delete | `c/my-jobs/interview-list.tsx`, `c/watchlist/watchlist-action-bar.tsx` |
-| `Copy` | Clone a shared watchlist / copy text | `a/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx`, agent-prompt controls |
+| `Copy` | Clone a shared watchlist / copy text | `c/watchlist/watchlist-view-page.tsx`, agent-prompt controls |
 | `Share2` | Copy an unlisted share URL | `c/watchlist/watchlist-card.tsx`, `c/watchlist/watchlist-action-bar.tsx` |
 | `Bookmark` | Save (unfilled) | `c/watchlist/watchlist-job-list.tsx` |
 | `BookmarkCheck` | Saved (filled) — paired with `Bookmark` via `Icon = saved ? BookmarkCheck : Bookmark` | `c/search/save-button.tsx` |
@@ -72,6 +72,7 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 | `Check` | Confirm / done state | `c/settings/BillingSettings.tsx`, `c/my-jobs/quick-actions.tsx` |
 | `Search` | Search input / CTA | `c/AppHeader.tsx`, `c/settings/JobLanguageModal.tsx` |
 | `SlidersHorizontal` | Filter controls toggle / "filters" feature | `c/search/advanced-search-panel.tsx`, `c/Features.tsx` |
+| `Funnel` | Narrow-results control and request drawer | `c/search/ai-search-filter.tsx` |
 
 ### Status / feedback
 

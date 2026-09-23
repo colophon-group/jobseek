@@ -1,20 +1,30 @@
 import "server-only";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
-import { userPreferences, watchlist, watchlistCompany } from "@/db/schema";
+import {
+  aiFilterConfiguration,
+  aiFilterDecision,
+  aiFilterQueryVersion,
+  userPreferences,
+  watchlist,
+  watchlistCompany,
+} from "@/db/schema";
 import { getPostingDetail, type PostingDetail } from "@/lib/services/search";
 import {
   compileWatchlistMatcherSources,
   readWatchlistCandidates,
 } from "@/lib/services/watchlist-matcher";
 import type { WatchlistFilters } from "@/lib/watchlist-matcher-contract";
+import type { WatchlistPostingEntry } from "@/lib/watchlist-matcher-contract";
 import {
   CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT,
   normalizeClassifierInputV1,
 } from "./classifier-input";
+import { aiFilterHistoricalHorizonStart } from "./horizon";
 import type { AiFilterExecutionCandidate } from "./orchestrator";
+import { AI_FILTER_MAX_SEARCH_CANDIDATES } from "./search-eligibility";
 
 const DESCRIPTION_FETCH_TIMEOUT_MS = 5_000;
 const DESCRIPTION_FETCH_MAX_BYTES = 512 * 1024;
@@ -83,6 +93,74 @@ function metadataHtml(posting: PostingDetail): string {
   return rows.length === 0
     ? ""
     : `<section><h2>Structured job facts</h2><ul>${rows.join("")}</ul></section>`;
+}
+
+function indexedMetadataHtml(candidate: WatchlistPostingEntry): string {
+  const metadata = candidate.classifierMetadata;
+  if (!metadata) return "";
+  const rows: string[] = [];
+  const add = (label: string, value: string | null | undefined) => {
+    if (value?.trim()) rows.push(`<li>${escapeHtml(label)}: ${escapeHtml(value)}</li>`);
+  };
+  add("Locations", metadata.locations.map((location) => location.name).join(", "));
+  add("Work modes", [...new Set(metadata.locations.map((location) => location.type))].join(", "));
+  add("Employment type", metadata.employmentType);
+  add("Seniority", metadata.seniorityName);
+  add(
+    "Experience",
+    metadata.experienceMin == null && metadata.experienceMax == null
+      ? null
+      : `${metadata.experienceMin ?? "unspecified"}-${metadata.experienceMax ?? "unspecified"} years`,
+  );
+  add("Technologies", metadata.technologies.join(", "));
+  return rows.length === 0
+    ? ""
+    : `<section><h2>Structured job facts</h2><ul>${rows.join("")}</ul></section>`;
+}
+
+function boundedClassifierHtml(value: string): string {
+  if (value.length <= CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT) return value;
+  let bounded = value.slice(0, CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT);
+  const last = bounded.charCodeAt(bounded.length - 1);
+  if (last >= 0xd800 && last <= 0xdbff) bounded = bounded.slice(0, -1);
+  return bounded;
+}
+
+function indexedPostingDetail(candidate: WatchlistPostingEntry): PostingDetail | null {
+  const metadata = candidate.classifierMetadata;
+  const descriptionLocale = metadata?.descriptionLocale;
+  const r2Domain = process.env.R2_DOMAIN_URL?.replace(/\/$/, "");
+  if (!metadata || !candidate.title || !candidate.company.name || !descriptionLocale || !r2Domain) {
+    return null;
+  }
+  return {
+    id: candidate.id,
+    title: candidate.title,
+    company: {
+      ...candidate.company,
+      logo: null,
+    },
+    locations: metadata.locations.map((location, index) => ({
+      id: index,
+      name: location.name,
+      type: location.type,
+    })),
+    employmentType: metadata.employmentType,
+    experienceMin: metadata.experienceMin,
+    experienceMax: metadata.experienceMax,
+    technologies: metadata.technologies.map((name, index) => ({ id: index, name })),
+    salaryMin: metadata.salaryMin,
+    salaryMax: metadata.salaryMax,
+    salaryCurrency: metadata.salaryCurrency,
+    salaryPeriod: metadata.salaryPeriod,
+    seniority: metadata.seniorityName
+      ? { id: 0, slug: "", name: metadata.seniorityName }
+      : null,
+    sourceUrl: candidate.sourceUrl,
+    firstSeenAt: candidate.firstSeenAt,
+    descriptionHtml: null,
+    descriptionUrl: `${r2Domain}/job/${candidate.id}/${descriptionLocale}/latest.html`,
+  };
 }
 
 function selectedLocale(descriptionUrl: string): string {
@@ -191,7 +269,14 @@ async function mapWithConcurrency<T, R>(
   return output;
 }
 
-async function ownedMatcher(ownerId: string, watchlistId: string) {
+async function ownedMatcher(
+  ownerId: string,
+  watchlistId: string,
+  options: {
+    candidateLanguages?: readonly string[];
+    useConfiguredLanguages?: boolean;
+  } = {},
+) {
   const [row] = await db
     .select({
       id: watchlist.id,
@@ -199,9 +284,24 @@ async function ownedMatcher(ownerId: string, watchlistId: string) {
       filters: watchlist.filters,
       locale: userPreferences.locale,
       jobLanguages: userPreferences.jobLanguages,
+      candidateLanguages: aiFilterQueryVersion.candidateLanguages,
     })
     .from(watchlist)
     .leftJoin(userPreferences, eq(userPreferences.userId, watchlist.userId))
+    .leftJoin(
+      aiFilterConfiguration,
+      and(
+        eq(aiFilterConfiguration.watchlistId, watchlist.id),
+        eq(aiFilterConfiguration.ownerId, watchlist.userId),
+      ),
+    )
+    .leftJoin(
+      aiFilterQueryVersion,
+      and(
+        eq(aiFilterQueryVersion.configurationId, aiFilterConfiguration.id),
+        eq(aiFilterQueryVersion.revision, aiFilterConfiguration.currentRevision),
+      ),
+    )
     .where(and(eq(watchlist.id, watchlistId), eq(watchlist.userId, ownerId)))
     .limit(1);
   if (!row) throw new AiFilterCandidateLoadError("not_found");
@@ -218,6 +318,11 @@ async function ownedMatcher(ownerId: string, watchlistId: string) {
     jobLanguages: row.jobLanguages ?? [],
   }]);
   if (!compiled) throw new AiFilterCandidateLoadError("search_unavailable");
+  if (options.candidateLanguages !== undefined) {
+    compiled.candidateFilters.languages = [...options.candidateLanguages];
+  } else if (options.useConfiguredLanguages !== false && row.candidateLanguages) {
+    compiled.candidateFilters.languages = [...row.candidateLanguages];
+  }
   return { compiled, locale: row.locale ?? "en" };
 }
 
@@ -225,12 +330,16 @@ export async function countAiFilterCandidates(input: {
   ownerId: string;
   watchlistId: string;
   now?: Date;
+  candidateLanguages?: readonly string[];
   signal?: AbortSignal;
 }): Promise<number> {
   const now = input.now ?? new Date();
   const windowEnd = new Date(Math.floor(now.getTime() / 1_000) * 1_000 + 1_000);
-  const windowStart = new Date(windowEnd.getTime() - 30 * DAY_MS);
-  const { compiled } = await ownedMatcher(input.ownerId, input.watchlistId);
+  const windowStart = aiFilterHistoricalHorizonStart();
+  const { compiled } = await ownedMatcher(input.ownerId, input.watchlistId, {
+    candidateLanguages: input.candidateLanguages,
+    useConfiguredLanguages: false,
+  });
   try {
     const result = await readWatchlistCandidates({
       filters: compiled.candidateFilters,
@@ -247,38 +356,17 @@ export async function countAiFilterCandidates(input: {
   }
 }
 
-/** Stable current hard-filter membership for accepted/rejected product reads. */
-export async function loadAiFilterDecisionCandidates(input: {
+export async function assertAiFilterCandidateScope(input: {
   ownerId: string;
   watchlistId: string;
-  offset: number;
-  limit: number;
-  now?: Date;
+  candidateLanguages?: readonly string[];
   signal?: AbortSignal;
-}) {
-  if (!Number.isSafeInteger(input.offset) || input.offset < 0) {
-    throw new TypeError("AI filter decision offset is invalid");
+}): Promise<number> {
+  const count = await countAiFilterCandidates(input);
+  if (count < 1 || count > AI_FILTER_MAX_SEARCH_CANDIDATES) {
+    throw new TypeError("AI filter candidate scope is not eligible");
   }
-  if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100) {
-    throw new TypeError("AI filter decision page size is invalid");
-  }
-  const now = input.now ?? new Date();
-  const windowEnd = new Date(Math.floor(now.getTime() / 1_000) * 1_000 + 1_000);
-  const windowStart = new Date(windowEnd.getTime() - 30 * DAY_MS);
-  const { compiled } = await ownedMatcher(input.ownerId, input.watchlistId);
-  try {
-    return await readWatchlistCandidates({
-      filters: compiled.candidateFilters,
-      offset: input.offset,
-      limit: input.limit,
-      window: { windowStart, windowEnd },
-      order: "newest",
-      requireStableOrder: true,
-      abortSignal: input.signal,
-    });
-  } catch (error) {
-    throw new AiFilterCandidateLoadError("search_unavailable", { cause: error });
-  }
+  return count;
 }
 
 /** Loads and normalizes up to 50 usable candidates from a bounded source page. */
@@ -290,54 +378,56 @@ export async function loadAiFilterCandidatePage(input: {
   windowEnd: Date;
   signal?: AbortSignal;
   dependencies?: CandidateLoaderDependencies;
+  /** Repair mode: scan past candidates that already have a durable decision. */
+  excludeDecidedForQueryVersionId?: string;
 }): Promise<AiFilterCandidatePage> {
   const { compiled, locale } = await ownedMatcher(input.ownerId, input.watchlistId);
-  let searchResult: Awaited<ReturnType<typeof readWatchlistCandidates>>;
-  try {
-    searchResult = await readWatchlistCandidates({
-      filters: compiled.candidateFilters,
-      offset: input.offset,
-      limit: CANDIDATE_OVERFETCH_LIMIT,
-      window: { windowStart: input.windowStart, windowEnd: input.windowEnd },
-      order: "newest",
-      requireStableOrder: true,
-      abortSignal: input.signal,
-    });
-  } catch (error) {
-    throw new AiFilterCandidateLoadError("search_unavailable", { cause: error });
-  }
-
   const fetchImpl = input.dependencies?.fetch ?? fetch;
   const getDetail = input.dependencies?.getPostingDetail ?? getPostingDetail;
-  const outcomes = await mapWithConcurrency(
-    searchResult.postings,
-    5,
-    async (candidate): Promise<AiFilterExecutionCandidate | null> => {
+  const normalizeCandidate = async (
+    candidate: WatchlistPostingEntry,
+  ): Promise<AiFilterExecutionCandidate | null> => {
       try {
-        const detail = await getDetail({ postingId: candidate.id, locale });
-        if (!detail?.descriptionUrl || !detail.title || !detail.company.name) return null;
-        const description = await fetchDescription(
-          detail.descriptionUrl,
-          fetchImpl,
-          input.signal,
-        );
-        const combinedHtml = `${metadataHtml(detail)}${description}`;
-        if (combinedHtml.length > CLASSIFIER_DESCRIPTION_HTML_CODE_UNIT_LIMIT) {
-          return null;
+        const detail = indexedPostingDetail(candidate) ??
+          await getDetail({ postingId: candidate.id, locale });
+        const title = detail?.title ?? candidate.title;
+        const companyName = detail?.company.name ?? candidate.company.name;
+        if (!title || !companyName) return null;
+        let description = "";
+        if (detail?.descriptionUrl) {
+          try {
+            description = await fetchDescription(
+              detail.descriptionUrl,
+              fetchImpl,
+              input.signal,
+            );
+          } catch (error) {
+            // A posting whose source description has disappeared is still a
+            // posting in the user's feed. Evaluate its title and indexed
+            // structured facts rather than silently omitting it forever.
+            if (
+              !(error instanceof AiFilterCandidateLoadError) ||
+              error.code !== "description_missing"
+            ) {
+              throw error;
+            }
+          }
         }
+        const combinedHtml = boundedClassifierHtml(
+          `${detail ? metadataHtml(detail) : indexedMetadataHtml(candidate)}${description}`,
+        );
         const classifierInput = normalizeClassifierInputV1({
           candidateId: candidate.id,
-          title: detail.title,
-          companyName: detail.company.name,
+          title,
+          companyName,
           descriptionHtml: combinedHtml,
-          selectedDescriptionLocale: selectedLocale(detail.descriptionUrl),
+          selectedDescriptionLocale: detail?.descriptionUrl
+            ? selectedLocale(detail.descriptionUrl)
+            : candidate.classifierMetadata?.descriptionLocale ?? "und",
         });
         const postingFirstSeenAt = new Date(candidate.firstSeenAt);
-        const expiresAt = new Date(postingFirstSeenAt.getTime() + 30 * DAY_MS);
-        if (
-          !Number.isFinite(postingFirstSeenAt.getTime()) ||
-          expiresAt.getTime() <= input.windowEnd.getTime()
-        ) {
+        const expiresAt = new Date(input.windowEnd.getTime() + 30 * DAY_MS);
+        if (!Number.isFinite(postingFirstSeenAt.getTime())) {
           return null;
         }
         return Object.freeze({
@@ -347,30 +437,75 @@ export async function loadAiFilterCandidatePage(input: {
           classifierInput,
         });
       } catch (error) {
-        if (
-          error instanceof AiFilterCandidateLoadError &&
-          error.code === "description_missing"
-        ) {
-          return null;
-        }
         if (error instanceof AiFilterCandidateLoadError) throw error;
         throw new AiFilterCandidateLoadError("description_unavailable", {
           cause: error,
         });
       }
-    },
-  );
+  };
+
   const selected: AiFilterExecutionCandidate[] = [];
   let scannedCount = 0;
-  for (const outcome of outcomes) {
-    scannedCount += 1;
-    if (outcome) selected.push(outcome);
-    if (selected.length === 50) break;
+  let total = 0;
+  while (selected.length < 50) {
+    let searchResult: Awaited<ReturnType<typeof readWatchlistCandidates>>;
+    try {
+      searchResult = await readWatchlistCandidates({
+        filters: compiled.candidateFilters,
+        offset: input.offset + scannedCount,
+        limit: CANDIDATE_OVERFETCH_LIMIT,
+        window: { windowStart: input.windowStart, windowEnd: input.windowEnd },
+        order: "newest",
+        requireStableOrder: true,
+        includeClassifierMetadata: true,
+        abortSignal: input.signal,
+      });
+    } catch (error) {
+      throw new AiFilterCandidateLoadError("search_unavailable", { cause: error });
+    }
+    total = searchResult.total;
+    if (searchResult.postings.length === 0) break;
+
+    let decided = new Set<string>();
+    if (input.excludeDecidedForQueryVersionId) {
+      const rows = await db
+        .select({ candidateId: aiFilterDecision.candidateId })
+        .from(aiFilterDecision)
+        .where(and(
+          eq(aiFilterDecision.queryVersionId, input.excludeDecidedForQueryVersionId),
+          inArray(
+            aiFilterDecision.candidateId,
+            searchResult.postings.map((candidate) => candidate.id),
+          ),
+        ));
+      decided = new Set(rows.map((row) => row.candidateId));
+    }
+    const undecided = searchResult.postings.filter(
+      (candidate) => !decided.has(candidate.id),
+    );
+    const outcomes = await mapWithConcurrency(undecided, 5, normalizeCandidate);
+    const outcomeById = new Map(
+      undecided.map((candidate, index) => [candidate.id, outcomes[index] ?? null]),
+    );
+    for (const candidate of searchResult.postings) {
+      scannedCount += 1;
+      if (!decided.has(candidate.id)) {
+        const outcome = outcomeById.get(candidate.id);
+        if (outcome) selected.push(outcome);
+      }
+      if (selected.length === 50) break;
+    }
+    if (
+      selected.length === 50 ||
+      input.offset + scannedCount >= searchResult.total
+    ) {
+      break;
+    }
   }
   return Object.freeze({
     candidates: Object.freeze(selected),
     scannedCount,
     skippedCount: scannedCount - selected.length,
-    total: searchResult.total,
+    total,
   });
 }

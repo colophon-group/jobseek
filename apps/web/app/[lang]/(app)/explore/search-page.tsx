@@ -12,11 +12,7 @@ import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
-import {
-  AiSearchFilter,
-  parseAiSearchFilterDemoState,
-  type AiSearchFilterDemoState,
-} from "@/components/search/ai-search-filter";
+import { AiSearchFilter } from "@/components/search/ai-search-filter";
 import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
 import {
   runSearchJobs,
@@ -1156,13 +1152,6 @@ export function SearchPage({
     languages: languages.length > 0 ? languages : undefined,
   }), [keywords, locations, occupations, seniorities, technologies, workMode, employmentTypes, languages]);
 
-  const aiFilterDemoState = useMemo<AiSearchFilterDemoState | undefined>(() => {
-    if (process.env.NODE_ENV !== "development") return undefined;
-    return parseAiSearchFilterDemoState(searchParams.get("ai-demo"));
-  }, [searchParams]);
-  const aiFilterUiEnabled =
-    process.env.NEXT_PUBLIC_AI_FILTER_UI_ENABLED === "true" ||
-    aiFilterDemoState !== undefined;
   const aiWatchlistDraft = useMemo(() => buildSearchWatchlistDraft({
     fallbackTitle: t({
       id: "watchlists.savedSearch.defaultTitle",
@@ -1270,23 +1259,17 @@ export function SearchPage({
         histogramFilters={histogramFilters}
         onClearAll={handleClearAll}
         onSubmitSearch={handleSubmitSearch}
-        aiFilterSlot={aiFilterUiEnabled ? (
+        aiFilterSlot={
           <AiSearchFilter
             isSubscribed={plan === "unlimited"}
             hasSearchFilters={hasFilters}
             candidateCount={totalPostings}
             isSearchPending={isSearching || isDegraded}
-            demoState={aiFilterDemoState}
             createsWatchlist
             watchlistDraft={aiWatchlistDraft}
             align="right"
-            onApply={aiFilterDemoState === "eligible"
-              ? async () => {
-                  await new Promise((resolve) => setTimeout(resolve, 650));
-                }
-              : undefined}
           />
-        ) : undefined}
+        }
       />
 
       {companies.length === 0 && isSearching ? (

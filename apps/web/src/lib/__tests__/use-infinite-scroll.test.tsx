@@ -267,6 +267,68 @@ function deferred() {
 }
 
 describe("useInfiniteScroll — horizontal-carousel rect-check (regression for #3362 critic finding)", () => {
+  it("loads from the scroll fallback when IntersectionObserver misses the transition", async () => {
+    const pending = deferred();
+    const load = vi.fn(() => pending.promise);
+
+    render(
+      <HorizontalCarouselShim
+        sentinelLeft={850}
+        sentinelRight={950}
+        load={load}
+      />,
+    );
+
+    await act(async () => {
+      screen.getByTestId("scroll-root").dispatchEvent(new Event("scroll"));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+
+    expect(load).toHaveBeenCalledTimes(1);
+    pending.resolve();
+  });
+
+  it("does not immediately retry a failed load while the sentinel remains visible", async () => {
+    const load = vi.fn().mockRejectedValue(new Error("temporary failure"));
+
+    render(
+      <HorizontalCarouselShim
+        sentinelLeft={850}
+        sentinelRight={950}
+        load={load}
+      />,
+    );
+
+    const observer = observerInstances[observerInstances.length - 1];
+    await act(async () => {
+      observer.callback([
+        {
+          isIntersecting: true,
+          target: screen.getByTestId("sentinel"),
+        } as unknown as IntersectionObserverEntry,
+      ]);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-loading").textContent).toBe("false");
+    });
+    expect(load).toHaveBeenCalledTimes(1);
+
+    // A later observer event (the user scrolls away and back) remains a
+    // valid retry path; only the tight same-intersection loop is suppressed.
+    await act(async () => {
+      observer.callback([
+        {
+          isIntersecting: true,
+          target: screen.getByTestId("sentinel"),
+        } as unknown as IntersectionObserverEntry,
+      ]);
+      await Promise.resolve();
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
   it(
     "does NOT trigger a follow-up load when the sentinel is past the horizontal rootMargin",
     async () => {

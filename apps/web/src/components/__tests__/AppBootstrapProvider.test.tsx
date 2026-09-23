@@ -151,6 +151,24 @@ describe("AppBootstrapProvider", () => {
     expect(screen.getByTestId("job-languages").textContent).toBe("de,en");
   });
 
+  it("settles as anonymous without erasing the hint when bootstrap fails", async () => {
+    setDocumentCookie("logged_in=1; NEXT_LOCALE=en");
+    mockBootstrap.mockRejectedValue(new Error("server action unavailable"));
+
+    render(
+      <AppBootstrapProvider initialCurrencyRates={initialCurrencyRates}>
+        <SessionProbe />
+      </AppBootstrapProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("pending").textContent).toBe("false");
+    });
+    expect(screen.getByTestId("logged-in").textContent).toBe("false");
+    expect(screen.getByTestId("plan").textContent).toBe("free");
+    expect(document.cookie).toContain("logged_in=1");
+  });
+
   it("is pending at first render when bootstrap is required", async () => {
     setDocumentCookie("logged_in=1");
     let resolveBootstrap!: (v: unknown) => void;

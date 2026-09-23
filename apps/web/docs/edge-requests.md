@@ -511,7 +511,7 @@ invoked.
 |-------|----------------|--------------|---------|-------------|---------------|
 | **Explore** | One-day cached anonymous defaults | Browser-direct filtered/preference refresh; shared bootstrap for signed-in prefs; narrow parser action only for semantic `q` | Browser-first | Shell 1d; search 5min | 0ms result compute on direct mounts |
 | **Company** | Cached anonymous defaults + metadata | Personalized `fetchCompanyPageData()` when signed in, filtered, or language cookie present | Mixed | Company/detail caches | 30-200ms when invoked |
-| **Shared watchlist** | Cached anonymous public snapshot + metadata | Personalized `fetchWatchlistPageData()` only when viewer/filters require it | Mixed | Watchlist lookup cached | 60-300ms when invoked |
+| **Watchlist detail** | Cached app shell; UUID detail streams in Suspense | One exact owned/shared loader, or one bounded session-draft action | Mixed | Session cache + Typesense | Workload-dependent |
 | **My Jobs** | Static shell | `getMyJobs()` after mount | Sequential | None | 20-100ms |
 | **My Jobs Stats** | Static shell | stats loader action after mount | Parallel | Stats cache | 30-100ms |
 | **Watchlists** | Static shell | bootstrap context + `getUserWatchlistsWithLimit()` after mount | Constant in N | None | 30-120ms |
@@ -595,8 +595,9 @@ Ranked by total GB-seconds impact (frequency × duration):
    language cookies bypass the cached anonymous defaults and call server
    actions.
 
-3. **Shared watchlist hydration** — the public shell is cacheable, but the page
-   body still fetches personalized watchlist data after mount.
+3. **Watchlist detail hydration** — the cached app shell stays static, while
+   exact ownership/sharing, search, and optional narrowed state resolve inside
+   the route Suspense boundary.
 
 4. **Settings dynamic subtree** — deliberate request-time work with several
    parallel reads. Lower traffic but useful to watch because it mixes session,

@@ -17,11 +17,16 @@ describe("anonymous app navigation Server Action contract (#2640)", () => {
       'import { getCurrencyRates } from "@/lib/services/search";',
     );
     expect(appLayout).toContain("const currencyRates = await getCurrencyRates();");
-    expect(appLayout).toContain(
-      "<AppBootstrapProvider initialCurrencyRates={currencyRates}>",
-    );
+    expect(appLayout).toContain("initialCurrencyRates={currencyRates}");
     expect(bootstrapProvider).toContain("initialCurrencyRates: CurrencyRate[];");
     expect(bootstrapProvider).toContain("initialRates={initialCurrencyRates}");
+  });
+
+  it("keeps the shared app layout cache-safe and resolves the login hint in the browser", () => {
+    expect(appLayout).not.toContain('from "next/headers"');
+    expect(appLayout).not.toContain("cookies()");
+    expect(bootstrapProvider).toContain("hasLoggedInHint()");
+    expect(bootstrapProvider).toContain("window.setTimeout");
   });
 
   it("does not import or invoke a Server Action from SalaryDisplayProvider on mount", () => {
