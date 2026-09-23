@@ -43,6 +43,7 @@ import {
   compileWatchlistMatcherSources,
   matchCompiledWatchlistsInWindow,
   readWatchlistCandidates,
+  readWatchlistCandidatesByIds,
 } from "../watchlist-matcher";
 import { candidateOrderKeyFromCanonicalId } from "@/lib/search/watchlist-candidate-query";
 
@@ -76,6 +77,17 @@ function posting(id: string, firstSeenAt: number) {
       company_name: "Acme",
       company_slug: "acme",
       location_names: ["Zurich"],
+      location_types: ["hybrid"],
+      employment_type: "internship",
+      experience_min_years: 0.5,
+      experience_max_years: 2,
+      technology_names: ["TypeScript"],
+      salary_min: 50_000,
+      salary_max: 60_000,
+      salary_currency: "CHF",
+      salary_period: "year",
+      seniority_name: "Intern",
+      locales: ["en"],
     },
   };
 }
@@ -172,6 +184,30 @@ describe("compileWatchlistMatcherSources", () => {
 });
 
 describe("readWatchlistCandidates", () => {
+  it("hydrates an existing decision page by ID without replaying its filters", async () => {
+    const first = makeUuid(1);
+    const second = makeUuid(2);
+    mocks.singleSearch.mockResolvedValue({
+      found: 2,
+      hits: [posting(second, 1_700_000_001), posting(first, 1_700_000_000)],
+    });
+
+    const result = await readWatchlistCandidatesByIds([first, second]);
+
+    expect(result.map((value) => value.id)).toEqual([first, second]);
+    expect(mocks.singleSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).toMatchObject({
+      q: "*",
+      query_by: "title",
+      per_page: 2,
+    });
+    expect(mocks.singleSearch.mock.calls[0]?.[0].filter_by).toContain(
+      `id:[${first},${second}]`,
+    );
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).not.toHaveProperty("offset");
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).not.toHaveProperty("limit");
+  });
+
   it("fails closed before newest-first reads are marked backfill-ready", async () => {
     setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT: undefined });
 
@@ -211,6 +247,33 @@ describe("readWatchlistCandidates", () => {
     });
     expect(mocks.singleSearch.mock.calls[0]?.[0]).not.toHaveProperty("page");
     expect(mocks.singleSearch.mock.calls[0]?.[0]).not.toHaveProperty("per_page");
+  });
+
+  it("can return classifier metadata from the candidate hit without detail reads", async () => {
+    const hit = posting(makeUuid(1), 1_700_000_000);
+    mocks.singleSearch.mockResolvedValue({ found: 1, hits: [hit] });
+
+    const result = await readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(100)] },
+      offset: 0,
+      limit: 1,
+      order: "newest",
+      includeClassifierMetadata: true,
+    });
+
+    expect(result.postings[0]?.classifierMetadata).toEqual({
+      locations: [{ name: "Zurich", type: "hybrid" }],
+      employmentType: "internship",
+      experienceMin: 0.5,
+      experienceMax: 2,
+      technologies: ["TypeScript"],
+      salaryMin: 50_000,
+      salaryMax: 60_000,
+      salaryCurrency: "CHF",
+      salaryPeriod: "year",
+      seniorityName: "Intern",
+      descriptionLocale: "en",
+    });
   });
 
   it("uses exact native offsets for a stable direct read", async () => {

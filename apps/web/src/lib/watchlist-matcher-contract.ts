@@ -55,6 +55,20 @@ export type WatchlistPostingEntry = {
     slug: string;
     icon: string | null;
   };
+  /** Included only for the server-side classifier loader to avoid N+1 reads. */
+  classifierMetadata?: {
+    locations: Array<{ name: string; type: string }>;
+    employmentType: string | null;
+    experienceMin: number | null;
+    experienceMax: number | null;
+    technologies: string[];
+    salaryMin: number | null;
+    salaryMax: number | null;
+    salaryCurrency: string | null;
+    salaryPeriod: string | null;
+    seniorityName: string | null;
+    descriptionLocale: string | null;
+  };
 };
 
 /**

@@ -118,12 +118,37 @@ sentinel with a `TruncationPrompt` ("Sign in to see more"). The client-side
 `hasMore` check is a UX optimization — even if bypassed, the server action
 returns empty results.
 
+Browser-backed watchlists use the same restriction. Their initial page is
+materialized through the normal watchlist page-data builder, and subsequent
+broad or narrowed pagination still passes through the anonymous cap. A session
+draft is not an authorization bypass.
+
 ### Why not restrict filters?
 
 All filters remain available to anonymous users. The protection comes from
 truncation, not filter restriction. With broad results and no fine-grained
 enumeration, each query returns overlapping data. Combined with the existing
 IP rate limiter (30 req/60s), comprehensive scraping is uneconomical.
+
+## Anonymous watchlist drafts
+
+Creating or cloning an ordinary watchlist does not force an immediate sign-in.
+The client stores up to ten validated drafts in `sessionStorage` for two hours,
+assigns each a UUID, and navigates through the normal
+`/{lang}/watchlists/{watchlistId}` detail route. Anonymous and persisted flows
+render the same `WatchlistPageData` contract and `WatchlistViewPage`; only the
+persistence adapter changes.
+
+The overview uses the authenticated card/list components for these drafts and
+requests bounded activity previews for at most ten entries in one server
+action. After login, it imports entries until the account's ten-watchlist limit,
+removes each successfully imported draft, and explicitly reports discarded
+overflow. Controls that need an account remain visible and disabled.
+
+Narrow-results setup is subscription-only and is never stored in an anonymous
+draft. A shared watchlist may expose its owner's persisted narrowed feed to an
+anonymous viewer, but the ordinary 20-job truncation still applies and that
+viewer cannot trigger evaluation.
 
 ## Bootstrap Flow
 
@@ -160,9 +185,10 @@ buttons, truncation prompt) check this to avoid flashing incorrect UI.
 
 ## ISR for SEO
 
-Explore, company, and watchlist detail routes use Cache Components to embed
-anonymous defaults and cached metadata without request-bound APIs. Dynamic
-personalization stays outside those cache functions. Keep the production-build
+Explore and company routes use Cache Components to embed anonymous defaults and
+cached metadata without request-bound APIs. Watchlist detail keeps the shared
+app layout cache-safe and resolves exact ownership, sharing, or session-draft
+state inside a route-level Suspense boundary. Keep the production-build
 classification assertions in `__tests__/build-output.test.ts` green.
 
 ## Page Conversion Pattern

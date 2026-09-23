@@ -7,6 +7,7 @@ import {
   eq,
   gt,
   isNull,
+  lte,
   or,
   sql,
 } from "drizzle-orm";
@@ -20,10 +21,13 @@ import {
   aiFilterQueryVersion,
   aiFilterSegment,
   subscription,
+  userPreferences,
   watchlist,
   watchlistCompany,
 } from "@/db/schema";
 import type { WatchlistFilters } from "@/lib/watchlist-matcher-contract";
+import { resolveJobLanguages } from "@/lib/job-languages";
+import type { AiFilterUiState } from "./ui-contract";
 import {
   CLASSIFIER_INPUT_NORMALIZER_VERSION,
   CLASSIFIER_INPUT_SCHEMA_VERSION,
@@ -33,8 +37,12 @@ import {
   AI_FILTER_PROMPT_VERSION,
   JEV_MODEL,
 } from "./policy";
+import {
+  aiFilterHistoricalHorizonStart,
+  aiFilterHorizonEnd,
+} from "./horizon";
 
-const DAY_MS = 24 * 60 * 60 * 1_000;
+const AI_FILTER_FRESHNESS_INTERVAL_MS = 60_000;
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -90,10 +98,6 @@ function monthStartUtc(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }
 
-function horizonEnd(now: Date): Date {
-  return new Date(Math.floor(now.getTime() / 1_000) * 1_000 + 1_000);
-}
-
 function stableJson(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -106,6 +110,7 @@ async function filterFingerprint(
   tx: Transaction,
   watchlistId: string,
   filters: unknown,
+  candidateLanguages: readonly string[],
 ): Promise<string> {
   const companies = await tx
     .select({ companyId: watchlistCompany.companyId })
@@ -114,8 +119,36 @@ async function filterFingerprint(
   const canonical = stableJson({
     filters: filters as WatchlistFilters,
     companyIds: companies.map((row) => row.companyId).sort(),
+    candidateLanguages: [...candidateLanguages].sort(),
   });
   return createHash("sha256").update(canonical, "utf8").digest("hex");
+}
+
+async function effectiveCandidateLanguages(
+  tx: Transaction,
+  ownerId: string,
+  supplied: readonly string[] | undefined,
+): Promise<string[]> {
+  if (supplied) {
+    if (supplied.some((language) =>
+      typeof language !== "string" || !/^[a-z]{2,3}(?:-[A-Z]{2})?$/.test(language)
+    )) {
+      throw new TypeError("AI filter candidate languages are invalid");
+    }
+    return [...new Set(supplied)].sort();
+  }
+  const [preferences] = await tx
+    .select({
+      locale: userPreferences.locale,
+      jobLanguages: userPreferences.jobLanguages,
+    })
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, ownerId))
+    .limit(1);
+  return resolveJobLanguages(
+    preferences?.jobLanguages ?? [],
+    preferences?.locale ?? "en",
+  );
 }
 
 async function ownedWatchlist(
@@ -161,6 +194,7 @@ export async function putAiFilterConfiguration(input: {
   ownerId: string;
   watchlistId: string;
   query: unknown;
+  candidateLanguages?: readonly string[];
   now?: Date;
 }): Promise<AiFilterOwnerState> {
   const now = input.now ?? new Date();
@@ -174,7 +208,17 @@ export async function putAiFilterConfiguration(input: {
     if (!await activeEntitlement(tx, input.ownerId, now)) {
       throw new AiFilterEntitlementError();
     }
-    const fingerprint = await filterFingerprint(tx, input.watchlistId, owned.filters);
+    const candidateLanguages = await effectiveCandidateLanguages(
+      tx,
+      input.ownerId,
+      input.candidateLanguages,
+    );
+    const fingerprint = await filterFingerprint(
+      tx,
+      input.watchlistId,
+      owned.filters,
+      candidateLanguages,
+    );
     const [configuration] = await tx
       .select()
       .from(aiFilterConfiguration)
@@ -193,8 +237,25 @@ export async function putAiFilterConfiguration(input: {
       if (!currentQuery) throw new Error("AI filter current query version is missing");
       if (
         currentQuery.normalizedQuery === normalizedQuery &&
-        currentQuery.filterFingerprint === fingerprint
+        currentQuery.filterFingerprint === fingerprint &&
+        currentQuery.horizonStartedAt.getTime() <=
+          aiFilterHistoricalHorizonStart().getTime()
       ) {
+        const nextHorizonEnd = aiFilterHorizonEnd(now);
+        // Keep a query revision stable while its feed advances. Catch-up
+        // creates a disjoint [previous end, next end) segment, so jobs with a
+        // durable decision are never sent through the classifier again. A
+        // short freshness bucket prevents an open drawer from manufacturing
+        // empty one-second segments on every poll.
+        if (
+          nextHorizonEnd.getTime() - currentQuery.horizonEndsAt.getTime() >=
+          AI_FILTER_FRESHNESS_INTERVAL_MS
+        ) {
+          await tx
+            .update(aiFilterQueryVersion)
+            .set({ horizonEndsAt: nextHorizonEnd })
+            .where(eq(aiFilterQueryVersion.id, currentQuery.id));
+        }
         await tx
           .update(aiFilterConfiguration)
           .set({ status: "enabled", disabledAt: null, updatedAt: now })
@@ -203,7 +264,7 @@ export async function putAiFilterConfiguration(input: {
       }
 
       const revision = configuration.currentRevision + 1;
-      const end = horizonEnd(now);
+      const end = aiFilterHorizonEnd(now);
       const queryVersionId = randomUUID();
       await tx.insert(aiFilterQueryVersion).values({
         id: queryVersionId,
@@ -216,7 +277,8 @@ export async function putAiFilterConfiguration(input: {
         schemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
         normalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
         filterFingerprint: fingerprint,
-        horizonStartedAt: new Date(end.getTime() - 30 * DAY_MS),
+        candidateLanguages,
+        horizonStartedAt: aiFilterHistoricalHorizonStart(),
         horizonEndsAt: end,
         createdAt: now,
       });
@@ -264,7 +326,7 @@ export async function putAiFilterConfiguration(input: {
 
     const configurationId = randomUUID();
     const queryVersionId = randomUUID();
-    const end = horizonEnd(now);
+    const end = aiFilterHorizonEnd(now);
     await tx.insert(aiFilterConfiguration).values({
       id: configurationId,
       watchlistId: input.watchlistId,
@@ -285,7 +347,8 @@ export async function putAiFilterConfiguration(input: {
       schemaVersion: CLASSIFIER_INPUT_SCHEMA_VERSION,
       normalizerVersion: CLASSIFIER_INPUT_NORMALIZER_VERSION,
       filterFingerprint: fingerprint,
-      horizonStartedAt: new Date(end.getTime() - 30 * DAY_MS),
+      candidateLanguages,
+      horizonStartedAt: aiFilterHistoricalHorizonStart(),
       horizonEndsAt: end,
       createdAt: now,
     });
@@ -426,7 +489,7 @@ export async function getAiFilterOwnerState(input: {
       ))
       .limit(1);
     if (!queryVersion) throw new AiFilterNotFoundError();
-    const [[latestSegment], [counts], [budget], [event]] = await Promise.all([
+    const [[latestSegment], [historicalFoundation], [counts], [budget], [event]] = await Promise.all([
       tx
         .select({
           status: aiFilterSegment.status,
@@ -434,6 +497,8 @@ export async function getAiFilterOwnerState(input: {
           scannedCount: aiFilterSegment.scannedCount,
           cursor: aiFilterSegment.cursor,
           stopReason: aiFilterSegment.stopReason,
+          windowStart: aiFilterSegment.windowStart,
+          windowEnd: aiFilterSegment.windowEnd,
         })
         .from(aiFilterSegment)
         .where(and(
@@ -441,6 +506,16 @@ export async function getAiFilterOwnerState(input: {
           eq(aiFilterSegment.queryVersionId, queryVersion.id),
         ))
         .orderBy(desc(aiFilterSegment.createdAt))
+        .limit(1),
+      tx
+        .select({ id: aiFilterSegment.id })
+        .from(aiFilterSegment)
+        .where(and(
+          eq(aiFilterSegment.watchlistId, input.watchlistId),
+          eq(aiFilterSegment.queryVersionId, queryVersion.id),
+          eq(aiFilterSegment.status, "caught_up"),
+          lte(aiFilterSegment.windowStart, queryVersion.horizonStartedAt),
+        ))
         .limit(1),
       tx
         .select({
@@ -478,6 +553,18 @@ export async function getAiFilterOwnerState(input: {
     ]);
     const entitled = await activeEntitlement(tx, input.ownerId, now);
     const enabled = configuration.status === "enabled";
+    const caughtUpCoversQueryHorizon = Boolean(
+      latestSegment?.status === "caught_up" &&
+      historicalFoundation &&
+      configuration.lastCaughtUpAt &&
+      configuration.lastSweepAt &&
+      configuration.lastCaughtUpAt.getTime() >= queryVersion.horizonEndsAt.getTime() &&
+      latestSegment.windowEnd.getTime() >= queryVersion.horizonEndsAt.getTime(),
+    );
+    const effectiveSegmentStatus =
+      latestSegment?.status === "caught_up" && !caughtUpCoversQueryHorizon
+        ? "completed"
+        : latestSegment?.status ?? null;
     return Object.freeze({
       watchlistId: input.watchlistId,
       enabled,
@@ -487,7 +574,7 @@ export async function getAiFilterOwnerState(input: {
       queryVersionId: queryVersion.id,
       status: publicStatus(
         enabled,
-        latestSegment?.status ?? null,
+        effectiveSegmentStatus,
         latestSegment?.stopReason ?? null,
       ),
       counts: Object.freeze({
@@ -505,10 +592,64 @@ export async function getAiFilterOwnerState(input: {
         actualNanodollars: budget?.actualNanodollars ?? 0,
         reservedNanodollars: budget?.reservedNanodollars ?? 0,
       }),
-      lastCaughtUpAt: configuration.lastCaughtUpAt?.toISOString() ?? null,
+      lastCaughtUpAt: caughtUpCoversQueryHorizon
+        ? configuration.lastCaughtUpAt?.toISOString() ?? null
+        : null,
       latestEventSequence: event?.sequence ?? 0,
     });
   });
+}
+
+/** Resolve the entitled owner behind an explicitly shared watchlist. */
+export async function getSharedAiFilterOwnerId(input: {
+  watchlistId: string;
+  now?: Date;
+}): Promise<string> {
+  const now = input.now ?? new Date();
+  const [shared] = await db
+    .select({ ownerId: watchlist.userId })
+    .from(watchlist)
+    .innerJoin(
+      aiFilterConfiguration,
+      and(
+        eq(aiFilterConfiguration.watchlistId, watchlist.id),
+        eq(aiFilterConfiguration.ownerId, watchlist.userId),
+        eq(aiFilterConfiguration.status, "enabled"),
+      ),
+    )
+    .innerJoin(subscription, eq(subscription.userId, watchlist.userId))
+    .where(and(
+      eq(watchlist.id, input.watchlistId),
+      eq(watchlist.shareEnabled, true),
+      eq(subscription.status, "active"),
+      eq(subscription.plan, "unlimited"),
+      or(isNull(subscription.endsAt), gt(subscription.endsAt, now)),
+    ))
+    .limit(1);
+  if (!shared) throw new AiFilterNotFoundError();
+  return shared.ownerId;
+}
+
+/**
+ * Read active matching configuration through an explicitly shared watchlist.
+ * The viewer shape excludes owner budget data and is exposed only while the
+ * owner retains access to the feature.
+ */
+export async function getSharedAiFilterState(input: {
+  watchlistId: string;
+  now?: Date;
+}): Promise<AiFilterUiState> {
+  const ownerId = await getSharedAiFilterOwnerId(input);
+
+  const state = await getAiFilterOwnerState({
+    ownerId,
+    watchlistId: input.watchlistId,
+    now: input.now,
+  });
+  if (!state.enabled || !state.entitled) throw new AiFilterNotFoundError();
+
+  const { budget: _ownerBudget, ...viewerState } = state;
+  return Object.freeze(viewerState);
 }
 
 export async function listAiFilterEvents(input: {

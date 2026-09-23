@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useLayoutEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bookmark, Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -30,20 +30,22 @@ import type {
   AiFilterUiState,
 } from "@/lib/ai-filter/ui-contract";
 import { AI_FILTER_PREFETCH_CANDIDATES } from "@/lib/ai-filter/demand";
+import { ANON_MAX_WATCHLIST_POSTINGS } from "@/lib/search/constants";
 
 const BATCH = 20;
-const AI_FILTER_POLL_MS = 750;
-const AI_FILTER_POLL_ATTEMPTS = 60;
+const AI_FILTER_POLL_MS = 1_500;
+const AI_FILTER_POLL_ATTEMPTS = 30;
 
 type AiDecisionPageResponse = {
   decisions: Array<{ posting: WatchlistPostingEntry }>;
+  total?: number;
   nextOffset: number;
   hasMore: boolean;
+  state?: AiFilterUiState;
 };
 
-function isAiFilterTerminal(state: AiFilterUiState): boolean {
-  return state.status === "caught_up" ||
-    state.status === "paused_entitlement" ||
+function aiFilterResultsBlocked(state: AiFilterUiState): boolean {
+  return state.status === "paused_entitlement" ||
     state.status === "paused_budget" ||
     state.status === "provider_unavailable" ||
     state.status === "paused_kill" ||
@@ -52,10 +54,22 @@ function isAiFilterTerminal(state: AiFilterUiState): boolean {
     state.status === "disabled";
 }
 
-async function readAiFilterState(watchlistId: string): Promise<AiFilterUiState> {
+function aiFilterDemandCannotStart(state: AiFilterUiState): boolean {
+  return state.status === "paused_entitlement" ||
+    state.status === "paused_budget" ||
+    state.status === "cancelled" ||
+    state.status === "failed" ||
+    state.status === "disabled";
+}
+
+async function readAiFilterState(
+  watchlistId: string,
+  signal?: AbortSignal,
+): Promise<AiFilterUiState> {
   const response = await fetch(`/api/web/watchlists/${watchlistId}/ai-filter`, {
     credentials: "same-origin",
     cache: "no-store",
+    signal,
   });
   if (!response.ok) throw new Error("matching_state_unavailable");
   return response.json() as Promise<AiFilterUiState>;
@@ -65,6 +79,7 @@ async function readAcceptedPage(
   watchlistId: string,
   offset: number,
   limit: number,
+  signal?: AbortSignal,
 ): Promise<AiDecisionPageResponse> {
   const params = new URLSearchParams({
     bucket: "accepted",
@@ -73,7 +88,7 @@ async function readAcceptedPage(
   });
   const response = await fetch(
     `/api/web/watchlists/${watchlistId}/ai-filter/decisions?${params}`,
-    { credentials: "same-origin", cache: "no-store" },
+    { credentials: "same-origin", cache: "no-store", signal },
   );
   if (!response.ok) throw new Error("matching_results_unavailable");
   return response.json() as Promise<AiDecisionPageResponse>;
@@ -82,17 +97,26 @@ async function readAcceptedPage(
 async function requestAiFilterDemand(
   watchlistId: string,
   offset: number,
-): Promise<void> {
+  jobLanguages: readonly string[],
+  locale: string,
+): Promise<{
+  state: AiFilterUiState;
+  workflow: { runId: string } | null;
+}> {
   const response = await fetch(
     `/api/web/watchlists/${watchlistId}/ai-filter/reconcile`,
     {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ offset }),
+      body: JSON.stringify({ offset, jobLanguages, locale }),
     },
   );
   if (!response.ok) throw new Error("matching_reconcile_unavailable");
+  return response.json() as Promise<{
+    state: AiFilterUiState;
+    workflow: { runId: string } | null;
+  }>;
 }
 
 function waitForAiFilterPoll(): Promise<void> {
@@ -105,62 +129,158 @@ function useAiFilteredResults(input: {
   initialPage: AiFilterAcceptedPage | null;
   scopeKey: string;
   scopeReady: boolean;
+  jobLanguages: readonly string[];
+  locale: string;
+  readOnly: boolean;
   onStateChange?: (state: AiFilterUiState) => void;
 }) {
+  const initialPage = input.initialPage?.queryVersionId &&
+      input.initialPage.queryVersionId !== input.state?.queryVersionId
+    ? null
+    : input.initialPage;
   const [postings, setPostings] = useState<WatchlistPostingEntry[]>(
-    input.initialPage?.postings ?? [],
+    initialPage?.postings ?? [],
   );
-  const [total, setTotal] = useState(input.state?.counts.accepted ?? 0);
+  const [total, setTotal] = useState(
+    initialPage?.total ?? input.state?.counts.accepted ?? 0,
+  );
   const [evaluated, setEvaluated] = useState(input.state?.counts.total ?? 0);
-  const [hasMore, setHasMore] = useState(input.initialPage?.hasMore ?? false);
+  const [hasMore, setHasMore] = useState(initialPage?.hasMore ?? false);
   const [isLoading, setIsLoading] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
-  const cursorRef = useRef(input.initialPage?.nextOffset ?? 0);
+  const cursorRef = useRef(initialPage?.nextOffset ?? 0);
   const postingsRef = useRef(postings);
   const stateRef = useRef(input.state);
   const loadingRef = useRef(false);
   const generationRef = useRef(0);
+  const prefetchKeyRef = useRef("");
+  const pendingScrollTopRef = useRef<number | null>(null);
+  const readAbortRef = useRef<AbortController | null>(null);
   postingsRef.current = postings;
   stateRef.current = input.state;
+
+  useLayoutEffect(() => {
+    const top = pendingScrollTopRef.current;
+    if (top == null) return;
+    pendingScrollTopRef.current = null;
+    window.scrollTo(window.scrollX, top);
+  }, [postings.length]);
 
   const loadMore = useCallback(async () => {
     const current = stateRef.current;
     if (!current?.enabled || !input.scopeReady || loadingRef.current) return;
     const generation = generationRef.current;
-    const demandOffset = cursorRef.current;
-    const demandTarget = Math.min(
-      10_000,
-      demandOffset + AI_FILTER_PREFETCH_CANDIDATES,
-    );
+    const readAbort = new AbortController();
+    readAbortRef.current?.abort();
+    readAbortRef.current = readAbort;
     loadingRef.current = true;
     setIsLoading(true);
     setUnavailable(false);
     try {
-      await requestAiFilterDemand(input.watchlistId, demandOffset);
-      let collected = 0;
-      let nextHasMore = true;
-      for (let attempt = 0; attempt < AI_FILTER_POLL_ATTEMPTS; attempt += 1) {
-        if (generationRef.current !== generation) return;
-        const nextState = await readAiFilterState(input.watchlistId);
-        stateRef.current = nextState;
-        input.onStateChange?.(nextState);
-        setTotal(nextState.counts.accepted);
-        setEvaluated(nextState.counts.total);
-
+      if (input.readOnly) {
         const page = await readAcceptedPage(
           input.watchlistId,
           cursorRef.current,
-          Math.max(1, BATCH - collected),
+          BATCH,
+          readAbort.signal,
         );
         if (generationRef.current !== generation) return;
         cursorRef.current = page.nextOffset;
-        nextHasMore = page.hasMore;
+        if (page.total != null) setTotal(page.total);
         if (page.decisions.length > 0) {
           const seen = new Set(postingsRef.current.map((posting) => posting.id));
           const fresh = page.decisions
             .map((decision) => decision.posting)
             .filter((posting) => !seen.has(posting.id));
           if (fresh.length > 0) {
+            pendingScrollTopRef.current = window.scrollY;
+            postingsRef.current = [...postingsRef.current, ...fresh];
+            setPostings(postingsRef.current);
+          }
+        }
+        setHasMore(page.hasMore);
+        return;
+      }
+
+      const initialPageOffset = cursorRef.current;
+      const initialPage = await readAcceptedPage(
+        input.watchlistId,
+        initialPageOffset,
+        BATCH,
+        readAbort.signal,
+      );
+      if (generationRef.current !== generation) return;
+      cursorRef.current = initialPage.nextOffset;
+      if (initialPage.state) {
+        stateRef.current = initialPage.state;
+        input.onStateChange?.(initialPage.state);
+        setEvaluated(initialPage.state.counts.total);
+      }
+      if (initialPage.total != null) setTotal(initialPage.total);
+      const initialSeen = new Set(
+        postingsRef.current.map((posting) => posting.id),
+      );
+      const initialFresh = initialPage.decisions
+        .map((decision) => decision.posting)
+        .filter((posting) => !initialSeen.has(posting.id));
+      if (initialFresh.length > 0) {
+        pendingScrollTopRef.current = window.scrollY;
+        postingsRef.current = [...postingsRef.current, ...initialFresh];
+        setPostings(postingsRef.current);
+      }
+      if (initialFresh.length >= BATCH || !initialPage.hasMore) {
+        setHasMore(initialPage.hasMore);
+        return;
+      }
+
+      const latest = stateRef.current ?? current;
+      const latestDemandOffset = latest.progress.selectionOffset +
+        latest.progress.scannedCount;
+      const latestDemandTarget = Math.min(
+        10_000,
+        latestDemandOffset + AI_FILTER_PREFETCH_CANDIDATES,
+      );
+      const demand = await requestAiFilterDemand(
+        input.watchlistId,
+        latestDemandOffset,
+        input.jobLanguages,
+        input.locale,
+      );
+      const demandBaseline = demand.state;
+      stateRef.current = demand.state;
+      input.onStateChange?.(demand.state);
+      setTotal(demand.state.counts.accepted);
+      setEvaluated(demand.state.counts.total);
+      let collected = initialFresh.length;
+      let nextHasMore: boolean = initialPage.hasMore;
+      for (let attempt = 0; attempt < AI_FILTER_POLL_ATTEMPTS; attempt += 1) {
+        if (generationRef.current !== generation) return;
+        if (attempt > 0) await waitForAiFilterPoll();
+        const pageOffset = cursorRef.current;
+        const requestedLimit = Math.max(1, BATCH - collected);
+        const page = await readAcceptedPage(
+          input.watchlistId,
+          pageOffset,
+          requestedLimit,
+          readAbort.signal,
+        );
+        if (generationRef.current !== generation) return;
+        const nextState: AiFilterUiState =
+          page.state ?? stateRef.current ?? demand.state;
+        stateRef.current = nextState;
+        input.onStateChange?.(nextState);
+        setTotal(nextState.counts.accepted);
+        setEvaluated(nextState.counts.total);
+        cursorRef.current = page.nextOffset;
+        nextHasMore = page.hasMore;
+        if (page.total != null) setTotal(page.total);
+        if (page.decisions.length > 0) {
+          const seen = new Set(postingsRef.current.map((posting) => posting.id));
+          const fresh = page.decisions
+            .map((decision) => decision.posting)
+            .filter((posting) => !seen.has(posting.id));
+          if (fresh.length > 0) {
+            pendingScrollTopRef.current = window.scrollY;
             postingsRef.current = [...postingsRef.current, ...fresh];
             setPostings(postingsRef.current);
             collected += fresh.length;
@@ -169,19 +289,39 @@ function useAiFilteredResults(input: {
 
         const coveredOffset = nextState.progress.selectionOffset +
           nextState.progress.scannedCount;
+        // A short page means the client consumed every accepted decision
+        // currently persisted after `pageOffset`. Once the requested raw-
+        // candidate runway is covered, return control to infinite scroll;
+        // polling the same frontier only repeats an empty read.
+        const workflowAdvanced =
+          nextState.queryVersionId !== demandBaseline.queryVersionId ||
+          nextState.latestEventSequence > demandBaseline.latestEventSequence ||
+          nextState.counts.total > demandBaseline.counts.total ||
+          nextState.progress.selectionOffset !==
+            demandBaseline.progress.selectionOffset ||
+          nextState.progress.scannedCount !== demandBaseline.progress.scannedCount;
+        const currentBlockedState = aiFilterResultsBlocked(nextState) &&
+          (demand.workflow === null || workflowAdvanced);
         if (
           collected >= BATCH ||
           !nextHasMore ||
-          isAiFilterTerminal(nextState) ||
-          coveredOffset >= demandTarget
+          currentBlockedState ||
+          (
+            page.decisions.length < requestedLimit &&
+            (demand.workflow === null || coveredOffset >= latestDemandTarget)
+          )
         ) {
-          setHasMore(nextHasMore && !isAiFilterTerminal(nextState));
+          // `caught_up` means evaluation reached the end of the candidate
+          // feed, not that the client consumed every persisted decision.
+          // Keep paging accepted decisions until the decision cursor itself
+          // reports no remaining candidates.
+          setHasMore(nextHasMore && !currentBlockedState);
           return;
         }
-        await waitForAiFilterPoll();
       }
       setHasMore(nextHasMore);
     } catch (error) {
+      if (readAbort.signal.aborted) return;
       setUnavailable(true);
       logExternalError(
         "warn",
@@ -190,40 +330,194 @@ function useAiFilteredResults(input: {
       );
     } finally {
       if (generationRef.current === generation) {
+        if (readAbortRef.current === readAbort) readAbortRef.current = null;
         loadingRef.current = false;
         setIsLoading(false);
       }
     }
-  }, [input.onStateChange, input.scopeReady, input.watchlistId]);
+  }, [
+    input.jobLanguages,
+    input.locale,
+    input.onStateChange,
+    input.readOnly,
+    input.scopeReady,
+    input.watchlistId,
+  ]);
 
   const queryVersionId = input.state?.queryVersionId ?? null;
   const enabled = input.state?.enabled === true;
+  useEffect(() => () => readAbortRef.current?.abort(), []);
   useEffect(() => {
     generationRef.current += 1;
-    const nextPostings = input.initialPage?.postings ?? [];
+    readAbortRef.current?.abort();
+    readAbortRef.current = null;
+    const nextPostings = initialPage?.postings ?? [];
     postingsRef.current = nextPostings;
-    cursorRef.current = input.initialPage?.nextOffset ?? 0;
+    cursorRef.current = initialPage?.nextOffset ?? 0;
     stateRef.current = input.state;
     loadingRef.current = false;
     setPostings(nextPostings);
-    setTotal(input.state?.counts.accepted ?? nextPostings.length);
+    setTotal(initialPage?.total ?? input.state?.counts.accepted ?? nextPostings.length);
     setEvaluated(input.state?.counts.total ?? 0);
-    setHasMore(input.initialPage?.hasMore ?? Boolean(input.state?.enabled));
+    setHasMore(initialPage?.hasMore ?? Boolean(input.state?.enabled));
     setIsLoading(false);
     setUnavailable(false);
-    if (enabled && input.scopeReady && nextPostings.length === 0) {
-      void loadMore();
-    }
     // A hard-filter edit deliberately invalidates visible decisions before
     // the debounced watchlist mutation reaches the server. Once `scopeReady`
-    // flips back to true, the same effect starts reconciliation against the
+    // flips back to true, the effect below starts reconciliation against the
     // persisted scope. The initial page only belongs to the original key.
   }, [
     enabled,
-    input.initialPage,
+    initialPage,
+    input.scopeKey,
+    queryVersionId,
+  ]);
+
+  useEffect(() => {
+    if (
+      enabled &&
+      input.scopeReady &&
+      postingsRef.current.length === 0 &&
+      !loadingRef.current
+    ) {
+      void loadMore();
+    }
+  }, [enabled, input.scopeReady, loadMore, queryVersionId]);
+
+  // Once any matches are visible, maintain the candidate runway in the
+  // background. This covers both restored drawers and a fresh query whose
+  // first foreground poll returned before the full runway was evaluated; in
+  // either case the sentinel may remain intersecting and never fire again.
+  // Counts update as durable segments land without keeping a spinner visible.
+  useEffect(() => {
+    if (
+      !enabled ||
+      input.readOnly ||
+      !input.scopeReady ||
+      isLoading ||
+      postings.length === 0 ||
+      !hasMore ||
+      aiFilterDemandCannotStart(stateRef.current!)
+    ) {
+      return;
+    }
+    const offset = stateRef.current!.progress.selectionOffset +
+      stateRef.current!.progress.scannedCount;
+    const key = `${queryVersionId}:${input.scopeKey}:${cursorRef.current}:${postings.length}`;
+    if (prefetchKeyRef.current === key) return;
+    prefetchKeyRef.current = key;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const demand = await requestAiFilterDemand(
+          input.watchlistId,
+          offset,
+          input.jobLanguages,
+          input.locale,
+        );
+        if (cancelled) return;
+        stateRef.current = demand.state;
+        input.onStateChange?.(demand.state);
+        setTotal(demand.state.counts.accepted);
+        setEvaluated(demand.state.counts.total);
+      } catch (error) {
+        if (cancelled) return;
+        prefetchKeyRef.current = "";
+        logExternalError(
+          "warn",
+          { service: "external_http", operation: "watchlist_matching_prefetch" },
+          error,
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    enabled,
+    hasMore,
+    input.onStateChange,
+    input.readOnly,
+    input.jobLanguages,
+    input.locale,
     input.scopeKey,
     input.scopeReady,
-    loadMore,
+    input.watchlistId,
+    isLoading,
+    postings.length,
+    queryVersionId,
+  ]);
+
+  // A foreground page can fill with accepted rows before the durable
+  // workflow finishes evaluating its candidate runway. Keep the compact
+  // counter current while the drawer is open; otherwise it can remain stuck
+  // on the state observed when the last visible page completed even though
+  // later segments have already committed in the background.
+  useEffect(() => {
+    if (
+      input.readOnly ||
+      !enabled ||
+      !input.scopeReady ||
+      !input.watchlistId ||
+      isLoading
+    ) return;
+    if (
+      stateRef.current?.status !== "processing" &&
+      stateRef.current?.status !== "waiting_for_jev"
+    ) {
+      return;
+    }
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    let attempts = 0;
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        controller = new AbortController();
+        const nextState = await readAiFilterState(
+          input.watchlistId,
+          controller.signal,
+        );
+        if (cancelled) return;
+        stateRef.current = nextState;
+        input.onStateChange?.(nextState);
+        setTotal(nextState.counts.accepted);
+        setEvaluated(nextState.counts.total);
+        if (
+          nextState.status !== "processing" &&
+          nextState.status !== "waiting_for_jev"
+        ) {
+          return;
+        }
+        attempts += 1;
+        if (attempts >= AI_FILTER_POLL_ATTEMPTS * 4) return;
+      } catch (error) {
+        if (cancelled) return;
+        logExternalError(
+          "warn",
+          { service: "external_http", operation: "watchlist_matching_state_poll" },
+          error,
+        );
+      }
+      timer = setTimeout(() => void poll(), AI_FILTER_POLL_MS);
+    };
+    timer = setTimeout(() => void poll(), AI_FILTER_POLL_MS);
+    return () => {
+      cancelled = true;
+      controller?.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [
+    enabled,
+    input.onStateChange,
+    input.readOnly,
+    input.scopeReady,
+    input.state?.status,
+    input.watchlistId,
+    isLoading,
     queryVersionId,
   ]);
 
@@ -267,20 +561,29 @@ export function WatchlistJobList({
   filters,
   initialPostings,
   initialTotal,
+  initialTruncated = false,
   yearTotal,
   initialSearchUnavailable = false,
   jobLanguages,
   locale,
   onResultStateChange,
+  onAiMatchCountChange,
   aiFilterState = null,
   initialAiAcceptedPage = null,
   onAiFilterStateChange,
   aiFilterScopeKey = "",
   aiFilterScopeReady = true,
+  resultMode = "auto",
+  drawerControl,
+  drawerOpen = false,
+  candidateTotal,
+  aiFilterReadOnly = false,
+  sharedSnapshot = false,
 }: {
   filters: WatchlistJobListFilters;
   initialPostings: WatchlistPostingEntry[];
   initialTotal: number;
+  initialTruncated?: boolean;
   yearTotal: number;
   initialSearchUnavailable?: boolean;
   jobLanguages: string[];
@@ -289,14 +592,27 @@ export function WatchlistJobList({
     candidateCount: number | undefined;
     unavailable: boolean;
   }) => void;
+  onAiMatchCountChange?: (count: number) => void;
   aiFilterState?: AiFilterUiState | null;
   initialAiAcceptedPage?: AiFilterAcceptedPage | null;
   onAiFilterStateChange?: (state: AiFilterUiState) => void;
   aiFilterScopeKey?: string;
   aiFilterScopeReady?: boolean;
+  /** Broad remains the default feed; narrowed is rendered in the expandable results panel. */
+  resultMode?: "auto" | "broad" | "narrowed";
+  /** Compact control and narrowed surface inserted between stats and results. */
+  drawerControl?: ReactNode;
+  /** Removes the replaced broad list from layout while preserving its state. */
+  drawerOpen?: boolean;
+  /** Current broad-feed size, used to report completed coverage precisely. */
+  candidateTotal?: number;
+  /** Shared viewers page persisted matches without starting new evaluations. */
+  aiFilterReadOnly?: boolean;
+  /** Public snapshots keep the owner's language scope and immutable controls. */
+  sharedSnapshot?: boolean;
 }) {
   const { i18n, t } = useLingui();
-  const { isLoggedIn } = useSession();
+  const { isLoggedIn, isPending: isSessionPending } = useSession();
   const isLoggedInRef = useRef(isLoggedIn);
   isLoggedInRef.current = isLoggedIn;
   const searchParams = useSearchParams();
@@ -316,17 +632,30 @@ export function WatchlistJobList({
   const normalResults = usePaginatedLoadMore<WatchlistPostingEntry>({
     initialItems: initialPostings,
     initialTotal,
+    initialTruncated,
     batchSize: BATCH,
     itemKey: (p) => p.id,
-    resetKey: filtersKey,
+    resetKey: resultMode === "narrowed" ? "narrowed-surface" : filtersKey,
+    preserveDocumentScroll: resultMode !== "narrowed",
     fetcher: async ({ offset, limit }) => {
       try {
-        return await runGetWatchlistPostings(
+        const result = await runGetWatchlistPostings(
           { ...filtersRef.current, offset, limit },
           isLoggedInRef.current,
         );
+        setSearchUnavailable(false);
+        return result;
       } catch (error) {
-        setSearchUnavailable(true);
+        // A failed first page means the requested feed is unavailable. A
+        // later-page failure must not replace an already-useful list with a
+        // full-page error: keep the committed rows and let infinite scroll
+        // retry after the sentinel leaves and re-enters the viewport.
+        if (offset === 0) setSearchUnavailable(true);
+        logExternalError(
+          "warn",
+          { service: "typesense", operation: "watchlist_load_more" },
+          error,
+        );
         throw error;
       }
     },
@@ -337,9 +666,12 @@ export function WatchlistJobList({
     initialPage: initialAiAcceptedPage,
     scopeKey: aiFilterScopeKey,
     scopeReady: aiFilterScopeReady,
+    jobLanguages,
+    locale,
+    readOnly: aiFilterReadOnly,
     onStateChange: onAiFilterStateChange,
   });
-  const aiFilterActive = aiFilterState?.enabled === true;
+  const aiFilterActive = resultMode !== "broad" && aiFilterState?.enabled === true;
   const postings = aiFilterActive ? aiResults.postings : normalResults.items;
   const total = aiFilterActive ? aiResults.total : normalResults.total;
 
@@ -358,6 +690,7 @@ export function WatchlistJobList({
   const [yearTotal_, setYearTotal] = useState(yearTotal);
   const initialFiltersKeyRef = useRef(filtersKey);
   useEffect(() => {
+    if (resultMode === "narrowed") return;
     if (filtersKey === initialFiltersKeyRef.current) return;
     setSearchUnavailable(false);
     let cancelled = false;
@@ -365,29 +698,54 @@ export function WatchlistJobList({
       if (cancelled) return;
       setYearTotal(next);
     }).catch((err) => {
-      setSearchUnavailable(true);
+      // Keep the SSR count when this secondary statistic cannot refresh;
+      // the jobs already on screen remain valid and usable.
       logExternalError("error", { service: "typesense", operation: "watchlist_year_count" }, err);
     });
     return () => {
       cancelled = true;
     };
-  }, [filtersKey]);
+  }, [filtersKey, resultMode]);
 
-  const { sentinelRef, isLoading: isNormalLoading } = useInfiniteScroll({
-    hasMore: normalResults.hasMore,
-    load: normalResults.loadMore,
+  const anonymousNarrowedLimitReached = aiFilterActive &&
+    !isSessionPending &&
+    !isLoggedIn &&
+    postings.length >= ANON_MAX_WATCHLIST_POSTINGS;
+  const infiniteHasMore = aiFilterActive
+    ? aiFilterScopeReady &&
+      aiResults.hasMore &&
+      !aiResults.unavailable &&
+      !isSessionPending &&
+      !anonymousNarrowedLimitReached
+    // A signed-in viewer briefly has `isLoggedIn=false` while the client
+    // session hydrates. Loading offset 20 during that window applies the
+    // anonymous 20-job cap and permanently marks the list truncated. Wait
+    // for the authoritative session before the first broad-page request.
+    : !isSessionPending && normalResults.hasMore;
+  const { sentinelRef, isLoading: isInfiniteLoading } = useInfiniteScroll({
+    hasMore: infiniteHasMore,
+    load: aiFilterActive ? aiResults.loadMore : normalResults.loadMore,
+    rootMargin: "400px",
+    observerKey: aiFilterActive
+      ? `${aiFilterState?.queryVersionId ?? "none"}:${aiFilterScopeKey}:${aiResults.postings.length}`
+      : filtersKey,
   });
-  const isLoading = aiFilterActive ? aiResults.isLoading : isNormalLoading;
+  const isLoading = aiFilterActive
+    ? aiResults.isLoading || isInfiniteLoading
+    : isInfiniteLoading;
   const showUnavailable = aiFilterActive
-    ? aiResults.unavailable || aiFilterState.status === "provider_unavailable" ||
+    ? aiResults.unavailable || (!aiFilterReadOnly && (
+      aiFilterState.status === "provider_unavailable" ||
       aiFilterState.status === "paused_kill" || aiFilterState.status === "failed" ||
       aiFilterState.status === "paused_budget" ||
       aiFilterState.status === "paused_entitlement"
+    ))
     : searchUnavailable || (
       postings.length === 0 && !isLoading && total > 0
   );
 
   useEffect(() => {
+    if (resultMode === "narrowed") return;
     onResultStateChange?.({
       candidateCount: searchUnavailable ? undefined : normalResults.total,
       unavailable: searchUnavailable,
@@ -396,7 +754,18 @@ export function WatchlistJobList({
     onResultStateChange,
     normalResults.resultRevision,
     normalResults.total,
+    resultMode,
     searchUnavailable,
+  ]);
+
+  useEffect(() => {
+    if (resultMode !== "narrowed" || !aiFilterActive) return;
+    onAiMatchCountChange?.(aiResults.total);
+  }, [
+    aiFilterActive,
+    aiResults.total,
+    onAiMatchCountChange,
+    resultMode,
   ]);
 
   function handleOpenPosting(postingId: string) {
@@ -457,7 +826,7 @@ export function WatchlistJobList({
       // re-render of one row cannot reflow neighbouring rows.
       <div
         key={entry.id}
-        className={`relative flex min-h-10 w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors [contain:layout] hover:bg-border-soft ${
+        className={`relative flex min-h-10 w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-md px-2 py-2 text-left transition-colors [contain:layout] hover:bg-border-soft ${
           showPostingId === entry.id ? "bg-border-soft" : ""
         }`}
       >
@@ -478,7 +847,7 @@ export function WatchlistJobList({
         <TrackingDot postingId={entry.id} />
         <CompanyIcon icon={entry.company.icon} alt={entry.company.name} size={24} />
 
-        <span className="shrink-0 text-xs text-muted">
+        <span className="max-w-28 shrink-0 truncate text-xs text-muted sm:max-w-40">
           {entry.company.name}
         </span>
 
@@ -541,33 +910,50 @@ export function WatchlistJobList({
     id: "watchlists.jobList.evaluatedCount",
     comment: "Number of watchlist candidates evaluated against the saved request",
     message: "{count, plural, one {# evaluated} other {# evaluated}}",
-    values: { count: aiResults.evaluated },
+    values: {
+      count: aiFilterState?.status === "caught_up" && candidateTotal != null
+        ? candidateTotal
+        : candidateTotal == null
+          ? aiResults.evaluated
+          : Math.min(aiResults.evaluated, candidateTotal),
+    },
   });
   const listColumn = (
-    <div className="space-y-4">
-      {!searchUnavailable && !aiFilterActive && (
-        <LanguageStatsRow
-          jobLanguages={jobLanguages}
-          locale={locale}
-          activeCount={total}
-          yearCount={yearTotal_}
-        />
-      )}
-      {aiFilterActive && (
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-          <span>
-            <Trans
-              id="watchlists.jobList.preciseResults"
-              comment="Status label above a watchlist narrowed by natural-language matching"
-            >
-              Matching results
-            </Trans>
-          </span>
-          <span className="tabular-nums">
-            {acceptedCountLabel} · {evaluatedCountLabel}
-          </span>
-        </div>
-      )}
+    <div className="min-w-0">
+      <div
+        id={resultMode === "narrowed" ? undefined : "watchlist-results-boundary"}
+        className={resultMode === "narrowed"
+          ? "sticky top-14 z-20 -mx-2 space-y-2 bg-surface-glass px-2 py-2 backdrop-blur-md md:top-[5.5rem]"
+          : "sticky top-0 z-30 -mx-2 flex min-h-10 scroll-mt-0 items-center bg-background/80 px-2 py-2 backdrop-blur-md md:top-12 md:scroll-mt-12"}
+      >
+        {resultMode !== "narrowed" && (
+          <LanguageStatsRow
+            jobLanguages={jobLanguages}
+            locale={locale}
+            activeCount={normalResults.total}
+            yearCount={yearTotal_}
+            allowLanguageChange={!sharedSnapshot}
+          />
+        )}
+        {resultMode !== "broad" && aiFilterActive && (
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-1 text-xs">
+            <span className="font-medium text-foreground">
+              <Trans
+                id="watchlists.jobList.preciseResults"
+                comment="Status label above a watchlist narrowed by natural-language matching"
+              >
+                Matching results
+              </Trans>
+            </span>
+            <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 font-medium tabular-nums text-primary">
+              {acceptedCountLabel} · {evaluatedCountLabel}
+            </span>
+          </div>
+        )}
+      </div>
+      {resultMode === "broad" && drawerControl ? (
+        <div className="mt-2 min-w-0">{drawerControl}</div>
+      ) : null}
       {/* `[overflow-anchor:none]` opts the whole postings list out of the
           browser's automatic scroll-anchor selection. Without it, when
           pagination appends new rows the anchoring heuristic can pick a
@@ -577,70 +963,60 @@ export function WatchlistJobList({
           already opts out for itself; this widens the opt-out to every
           row + date divider so no element in the subtree can be picked
           mid-scroll. */}
-      <div className="[overflow-anchor:none]">
-        {rows}
+      <div className={`relative grid w-full min-w-0 max-w-full ${
+        resultMode === "narrowed" ? "mt-1" : "mt-4"
+      }`}>
+        <div className={`col-start-1 row-start-1 min-w-0 max-w-full [overflow-anchor:none] ${
+          drawerOpen ? "invisible h-0 overflow-hidden" : ""
+        }`}>
+          {rows}
 
-        {showUnavailable ? (
-          <SearchUnavailable />
-        ) : aiFilterActive && postings.length === 0 && isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted" role="status">
-            <Loader2 size={16} className="motion-safe:animate-spin" aria-hidden="true" />
-            <Trans
-              id="watchlists.jobList.evaluating"
-              comment="Loading state while a saved matching request is evaluated against a watchlist"
-            >
-              Reviewing this feed…
-            </Trans>
-          </div>
-        ) : postings.length === 0 && !isLoading && (
-          <div className="py-12 text-center text-sm text-muted">
-            {aiFilterActive ? (
+          {showUnavailable ? (
+            <SearchUnavailable />
+          ) : aiFilterActive && postings.length === 0 &&
+              (isLoading || aiResults.hasMore) ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted" role="status">
+              <Loader2 size={16} className="motion-safe:animate-spin" aria-hidden="true" />
               <Trans
-                id="watchlists.jobList.noPreciseMatches"
-                comment="Empty state when no jobs satisfy a watchlist's natural-language matching request"
+                id="watchlists.jobList.evaluating"
+                comment="Loading state while a saved matching request is evaluated against a watchlist"
               >
-                No jobs match these criteria.
+                Reviewing this feed…
               </Trans>
-            ) : (
-              <Trans id="watchlists.jobList.empty" comment="Empty state when no jobs match the time range">
-                No jobs found.
-              </Trans>
-            )}
-          </div>
-        )}
+            </div>
+          ) : postings.length === 0 && !isLoading && (
+            <div className="py-12 text-center text-sm text-muted">
+              {aiFilterActive ? (
+                <Trans
+                  id="watchlists.jobList.noPreciseMatches"
+                  comment="Empty state when no jobs satisfy a watchlist's natural-language matching request"
+                >
+                  No jobs match these criteria.
+                </Trans>
+              ) : (
+                <Trans id="watchlists.jobList.empty" comment="Empty state when no jobs match the time range">
+                  No jobs found.
+                </Trans>
+              )}
+            </div>
+          )}
 
-        {aiFilterActive && aiResults.hasMore && !showUnavailable ? (
-          <div className="flex justify-center py-5">
-            <button
-              type="button"
-              onClick={() => void aiResults.loadMore()}
-              disabled={aiResults.isLoading}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border-soft px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-primary/30 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
-            >
-              {aiResults.isLoading ? (
-                <Loader2 size={14} className="motion-safe:animate-spin" aria-hidden="true" />
-              ) : null}
-              <Trans
-                id="watchlists.jobList.reviewMore"
-                comment="Button that evaluates the next portion of a narrowed watchlist on demand"
-              >
-                Review more jobs
-              </Trans>
-            </button>
-          </div>
-        ) : null}
-        {!aiFilterActive && normalResults.hasMore && (
-          <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />
-        )}
-        {!aiFilterActive && !normalResults.hasMore && normalResults.truncated && (
-          <TruncationPrompt type="postings" />
-        )}
+          {infiniteHasMore && !showUnavailable && (
+            <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />
+          )}
+          {!aiFilterActive && !normalResults.hasMore && normalResults.truncated && (
+            <TruncationPrompt type="postings" />
+          )}
+          {anonymousNarrowedLimitReached && (
+            <TruncationPrompt type="postings" />
+          )}
+        </div>
       </div>
     </div>
   );
 
   return (
-    <div className="flex gap-5">
+    <div className="flex w-full min-w-0 max-w-full gap-5">
       <div className="min-w-0 flex-1">{listColumn}</div>
       {showPostingId && (
         <>

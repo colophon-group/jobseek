@@ -63,10 +63,17 @@ describe("0092 Jev AI filter foundation migration", () => {
     const journal = JSON.parse(
       readFileSync(resolve(webRoot, "drizzle/meta/_journal.json"), "utf8"),
     ) as { entries: Array<{ idx: number; when: number; tag: string }> };
-    expect(journal.entries.at(-1)).toMatchObject({
+    const entryIndex = journal.entries.findIndex(
+      (entry) => entry.tag === "0092_jev_ai_filter_foundation",
+    );
+    expect(journal.entries[entryIndex]).toMatchObject({
       idx: 80,
       when: 1_789_988_400_000,
       tag: "0092_jev_ai_filter_foundation",
     });
+    expect(journal.entries[entryIndex - 1]?.idx).toBeLessThan(80);
+    expect(journal.entries[entryIndex + 1]?.idx).toBeGreaterThan(80);
+    expect(journal.entries[entryIndex - 1]?.when).toBeLessThan(1_789_988_400_000);
+    expect(journal.entries[entryIndex + 1]?.when).toBeGreaterThan(1_789_988_400_000);
   });
 });

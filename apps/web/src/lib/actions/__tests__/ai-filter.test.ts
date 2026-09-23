@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   deleteWatchlist: vi.fn(),
   putAiFilterConfiguration: vi.fn(),
   disableAiFilterConfiguration: vi.fn(),
+  assertAiFilterCandidateScope: vi.fn(),
   logExternalError: vi.fn(),
 }));
 
@@ -30,6 +31,10 @@ vi.mock("@/lib/ai-filter/configuration-service", () => ({
 
 vi.mock("@/lib/safe-external-error", () => ({
   logExternalError: (...args: unknown[]) => mocks.logExternalError(...args),
+}));
+vi.mock("@/lib/ai-filter/candidate-loader", () => ({
+  assertAiFilterCandidateScope: (...args: unknown[]) =>
+    mocks.assertAiFilterCandidateScope(...args),
 }));
 
 import { AiFilterEntitlementError } from "@/lib/ai-filter/configuration-service";
@@ -68,6 +73,7 @@ describe("AI filter watchlist actions", () => {
     mocks.deleteWatchlist.mockResolvedValue({ ok: true });
     mocks.putAiFilterConfiguration.mockResolvedValue(configuredState);
     mocks.disableAiFilterConfiguration.mockResolvedValue(undefined);
+    mocks.assertAiFilterCandidateScope.mockResolvedValue(24);
   });
 
   it("creates and configures the watchlist before returning its destination", async () => {
@@ -77,6 +83,10 @@ describe("AI filter watchlist actions", () => {
     })).resolves.toEqual({ id: watchlistId, slug: "backend" });
 
     expect(mocks.createWatchlist).toHaveBeenCalledWith(draft);
+    expect(mocks.assertAiFilterCandidateScope).toHaveBeenCalledWith({
+      ownerId: "user-1",
+      watchlistId,
+    });
     expect(mocks.putAiFilterConfiguration).toHaveBeenCalledWith({
       ownerId: "user-1",
       watchlistId,
@@ -108,6 +118,10 @@ describe("AI filter watchlist actions", () => {
       ownerId: "user-1",
       watchlistId,
       query: "Backend developer tools",
+    });
+    expect(mocks.assertAiFilterCandidateScope).toHaveBeenCalledWith({
+      ownerId: "user-1",
+      watchlistId,
     });
     expect(mocks.createWatchlist).not.toHaveBeenCalled();
   });

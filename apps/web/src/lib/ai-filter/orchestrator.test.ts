@@ -163,6 +163,45 @@ describe("AI filter segment orchestrator", () => {
     expect(result).toMatchObject({ status: "completed", jevCalls: 2, jevJobs: 7 });
   });
 
+  it("uses a fresh reservation identity after a segment lease is resumed", async () => {
+    const candidates = [candidate(1)];
+    const reservationKeys: string[] = [];
+    const run = async (leaseOwner: string) => {
+      const repo = repository((bindings) => ({
+        persistedDecisionCount: 0,
+        cacheHits: [],
+        claims: bindings,
+        waitingCacheKeys: [],
+      }));
+      vi.mocked(repo.reserveBudget).mockImplementation(
+        async ({ idempotencyKey, amountNanodollars }) => {
+          reservationKeys.push(idempotencyKey);
+          return {
+            status: "reserved",
+            reservation: {
+              idempotencyKey,
+              reservedNanodollars: amountNanodollars,
+            },
+          };
+        },
+      );
+      await executeAiFilterSegment({
+        context: { ...context, leaseOwner },
+        candidates,
+        hmacSecret,
+        repository: repo,
+        classifier: { classify: vi.fn(async () => jevResult(candidates)) },
+        executionEnabled: true,
+      });
+    };
+
+    await run("lease-a");
+    await run("lease-b");
+
+    expect(reservationKeys).toHaveLength(2);
+    expect(reservationKeys[0]).not.toBe(reservationKeys[1]);
+  });
+
   it("pauses before Jev when the monthly spend reservation is denied", async () => {
     const candidates = [candidate(1)];
     const repo = repository((bindings) => ({

@@ -8,8 +8,10 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   createWatchlist: vi.fn(),
   createWatchlistFromHandoff: vi.fn(),
+  copySharedWatchlist: vi.fn(),
   shareWatchlist: vi.fn(),
   deleteWatchlist: vi.fn(),
+  getSessionWatchlistActivityPreviews: vi.fn(),
   searchParams: new URLSearchParams(),
   session: { isLoggedIn: true, isPending: false },
   rates: [] as { currency: string; toEur: number }[],
@@ -39,20 +41,27 @@ vi.mock("@/components/providers/SalaryDisplayProvider", () => ({
 vi.mock("@/lib/actions/watchlists", () => ({
   createWatchlist: mocks.createWatchlist,
   createWatchlistFromHandoff: mocks.createWatchlistFromHandoff,
+  copySharedWatchlist: mocks.copySharedWatchlist,
   shareWatchlist: mocks.shareWatchlist,
   deleteWatchlist: mocks.deleteWatchlist,
 }));
 
+vi.mock("@/lib/actions/session-watchlists", () => ({
+  getSessionWatchlistActivityPreviews: mocks.getSessionWatchlistActivityPreviews,
+}));
+
 vi.mock("@/components/ui/Button", () => ({
-  Button: ({ children, href }: { children: React.ReactNode; href?: string }) => (
-    href ? <a href={href}>{children}</a> : <button type="button">{children}</button>
+  Button: ({ children, href, onClick }: { children: React.ReactNode; href?: string; onClick?: () => void }) => (
+    href ? <a href={href}>{children}</a> : <button type="button" onClick={onClick}>{children}</button>
   ),
 }));
 
 import { WatchlistsPage } from "../watchlists-page";
+import { stagePendingWatchlist } from "@/lib/pending-watchlist";
 
 const FIRST_ID = "11111111-1111-4111-8111-111111111111";
 const SECOND_ID = "22222222-2222-4222-8222-222222222222";
+const THIRD_ID = "33333333-3333-4333-8333-333333333333";
 
 function overview(id: string, title = id) {
   return {
@@ -81,11 +90,17 @@ describe("WatchlistsPage private overview", () => {
     mocks.searchParams = new URLSearchParams();
     mocks.session = { isLoggedIn: true, isPending: false };
     mocks.rates = [];
+    window.sessionStorage.clear();
     mocks.shareWatchlist.mockResolvedValue({
       ok: true,
       url: `https://jseek.co/watchlists/${FIRST_ID}`,
     });
     mocks.deleteWatchlist.mockResolvedValue({ ok: true });
+    mocks.copySharedWatchlist.mockResolvedValue({
+      id: SECOND_ID,
+      slug: "cloned",
+    });
+    mocks.getSessionWatchlistActivityPreviews.mockResolvedValue({ previews: {} });
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
   });
 
@@ -117,6 +132,172 @@ describe("WatchlistsPage private overview", () => {
     expect(screen.getByRole("status").textContent).toContain("Loading watchlists");
     expect(screen.queryByText(/Sign in to create and manage/)).toBeNull();
     expect(screen.queryByRole("link", { name: /Log in/ })).toBeNull();
+  });
+
+  it("adds an anonymous watchlist as a normal overview row without opening login", () => {
+    mocks.session = { isLoggedIn: false, isPending: false };
+    render(<WatchlistsPage {...baseProps} initialWatchlists={[]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(mocks.push).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/en\/watchlists\/[0-9a-f-]+$/),
+    );
+    expect(window.sessionStorage.length).toBe(1);
+    expect(mocks.createWatchlist).not.toHaveBeenCalled();
+    expect(screen.queryByText("Session draft")).toBeNull();
+    expect(screen.getByText("New watchlist")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain(
+      "Saved in this browser until you log in",
+    );
+    expect(screen.queryByRole("button", { name: "Log in to keep" })).toBeNull();
+    const rows = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(rows.at(-1)?.contains(screen.getByRole("button", { name: "Create" })))
+      .toBe(true);
+  });
+
+  it("keeps multiple anonymous watchlists and the Create row in the same list", () => {
+    mocks.session = { isLoggedIn: false, isPending: false };
+    render(<WatchlistsPage {...baseProps} initialWatchlists={[]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(screen.getAllByText("New watchlist")).toHaveLength(2);
+    expect(within(screen.getByRole("list")).getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("restores an anonymous watchlist with the normal activity preview", async () => {
+    stagePendingWatchlist({
+      kind: "create",
+      draft: {
+        title: "Swiss internships",
+        companyIds: [],
+        filters: { anyCompany: true, locationSlugs: ["switzerland"] },
+        isPublic: false,
+      },
+    });
+    mocks.getSessionWatchlistActivityPreviews.mockImplementation(async ({ entries }) => ({
+      previews: {
+        [entries[0].id]: {
+          activeCompanyCount: 3,
+          activeJobCount: 24,
+          topCompanies: [
+            { id: "company-1", name: "Acme", icon: null },
+          ],
+        },
+      },
+    }));
+    mocks.session = { isLoggedIn: false, isPending: false };
+
+    render(<WatchlistsPage {...baseProps} initialWatchlists={[]} />);
+
+    expect(screen.getByText("Swiss internships")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText("3 companies")).toBeTruthy());
+    expect(screen.getByText("24 jobs")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Acme" })).toBeTruthy();
+    expect(mocks.getSessionWatchlistActivityPreviews).toHaveBeenCalledWith({
+      entries: expect.arrayContaining([
+        expect.objectContaining({
+          intent: expect.objectContaining({ kind: "create" }),
+        }),
+      ]),
+      locale: "en",
+    });
+    const shareButtons = screen.getAllByRole("button", { name: "Log in to share" });
+    expect(shareButtons.length).toBeGreaterThan(0);
+    expect(shareButtons.every((button) => button.getAttribute("aria-disabled") === "true"))
+      .toBe(true);
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]!);
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Delete" }));
+    expect(window.sessionStorage.length).toBe(0);
+    expect(screen.getByRole("button", { name: "Create" })).toBeTruthy();
+  });
+
+  it("creates a staged anonymous draft after authentication", async () => {
+    stagePendingWatchlist({
+      kind: "create",
+      draft: {
+        title: "Swiss internships",
+        companyIds: [],
+        filters: { anyCompany: true, locationSlugs: ["switzerland"] },
+        isPublic: false,
+      },
+    });
+    mocks.createWatchlist.mockResolvedValue({
+      id: SECOND_ID,
+      slug: "swiss-internships",
+    });
+
+    render(<WatchlistsPage {...baseProps} />);
+
+    await waitFor(() => expect(mocks.createWatchlist).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Swiss internships" }),
+    ));
+    expect(mocks.replace).toHaveBeenCalledWith(`/en/watchlists/${SECOND_ID}`);
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("imports every staged anonymous watchlist after authentication", async () => {
+    stagePendingWatchlist({
+      kind: "create",
+      draft: {
+        title: "Swiss internships",
+        companyIds: [],
+        filters: { anyCompany: true, locationSlugs: ["switzerland"] },
+        isPublic: false,
+      },
+    });
+    stagePendingWatchlist({
+      kind: "create",
+      draft: {
+        title: "Remote roles",
+        companyIds: [],
+        filters: { anyCompany: true, workMode: ["remote"] },
+        isPublic: false,
+      },
+    });
+    mocks.createWatchlist
+      .mockResolvedValueOnce({ id: SECOND_ID, slug: "swiss-internships" })
+      .mockResolvedValueOnce({ id: THIRD_ID, slug: "remote-roles" });
+
+    render(<WatchlistsPage {...baseProps} />);
+
+    await waitFor(() => expect(mocks.createWatchlist).toHaveBeenCalledTimes(2));
+    expect(mocks.refresh).toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("clones a staged shared watchlist after authentication", async () => {
+    stagePendingWatchlist({ kind: "clone", watchlistId: FIRST_ID });
+
+    render(<WatchlistsPage {...baseProps} />);
+
+    await waitFor(() => expect(mocks.copySharedWatchlist).toHaveBeenCalledWith(FIRST_ID));
+    expect(mocks.replace).toHaveBeenCalledWith(`/en/watchlists/${SECOND_ID}`);
+  });
+
+  it("discards a staged watchlist when the authenticated account is full", async () => {
+    stagePendingWatchlist({
+      kind: "create",
+      draft: {
+        title: "Overflow",
+        companyIds: [],
+        filters: { anyCompany: true },
+        isPublic: false,
+      },
+    });
+
+    render(<WatchlistsPage {...baseProps} limitReached />);
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Maximum of 10 watchlists reached. Extra saved watchlists were discarded.",
+    );
+    expect(mocks.createWatchlist).not.toHaveBeenCalled();
+    expect(window.sessionStorage.length).toBe(0);
   });
 
   it("fills cards from activity previews rather than static scope metadata", async () => {

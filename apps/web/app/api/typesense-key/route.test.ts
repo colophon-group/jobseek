@@ -28,6 +28,7 @@ describe("GET /api/typesense-key", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 
   it("signs a shared expiry and derives metadata from the same timestamp", async () => {
@@ -61,4 +62,5 @@ describe("GET /api/typesense-key", () => {
       error: "search not configured",
     });
   });
+
 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { locales } from "@/lib/i18n";
 import { getSessionUserIdFromHeaders } from "@/lib/sessionCache";
+import { getViewerLanguages } from "@/lib/viewer";
 import { getUserWatchlistActivityPreviewsForUser } from "@/lib/services/watchlists";
 import { watchlistActivityLimiter } from "@/lib/rate-limit";
 import { logExternalError } from "@/lib/safe-external-error";
@@ -50,7 +51,16 @@ export async function GET(request: Request) {
   const locale = requestedLocale && locales.includes(requestedLocale as (typeof locales)[number])
     ? requestedLocale
     : "en";
-  const previews = await getUserWatchlistActivityPreviewsForUser(userId, locale);
+  // Resolve languages from the current request, exactly as the watchlist
+  // detail loader does. In particular, a signed-in account without a
+  // user_preferences row can still carry the all-languages cookie; a direct
+  // database-only lookup would silently fall back to the route locale.
+  const viewerLanguages = await getViewerLanguages(locale);
+  const previews = await getUserWatchlistActivityPreviewsForUser(
+    userId,
+    locale,
+    viewerLanguages,
+  );
   const counts = Object.fromEntries(
     Object.entries(previews).map(([watchlistId, preview]) => [
       watchlistId,

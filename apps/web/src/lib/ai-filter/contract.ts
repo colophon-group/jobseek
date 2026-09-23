@@ -284,15 +284,6 @@ function requireCanonicalWholeSecondInstant(
   return instant;
 }
 
-function addRetention(firstSeenAt: string): string {
-  const expiresAt = new Date(firstSeenAt).getTime() + RETENTION_MS;
-  if (!Number.isFinite(expiresAt)) fail("retention instant is out of range");
-
-  const date = new Date(expiresAt);
-  if (!Number.isFinite(date.getTime())) fail("retention instant is out of range");
-  return date.toISOString();
-}
-
 function requireDenseArray(value: unknown, field: string): unknown[] {
   if (!inspectArray(value, field)) fail(`${field} must be an array`);
   const lengthDescriptor = inspectOwnPropertyDescriptor(value, "length", field);
@@ -395,9 +386,6 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
     record.productExpiresAt,
     "candidate.productExpiresAt",
   );
-  if (productExpiresAt !== addRetention(postingFirstSeenAt)) {
-    fail("candidate.productExpiresAt must equal the product retention boundary");
-  }
 
   return Object.freeze({
     candidateId: requireUuid(record.candidateId, "candidate.candidateId"),
@@ -410,11 +398,10 @@ function parseCandidate(value: unknown): AiFilterCandidateSnapshot {
  * Parses an immutable candidate-selection snapshot. It intentionally does not
  * bind normalized posting content; AF-9/AF-10 must bind classifier input at
  * execution time. Successful parsing is not authorization or an execution
- * permit. Strict retention makes the effective eligibility interval
- * `(requestedAt - 30 days, requestedAt)`. Producers must compose that with the
- * canonical reader's whole-second `[windowStart, windowEnd)` contract by using
- * `windowStart = requestedAt - 30 days + 1 second` and
- * `windowEnd = requestedAt`. Candidates must be ordered by
+ * permit. Product decisions remain valid for at most 30 days after a run is
+ * requested, independently of how old an active posting is. This lets the
+ * product walk the full active feed lazily without making historical jobs
+ * immediately ineligible. Candidates must be ordered by
  * `postingFirstSeenAt` descending, then `candidateId` ascending for equal
  * timestamps.
  */
@@ -468,8 +455,12 @@ export function parseAiFilterSegmentRequest(
         "segment request candidates must be newest-first with candidate IDs ascending for equal timestamps",
       );
     }
-    if (new Date(candidate.productExpiresAt).getTime() <= requestedAtMs) {
+    const productExpiresAtMs = new Date(candidate.productExpiresAt).getTime();
+    if (productExpiresAtMs <= requestedAtMs) {
       fail("candidate retention expired before the run was requested");
+    }
+    if (productExpiresAtMs > requestedAtMs + RETENTION_MS) {
+      fail("candidate retention exceeds the 30-day product window");
     }
     previousFirstSeenMs = firstSeenMs;
     previousCandidateId = candidate.candidateId;

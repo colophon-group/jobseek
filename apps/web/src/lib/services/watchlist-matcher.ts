@@ -38,6 +38,7 @@ import {
   type WatchlistCandidateSearchParams,
   type WatchlistCandidateWindow,
 } from "@/lib/search/watchlist-candidate-query";
+import { POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { stableCandidateOrderReady } from "@/lib/search/stable-candidate-order-readiness";
 import type {
   CompiledWatchlistMatcher,
@@ -290,6 +291,7 @@ function lexicalCompare(a: string, b: string): number {
 function mapCandidateHit(
   hit: CandidateHit,
   stableNewestReady: boolean,
+  includeClassifierMetadata = false,
 ): WatchlistPostingEntry {
   const doc = hit.document as Record<string, unknown>;
   const optionalString = (value: unknown) =>
@@ -314,15 +316,54 @@ function mapCandidateHit(
   if (!Number.isFinite(firstSeenAt.getTime())) {
     throw malformedTypesenseResponseError();
   }
+  const locationNames = Array.isArray(doc.location_names)
+    ? doc.location_names.filter(
+        (name): name is string =>
+          typeof name === "string" && name.length > 0,
+      )
+    : [];
+  const optionalFiniteNumber = (value: unknown): number | null =>
+    typeof value === "number" && Number.isFinite(value) ? value : null;
+  const normalizedExperience = (value: unknown, openEnded: boolean) => {
+    const result = optionalFiniteNumber(value);
+    if (result == null || result < 0 || (openEnded && result >= 99)) return null;
+    return result;
+  };
+  const stringArray = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
+      : [];
+  const optionalNonemptyString = (value: unknown): string | null =>
+    typeof value === "string" && value.length > 0 ? value : null;
+  const locales = stringArray(doc.locales);
+  const classifierMetadata = includeClassifierMetadata
+    ? {
+        locations: locationNames.map((name, index) => ({
+          name,
+          type: stringArray(doc.location_types)[index] ?? "",
+        })),
+        employmentType: optionalNonemptyString(doc.employment_type),
+        experienceMin: normalizedExperience(
+          doc.experience_min_years ?? doc.experience_min,
+          false,
+        ),
+        experienceMax: normalizedExperience(
+          doc.experience_max_years ?? doc.experience_max,
+          true,
+        ),
+        technologies: stringArray(doc.technology_names),
+        salaryMin: optionalFiniteNumber(doc.salary_min),
+        salaryMax: optionalFiniteNumber(doc.salary_max),
+        salaryCurrency: optionalNonemptyString(doc.salary_currency),
+        salaryPeriod: optionalNonemptyString(doc.salary_period),
+        seniorityName: optionalNonemptyString(doc.seniority_name),
+        descriptionLocale: locales.find((locale) => locale !== "_none") ?? null,
+      }
+    : undefined;
   return {
     id: doc.id,
     title: normalizePostingTitle(doc.title),
-    locationNames: Array.isArray(doc.location_names)
-      ? doc.location_names.filter(
-          (name): name is string =>
-            typeof name === "string" && name.length > 0,
-        )
-      : [],
+    locationNames,
     sourceUrl: doc.source_url ?? "",
     firstSeenAt: firstSeenAt.toISOString(),
     isActive: doc.is_active ?? true,
@@ -332,6 +373,7 @@ function mapCandidateHit(
       slug: doc.company_slug ?? "",
       icon: doc.company_icon ?? null,
     },
+    ...(classifierMetadata ? { classifierMetadata } : {}),
   };
 }
 
@@ -386,6 +428,46 @@ function batchesForFilters(
   return batches.map((companyIds) => ({ ...filters, companyIds }));
 }
 
+/**
+ * Hydrate a persisted decision page by primary key. Unlike the canonical
+ * candidate reader this never replays the broad filtered search, so already-
+ * evaluated result pages remain a single small Typesense lookup.
+ */
+export async function readWatchlistCandidatesByIds(
+  postingIds: readonly string[],
+  abortSignal?: AbortSignal,
+): Promise<WatchlistPostingEntry[]> {
+  const ids = [...new Set(postingIds)].filter((id) =>
+    /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id)
+  );
+  if (ids.length === 0) return [];
+  if (ids.length > 100) throw new RangeError("Decision hydration page exceeds 100 jobs");
+  const result = await withTypesenseRetry(
+    () =>
+      getSearchClient()
+        .collections("job_posting")
+        .documents()
+        .search({
+          q: "*",
+          query_by: "title",
+          filter_by: `${POSTING_BASE_FILTER} && id:[${ids.join(",")}]`,
+          per_page: ids.length,
+        }, { abortSignal }),
+    { label: "readWatchlistCandidatesByIds", abortSignal },
+  );
+  assertTypesenseSearchResult(result);
+  const byId = new Map(
+    (result.hits ?? []).map((hit) => {
+      const posting = mapCandidateHit(hit, false);
+      return [posting.id, posting] as const;
+    }),
+  );
+  return ids.flatMap((id) => {
+    const posting = byId.get(id);
+    return posting ? [posting] : [];
+  });
+}
+
 /** Session-free canonical reader used beneath the existing interactive action. */
 export async function readWatchlistCandidates(params: {
   filters: WatchlistCandidateFilters;
@@ -395,6 +477,8 @@ export async function readWatchlistCandidates(params: {
   order?: WatchlistCandidateOrder;
   /** AF-2 callers set this so an unverified index cannot degrade silently. */
   requireStableOrder?: boolean;
+  /** Server-only classifier projection; omitted from ordinary product reads. */
+  includeClassifierMetadata?: boolean;
   abortSignal?: AbortSignal;
 }): Promise<{ postings: WatchlistPostingEntry[]; total: number }> {
   const order = params.order ?? "interactive";
@@ -503,7 +587,11 @@ export async function readWatchlistCandidates(params: {
         total === 0 || params.limit === 0
           ? []
           : (result.hits ?? []).map((hit) =>
-              mapCandidateHit(hit, stableNewestReady)
+              mapCandidateHit(
+                hit,
+                stableNewestReady,
+                params.includeClassifierMetadata,
+              )
             ),
       total,
     };
@@ -592,7 +680,11 @@ export async function readWatchlistCandidates(params: {
   return {
     postings: allHits
       .slice(params.offset, params.offset + params.limit)
-      .map(({ hit }) => mapCandidateHit(hit, stableNewestReady)),
+      .map(({ hit }) => mapCandidateHit(
+        hit,
+        stableNewestReady,
+        params.includeClassifierMetadata,
+      )),
     total,
   };
 }

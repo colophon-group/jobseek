@@ -45,10 +45,11 @@ describe("SaveSearchButton (issue #3036)", () => {
     pushMock.mockReset();
     createWatchlistMock.mockReset();
     sessionMock.isLoggedIn = true;
+    window.sessionStorage.clear();
     window.history.replaceState({}, "", "/en/explore?q=engineer&loc=switzerland");
   });
 
-  it("returns to the exact filtered search after sign-in", async () => {
+  it("stages the filtered search without forcing an immediate sign-in", async () => {
     sessionMock.isLoggedIn = false;
 
     render(
@@ -62,9 +63,10 @@ describe("SaveSearchButton (issue #3036)", () => {
     fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
 
     expect(pushMock).toHaveBeenCalledWith(
-      "/en/sign-in?next=%2Fen%2Fexplore%3Fq%3Dengineer%26loc%3Dswitzerland",
+      expect.stringMatching(/^\/en\/watchlists\/[0-9a-f-]+$/),
     );
     expect(createWatchlistMock).not.toHaveBeenCalled();
+    expect(window.sessionStorage.length).toBe(1);
   });
 
   it("shows a non-purchase limit explanation when the server reports limit_reached", async () => {

@@ -34,6 +34,7 @@ function ActionButton({
   tooltipOpen,
   announce,
   busy,
+  disabled,
   buttonRef,
   children,
 }: {
@@ -43,6 +44,7 @@ function ActionButton({
   tooltipOpen?: boolean;
   announce?: boolean;
   busy?: boolean;
+  disabled?: boolean;
   buttonRef?: React.Ref<HTMLButtonElement>;
   children: React.ReactNode;
 }) {
@@ -56,11 +58,13 @@ function ActionButton({
         <button
           ref={buttonRef}
           type="button"
-          onClick={onClick}
-          className={`${iconBtnClass} ${busy ? "cursor-wait" : ""}`}
+          onClick={() => {
+            if (!busy && !disabled) onClick();
+          }}
+          className={`${iconBtnClass} ${busy ? "cursor-wait" : ""} ${disabled ? "cursor-not-allowed opacity-50 hover:bg-transparent hover:text-muted" : ""}`}
           aria-label={label}
           aria-busy={busy || undefined}
-          aria-disabled={busy || undefined}
+          aria-disabled={busy || disabled || undefined}
         >
           {children}
         </button>
@@ -82,10 +86,17 @@ export function WatchlistActionBar({
   watchlistId,
   alertsEnabled,
   onEdit,
+  accountRequired = false,
+  onDelete,
 }: {
   watchlistId: string;
   alertsEnabled: boolean;
   onEdit?: () => void;
+  /** Browser-backed watchlists preserve account-only controls in a clearly
+   * disabled state instead of silently removing them. */
+  accountRequired?: boolean;
+  /** Optional persistence adapter for deleting a browser-backed watchlist. */
+  onDelete?: () => void | Promise<void>;
 }) {
   const { t } = useLingui();
   const router = useRouter();
@@ -130,14 +141,18 @@ export function WatchlistActionBar({
     setDeleteBusy(true);
     setDeleteError("");
     try {
-      const result = await deleteWatchlist(watchlistId);
-      if (!result.ok) {
-        setDeleteError(t({
-          id: "watchlists.actions.deleteFailed",
-          comment: "Error shown when deleting a watchlist fails",
-          message: "Could not delete this watchlist.",
-        }));
-        return;
+      if (onDelete) {
+        await onDelete();
+      } else {
+        const result = await deleteWatchlist(watchlistId);
+        if (!result.ok) {
+          setDeleteError(t({
+            id: "watchlists.actions.deleteFailed",
+            comment: "Error shown when deleting a watchlist fails",
+            message: "Could not delete this watchlist.",
+          }));
+          return;
+        }
       }
       router.replace(lp("/watchlists"));
       router.refresh();
@@ -182,12 +197,16 @@ export function WatchlistActionBar({
     );
   }
 
-  const shareLabel = shareState === "copied"
+  const shareLabel = accountRequired
+    ? t({ id: "watchlists.actions.loginToShare", comment: "Disabled share tooltip for a browser-only watchlist", message: "Log in to share" })
+    : shareState === "copied"
     ? t({ id: "watchlists.actions.copied", comment: "Confirmation after copying an unlisted watchlist link", message: "Link copied" })
     : shareState === "error"
       ? t({ id: "watchlists.actions.shareFailed", comment: "Error after an unlisted watchlist link cannot be copied", message: "Copy failed" })
       : t({ id: "watchlists.actions.share", comment: "Action to share a watchlist by unlisted link", message: "Share" });
-  const alertsLabel = alertsError
+  const alertsLabel = accountRequired
+    ? t({ id: "watchlists.actions.loginToAlerts", comment: "Disabled alerts tooltip for a browser-only watchlist", message: "Log in to manage alerts" })
+    : alertsError
     ? t({ id: "watchlists.actions.alertsFailed", comment: "Error after a watchlist alert preference cannot be updated", message: "Could not update alerts" })
     : displayAlertsEnabled
       ? t({ id: "watchlists.actions.disableAlerts", comment: "Disable alerts tooltip", message: "Disable alerts" })
@@ -209,6 +228,7 @@ export function WatchlistActionBar({
             <ActionButton
               label={shareLabel}
               onClick={() => void handleShare()}
+              disabled={accountRequired}
               warning={shareState === "error"}
               tooltipOpen={shareState === "copied" || shareState === "error" ? true : undefined}
               announce={shareState === "copied" || shareState === "error"}
@@ -224,6 +244,7 @@ export function WatchlistActionBar({
             <ActionButton
               label={alertsLabel}
               onClick={() => void handleToggleAlerts()}
+              disabled={accountRequired}
               busy={alertsBusy}
               warning={alertsError}
               tooltipOpen={alertsError ? true : undefined}

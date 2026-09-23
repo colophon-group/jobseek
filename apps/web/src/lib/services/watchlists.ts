@@ -168,6 +168,11 @@ export type WatchlistViewDetail = Pick<
   alertsEnabled?: boolean;
 };
 
+/** Server-only language scope attached while resolving an unlisted share. */
+export type SharedWatchlistViewDetail = WatchlistViewDetail & {
+  ownerJobLanguages: string[];
+};
+
 type WatchlistPostingFilterParams = WatchlistCandidateFilters & {
   abortSignal?: AbortSignal;
   /** Let an orchestrating page distinguish provider failure from a real zero. */
@@ -1041,12 +1046,41 @@ export async function getUserWatchlistCountsForUser(
 export async function getUserWatchlistActivityPreviewsForUser(
   userId: string,
   locale: string,
+  viewerLanguages?: string[],
 ): Promise<Record<string, UserWatchlistActivityPreview>> {
   const [rows, languages] = await Promise.all([
     _getUserWatchlistRows(userId),
-    _getViewerLanguagesForUser(userId, locale),
+    viewerLanguages === undefined
+      ? _getViewerLanguagesForUser(userId, locale)
+      : Promise.resolve(viewerLanguages),
   ]);
   const previews = await _resolveUserActivityPreviews(rows, locale, languages);
+  return Object.fromEntries(previews);
+}
+
+/**
+ * Resolve the same overview activity used by persisted watchlists for a
+ * bounded set of already-authorized drafts. Callers are responsible for
+ * validating the draft inputs before crossing this service boundary.
+ */
+export async function getWatchlistActivityPreviewsForDrafts(
+  drafts: Array<{
+    id: string;
+    filters: WatchlistFilters | null;
+    companyIds: string[];
+  }>,
+  locale: string,
+  viewerLanguages: string[],
+): Promise<Record<string, UserWatchlistActivityPreview>> {
+  const previews = await _resolveUserActivityPreviews(
+    drafts.map((draft) => ({
+      id: draft.id,
+      filters: draft.filters,
+      company_ids: draft.companyIds,
+    })),
+    locale,
+    viewerLanguages,
+  );
   return Object.fromEntries(previews);
 }
 
@@ -1187,18 +1221,24 @@ export async function getOwnedWatchlistById(
 /** Resolve an unlisted shared watchlist by its opaque id. */
 export async function getSharedWatchlistById(
   watchlistId: string,
-): Promise<WatchlistViewDetail | null> {
+): Promise<SharedWatchlistViewDetail | null> {
   const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
   if (!normalizedWatchlistId) return null;
   type SharedWatchlistRow = Pick<
     WatchlistDetailRow,
     "wl_id" | "title" | "description" | "filters" | "companies"
-  > & { companies_over_limit: boolean };
+  > & {
+    companies_over_limit: boolean;
+    owner_job_languages: string[];
+    owner_locale: string;
+  };
   const rows = await withDbRetry(
     () =>
       db.execute<{ [key: string]: unknown } & SharedWatchlistRow>(sql`
         SELECT
           w.id AS wl_id, w.title, w.description, w.filters,
+          COALESCE(up.job_languages, ARRAY[]::text[]) AS owner_job_languages,
+          COALESCE(up.locale, 'en') AS owner_locale,
           EXISTS (
             SELECT 1
             FROM watchlist_company over_limit
@@ -1229,6 +1269,7 @@ export async function getSharedWatchlistById(
             '[]'::json
           ) AS companies
         FROM watchlist w
+        LEFT JOIN user_preferences up ON up.user_id = w.user_id
         WHERE w.id = ${normalizedWatchlistId} AND w.share_enabled = true
         LIMIT 1
       `),
@@ -1245,12 +1286,29 @@ export async function getSharedWatchlistById(
     WATCHLIST_COMPANY_MAX,
   );
   if (!companies) return null;
+  const ownerLocale = ["en", "de", "fr", "it"].includes(row.owner_locale)
+    ? row.owner_locale
+    : "en";
+  const rawOwnerLanguages = Array.isArray(row.owner_job_languages)
+    ? row.owner_job_languages.filter(
+        (language): language is string => typeof language === "string",
+      )
+    : [];
+  const effectiveOwnerLanguages = resolveJobLanguages(
+    rawOwnerLanguages,
+    ownerLocale,
+  );
   return {
     id: row.wl_id,
     title: metadata.title,
     description: metadata.description,
     filters,
     companies,
+    // Preserve the owner's exact effective scope across viewers and route
+    // locales. `['*']` is the raw preference shape for an all-language feed.
+    ownerJobLanguages: effectiveOwnerLanguages.length === 0
+      ? ["*"]
+      : effectiveOwnerLanguages,
   };
 }
 

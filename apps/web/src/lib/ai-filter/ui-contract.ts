@@ -34,7 +34,11 @@ export type AiFilterUiState = Readonly<{
 }>;
 
 export type AiFilterAcceptedPage = Readonly<{
+  /** Query revision that owns the candidate-feed cursor below. */
+  queryVersionId?: string;
   postings: WatchlistPostingEntry[];
+  /** Current active postings in the accepted bucket (present on page zero). */
+  total?: number;
   nextOffset: number;
   hasMore: boolean;
 }>;

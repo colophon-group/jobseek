@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getAiFilterOwnerState: vi.fn(),
   putAiFilterConfiguration: vi.fn(),
   startAiFilterCatchup: vi.fn(),
+  assertAiFilterCandidateScope: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionCache", () => ({
@@ -27,6 +28,7 @@ vi.mock("@/lib/ai-filter/candidate-loader", () => ({
       this.code = code;
     }
   },
+  assertAiFilterCandidateScope: mocks.assertAiFilterCandidateScope,
 }));
 vi.mock("@/lib/ai-filter/workflow-trigger", () => ({
   startAiFilterCatchup: mocks.startAiFilterCatchup,
@@ -63,6 +65,20 @@ function request(offset: number) {
   );
 }
 
+function scopedRequest(
+  offset: number,
+  jobLanguages: readonly string[],
+  locale = "en",
+) {
+  return new Request(
+    `https://jseek.co/api/web/watchlists/${watchlistId}/ai-filter/reconcile`,
+    {
+      method: "POST",
+      body: JSON.stringify({ offset, jobLanguages, locale }),
+    },
+  );
+}
+
 describe("scroll-demand AI filter reconciliation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -70,9 +86,10 @@ describe("scroll-demand AI filter reconciliation", () => {
     mocks.getAiFilterOwnerState.mockResolvedValue(state);
     mocks.putAiFilterConfiguration.mockResolvedValue(state);
     mocks.startAiFilterCatchup.mockResolvedValue({ runId: "run-1" });
+    mocks.assertAiFilterCandidateScope.mockResolvedValue(1_000);
   });
 
-  it("refreshes the hard-filter scope and requests three pages ahead", async () => {
+  it("refreshes the hard-filter scope and requests a selective-feed runway", async () => {
     const response = await POST(request(20), context);
 
     expect(response.status).toBe(202);
@@ -81,17 +98,32 @@ describe("scroll-demand AI filter reconciliation", () => {
       watchlistId,
       query: "remote Rust",
     });
+    expect(mocks.assertAiFilterCandidateScope).toHaveBeenCalledWith(
+      expect.objectContaining({ ownerId: "owner-1", watchlistId }),
+    );
     expect(mocks.startAiFilterCatchup).toHaveBeenCalledWith({
       ownerId: "owner-1",
       watchlistId,
-      demandTargetOffset: 80,
+      demandTargetOffset: 520,
+    });
+  });
+
+  it("snapshots the visible all-language scope into the immutable query revision", async () => {
+    const response = await POST(scopedRequest(20, ["*"]), context);
+
+    expect(response.status).toBe(202);
+    expect(mocks.putAiFilterConfiguration).toHaveBeenCalledWith({
+      ownerId: "owner-1",
+      watchlistId,
+      query: "remote Rust",
+      candidateLanguages: [],
     });
   });
 
   it("does not restart work for an already prefetched range", async () => {
     mocks.putAiFilterConfiguration.mockResolvedValue({
       ...state,
-      progress: { ...state.progress, selectionOffset: 50, scannedCount: 50 },
+      progress: { ...state.progress, selectionOffset: 500, scannedCount: 50 },
     });
 
     const response = await POST(request(20), context);

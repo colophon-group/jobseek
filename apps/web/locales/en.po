@@ -144,6 +144,116 @@ msgstr ""
 #~ msgid "search.employmentType.internship"
 #~ msgstr "Internship"
 
+#. Button that evaluates the next portion of a narrowed watchlist on demand
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-job-list.tsx
+#~ msgid "watchlists.jobList.reviewMore"
+#~ msgstr "Review more jobs"
+
+#. Title of the scroll reminder when narrowed watchlist results already exist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+#~ msgid "search.aiFilter.reminder.readyTitle"
+#~ msgstr "Narrowed results are ready"
+
+#. Button to create a watchlist, including before login
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.create"
+#~ msgstr "Create watchlist"
+
+#. Warning that an anonymous session watchlist can disappear before login
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.pending.warning"
+#~ msgstr "Saved only in this browser tab. It may be lost if the tab is closed or browser data is cleared. Log in to keep it."
+
+#. Badge on a watchlist that exists only in browser session state
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.pending.badge"
+#~ msgstr "Session draft"
+
+#. Prompt explaining that a watchlist can be drafted before login
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.page.loginPrompt"
+#~ msgstr "Start a watchlist without logging in. Log in later to keep it in your account."
+
+#. Explanation for an anonymous shared-watchlist copy staged in the browser
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.pending.cloneBody"
+#~ msgstr "This copy is ready to be added to your account after login."
+
+#. Explanation for an anonymous watchlist draft staged in the browser
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.pending.createBody"
+#~ msgstr "Your watchlist has been started and will be added to your account after login."
+
+#. Link from a missing anonymous watchlist back to the overview
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/drafts/[draftId]/session-watchlist-editor.tsx
+#~ msgid "watchlists.pending.backToList"
+#~ msgstr "Back to watchlists"
+
+#. Warning on an anonymous watchlist editor that its changes only exist in browser state
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/drafts/[draftId]/session-watchlist-editor.tsx
+#~ msgid "watchlists.pending.editorWarning"
+#~ msgstr "Changes are saved in this browser until you log in. Closing this tab may remove them."
+
+#. Action that logs in to persist anonymous browser watchlists
+#. Action that logs in to persist anonymous browser watchlists
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/drafts/[draftId]/session-watchlist-editor.tsx
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.pending.login"
+#~ msgstr "Log in to keep"
+
+#. Label before the number of companies selected for an anonymous watchlist
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/drafts/[draftId]/session-watchlist-editor.tsx
+#~ msgid "watchlists.pending.companyCount"
+#~ msgstr "Selected companies"
+
+#. Message shown when an anonymous browser watchlist is no longer available
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/drafts/[draftId]/session-watchlist-editor.tsx
+#~ msgid "watchlists.pending.notFound"
+#~ msgstr "This watchlist is no longer available in this browser."
+
+#. Label for the title of an anonymous browser watchlist
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/drafts/[draftId]/session-watchlist-editor.tsx
+#~ msgid "watchlists.pending.titleLabel"
+#~ msgstr "Watchlist title"
+
+#. Action that removes an anonymous watchlist saved in browser session state
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx
+#~ msgid "watchlists.pending.discard"
+#~ msgstr "Remove watchlist"
+
+#. Temporary clone-button label while the viewer session is loading
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#~ msgid "watchlists.actions.checkingAccount"
+#~ msgstr "Checking account…"
+
+#. Metadata under an anonymous watchlist in the watchlist overview
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.pending.createDetail"
+#~ msgstr "Saved in this browser"
+
+#. Metadata under an anonymous shared-watchlist copy in the watchlist overview
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#~ msgid "watchlists.pending.cloneDetail"
+#~ msgstr "Shared copy saved in this browser"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -247,6 +357,12 @@ msgstr "{countText} at {name}. {description}"
 msgid "blog.post.readingTime"
 msgstr "{minutes, plural, one {# min read} other {# min read}}"
 
+#. Match count in the scroll reminder for an already-narrowed watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.matchCount"
+msgstr "{narrowedResultCount, plural, one {# match in this feed} other {# matches in this feed}}"
+
 #. Meta line on a CompanyCard mention card — '{range} employees' (range like '11–50' or '5k–10k')
 #. js-lingui-explicit-id
 #: src/components/blog/MdxMentions.tsx
@@ -258,6 +374,12 @@ msgstr "{range} employees"
 #: app/[lang]/(app)/company/[slug]/company-head.tsx
 msgid "company.head.employees"
 msgstr "{range} employees"
+
+#. Number of active jobs in the compact narrowed-results control
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.compactMatchCount"
+msgstr "{safeNarrowedResultCount, plural, one {# match} other {# matches}}"
 
 #. Free tier price displayed prominently on the home pricing card. Source is USD ($0); translators may render the symbol+number per locale convention (e.g. German '0 $').
 #. js-lingui-explicit-id
@@ -354,7 +476,7 @@ msgstr "Add companies"
 
 #. Link to add a description to the watchlist
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.view.addDescription"
 msgstr "Add description"
 
@@ -460,6 +582,12 @@ msgstr "All locations"
 msgid "company.locationModal.title"
 msgstr "All locations"
 
+#. Button that closes narrowed results and returns to the broad watchlist feed
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.showAllResults"
+msgstr "All results"
+
 #. Link to sign-in page from sign-up
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx
@@ -486,7 +614,7 @@ msgstr "Any"
 
 #. Toggle to show jobs from all companies
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.view.anyCompany"
 msgstr "Any company"
 
@@ -579,6 +707,12 @@ msgstr "Applied"
 #: app/[lang]/(app)/my-jobs/my-jobs-page.tsx
 msgid "myJobs.group.applied"
 msgstr "Applied"
+
+#. Button to apply the natural-language AI filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.apply"
+msgstr "Apply"
 
 #. Apply experience filter
 #. js-lingui-explicit-id
@@ -716,10 +850,8 @@ msgid "indexing.oss.browseRepo"
 msgstr "Browse the repository at"
 
 #. Recovery action on the watchlist-not-found page
-#. Recovery action on the watchlist-not-found page
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/not-found.tsx
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-content.tsx
 msgid "watchlist.notFound.browse"
 msgstr "Browse watchlists"
 
@@ -767,6 +899,14 @@ msgstr "Cancel"
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
 msgid "watchlists.filters.cancel"
+msgstr "Cancel"
+
+#. Button that cancels precise-matching setup or editing
+#. Cancel cloning a shared narrowed watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
+msgid "common.actions.cancel"
 msgstr "Cancel"
 
 #. Cancel delete button
@@ -843,6 +983,12 @@ msgstr "Checking access…"
 msgid "settings.account.username.checking"
 msgstr "Checking availability..."
 
+#. Short status while precise-matching account access is checked
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.accessChecking.short"
+msgstr "Checking…"
+
 #. Explains the normal-filter prerequisite for Jev
 #. js-lingui-explicit-id
 #. placeholder {0}: eligibility.maxCandidates
@@ -900,6 +1046,12 @@ msgstr "Clear"
 msgid "watchlists.companyModal.clearAll"
 msgstr "Clear all"
 
+#. Button to remove all companies from watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-view-page.tsx
+msgid "watchlists.view.clearAllCompanies"
+msgstr "Clear all"
+
 #. Button to clear all active search filters
 #. Button to clear all active search filters
 #. js-lingui-explicit-id
@@ -908,21 +1060,15 @@ msgstr "Clear all"
 msgid "search.filters.clearAll"
 msgstr "Clear all"
 
-#. Button to remove all companies from watchlist
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
-msgid "watchlists.view.clearAllCompanies"
-msgstr "Clear all"
-
 #. Tooltip for clicking to edit watchlist description
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.view.editDescription"
 msgstr "Click to edit description"
 
 #. Tooltip for clicking to edit watchlist title
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.view.editTitle"
 msgstr "Click to rename"
 
@@ -934,9 +1080,21 @@ msgstr "Client APIs second."
 
 #. Action to clone an unlisted shared watchlist into the signed-in user's account
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.clone"
 msgstr "Clone"
+
+#. Confirm cloning only the standard filters from a shared narrowed watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-view-page.tsx
+msgid "watchlists.clone.narrowedFree.confirm"
+msgstr "Clone standard filters"
+
+#. Title warning a free user that a shared narrowed feed is not copied
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-view-page.tsx
+msgid "watchlists.clone.narrowedFree.title"
+msgstr "Clone without narrowed results?"
 
 #. Aria label for close button on add-companies modal
 #. js-lingui-explicit-id
@@ -1101,6 +1259,12 @@ msgstr "Companies Tracked"
 msgid "watchlists.card.companySingular"
 msgstr "company"
 
+#. Button to open company search modal
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-view-page.tsx
+msgid "watchlists.view.addCompany"
+msgstr "Company"
+
 #. Sort option: company name
 #. js-lingui-explicit-id
 #: src/components/my-jobs/sort-filter-bar.tsx
@@ -1117,12 +1281,6 @@ msgstr "Company"
 #. js-lingui-explicit-id
 #: src/components/blog/MdxMentions.tsx
 msgid "blog.mention.company.eyebrow"
-msgstr "Company"
-
-#. Button to open company search modal
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
-msgid "watchlists.view.addCompany"
 msgstr "Company"
 
 #. Label for the company name or careers-page URL request field
@@ -1261,9 +1419,9 @@ msgstr "Copy command"
 #. Error after an unlisted watchlist link cannot be copied
 #. Error after an unlisted watchlist link cannot be copied
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
 #: src/components/watchlist/watchlist-action-bar.tsx
 #: src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.shareFailed"
 msgstr "Copy failed"
 
@@ -1288,10 +1446,13 @@ msgstr "Could not assign interview round."
 #. Error shown when an unlisted shared watchlist cannot be cloned
 #. Error shown when an unlisted shared watchlist cannot be cloned
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.cloneFailed"
 msgstr "Could not clone this watchlist."
 
+#. Error shown when a new watchlist cannot be created
+#. Error shown when a new watchlist cannot be created
+#. Error shown when a new watchlist cannot be created
 #. Error shown when a new watchlist cannot be created
 #. Error shown when a new watchlist cannot be created
 #. js-lingui-explicit-id
@@ -1328,7 +1489,7 @@ msgstr "Could not remove these matching criteria. Try again."
 
 #. Error shown when an edit to an owned watchlist cannot be saved
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.updateFailed"
 msgstr "Could not save your changes."
 
@@ -1558,11 +1719,13 @@ msgid "myJobs.interview.deleting"
 msgstr "Deleting…"
 
 #. Explains that entering AI criteria creates a watchlist from the focused search
+#. Explains that entering AI criteria creates a watchlist from the focused search
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.descriptionCreatesWatchlist"
 msgstr "Describe exactly what you are looking for. We’ll create a watchlist from this search and evaluate your request against every job posting in its feed to narrow the results precisely."
 
+#. Explains that AI is a second-stage filter over the existing watchlist
 #. Explains that AI is a second-stage filter over the existing watchlist
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -1571,9 +1734,15 @@ msgstr "Describe exactly what you are looking for. Your request will be evaluate
 
 #. Placeholder for watchlist description textarea
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.view.descriptionPlaceholder"
 msgstr "Describe this watchlist..."
+
+#. Compact reminder that a focused watchlist can be narrowed precisely
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.body"
+msgstr "Describe what matters and focus this feed."
 
 #. Cookie banner details button
 #. js-lingui-explicit-id
@@ -1610,6 +1779,12 @@ msgstr "Disable alerts"
 #: src/components/settings/account/ConnectedAccountsSection.tsx
 msgid "settings.account.socials.disconnect"
 msgstr "Disconnect"
+
+#. Accessible label for dismissing the precise matching scroll reminder
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.dismiss"
+msgstr "Dismiss narrow results reminder"
 
 #. FAQ question about whether user data is sold.
 #. js-lingui-explicit-id
@@ -1654,10 +1829,17 @@ msgid "watchlists.actions.edit"
 msgstr "Edit"
 
 #. Accessible label for editing an active AI search filter
+#. Accessible label for editing an active AI search filter
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.edit"
 msgstr "Edit matching criteria"
+
+#. Tooltip for changing the matching request on a narrowed watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.editRequest"
+msgstr "Edit request"
 
 #. Email input label
 #. Email input label
@@ -1708,6 +1890,24 @@ msgstr "Enter your email and we'll send you a reset link."
 #: app/[lang]/reset-password/page.tsx
 msgid "auth.resetPassword.subtitle"
 msgstr "Enter your new password below."
+
+#. Compact Pro teaser shown after sustained result scrolling
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.proBody"
+msgstr "Evaluate every posting against what matters to you."
+
+#. Compact Pro teaser explaining precise matching on a watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.compactSubscriptionBody"
+msgstr "Evaluate every posting against your request."
+
+#. Compact explanation of precise matching on a watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.compactBody"
+msgstr "Evaluate every posting against your request."
 
 #. Feature section 1 heading
 #. js-lingui-explicit-id
@@ -1785,6 +1985,13 @@ msgstr "Explore Jobs"
 #: app/[lang]/(app)/explore/page.tsx
 msgid "explore.meta.title"
 msgstr "Explore Jobs"
+
+#. Short link to the Pro subscription from the compact watchlist control
+#. Short link to the Pro subscription from the compact watchlist control
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.subscription.cta.short"
+msgstr "Explore Pro"
 
 #. Generic email change error
 #. js-lingui-explicit-id
@@ -2572,9 +2779,9 @@ msgstr "Light"
 #. Confirmation after copying an unlisted watchlist link
 #. Confirmation after copying an unlisted watchlist link
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
 #: src/components/watchlist/watchlist-action-bar.tsx
 #: src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.copied"
 msgstr "Link copied"
 
@@ -2608,6 +2815,12 @@ msgstr "Loading more results"
 #: src/components/search/skeleton-card.tsx
 msgid "common.a11y.loadingResults"
 msgstr "Loading results"
+
+#. Accessible loading label for an anonymous watchlist stored in browser state
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/[watchlistId]/session-watchlist-loader.tsx
+msgid "watchlists.pending.loading"
+msgstr "Loading watchlist…"
 
 #. Accessible loading status for the private watchlists overview route
 #. Accessible loading status for the private watchlists overview route
@@ -2659,8 +2872,8 @@ msgstr "Locations"
 #. Login button label
 #. Login button label
 #. Login button label
+#. Login button label
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx
 #: src/components/AppHeader.tsx
 #: src/components/search/ai-search-filter.tsx
 #: src/components/settings/account/LoginPrompt.tsx
@@ -2668,11 +2881,25 @@ msgstr "Locations"
 msgid "common.auth.login"
 msgstr "Log in"
 
-#. Tooltip when user needs to log in to save search
+#. Explains that the current search will be restored after sign-in
 #. js-lingui-explicit-id
-#: src/components/search/save-search-button.tsx
-msgid "search.saveSearch.tooltipLogin"
-msgstr "Log in to save this search as a watchlist"
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.login.body"
+msgstr "Log in to check your plan or upgrade. Your current search will be restored when you return."
+
+#. Disabled alerts tooltip for a browser-only watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.actions.loginToAlerts"
+msgstr "Log in to manage alerts"
+
+#. Disabled share tooltip for a browser-only watchlist
+#. Disabled share tooltip for a browser-only watchlist
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.actions.loginToShare"
+msgstr "Log in to share"
 
 #. Manage subscription button label
 #. js-lingui-explicit-id
@@ -2710,6 +2937,12 @@ msgstr "Mark rejected"
 msgid "search.locationModal.searchHitsHeader"
 msgstr "Matches"
 
+#. Label above the natural-language request used to narrow watchlist results
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.requestLabel"
+msgstr "Matching request"
+
 #. Status label above a watchlist narrowed by natural-language matching
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
@@ -2727,12 +2960,20 @@ msgstr "Max"
 #. Warning tooltip when the account-wide watchlist limit is reached
 #. Warning when precise matching would exceed the account watchlist limit
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
 #: src/components/search/ai-search-filter.tsx
 #: src/components/search/save-search-button.tsx
 #: src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.card.limitReached"
 msgstr "Maximum of 10 watchlists reached"
+
+#. Notice that signed-out watchlists were discarded because the account is full
+#. Notice that signed-out watchlists were discarded because the account is full
+#. Notice that signed-out watchlists were discarded because the account is full
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+msgid "watchlists.pending.limitDiscarded"
+msgstr "Maximum of 10 watchlists reached. Extra saved watchlists were discarded."
 
 #. Aria label for the region containing the MCP install one-liner
 #. js-lingui-explicit-id
@@ -2846,12 +3087,6 @@ msgstr "My search"
 msgid "auth.field.name"
 msgstr "Name"
 
-#. Button to apply the natural-language AI filter
-#. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.apply"
-msgstr "Narrow down results"
-
 #. Button that opens the natural-language AI filter on a job-results surface
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -2864,11 +3099,60 @@ msgstr "Narrow down search"
 msgid "search.aiFilter.title"
 msgstr "Narrow down this search"
 
+#. Short action in the scroll reminder that opens precise matching setup
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.action"
+msgstr "Narrow results"
+
+#. Short title for the compact precise-matching watchlist control
+#. Short title for the compact precise-matching watchlist control
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.compactTitle"
+msgstr "Narrow results precisely"
+
+#. Accessible label for the reminder shown after sustained result scrolling
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.ariaLabel"
+msgstr "Narrow results reminder"
+
 #. Heading shown when too many jobs match for AI filtering
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.narrow.title"
 msgstr "Narrow the search first"
+
+#. Title of the scroll reminder advertising precise result matching
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.title"
+msgstr "Narrow these results"
+
+#. State-neutral title of the scroll reminder for an already-narrowed watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.resultsTitle"
+msgstr "Narrowed results"
+
+#. Label for the narrowed-results control on a watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.resultsToggle"
+msgstr "Narrowed results"
+
+#. Title above the narrowed results inside a watchlist drawer
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.resultsTitle"
+msgstr "Narrowed results"
+
+#. Heading asking the viewer to sign in before creating a precisely matched watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.login.title"
+msgstr "Narrowing is a Pro feature"
 
 #. TOC: Need to reach us?
 #. js-lingui-explicit-id
@@ -3486,6 +3770,12 @@ msgstr "Posting not found."
 msgid "myJobs.detail.notFound"
 msgstr "Posting not found."
 
+#. Accessible label for the compact precise-matching control between watchlist stats and results
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.controlPanel"
+msgstr "Precise matching"
+
 #. Heading explaining AI filter subscription requirement
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -3555,6 +3845,8 @@ msgstr "Pro"
 msgid "settings.billing.plan.pro"
 msgstr "Pro"
 
+#. Short Pro subscription badge
+#. Short Pro subscription badge
 #. Short Pro subscription badge
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -3701,6 +3993,13 @@ msgstr "Released under the MIT License. Job data is CC BY-NC 4.0."
 msgid "search.workMode.remote"
 msgstr "Remote"
 
+#. Short button label for removing saved matching criteria from the drawer
+#. Tooltip for removing saved matching criteria from the drawer
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.remove.short"
+msgstr "Remove"
+
 #. Aria label for the X button that removes a company pill; {name} is the company name
 #. js-lingui-explicit-id
 #. placeholder {0}: company.name
@@ -3798,6 +4097,8 @@ msgstr "Remove location {0}"
 msgid "search.filters.removeLocation"
 msgstr "Remove location {name}"
 
+#. Accessible label for removing the active AI search filter
+#. Accessible label for removing the active AI search filter
 #. Accessible label for removing the active AI search filter
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -3902,12 +4203,6 @@ msgstr "Resetting..."
 msgid "indexing.assurances.i1.title"
 msgstr "Respectful pacing."
 
-#. Button that evaluates the next portion of a narrowed watchlist on demand
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-job-list.tsx
-msgid "watchlists.jobList.reviewMore"
-msgstr "Review more jobs"
-
 #. Loading state while a saved matching request is evaluated against a watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
@@ -4010,6 +4305,12 @@ msgstr "Save some jobs and track your applications to see stats here."
 msgid "search.saveSearch.label"
 msgstr "Save this search"
 
+#. Tooltip when user needs to log in to save search
+#. js-lingui-explicit-id
+#: src/components/search/save-search-button.tsx
+msgid "search.saveSearch.tooltipLogin"
+msgstr "Save this search now and add it after login"
+
 #. Status option in dropdown: saved
 #. js-lingui-explicit-id
 #: src/components/my-jobs/my-job-detail-panel.tsx
@@ -4033,6 +4334,18 @@ msgstr "Saved"
 #: app/[lang]/(app)/my-jobs/my-jobs-page.tsx
 msgid "myJobs.group.saved"
 msgstr "Saved"
+
+#. Compact warning above anonymous watchlists stored in the current browser tab
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+msgid "watchlists.pending.collectionWarning"
+msgstr "Saved in this browser until you log in. Sharing and alerts are unavailable. Closing this tab may remove them."
+
+#. Passive disclaimer on a browser-backed watchlist before login
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-view-page.tsx
+msgid "watchlists.pending.viewDisclaimer"
+msgstr "Saved in this browser until you log in. Sharing and alerts are unavailable. It may be lost if this tab is closed or browser data is cleared."
 
 #. Email save button while loading
 #. js-lingui-explicit-id
@@ -4234,6 +4547,12 @@ msgstr "Set new password"
 msgid "settings.account.password.set"
 msgstr "Set password"
 
+#. Short button that opens precise matching setup
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.setup"
+msgstr "Set up"
+
 #. Set password button while loading
 #. js-lingui-explicit-id
 #: src/components/settings/account/PasswordSection.tsx
@@ -4256,11 +4575,17 @@ msgstr "Settings"
 #. Action to share a watchlist by unlisted link
 #. Action to share a watchlist by unlisted link
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-view-page.tsx
 #: src/components/watchlist/watchlist-action-bar.tsx
 #: src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.share"
 msgstr "Share"
+
+#. Fallback title for a shared-watchlist copy saved in browser session state
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+msgid "watchlists.pending.cloneTitle"
+msgstr "Shared watchlist copy"
 
 #. Collapse location pill list
 #. js-lingui-explicit-id
@@ -4323,18 +4648,6 @@ msgstr "Sign in"
 #: src/components/company/similar-companies-strip.tsx
 msgid "company.similar.signIn.title"
 msgstr "Sign in for more"
-
-#. Heading asking the viewer to sign in before creating a precisely matched watchlist
-#. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.login.title"
-msgstr "Sign in to continue"
-
-#. Prompt for non-logged-in users to sign in to create watchlists
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx
-msgid "watchlists.page.loginPrompt"
-msgstr "Sign in to create and manage your own watchlists."
 
 #. Prompt shown when anonymous user hits the company pagination limit
 #. js-lingui-explicit-id
@@ -4717,10 +5030,8 @@ msgid "actions.error.usernameReserved"
 msgstr "This username is reserved."
 
 #. Body text for the watchlist-not-found page; explains the watchlist is either gone or private
-#. Body text for the watchlist-not-found page; explains the watchlist is either gone or private
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/not-found.tsx
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-content.tsx
 msgid "watchlist.notFound.body"
 msgstr "This watchlist does not exist or is not public."
 
@@ -4973,6 +5284,13 @@ msgstr "Verifying your email..."
 msgid "myJobs.interviewType.videoCall"
 msgstr "Video Call"
 
+#. Short button that opens narrowed watchlist results
+#. Short button that opens narrowed watchlist results
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.viewResults"
+msgstr "View"
+
 #. Link to the original job posting
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx
@@ -5004,10 +5322,8 @@ msgid "watchlists.activity.loaded"
 msgstr "Watchlist activity finished loading."
 
 #. Heading shown when the watchlist URL doesn't resolve to a public watchlist
-#. Heading shown when the watchlist URL doesn't resolve to a public watchlist
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/not-found.tsx
-#: app/[lang]/(app)/[userSlug]/[watchlistSlug]/watchlist-content.tsx
 msgid "watchlist.notFound.title"
 msgstr "Watchlist not found"
 
@@ -5060,6 +5376,12 @@ msgstr "We collect only what we need, we don’t sell your data, and you can del
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.unavailable.body"
 msgstr "We could not verify how many jobs are in this search. Try again in a moment."
+
+#. Error shown when a session watchlist cannot load
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/[watchlistId]/session-watchlist-loader.tsx
+msgid "watchlists.pending.loadError"
+msgstr "We couldn't load your watchlist."
 
 #. Error shown when the watchlists overview cannot load after a retry
 #. js-lingui-explicit-id
@@ -5357,11 +5679,11 @@ msgstr "You've hit the hourly limit for company requests. Please try again later
 msgid "home.features.s3.eyebrow"
 msgstr "Your companies, your rules"
 
-#. Explains that the current search will be restored after sign-in
+#. Explanation that a free clone keeps ordinary filters but cannot use the shared narrowed feed
 #. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.login.body"
-msgstr "Your current search will be restored when you return."
+#: src/components/watchlist/watchlist-view-page.tsx
+msgid "watchlists.clone.narrowedFree.description"
+msgstr "Your copy will keep the standard filters. On Free, you won’t be able to set up or view its narrowed feed."
 
 #. Description after successful email verification
 #. js-lingui-explicit-id

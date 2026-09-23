@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getAiFilterOwnerState: vi.fn(),
   putAiFilterConfiguration: vi.fn(),
   disableAiFilterConfiguration: vi.fn(),
+  assertAiFilterCandidateScope: vi.fn(),
   startAiFilterCatchup: vi.fn(),
 }));
 
@@ -22,6 +23,7 @@ vi.mock("@/lib/ai-filter/postgres-repository", () => ({
   AiFilterAuthorizationError: class AiFilterAuthorizationError extends Error {},
 }));
 vi.mock("@/lib/ai-filter/candidate-loader", () => ({
+  assertAiFilterCandidateScope: mocks.assertAiFilterCandidateScope,
   AiFilterCandidateLoadError: class AiFilterCandidateLoadError extends Error {
     code: string;
     constructor(code: string) {
@@ -60,6 +62,7 @@ describe("owner-only AI filter configuration route", () => {
     mocks.getAiFilterOwnerState.mockResolvedValue(state);
     mocks.putAiFilterConfiguration.mockResolvedValue(state);
     mocks.disableAiFilterConfiguration.mockResolvedValue(undefined);
+    mocks.assertAiFilterCandidateScope.mockResolvedValue(500);
     mocks.startAiFilterCatchup.mockResolvedValue({ runId: "run-1" });
   });
 

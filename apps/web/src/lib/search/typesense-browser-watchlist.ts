@@ -45,12 +45,14 @@ interface RawSearchResponse {
 
 const TYPESENSE_MAX_PAGE_SIZE = 250;
 const TYPESENSE_BATCH_SAFETY_OFFSET = Number.MAX_SAFE_INTEGER;
+const TYPESENSE_BROWSER_TIMEOUT_MS = 8_000;
 
 async function searchOne(
   cfg: TypesenseBrowserConfig,
   collection: string,
   params: Record<string, unknown>,
   retryUnauthorized = true,
+  retryTransient = true,
 ): Promise<unknown> {
   const url = `${cfg.protocol}://${cfg.host}:${cfg.port}/collections/${collection}/documents/search`;
   const qs = new URLSearchParams();
@@ -58,10 +60,26 @@ async function searchOne(
     if (v === undefined || v === null) continue;
     qs.set(k, String(v));
   }
-  const res = await fetch(`${url}?${qs.toString()}`, {
-    method: "GET",
-    headers: { "x-typesense-api-key": cfg.apiKey },
-  });
+  const controller = new AbortController();
+  const timer = window.setTimeout(
+    () => controller.abort(),
+    TYPESENSE_BROWSER_TIMEOUT_MS,
+  );
+  let res: Response;
+  try {
+    res = await fetch(`${url}?${qs.toString()}`, {
+      method: "GET",
+      headers: { "x-typesense-api-key": cfg.apiKey },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (retryTransient) {
+      return searchOne(cfg, collection, params, retryUnauthorized, false);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
   if (!res.ok) {
     invalidateTypesenseBrowserConfigIfUnauthorized(res.status);
     if (retryUnauthorized && (res.status === 401 || res.status === 403)) {
@@ -70,7 +88,11 @@ async function searchOne(
         collection,
         params,
         false,
+        retryTransient,
       );
+    }
+    if (retryTransient && (res.status === 429 || res.status >= 500)) {
+      return searchOne(cfg, collection, params, retryUnauthorized, false);
     }
     throw new Error(`typesense ${collection} ${res.status}`);
   }

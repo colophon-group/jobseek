@@ -57,10 +57,10 @@ Status tags:
   matrix, isolated schema lab, and evidence-backed optimization trajectories.
 - [13 - SEO and IndexNow](13-seo-and-indexnow.md) `[reference]` - company page
   indexing policy, active IndexNow paths, and current observability limits.
-- [24 - Subscriber AI Filter](24-ai-filter.md) `[proposal]` - watchlist-bound
-  lifecycle and breadth limits, owned-watchlist selection/public-discovery
-  retirement, exact-decision caching, model-evaluation/spend gates, and the
-  dynamic gated epic issue tree.
+- [24 - Jev Narrow-Results Filter](24-ai-filter.md) `[reference]` - implemented
+  subscriber search/watchlist UX, demand-driven evaluation, exact-decision
+  caching, sharing rules, spend gates, production activation, and Fluid Compute
+  constraints.
 
 ## Agent And Automation Workflows
 

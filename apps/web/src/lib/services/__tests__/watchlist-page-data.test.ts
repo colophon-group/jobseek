@@ -196,4 +196,18 @@ describe("watchlist browser refresh input (#8258)", () => {
     expect(result.browserPostingFilters).not.toHaveProperty("abortSignal");
     expect(result.searchUnavailable).toBe(false);
   });
+
+  it("preserves an anonymous truncation result for the shared list renderer", async () => {
+    mocks.getPublicWatchlistPostings.mockResolvedValueOnce({
+      postings: [{ id: "posting-1" }],
+      total: 42,
+      truncated: true,
+    });
+
+    const result = await buildWatchlistPageData(params);
+
+    expect(result.postings).toEqual([{ id: "posting-1" }]);
+    expect(result.total).toBe(42);
+    expect(result.truncated).toBe(true);
+  });
 });

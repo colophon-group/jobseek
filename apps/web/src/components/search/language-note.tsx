@@ -8,9 +8,15 @@ interface LanguageNoteProps {
   /** Raw job-language preference: [] = default, ["*"] = all, ["en","de"] = specific */
   jobLanguages: string[];
   locale: string;
+  /** Shared watchlists display the owner's fixed scope rather than viewer settings. */
+  allowChange?: boolean;
 }
 
-export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
+export function LanguageNote({
+  jobLanguages,
+  locale,
+  allowChange = true,
+}: LanguageNoteProps) {
   const { t } = useLingui();
   const settingsHref = `/${locale}/settings`;
 
@@ -51,8 +57,12 @@ export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
         <Trans id="search.languageNote.all" comment="Note showing jobs in all languages">
           Showing jobs in all languages
         </Trans>
-        <span className="mx-1">&middot;</span>
-        {changeLink}
+        {allowChange ? (
+          <>
+            <span className="mx-1">&middot;</span>
+            {changeLink}
+          </>
+        ) : null}
       </p>
     );
   }
@@ -74,8 +84,12 @@ export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
           Showing jobs in {shownNames}
         </Trans>
       )}
-      <span className="mx-1">&middot;</span>
-      {changeLink}
+      {allowChange ? (
+        <>
+          <span className="mx-1">&middot;</span>
+          {changeLink}
+        </>
+      ) : null}
     </p>
   );
 }

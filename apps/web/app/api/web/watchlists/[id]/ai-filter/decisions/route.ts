@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { listAiFilterDecisions } from "@/lib/ai-filter/decision-service";
+import {
+  listAiFilterDecisions,
+  listSharedAiFilterDecisions,
+} from "@/lib/ai-filter/decision-service";
+import {
+  AiFilterNotFoundError,
+  getAiFilterOwnerState,
+} from "@/lib/ai-filter/configuration-service";
 import {
   AI_FILTER_PRIVATE_HEADERS,
   aiFilterErrorResponse,
@@ -13,15 +20,15 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const [ownerId, { id: watchlistId }] = await Promise.all([
+  const [viewerId, { id: watchlistId }] = await Promise.all([
     getSessionUserIdFromHeaders(request.headers),
     context.params,
   ]);
-  if (!ownerId || !isUuid(watchlistId)) return aiFilterNotFoundResponse();
+  if (!isUuid(watchlistId)) return aiFilterNotFoundResponse();
   try {
     const params = new URL(request.url).searchParams;
     const bucket = params.get("bucket");
-    if (bucket !== "accepted" && bucket !== "rejected") {
+    if (bucket !== "accepted") {
       throw new TypeError("Invalid decision bucket");
     }
     const rawOffset = params.get("offset") ?? "0";
@@ -29,15 +36,35 @@ export async function GET(
     if (!/^\d{1,9}$/.test(rawOffset) || !/^\d{1,3}$/.test(rawLimit)) {
       throw new TypeError("Invalid pagination");
     }
-    const page = await listAiFilterDecisions({
-      ownerId,
+    const pagination = {
       watchlistId,
-      bucket,
       offset: Number(rawOffset),
       limit: Number(rawLimit),
       signal: request.signal,
-    });
-    return NextResponse.json(page, { headers: AI_FILTER_PRIVATE_HEADERS });
+    };
+    let payload;
+    if (viewerId) {
+      try {
+        const owner = { ownerId: viewerId, watchlistId };
+        const [page, state] = await Promise.all([
+          listAiFilterDecisions({
+            ...pagination,
+            ownerId: viewerId,
+            bucket: "accepted",
+          }),
+          getAiFilterOwnerState(owner),
+        ]);
+        payload = { ...page, state };
+      } catch (error) {
+        if (!(error instanceof AiFilterNotFoundError)) {
+          throw error;
+        }
+        payload = await listSharedAiFilterDecisions(pagination);
+      }
+    } else {
+      payload = await listSharedAiFilterDecisions(pagination);
+    }
+    return NextResponse.json(payload, { headers: AI_FILTER_PRIVATE_HEADERS });
   } catch (error) {
     return aiFilterErrorResponse(error);
   }
