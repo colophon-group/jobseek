@@ -40,6 +40,7 @@ Typesense stable-order receipt, and Workflow deployment are verified:
 ```text
 AI_FILTER_ENABLED=true
 AI_FILTER_JEV_1_13_0_ENABLED=true
+AI_FILTER_PILOT_USER_IDS=<comma-separated owner IDs>
 AI_FILTER_CACHE_HMAC_SECRET=<at least 32 bytes>
 TYPESAFE_AI_TOKEN=<secret>
 ```
@@ -48,10 +49,11 @@ TYPESAFE_AI_TOKEN=<secret>
 `AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS` are optional. Set either to a
 positive integer nanodollar amount to enforce that monthly ceiling, or leave
 both unset to keep Jev spend uncapped. Both scopes still have durable spend
-ledgers and each call has a bounded reservation.
+ledgers and each call has a bounded reservation. An empty or missing pilot
+allowlist prevents all Jev execution, even when both switches are enabled.
 
 Optional concurrency controls are `AI_FILTER_MAX_SEGMENTS_PER_USER` (default 2)
-and `AI_FILTER_MAX_SEGMENTS_PROJECT` (default 20). All eight names are forwarded
+and `AI_FILTER_MAX_SEGMENTS_PROJECT` (default 20). All nine names are forwarded
 by both web build tasks in the root `turbo.json`. The full execution and rollback
 contract is in `docs/24-ai-filter.md`.
 

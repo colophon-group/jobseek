@@ -35,6 +35,7 @@ export type AiFilterRuntimePolicy = Readonly<{
   routeEnabled: boolean;
   userMonthlyBudgetNanodollars: number | null;
   projectMonthlyBudgetNanodollars: number | null;
+  pilotUserIds: readonly string[];
   maxSegmentsPerUser: number;
   maxSegmentsPerProject: number;
 }>;
@@ -48,6 +49,15 @@ function readPositiveSafeInteger(name: string, value: string | undefined): numbe
     throw new Error(`${name} must be a safe integer`);
   }
   return parsed;
+}
+
+function readPilotUserIds(value: string | undefined): readonly string[] {
+  if (!value) return Object.freeze([]);
+  const ids = value.split(",").map((id) => id.trim());
+  if (ids.some((id) => !/^[A-Za-z0-9_-]{8,128}$/.test(id))) {
+    throw new Error("AI_FILTER_PILOT_USER_IDS must contain valid owner IDs");
+  }
+  return Object.freeze([...new Set(ids)]);
 }
 
 /**
@@ -72,6 +82,7 @@ export function readAiFilterRuntimePolicy(
           env.AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS,
         )
       : null,
+    pilotUserIds: readPilotUserIds(env.AI_FILTER_PILOT_USER_IDS),
     maxSegmentsPerUser: env.AI_FILTER_MAX_SEGMENTS_PER_USER
       ? readPositiveSafeInteger(
           "AI_FILTER_MAX_SEGMENTS_PER_USER",
@@ -85,6 +96,13 @@ export function readAiFilterRuntimePolicy(
         )
       : 20,
   });
+}
+
+export function canRunAiFilterForUser(
+  policy: AiFilterRuntimePolicy,
+  ownerId: string,
+): boolean {
+  return policy.enabled && policy.routeEnabled && policy.pilotUserIds.includes(ownerId);
 }
 
 export function jevCostNanodollars(inputTokens: number, outputTokens: number): number {

@@ -16,6 +16,7 @@ import { JevClient } from "./jev-client";
 import { executeAiFilterSegment } from "./orchestrator";
 import { PostgresAiFilterExecutionRepository } from "./postgres-repository";
 import {
+  canRunAiFilterForUser,
   readAiFilterRuntimePolicy,
 } from "./policy";
 import { aiFilterHistoricalHorizonStart } from "./horizon";
@@ -391,11 +392,12 @@ export async function runAiFilterCatchupStep(input: {
       routeEnabled: false,
       userMonthlyBudgetNanodollars: null,
       projectMonthlyBudgetNanodollars: null,
+      pilotUserIds: [],
       maxSegmentsPerUser: 2,
       maxSegmentsPerProject: 20,
     };
   }
-  const executionEnabled = policyValid && policy.enabled && policy.routeEnabled;
+  const executionEnabled = policyValid && canRunAiFilterForUser(policy, input.ownerId);
   const hasEntitlement = await entitled(input.ownerId, now);
   const claim = await claimSegment({
     ...input,
@@ -497,6 +499,7 @@ export async function runAiFilterCatchupStep(input: {
   const repository = new PostgresAiFilterExecutionRepository({
     user: policy.userMonthlyBudgetNanodollars,
     project: policy.projectMonthlyBudgetNanodollars,
+    pilotUserIds: policy.pilotUserIds,
   });
   const outcome = await executeAiFilterSegment({
     context: {

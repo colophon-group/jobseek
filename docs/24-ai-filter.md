@@ -184,6 +184,7 @@ Required runtime configuration:
 ```text
 AI_FILTER_ENABLED=true
 AI_FILTER_JEV_1_13_0_ENABLED=true
+AI_FILTER_PILOT_USER_IDS=<comma-separated owner IDs>
 AI_FILTER_CACHE_HMAC_SECRET=<at least 32 bytes>
 TYPESAFE_AI_TOKEN=<secret>
 
@@ -194,11 +195,13 @@ AI_FILTER_MAX_SEGMENTS_PER_USER=2
 AI_FILTER_MAX_SEGMENTS_PROJECT=20
 ```
 
-All eight variables are forwarded in both root and web build tasks in
+All nine variables are forwarded in both root and web build tasks in
 `turbo.json`. Configure secrets and switches for the intended Vercel environment
 before promotion. Keep both switches false or absent until migrations, the
 stable Typesense receipt and Workflow deployment have been verified. If a
-monthly ceiling is configured, verify its amount before promotion.
+monthly ceiling is configured, verify its amount before promotion. The
+allowlist is required for Jev execution; an empty or missing value permits
+no paid calls.
 
 The bounded live smoke makes three direct provider calls and prints only labels,
 latency, token counts, attempts, and fixed-point cost:

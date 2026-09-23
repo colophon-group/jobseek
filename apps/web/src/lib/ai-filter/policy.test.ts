@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   JEV_MAX_CALL_RESERVATION_NANODOLLARS,
+  canRunAiFilterForUser,
   exceedsAiFilterBudget,
   jevCostNanodollars,
   readAiFilterRuntimePolicy,
@@ -27,6 +28,26 @@ describe("Jev fixed-point policy", () => {
     expect(() => readAiFilterRuntimePolicy({
       AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS: "0",
     })).toThrow("AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS");
+  });
+
+  it("permits Jev only for named pilot users when both switches are on", () => {
+    const ownerId = "ownerAbc12345678";
+    const otherId = "ownerDef12345678";
+    const policy = readAiFilterRuntimePolicy({
+      AI_FILTER_ENABLED: "true",
+      AI_FILTER_JEV_1_13_0_ENABLED: "true",
+      AI_FILTER_PILOT_USER_IDS: ` ${ownerId}, ${ownerId} `,
+    });
+    expect(policy.pilotUserIds).toEqual([ownerId]);
+    expect(canRunAiFilterForUser(policy, ownerId)).toBe(true);
+    expect(canRunAiFilterForUser(policy, otherId)).toBe(false);
+    expect(canRunAiFilterForUser(readAiFilterRuntimePolicy({
+      AI_FILTER_ENABLED: "true",
+      AI_FILTER_JEV_1_13_0_ENABLED: "true",
+    }), ownerId)).toBe(false);
+    expect(() => readAiFilterRuntimePolicy({
+      AI_FILTER_PILOT_USER_IDS: "invalid",
+    })).toThrow("AI_FILTER_PILOT_USER_IDS");
   });
 
   it("enforces an optional ceiling and rejects fixed-point overflow", () => {
@@ -56,6 +77,7 @@ describe("Jev fixed-point policy", () => {
       AI_FILTER_JEV_1_13_0_ENABLED: "true",
       AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS: "10000000000",
       AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS: "1000000000000",
+      AI_FILTER_PILOT_USER_IDS: "ownerAbc12345678",
       AI_FILTER_MAX_SEGMENTS_PER_USER: "3",
       AI_FILTER_MAX_SEGMENTS_PROJECT: "30",
     })).toEqual({
@@ -63,6 +85,7 @@ describe("Jev fixed-point policy", () => {
       routeEnabled: true,
       userMonthlyBudgetNanodollars: 10_000_000_000,
       projectMonthlyBudgetNanodollars: 1_000_000_000_000,
+      pilotUserIds: ["ownerAbc12345678"],
       maxSegmentsPerUser: 3,
       maxSegmentsPerProject: 30,
     });
