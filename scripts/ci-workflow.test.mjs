@@ -304,6 +304,7 @@ function runCrawlerDeployReconciler({
   files = ["apps/crawler/src/core/monitor.py"],
   holds = [],
   prs = null,
+  statuses = [],
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "crawler-deploy-reconcile-"));
   const log = join(dir, "gh.log");
@@ -325,6 +326,10 @@ if [[ "$1 $2" == "pr view" ]]; then
   exit 0
 fi
 if [[ "$1" == "api" && "$*" == *"/statuses/"* ]]; then
+  exit 0
+fi
+if [[ "$1" == "api" && "$*" == *"/commits/"* && "$*" == *"/status"* ]]; then
+  printf '{"statuses":%s}\n' "$MOCK_STATUSES"
   exit 0
 fi
 if [[ "$1" == "api" ]]; then
@@ -361,6 +366,7 @@ exit 1
         MOCK_PRS: JSON.stringify(mockPrs),
         MOCK_FILES: files.join("\n"),
         MOCK_HOLDS: JSON.stringify(holds),
+        MOCK_STATUSES: JSON.stringify(statuses),
       },
       encoding: "utf8",
     },
@@ -3188,9 +3194,15 @@ test("crawler deploy gate permits a ready runtime change when holds are clear", 
 
 test("draft and hold transitions replace a prior ready success with failure", () => {
   const ready = runCrawlerDeployReconciler();
-  const draft = runCrawlerDeployReconciler({ isDraft: true });
+  const priorReady = [{
+    context: "Crawler Deploy Gate",
+    state: "success",
+    description: "No crawler deployment hold applies",
+  }];
+  const draft = runCrawlerDeployReconciler({ isDraft: true, statuses: priorReady });
   const readyDuringHold = runCrawlerDeployReconciler({
     holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+    statuses: priorReady,
   });
 
   assert.equal(ready.status, 0, ready.stderr);
@@ -3200,6 +3212,20 @@ test("draft and hold transitions replace a prior ready success with failure", ()
   assert.doesNotMatch(draft.calls, /pulls\/123\/files/);
   assert.equal(readyDuringHold.status, 0, readyDuringHold.stderr);
   assert.match(readyDuringHold.calls, /statuses\/a{40}.*-f state=failure/);
+});
+
+test("crawler gate does not repost an unchanged status", () => {
+  const result = runCrawlerDeployReconciler({
+    statuses: [{
+      context: "Crawler Deploy Gate",
+      state: "success",
+      description: "No crawler deployment hold applies",
+    }],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /gate unchanged/);
+  assert.doesNotMatch(result.calls, /\/statuses\//);
 });
 
 test("a stale queued evaluator converges every PR to the current hold state", () => {
