@@ -436,8 +436,8 @@ def attest_measured(
         "renderer": (1024**3, 2_000_000_000),
         "producer": (32 * 1024**2, 250_000_000),
         "supervisor": (96 * 1024**2, 250_000_000),
-        "executor": (384 * 1024**2, 500_000_000),
-        "control": (1536 * 1024**2, 3_000_000_000),  # noqa: E501
+        "executor": (384 * 1024**2, 1_000_000_000),
+        "control": (1536 * 1024**2, 3_500_000_000),  # noqa: E501
     }
     rows: list[dict[str, Any]] = []
     project = env["ADMISSION_PROJECT"]
