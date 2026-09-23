@@ -1,8 +1,10 @@
 # Go + Lightpanda migration: resumption plan
 
-Status: planning checkpoint, 2026-09-23. This plan is based on `origin/main`
-`6abfa52e1b061f2898a46355c48105accd1c01f9` and the linked issue/PR
-history. It authorizes no production activation.
+Status: implementation checkpoint, 2026-09-23. The initial review used
+`origin/main` `6abfa52e1b061f2898a46355c48105accd1c01f9`; the B0 producer
+implementation has since been reconciled onto `9d7b7b6abb420c820e89a2f9440560ddfc20c0ac`.
+This document does not authorize production activation without the measured
+whole-lane parity and efficiency result below.
 
 The delivery goal is a complete Go crawler using self-hosted Lightpanda for
 browser work and Go HTTP/API execution where that removes a browser need.
@@ -30,11 +32,12 @@ an admission condition for the first B0 cohort.
   executor, and explicit c1/c4 cutover tooling. Ordinary deployment is dark.
   The issue record does not establish that production B0 traffic has been
   activated; verify live state before any future cutover.
-- [#8738](https://github.com/colophon-group/jobseek/issues/8738) records an
-  additional Go producer-authority candidate at local commit `d6d583515`.
-  It is unpushed and unmerged. Its 48-file, 12,172-line addition diverged from
-  current `main`; use it as a read-only donor and re-evaluate its scope rather
-  than rebasing or merging it wholesale.
+- [#8738](https://github.com/colophon-group/jobseek/issues/8738) records the
+  Go producer-authority candidate at local commit `d6d583515`. Its 48-file,
+  12,172-line addition was reassessed against the issue's concrete crash and
+  ownership failures, reconciled with current queue semantics, and kept as one
+  bounded safety slice. About half of the addition is test code. Do not expand
+  it into a generic scheduler, control plane, or queue rewrite.
 - [#8648](https://github.com/colophon-group/jobseek/issues/8648) owns the
   remaining whole-lane admission. Its harness candidate was held until it
   could exercise the real Go producer. The public sitemap run in #7935 was
@@ -48,12 +51,13 @@ an admission condition for the first B0 cohort.
 
 ## Next slice: one real Go-owned B0 cohort
 
-1. **Reconcile the implementation on fresh `main`.** Compare the merged dark
-   lane with `d6d583515` and the held #8648 harness. Keep only the operations
-   needed for c1/c4: one exclusive producer, four bounded Go claim slots,
-   existing Redis/SQL fences, the Python database-only executor, and cold
-   rollback. Split implementation and admission harness into small PRs with
-   reproducible test commands. Treat the old branch as source material.
+1. **Reconcile the implementation on fresh `main`.** The producer successor
+   has been assembled separately from the held #8648 admission harness. It
+   keeps only the c1/c4 producer, four bounded Go claim slots, existing
+   Redis/SQL fences, the Python database-only executor, and cold rollback.
+   The large implementation patch is justified by the specific previously
+   found crash and ownership failures; it is not a template for later family
+   ports. Recheck its exact current diff and executable gates before merging.
 2. **Make authority and reversal correct before traffic.** A selected posting
    must have exactly one schedule and one owner. The existing routing epoch
    must be monotonic across activation and rollback, including restored Redis
