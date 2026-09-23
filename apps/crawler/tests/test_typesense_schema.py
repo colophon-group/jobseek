@@ -51,6 +51,19 @@ def test_job_posting_schema_keeps_unused_compatibility_fields_stored_only() -> N
         assert fields[name]["optional"] is True
 
 
+def test_job_posting_schema_has_compact_candidate_order_key() -> None:
+    job_posting = next(c for c in COLLECTIONS if c["name"] == "job_posting")
+    field = next(f for f in job_posting["fields"] if f["name"] == "candidate_order_key")
+
+    assert field == {
+        "name": "candidate_order_key",
+        "type": "string",
+        "index": True,
+        "sort": True,
+        "optional": True,
+    }
+
+
 def test_taxonomy_schema_carries_web_hierarchy_contract() -> None:
     schemas = {collection["name"]: collection for collection in COLLECTIONS}
     posting_fields = {field["name"]: field for field in schemas["job_posting"]["fields"]}
@@ -165,6 +178,35 @@ def test_patch_adds_genuinely_new_fields() -> None:
     collection.update.assert_called_once()
     payload_names = [f["name"] for f in collection.update.call_args.args[0]["fields"]]
     assert sorted(payload_names) == ["founded_year", "logo"]
+
+
+def test_patch_preserves_candidate_sort_field_rollout_shape() -> None:
+    client, collection = _stub_client(retrieve_fields=[{"name": "first_seen_at", "type": "int64"}])
+
+    _patch_missing_fields(
+        client,
+        "job_posting",
+        desired_fields=[
+            {"name": "first_seen_at", "type": "int64"},
+            {
+                "name": "candidate_order_key",
+                "type": "string",
+                "index": True,
+                "sort": True,
+                "optional": True,
+            },
+        ],
+    )
+
+    assert collection.update.call_args.args[0]["fields"] == [
+        {
+            "name": "candidate_order_key",
+            "type": "string",
+            "index": True,
+            "sort": True,
+            "optional": True,
+        }
+    ]
 
 
 # ---------------------------------------------------------------------------

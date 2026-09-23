@@ -42,6 +42,7 @@ from src.exporter import (
     run_exporter,
 )
 from src.metrics import export_errors_total
+from src.typesense_candidate_order import candidate_order_key
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -2062,6 +2063,7 @@ class TestBuildTypesenseDocsAncestors:
         docs = _build_typesense_docs([row], maps)
         assert len(docs) == 1
         assert docs[0]["reconciliation_bucket"] == uuid.UUID(docs[0]["id"]).hex[:2]
+        assert docs[0]["candidate_order_key"] == candidate_order_key(row["id"])
         loc_ids = set(docs[0]["location_ids"])
         assert docs[0]["location_direct_ids"] == [10]
         assert 10 in loc_ids  # leaf (city)

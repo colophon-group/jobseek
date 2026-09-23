@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -101,6 +102,49 @@ async def test_reconcile_command_always_passes_no_mirror_pool(monkeypatch) -> No
     run_reconciliation.assert_awaited_once()
     assert run_reconciliation.await_args.args == (local_pool, None)
     assert run_reconciliation.await_args.kwargs["target_scope"] == "typesense"
+
+
+async def test_interrupted_reconcile_exits_nonzero_and_cannot_issue_receipt(
+    monkeypatch,
+) -> None:
+    local_pool = object()
+    issue_receipt = AsyncMock()
+
+    async def interrupted(task, _shutdown_event):
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        return None
+
+    monkeypatch.setattr(
+        cli,
+        "parse_args",
+        lambda: argparse.Namespace(
+            command="reconcile",
+            repair=True,
+            full=True,
+            fresh_cycle=True,
+            max_partitions=16,
+            start_partition=0,
+            target="typesense",
+            candidate_order_benchmark_sha256="a" * 64,
+        ),
+    )
+    monkeypatch.setattr(cli, "create_local_pool", AsyncMock(return_value=local_pool))
+    monkeypatch.setattr(cli, "close_all_pools", AsyncMock())
+    monkeypatch.setattr(cli, "_await_task_or_shutdown", interrupted)
+
+    with (
+        patch("src.reconciliation.run_reconciliation", new=AsyncMock()),
+        patch(
+            "src.reconciliation.issue_candidate_order_readiness_receipt",
+            new=issue_receipt,
+        ),
+        pytest.raises(SystemExit) as exc_info,
+    ):
+        await cli.run()
+
+    assert exc_info.value.code == 130
+    issue_receipt.assert_not_awaited()
 
 
 def test_relisted_supabase_repair_is_not_a_crawler_command(monkeypatch) -> None:
