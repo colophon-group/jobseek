@@ -4,7 +4,7 @@ Status: implementation checkpoint, 2026-09-23. The initial review used
 `origin/main` `6abfa52e1b061f2898a46355c48105accd1c01f9`; the B0 producer
 implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
-tracks current production evidence and the active c1 cohort.
+tracks the production c1 admission and its current rollback state.
 
 The delivery goal is a complete Go crawler using self-hosted Lightpanda for
 browser work and Go HTTP/API execution where that removes a browser need.
@@ -47,11 +47,13 @@ an admission condition for the first B0 cohort.
   at c1 and 6.71× at c4; peak memory and completion latency fell. CPU use
   rose from 12.88 to 23.06 seconds at c1 and 17.53 to 23.88 seconds at c4
   across the common due and retained measurement window. About 20 CPU seconds
-  per arm came from the transitional Python executor. The production c1 lane
-  is active at routing epoch 12 with five Go-owned schedules. Its lightweight
-  executor health probe cut measured idle CPU from 10 to 1 seconds per
-  20-second window. No task has been due yet, so production output, requests,
-  and whole-lane capacity still need measurement. The public
+  per arm came from the transitional Python executor. Production c1 reached
+  routing epoch 14 with five Go-owned schedules. Its lightweight executor
+  health probe cut measured idle CPU from 10 to 1 seconds per 20-second
+  window. A host-side cold rollback returned all five schedules to the legacy
+  queue at 18:30–18:32 UTC on 2026-09-23, before any task was due; the reason
+  remains under investigation. Production output, requests, and whole-lane
+  capacity still need measurement. The public
   sitemap run in #7935 was inconclusive because the live source changed
   between arms; it is not a Python-versus-Go verdict.
 - [#7959](https://github.com/colophon-group/jobseek/issues/7959) admitted
@@ -59,12 +61,18 @@ an admission condition for the first B0 cohort.
   compatibility results do not justify moving interactive, frame, identity,
   or API-sniffer profiles. Chromium remains an explicit compatibility owner
   where those capabilities are unproven.
+- [PR #9932](https://github.com/colophon-group/jobseek/pull/9932) prepares an
+  exclusive Go R2 drain. A counterbalanced 2,000-description ARM64 fixture
+  preserved every object and database pointer while reducing CPU 3.75–3.86×
+  and retained memory 9.5–10.1×. [PR #9935](https://github.com/colophon-group/jobseek/pull/9935)
+  prepares the three validated production B0 origins. Both await deployment
+  and production measurement.
 
 ## Next slice: one real Go-owned B0 cohort
 
 1. **Producer implementation landed.** The producer successor was
    assembled separately from the held #8648 admission harness. It keeps only
-   the c1/c4 producer, four bounded Go claim slots, existing Redis/SQL fences,
+   the bounded producer, four Go claim slots, existing Redis/SQL fences,
    the Python database-only executor, and cold rollback. The large patch
    addressed specific crash and ownership failures; it is not a template for
    later family ports.
@@ -75,13 +83,14 @@ an admission condition for the first B0 cohort.
    Redis persistence boundaries, pending-receipt reboot, and rollback from
   current PostgreSQL schedule truth. Bound task occupancy for the next cohort;
    do not build generic compaction or a new distributed scheduler for it.
-3. **Dark default and c1 overlay active.** The merged revision passed real
+3. **Dark default; c1 overlay rolled back.** The merged revision passed real
    Redis/PostgreSQL transitions, container startup, and the required CI/deploy
    gates. The ordinary deploy lists the old Python/Chromium services and dark
-   claimant. The c1 overlay at epoch 12 runs the enabled producer, executor,
-   and claimant with an active receipt. Check that receipt and Redis owner
-   before any mutation. No reviewer or operator approval is an additional
-   gate once the stated checks pass.
+   claimant. The c1 overlay reached epoch 14, then returned to legacy before
+   its first due task. The receipt and B0 Redis owner are absent. Reconcile
+   the initiating host mutation, then use a fresh cold plan and receipt before
+   reactivation. No reviewer or operator approval is an additional gate once
+   the stated checks pass.
 4. **Whole-lane fixture complete.** The merged harness exercised the producer
    with identical immutable fixture inputs and equal 1.5 GiB whole-lane
    budgets. Its report includes exact canonical output, terminal state,
@@ -102,8 +111,9 @@ an admission condition for the first B0 cohort.
    against a 1536 MiB control. The isolated counterbalanced c1/c4 report
    passed. This is fixture evidence; production c1 has not processed a due
    task yet.
-5. **Observe c1, then expand to three origins if the numbers hold.** C1 has
-   exclusive Go/Lightpanda ownership for one low-rate origin.
+5. **Observe c1, then expand to three origins if the numbers hold.** Reactivate
+   c1 only after the unexpected rollback is reconciled. It held exclusive
+   Go/Lightpanda ownership for one low-rate origin.
    Verify no duplicate origin request, stale write, lost schedule, unsupported
    capability, or same-task Chromium fallback. Expand to the other two
    currently validated origins only if c1 remains correct and the combined
