@@ -16,7 +16,7 @@ import { JevClient } from "./jev-client";
 import { executeAiFilterSegment } from "./orchestrator";
 import { PostgresAiFilterExecutionRepository } from "./postgres-repository";
 import {
-  AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
+  canRunAiFilterForUser,
   readAiFilterRuntimePolicy,
 } from "./policy";
 import { aiFilterHistoricalHorizonStart } from "./horizon";
@@ -390,13 +390,14 @@ export async function runAiFilterCatchupStep(input: {
     policy = {
       enabled: false,
       routeEnabled: false,
-      userMonthlyBudgetNanodollars: AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
-      projectMonthlyBudgetNanodollars: 1,
+      userMonthlyBudgetNanodollars: null,
+      projectMonthlyBudgetNanodollars: null,
+      pilotUserIds: [],
       maxSegmentsPerUser: 2,
       maxSegmentsPerProject: 20,
     };
   }
-  const executionEnabled = policyValid && policy.enabled && policy.routeEnabled;
+  const executionEnabled = policyValid && canRunAiFilterForUser(policy, input.ownerId);
   const hasEntitlement = await entitled(input.ownerId, now);
   const claim = await claimSegment({
     ...input,
@@ -495,9 +496,11 @@ export async function runAiFilterCatchupStep(input: {
     return { status: "busy", segmentId: claim.segment.id };
   }
 
-  const repository = new PostgresAiFilterExecutionRepository(
-    policy.projectMonthlyBudgetNanodollars,
-  );
+  const repository = new PostgresAiFilterExecutionRepository({
+    user: policy.userMonthlyBudgetNanodollars,
+    project: policy.projectMonthlyBudgetNanodollars,
+    pilotUserIds: policy.pilotUserIds,
+  });
   const outcome = await executeAiFilterSegment({
     context: {
       ownerId: input.ownerId,

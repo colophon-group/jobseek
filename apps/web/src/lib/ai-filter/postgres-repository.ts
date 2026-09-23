@@ -39,8 +39,8 @@ import {
   AI_FILTER_CACHE_KEY_VERSION,
   AI_FILTER_PRICE_VERSION,
   AI_FILTER_PROMPT_VERSION,
-  AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
   JEV_MODEL,
+  exceedsAiFilterBudget,
 } from "./policy";
 
 const CACHE_LEASE_MS = 5 * 60 * 1_000;
@@ -175,12 +175,18 @@ function safeFailureCode(code: string): string {
 
 export class PostgresAiFilterExecutionRepository
   implements AiFilterExecutionRepository {
-  constructor(private readonly projectMonthlyBudgetNanodollars: number) {
-    if (
-      !Number.isSafeInteger(projectMonthlyBudgetNanodollars) ||
-      projectMonthlyBudgetNanodollars <= 0
-    ) {
-      throw new RangeError("AI filter project budget must be a positive safe integer");
+  constructor(private readonly executionPolicy: {
+    user: number | null;
+    project: number | null;
+    pilotUserIds: readonly string[];
+  }) {
+    for (const [scope, limit] of [
+      ["user", executionPolicy.user],
+      ["project", executionPolicy.project],
+    ] as const) {
+      if (limit !== null && (!Number.isSafeInteger(limit) || limit <= 0)) {
+        throw new RangeError(`AI filter ${scope} budget must be a positive safe integer`);
+      }
     }
   }
 
@@ -426,6 +432,9 @@ export class PostgresAiFilterExecutionRepository
   async reserveBudget(
     input: Parameters<AiFilterExecutionRepository["reserveBudget"]>[0],
   ): Promise<AiFilterBudgetResult> {
+    if (!this.executionPolicy.pilotUserIds.includes(input.context.ownerId)) {
+      throw new AiFilterAuthorizationError();
+    }
     return db.transaction(async (tx) => {
       await advisoryLock(tx, `ai-filter-reservation:${input.idempotencyKey}`);
       // Serialize the final spend authorization with enable/query-change/
@@ -496,15 +505,13 @@ export class PostgresAiFilterExecutionRepository
       for (const scope of ["user", "project"] as const) {
         const account = accountByScope.get(scope);
         if (!account) throw new AiFilterRepositoryError("AI filter budget account is missing");
-        const limit = scope === "user"
-          ? AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS
-          : this.projectMonthlyBudgetNanodollars;
-        if (
-          account.actualNanodollars +
-            account.reservedNanodollars +
-            input.amountNanodollars >
-          limit
-        ) {
+        const limit = this.executionPolicy[scope];
+        if (exceedsAiFilterBudget({
+          actualNanodollars: account.actualNanodollars,
+          reservedNanodollars: account.reservedNanodollars,
+          nextReservationNanodollars: input.amountNanodollars,
+          limitNanodollars: limit,
+        })) {
           return { status: "denied", scope };
         }
       }
