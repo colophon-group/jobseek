@@ -206,7 +206,9 @@ services:
     healthcheck:
       test: ["CMD", "/app/.venv/bin/python", "-m", "src.lightpanda.executor", "--healthcheck"]
       interval: 5s
-      timeout: 3s
+      # The health command imports the executor's processing dependencies before
+      # attesting the socket. On the production ARM64 host this takes 2.7-4.6s.
+      timeout: 15s
       retries: 3
       start_period: 10s
     mem_limit: 384m

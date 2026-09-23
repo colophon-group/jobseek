@@ -827,12 +827,12 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
         "src.lightpanda.executor",
         "--healthcheck",
     ]
-    assert executor["healthcheck"]["timeout"] == "3s"  # type: ignore[index]
+    assert executor["healthcheck"]["timeout"] == "15s"  # type: ignore[index]
     assert executor["healthcheck"]["interval"] == "5s"  # type: ignore[index]
     assert executor["healthcheck"]["retries"] == 3  # type: ignore[index]
-    # Three attempts span 19 seconds from the first invocation, exceeding the
-    # executor's 15-second commit bound while keeping its DB pool at one.
-    assert 2 * 5 + 3 * 3 > 15
+    # Three attempts can span beyond the executor's 15-second commit bound
+    # while keeping its DB pool at one.
+    assert 2 * 5 + 3 * 15 > 15
     assert executor["environment"] == {  # type: ignore[index]
         "CRAWLER_DB_POOL_MAX": "1",
         "CRAWLER_DB_POOL_MIN": "1",
