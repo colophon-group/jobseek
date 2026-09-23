@@ -210,9 +210,21 @@ and all 27.1 variants have `{value: "7", count: 1620}`. The query filters
 The 30.2 baseline is correct. See the
 [source-derived ground truth](typesense-memory-2026-09-23/experience-facet-ground-truth.json).
 This narrows the problem to a version/schema interaction, but does not yet
-isolate the engine's root cause. Retest `experience_min` sort/facet dependencies
-before combining these optimizations with the upgrade. Approximate counts do
-not permit incorrect value labels.
+isolate the engine's root cause. Approximate counts do not permit incorrect
+value labels.
+
+Follow-up on the same day: a [standalone 30.2 reproduction](../../scripts/repro-typesense-int32-facet.sh)
+reduces the failure to one int32 facet and two sequential inserts (`-1`, then
+`1`). The non-negative filter returns the correct document but labels its facet
+`-1`; allowing both values merges their buckets. Both `sort:false` and
+`sort:true` reproduce with automatic/exhaustive faceting. `top_values` and an
+int64 field return the correct label in these comparison cases. Thus sort
+pruning is not required. Source inspection suggests that int32 `-1` collides
+with the sentinel for generated facet IDs. See the
+[raw responses](typesense-memory-2026-09-23/int32-facet-repro-30.2.json) and
+[upstream draft](2026-09-23-typesense-int32-facet-issue-draft.md), which flags the
+potential relationship to existing upstream issue #2720. These tiny controls
+do not establish a generally safe workaround or resolve the upgrade gate.
 
 ## Countercheck and approximate facets on 27.1
 
