@@ -4,7 +4,14 @@ on:
   pull_request:
     paths:
       - apps/crawler/admission/lightpanda_b0/**
-      - apps/crawler/src/lightpanda/admission.py
+      - apps/crawler/go/lightpanda-b0-supervisor/**
+      - apps/crawler/src/lightpanda/**
+      - apps/crawler/src/lightpanda_queue.py
+      - apps/crawler/src/lua/lightpanda_b0_queue.lua
+      - apps/crawler/src/lua/enqueue_task.lua
+      - apps/crawler/lightpanda-b0-enabled.override.yml
+      - apps/crawler/scripts/lightpanda-b0-cutover.sh
+      - apps/crawler/docker-compose.yml
       - apps/crawler/Dockerfile
       - .github/workflows/crawler-b0-whole-lane.yml
   workflow_dispatch:
