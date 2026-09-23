@@ -10,9 +10,9 @@ import {
 
 const migrationFolder = resolve(process.cwd(), "drizzle");
 const target = {
-  tag: "0093_ai_filter_historical_horizon",
-  createdAt: 1_790_078_400_000,
-  hash: "f6287811e602d8cf1dbc504d40c4ef5484d033d2c5ac5f26c0072e364a4ecdb8",
+  tag: "0094_ai_filter_candidate_languages",
+  createdAt: 1_790_082_600_000,
+  hash: "e702743fc50bc5d70a37db5e0a406e2f890186446407b728360aa61cd344c66c",
 };
 const environment = {
   MIGRATION_REQUIRE_UNPOOLED: "true",
@@ -28,8 +28,8 @@ describe("routine migration guard", () => {
     const plan = loadRoutineMigrationPlan(migrationFolder, environment);
 
     expect(plan?.target).toEqual(target);
-    expect(plan?.localMigrationCount).toBe(82);
-    expect(plan?.prerequisite.tag).toBe("0092_jev_ai_filter_foundation");
+    expect(plan?.localMigrationCount).toBe(83);
+    expect(plan?.prerequisite.tag).toBe("0093_ai_filter_historical_horizon");
   });
 
   it.each([

@@ -106,7 +106,7 @@ async function loadLedgerFixture(): Promise<{
   const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
 
   invariant(journal.entries.length === migrations.length, "Journal and SQL migration counts differ");
-  invariant(migrations.length === 82, `Expected 82 real journal migrations, found ${migrations.length}`);
+  invariant(migrations.length === 83, `Expected 83 real journal migrations, found ${migrations.length}`);
 
   const retirementIndex = journal.entries.findIndex((entry) => entry.tag === retirementTag);
   invariant(retirementIndex !== -1, `Journal does not contain ${retirementTag}`);

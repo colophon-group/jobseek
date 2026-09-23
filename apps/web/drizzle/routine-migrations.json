@@ -18,7 +18,12 @@
     {
       "tag": "0093_ai_filter_historical_horizon",
       "createdAt": 1790078400000,
-      "hash": "f6287811e602d8cf1dbc504d40c4ef5484d033d2c5ac5f26c0072e364a4ecdb8"
+      "hash": "738f6f53b8bce8c1b2ae674c677ff4e46a3781e6d06475324d7b194e7e708b37"
+    },
+    {
+      "tag": "0094_ai_filter_candidate_languages",
+      "createdAt": 1790082600000,
+      "hash": "e702743fc50bc5d70a37db5e0a406e2f890186446407b728360aa61cd344c66c"
     }
   ]
 }
