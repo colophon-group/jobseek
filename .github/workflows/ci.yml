@@ -398,7 +398,6 @@ jobs:
           cleanup() {
             docker rm --force "$redis_container" >/dev/null 2>&1 || true
             docker volume rm "$redis_volume" >/dev/null 2>&1 || true
-            rm -f "$integration_binary"
           }
           wait_for_redis() {
             for attempt in $(seq 1 30); do
@@ -409,7 +408,7 @@ jobs:
               sleep 1
             done
           }
-          trap cleanup EXIT
+          trap 'cleanup; rm -f "$integration_binary"' EXIT
           cleanup
           docker volume create "$redis_volume" >/dev/null
           docker run --detach --name "$redis_container" \

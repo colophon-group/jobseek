@@ -179,7 +179,7 @@ services:
     restart: "no"
     network_mode: host
     stop_grace_period: 30s
-    command: ["uv", "run", "--no-sync", "python", "-m", "src.lightpanda.executor"]
+    command: ["/app/.venv/bin/python", "-m", "src.lightpanda.executor"]
     user: "10001:10001"
     read_only: true
     cgroup: private
@@ -204,7 +204,7 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
     healthcheck:
-      test: ["CMD", "uv", "run", "--no-sync", "python", "-m", "src.lightpanda.executor", "--healthcheck"]
+      test: ["CMD", "/app/.venv/bin/python", "-m", "src.lightpanda.executor", "--healthcheck"]
       interval: 5s
       timeout: 3s
       retries: 3

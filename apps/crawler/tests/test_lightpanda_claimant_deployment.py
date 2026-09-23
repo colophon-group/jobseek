@@ -815,6 +815,18 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
     assert int(producer["memswap_limit"]) == 32 * 1024 * 1024  # type: ignore[index]
     assert int(executor["mem_limit"]) == 384 * 1024 * 1024  # type: ignore[index]
     assert int(executor["memswap_limit"]) == 384 * 1024 * 1024  # type: ignore[index]
+    assert executor["command"] == [  # type: ignore[index]
+        "/app/.venv/bin/python",
+        "-m",
+        "src.lightpanda.executor",
+    ]
+    assert executor["healthcheck"]["test"] == [  # type: ignore[index]
+        "CMD",
+        "/app/.venv/bin/python",
+        "-m",
+        "src.lightpanda.executor",
+        "--healthcheck",
+    ]
     assert executor["healthcheck"]["timeout"] == "3s"  # type: ignore[index]
     assert executor["healthcheck"]["interval"] == "5s"  # type: ignore[index]
     assert executor["healthcheck"]["retries"] == 3  # type: ignore[index]
