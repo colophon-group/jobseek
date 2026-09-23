@@ -583,20 +583,6 @@ func (q *b0Queue) initializeProducer(ctx context.Context, owner producerOwnerIde
 	return nil
 }
 
-func (q *b0Queue) persistProducer(ctx context.Context) error {
-	if ctx == nil {
-		return queueAuthority("corruption", "persist_producer")
-	}
-	status, err := q.client.Save(ctx).Result()
-	if err != nil {
-		return queueRedisFailure(err, "persist_producer")
-	}
-	if status != "OK" {
-		return queueAuthority("corruption", "persist_producer")
-	}
-	return nil
-}
-
 func (q *b0Queue) activateLegacy(ctx context.Context, task *queueTask, readyAtMS int64, legacyConfig, previousPayloadSHA256 string, operatorTransfer, firstTime bool, owner producerOwnerIdentity) (transition, error) {
 	if task == nil || task.Envelope.EngineOwner != engineOwner || legacyConfig == "" ||
 		(firstTime && readyAtMS != 0) ||

@@ -151,7 +151,6 @@ type producerResponse struct {
 type producerQueue interface {
 	preflight(context.Context, bool, producerOwnerIdentity) (bool, error)
 	initializeProducer(context.Context, producerOwnerIdentity) error
-	persistProducer(context.Context) error
 	lifetimeOccupancy(context.Context) (int64, error)
 	inspect(context.Context, string) (*storedTask, error)
 	activateLegacy(context.Context, *queueTask, int64, string, string, bool, bool, producerOwnerIdentity) (transition, error)
@@ -563,9 +562,6 @@ func (p *b0Producer) acquireMutationAuthority(ctx context.Context) (func(), erro
 				succeeded = true
 				return release, nil
 			}
-			if err := p.queue.persistProducer(ctx); err != nil {
-				return nil, producerQueueAuthority(err)
-			}
 			if err := p.sentinel.publishActive(); err != nil {
 				return nil, authorityLost("corruption")
 			}
@@ -578,10 +574,10 @@ func (p *b0Producer) acquireMutationAuthority(ctx context.Context) (func(), erro
 			return nil, authorityLost("corruption")
 		}
 	}
+	// The pending cutover receipt contains this lane until the wrapper saves
+	// the owner and all transferred tasks to Redis before starting claimants.
+	// A synchronous SAVE here cannot fit the producer request deadline.
 	if err := p.queue.initializeProducer(ctx, p.owner); err != nil {
-		return nil, producerQueueAuthority(err)
-	}
-	if err := p.queue.persistProducer(ctx); err != nil {
 		return nil, producerQueueAuthority(err)
 	}
 	if p.sentinel != nil {
