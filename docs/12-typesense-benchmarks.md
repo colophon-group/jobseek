@@ -1,5 +1,11 @@
 # Typesense Benchmarks
 
+> For the current 5.53M-document, 8 GB host / 6 GiB container measurements and
+> narrowing/30.2 optimization proposals, see the
+> [2026-09-23 audit](audits/2026-09-23-typesense-memory-proposals.md).
+> Typesense 27.1's `resident_bytes` metric duplicates allocator active bytes;
+> use OS RSS and cgroup counters for independent capacity measurements.
+
 > These measurements are the original 681K-document baseline. For the current
 > 3.7M-document footprint/OOM investigation and reproducible schema lab, see
 > [Typesense Footprint Investigation (2026-08-26)](typesense-footprint-investigation-2026-08-26.md).

@@ -1,5 +1,12 @@
 # Typesense job-posting footprint investigation
 
+> Measurement correction (2026-09-23): the 27.1 server returns allocator
+> **active** bytes under its `typesense_memory_resident_bytes` label. References
+> below to lab/API resident bytes therefore do not establish OS RSS savings.
+> See the [fresh audit](audits/2026-09-23-typesense-memory-proposals.md) for source
+> evidence, current host capacity, and new measurements. Preserve this report
+> as the historical experiment; its 3 GiB limit is no longer the live limit.
+
 Status: investigation and initial production tuning for [GitHub issue #8033](https://github.com/colophon-group/jobseek/issues/8033), captured 2026-08-26. The schema change described below is selected for rollout by the ordinary crawler deploy; it was not applied directly during this investigation.
 
 ## Executive finding

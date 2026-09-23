@@ -1,0 +1,19 @@
+{
+  "observed_at": "2026-09-23T16:15:52.808307+00:00",
+  "docker_vm_cpus": 4,
+  "docker_vm_memory_bytes": 8308350976,
+  "docker_vm_arch": "aarch64",
+  "containers": [
+    {
+      "name": "jobseek-typesense-footprint-91884-baseline",
+      "cpu": "104.57%",
+      "memory_usage": "683.9MiB / 6GiB"
+    },
+    {
+      "name": "jobseek-prod-snapshot-lab",
+      "cpu": "0.25%",
+      "memory_usage": "3.828GiB / 6GiB"
+    }
+  ],
+  "note": "An existing separate 27.1 snapshot lab remained running during the measurements. Do not interpret results as exclusive-host production latency acceptance."
+}

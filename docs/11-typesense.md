@@ -1,17 +1,20 @@
 # Typesense Deployment State
 
-Current production deployment as of July 2026. The earlier docs in this directory (00-05) describe the migration plan and benchmarks; this document describes what was actually deployed.
+Production deployment reference. Host capacity was reverified on September 23,
+2026; see the [memory audit](audits/2026-09-23-typesense-memory-proposals.md).
+The earlier docs in this directory (00-05) describe the migration plan and benchmarks.
 
 ## Infrastructure
 
 ### Typesense Machine
 
-- **Hetzner CX22**: 4 GB RAM, 2 vCPU, dedicated IPv4
+- **Hetzner VM**: approximately 8 GB RAM, 4 vCPU, dedicated IPv4
 - **OS**: Ubuntu (Docker host)
 - **Container**: Typesense 27.1 pinned by manifest digest in the host installer,
   `--network host`, data at
   `/mnt/typesense-data`; the only command argument is the path to a read-only
   config file
+- **Container memory**: 6 GiB hard limit, 5 GiB reservation; no swap
 - **Port**: 8108
 - **Firewall**: SSH from anywhere, port 8108 from private network only (10.0.0.0/16)
 - **Backups**: daily application-consistent Snapshot API backup to an encrypted,
@@ -41,7 +44,7 @@ The Vercel-hosted web app has no stable IPs, so it cannot be firewalled into the
   delivered through systemd `LoadCredential`; neither the unit nor process
   arguments contain the token.
 - **Cache bypass rule**: configured in Cloudflare dashboard -- without it, Cloudflare may cache GET search responses and return stale results (Typesense does not set `Cache-Control` headers by default)
-- **Rate-limit rule** (zone `colophon-group.org`, phase `http_ratelimit`): per-IP, 200 requests / 10 s on `(http.host eq "typesense.colophon-group.org")`, action `block` for 10 s. Required because the search key is exposed to browsers (see "Web App Integration") and the origin is a single 4 GB / 2 vCPU box.
+- **Rate-limit rule** (zone `colophon-group.org`, phase `http_ratelimit`): per-IP, 200 requests / 10 s on `(http.host eq "typesense.colophon-group.org")`, action `block` for 10 s. Required because the search key is exposed to browsers (see "Web App Integration") and the origin is a single machine.
 - **CORS**: Typesense container emits `Access-Control-Allow-Origin: *` directly -- no Cloudflare Transform Rule needed. Verified via `curl -X OPTIONS -H 'Origin: https://jseek.co' https://typesense.colophon-group.org/health`.
 - **Latency overhead**: ~10-30 ms per request (acceptable -- Typesense queries take <10 ms)
 
@@ -180,6 +183,14 @@ Both are idempotent. On every run, the setup logic:
 4. Never removes stored fields or auto-repairs other field-shape drift.
 
 ### Stable candidate-order rollout
+
+> **Rollout blocker found 2026-09-23:** the proposed `uuid-b64lex-v1` key below
+> does not preserve UUID order under Typesense 27.1 string-sort normalization.
+> The production-sample engine test also shows substantial memory overhead.
+> Do not activate this encoding. See the
+> [memory and ordering audit](audits/2026-09-23-typesense-memory-proposals.md)
+> for the reproduction and replacement proposals. The following describes the
+> original gated plan, not a verified producer rollout.
 
 Frozen precise-matching feeds will use a total newest-first order after the
 separately gated producer rollout:

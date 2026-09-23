@@ -1,0 +1,107 @@
+{
+  "max_cgroup_7d": {
+    "query": "max_over_time(jobseek_container_memory_current_bytes{container=\"typesense\"}[7d])",
+    "result": {
+      "status": "success",
+      "data": {
+        "resultType": "vector",
+        "result": [
+          {
+            "metric": {
+              "container": "typesense",
+              "host_role": "typesense",
+              "instance": "jobseek-typesense",
+              "job": "integrations/unix"
+            },
+            "value": [
+              1790178629.081,
+              "6442450944"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "max_events_increase_7d": {
+    "query": "increase(jobseek_container_memory_events_total{container=\"typesense\",event=\"max\"}[7d])",
+    "result": {
+      "status": "success",
+      "data": {
+        "resultType": "vector",
+        "result": [
+          {
+            "metric": {
+              "container": "typesense",
+              "event": "max",
+              "host_role": "typesense",
+              "instance": "jobseek-typesense",
+              "job": "integrations/unix"
+            },
+            "value": [
+              1790178629.428,
+              "699967.3603015948"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "oom_events_increase_7d": {
+    "query": "increase(jobseek_container_memory_events_total{container=\"typesense\",event=~\"oom|oom_kill\"}[7d])",
+    "result": {
+      "status": "success",
+      "data": {
+        "resultType": "vector",
+        "result": [
+          {
+            "metric": {
+              "container": "typesense",
+              "event": "oom",
+              "host_role": "typesense",
+              "instance": "jobseek-typesense",
+              "job": "integrations/unix"
+            },
+            "value": [
+              1790178629.713,
+              "0"
+            ]
+          },
+          {
+            "metric": {
+              "container": "typesense",
+              "event": "oom_kill",
+              "host_role": "typesense",
+              "instance": "jobseek-typesense",
+              "job": "integrations/unix"
+            },
+            "value": [
+              1790178629.713,
+              "0"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "engine_active_min_max_7d": {
+    "query": "max_over_time(crawler_typesense_memory_bytes{instance=\"exporter\"}[7d])",
+    "result": {
+      "status": "success",
+      "data": {
+        "resultType": "vector",
+        "result": [
+          {
+            "metric": {
+              "instance": "exporter",
+              "job": "crawler"
+            },
+            "value": [
+              1790178629.96,
+              "4259315712"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
