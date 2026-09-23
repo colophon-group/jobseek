@@ -333,6 +333,7 @@ describe("OwnedWatchlistLoader direct private detail", () => {
     expect(mocks.getAiFilterOwnerState).not.toHaveBeenCalled();
     expect(mocks.listSharedAiFilterDecisions).toHaveBeenCalledWith({
       watchlistId: WATCHLIST_ID,
+      anonymous: true,
       offset: 0,
       limit: 20,
     });

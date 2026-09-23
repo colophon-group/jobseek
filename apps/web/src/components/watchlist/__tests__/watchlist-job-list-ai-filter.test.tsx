@@ -139,6 +139,22 @@ describe("WatchlistJobList matching results", () => {
     hookMocks.session = { isLoggedIn: true, isPending: false };
   });
 
+  it("does not read or demand AI decisions while the broad feed is selected", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <WatchlistJobList
+        {...baseProps}
+        resultMode="broad"
+        aiFilterState={aiState()}
+      />,
+    );
+
+    await act(async () => {});
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("waits for signed-in session hydration before broad pagination", () => {
     hookMocks.paginatedHasMore = true;
     hookMocks.session = { isLoggedIn: false, isPending: true };

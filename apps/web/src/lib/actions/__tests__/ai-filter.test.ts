@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({
   getSessionUserId: vi.fn(),
+  assertAiFilterEntitlement: vi.fn(),
   createWatchlist: vi.fn(),
   deleteWatchlist: vi.fn(),
   putAiFilterConfiguration: vi.fn(),
@@ -23,6 +24,8 @@ vi.mock("@/lib/services/watchlists", () => ({
 
 vi.mock("@/lib/ai-filter/configuration-service", () => ({
   AiFilterEntitlementError: class AiFilterEntitlementError extends Error {},
+  assertAiFilterEntitlement: (...args: unknown[]) =>
+    mocks.assertAiFilterEntitlement(...args),
   putAiFilterConfiguration: (...args: unknown[]) =>
     mocks.putAiFilterConfiguration(...args),
   disableAiFilterConfiguration: (...args: unknown[]) =>
@@ -69,6 +72,7 @@ describe("AI filter watchlist actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSessionUserId.mockResolvedValue("user-1");
+    mocks.assertAiFilterEntitlement.mockResolvedValue(undefined);
     mocks.createWatchlist.mockResolvedValue({ id: watchlistId, slug: "backend" });
     mocks.deleteWatchlist.mockResolvedValue({ ok: true });
     mocks.putAiFilterConfiguration.mockResolvedValue(configuredState);
@@ -83,6 +87,9 @@ describe("AI filter watchlist actions", () => {
     })).resolves.toEqual({ id: watchlistId, slug: "backend" });
 
     expect(mocks.createWatchlist).toHaveBeenCalledWith(draft);
+    expect(mocks.assertAiFilterEntitlement).toHaveBeenCalledWith({
+      ownerId: "user-1",
+    });
     expect(mocks.assertAiFilterCandidateScope).toHaveBeenCalledWith({
       ownerId: "user-1",
       watchlistId,
@@ -108,6 +115,20 @@ describe("AI filter watchlist actions", () => {
     expect(mocks.deleteWatchlist).toHaveBeenCalledWith(watchlistId);
   });
 
+  it("rejects an ineligible account before creating or counting candidates", async () => {
+    mocks.assertAiFilterEntitlement.mockRejectedValue(
+      new AiFilterEntitlementError(),
+    );
+
+    await expect(createAiFilteredWatchlist({
+      draft,
+      query: "Backend developer tools",
+    })).resolves.toEqual({ error: "subscription_required" });
+
+    expect(mocks.createWatchlist).not.toHaveBeenCalled();
+    expect(mocks.assertAiFilterCandidateScope).not.toHaveBeenCalled();
+  });
+
   it("configures an existing owned watchlist without creating another one", async () => {
     await expect(configureAiFilter(
       watchlistId,
@@ -120,6 +141,10 @@ describe("AI filter watchlist actions", () => {
       query: "Backend developer tools",
     });
     expect(mocks.assertAiFilterCandidateScope).toHaveBeenCalledWith({
+      ownerId: "user-1",
+      watchlistId,
+    });
+    expect(mocks.assertAiFilterEntitlement).toHaveBeenCalledWith({
       ownerId: "user-1",
       watchlistId,
     });

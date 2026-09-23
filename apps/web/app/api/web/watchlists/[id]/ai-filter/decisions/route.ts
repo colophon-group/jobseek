@@ -62,7 +62,10 @@ export async function GET(
         payload = await listSharedAiFilterDecisions(pagination);
       }
     } else {
-      payload = await listSharedAiFilterDecisions(pagination);
+      payload = await listSharedAiFilterDecisions({
+        ...pagination,
+        anonymous: true,
+      });
     }
     return NextResponse.json(payload, { headers: AI_FILTER_PRIVATE_HEADERS });
   } catch (error) {

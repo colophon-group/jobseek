@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   putAiFilterConfiguration: vi.fn(),
   startAiFilterCatchup: vi.fn(),
   assertAiFilterCandidateScope: vi.fn(),
+  limit: vi.fn(),
 }));
 
 vi.mock("@/lib/sessionCache", () => ({
@@ -32,6 +33,9 @@ vi.mock("@/lib/ai-filter/candidate-loader", () => ({
 }));
 vi.mock("@/lib/ai-filter/workflow-trigger", () => ({
   startAiFilterCatchup: mocks.startAiFilterCatchup,
+}));
+vi.mock("@/lib/rate-limit", () => ({
+  aiFilterDemandLimiter: { limit: mocks.limit },
 }));
 
 import { POST } from "../reconcile/route";
@@ -87,6 +91,7 @@ describe("scroll-demand AI filter reconciliation", () => {
     mocks.putAiFilterConfiguration.mockResolvedValue(state);
     mocks.startAiFilterCatchup.mockResolvedValue({ runId: "run-1" });
     mocks.assertAiFilterCandidateScope.mockResolvedValue(1_000);
+    mocks.limit.mockResolvedValue({ success: true, reset: Date.now() + 60_000 });
   });
 
   it("refreshes the hard-filter scope and requests a selective-feed runway", async () => {
@@ -104,8 +109,43 @@ describe("scroll-demand AI filter reconciliation", () => {
     expect(mocks.startAiFilterCatchup).toHaveBeenCalledWith({
       ownerId: "owner-1",
       watchlistId,
-      demandTargetOffset: 520,
+      demandTargetOffset: 500,
     });
+  });
+
+  it("clamps a forged future cursor to the persisted frontier", async () => {
+    const response = await POST(request(10_000), context);
+
+    expect(response.status).toBe(202);
+    expect(mocks.startAiFilterCatchup).toHaveBeenCalledWith({
+      ownerId: "owner-1",
+      watchlistId,
+      demandTargetOffset: 500,
+    });
+  });
+
+  it("rejects expired entitlement before the external candidate count", async () => {
+    mocks.getAiFilterOwnerState.mockResolvedValue({ ...state, entitled: false });
+
+    const response = await POST(request(0), context);
+
+    expect(response.status).toBe(403);
+    expect(mocks.assertAiFilterCandidateScope).not.toHaveBeenCalled();
+    expect(mocks.startAiFilterCatchup).not.toHaveBeenCalled();
+  });
+
+  it("limits replay before the external count or workflow start", async () => {
+    mocks.limit.mockResolvedValue({
+      success: false,
+      reset: Date.now() + 60_000,
+    });
+
+    const response = await POST(request(0), context);
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBeTruthy();
+    expect(mocks.assertAiFilterCandidateScope).not.toHaveBeenCalled();
+    expect(mocks.startAiFilterCatchup).not.toHaveBeenCalled();
   });
 
   it("snapshots the visible all-language scope into the immutable query revision", async () => {

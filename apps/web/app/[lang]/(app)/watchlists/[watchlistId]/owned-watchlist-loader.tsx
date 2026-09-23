@@ -68,6 +68,7 @@ async function getOptionalSharedAiFilterState(input: {
 
 async function getInitialAcceptedPage(input: {
   ownerId?: string;
+  anonymous?: boolean;
   watchlistId: string;
   state: AiFilterUiState | null;
 }): Promise<AiFilterAcceptedPage | null> {
@@ -83,6 +84,7 @@ async function getInitialAcceptedPage(input: {
         })
       : await listSharedAiFilterDecisions({
           watchlistId: input.watchlistId,
+          anonymous: input.anonymous,
           offset: 0,
           limit: 20,
         });
@@ -162,6 +164,7 @@ export async function OwnedWatchlistLoader({
     }),
     getInitialAcceptedPage({
       ownerId: isOwner && session ? session.user.id : undefined,
+      anonymous: !session,
       watchlistId,
       state: aiFilterState,
     }),
