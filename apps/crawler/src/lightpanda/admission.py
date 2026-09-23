@@ -315,10 +315,12 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
         started = time.monotonic_ns() + int(until_due * 1_000_000_000)
         rows = await _wait(pool, ids, args.timeout)
         finished = time.monotonic_ns()
-        stable = [
-            dict((key, row[key]) for key in row if key not in {"last_scraped_at", "next_scrape_at"})
-            for row in rows
-        ]
+        stable = []
+        for row in rows:
+            values = dict(row)
+            values.pop("last_scraped_at")
+            values.pop("next_scrape_at")
+            stable.append(values)
         descriptions = await pool.fetch(
             "SELECT posting_id::text, locale, html, hash FROM descriptions "
             "ORDER BY posting_id, locale"
