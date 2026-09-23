@@ -32,21 +32,26 @@ Vercel sets these variables in the project settings, but **turbo will not pass t
 
 ### Narrow-results runtime
 
-The Jev filter fails closed unless its route, project budget, cache-key secret,
-and provider credential are all present. Configure these in the intended Vercel
+The Jev filter fails closed unless its route, cache-key secret, and provider
+credential are present. Configure these in the intended Vercel
 environment and keep the two switches disabled until the database migrations,
 Typesense stable-order receipt, and Workflow deployment are verified:
 
 ```text
 AI_FILTER_ENABLED=true
 AI_FILTER_JEV_1_13_0_ENABLED=true
-AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS=<positive integer nanodollars>
 AI_FILTER_CACHE_HMAC_SECRET=<at least 32 bytes>
 TYPESAFE_AI_TOKEN=<secret>
 ```
 
+`AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS` and
+`AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS` are optional. Set either to a
+positive integer nanodollar amount to enforce that monthly ceiling, or leave
+both unset to keep Jev spend uncapped. Both scopes still have durable spend
+ledgers and each call has a bounded reservation.
+
 Optional concurrency controls are `AI_FILTER_MAX_SEGMENTS_PER_USER` (default 2)
-and `AI_FILTER_MAX_SEGMENTS_PROJECT` (default 20). All seven names are forwarded
+and `AI_FILTER_MAX_SEGMENTS_PROJECT` (default 20). All eight names are forwarded
 by both web build tasks in the root `turbo.json`. The full execution and rollback
 contract is in `docs/24-ai-filter.md`.
 

@@ -26,8 +26,6 @@ export const JEV_MAX_CALL_RESERVATION_NANODOLLARS =
   JEV_INPUT_PRICE_NANODOLLARS_PER_TOKEN *
   (JEV_MAX_RETRIES + 1);
 
-export const AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS = 10_000_000_000;
-
 /** Observed direct-API bounds from the maintained 5-job synthetic fixtures. */
 export const JEV_COMPACT_DECISION_ESTIMATE_NANODOLLARS = 14_373;
 export const JEV_MAX_DESCRIPTION_DECISION_ESTIMATE_NANODOLLARS = 69_166;
@@ -35,8 +33,8 @@ export const JEV_MAX_DESCRIPTION_DECISION_ESTIMATE_NANODOLLARS = 69_166;
 export type AiFilterRuntimePolicy = Readonly<{
   enabled: boolean;
   routeEnabled: boolean;
-  userMonthlyBudgetNanodollars: number;
-  projectMonthlyBudgetNanodollars: number;
+  userMonthlyBudgetNanodollars: number | null;
+  projectMonthlyBudgetNanodollars: number | null;
   maxSegmentsPerUser: number;
   maxSegmentsPerProject: number;
 }>;
@@ -53,8 +51,8 @@ function readPositiveSafeInteger(name: string, value: string | undefined): numbe
 }
 
 /**
- * Execution fails closed until both feature switches and a project budget are
- * explicitly configured. Reads may still expose persisted paused state.
+ * Execution requires both feature switches. Absent monthly caps leave spend
+ * observable without limiting it. Reads may still expose persisted paused state.
  */
 export function readAiFilterRuntimePolicy(
   env: Readonly<Record<string, string | undefined>> = process.env,
@@ -62,11 +60,18 @@ export function readAiFilterRuntimePolicy(
   return Object.freeze({
     enabled: env.AI_FILTER_ENABLED === "true",
     routeEnabled: env.AI_FILTER_JEV_1_13_0_ENABLED === "true",
-    userMonthlyBudgetNanodollars: AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
-    projectMonthlyBudgetNanodollars: readPositiveSafeInteger(
-      "AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS",
-      env.AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS,
-    ),
+    userMonthlyBudgetNanodollars: env.AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS
+      ? readPositiveSafeInteger(
+          "AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS",
+          env.AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
+        )
+      : null,
+    projectMonthlyBudgetNanodollars: env.AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS
+      ? readPositiveSafeInteger(
+          "AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS",
+          env.AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS,
+        )
+      : null,
     maxSegmentsPerUser: env.AI_FILTER_MAX_SEGMENTS_PER_USER
       ? readPositiveSafeInteger(
           "AI_FILTER_MAX_SEGMENTS_PER_USER",
@@ -98,4 +103,29 @@ export function jevCostNanodollars(inputTokens: number, outputTokens: number): n
     throw new RangeError("Jev cost exceeds fixed-point range");
   }
   return cost;
+}
+
+export function exceedsAiFilterBudget(input: {
+  actualNanodollars: number;
+  reservedNanodollars: number;
+  nextReservationNanodollars: number;
+  limitNanodollars: number | null;
+}): boolean {
+  const amounts = [
+    input.actualNanodollars,
+    input.reservedNanodollars,
+    input.nextReservationNanodollars,
+  ];
+  if (amounts.some((amount) => !Number.isSafeInteger(amount) || amount < 0)) {
+    throw new RangeError("AI filter spend must contain non-negative safe integers");
+  }
+  const total = amounts.reduce((sum, amount) => sum + amount, 0);
+  if (!Number.isSafeInteger(total)) {
+    throw new RangeError("AI filter spend exceeds fixed-point range");
+  }
+  if (input.limitNanodollars === null) return false;
+  if (!Number.isSafeInteger(input.limitNanodollars) || input.limitNanodollars <= 0) {
+    throw new RangeError("AI filter budget must be a positive safe integer");
+  }
+  return total > input.limitNanodollars;
 }

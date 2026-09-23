@@ -16,7 +16,6 @@ import { JevClient } from "./jev-client";
 import { executeAiFilterSegment } from "./orchestrator";
 import { PostgresAiFilterExecutionRepository } from "./postgres-repository";
 import {
-  AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
   readAiFilterRuntimePolicy,
 } from "./policy";
 import { aiFilterHistoricalHorizonStart } from "./horizon";
@@ -390,8 +389,8 @@ export async function runAiFilterCatchupStep(input: {
     policy = {
       enabled: false,
       routeEnabled: false,
-      userMonthlyBudgetNanodollars: AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
-      projectMonthlyBudgetNanodollars: 1,
+      userMonthlyBudgetNanodollars: null,
+      projectMonthlyBudgetNanodollars: null,
       maxSegmentsPerUser: 2,
       maxSegmentsPerProject: 20,
     };
@@ -495,9 +494,10 @@ export async function runAiFilterCatchupStep(input: {
     return { status: "busy", segmentId: claim.segment.id };
   }
 
-  const repository = new PostgresAiFilterExecutionRepository(
-    policy.projectMonthlyBudgetNanodollars,
-  );
+  const repository = new PostgresAiFilterExecutionRepository({
+    user: policy.userMonthlyBudgetNanodollars,
+    project: policy.projectMonthlyBudgetNanodollars,
+  });
   const outcome = await executeAiFilterSegment({
     context: {
       ownerId: input.ownerId,

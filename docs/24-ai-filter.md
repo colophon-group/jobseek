@@ -140,10 +140,11 @@ Money is stored as integer nanodollars. The versioned policy uses TypeSafe's
 Before each call, the service atomically reserves the conservative two-attempt
 maximum, reconciles to returned usage, and immediately releases the remainder.
 
-Each user may accrue up to `$10.00` of reconciled Jev spend per UTC month. A
-call is allowed while actual spend plus outstanding reservations plus the next
-bounded reservation fits, allowing power users to approach the cap without
-crossing it. A separately configured project budget is mandatory.
+Monthly per-user and project spend ceilings are optional. When one is set, a
+call is allowed only while actual spend plus outstanding reservations plus the
+next bounded reservation fits. With both unset, Jev spend is uncapped; both
+scopes still have durable accounting and every paid call has a bounded
+reservation.
 
 Maintained direct-API observations:
 
@@ -152,7 +153,7 @@ Maintained direct-API observations:
 | Compact | 1,711 | $0.000071862 | $0.000014373 |
 | Five 12k-character descriptions | 8,234 | $0.000345828 | $0.000069166 |
 
-At these observations, `$10` is about 695,700 compact decisions or 144,500
+At these observations, `$10` corresponds to about 695,700 compact decisions or 144,500
 maximum-description decisions before global cache reuse. A 500-candidate runway
 costs at most about `$0.035` at the conservative observed bound. These are
 estimates, not quotas.
@@ -183,20 +184,21 @@ Required runtime configuration:
 ```text
 AI_FILTER_ENABLED=true
 AI_FILTER_JEV_1_13_0_ENABLED=true
-AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS=<positive integer>
 AI_FILTER_CACHE_HMAC_SECRET=<at least 32 bytes>
 TYPESAFE_AI_TOKEN=<secret>
 
-# Optional fairness controls
+# Optional monthly ceilings and fairness controls
+AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS=<positive integer>
+AI_FILTER_PROJECT_MONTHLY_BUDGET_NANODOLLARS=<positive integer>
 AI_FILTER_MAX_SEGMENTS_PER_USER=2
 AI_FILTER_MAX_SEGMENTS_PROJECT=20
 ```
 
-All seven variables are forwarded in both root and web build tasks in
+All eight variables are forwarded in both root and web build tasks in
 `turbo.json`. Configure secrets and switches for the intended Vercel environment
 before promotion. Keep both switches false or absent until migrations, the
-stable Typesense receipt, Workflow deployment, and the project budget have been
-verified.
+stable Typesense receipt and Workflow deployment have been verified. If a
+monthly ceiling is configured, verify its amount before promotion.
 
 The bounded live smoke makes three direct provider calls and prints only labels,
 latency, token counts, attempts, and fixed-point cost:

@@ -3,9 +3,9 @@ import "server-only";
 import { countAiFilterCandidates } from "./candidate-loader";
 import { getAiFilterEstimateContext } from "./configuration-service";
 import {
-  AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
   JEV_COMPACT_DECISION_ESTIMATE_NANODOLLARS,
   JEV_MAX_DESCRIPTION_DECISION_ESTIMATE_NANODOLLARS,
+  readAiFilterRuntimePolicy,
 } from "./policy";
 
 export async function getAiFilterEstimate(input: {
@@ -30,7 +30,7 @@ export async function getAiFilterEstimate(input: {
           maximumDescription:
             candidateCount * JEV_MAX_DESCRIPTION_DECISION_ESTIMATE_NANODOLLARS,
         }),
-    monthlyBudgetNanodollars: AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
+    monthlyBudgetNanodollars: readAiFilterRuntimePolicy().userMonthlyBudgetNanodollars,
     actualNanodollars: context.actualNanodollars,
     reservedNanodollars: context.reservedNanodollars,
     entitled: context.entitled,
