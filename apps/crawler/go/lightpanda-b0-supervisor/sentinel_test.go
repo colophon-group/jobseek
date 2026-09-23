@@ -177,7 +177,6 @@ type bootstrapRaceQueue struct {
 	entered     chan struct{}
 	release     chan struct{}
 	initialized atomic.Bool
-	persisted   atomic.Int64
 }
 
 func (q *bootstrapRaceQueue) preflight(context.Context, bool, producerOwnerIdentity) (bool, error) {
@@ -195,10 +194,6 @@ func (q *bootstrapRaceQueue) initializeProducer(ctx context.Context, _ producerO
 	}
 }
 
-func (q *bootstrapRaceQueue) persistProducer(context.Context) error {
-	q.persisted.Add(1)
-	return nil
-}
 func (q *bootstrapRaceQueue) lifetimeOccupancy(context.Context) (int64, error) { return 0, nil }
 
 func (q *bootstrapRaceQueue) inspect(context.Context, string) (*storedTask, error) {
@@ -279,12 +274,12 @@ func TestProducerPreparingSentinelWithoutRedisInitializationRetriesBootstrap(t *
 		t.Fatalf("preparing bootstrap was not retryable: %v", err)
 	}
 	release()
-	if state, stateErr := sentinel.state(); stateErr != nil || state != producerSentinelActive || queue.persisted.Load() != 1 {
-		t.Fatalf("retry did not durably publish active: state=%v persisted=%d err=%v", state, queue.persisted.Load(), stateErr)
+	if state, stateErr := sentinel.state(); stateErr != nil || state != producerSentinelActive || !queue.initialized.Load() {
+		t.Fatalf("retry did not publish active after Redis initialization: state=%v err=%v", state, stateErr)
 	}
 }
 
-func TestProducerPreparingSentinelWithInitializedRedisResavesBeforeActive(t *testing.T) {
+func TestProducerPreparingSentinelWithInitializedRedisPublishesActive(t *testing.T) {
 	producer := validProducer(t, &fakeProducerQueue{}, "browser-use-careers")
 	directory := t.TempDir()
 	if err := os.Chmod(directory, 0o700); err != nil {
@@ -308,8 +303,8 @@ func TestProducerPreparingSentinelWithInitializedRedisResavesBeforeActive(t *tes
 		t.Fatalf("initialized preparing state was not recoverable: %v", err)
 	}
 	release()
-	if state, stateErr := sentinel.state(); stateErr != nil || state != producerSentinelActive || initialized.persisted.Load() != 1 {
-		t.Fatalf("recovery did not save before active: state=%v persisted=%d err=%v", state, initialized.persisted.Load(), stateErr)
+	if state, stateErr := sentinel.state(); stateErr != nil || state != producerSentinelActive {
+		t.Fatalf("recovery did not publish active: state=%v err=%v", state, stateErr)
 	}
 }
 

@@ -1067,6 +1067,7 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
         (False, 41, "OK", 41),
         (True, 0, "OK", 124),
         (False, 0, "LOST", 1),
+        (False, 0, "BUSY_THEN_LOST", 1),
     ],
 )
 def test_deploy_generated_fresh_env_reaches_activation_plan(
@@ -1105,6 +1106,8 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
             f"TEST_PLAN_TIMEOUT={int(plan_timeout)}",
             f"TEST_APPLY_STATUS={apply_status}",
             f"TEST_SAVE_REPLY={save_reply}",
+            f'TEST_SAVE_COUNTER="{tmp_path / "save-counter"}"',
+            "sleep() { :; }",
             f"sha256sum() {{ cat >/dev/null; printf '{'d' * 64}  -\\n'; }}",
             "timeout() {",
             '  original="$*"; shift 4',
@@ -1130,8 +1133,15 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
             '    *\\ plan\\ --operation\\ activate\\ *) printf \'{"digest": "%s"}\\n\' '
             '"$TEST_PLAN_DIGEST"; return 0 ;;',
             '    *\\ lightpanda-b0-activation\\ activate\\ *) return "$TEST_APPLY_STATUS" ;;',
-            "    *\\ exec\\ -T\\ redis\\ redis-cli\\ --raw\\ SAVE) "
-            "printf '%s\\n' \"$TEST_SAVE_REPLY\"; return 0 ;;",
+            "    *\\ exec\\ -T\\ redis\\ redis-cli\\ --raw\\ SAVE) ",
+            '      if [[ "$TEST_SAVE_REPLY" == BUSY_THEN_LOST ]]; then',
+            '        count=0; [[ ! -f "$TEST_SAVE_COUNTER" ]] || count="$(<"$TEST_SAVE_COUNTER")"',
+            '        count=$((count + 1)); printf "%s\\n" "$count" >"$TEST_SAVE_COUNTER"',
+            '        if [[ "$count" == 1 ]]; then '
+            'printf "ERR Background save already in progress\\n"; return 0; fi',
+            '        printf "LOST\\n"; return 0',
+            "      fi",
+            "      printf '%s\\n' \"$TEST_SAVE_REPLY\"; return 0 ;;",
             "    *) return 0 ;;",
             "  esac",
             "}",
@@ -1191,11 +1201,13 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
     assert set(f"{key}={value}" for key, value in receipt_identity.items()).issubset(
         set(receipt.read_text(encoding="utf-8").splitlines())
     )
-    assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
     if apply_status == 0:
         save = next(index for index, event in enumerate(events) if " redis-cli --raw SAVE" in event)
         assert apply < save
+        if save_reply == "BUSY_THEN_LOST":
+            assert sum(" redis-cli --raw SAVE" in event for event in events) == 2
         assert not any(" up -d --force-recreate worker-1 worker-2" in event for event in events)
+    assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
 
 
 def _write_activation_receipt(
