@@ -803,6 +803,7 @@ def run_arm(
                     "memory_peak_bytes": memory_peak,
                     "memory_peak_before": row["memory_peak_before"],
                     "memory_max": row["memory_max"],
+                    "cpu_seconds": (_cpu_usage(row["path"]) - row["cpu_before_usec"]) / 1_000_000,
                     "image_id": row["image_id"],
                     "networks": attached_networks,
                     "running": state["Running"],
