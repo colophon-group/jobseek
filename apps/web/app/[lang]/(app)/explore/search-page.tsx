@@ -86,6 +86,7 @@ export function resolveInitialRepositoryFallbackCompanies(params: {
 interface SearchPageProps {
   initialCompanies: SearchResultCompany[];
   initialTotalCompanies: number;
+  initialNextOffset?: number | null;
   initialTotalPostings?: number;
   initialTruncated?: boolean;
   initialDegraded?: boolean;
@@ -120,6 +121,7 @@ interface SearchPageProps {
 export function SearchPage({
   initialCompanies,
   initialTotalCompanies,
+  initialNextOffset,
   initialTotalPostings,
   initialTruncated,
   initialDegraded,
@@ -258,11 +260,16 @@ export function SearchPage({
     useLatestState<number | undefined>(
       shouldRestore ? cached.totalPostings : initialTotalPostings,
     );
+  const [nextOffset, setNextOffset, nextOffsetRef] = useLatestState<number | null | undefined>(
+    shouldRestore ? cached.nextOffset : initialNextOffset,
+  );
   const [isSearching, setIsSearching] = useState(false);
   const searchCounterRef = useRef(0);
   const externalNavigationCounterRef = useRef(0);
   const initialDirectRefreshKeyRef = useRef<string | null>(null);
-  const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
+  const [isTruncated, setIsTruncated, isTruncatedRef] = useLatestState(
+    shouldRestore ? (cached.truncated ?? false) : (initialTruncated ?? false),
+  );
   const [isDegraded, setIsDegraded, isDegradedRef] = useLatestState(
     shouldRestore ? (cached.degraded ?? false) : (initialDegraded ?? false),
   );
@@ -277,7 +284,11 @@ export function SearchPage({
   // Track server-side offset separately from deduped client list length.
   // Facet-based pagination can return overlapping companies between pages,
   // causing the deduped list to grow slower than the server offset.
-  const serverOffsetRef = useRef(initialCompanies.length);
+  const serverOffsetRef = useRef(
+    shouldRestore
+      ? (cached.serverOffset ?? cached.nextOffset ?? cached.companies.length)
+      : (initialNextOffset ?? initialCompanies.length),
+  );
 
   // Latest-state refs are the single source of truth for stable
   // updateUrl/runSearch/pageActions callbacks.
@@ -408,6 +419,7 @@ export function SearchPage({
           setTotalCompanies(0);
           setTotalPostings(undefined);
           serverOffsetRef.current = 0;
+          setNextOffset(null);
           setIsTruncated(false);
           setIsDegraded(true);
           setRepositoryFallbackCompanies([]);
@@ -434,6 +446,7 @@ export function SearchPage({
         setTotalCompanies(0);
         setTotalPostings(undefined);
         serverOffsetRef.current = 0;
+        setNextOffset(null);
         setIsTruncated(false);
         setIsDegraded(true);
         setRepositoryFallbackCompanies([]);
@@ -481,6 +494,9 @@ export function SearchPage({
         companies: companiesRef.current,
         totalCompanies: totalCompaniesRef.current,
         totalPostings: totalPostingsRef.current,
+        nextOffset: nextOffsetRef.current,
+        serverOffset: serverOffsetRef.current,
+        truncated: isTruncatedRef.current,
         showPostingId: showPostingIdRef.current,
         degraded: isDegradedRef.current,
         scrollY: window.scrollY,
@@ -662,7 +678,9 @@ export function SearchPage({
     }
   }, []);
 
-  const hasMore = companies.length < totalCompanies && !isTruncated;
+  const hasMore = !isTruncated && (nextOffset !== undefined
+    ? nextOffset !== null
+    : companies.length < totalCompanies);
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || hasUnresolvedExplicitSlugs(unresolvedExplicitSlugs) || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null || (languageOverride?.length ?? 0) > 0;
 
   /** Update only the `show` query param without touching filter state. */
@@ -847,7 +865,8 @@ export function SearchPage({
               );
         if (searchCounterRef.current !== id) return; // stale
         setCompanies(result.companies);
-        serverOffsetRef.current = result.companies.length;
+        serverOffsetRef.current = result.nextOffset ?? result.companies.length;
+        setNextOffset(result.nextOffset);
         setTotalCompanies(result.totalCompanies);
         setTotalPostings(result.totalPostings);
         setIsTruncated(result.truncated ?? false);
@@ -861,6 +880,7 @@ export function SearchPage({
         setTotalCompanies(0);
         setTotalPostings(undefined);
         serverOffsetRef.current = 0;
+        setNextOffset(null);
         setIsTruncated(false);
         setIsDegraded(true);
         setRepositoryFallbackCompanies([]);
@@ -910,7 +930,8 @@ export function SearchPage({
     ).then((result) => {
       if (!result || searchCounterRef.current !== id) return;
       setCompanies(result.companies);
-      serverOffsetRef.current = result.companies.length;
+      serverOffsetRef.current = result.nextOffset ?? result.companies.length;
+      setNextOffset(result.nextOffset);
       setTotalCompanies(result.totalCompanies);
       setTotalPostings(result.totalPostings);
       setIsTruncated(result.truncated ?? false);
@@ -1100,6 +1121,7 @@ export function SearchPage({
 
   async function handleLoadMore() {
     const offset = serverOffsetRef.current;
+    const searchId = searchCounterRef.current;
     const kws = keywordsRef.current;
     const locationIds = locationsRef.current.map((l) => l.id);
     const occupationIds = occupationsRef.current.length > 0 ? occupationsRef.current.map((o) => o.id) : undefined;
@@ -1115,9 +1137,11 @@ export function SearchPage({
       ? await runSearchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages: languagesRef.current, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current)
       : await runListTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages: languagesRef.current, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current);
 
+    if (searchCounterRef.current !== searchId) return;
     if (result.truncated) setIsTruncated(true);
     if (result.degraded) setIsDegraded(true);
-    serverOffsetRef.current += result.companies.length;
+    serverOffsetRef.current = result.nextOffset ?? (offset + result.companies.length);
+    setNextOffset(result.nextOffset);
 
     setCompanies((prev) => {
       const seen = new Set(prev.map((c) => c.company.id));

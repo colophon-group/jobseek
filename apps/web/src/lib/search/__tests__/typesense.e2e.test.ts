@@ -668,6 +668,33 @@ describe("scoped search key expiry", () => {
 // =====================================================================
 
 describe("search()", () => {
+  it("paginates the exact 27.1 grouped order with lookahead and explicit exhaustion", async () => {
+    if (skipIfUnavailable()) return;
+    const baseline = await adminClient.collections(JOB_POSTING_COLLECTION).documents().search({
+      q: "Engineer", query_by: "title", filter_by: "is_active:true && has_content:!=false",
+      sort_by: "_text_match:desc,first_seen_at:desc", group_by: "company_id", group_limit: 10,
+      facet_by: "company_id", facet_strategy: "exhaustive", max_facet_values: 1,
+      per_page: 250, typo_tokens_threshold: 1, drop_tokens_threshold: 1,
+    });
+    const expected = baseline.grouped_hits!.map((g) => String(g.group_key[0]));
+    expect(expected.length).toBeGreaterThan(2);
+    const actual: string[] = [];
+    let offset: number | null = 0;
+    for (let page = 0; page < 10 && offset !== null; page++) {
+      const result = await provider.search({ keywords: ["Engineer"], languages: [], locale: "en", offset, limit: 2 });
+      expect(result.degraded).not.toBe(true);
+      expect(result.totalCompanies).toBe(baseline.found);
+      expect(result.totalPostings).toBe(baseline.found_docs);
+      actual.push(...result.companies.map((c) => c.company.id));
+      expect(result.nextOffset).toBe(actual.length < expected.length ? offset + 2 : null);
+      offset = result.nextOffset!;
+    }
+    expect(offset).toBeNull();
+    expect(actual).toEqual(expected);
+    const nonAligned = await provider.search({ keywords: ["Engineer"], languages: [], locale: "en", offset: 1, limit: 2 });
+    expect(nonAligned.companies.map((c) => c.company.id)).toEqual(expected.slice(1, 3));
+  });
+
   it("single keyword returns companies with matching postings", async () => {
     if (skipIfUnavailable()) return;
 

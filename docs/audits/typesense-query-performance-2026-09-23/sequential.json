@@ -1,0 +1,1942 @@
+{
+  "captured_at": "2026-09-23T20:20:42.872692+00:00",
+  "complete": true,
+  "concurrency": 1,
+  "repeats": 9,
+  "warmups": 2,
+  "debug": {
+    "state": 1,
+    "version": "27.1"
+  },
+  "documents_before": 5552409,
+  "memory_before": {
+    "system_memory_total_bytes": "8127721472",
+    "system_memory_total_swap_bytes": "0",
+    "system_memory_used_bytes": "4931182592",
+    "system_memory_used_swap_bytes": "0",
+    "typesense_memory_active_bytes": "4155506688",
+    "typesense_memory_allocated_bytes": "3694820464",
+    "typesense_memory_fragmentation_ratio": "0.11",
+    "typesense_memory_mapped_bytes": "4303622144",
+    "typesense_memory_metadata_bytes": "90394928",
+    "typesense_memory_resident_bytes": "4155506688",
+    "typesense_memory_retained_bytes": "6537605120"
+  },
+  "note": "Resident metric is not RSS; no claim of steady-memory savings. Live CDC may change paired results.",
+  "cases": {
+    "software": {
+      "parameters": {
+        "before": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 597,
+        "p95_ms": 628,
+        "observations": [
+          {
+            "server_ms": 593,
+            "wall_ms": 751.711,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 597,
+            "wall_ms": 730.91,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 609,
+            "wall_ms": 747.221,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 581,
+            "wall_ms": 719.379,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 621,
+            "wall_ms": 748.888,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 548,
+            "wall_ms": 679.883,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 557,
+            "wall_ms": 692.636,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 628,
+            "wall_ms": 760.658,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 609,
+            "wall_ms": 746.864,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 562,
+        "p95_ms": 597,
+        "observations": [
+          {
+            "server_ms": 597,
+            "wall_ms": 738.677,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 522,
+            "wall_ms": 686.65,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 522,
+            "wall_ms": 661.09,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 517,
+            "wall_ms": 658.633,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 586,
+            "wall_ms": 724.853,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 577,
+            "wall_ms": 708.861,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 567,
+            "wall_ms": 704.477,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 513,
+            "wall_ms": 642.674,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 562,
+            "wall_ms": 691.75,
+            "projection_sha256": "7fa63c570db42e8e2af3d8d6e4d8a4c77e06b2ff4134d93b8ef62c9adad0d552",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    },
+    "software_page2": {
+      "parameters": {
+        "before": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 10,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 10,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 600,
+        "p95_ms": 690,
+        "observations": [
+          {
+            "server_ms": 608,
+            "wall_ms": 777.678,
+            "projection_sha256": "6b2a68d4df9681eed468ff51976aed4fbda983ae31b935c21325913085d5d57f",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 589,
+            "wall_ms": 735.601,
+            "projection_sha256": "6b2a68d4df9681eed468ff51976aed4fbda983ae31b935c21325913085d5d57f",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 652,
+            "wall_ms": 774.457,
+            "projection_sha256": "6b2a68d4df9681eed468ff51976aed4fbda983ae31b935c21325913085d5d57f",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 690,
+            "wall_ms": 827.514,
+            "projection_sha256": "6b2a68d4df9681eed468ff51976aed4fbda983ae31b935c21325913085d5d57f",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 600,
+            "wall_ms": 732.46,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 590,
+            "wall_ms": 710.739,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 559,
+            "wall_ms": 682.579,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 563,
+            "wall_ms": 842.751,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 603,
+            "wall_ms": 785.541,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 548,
+        "p95_ms": 620,
+        "observations": [
+          {
+            "server_ms": 502,
+            "wall_ms": 623.228,
+            "projection_sha256": "6b2a68d4df9681eed468ff51976aed4fbda983ae31b935c21325913085d5d57f",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 538,
+            "wall_ms": 658.585,
+            "projection_sha256": "6b2a68d4df9681eed468ff51976aed4fbda983ae31b935c21325913085d5d57f",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 584,
+            "wall_ms": 716.597,
+            "projection_sha256": "6b2a68d4df9681eed468ff51976aed4fbda983ae31b935c21325913085d5d57f",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 520,
+            "wall_ms": 648.654,
+            "projection_sha256": "6b2a68d4df9681eed468ff51976aed4fbda983ae31b935c21325913085d5d57f",
+            "found": 2239,
+            "found_docs": 52081,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 562,
+            "wall_ms": 702.109,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 548,
+            "wall_ms": 671.06,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 620,
+            "wall_ms": 755.326,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 544,
+            "wall_ms": 740.84,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 565,
+            "wall_ms": 785.222,
+            "projection_sha256": "390c32f53428d3af2d1b17838a3162bec0dbc00ab3813bdc4146c025ade08aef",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    },
+    "software_page5": {
+      "parameters": {
+        "before": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 40,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 40,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 611,
+        "p95_ms": 676,
+        "observations": [
+          {
+            "server_ms": 540,
+            "wall_ms": 711.144,
+            "projection_sha256": "c12d50e3da84bb274290c0ab85479e6e7ba260ca2f76b8fa1ec96ffe68025f1c",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 617,
+            "wall_ms": 790.125,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 651,
+            "wall_ms": 813.129,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 585,
+            "wall_ms": 763.041,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 586,
+            "wall_ms": 811.491,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 669,
+            "wall_ms": 886.855,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 611,
+            "wall_ms": 821.416,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 676,
+            "wall_ms": 905.541,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 551,
+            "wall_ms": 717.066,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 544,
+        "p95_ms": 707,
+        "observations": [
+          {
+            "server_ms": 509,
+            "wall_ms": 723.103,
+            "projection_sha256": "c12d50e3da84bb274290c0ab85479e6e7ba260ca2f76b8fa1ec96ffe68025f1c",
+            "found": 2239,
+            "found_docs": 52083,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 544,
+            "wall_ms": 729.206,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 707,
+            "wall_ms": 918.871,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 535,
+            "wall_ms": 697.349,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 551,
+            "wall_ms": 901.721,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 524,
+            "wall_ms": 752.909,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 534,
+            "wall_ms": 780.541,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 552,
+            "wall_ms": 755.468,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 548,
+            "wall_ms": 785.378,
+            "projection_sha256": "1d20ac704c4f8a44e41eebc63d8dc2664a310a5d7129aaf71003771ac17a43e6",
+            "found": 2239,
+            "found_docs": 52084,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    },
+    "sales": {
+      "parameters": {
+        "before": {
+          "q": "sales",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "sales",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [
+        {
+          "round": 3,
+          "observations": {
+            "after": [
+              {
+                "server_ms": 786,
+                "wall_ms": 974.952,
+                "projection_sha256": "4dce2bd96d1795cdd5dd1e9ae5c06fdee445f60e03092bf6ff62cb34cb522ca8",
+                "found": 2266,
+                "found_docs": 143228,
+                "returned_groups": 10,
+                "has_more": true
+              }
+            ],
+            "before": [
+              {
+                "server_ms": 719,
+                "wall_ms": 872.6,
+                "projection_sha256": "43d955741798e2ae898917515131cbc3505a9e3df5c983330839d70e3cf62844",
+                "found": 2266,
+                "found_docs": 143229,
+                "returned_groups": 10,
+                "has_more": true
+              }
+            ]
+          }
+        }
+      ],
+      "before": {
+        "median_ms": 719,
+        "p95_ms": 794,
+        "observations": [
+          {
+            "server_ms": 673,
+            "wall_ms": 841.849,
+            "projection_sha256": "4dce2bd96d1795cdd5dd1e9ae5c06fdee445f60e03092bf6ff62cb34cb522ca8",
+            "found": 2266,
+            "found_docs": 143228,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 743,
+            "wall_ms": 927.638,
+            "projection_sha256": "4dce2bd96d1795cdd5dd1e9ae5c06fdee445f60e03092bf6ff62cb34cb522ca8",
+            "found": 2266,
+            "found_docs": 143228,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 765,
+            "wall_ms": 1074.453,
+            "projection_sha256": "4dce2bd96d1795cdd5dd1e9ae5c06fdee445f60e03092bf6ff62cb34cb522ca8",
+            "found": 2266,
+            "found_docs": 143228,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 719,
+            "wall_ms": 872.6,
+            "projection_sha256": "43d955741798e2ae898917515131cbc3505a9e3df5c983330839d70e3cf62844",
+            "found": 2266,
+            "found_docs": 143229,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 794,
+            "wall_ms": 950.961,
+            "projection_sha256": "43d955741798e2ae898917515131cbc3505a9e3df5c983330839d70e3cf62844",
+            "found": 2266,
+            "found_docs": 143229,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 690,
+            "wall_ms": 855.443,
+            "projection_sha256": "43d955741798e2ae898917515131cbc3505a9e3df5c983330839d70e3cf62844",
+            "found": 2266,
+            "found_docs": 143229,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 705,
+            "wall_ms": 868.873,
+            "projection_sha256": "43d955741798e2ae898917515131cbc3505a9e3df5c983330839d70e3cf62844",
+            "found": 2266,
+            "found_docs": 143229,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 761,
+            "wall_ms": 924.828,
+            "projection_sha256": "1190e7bf69b222f05375f98587e0c1ad0ab50afb16d1348f291e67f274cae4c9",
+            "found": 2266,
+            "found_docs": 143230,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 695,
+            "wall_ms": 904.853,
+            "projection_sha256": "e518d07197ab1ecd4774b6353c9337746e812b43bd6ac49274f9cfe9000e990b",
+            "found": 2266,
+            "found_docs": 143231,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 697,
+        "p95_ms": 786,
+        "observations": [
+          {
+            "server_ms": 693,
+            "wall_ms": 844.093,
+            "projection_sha256": "4dce2bd96d1795cdd5dd1e9ae5c06fdee445f60e03092bf6ff62cb34cb522ca8",
+            "found": 2266,
+            "found_docs": 143228,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 753,
+            "wall_ms": 903.168,
+            "projection_sha256": "4dce2bd96d1795cdd5dd1e9ae5c06fdee445f60e03092bf6ff62cb34cb522ca8",
+            "found": 2266,
+            "found_docs": 143228,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 759,
+            "wall_ms": 926.552,
+            "projection_sha256": "4dce2bd96d1795cdd5dd1e9ae5c06fdee445f60e03092bf6ff62cb34cb522ca8",
+            "found": 2266,
+            "found_docs": 143228,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 786,
+            "wall_ms": 974.952,
+            "projection_sha256": "4dce2bd96d1795cdd5dd1e9ae5c06fdee445f60e03092bf6ff62cb34cb522ca8",
+            "found": 2266,
+            "found_docs": 143228,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 625,
+            "wall_ms": 799.852,
+            "projection_sha256": "43d955741798e2ae898917515131cbc3505a9e3df5c983330839d70e3cf62844",
+            "found": 2266,
+            "found_docs": 143229,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 697,
+            "wall_ms": 877.534,
+            "projection_sha256": "43d955741798e2ae898917515131cbc3505a9e3df5c983330839d70e3cf62844",
+            "found": 2266,
+            "found_docs": 143229,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 627,
+            "wall_ms": 805.496,
+            "projection_sha256": "43d955741798e2ae898917515131cbc3505a9e3df5c983330839d70e3cf62844",
+            "found": 2266,
+            "found_docs": 143229,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 673,
+            "wall_ms": 855.758,
+            "projection_sha256": "1190e7bf69b222f05375f98587e0c1ad0ab50afb16d1348f291e67f274cae4c9",
+            "found": 2266,
+            "found_docs": 143230,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 781,
+            "wall_ms": 926.506,
+            "projection_sha256": "e518d07197ab1ecd4774b6353c9337746e812b43bd6ac49274f9cfe9000e990b",
+            "found": 2266,
+            "found_docs": 143231,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    },
+    "nurse": {
+      "parameters": {
+        "before": {
+          "q": "nurse",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "nurse",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 419,
+        "p95_ms": 454,
+        "observations": [
+          {
+            "server_ms": 416,
+            "wall_ms": 581.894,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 454,
+            "wall_ms": 594.465,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 419,
+            "wall_ms": 649.115,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 421,
+            "wall_ms": 548.965,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 427,
+            "wall_ms": 567.256,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 413,
+            "wall_ms": 550.325,
+            "projection_sha256": "2dd072c804a2478ed23d4684c398e93e7b9529adc27cd16a6c89fcae41da9b2d",
+            "found": 304,
+            "found_docs": 52627,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 423,
+            "wall_ms": 643.202,
+            "projection_sha256": "2dd072c804a2478ed23d4684c398e93e7b9529adc27cd16a6c89fcae41da9b2d",
+            "found": 304,
+            "found_docs": 52627,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 414,
+            "wall_ms": 551.667,
+            "projection_sha256": "2dd072c804a2478ed23d4684c398e93e7b9529adc27cd16a6c89fcae41da9b2d",
+            "found": 304,
+            "found_docs": 52627,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 418,
+            "wall_ms": 546.905,
+            "projection_sha256": "2dd072c804a2478ed23d4684c398e93e7b9529adc27cd16a6c89fcae41da9b2d",
+            "found": 304,
+            "found_docs": 52627,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 396,
+        "p95_ms": 448,
+        "observations": [
+          {
+            "server_ms": 395,
+            "wall_ms": 611.424,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 381,
+            "wall_ms": 538.129,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 402,
+            "wall_ms": 610.777,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 396,
+            "wall_ms": 572.223,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 448,
+            "wall_ms": 593.465,
+            "projection_sha256": "ace3fef0f3bd179906f03b4b13f325369441f76fd4e5c3976d1758c530753406",
+            "found": 304,
+            "found_docs": 52626,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 408,
+            "wall_ms": 605.233,
+            "projection_sha256": "2dd072c804a2478ed23d4684c398e93e7b9529adc27cd16a6c89fcae41da9b2d",
+            "found": 304,
+            "found_docs": 52627,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 395,
+            "wall_ms": 1027.733,
+            "projection_sha256": "2dd072c804a2478ed23d4684c398e93e7b9529adc27cd16a6c89fcae41da9b2d",
+            "found": 304,
+            "found_docs": 52627,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 380,
+            "wall_ms": 530.647,
+            "projection_sha256": "2dd072c804a2478ed23d4684c398e93e7b9529adc27cd16a6c89fcae41da9b2d",
+            "found": 304,
+            "found_docs": 52627,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 407,
+            "wall_ms": 540.366,
+            "projection_sha256": "2dd072c804a2478ed23d4684c398e93e7b9529adc27cd16a6c89fcae41da9b2d",
+            "found": 304,
+            "found_docs": 52627,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    },
+    "manager": {
+      "parameters": {
+        "before": {
+          "q": "product manager",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "product manager",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 476,
+        "p95_ms": 543,
+        "observations": [
+          {
+            "server_ms": 536,
+            "wall_ms": 745.061,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 481,
+            "wall_ms": 612.469,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 502,
+            "wall_ms": 650.591,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 448,
+            "wall_ms": 591.205,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 472,
+            "wall_ms": 748.116,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 468,
+            "wall_ms": 591.57,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 469,
+            "wall_ms": 599.503,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 476,
+            "wall_ms": 600.17,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 543,
+            "wall_ms": 710.7,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 445,
+        "p95_ms": 499,
+        "observations": [
+          {
+            "server_ms": 457,
+            "wall_ms": 698.113,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 445,
+            "wall_ms": 580.114,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 499,
+            "wall_ms": 628.051,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 484,
+            "wall_ms": 619.474,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 441,
+            "wall_ms": 582.471,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 430,
+            "wall_ms": 556.304,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 438,
+            "wall_ms": 567.663,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 433,
+            "wall_ms": 637.192,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 473,
+            "wall_ms": 600.375,
+            "projection_sha256": "cbc9bc10d6eb284162614046361d50be68ae4bf58d39126dfeeccc86415fb0d5",
+            "found": 1896,
+            "found_docs": 12465,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    },
+    "remote_english": {
+      "parameters": {
+        "before": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false && location_types:=[remote] && locales:=[en]",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false && location_types:=[remote] && locales:=[en]",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 887,
+        "p95_ms": 976,
+        "observations": [
+          {
+            "server_ms": 910,
+            "wall_ms": 1043.348,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 913,
+            "wall_ms": 1060.629,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 960,
+            "wall_ms": 1313.124,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 881,
+            "wall_ms": 1015.621,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 887,
+            "wall_ms": 1022.342,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 877,
+            "wall_ms": 1001.67,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 873,
+            "wall_ms": 1021.826,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 876,
+            "wall_ms": 1126.291,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 976,
+            "wall_ms": 1112.836,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 1005,
+        "p95_ms": 1043,
+        "observations": [
+          {
+            "server_ms": 878,
+            "wall_ms": 1019.366,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1043,
+            "wall_ms": 1206.562,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 874,
+            "wall_ms": 1012.362,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 896,
+            "wall_ms": 1055.986,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 980,
+            "wall_ms": 1130.06,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1028,
+            "wall_ms": 1150.965,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1005,
+            "wall_ms": 1220.684,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1023,
+            "wall_ms": 1171.018,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1036,
+            "wall_ms": 1192.395,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    },
+    "salary": {
+      "parameters": {
+        "before": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false && salary_eur:>=80000",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false && salary_eur:>=80000",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 446,
+        "p95_ms": 529,
+        "observations": [
+          {
+            "server_ms": 438,
+            "wall_ms": 634.152,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 435,
+            "wall_ms": 567.609,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 441,
+            "wall_ms": 584.02,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 462,
+            "wall_ms": 618.568,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 446,
+            "wall_ms": 586.275,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 413,
+            "wall_ms": 559.721,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 505,
+            "wall_ms": 643.07,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 514,
+            "wall_ms": 644.959,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 529,
+            "wall_ms": 650.13,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 434,
+        "p95_ms": 504,
+        "observations": [
+          {
+            "server_ms": 434,
+            "wall_ms": 577.49,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 423,
+            "wall_ms": 682.356,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 465,
+            "wall_ms": 614.096,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 420,
+            "wall_ms": 574.936,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 413,
+            "wall_ms": 580.253,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 466,
+            "wall_ms": 598.438,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 434,
+            "wall_ms": 586.449,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 504,
+            "wall_ms": 655.695,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 473,
+            "wall_ms": 592.404,
+            "projection_sha256": "e6598cf2680018c604c9fd9cfffa2455dd29697244e995ea9b8b41c9c8ff9a26",
+            "found": 674,
+            "found_docs": 8159,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    },
+    "zero": {
+      "parameters": {
+        "before": {
+          "q": "zzzxqvnojobmatchzzzxqv",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "zzzxqvnojobmatchzzzxqv",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 11
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 260,
+        "p95_ms": 292,
+        "observations": [
+          {
+            "server_ms": 259,
+            "wall_ms": 365.969,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 260,
+            "wall_ms": 383.101,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 249,
+            "wall_ms": 407.678,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 253,
+            "wall_ms": 420.106,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 284,
+            "wall_ms": 414.73,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 268,
+            "wall_ms": 406.759,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 292,
+            "wall_ms": 464.787,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 238,
+            "wall_ms": 339.2,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 286,
+            "wall_ms": 397.723,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 263,
+        "p95_ms": 302,
+        "observations": [
+          {
+            "server_ms": 283,
+            "wall_ms": 389.284,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 258,
+            "wall_ms": 363.089,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 244,
+            "wall_ms": 373.248,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 254,
+            "wall_ms": 360.353,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 263,
+            "wall_ms": 365.401,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 275,
+            "wall_ms": 405.777,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 302,
+            "wall_ms": 510.084,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 251,
+            "wall_ms": 415.363,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          },
+          {
+            "server_ms": 268,
+            "wall_ms": 386.567,
+            "projection_sha256": "596d176012df201e3354281c7316dd672555e68f6e0197b389cb7e8cdf0378ff",
+            "found": 0,
+            "found_docs": 0,
+            "returned_groups": 0,
+            "has_more": false
+          }
+        ]
+      }
+    }
+  },
+  "memory_after": {
+    "system_memory_total_bytes": "8127721472",
+    "system_memory_total_swap_bytes": "0",
+    "system_memory_used_bytes": "5120536576",
+    "system_memory_used_swap_bytes": "0",
+    "typesense_memory_active_bytes": "4155908096",
+    "typesense_memory_allocated_bytes": "3691752888",
+    "typesense_memory_fragmentation_ratio": "0.11",
+    "typesense_memory_mapped_bytes": "4332994560",
+    "typesense_memory_metadata_bytes": "90394928",
+    "typesense_memory_resident_bytes": "4155908096",
+    "typesense_memory_retained_bytes": "6508232704"
+  },
+  "documents_after": 5552658
+}

@@ -31,6 +31,9 @@ export interface SearchStateSnapshot {
   companies: SearchResultCompany[];
   totalCompanies: number;
   totalPostings?: number;
+  nextOffset?: number | null;
+  serverOffset?: number;
+  truncated?: boolean;
   degraded?: boolean;
   showPostingId: string | null;
   scrollY: number;

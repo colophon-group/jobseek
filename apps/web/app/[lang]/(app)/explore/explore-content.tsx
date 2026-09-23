@@ -203,6 +203,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       <SearchPage
         initialCompanies={result.companies}
         initialTotalCompanies={result.totalCompanies}
+        initialNextOffset={result.nextOffset}
         initialTotalPostings={result.totalPostings}
         initialTruncated={result.truncated}
         initialDegraded={result.degraded}
