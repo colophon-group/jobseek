@@ -32,6 +32,7 @@ def test_frozen_fixture_matches_fixed_go_cohorts() -> None:
     c1 = admission.load_tasks(controller.WORKLOAD, 1)
     c4 = admission.load_tasks(controller.WORKLOAD, 4)
     assert len(c1) == 4 and len(c4) == 16
+    assert all(task["source_url"].startswith("https://") for task in c4)
     assert {task["board_slug"] for task in c1} == {"browser-use-careers"}
     assert {task["board_slug"] for task in c4} == set(admission.COHORT)
     assert len({task["source_url"] for task in c4}) == 16

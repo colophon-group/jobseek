@@ -76,14 +76,16 @@ services:
   fixture:
     <<: *common
     image: ${PYTHON_IMAGE:?immutable python image required}
-    command: [python, /admission/fixture_server.py, --workload, /admission/workload.v2.json, --concurrency, "${ADMISSION_CONCURRENCY:?1 or 4}"]
+    command: [python, /admission/fixture_server.py, --workload, /admission/workload.v2.json, --concurrency, "${ADMISSION_CONCURRENCY:?1 or 4}", --certificate, /run/pki/fixture.pem, --private-key, /run/pki/fixture-key.pem]
     user: "10001:10001"
     read_only: true
     cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
     # Reserved .test origins resolve only through these internal aliases.
     networks: {origin: {ipv4_address: 11.252.0.2, aliases: [origin-0.lane.bench.test, origin-1.lane.bench.test, origin-2.lane.bench.test, origin-3.lane.bench.test]}}
     volumes:
       - .:/admission:ro
+      - ${ADMISSION_PKI_DIR:?ephemeral PKI directory required}:/run/pki:ro
     tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=4m,uid=10001,gid=10001,mode=0700"]
     healthcheck: {test: [CMD, test, -f, /tmp/ready], interval: 1s, timeout: 2s, retries: 30}
     mem_limit: 128m
@@ -129,11 +131,10 @@ services:
     read_only: true
     cap_drop: [ALL]
     cap_add: [KILL, SETGID, SETUID]
-    environment:
-      SSL_CERT_FILE: /run/pki/ca.pem
     networks: {claim: {ipv4_address: 172.30.250.2}, origin: {ipv4_address: 11.252.0.3}}
     volumes:
       - ${ADMISSION_PKI_DIR:?ephemeral PKI directory required}:/run/pki:ro
+      - ${ADMISSION_PKI_DIR:?ephemeral PKI directory required}/ca-bundle.pem:/etc/ssl/certs/ca-certificates.crt:ro
     tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10002,gid=10002,mode=0700"]
     mem_limit: 1g
     memswap_limit: 1g

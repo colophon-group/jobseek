@@ -6,13 +6,15 @@ comparator from the same source, and the pinned Lightpanda renderer service.
 It runs in disposable Docker networks with no production credentials or writes.
 
 Each c1 arm serves four frozen JSON-LD URLs from one origin. Each c4 arm serves
-16 URLs from four isolated HTTP origins, in four waves. Three c1 and five c4
+16 URLs from four isolated TLS origins, in four waves. Three c1 and five c4
 pairs alternate candidate/control order. The candidate seeds literal legacy
-schedules with producer routing off, starts the merged Go producer, then transfers them through the
-producer's `prepare`/`activate` Unix-socket protocol, and only then starts the
+schedules with producer routing off, starts the merged Go producer, then
+transfers them through the producer's `prepare`/`activate` Unix-socket protocol.
+Only then does it start the
 Go supervisor. The comparator uses the current Python browser worker and
 Playwright Chromium shell. Both persist through the crawler's ordinary parser
-path to disposable PostgreSQL.
+path to disposable PostgreSQL. The fixture CA is mounted into the renderer's
+system trust bundle so its isolated browser child can verify these test origins.
 
 The candidate's 1536 MiB limit includes producer (32 MiB), supervisor
 (96 MiB), database-only executor (384 MiB), and renderer (1024 MiB). The

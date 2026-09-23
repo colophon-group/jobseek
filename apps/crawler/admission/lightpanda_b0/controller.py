@@ -167,10 +167,18 @@ def generate_pki(output: Path) -> dict[str, str]:
         [x509.UniformResourceIdentifier("spiffe://jobseek/crawler/lightpanda-b0")],
         ExtendedKeyUsageOID.CLIENT_AUTH,
     )
+    fixture, fixture_key = _leaf(
+        ca,
+        ca_key,
+        "b0-admission-fixture",
+        [x509.DNSName(f"origin-{index}.lane.bench.test") for index in range(8)],
+        ExtendedKeyUsageOID.SERVER_AUTH,
+    )
     _write(output / "ca.pem", CA_PEM)
     for name, certificate, private_key in (
         ("server", server, server_key),
         ("client", client, client_key),
+        ("fixture", fixture, fixture_key),
     ):
         _write(output / f"{name}.pem", certificate.public_bytes(serialization.Encoding.PEM))
         _write(
@@ -1149,6 +1157,22 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix="jobseek-b0-admission-") as temporary:
             pki = Path(temporary) / "pki"
             pins = generate_pki(pki)
+            system_bundle = _run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "--network",
+                    "none",
+                    "--read-only",
+                    "--entrypoint",
+                    "/bin/cat",
+                    args.renderer_image,
+                    "/etc/ssl/certs/ca-certificates.crt",
+                ],
+                timeout=15,
+            ).encode("ascii")
+            _write(pki / "ca-bundle.pem", system_bundle + b"\n" + CA_PEM)
             _run(
                 [
                     "docker",
