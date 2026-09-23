@@ -1052,16 +1052,16 @@ export function AiSearchFilter({
                 })}
                 className="w-full resize-none rounded-md border border-border-soft bg-background px-3 py-2 text-sm leading-relaxed outline-none transition-colors placeholder:text-muted/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
               />
-              {mutationError ? (
-                <p className="mt-2 text-xs text-error" role="alert">
-                  {mutationError}
-                </p>
-              ) : null}
-              <div className="mt-3 flex justify-end">
+              <div className="mt-3 flex items-center gap-3">
+                {mutationError ? (
+                  <p className="min-w-0 flex-1 text-xs text-error" role="alert">
+                    {mutationError}
+                  </p>
+                ) : null}
                 <button
                   type="submit"
                   disabled={query.trim().length === 0 || isApplying || !canApply}
-                  className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-contrast transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-contrast transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {isApplying ? (
                     <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />
