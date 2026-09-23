@@ -20,7 +20,9 @@ The candidate's 1536 MiB limit includes producer (32 MiB), supervisor
 (96 MiB), database-only executor (384 MiB), and renderer (1024 MiB). The
 comparator has 1536 MiB. Both receive 3.5 CPU units. External cgroup-v2
 counters record CPU, synchronized peak and retained memory, and OOM/swap
-signals. The evaluator requires exact canonical persisted output, request and
+signals. Both lanes stay measured for 35 seconds after persistence so the
+Go queue's 30-second conservation audit can refresh its gauges. The evaluator
+requires exact canonical persisted output, request and
 terminal counts, queue conservation, isolated network/cleanup, and a median
 correct-URL density ratio above one in both c1 and c4. Every pair's raw
 numbers stay in the uploaded report. A close or noisy result calls for another

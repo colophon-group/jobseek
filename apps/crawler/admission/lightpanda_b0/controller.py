@@ -741,7 +741,9 @@ def run_arm(
             result["arm"] = _parse_marker(runner_raw, "ADMISSION_ARM=")
             if not result["arm"].get("error"):
                 retention_started = time.monotonic()
-                time.sleep(5)
+                # The Go queue gauges refresh on the 30-second conservation audit.
+                # Hold both lanes equally through one post-task audit cycle.
+                time.sleep(35)
                 retention_observed = time.monotonic() - retention_started
         finally:
             stop.set()
@@ -753,7 +755,17 @@ def run_arm(
         )
         expected = 4 * concurrency
         result["metrics"] = _metric_evidence(lane, metrics_raw, expected)
-        _compose(env, "wait", "fixture", timeout=20)
+        for attempt in range(100):
+            identifier = _compose(env, "ps", "-a", "-q", "fixture").strip()
+            if identifier:
+                fixture_state = _inspect(identifier)["State"]
+                if fixture_state.get("Status") == "exited":
+                    if fixture_state.get("ExitCode") != 0:
+                        raise AdmissionError("fixture exited without exact request conservation")
+                    break
+            if attempt == 99:
+                raise AdmissionError("fixture did not finish after all postings persisted")
+            time.sleep(0.1)
         result["fixture"] = _parse_marker(
             _compose(env, "logs", "--no-color", "--no-log-prefix", "fixture"),
             "ADMISSION_FIXTURE=",
