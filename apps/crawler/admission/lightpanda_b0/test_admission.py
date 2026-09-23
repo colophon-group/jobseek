@@ -130,7 +130,7 @@ def test_compose_counts_real_producer_inside_equal_lane() -> None:
         / "src/migrations/versions/0032_add_lightpanda_b0_routing_epoch_sequence.py"
     ).read_text()
     assert "START WITH 2" in migration
-    assert 'LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "0"' in compose
+    assert 'LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "10001"' in compose
     assert "producer-socket:/run/jobseek-lightpanda-producer:ro" in compose
     assert "producer-socket:/run/jobseek-lightpanda-producer" in compose
     assert "mem_limit: 32m" in compose

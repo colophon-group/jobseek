@@ -695,18 +695,6 @@ def run_arm(
         )
         if reserve != {"phase": "reserve", "routing_epoch": 2}:
             raise AdmissionError("disposable PostgreSQL routing epoch was not reserved")
-        if lane == "candidate":
-            _compose(env, "up", "-d", "--wait", "executor", "renderer", "producer", timeout=120)
-            for attempt in range(30):
-                try:
-                    with socket.create_connection(("172.30.250.2", 9443), timeout=1):
-                        break
-                except OSError as exc:
-                    if attempt == 29:
-                        raise AdmissionError("renderer did not open its service socket") from exc
-                    time.sleep(0.1)
-        else:
-            _compose(env, "up", "-d", "--wait", "control", timeout=120)
         env["ADMISSION_PHASE"] = "seed"
         seed = _parse_marker(
             _compose(env, "run", "--rm", "--no-deps", "runner", timeout=30),
@@ -721,6 +709,15 @@ def run_arm(
             raise AdmissionError("candidate/control fixture seed is incomplete")
         env["ADMISSION_DUE"] = str(seed["due"])
         if lane == "candidate":
+            _compose(env, "up", "-d", "--wait", "executor", "renderer", "producer", timeout=120)
+            for attempt in range(30):
+                try:
+                    with socket.create_connection(("172.30.250.2", 9443), timeout=1):
+                        break
+                except OSError as exc:
+                    if attempt == 29:
+                        raise AdmissionError("renderer did not open its service socket") from exc
+                    time.sleep(0.1)
             env["ADMISSION_PHASE"] = "transfer"
             env["ADMISSION_PRODUCER_MODE"] = "enabled"
             transfer = _parse_marker(
@@ -730,6 +727,8 @@ def run_arm(
             if transfer != {"phase": "transfer", "activated": expected}:
                 raise AdmissionError("Go producer did not transfer the complete fixture cohort")
             _compose(env, "up", "-d", "--no-deps", "--wait", "supervisor", timeout=60)
+        else:
+            _compose(env, "up", "-d", "--wait", "control", timeout=120)
         env["ADMISSION_PHASE"] = "collect"
         rows = attest_measured(env, measured, images)
         sampled: dict[str, Any] = {}

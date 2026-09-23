@@ -278,7 +278,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             pg_now = await pool.fetchval("SELECT extract(epoch FROM clock_timestamp())")
             if abs(float(pg_now) - redis_now) > 1:
                 raise AdmissionDriverError("Redis/Postgres clocks differ by more than one second")
-            due = max(redis_now, float(pg_now)) + 20.0
+            due = max(redis_now, float(pg_now)) + 45.0
             ids = await _feed(redis, tasks, False, due)
             return {"phase": "seed", "due": due, "feed": len(ids)}
         if args.phase == "transfer":
