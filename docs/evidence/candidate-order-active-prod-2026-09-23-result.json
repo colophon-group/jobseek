@@ -1,0 +1,59 @@
+{
+  "captured_at": "2026-09-23T14:47:51Z",
+  "purpose": "Active-only signed-int64 UUID ordering production trial",
+  "key_version": "uuid-int64-active-v1",
+  "typesense_version": "27.1",
+  "server_type": "Hetzner CX33",
+  "container_memory_limit_bytes": 6442450944,
+  "active_ids_exported": 2337535,
+  "active_ids_sha256": "5181fa02fe46f817a18fb77cedf35a86eba268455181b5b88c33cfe8d12c7293",
+  "preflight": "docs/evidence/candidate-order-active-prod-2026-09-23-preflight.json",
+  "schema_alter": "succeeded",
+  "checkpoint_50000": {
+    "documents": 5518741,
+    "allocated_bytes": 3308603288,
+    "anonymous_bytes": 3820257280,
+    "resident_bytes": 3754303488,
+    "host_available_bytes": 3552116736,
+    "effective_headroom_bytes": 466456576,
+    "oom_events": 0,
+    "container_restarts": 0,
+    "representative_query_p95_ms": 112,
+    "sampled_values_correct": true
+  },
+  "checkpoint_250000": {
+    "documents": 5519099,
+    "allocated_bytes": 3407543712,
+    "anonymous_bytes": 3927654400,
+    "resident_bytes": 3848146944,
+    "host_available_bytes": 3386507264,
+    "effective_headroom_bytes": 1206857728,
+    "oom_events": 0,
+    "container_restarts": 0,
+    "representative_stable_query_p95_ms": 102,
+    "sampled_values_correct": true
+  },
+  "projection_from_50000_to_250000": {
+    "anonymous_bytes_per_document": 536.9856,
+    "projected_full_active_anonymous_bytes": 5048630634,
+    "predeclared_maximum_anonymous_plus_unreclaimable_slab_bytes": 4831838208,
+    "outcome": "exceeds gate before next checkpoint"
+  },
+  "decision": "stop and rollback before further stamping",
+  "readiness_receipt_issued": false,
+  "rollback": {
+    "values_cleared": 250000,
+    "sampled_values_cleared": true,
+    "schema_fields_dropped": true,
+    "post_rollback_health_verified": true,
+    "post_rollback_documents": 5519609,
+    "post_rollback_allocated_bytes": 3312711456,
+    "post_rollback_anonymous_bytes": 3861651456,
+    "post_rollback_resident_bytes": 3769925632,
+    "post_rollback_host_available_bytes": 3480354816,
+    "post_rollback_query_p95_ms": 103,
+    "post_rollback_oom_events": 0,
+    "post_rollback_container_restarts": 0,
+    "post_rollback_writes_resumed": true
+  }
+}

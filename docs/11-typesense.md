@@ -201,15 +201,17 @@ production update showed concerning memory growth. Evidence is in
 `docs/evidence/candidate-order-prod-2026-09-23-result.json`. A local Typesense
 27.1 comparison of 100,000 synthetic documents found approximately 103 bytes
 per document of incremental allocated memory for the numeric pair versus 998
-bytes for the sortable string, relative to a no-key control. This is an avenue
-to test, not production headroom proof. Activation still requires a reviewed
-production-shaped memory/headroom benchmark and durable complete reconciliation.
-An initial numeric 50,000-document production trial was also rolled back when
-effective cgroup headroom briefly fell below the predeclared 1 GiB gate, even
-though allocator and resident growth were small. The active-only producer
-avoids indexing the roughly 58% of stored postings that are inactive. It must
-be measured separately at production scale; the earlier trial is not its
-acceptance evidence.
+bytes for the sortable string, relative to a no-key control. An initial numeric
+50,000-document production trial was rolled back when effective cgroup
+headroom briefly fell below its predeclared 1 GiB gate, even though allocator
+and resident growth were small. The active-only producer avoids indexing the
+roughly 58% of stored postings that are inactive. Its separate 250,000-document
+production trial still projected 4.70 GiB anonymous memory at full active
+coverage, above the predeclared 4.5 GiB gate on the 6 GiB container. That trial
+was stopped and rolled back; see
+`docs/evidence/candidate-order-active-prod-2026-09-23-result.json`. Activation
+still requires a reviewed full-scale memory/headroom benchmark and durable
+complete reconciliation.
 
 For the benchmark, use Typesense 27.1 on the same instance class and memory
 limit as production (currently CX33 with a 6 GiB container limit; verify the
