@@ -1,6 +1,6 @@
 """One-run response capture for an already scheduled Workday monitor.
 
-The trace is opt-in and local to the selected board. It records only three
+The trace is opt-in and local to the selected board. It records only five
 allowlisted response headers, no credentials or cookies, and issues no request.
 Only a successful, bounded monitor cycle produces a replayable ``.jsonl``.
 """
@@ -74,6 +74,8 @@ class WorkdayCapture:
                     "content_type": response.headers.get("content-type", ""),
                     "location": response.headers.get("location", ""),
                     "retry_after": response.headers.get("retry-after", ""),
+                    "tdm_reservation": response.headers.get("tdm-reservation", ""),
+                    "tdm_policy": response.headers.get("tdm-policy", ""),
                 }
             )
         except OSError:

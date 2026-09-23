@@ -35,7 +35,12 @@ async def test_capture_observes_one_response_without_another_request(tmp_path, m
         return httpx.Response(
             200,
             content=body,
-            headers={"content-type": "application/json", "set-cookie": "secret=private"},
+            headers={
+                "content-type": "application/json",
+                "set-cookie": "secret=private",
+                "tdm-reservation": "0",
+                "tdm-policy": "https://example.com/policy",
+            },
         )
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
@@ -51,6 +56,8 @@ async def test_capture_observes_one_response_without_another_request(tmp_path, m
     assert len(records) == 3
     assert records[0]["schema"] == "jobseek.workday-replay/v1"
     assert records[1]["status"] == 200
+    assert records[1]["tdm_reservation"] == "0"
+    assert records[1]["tdm_policy"] == "https://example.com/policy"
     assert base64.b64decode(records[1]["response_body_b64"]) == body
     assert json.loads(base64.b64decode(records[1]["request_body_b64"])) == {
         "limit": 20,
