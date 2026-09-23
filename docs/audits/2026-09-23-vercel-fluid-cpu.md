@@ -94,3 +94,36 @@ The CLI metrics endpoint returned HTTP 402 requiring Observability Plus; the bil
 To reproduce the local experiment in an isolated checkout: install locked dependencies; build `@jseek/mcp-server`; run `pnpm build` from `apps/web` with the authorized environment file loaded; start the supplied `start.cjs` from that directory with absolute `AUDIT_ENV_FILE` and a fresh `AUDIT_CPU_LOG`; run `python3 requests.py /absolute/path/http-results.json` from a separate terminal. Stop the server, apply the relevant patch with `git apply --unidiff-zero`, rebuild, and repeat into fresh output files. The server listens only on `127.0.0.1:43189`. Do not mix browser smoke requests into the 12-request CPU sample.
 
 Vercel bills active execution rather than time awaiting network I/O; database or Typesense latency alone cannot establish the CPU bottleneck. See [Fluid usage and pricing](https://vercel.com/docs/functions/usage-and-pricing).
+
+## Delivery follow-up (#9916)
+
+The implementation derives one lexical seed from the canonical registry at build
+configuration time, so only four company documents are built and the CSV parser
+stays outside the page's runtime dependency graph. The manifest assertion checks
+both that bound and each locale's on-demand fallback. The service-backed smoke
+check requires two unseeded company paths to return full cached HTML.
+
+A further production-build comparison tested `prefetch = "partial"` on the
+company page with the same seed, leaving the global flag off. Ten repeated
+visits failed the full-cache assertion; a direct request still returned
+`x-nextjs-postponed: 1` and private/no-store. Therefore the shipped candidate
+uses the global `partialPrefetching` option, not the segment-only option.
+
+The filtered-search failure above was traced to an invalid/revoked browser-key
+parent in the main checkout's env file. A child minted from that parent is
+rejected with HTTP 403. The **same browser search provider and queries**, using
+a public scoped child issued by production's `/api/typesense-key`, succeed:
+Aircall 77 unfiltered / 30 engineer results; HelloFresh 189 / 89; each first
+page returns 20 valid rows. No production secret was extracted or changed.
+This resolves the local credential diagnosis; deployed preview verification
+still needs to exercise the complete UI and actual preview key issuance.
+
+The final global-flag candidate passes the secretless production build, all
+20 build-classifier assertions, and the full existing browser smoke suite
+(localized initial HTML, filtered fallback, navigation action counts, SPA
+navigation, company-request redirect, and real missing-resource 404s). Its
+secretless Settings prefetch logs a cache-warming miss for the deliberately
+unavailable Typesense language lookup; all smoke assertions still pass. The
+service-backed build's unseeded company cache checks passed separately. These
+checks establish build and local behavior; they do not establish production
+CPU savings.
