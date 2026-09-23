@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -52,19 +53,25 @@ func environmentWith(base []string, overrides ...string) []string {
 }
 
 func installedProducerHealth(binary string, environment []string, producerUID uint32) error {
-	return installedProducerCommand(binary, environment, producerUID, "producer", "--healthcheck").Run()
+	output, err := installedProducerCommand(binary, environment, producerUID, "producer", "--healthcheck").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("producer healthcheck: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	return nil
 }
 
-func waitForInstalledProducerReady(t *testing.T, binary string, environment []string, producerUID uint32) {
+func waitForInstalledProducerReady(t *testing.T, binary string, environment []string, producerUID uint32) error {
 	t.Helper()
 	deadline := time.Now().Add(2 * producerTimeout)
+	var lastError error
 	for time.Now().Before(deadline) {
-		if installedProducerHealth(binary, environment, producerUID) == nil {
-			return
+		lastError = installedProducerHealth(binary, environment, producerUID)
+		if lastError == nil {
+			return nil
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-	t.Fatal("installed producer did not pass its authenticated health protocol")
+	return fmt.Errorf("installed producer did not pass its authenticated health protocol: %w", lastError)
 }
 
 func TestProducerSelfUIDCannotMutate(t *testing.T) {
@@ -183,7 +190,11 @@ func TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence(t *test
 			<-waited
 		}
 	})
-	waitForInstalledProducerReady(t, binary, producerEnvironment, uint32(producerUID))
+	if err := waitForInstalledProducerReady(t, binary, producerEnvironment, uint32(producerUID)); err != nil {
+		_ = command.Process.Kill()
+		<-waited
+		t.Fatalf("%v; producer stderr: %q", err, stderr.String())
+	}
 	selfClientEnvironment := environmentWith(os.Environ(), "LIGHTPANDA_B0_SELF_UID_HELPER=1")
 	selfClient := installedProducerCommand(os.Args[0], selfClientEnvironment, uint32(producerUID), "-test.run=^TestProducerSelfUIDCannotMutate$")
 	if output, err := selfClient.CombinedOutput(); err != nil {
@@ -287,7 +298,11 @@ func TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence(t *test
 		}
 		waited = make(chan error, 1)
 		go func() { waited <- command.Wait() }()
-		waitForInstalledProducerReady(t, binary, producerEnvironment, uint32(producerUID))
+		if err := waitForInstalledProducerReady(t, binary, producerEnvironment, uint32(producerUID)); err != nil {
+			_ = command.Process.Kill()
+			<-waited
+			t.Fatalf("%v; producer stderr: %q", err, stderr.String())
+		}
 	}
 	tripHealthCorruption("record",
 		func() error { return client.HSet(ctx, queue.keys[1], integrationTaskID, `{}`).Err() },
