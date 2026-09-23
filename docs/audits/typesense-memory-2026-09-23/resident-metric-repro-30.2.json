@@ -1,0 +1,100 @@
+{
+  "measured_at_utc": "2026-09-23T17:02:42.731625+00:00",
+  "image": "typesense/typesense:30.2@sha256:610f2d34b1f93d00762869da2c67736775e5798d19a2c8b91b014b8a0cc1e110",
+  "kernel": "Linux 6.8.0-64-generic aarch64 GNU/Linux",
+  "image_inspect": "[\"typesense/typesense@sha256:610f2d34b1f93d00762869da2c67736775e5798d19a2c8b91b014b8a0cc1e110\"] arm64",
+  "docker_engine": "28.4.0",
+  "files": {
+    "collections.json": [],
+    "debug.json": {
+      "state": 1,
+      "version": "30.2"
+    },
+    "metrics-1.json": {
+      "system_cpu1_active_percentage": "0.00",
+      "system_cpu2_active_percentage": "0.00",
+      "system_cpu3_active_percentage": "0.00",
+      "system_cpu4_active_percentage": "0.00",
+      "system_cpu_active_percentage": "0.00",
+      "system_disk_total_bytes": "105087164416",
+      "system_disk_used_bytes": "12324765696",
+      "system_memory_total_bytes": "8308350976",
+      "system_memory_total_swap_bytes": "0",
+      "system_memory_used_bytes": "480296960",
+      "system_memory_used_swap_bytes": "0",
+      "system_network_received_bytes": "5504",
+      "system_network_sent_bytes": "4352",
+      "typesense_memory_active_bytes": "32698368",
+      "typesense_memory_allocated_bytes": "31400368",
+      "typesense_memory_fragmentation_ratio": "0.04",
+      "typesense_memory_mapped_bytes": "79450112",
+      "typesense_memory_metadata_bytes": "10013632",
+      "typesense_memory_resident_bytes": "32698368",
+      "typesense_memory_retained_bytes": "26456064"
+    },
+    "metrics-2.json": {
+      "system_cpu1_active_percentage": "0.00",
+      "system_cpu2_active_percentage": "0.00",
+      "system_cpu3_active_percentage": "0.00",
+      "system_cpu4_active_percentage": "0.00",
+      "system_cpu_active_percentage": "0.00",
+      "system_disk_total_bytes": "105087164416",
+      "system_disk_used_bytes": "12324765696",
+      "system_memory_total_bytes": "8308350976",
+      "system_memory_total_swap_bytes": "0",
+      "system_memory_used_bytes": "480296960",
+      "system_memory_used_swap_bytes": "0",
+      "system_network_received_bytes": "6030",
+      "system_network_sent_bytes": "5682",
+      "typesense_memory_active_bytes": "33005568",
+      "typesense_memory_allocated_bytes": "31723328",
+      "typesense_memory_fragmentation_ratio": "0.04",
+      "typesense_memory_mapped_bytes": "79728640",
+      "typesense_memory_metadata_bytes": "10045504",
+      "typesense_memory_resident_bytes": "33005568",
+      "typesense_memory_retained_bytes": "26177536"
+    },
+    "metrics-3.json": {
+      "system_cpu1_active_percentage": "0.00",
+      "system_cpu2_active_percentage": "0.00",
+      "system_cpu3_active_percentage": "0.00",
+      "system_cpu4_active_percentage": "0.00",
+      "system_cpu_active_percentage": "0.00",
+      "system_disk_total_bytes": "105087164416",
+      "system_disk_used_bytes": "12324765696",
+      "system_memory_total_bytes": "8308350976",
+      "system_memory_total_swap_bytes": "0",
+      "system_memory_used_bytes": "480296960",
+      "system_memory_used_swap_bytes": "0",
+      "system_network_received_bytes": "6556",
+      "system_network_sent_bytes": "7012",
+      "typesense_memory_active_bytes": "33320960",
+      "typesense_memory_allocated_bytes": "32046288",
+      "typesense_memory_fragmentation_ratio": "0.04",
+      "typesense_memory_mapped_bytes": "80015360",
+      "typesense_memory_metadata_bytes": "10077632",
+      "typesense_memory_resident_bytes": "33320960",
+      "typesense_memory_retained_bytes": "25890816"
+    },
+    "metrics-selected.json": [
+      {
+        "typesense_memory_active_bytes": "32698368",
+        "typesense_memory_resident_bytes": "32698368",
+        "typesense_memory_allocated_bytes": "31400368",
+        "typesense_memory_metadata_bytes": "10013632"
+      },
+      {
+        "typesense_memory_active_bytes": "33005568",
+        "typesense_memory_resident_bytes": "33005568",
+        "typesense_memory_allocated_bytes": "31723328",
+        "typesense_memory_metadata_bytes": "10045504"
+      },
+      {
+        "typesense_memory_active_bytes": "33320960",
+        "typesense_memory_resident_bytes": "33320960",
+        "typesense_memory_allocated_bytes": "32046288",
+        "typesense_memory_metadata_bytes": "10077632"
+      }
+    ]
+  }
+}
