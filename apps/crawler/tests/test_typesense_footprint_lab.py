@@ -44,8 +44,12 @@ def test_response_variant_stores_but_does_not_index_response_only_fields() -> No
 
 
 def test_response_variant_can_isolate_one_field() -> None:
-    candidate = lab.build_variant_schema(
+    baseline = lab.restore_pre_tuning_indexes(
         lab.load_job_posting_schema(REPO_ROOT),
+        lab.RESPONSE_ONLY_INDEXED_FIELDS,
+    )
+    candidate = lab.build_variant_schema(
+        baseline,
         "response-unindexed",
         response_fields=frozenset({"company_name"}),
     )

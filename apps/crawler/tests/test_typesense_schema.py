@@ -27,6 +27,7 @@ from src.typesense_schema import (
     _index_drift,
     _memory_metrics_snapshot,
     _patch_missing_fields,
+    _unused_sort_drift,
     _warn_field_drift,
     run_setup,
     setup_collections,
@@ -68,6 +69,65 @@ def test_job_posting_schema_has_numeric_candidate_order() -> None:
             "sort": True,
             "optional": True,
         }
+
+
+def test_posting_pruning_preserves_consumed_filters_facets_and_sorting() -> None:
+    schema = next(c for c in COLLECTIONS if c["name"] == "job_posting")
+    fields = {f["name"]: f for f in schema["fields"]}
+    for name in ("company_name", "location_names", "seniority_name", "technology_names"):
+        assert fields[name]["index"] is False
+        assert fields[name].get("store", True) is True
+        assert fields[name].get("facet", False) is False
+    for name in (
+        "is_active",
+        "has_content",
+        "seniority_id",
+        "experience_min",
+        "experience_max",
+        "experience_min_years",
+        "experience_max_years",
+    ):
+        assert fields[name]["sort"] is False
+        assert fields[name].get("index", True) is True
+        assert fields[name]["facet"] is True
+    for name in ("first_seen_at", "salary_eur", "candidate_order_hi", "candidate_order_lo"):
+        assert fields[name].get("sort", True) is True
+    assert fields["company_id"]["facet"] is True
+    assert schema["default_sorting_field"] == "first_seen_at"
+
+
+@pytest.mark.parametrize(
+    ("live", "desired", "expected"),
+    [
+        ({"sort": True}, {"name": "is_active", "sort": False}, True),
+        ({"sort": False}, {"name": "is_active", "sort": False}, False),
+        ({"sort": True}, {"name": "first_seen_at", "sort": False}, False),
+        ({"sort": False}, {"name": "candidate_order_hi", "sort": True}, False),
+        ({"sort": True}, {"name": "is_active"}, False),
+    ],
+)
+def test_sort_migration_does_not_repair_unrelated_shape_drift(live, desired, expected) -> None:
+    assert _unused_sort_drift(live, desired) is expected
+
+
+def test_setup_prunes_one_index_at_a_time_and_second_run_is_idempotent() -> None:
+    desired = [
+        {"name": "company_name", "type": "string", "index": False, "optional": True},
+        {"name": "is_active", "type": "bool", "facet": True, "sort": False},
+    ]
+    old_name = {"name": "company_name", "type": "string", "facet": True, "index": True}
+    old_active = {"name": "is_active", "type": "bool", "facet": True, "sort": True}
+    client, collection = _stub_client([])
+    collection.retrieve.side_effect = [
+        {"fields": [old_name, old_active]},
+        {"fields": [desired[0], old_active]},
+        {"fields": desired},
+    ]
+    _patch_missing_fields(client, "job_posting_v1", desired)
+    _patch_missing_fields(client, "job_posting_v1", desired)
+    assert [call.args[0] for call in collection.update.call_args_list] == [
+        {"fields": [{"name": field["name"], "drop": True}, field]} for field in desired
+    ]
 
 
 def test_taxonomy_schema_carries_web_hierarchy_contract() -> None:

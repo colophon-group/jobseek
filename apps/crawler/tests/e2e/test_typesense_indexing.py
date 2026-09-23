@@ -12,6 +12,8 @@ after every run.
 from __future__ import annotations
 
 import contextlib
+import copy
+import json
 import os
 import time
 import uuid
@@ -51,6 +53,137 @@ ALIAS_NAMES = [
     "watchlist",
 ]
 SCHEMA_BY_NAME = {schema["name"]: schema for schema in COLLECTIONS}
+
+
+def test_pruning_migrates_stored_postings_and_can_roll_back(ts_client) -> None:
+    """Exercise the actual deploy patcher with populated legacy indexes."""
+    desired = SCHEMA_BY_NAME["job_posting"]
+    old = copy.deepcopy(desired)
+    old["name"] = "e2e_pruning_" + uuid.uuid4().hex
+    displays = {"company_name", "location_names", "seniority_name", "technology_names"}
+    sorts = {
+        "is_active",
+        "has_content",
+        "seniority_id",
+        "experience_min",
+        "experience_max",
+        "experience_min_years",
+        "experience_max_years",
+    }
+    for field in old["fields"]:
+        if field["name"] in displays:
+            field.update(index=True, facet=True, optional=field["name"] == "seniority_name")
+        elif field["name"] in sorts:
+            field["sort"] = True
+    ts_client.collections.create(old)
+    collection = ts_client.collections[old["name"]]
+    try:
+        imported = collection.documents.import_(POSTINGS, {"action": "create"})
+        assert all(result["success"] for result in imported)
+        queries = [
+            {
+                "q": "Engineer",
+                "query_by": "title",
+                "group_by": "company_id",
+                "group_limit": 10,
+                "sort_by": "_text_match:desc,first_seen_at:desc",
+                "filter_by": "is_active:true && has_content:!=false",
+                "per_page": 20,
+            },
+            {
+                "q": "*",
+                "per_page": 0,
+                "facet_by": "company_id,experience_min,seniority_id",
+                "facet_strategy": "exhaustive",
+                "max_facet_values": 100,
+            },
+            {
+                "q": "*",
+                "filter_by": "experience_min_years:>=0 && experience_max_years:>=5",
+                "sort_by": "first_seen_at:desc",
+                "per_page": 100,
+            },
+            {
+                "q": "*",
+                "filter_by": "salary_eur:>0",
+                "per_page": 0,
+                "facet_by": "salary_eur(low:[0,100000],high:[100000,999999999])",
+            },
+            {
+                "q": "*",
+                "filter_by": "is_active:true",
+                "per_page": 100,
+                "sort_by": "first_seen_at:desc,candidate_order_hi:asc,candidate_order_lo:asc",
+            },
+        ]
+
+        def documents():
+            return {
+                doc["id"]: doc
+                for doc in map(json.loads, collection.documents.export().splitlines())
+            }
+
+        def answers():
+            results = []
+            for query in queries:
+                result = collection.documents.search(query)
+                # Typesense 27.1's numeric summary statistics can change when
+                # a facet is rebuilt. Readers consume values/counts and the
+                # distinct total, never experience/seniority avg/min/max/sum.
+                for facet in result.get("facet_counts", []):
+                    if facet["field_name"] in {"experience_min", "seniority_id"}:
+                        stats = facet.get("stats", {})
+                        facet["stats"] = {"total_values": stats.get("total_values")}
+                results.append(
+                    {
+                        key: result.get(key)
+                        for key in (
+                            "found",
+                            "found_docs",
+                            "hits",
+                            "grouped_hits",
+                            "facet_counts",
+                        )
+                    }
+                )
+            return results
+
+        stored, before = documents(), answers()
+        _patch_missing_fields(ts_client, old["name"], desired["fields"])
+        _patch_missing_fields(ts_client, old["name"], desired["fields"])
+        assert documents() == stored
+        assert answers() == before
+
+        # Normal CDC delist/relist writes still preserve historical counts and
+        # remove/restore the candidate keys under the pruned schema.
+        identifier = POSTINGS[0]["id"]
+        collection.documents[identifier].update(
+            {
+                "is_active": False,
+                **candidate_order_fields(uuid.UUID(identifier), active=False),
+            }
+        )
+        assert (
+            collection.documents.search({"q": "*", "filter_by": "is_active:true", "per_page": 0})[
+                "found"
+            ]
+            == 15
+        )
+        assert collection.documents.search({"q": "*", "per_page": 0})["found"] == 20
+        collection.documents[identifier].update(
+            {
+                "is_active": True,
+                **candidate_order_fields(uuid.UUID(identifier), active=True),
+            }
+        )
+        assert answers() == before
+        for field in old["fields"]:
+            if field["name"] in displays | sorts:
+                collection.update({"fields": [{"name": field["name"], "drop": True}, field]})
+        assert documents() == stored
+        assert answers() == before
+    finally:
+        collection.delete()
 
 
 def _make_client() -> typesense.Client:
@@ -1228,21 +1361,25 @@ class TestSearch:
             assert target_loc_id in doc["location_ids"]
             assert target_occ_id in doc["occupation_ids"]
 
-    def test_facet_by_company_name(self, ts_client: typesense.Client, alias_map: dict):
-        """Faceting by company_name returns human-readable names."""
+    def test_company_names_are_returned_with_id_facets(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        """The UI facets by company ID and reads names from stored payloads."""
         col = _col(ts_client, alias_map, "job_posting")
         results = col.documents.search(
             {
                 "q": "*",
                 "query_by": "title",
-                "facet_by": "company_name",
+                "facet_by": "company_id",
                 "filter_by": self._company_filter(),
+                "per_page": 100,
             }
         )
-        facet = next(f for f in results["facet_counts"] if f["field_name"] == "company_name")
-        facet_names = {c["value"] for c in facet["counts"]}
+        facet = next(f for f in results["facet_counts"] if f["field_name"] == "company_id")
+        assert {c["value"] for c in facet["counts"]} == {c["id"] for c in COMPANIES}
+        returned_names = {hit["document"]["company_name"] for hit in results["hits"]}
         expected_names = {c["name"] for c in COMPANIES}
-        assert facet_names == expected_names
+        assert returned_names == expected_names
 
     def test_company_search(self, ts_client: typesense.Client, alias_map: dict):
         """Searching the company collection by name works."""
@@ -1365,7 +1502,7 @@ class TestSpecialCharacters:
         results = col.documents.search(
             {
                 "q": "C++",
-                "query_by": "title,technology_names",
+                "query_by": "title",
                 "filter_by": (f"company_id:[{','.join(c['id'] for c in COMPANIES)}]"),
             }
         )
