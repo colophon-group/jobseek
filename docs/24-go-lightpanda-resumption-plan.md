@@ -2,7 +2,7 @@
 
 Status: implementation checkpoint, 2026-09-23. The initial review used
 `origin/main` `6abfa52e1b061f2898a46355c48105accd1c01f9`; the B0 producer
-implementation has since been reconciled onto `9d7b7b6abb420c820e89a2f9440560ddfc20c0ac`.
+implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 This document does not authorize production activation without the measured
 whole-lane parity and efficiency result below.
 
@@ -32,12 +32,14 @@ an admission condition for the first B0 cohort.
   executor, and explicit c1/c4 cutover tooling. Ordinary deployment is dark.
   The issue record does not establish that production B0 traffic has been
   activated; verify live state before any future cutover.
-- [#8738](https://github.com/colophon-group/jobseek/issues/8738) records the
-  Go producer-authority candidate at local commit `d6d583515`. Its 48-file,
-  12,172-line addition was reassessed against the issue's concrete crash and
-  ownership failures, reconciled with current queue semantics, and kept as one
-  bounded safety slice. About half of the addition is test code. Do not expand
-  it into a generic scheduler, control plane, or queue rewrite.
+- [#8738](https://github.com/colophon-group/jobseek/issues/8738) landed the
+  bounded Go producer authority through [#9874](https://github.com/colophon-group/jobseek/pull/9874).
+  The 48-file predecessor at `d6d583515` was reassessed against concrete
+  crash and ownership failures and reconciled with current queue semantics.
+  About half of its addition was test code. The exact merged revision passed
+  required CI and the crawler deploy gate; [deploy run 35845382807](https://github.com/colophon-group/jobseek/actions/runs/35845382807)
+  succeeded with only the dark claimant in the ordinary service list. There is
+  no evidence of enabled B0 traffic in that deployment.
 - [#8648](https://github.com/colophon-group/jobseek/issues/8648) owns the
   remaining whole-lane admission. Its harness candidate was held until it
   could exercise the real Go producer. The public sitemap run in #7935 was
@@ -51,24 +53,24 @@ an admission condition for the first B0 cohort.
 
 ## Next slice: one real Go-owned B0 cohort
 
-1. **Reconcile the implementation on fresh `main`.** The producer successor
-   has been assembled separately from the held #8648 admission harness. It
-   keeps only the c1/c4 producer, four bounded Go claim slots, existing
-   Redis/SQL fences, the Python database-only executor, and cold rollback.
-   The large implementation patch is justified by the specific previously
-   found crash and ownership failures; it is not a template for later family
-   ports. Recheck its exact current diff and executable gates before merging.
-2. **Make authority and reversal correct before traffic.** A selected posting
+1. **Producer implementation landed dark.** The producer successor was
+   assembled separately from the held #8648 admission harness. It keeps only
+   the c1/c4 producer, four bounded Go claim slots, existing Redis/SQL fences,
+   the Python database-only executor, and cold rollback. The large patch
+   addressed specific crash and ownership failures; it is not a template for
+   later family ports.
+2. **Keep authority and reversal correct before traffic.** A selected posting
    must have exactly one schedule and one owner. The existing routing epoch
    must be monotonic across activation and rollback, including restored Redis
    or host snapshots. Cover lease loss, failed render/executor transitions,
    Redis persistence boundaries, pending-receipt reboot, and rollback from
    current PostgreSQL schedule truth. Bound task occupancy for the c4 cohort;
    do not build generic compaction or a new distributed scheduler for it.
-3. **Land the minimal producer dark.** On the exact current head, verify the
-   real Redis/PostgreSQL transitions and the service startup path with tests
-   that exercise ownership, crash recovery, and resource bounds. Deploy dark
-   and confirm the old Python/Chromium path still owns all work. No reviewer or
+3. **Dark deployment complete.** The merged revision passed real
+   Redis/PostgreSQL transitions, container startup, and the required CI/deploy
+   gates. The ordinary deploy lists the old Python/Chromium services and dark
+   claimant; enabled producer/executor services are absent. Check the live
+   receipt and Redis owner before any future activation. No reviewer or
    operator approval is an additional gate once the stated checks pass.
 4. **Run #8648 against the actual whole lane.** Reconcile its held harness
    with the producer. Use identical immutable fixture inputs and equal 1.5 GiB
@@ -81,6 +83,22 @@ an admission condition for the first B0 cohort.
    Treat live-input drift as inconclusive. Run small live-source parity without
    production writes; do not repeat fixed-order public benchmarks for a
    favorable result.
+
+   The held `fix-crawler/go-b0-admission` branch at `266725d45` is source
+   material, not a merge candidate. Its `admission.py` seeds the candidate via
+   Python `LightpandaB0Queue.activate_legacy`, and its Compose file sets
+   `LIGHTPANDA_B0_PRODUCER_MODE: off`. Reuse the immutable fixture server,
+   pinned PKI, canonical output comparison, and external cgroup sampler. Feed
+   the candidate through the merged Go producer's Unix socket using
+   `producer_client.request_task` after reserving the test routing epoch and
+   installing the same pending/active authority shape as a real cutover.
+   Count the producer in the candidate cgroup and budget: 32 MiB producer,
+   96 MiB supervisor, 384 MiB executor, 1024 MiB renderer (1536 MiB total),
+   against a 1536 MiB control. Remove the old Python queue mutation path and
+   its broad live admission guards from the first hermetic run. Keep the
+   fixture and Docker network isolated with no production credentials. Run
+   c1 and c4 in counterbalanced pairs, recording every parity and resource
+   result before deciding whether to activate traffic.
 5. **Admit c1, then c4 if the numbers hold.** After #8648 demonstrates output
    parity and resource efficiency, use the cutover to give one low-rate origin
    exclusive Go/Lightpanda ownership.
@@ -120,9 +138,9 @@ evidence. A new abstraction is justified only by a measured migration need.
 ## Issue ownership
 
 - #7935: concise epic and the current decision record.
-- #8738: implementation of exclusive Go B0 producer/ownership and cold
-  reversal. #8881 is the merged dark foundation; the unmerged local candidate
-  is not accepted implementation.
+- #8738: completed implementation of exclusive Go B0 producer/ownership and
+  cold reversal. #8881 is the merged dark foundation; #9874 merged the
+  producer and deployed dark. Traffic admission remains #8648.
 - #8648: whole-lane output parity and measured resource efficiency, followed
   by c1/c4 admission after the real producer lands.
 - #7941: cohort switch/reversal tracking folded into #8738; avoid a parallel
