@@ -41,10 +41,15 @@ an admission condition for the first B0 cohort.
   succeeded with only the dark claimant in the ordinary service list. There is
   no evidence of enabled B0 traffic in that deployment.
 - [#8648](https://github.com/colophon-group/jobseek/issues/8648) owns the
-  remaining whole-lane admission. Its harness candidate was held until it
-  could exercise the real Go producer. The public sitemap run in #7935 was
-  inconclusive because the live source changed between arms; it is not a
-  Python-versus-Go verdict.
+  remaining whole-lane admission. The first complete [ARM64 fixture run](https://github.com/colophon-group/jobseek/actions/runs/35857877535)
+  exercised the real Go producer in all 16 arms with exact output, request,
+  persistence, and queue parity. Median correct-URL density improved 3.46×
+  at c1 and 6.82× at c4; peak memory and completion latency fell. CPU use
+  rose from 13.94 to 24.48 seconds at c1 and 17.86 to 23.99 seconds at c4
+  across the common due and retained measurement window. Per-service CPU and
+  production host capacity need confirmation during canary. The public
+  sitemap run in #7935 was inconclusive because the live source changed
+  between arms; it is not a Python-versus-Go verdict.
 - [#7959](https://github.com/colophon-group/jobseek/issues/7959) admitted
   pinned Lightpanda 0.4.0 for narrow B0/B1 nonproduction use. Its broader
   compatibility results do not justify moving interactive, frame, identity,
