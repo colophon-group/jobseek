@@ -125,8 +125,8 @@ version. Structured filters are excluded because Jev never sees them.
 
 Ready decisions expire no later than 30 days after `decided_at`. This permits
 an old but still-active job to be evaluated lazily while keeping reuse bounded.
-User moves and Undo are per-watchlist overrides and never mutate the global
-result.
+The user-facing feed reads accepted decisions only; rejected decisions remain
+internal to the classifier and never appear in a separate result view.
 
 ## Economics and capacity
 
@@ -161,11 +161,12 @@ and provider failures pause before unsafe work or further paid calls.
 
 Migration `0092_jev_ai_filter_foundation` creates configuration, immutable query
 versions, leased segments, the global exact cache, materialized decisions,
-fixed-point budgets and usage, events, and feedback. Migration `0093` changes
-decision retention to a 30-day interval from evaluation time so historical
-active jobs can be evaluated lazily, and persists the exact candidate language
-scope on each query version so it can be included in the hard-filter
-fingerprint.
+fixed-point budgets and usage, events, and the historical feedback table.
+Owner correction and feedback actions are not part of the product. Migration
+`0093` changes decision retention to a 30-day interval from evaluation time so
+historical active jobs can be evaluated lazily. It also persists the exact
+candidate language scope on each query version so it can be included in the
+hard-filter fingerprint.
 
 The Next.js Workflow SDK owns durable catch-up. Workflow code loops only over a
 bounded Node.js step; Postgres, Typesense, R2, and Jev access remain inside that
@@ -213,10 +214,7 @@ unauthorized access share a not-found boundary.
 | `GET /api/web/watchlists/{id}/ai-filter` | Owner-only state read; never starts Jev |
 | `GET /api/web/watchlists/{id}/ai-filter/events?after=N` | Owner-only cursor-resumable event snapshot |
 | `POST /api/web/watchlists/{id}/ai-filter/reconcile` | Owner-only demand trigger; validates scope and starts/joins Workflow |
-| `GET /api/web/watchlists/{id}/ai-filter/decisions?bucket=...` | Owner reads accepted/rejected plus state; shared viewers may read accepted persisted decisions only |
-| `PATCH /api/web/watchlists/{id}/ai-filter/decisions/{decisionId}` | Owner-only idempotent local move |
-| `DELETE /api/web/watchlists/{id}/ai-filter/decisions/{decisionId}` | Owner-only undo of the identified latest move |
-| `POST /api/web/watchlists/{id}/ai-filter/decisions/{decisionId}` | Owner-only idempotent bounded mistake report |
+| `GET /api/web/watchlists/{id}/ai-filter/decisions?bucket=accepted` | Owner reads accepted results plus state; shared viewers may read persisted accepted results only |
 
 ## Fluid Compute profile
 

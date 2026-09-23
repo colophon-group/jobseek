@@ -28,7 +28,7 @@ export async function GET(
   try {
     const params = new URL(request.url).searchParams;
     const bucket = params.get("bucket");
-    if (bucket !== "accepted" && bucket !== "rejected") {
+    if (bucket !== "accepted") {
       throw new TypeError("Invalid decision bucket");
     }
     const rawOffset = params.get("offset") ?? "0";
@@ -50,19 +50,18 @@ export async function GET(
           listAiFilterDecisions({
             ...pagination,
             ownerId: viewerId,
-            bucket,
+            bucket: "accepted",
           }),
           getAiFilterOwnerState(owner),
         ]);
         payload = { ...page, state };
       } catch (error) {
-        if (bucket !== "accepted" || !(error instanceof AiFilterNotFoundError)) {
+        if (!(error instanceof AiFilterNotFoundError)) {
           throw error;
         }
         payload = await listSharedAiFilterDecisions(pagination);
       }
     } else {
-      if (bucket !== "accepted") return aiFilterNotFoundResponse();
       payload = await listSharedAiFilterDecisions(pagination);
     }
     return NextResponse.json(payload, { headers: AI_FILTER_PRIVATE_HEADERS });
