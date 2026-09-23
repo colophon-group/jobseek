@@ -48,6 +48,21 @@ class AdmissionDriverError(RuntimeError):
     """The disposable admission arm violated its closed contract."""
 
 
+_LOOKUP_TABLES = (
+    "CREATE TABLE location (id integer PRIMARY KEY, parent_id integer, "
+    "type text NOT NULL, population integer, languages text[])",
+    "CREATE TABLE location_name (location_id integer NOT NULL, locale text NOT NULL, "
+    "name text NOT NULL, is_display boolean)",
+    "CREATE TABLE occupation (id integer PRIMARY KEY, slug text NOT NULL)",
+    "CREATE TABLE seniority (id integer PRIMARY KEY, slug text NOT NULL)",
+    "CREATE TABLE technology (id integer PRIMARY KEY, slug text NOT NULL)",
+    "CREATE TABLE taxonomy_miss (taxonomy text NOT NULL, raw_value text NOT NULL, "
+    "sample_value text NOT NULL, hit_count integer NOT NULL DEFAULT 1, "
+    "last_seen_at timestamptz NOT NULL DEFAULT now(), "
+    "status text NOT NULL DEFAULT 'pending', UNIQUE (taxonomy, raw_value))",
+)
+
+
 def _canonical(value: Any) -> bytes:
     return json.dumps(
         value, default=str, ensure_ascii=True, sort_keys=True, separators=(",", ":")
@@ -265,6 +280,10 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
     redis = Redis.from_url(os.environ["REDIS_URL"], decode_responses=True, protocol=2)
     try:
         if args.phase == "reserve":
+            # These lookup tables are supplied by sync in production, outside the
+            # crawler's local migrations. The disposable fixture starts empty.
+            for statement in _LOOKUP_TABLES:
+                await pool.execute(statement)
             value = await pool.fetchval(
                 "SELECT nextval('public.lightpanda_b0_routing_epoch_seq'::regclass)"
             )
