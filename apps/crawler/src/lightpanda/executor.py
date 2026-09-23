@@ -43,7 +43,12 @@ from src.runtime.config import BoardRuntimeConfig
 PROTOCOL: Final = "jobseek.lightpanda.executor/v1"
 SOCKET_PATH: Final = Path("/run/jobseek-lightpanda-executor/executor.sock")
 FRAME_LIMIT: Final = 3 * 1024 * 1024
-CAPACITY: Final = 4
+TASK_CAPACITY: Final = 4
+ATTESTATION_CAPACITY: Final = 1
+SOCKET_BACKLOG: Final = TASK_CAPACITY + ATTESTATION_CAPACITY
+# Backwards-compatible public name used by the frozen executor client contract.
+CAPACITY: Final = TASK_CAPACITY
+FIRST_FRAME_TIMEOUT: Final = 1.0
 AUTHORIZATION_TIMEOUT: Final = 5.0
 COMMIT_TIMEOUT: Final = 15.0
 _REQUEST_FIELDS: Final = {
@@ -54,6 +59,10 @@ _REQUEST_FIELDS: Final = {
     "lease_until_ms",
     "browser_result",
 }
+_PREFLIGHT_FIELDS: Final = {"version", "type", "shard_id", "routing_epoch"}
+_CURRENT_ROUTING_EPOCH_SQL: Final = (
+    "SELECT last_value, is_called FROM public.lightpanda_b0_routing_epoch_seq"
+)
 _FORBIDDEN_ENV: Final = {
     "REDIS_URL",
     "LIGHTPANDA_B0_CA_CERTIFICATE",
@@ -337,8 +346,12 @@ async def _execute(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     pool: Any,
+    initial_payload: bytes | None = None,
 ) -> None:
-    request = _object(await _read_frame(reader), _REQUEST_FIELDS)
+    request = _object(
+        await _read_frame(reader) if initial_payload is None else initial_payload,
+        _REQUEST_FIELDS,
+    )
     task, lease, result_payload = _decode_task(request)
     result = _decode_result(result_payload)
     await _write_message(
@@ -414,6 +427,123 @@ async def _execute(
     await _write_message(writer, response)
 
 
+async def _attest_current_epoch(pool: Any, expected_epoch: int) -> None:
+    row = await pool.fetchrow(_CURRENT_ROUTING_EPOCH_SQL)
+    if (
+        row is None
+        or row.get("is_called") is not True
+        or isinstance(row.get("last_value"), bool)
+        or row.get("last_value") != expected_epoch
+    ):
+        raise ExecutorProtocolError("executor routing epoch is not the PostgreSQL high-water")
+
+
+async def _dispatch(
+    reader: asyncio.StreamReader,
+    writer: asyncio.StreamWriter,
+    pool: Any,
+    *,
+    routing_epoch: int,
+    shard_id: str,
+    initial_payload: bytes | None = None,
+) -> None:
+    payload = await _read_frame(reader) if initial_payload is None else initial_payload
+    try:
+        candidate = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        candidate = None
+    if isinstance(candidate, dict) and candidate.get("type") == "attest_route":
+        request = _object(payload, _PREFLIGHT_FIELDS)
+        if (
+            request["version"] != PROTOCOL
+            or request["shard_id"] != shard_id
+            or isinstance(request["routing_epoch"], bool)
+            or request["routing_epoch"] != routing_epoch
+        ):
+            raise ExecutorProtocolError("executor preflight identity is invalid")
+        await _attest_current_epoch(pool, routing_epoch)
+        await _write_message(
+            writer,
+            {
+                "type": "route_attested",
+                "shard_id": shard_id,
+                "routing_epoch": routing_epoch,
+            },
+        )
+        return
+    await _execute(reader, writer, pool, initial_payload=payload)
+
+
+class _ExecutorConversationServer:
+    """Independent task/health admission for one private executor socket."""
+
+    def __init__(self, pool: Any, *, routing_epoch: int, shard_id: str) -> None:
+        self.pool = pool
+        self.routing_epoch = routing_epoch
+        self.shard_id = shard_id
+        self.active_tasks = 0
+        self.active_attestations = 0
+        self.handlers: set[asyncio.Task[None]] = set()
+
+    async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        handler = asyncio.current_task()
+        if handler is None:
+            writer.close()
+            return
+        self.handlers.add(handler)
+        raw_socket = writer.get_extra_info("socket")
+        try:
+            accepted_peer = raw_socket is not None and _peer_uid(raw_socket) == os.getuid()
+        except ExecutorProtocolError:
+            accepted_peer = False
+        if not accepted_peer:
+            self.handlers.discard(handler)
+            writer.close()
+            await writer.wait_closed()
+            return
+        conversation = ""
+        try:
+            # Classification cannot consume a task/attestation slot. Slow or
+            # partial clients are bounded, and the server keeps accepting so a
+            # fifth task cannot occupy the reserved health conversation.
+            async with asyncio.timeout(FIRST_FRAME_TIMEOUT):
+                payload = await _read_frame(reader)
+            try:
+                candidate = json.loads(payload)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                candidate = None
+            if isinstance(candidate, dict) and candidate.get("type") == "attest_route":
+                if self.active_attestations >= ATTESTATION_CAPACITY:
+                    return
+                self.active_attestations += 1
+                conversation = "attestation"
+            else:
+                if self.active_tasks >= TASK_CAPACITY:
+                    return
+                self.active_tasks += 1
+                conversation = "task"
+            await _dispatch(
+                reader,
+                writer,
+                self.pool,
+                routing_epoch=self.routing_epoch,
+                shard_id=self.shard_id,
+                initial_payload=payload,
+            )
+        except (Exception, asyncio.CancelledError):
+            with contextlib.suppress(Exception):
+                await _write_message(writer, {"type": "error", "error": "executor_failed"})
+        finally:
+            if conversation == "task":
+                self.active_tasks -= 1
+            elif conversation == "attestation":
+                self.active_attestations -= 1
+            self.handlers.discard(handler)
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
+
+
 async def _serve() -> None:
     if os.environ.get("LIGHTPANDA_B0_EXECUTOR_MODE") != "enabled":
         raise ExecutorProtocolError("executor mode must be exactly enabled")
@@ -430,47 +560,29 @@ async def _serve() -> None:
         configured_socket.unlink()
     if getattr(socket, "SO_PEERCRED", None) is None:
         raise ExecutorProtocolError("SO_PEERCRED is required")
+    shard_id = os.environ.get("LIGHTPANDA_B0_SHARD_ID", "")
+    if shard_id != "lightpanda-b0":
+        raise ExecutorProtocolError("executor shard identity must be exact")
+    epoch_text = os.environ.get("LIGHTPANDA_B0_ROUTING_EPOCH", "")
+    if not epoch_text.isascii() or not epoch_text.isdecimal() or epoch_text.startswith("0"):
+        raise ExecutorProtocolError("executor routing epoch must be canonical")
+    routing_epoch = int(epoch_text)
+    if not 0 < routing_epoch <= 9_999_999_999_999:
+        raise ExecutorProtocolError("executor routing epoch is out of range")
     pool = await create_local_pool()
-    active = 0
-    handlers: set[asyncio.Task[None]] = set()
-
-    async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        nonlocal active
-        handler = asyncio.current_task()
-        if handler is None:
-            writer.close()
-            return
-        handlers.add(handler)
-        raw_socket = writer.get_extra_info("socket")
-        try:
-            accepted_peer = raw_socket is not None and _peer_uid(raw_socket) == os.getuid()
-        except ExecutorProtocolError:
-            accepted_peer = False
-        if not accepted_peer:
-            handlers.discard(handler)
-            writer.close()
-            await writer.wait_closed()
-            return
-        if active >= CAPACITY:
-            handlers.discard(handler)
-            writer.close()
-            await writer.wait_closed()
-            return
-        active += 1
-        try:
-            await _execute(reader, writer, pool)
-        except (Exception, asyncio.CancelledError):
-            with contextlib.suppress(Exception):
-                await _write_message(writer, {"type": "error", "error": "executor_failed"})
-        finally:
-            active -= 1
-            handlers.discard(handler)
-            writer.close()
-            with contextlib.suppress(Exception):
-                await writer.wait_closed()
-
+    try:
+        await _attest_current_epoch(pool, routing_epoch)
+    except BaseException:
+        await close_local_pool()
+        raise
+    conversations = _ExecutorConversationServer(
+        pool, routing_epoch=routing_epoch, shard_id=shard_id
+    )
     server = await asyncio.start_unix_server(
-        handle, path=configured_socket, limit=FRAME_LIMIT + 1, backlog=CAPACITY
+        conversations.handle,
+        path=configured_socket,
+        limit=FRAME_LIMIT + 1,
+        backlog=SOCKET_BACKLOG,
     )
     os.chmod(configured_socket, 0o600)
     _validate_socket(configured_socket)
@@ -485,8 +597,8 @@ async def _serve() -> None:
         server.close()
         await server.wait_closed()
         shutdown_failed = False
-        if handlers:
-            done, pending = await asyncio.wait(handlers, timeout=COMMIT_TIMEOUT)
+        if conversations.handlers:
+            done, pending = await asyncio.wait(conversations.handlers, timeout=COMMIT_TIMEOUT)
             del done
             if pending:
                 shutdown_failed = True
@@ -499,9 +611,42 @@ async def _serve() -> None:
             raise ExecutorProtocolError("executor handlers exceeded shutdown grace")
 
 
+async def _healthcheck() -> None:
+    _validate_socket(SOCKET_PATH)
+    shard_id = os.environ.get("LIGHTPANDA_B0_SHARD_ID", "")
+    epoch_text = os.environ.get("LIGHTPANDA_B0_ROUTING_EPOCH", "")
+    if shard_id != "lightpanda-b0" or not epoch_text.isascii() or not epoch_text.isdecimal():
+        raise ExecutorProtocolError("executor health route identity is invalid")
+    routing_epoch = int(epoch_text)
+    reader, writer = await asyncio.open_unix_connection(SOCKET_PATH, limit=FRAME_LIMIT + 1)
+    try:
+        await _write_message(
+            writer,
+            {
+                "version": PROTOCOL,
+                "type": "attest_route",
+                "shard_id": shard_id,
+                "routing_epoch": routing_epoch,
+            },
+        )
+        response = _object(
+            await _read_frame(reader),
+            {"type", "shard_id", "routing_epoch"},
+        )
+        if (
+            response["type"] != "route_attested"
+            or response["shard_id"] != shard_id
+            or response["routing_epoch"] != routing_epoch
+        ):
+            raise ExecutorProtocolError("executor health route attestation failed")
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
 def main() -> None:
     if sys.argv[1:] == ["--healthcheck"]:
-        _validate_socket(SOCKET_PATH)
+        asyncio.run(_healthcheck())
         return
     if sys.argv[1:]:
         raise SystemExit("usage: python -m src.lightpanda.executor [--healthcheck]")

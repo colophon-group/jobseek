@@ -56,6 +56,7 @@ def _render_compose_config(*files: Path) -> dict:
             "LOCAL_DATABASE_URL": "postgresql://fixture.invalid/jobseek",
             "LIGHTPANDA_B0_CREDENTIAL_DIR": "/fixture/credentials",
             "LIGHTPANDA_B0_PRODUCER_COHORT": "c1",
+            "LIGHTPANDA_B0_ROUTING_EPOCH": "7",
             "MURMUR_TOKEN": "fixture",
             "OWNER": "fixture",
             "PROXY_PROVIDER": "none",
