@@ -63,6 +63,7 @@ _MAX_PDF_EXPIRATION_BYTES = 20 * 1024 * 1024
 _MAX_PDF_EXPIRATION_PAGES = 200
 _MAX_PDF_EXPIRATION_TEXT_CHARS = 2_000_000
 _MAX_EXPLICIT_EMPTY_BODY_BYTES = 2 * 1024 * 1024
+_MAX_MY_JOB_SHOP_BODY_BYTES = 2 * 1024 * 1024
 _RESPONSE_FINGERPRINT_CONCURRENCY = 4
 _MAX_RESPONSE_FINGERPRINT_URLS = 100
 _MAX_RICH_ROWS_LIFECYCLE_URLS = 500
@@ -150,6 +151,7 @@ _JOB_KEYWORDS = frozenset(
         "opening",
         "role",
         "vacancy",
+        "vacancies",
         "stellenangebot",
         "advertisement_display",
     }
@@ -986,6 +988,10 @@ _LUCCA_RICH_ROWS = {
 _LUCCA_EMPTY_SELECTOR = ".jobBoard-offers-empty"
 _LUCCA_EMPTY_TEXT = "There are no job vacancies at the moment."
 
+_MY_JOB_SHOP_MARKER = "api.my-job-shop.com"
+_MY_JOB_SHOP_BOOTSTRAP_MARKER = "https://cdn.job-shop.com/"
+_MY_JOB_SHOP_LINK_SELECTOR = 'a[href*="/offer-redirect/"][href*="offerApiId="]'
+
 _LG_HOST_SUFFIX = ".lg.com.br"
 _LG_BOARD_PATH_RE = re.compile(
     r"(?P<prefix>/Vagas/c/[0-9A-Fa-f-]{36}/p/[A-Za-z0-9_-]+/"
@@ -1257,6 +1263,53 @@ def _dualoo_probe_config(html: str, url: str) -> dict | None:
         "dualoo_portal": portal,
         "urls": len(urls),
         "link_selector": link_selector,
+        "url_filter": url_filter,
+        "require_jsonld_jobposting": True,
+    }
+
+
+def _my_job_shop_probe_config(html: str, url: str) -> dict | None:
+    """Return a scoped static preset for TalentsConnect My Job Shop boards.
+
+    My Job Shop server-renders the complete active result set into fallback
+    anchors, but its detail links use ``offer-redirect`` rather than a generic
+    job keyword. The generic DOM heuristic therefore ignores them. Keep the
+    redirect URLs: the provider resolves them to canonical detail pages that
+    publish complete JobPosting JSON-LD.
+    """
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or _MY_JOB_SHOP_MARKER not in html
+    ):
+        return None
+
+    origin = f"https://{parsed.netloc}"
+    url_filter = (
+        rf"^{re.escape(origin)}/(?:[^/?#]+/)*offer-redirect/\?"
+        r"offerApiId=[A-Za-z0-9_+%/=-]{4,512}"
+        r"(?:&showApplicationForm=(?:true|false))?$"
+    )
+    urls = _extract_links_static(
+        html,
+        url,
+        url_matcher=re.compile(url_filter),
+        link_selector=_MY_JOB_SHOP_LINK_SELECTOR,
+    )
+    if not urls:
+        return None
+    return {
+        "my_job_shop": True,
+        "urls": len(urls),
+        "link_selector": _MY_JOB_SHOP_LINK_SELECTOR,
         "url_filter": url_filter,
         "require_jsonld_jobposting": True,
     }
@@ -2001,6 +2054,10 @@ _BNI_VALIDATION_MARKERS = (
     "user validation required to continue",
     'action="/captcha_resp"',
 )
+_LIEPIN_CHALLENGE_MARKERS = (
+    "safe.liepin.com/",
+    "captchapage_ip_pc",
+)
 
 
 class BotChallengeError(RuntimeError):
@@ -2039,6 +2096,11 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
     # form signature so an ordinary page mentioning validation or CAPTCHA does
     # not become a false positive.
     is_bni_validation = all(marker in haystack for marker in _BNI_VALIDATION_MARKERS)
+    # Liepin redirects both listing and detail requests to a HTTP-200 safety
+    # centre page when it blocks the current egress IP. Treat that response as
+    # transient instead of accepting an empty board or scraping the challenge
+    # title as job content.
+    is_liepin = all(marker in haystack for marker in _LIEPIN_CHALLENGE_MARKERS)
     if (
         is_siteground
         or is_cloudflare
@@ -2046,6 +2108,7 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
         or is_incapsula_interstitial
         or is_radware
         or is_bni_validation
+        or is_liepin
     ):
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
@@ -5325,6 +5388,24 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     if not html:
         return None
 
+    if _MY_JOB_SHOP_BOOTSTRAP_MARKER in html:
+        # Provider pages place a large inline design-system stylesheet before
+        # their SSR job-link payload. The generic 500k probe preview ends in
+        # that stylesheet, so stream the complete page through a finite cap
+        # before deciding whether current offer links are present.
+        from src.shared.http_retry import fetch_text_page_with_retry
+
+        html = await fetch_text_page_with_retry(
+            client,
+            url,
+            retryable_statuses={202, 401, 403},
+            end_of_pagination_statuses=(),
+            require_nonempty=True,
+            max_bytes=_MAX_MY_JOB_SHOP_BODY_BYTES,
+        )
+        if not html:
+            return None
+
     nyc_council_jobs = _nyc_council_jobs_probe_config(html, url)
     if nyc_council_jobs is not None:
         return nyc_council_jobs
@@ -5344,6 +5425,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     dualoo = _dualoo_probe_config(html, url)
     if dualoo is not None:
         return dualoo
+
+    my_job_shop = _my_job_shop_probe_config(html, url)
+    if my_job_shop is not None:
+        return my_job_shop
 
     yousty = _yousty_probe_config(html, url)
     if yousty is not None:
@@ -5777,10 +5862,10 @@ async def _dom_discover_once(
         )
 
         try:
-            if configured_empty_states:
-                # The empty marker is authoritative and may follow large inline
-                # assets, but the body still needs a finite streaming cap before
-                # it is handed to the HTML parser.
+            if configured_empty_states or metadata.get("my_job_shop"):
+                # Authoritative empty markers and My Job Shop's offer payload
+                # may follow large inline assets, but the body still needs a
+                # finite streaming cap before it is handed to the HTML parser.
                 html = await fetch_text_page_with_retry(
                     client,
                     fetch_board_url,
@@ -5789,7 +5874,11 @@ async def _dom_discover_once(
                     retryable_statuses={202, 401, 403},
                     end_of_pagination_statuses=(),
                     require_nonempty=True,
-                    max_bytes=_MAX_EXPLICIT_EMPTY_BODY_BYTES,
+                    max_bytes=(
+                        _MAX_MY_JOB_SHOP_BODY_BYTES
+                        if metadata.get("my_job_shop")
+                        else _MAX_EXPLICIT_EMPTY_BODY_BYTES
+                    ),
                     retries=transport_attempts or 3,
                 )
             else:

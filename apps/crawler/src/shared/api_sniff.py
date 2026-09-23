@@ -299,6 +299,22 @@ class PaginationInfo:
     increment: int
     location: str  # "query" or "body"
     observed_value: int | None = None
+    value_template: str | None = None
+
+
+def _formatted_pagination_value(pag: PaginationInfo, value: int) -> int | str:
+    """Wrap a numeric cursor for APIs that nest it in one parameter value."""
+    template = pag.value_template
+    if template is None:
+        return value
+    if (
+        len(template) > 256
+        or template.count("{value}") != 1
+        or "{" in template.replace("{value}", "")
+        or "}" in template.replace("{value}", "")
+    ):
+        raise ValueError("pagination value_template must contain exactly one {value} placeholder")
+    return template.replace("{value}", str(value))
 
 
 @dataclass
@@ -1520,11 +1536,15 @@ async def paginate_all(
             return all_items
 
         if pag.location == "query":
-            fetch_url = set_url_param(ex.url, pag.param_name, target)
+            fetch_url = set_url_param(
+                ex.url, pag.param_name, _formatted_pagination_value(pag, target)
+            )
             fetch_body = ex.post_data
         else:
             fetch_url = ex.url
-            fetch_body = set_body_param(ex.post_data, pag.param_name, target)
+            fetch_body = set_body_param(
+                ex.post_data, pag.param_name, _formatted_pagination_value(pag, target)
+            )
 
         data = await _fetch_page_with_retry(
             fetch_fn,
@@ -1560,9 +1580,17 @@ async def paginate_all(
         else:
             probe_body = set_body_param(probe_body, sp_name, _DESIRED_PAGE_SIZE)
         if pag.location == "query":
-            probe_url = set_url_param(probe_url, pag.param_name, pag.start_value)
+            probe_url = set_url_param(
+                probe_url,
+                pag.param_name,
+                _formatted_pagination_value(pag, pag.start_value),
+            )
         else:
-            probe_body = set_body_param(probe_body, pag.param_name, pag.start_value)
+            probe_body = set_body_param(
+                probe_body,
+                pag.param_name,
+                _formatted_pagination_value(pag, pag.start_value),
+            )
 
         try:
             data = await fetch_fn(ex.method, probe_url, headers, probe_body)
@@ -1618,11 +1646,19 @@ async def paginate_all(
 
     while pages_fetched < total_pages:
         if pag.location == "query":
-            fetch_url = set_url_param(ex.url, pag.param_name, current_value)
+            fetch_url = set_url_param(
+                ex.url,
+                pag.param_name,
+                _formatted_pagination_value(pag, current_value),
+            )
             fetch_body = ex.post_data
         else:
             fetch_url = ex.url
-            fetch_body = set_body_param(ex.post_data, pag.param_name, current_value)
+            fetch_body = set_body_param(
+                ex.post_data,
+                pag.param_name,
+                _formatted_pagination_value(pag, current_value),
+            )
 
         log.debug(
             "api_sniff.paginate",

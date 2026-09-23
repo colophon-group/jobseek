@@ -2304,6 +2304,25 @@ class TestDomScraper:
 
         assert exc_info.value.proxy_failure_reason == "origin_block"
 
+    async def test_static_liepin_safety_centre_raises(self):
+        """Liepin's HTTP-200 IP CAPTCHA is a transient detail-page block."""
+        from src.core.monitors.dom import BotChallengeError
+        from src.core.scrapers.dom import scrape
+
+        challenge = (
+            "<html><head><title>猎聘安全中心</title></head>"
+            '<body><iframe src="https://safe.liepin.com/page/liepin/'
+            'captchaPage_ip_PC?backurl=opaque"></iframe></body></html>'
+        )
+
+        def handler(request):
+            return httpx.Response(200, text=challenge, request=request)
+
+        config = {"steps": [{"tag": "h1", "field": "title"}]}
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BotChallengeError, match="proxy transport"):
+                await scrape("https://m.liepin.com/job/1981443511.shtml", config, client)
+
     async def test_rendered_incapsula_interstitial_retries_once(self):
         """A transient full-page Incapsula iframe gets one fresh context."""
         from src.core.scrapers.dom import scrape

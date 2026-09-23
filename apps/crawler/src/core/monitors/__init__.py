@@ -788,6 +788,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"SmartRecruiters API \u2014 token: {token}, {jobs} jobs"
         return f"SmartRecruiters API \u2014 token: {token}"
+    if name == "jobconvo":
+        career_page = metadata.get("career_page", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"JobConvo \u2014 career page: {career_page}, {jobs} jobs"
+        return f"JobConvo \u2014 career page: {career_page}"
     if name == "softgarden":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -1087,6 +1093,7 @@ from src.core.monitors import (  # noqa: E402
     jazzhr,  # noqa: F401
     job51,  # noqa: F401
     jobbank104,  # noqa: F401
+    jobconvo,  # noqa: F401
     jobdiva,  # noqa: F401
     jobs_ch,  # noqa: F401
     jobstreet,  # noqa: F401

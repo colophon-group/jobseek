@@ -7,7 +7,7 @@ import hashlib
 import re
 from contextlib import nullcontext
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -35,6 +35,7 @@ from src.core.monitors.dom import (
     _jobtoolz_probe_config,
     _lg_portal_probe_config,
     _lucca_probe_config,
+    _my_job_shop_probe_config,
     _nyc_council_jobs_probe_config,
     _oracle_adf_probe_config,
     _paginate_urls,
@@ -52,7 +53,7 @@ from src.core.monitors.dom import (
     can_handle,
     dom_discover,
 )
-from src.shared.http_retry import PaginationFetchError
+from src.shared.http_retry import PaginationFetchError, ResponseBodyTooLargeError
 from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 from src.shared.response_fingerprint import (
     MAX_RESPONSE_FINGERPRINT_BYTES,
@@ -421,6 +422,7 @@ class TestExtractLinksStatic:
     def test_filters_job_keywords(self):
         html = _html_with_links(
             "https://example.com/jobs/123",
+            "https://example.com/vacancies/24649/maintenance-technician/",
             "https://example.com/about",
             "https://example.com/career/456",
             "https://example.com/stellenangebote/detail/789",
@@ -428,6 +430,7 @@ class TestExtractLinksStatic:
         urls = _extract_links_static(html, "https://example.com")
         assert urls == {
             "https://example.com/jobs/123",
+            "https://example.com/vacancies/24649/maintenance-technician/",
             "https://example.com/career/456",
             "https://example.com/stellenangebote/detail/789",
         }
@@ -3927,6 +3930,107 @@ class TestCanHandle:
 
         assert result == _dualoo_probe_config(self.DUALOO_HTML, self.DUALOO_URL)
 
+    def test_my_job_shop_uses_scoped_redirect_preset(self):
+        url = "https://jobs.example.com/search"
+        html = (
+            '<script src="https://api.my-job-shop.com/new-cf/_nuxt/app.js"></script>'
+            "<noscript><ul>"
+            '<li><a href="/stores/offer-redirect/?offerApiId=MTEyODQ='
+            '&amp;showApplicationForm=false">Store Manager</a></li>'
+            '<li><a href="/offer-redirect/?offerApiId=YWIxMjM='
+            '&amp;showApplicationForm=false">Sales Assistant</a></li>'
+            '<li><a href="https://other.example/offer-redirect/?offerApiId=YmFk">'
+            "Wrong tenant</a></li>"
+            "</ul></noscript>"
+        )
+
+        result = _my_job_shop_probe_config(html, url)
+
+        assert result is not None
+        assert result["my_job_shop"] is True
+        assert result["urls"] == 2
+        assert result["require_jsonld_jobposting"] is True
+        assert auto_scraper_type("dom", result) == ("json-ld", None)
+        matcher = re.compile(result["url_filter"])
+        assert matcher.fullmatch(
+            "https://jobs.example.com/stores/offer-redirect/"
+            "?offerApiId=MTEyODQ=&showApplicationForm=false"
+        )
+        assert not matcher.fullmatch("https://other.example/offer-redirect/?offerApiId=MTEyODQ=")
+
+    def test_my_job_shop_requires_provider_marker_and_live_links(self):
+        url = "https://jobs.example.com/search"
+        link = '<a href="/offer-redirect/?offerApiId=MTEyODQ=">Role</a>'
+
+        assert _my_job_shop_probe_config(link, url) is None
+        assert (
+            _my_job_shop_probe_config(
+                '<script src="https://api.my-job-shop.com/app.js"></script>',
+                url,
+            )
+            is None
+        )
+
+    async def test_my_job_shop_can_handle_returns_provider_preset(self):
+        url = "https://jobs.example.com/search"
+        html = """
+        <script src="https://api.my-job-shop.com/new-cf/_nuxt/app.js"></script>
+        <a href="/offer-redirect/?offerApiId=MTEyODQ=&amp;showApplicationForm=false">Role</a>
+        """
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle(url, MagicMock())
+
+        assert result == _my_job_shop_probe_config(html, url)
+
+    async def test_my_job_shop_probe_refetches_after_large_inline_bootstrap(self):
+        url = "https://jobs.example.com/search"
+        preview = '<link href="https://cdn.job-shop.com/fonts/Skolar/style.css">'
+        complete = (
+            '<script src="https://api.my-job-shop.com/new-cf/_nuxt/app.js"></script>'
+            '<a href="/offer-redirect/?offerApiId=MTEyODQ=">Role</a>'
+        )
+        with (
+            patch(
+                "src.core.monitors.fetch_page_text",
+                new=AsyncMock(return_value=preview),
+            ),
+            patch(
+                "src.shared.http_retry.fetch_text_page_with_retry",
+                new=AsyncMock(return_value=complete),
+            ) as refetch,
+        ):
+            result = await can_handle(url, MagicMock())
+
+        assert result == _my_job_shop_probe_config(complete, url)
+        refetch.assert_awaited_once_with(
+            ANY,
+            url,
+            retryable_statuses={202, 401, 403},
+            end_of_pagination_statuses=(),
+            require_nonempty=True,
+            max_bytes=2 * 1024 * 1024,
+        )
+
+    async def test_my_job_shop_probe_rejects_oversized_page(self, monkeypatch):
+        url = "https://jobs.example.com/search"
+        preview = '<link href="https://cdn.job-shop.com/fonts/Skolar/style.css">'
+        monkeypatch.setattr("src.core.monitors.dom._MAX_MY_JOB_SHOP_BODY_BYTES", 8)
+
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=preview),
+        ):
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(
+                    lambda _request: httpx.Response(200, content=b"123456789")
+                )
+            ) as client:
+                with pytest.raises(ResponseBodyTooLargeError):
+                    await can_handle(url, client)
+
     def test_yousty_filtered_board_uses_employer_scoped_preset(self):
         url = (
             "https://www.yousty.ch/de-CH/lehrstellen/apprenticeships?"
@@ -5934,6 +6038,28 @@ class TestDomDiscoverInitialFetch:
                     {
                         "board_url": "https://blocked.example/careers",
                         "metadata": {"url_filter": "/job/"},
+                    },
+                    client,
+                )
+
+    async def test_static_liepin_safety_centre_raises(self):
+        """Liepin's HTTP-200 IP CAPTCHA must not become an empty board."""
+
+        challenge = (
+            "<html><head><title>猎聘安全中心</title></head>"
+            '<body><iframe src="https://safe.liepin.com/page/liepin/'
+            'captchaPage_ip_PC?backurl=opaque"></iframe></body></html>'
+        )
+
+        def handler(request):
+            return httpx.Response(200, text=challenge, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BotChallengeError, match="proxy transport"):
+                await dom_discover(
+                    {
+                        "board_url": "https://m.liepin.com/company/10005643/",
+                        "metadata": {"link_selector": "a[href*='/job/']"},
                     },
                     client,
                 )

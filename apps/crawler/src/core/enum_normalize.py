@@ -170,6 +170,8 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "temporary positions, full-time": "full_or_part",
     "full_time, part_time": "full_or_part",
     "full-time / part-time": "full_or_part",
+    # ── Portuguese / Brazilian contracts ────────────────────────────
+    "clt - tempo integral": "full_time",
     # ── schema.org JSON-LD enums ─────────────────────────────────────
     # The lookup lowercases keys, so FULL_TIME / PART_TIME / CONTRACTOR /
     # INTERN / TEMPORARY / VOLUNTEER / PER_DIEM / OTHER fall through to

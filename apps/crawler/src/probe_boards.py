@@ -1603,7 +1603,7 @@ async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResul
 
     count = _discovery_count(discovered)
     has_empty_contract = bool(
-        monitor_type == "johdi"
+        monitor_type in {"jobconvo", "johdi"}
         or decoded.get("advertised_total")
         or decoded.get("empty_states")
         or (decoded.get("empty_selector") and decoded.get("empty_text"))
@@ -1739,6 +1739,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "workday": _probe_workday,
     "rss": _probe_rss,
     "inline": _probe_static_page,
+    "jobconvo": _probe_static_page,
     "johdi": _probe_static_page,
     "unisante": _probe_unisante,
 }

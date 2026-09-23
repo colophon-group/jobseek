@@ -178,6 +178,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "infoniqa",
     "intervieweb",
     "jazzhr",
+    "jobconvo",
     "jobdiva",
     "johdi",
     "jobvite",
@@ -230,6 +231,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "infor",
         "jazzhr",
         "johdi",
+        "jobconvo",
         "jobstreet",
         "json-ld",
         "linkedin",
@@ -783,6 +785,8 @@ def auto_scraper_type(
         return ("json-ld", {"render": True, "proxy": True})
     if monitor_type == "dom" and (config or {}).get("dualoo_portal"):
         return ("json-ld", None)
+    if monitor_type == "dom" and (config or {}).get("my_job_shop"):
+        return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("jobtoolz_tenant"):
         return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("bunge_bigredsky_board"):
@@ -1147,6 +1151,9 @@ def auto_scraper_type(
         return ("nextdata", None)
     if monitor_type == "jazzhr":
         return ("jazzhr", None)
+    if monitor_type == "jobconvo":
+        locale = (config or {}).get("locale", "pt-br")
+        return ("jobconvo", {"locale": locale})
     if monitor_type == "computrabajo":
         return ("json-ld", {"proxy": True} if (config or {}).get("proxy") else None)
     if monitor_type == "papa_johns":

@@ -2093,6 +2093,12 @@ dom — Link or Listing-Row Extraction (fallback)
     ``require_jsonld_jobposting: true``. Their complete detail data is read by
     the auto-configured ``json-ld`` scraper.
 
+  TalentsConnect My Job Shop boards:
+    Static search pages loading assets from ``api.my-job-shop.com`` are
+    auto-configured to read the provider's server-rendered ``offer-redirect``
+    links. Redirect targets are verified as current JobPosting JSON-LD and the
+    ``json-ld`` scraper is selected automatically.
+
   Lucca/Poplee boards:
     Listing roots on ``*.luccasoftware.com/<tenant>`` are auto-configured with
     strict static rich-row selectors. Titles and locations come from the
@@ -2489,6 +2495,25 @@ smartrecruiters — SmartRecruiters Posting API (URL-only or localized rich data
 
   Detection:  ws probe shows "SmartRecruiters API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_JOBCONVO = """\
+jobconvo — JobConvo server-rendered career-page monitor
+
+  Listing:  GET https://jobs.jobconvo.com/{locale}/careers/{company}/{career_page}/
+  Returns:  Complete stable JobConvo job-detail URL set
+  Scraper:  Auto-configured JobConvo public detail API scraper
+  Cost:     10
+  Browser:  No
+  Cap:      50,000 jobs / 1,000 advertised pages
+
+  Config:
+    {"listing_url":"https://jobs.jobconvo.com/pt-br/careers/Acme/<uuid>/",
+     "locale":"pt-br","career_page":"<uuid>"}
+
+  Discovery follows only pagination links explicitly advertised by the career
+  page, validates every row and provider UUID, and fails closed on malformed or
+  cross-tenant links. Empty boards are accepted only when the authoritative
+  server-rendered jobs table is present."""
 
 MONITOR_SOFTGARDEN = """\
 softgarden — Softgarden ATS (HTML scraping, no auth)
@@ -3433,6 +3458,9 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      the cycle. Must be paired with require_pdf_pattern.
     pagination       Pagination config (auto-detected from multiple requests)
                      style is "offset" or "page" for ordinary pagination.
+                     ``value_template`` optionally wraps the numeric cursor
+                     inside one query/body parameter value and must contain
+                     exactly one ``{value}`` placeholder.
                      Use "cumulative_limit" when a load-more API accepts only
                      an increasing limit and repeats the earlier result prefix;
                      the monitor makes one bounded request using the advertised
@@ -4639,6 +4667,7 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
     "taleo": MONITOR_TALEO,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
+    "jobconvo": MONITOR_JOBCONVO,
     "softgarden": MONITOR_SOFTGARDEN,
     "traffit": MONITOR_TRAFFIT,
     "earcu": MONITOR_EARCU,
@@ -4798,6 +4827,17 @@ smartrecruiters — SmartRecruiters Detail API scraper
   Config:   None needed — token from board config, posting_id parsed from URL
   Note:     Auto-configured when selecting the smartrecruiters monitor.
             Runs on the daily scrape schedule (not every monitor cycle).
+"""
+
+SCRAPER_JOBCONVO = """\
+jobconvo — JobConvo public detail API scraper
+
+  API:      GET https://app.jobconvo.com/{locale}/api/job/{job_id}/{slug}/
+  Returns:  title, HTML description and requirements, location,
+            employment_type, job_location_type, date_posted, salary and metadata
+  Config:   {"locale":"pt-br"} (auto-filled from the listing URL)
+  Note:     Auto-configured when selecting the jobconvo monitor.
+            No browser is required.
 """
 
 SCRAPER_WORKABLE = """\
@@ -5122,6 +5162,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "veryeast": SCRAPER_VERYEAST,
     "tupu360": SCRAPER_TUPU360,
     "onlyfy": SCRAPER_ONLYFY,
+    "jobconvo": SCRAPER_JOBCONVO,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
     "taleo": """\
