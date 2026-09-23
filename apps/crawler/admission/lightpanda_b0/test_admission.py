@@ -104,6 +104,12 @@ def test_fixture_limits_selected_origins() -> None:
     assert all(origin == "origin-0" for origin, _ in c1.routes)
 
 
+def test_renderer_private_key_has_required_mode(tmp_path: Path) -> None:
+    pki = tmp_path / "pki"
+    controller.generate_pki(pki)
+    assert (pki / "server-key.pem").stat().st_mode & 0o777 == 0o400
+
+
 def test_compose_counts_real_producer_inside_equal_lane() -> None:
     compose = (HERE / "compose.yml").read_text()
     services = yaml.safe_load(compose)["services"]

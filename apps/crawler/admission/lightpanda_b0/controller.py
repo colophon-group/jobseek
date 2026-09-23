@@ -188,6 +188,7 @@ def generate_pki(output: Path) -> dict[str, str]:
                 serialization.PrivateFormat.PKCS8,
                 serialization.NoEncryption(),
             ),
+            mode=0o400 if name == "server" else 0o444,
         )
 
     def certificate_digest(certificate: x509.Certificate) -> str:
@@ -1143,6 +1144,26 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix="jobseek-b0-admission-") as temporary:
             pki = Path(temporary) / "pki"
             pins = generate_pki(pki)
+            _run(
+                [
+                    "docker",
+                    "run",
+                    "--rm",
+                    "--network",
+                    "none",
+                    "--user",
+                    "0:0",
+                    "--read-only",
+                    "--mount",
+                    f"type=bind,src={pki},dst=/pki",
+                    "--entrypoint",
+                    "/bin/chown",
+                    args.candidate_image,
+                    "10001:10001",
+                    "/pki/server-key.pem",
+                ],
+                timeout=15,
+            )
             base_env = {
                 "PATH": os.environ.get("PATH", ""),
                 "HOME": os.environ.get("HOME", "/tmp"),
