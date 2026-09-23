@@ -1,0 +1,1788 @@
+{
+  "captured_at": "2026-09-23T17:49:36.789915+00:00",
+  "complete": true,
+  "script_sha256": "adf47cc7f54d130b7d4d7871b2b368b3d799257d59642f9c62260eebcaa820a8",
+  "dataset": {
+    "documents": 350000,
+    "sha256": "eaf7dd0053700d590f1fd1afdb3787b1b491f59a33b634f3311b51f85770cd9f",
+    "expected_matching_documents": 14000,
+    "expected_matching_groups": 800,
+    "inactive_documents": 288000,
+    "active_with_content_documents": 57636,
+    "seed": 20260923
+  },
+  "schema": {
+    "name": "grouping_repro",
+    "token_separators": [
+      "-",
+      "/"
+    ],
+    "fields": [
+      {
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "name": "company_split",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "company_atomic",
+        "type": "string",
+        "facet": true,
+        "symbols_to_index": [
+          "-"
+        ],
+        "token_separators": [
+          "/"
+        ]
+      },
+      {
+        "name": "company_numeric",
+        "type": "int32",
+        "facet": true,
+        "sort": false
+      },
+      {
+        "name": "first_seen_at",
+        "type": "int64"
+      },
+      {
+        "name": "is_active",
+        "type": "bool"
+      },
+      {
+        "name": "has_content",
+        "type": "bool"
+      }
+    ]
+  },
+  "queries": {
+    "company_split": {
+      "q": "software engineer",
+      "query_by": "title",
+      "filter_by": "is_active:true && has_content:!=false",
+      "sort_by": "_text_match:desc,first_seen_at:desc",
+      "group_limit": 10,
+      "per_page": 20,
+      "include_fields": "id",
+      "typo_tokens_threshold": 1,
+      "drop_tokens_threshold": 1,
+      "use_cache": "false",
+      "group_by": "company_split"
+    },
+    "company_atomic": {
+      "q": "software engineer",
+      "query_by": "title",
+      "filter_by": "is_active:true && has_content:!=false",
+      "sort_by": "_text_match:desc,first_seen_at:desc",
+      "group_limit": 10,
+      "per_page": 20,
+      "include_fields": "id",
+      "typo_tokens_threshold": 1,
+      "drop_tokens_threshold": 1,
+      "use_cache": "false",
+      "group_by": "company_atomic"
+    },
+    "company_numeric": {
+      "q": "software engineer",
+      "query_by": "title",
+      "filter_by": "is_active:true && has_content:!=false",
+      "sort_by": "_text_match:desc,first_seen_at:desc",
+      "group_limit": 10,
+      "per_page": 20,
+      "include_fields": "id",
+      "typo_tokens_threshold": 1,
+      "drop_tokens_threshold": 1,
+      "use_cache": "false",
+      "group_by": "company_numeric"
+    },
+    "count_only": {
+      "q": "software engineer",
+      "query_by": "title",
+      "filter_by": "is_active:true && has_content:!=false",
+      "per_page": 0,
+      "include_fields": "id",
+      "typo_tokens_threshold": 1,
+      "drop_tokens_threshold": 1,
+      "use_cache": "false"
+    }
+  },
+  "memory_limit_bytes": 6442450944,
+  "cpu_limit": 4,
+  "warmup_rounds": 3,
+  "measured_rounds": 15,
+  "docker_version": "28.4.0",
+  "runs": [
+    {
+      "version": "27.1",
+      "image": "typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455",
+      "complete": true,
+      "kernel": "Linux 6.8.0-64-generic aarch64 GNU/Linux",
+      "architecture": "arm64",
+      "debug": {
+        "state": 1,
+        "version": "27.1"
+      },
+      "accepted_documents": 350000,
+      "persisted_schema": {
+        "created_at": 1790185818,
+        "default_sorting_field": "",
+        "enable_nested_fields": false,
+        "fields": [
+          {
+            "facet": false,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "title",
+            "optional": false,
+            "sort": false,
+            "stem": false,
+            "store": true,
+            "type": "string"
+          },
+          {
+            "facet": true,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "company_split",
+            "optional": false,
+            "sort": false,
+            "stem": false,
+            "store": true,
+            "type": "string"
+          },
+          {
+            "facet": true,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "company_atomic",
+            "optional": false,
+            "sort": false,
+            "stem": false,
+            "store": true,
+            "type": "string"
+          },
+          {
+            "facet": true,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "company_numeric",
+            "optional": false,
+            "sort": false,
+            "stem": false,
+            "store": true,
+            "type": "int32"
+          },
+          {
+            "facet": false,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "first_seen_at",
+            "optional": false,
+            "sort": true,
+            "stem": false,
+            "store": true,
+            "type": "int64"
+          },
+          {
+            "facet": false,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "is_active",
+            "optional": false,
+            "sort": true,
+            "stem": false,
+            "store": true,
+            "type": "bool"
+          },
+          {
+            "facet": false,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "has_content",
+            "optional": false,
+            "sort": true,
+            "stem": false,
+            "store": true,
+            "type": "bool"
+          }
+        ],
+        "name": "grouping_repro",
+        "num_documents": 350000,
+        "symbols_to_index": [],
+        "token_separators": [
+          "-",
+          "/"
+        ]
+      },
+      "queries": {
+        "company_split": {
+          "median_ms": 39,
+          "p95_ms": 64,
+          "observations": [
+            {
+              "server_ms": 38,
+              "wall_ms": 41.956,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 43.705,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 37,
+              "wall_ms": 40.913,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.609,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 41.632,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 44.658,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 64,
+              "wall_ms": 69.991,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 40,
+              "wall_ms": 44.692,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 42,
+              "wall_ms": 46.814,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 41,
+              "wall_ms": 46.321,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 41,
+              "wall_ms": 46.685,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 43.982,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 44.055,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 44.037,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.461,
+              "found": 800,
+              "search_cutoff": false
+            }
+          ]
+        },
+        "company_atomic": {
+          "median_ms": 39,
+          "p95_ms": 44,
+          "observations": [
+            {
+              "server_ms": 42,
+              "wall_ms": 46.504,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 41,
+              "wall_ms": 45.024,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.992,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 44.444,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 44.165,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 43.893,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 42.895,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 44,
+              "wall_ms": 48.537,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 39,
+              "wall_ms": 43.98,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 43.049,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 42,
+              "wall_ms": 46.718,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 43.382,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 40,
+              "wall_ms": 44.146,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.729,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.27,
+              "found": 800,
+              "search_cutoff": false
+            }
+          ]
+        },
+        "company_numeric": {
+          "median_ms": 38,
+          "p95_ms": 43,
+          "observations": [
+            {
+              "server_ms": 38,
+              "wall_ms": 42.841,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 37,
+              "wall_ms": 41.617,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 41,
+              "wall_ms": 44.978,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.315,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 36,
+              "wall_ms": 41.047,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.678,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 43,
+              "wall_ms": 48.419,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 41,
+              "wall_ms": 45.301,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.521,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 40,
+              "wall_ms": 45.423,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 37,
+              "wall_ms": 41.437,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.416,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 36,
+              "wall_ms": 40.563,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 38,
+              "wall_ms": 42.289,
+              "found": 800,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 37,
+              "wall_ms": 41.918,
+              "found": 800,
+              "search_cutoff": false
+            }
+          ]
+        },
+        "count_only": {
+          "median_ms": 22,
+          "p95_ms": 29,
+          "observations": [
+            {
+              "server_ms": 23,
+              "wall_ms": 26.256,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 29,
+              "wall_ms": 31.941,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 22,
+              "wall_ms": 25.033,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 23,
+              "wall_ms": 25.44,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 21,
+              "wall_ms": 23.212,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 22,
+              "wall_ms": 24.596,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 21,
+              "wall_ms": 23.638,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 23,
+              "wall_ms": 25.975,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 22,
+              "wall_ms": 24.751,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 26,
+              "wall_ms": 29.173,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 22,
+              "wall_ms": 24.316,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 25,
+              "wall_ms": 28.157,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 23,
+              "wall_ms": 25.769,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 22,
+              "wall_ms": 24.395,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 20,
+              "wall_ms": 23.112,
+              "found": 14000,
+              "search_cutoff": false
+            }
+          ]
+        }
+      },
+      "normalized_group_projection": {
+        "found_docs": 14000,
+        "groups": [
+          {
+            "key": "c645266c-5986-4ba7-9f5f-42170a87d84a",
+            "found": 72,
+            "ids": [
+              "349975",
+              "345950",
+              "342700",
+              "339675",
+              "332000",
+              "329550",
+              "327225",
+              "324875",
+              "324550",
+              "323375"
+            ]
+          },
+          {
+            "key": "9fca770d-015e-41ca-b225-3f072754a12a",
+            "found": 12,
+            "ids": [
+              "349950",
+              "321550",
+              "320950",
+              "311675",
+              "251425",
+              "216325",
+              "176900",
+              "119650",
+              "103075",
+              "76325"
+            ]
+          },
+          {
+            "key": "9e0bd808-3daf-44b5-afcf-9864405aef80",
+            "found": 78,
+            "ids": [
+              "349925",
+              "341900",
+              "339200",
+              "335075",
+              "333450",
+              "328775",
+              "325125",
+              "325000",
+              "323675",
+              "320875"
+            ]
+          },
+          {
+            "key": "91ab7a13-7076-4d9b-99a8-bcd3fefdcfe0",
+            "found": 24,
+            "ids": [
+              "349900",
+              "347875",
+              "340050",
+              "325375",
+              "311775",
+              "305150",
+              "276400",
+              "258950",
+              "253925",
+              "251075"
+            ]
+          },
+          {
+            "key": "09fb1197-8a96-4a1c-8dab-c76b1f71e5a3",
+            "found": 10,
+            "ids": [
+              "349875",
+              "310350",
+              "223475",
+              "193075",
+              "165375",
+              "144975",
+              "103525",
+              "73925",
+              "23000",
+              "9225"
+            ]
+          },
+          {
+            "key": "97a520c1-81a8-4986-81c6-972f58d605ba",
+            "found": 19,
+            "ids": [
+              "349850",
+              "318350",
+              "305050",
+              "297500",
+              "295500",
+              "288200",
+              "262675",
+              "258075",
+              "247725",
+              "215725"
+            ]
+          },
+          {
+            "key": "97dcec97-a63f-4994-99d6-123003c8d3af",
+            "found": 77,
+            "ids": [
+              "349825",
+              "349750",
+              "349400",
+              "348025",
+              "346450",
+              "341375",
+              "335350",
+              "331450",
+              "329525",
+              "324575"
+            ]
+          },
+          {
+            "key": "cdecfaab-06f9-4c29-b426-f5417e5c564f",
+            "found": 164,
+            "ids": [
+              "349800",
+              "345150",
+              "342975",
+              "342400",
+              "341250",
+              "338425",
+              "337925",
+              "337725",
+              "337450",
+              "337350"
+            ]
+          },
+          {
+            "key": "c680bbbb-cbd2-4086-9d9c-cb0091637212",
+            "found": 10,
+            "ids": [
+              "349775",
+              "307025",
+              "237300",
+              "235300",
+              "169300",
+              "152800",
+              "121475",
+              "80150",
+              "37775",
+              "10150"
+            ]
+          },
+          {
+            "key": "481fdf11-f318-48c9-ae93-f809d4fb2f70",
+            "found": 46,
+            "ids": [
+              "349725",
+              "331350",
+              "326475",
+              "319550",
+              "318675",
+              "316150",
+              "314100",
+              "306125",
+              "284950",
+              "278075"
+            ]
+          },
+          {
+            "key": "3433b913-3031-48f9-9c7a-957ec6be8e4b",
+            "found": 36,
+            "ids": [
+              "349700",
+              "348150",
+              "346925",
+              "345200",
+              "341450",
+              "327650",
+              "319825",
+              "309550",
+              "303750",
+              "272575"
+            ]
+          },
+          {
+            "key": "25886cfd-45d3-479a-9e0e-31e20ec0d012",
+            "found": 100,
+            "ids": [
+              "349675",
+              "348375",
+              "345225",
+              "330025",
+              "324525",
+              "323600",
+              "323425",
+              "320550",
+              "319850",
+              "318250"
+            ]
+          },
+          {
+            "key": "efa136b1-a86d-40b1-bc2f-007a0e6c8d32",
+            "found": 138,
+            "ids": [
+              "349650",
+              "346425",
+              "345300",
+              "345000",
+              "344550",
+              "338975",
+              "338275",
+              "336525",
+              "332775",
+              "327050"
+            ]
+          },
+          {
+            "key": "8714123e-80ec-4cd8-a4ea-d084876e7573",
+            "found": 27,
+            "ids": [
+              "349625",
+              "335250",
+              "320075",
+              "319925",
+              "282225",
+              "256275",
+              "246625",
+              "244850",
+              "234500",
+              "222275"
+            ]
+          },
+          {
+            "key": "bec77c9a-ef85-47ca-b3cb-b513c586569d",
+            "found": 110,
+            "ids": [
+              "349600",
+              "341400",
+              "338575",
+              "334150",
+              "334050",
+              "333175",
+              "330725",
+              "329150",
+              "328400",
+              "327600"
+            ]
+          },
+          {
+            "key": "3142dd5a-b2f8-4613-8b36-c3a3dbc63a5f",
+            "found": 34,
+            "ids": [
+              "349575",
+              "343675",
+              "339550",
+              "335050",
+              "323575",
+              "310600",
+              "305625",
+              "292550",
+              "287500",
+              "274275"
+            ]
+          },
+          {
+            "key": "a30bc52b-a0a3-45a9-8e82-3d5930b8ccfb",
+            "found": 102,
+            "ids": [
+              "349550",
+              "348725",
+              "346875",
+              "338800",
+              "338450",
+              "337475",
+              "324450",
+              "324100",
+              "323525",
+              "322650"
+            ]
+          },
+          {
+            "key": "a105729f-2c7a-4c1a-ad9d-71c1c0607066",
+            "found": 86,
+            "ids": [
+              "349525",
+              "344450",
+              "341725",
+              "339525",
+              "333850",
+              "329425",
+              "328150",
+              "322225",
+              "316725",
+              "310500"
+            ]
+          },
+          {
+            "key": "07f53de8-39a8-4356-ab3e-33695472bdda",
+            "found": 121,
+            "ids": [
+              "349500",
+              "345475",
+              "340925",
+              "336275",
+              "328000",
+              "326325",
+              "325100",
+              "323300",
+              "322450",
+              "322200"
+            ]
+          },
+          {
+            "key": "45834d06-f21b-415a-9e85-5dd80392ab7f",
+            "found": 74,
+            "ids": [
+              "349475",
+              "338850",
+              "334600",
+              "329300",
+              "329275",
+              "328100",
+              "321050",
+              "321000",
+              "319100",
+              "312300"
+            ]
+          }
+        ]
+      },
+      "cgroup_memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+      "os_memory": "bb99f7200000-ffffe7fa6000 ---p 00000000 00:00 0                          [rollup]\nRss:              445720 kB\nPss:              445188 kB\nPss_Dirty:        405584 kB\nPss_Anon:         405584 kB\nPss_File:          39604 kB\nPss_Shmem:             0 kB\nShared_Clean:       1060 kB\nShared_Dirty:          0 kB\nPrivate_Clean:     39076 kB\nPrivate_Dirty:    405584 kB\nReferenced:       445720 kB\nAnonymous:        405584 kB\nKSM:                   0 kB\nLazyFree:              0 kB\nAnonHugePages:         0 kB\nShmemPmdMapped:        0 kB\nFilePmdMapped:         0 kB\nShared_Hugetlb:        0 kB\nPrivate_Hugetlb:       0 kB\nSwap:                  0 kB\nSwapPss:               0 kB\nLocked:                0 kB"
+    },
+    {
+      "version": "30.2",
+      "image": "typesense/typesense:30.2@sha256:610f2d34b1f93d00762869da2c67736775e5798d19a2c8b91b014b8a0cc1e110",
+      "complete": true,
+      "kernel": "Linux 6.8.0-64-generic aarch64 GNU/Linux",
+      "architecture": "arm64",
+      "debug": {
+        "state": 1,
+        "version": "30.2"
+      },
+      "accepted_documents": 350000,
+      "persisted_schema": {
+        "created_at": 1790185872,
+        "curation_sets": [],
+        "default_sorting_field": "",
+        "enable_nested_fields": false,
+        "fields": [
+          {
+            "facet": false,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "title",
+            "optional": false,
+            "sort": false,
+            "stem": false,
+            "stem_dictionary": "",
+            "store": true,
+            "truncate_len": 100,
+            "type": "string"
+          },
+          {
+            "facet": true,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "company_split",
+            "optional": false,
+            "sort": false,
+            "stem": false,
+            "stem_dictionary": "",
+            "store": true,
+            "truncate_len": 100,
+            "type": "string"
+          },
+          {
+            "facet": true,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "company_atomic",
+            "optional": false,
+            "sort": false,
+            "stem": false,
+            "stem_dictionary": "",
+            "store": true,
+            "symbols_to_index": [
+              "-"
+            ],
+            "token_separators": [
+              "/"
+            ],
+            "truncate_len": 100,
+            "type": "string"
+          },
+          {
+            "facet": true,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "company_numeric",
+            "optional": false,
+            "sort": false,
+            "stem": false,
+            "stem_dictionary": "",
+            "store": true,
+            "truncate_len": 100,
+            "type": "int32"
+          },
+          {
+            "facet": false,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "first_seen_at",
+            "optional": false,
+            "sort": true,
+            "stem": false,
+            "stem_dictionary": "",
+            "store": true,
+            "truncate_len": 100,
+            "type": "int64"
+          },
+          {
+            "facet": false,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "is_active",
+            "optional": false,
+            "sort": true,
+            "stem": false,
+            "stem_dictionary": "",
+            "store": true,
+            "truncate_len": 100,
+            "type": "bool"
+          },
+          {
+            "facet": false,
+            "index": true,
+            "infix": false,
+            "locale": "",
+            "name": "has_content",
+            "optional": false,
+            "sort": true,
+            "stem": false,
+            "stem_dictionary": "",
+            "store": true,
+            "truncate_len": 100,
+            "type": "bool"
+          }
+        ],
+        "name": "grouping_repro",
+        "num_documents": 350000,
+        "symbols_to_index": [],
+        "synonym_sets": [],
+        "token_separators": [
+          "-",
+          "/"
+        ]
+      },
+      "queries": {
+        "company_split": {
+          "median_ms": 958,
+          "p95_ms": 1433,
+          "observations": [
+            {
+              "server_ms": 1433,
+              "wall_ms": 1439.206,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 1257,
+              "wall_ms": 1262.782,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 1097,
+              "wall_ms": 1102.377,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 934,
+              "wall_ms": 938.85,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 946,
+              "wall_ms": 950.292,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 958,
+              "wall_ms": 962.584,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 961,
+              "wall_ms": 965.879,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 923,
+              "wall_ms": 927.558,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 914,
+              "wall_ms": 918.424,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 926,
+              "wall_ms": 931.202,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 967,
+              "wall_ms": 971.944,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 898,
+              "wall_ms": 901.843,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 940,
+              "wall_ms": 944.624,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 1197,
+              "wall_ms": 1204.501,
+              "found": 802,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 1019,
+              "wall_ms": 1024.242,
+              "found": 802,
+              "search_cutoff": false
+            }
+          ]
+        },
+        "company_atomic": {
+          "median_ms": 366,
+          "p95_ms": 561,
+          "observations": [
+            {
+              "server_ms": 558,
+              "wall_ms": 566.096,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 463,
+              "wall_ms": 467.931,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 504,
+              "wall_ms": 509.23,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 405,
+              "wall_ms": 409.664,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 416,
+              "wall_ms": 421.184,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 323,
+              "wall_ms": 327.031,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 318,
+              "wall_ms": 322.167,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 359,
+              "wall_ms": 363.2,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 319,
+              "wall_ms": 323.899,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 316,
+              "wall_ms": 320.581,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 369,
+              "wall_ms": 374.031,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 318,
+              "wall_ms": 321.708,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 366,
+              "wall_ms": 371.424,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 561,
+              "wall_ms": 567.099,
+              "found": 796,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 351,
+              "wall_ms": 355.921,
+              "found": 796,
+              "search_cutoff": false
+            }
+          ]
+        },
+        "company_numeric": {
+          "median_ms": 88,
+          "p95_ms": 156,
+          "observations": [
+            {
+              "server_ms": 156,
+              "wall_ms": 163.182,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 110,
+              "wall_ms": 115.57,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 111,
+              "wall_ms": 116.288,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 89,
+              "wall_ms": 93.431,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 84,
+              "wall_ms": 88.718,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 84,
+              "wall_ms": 88.549,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 84,
+              "wall_ms": 88.19,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 84,
+              "wall_ms": 88.006,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 83,
+              "wall_ms": 87.117,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 88,
+              "wall_ms": 92.639,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 93,
+              "wall_ms": 96.869,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 87,
+              "wall_ms": 91.114,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 84,
+              "wall_ms": 87.765,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 111,
+              "wall_ms": 115.586,
+              "found": 794,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 106,
+              "wall_ms": 110.623,
+              "found": 794,
+              "search_cutoff": false
+            }
+          ]
+        },
+        "count_only": {
+          "median_ms": 19,
+          "p95_ms": 41,
+          "observations": [
+            {
+              "server_ms": 41,
+              "wall_ms": 45.037,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 26,
+              "wall_ms": 28.599,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 25,
+              "wall_ms": 27.113,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 25,
+              "wall_ms": 28.154,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 23,
+              "wall_ms": 26.058,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 18,
+              "wall_ms": 20.172,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 19,
+              "wall_ms": 20.998,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 18,
+              "wall_ms": 20.462,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 18,
+              "wall_ms": 20.438,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 19,
+              "wall_ms": 21.001,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 19,
+              "wall_ms": 21.01,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 19,
+              "wall_ms": 20.982,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 19,
+              "wall_ms": 20.556,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 26,
+              "wall_ms": 29.429,
+              "found": 14000,
+              "search_cutoff": false
+            },
+            {
+              "server_ms": 28,
+              "wall_ms": 31.343,
+              "found": 14000,
+              "search_cutoff": false
+            }
+          ]
+        }
+      },
+      "normalized_group_projection": {
+        "found_docs": 14000,
+        "groups": [
+          {
+            "key": "c645266c-5986-4ba7-9f5f-42170a87d84a",
+            "found": 72,
+            "ids": [
+              "349975",
+              "345950",
+              "342700",
+              "339675",
+              "332000",
+              "329550",
+              "327225",
+              "324875",
+              "324550",
+              "323375"
+            ]
+          },
+          {
+            "key": "9fca770d-015e-41ca-b225-3f072754a12a",
+            "found": 12,
+            "ids": [
+              "349950",
+              "321550",
+              "320950",
+              "311675",
+              "251425",
+              "216325",
+              "176900",
+              "119650",
+              "103075",
+              "76325"
+            ]
+          },
+          {
+            "key": "9e0bd808-3daf-44b5-afcf-9864405aef80",
+            "found": 78,
+            "ids": [
+              "349925",
+              "341900",
+              "339200",
+              "335075",
+              "333450",
+              "328775",
+              "325125",
+              "325000",
+              "323675",
+              "320875"
+            ]
+          },
+          {
+            "key": "91ab7a13-7076-4d9b-99a8-bcd3fefdcfe0",
+            "found": 24,
+            "ids": [
+              "349900",
+              "347875",
+              "340050",
+              "325375",
+              "311775",
+              "305150",
+              "276400",
+              "258950",
+              "253925",
+              "251075"
+            ]
+          },
+          {
+            "key": "09fb1197-8a96-4a1c-8dab-c76b1f71e5a3",
+            "found": 10,
+            "ids": [
+              "349875",
+              "310350",
+              "223475",
+              "193075",
+              "165375",
+              "144975",
+              "103525",
+              "73925",
+              "23000",
+              "9225"
+            ]
+          },
+          {
+            "key": "97a520c1-81a8-4986-81c6-972f58d605ba",
+            "found": 19,
+            "ids": [
+              "349850",
+              "318350",
+              "305050",
+              "297500",
+              "295500",
+              "288200",
+              "262675",
+              "258075",
+              "247725",
+              "215725"
+            ]
+          },
+          {
+            "key": "97dcec97-a63f-4994-99d6-123003c8d3af",
+            "found": 77,
+            "ids": [
+              "349825",
+              "349750",
+              "349400",
+              "348025",
+              "346450",
+              "341375",
+              "335350",
+              "331450",
+              "329525",
+              "324575"
+            ]
+          },
+          {
+            "key": "cdecfaab-06f9-4c29-b426-f5417e5c564f",
+            "found": 164,
+            "ids": [
+              "349800",
+              "345150",
+              "342975",
+              "342400",
+              "341250",
+              "338425",
+              "337925",
+              "337725",
+              "337450",
+              "337350"
+            ]
+          },
+          {
+            "key": "c680bbbb-cbd2-4086-9d9c-cb0091637212",
+            "found": 10,
+            "ids": [
+              "349775",
+              "307025",
+              "237300",
+              "235300",
+              "169300",
+              "152800",
+              "121475",
+              "80150",
+              "37775",
+              "10150"
+            ]
+          },
+          {
+            "key": "481fdf11-f318-48c9-ae93-f809d4fb2f70",
+            "found": 46,
+            "ids": [
+              "349725",
+              "331350",
+              "326475",
+              "319550",
+              "318675",
+              "316150",
+              "314100",
+              "306125",
+              "284950",
+              "278075"
+            ]
+          },
+          {
+            "key": "3433b913-3031-48f9-9c7a-957ec6be8e4b",
+            "found": 36,
+            "ids": [
+              "349700",
+              "348150",
+              "346925",
+              "345200",
+              "341450",
+              "327650",
+              "319825",
+              "309550",
+              "303750",
+              "272575"
+            ]
+          },
+          {
+            "key": "25886cfd-45d3-479a-9e0e-31e20ec0d012",
+            "found": 100,
+            "ids": [
+              "349675",
+              "348375",
+              "345225",
+              "330025",
+              "324525",
+              "323600",
+              "323425",
+              "320550",
+              "319850",
+              "318250"
+            ]
+          },
+          {
+            "key": "efa136b1-a86d-40b1-bc2f-007a0e6c8d32",
+            "found": 138,
+            "ids": [
+              "349650",
+              "346425",
+              "345300",
+              "345000",
+              "344550",
+              "338975",
+              "338275",
+              "336525",
+              "332775",
+              "327050"
+            ]
+          },
+          {
+            "key": "8714123e-80ec-4cd8-a4ea-d084876e7573",
+            "found": 27,
+            "ids": [
+              "349625",
+              "335250",
+              "320075",
+              "319925",
+              "282225",
+              "256275",
+              "246625",
+              "244850",
+              "234500",
+              "222275"
+            ]
+          },
+          {
+            "key": "bec77c9a-ef85-47ca-b3cb-b513c586569d",
+            "found": 110,
+            "ids": [
+              "349600",
+              "341400",
+              "338575",
+              "334150",
+              "334050",
+              "333175",
+              "330725",
+              "329150",
+              "328400",
+              "327600"
+            ]
+          },
+          {
+            "key": "3142dd5a-b2f8-4613-8b36-c3a3dbc63a5f",
+            "found": 34,
+            "ids": [
+              "349575",
+              "343675",
+              "339550",
+              "335050",
+              "323575",
+              "310600",
+              "305625",
+              "292550",
+              "287500",
+              "274275"
+            ]
+          },
+          {
+            "key": "a30bc52b-a0a3-45a9-8e82-3d5930b8ccfb",
+            "found": 102,
+            "ids": [
+              "349550",
+              "348725",
+              "346875",
+              "338800",
+              "338450",
+              "337475",
+              "324450",
+              "324100",
+              "323525",
+              "322650"
+            ]
+          },
+          {
+            "key": "a105729f-2c7a-4c1a-ad9d-71c1c0607066",
+            "found": 86,
+            "ids": [
+              "349525",
+              "344450",
+              "341725",
+              "339525",
+              "333850",
+              "329425",
+              "328150",
+              "322225",
+              "316725",
+              "310500"
+            ]
+          },
+          {
+            "key": "07f53de8-39a8-4356-ab3e-33695472bdda",
+            "found": 121,
+            "ids": [
+              "349500",
+              "345475",
+              "340925",
+              "336275",
+              "328000",
+              "326325",
+              "325100",
+              "323300",
+              "322450",
+              "322200"
+            ]
+          },
+          {
+            "key": "45834d06-f21b-415a-9e85-5dd80392ab7f",
+            "found": 74,
+            "ids": [
+              "349475",
+              "338850",
+              "334600",
+              "329300",
+              "329275",
+              "328100",
+              "321050",
+              "321000",
+              "319100",
+              "312300"
+            ]
+          }
+        ]
+      },
+      "cgroup_memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+      "os_memory": "c03b14180000-ffffc251d000 ---p 00000000 00:00 0                          [rollup]\nRss:              289876 kB\nPss:              289470 kB\nPss_Dirty:        249064 kB\nPss_Anon:         249064 kB\nPss_File:          40406 kB\nPss_Shmem:             0 kB\nShared_Clean:        808 kB\nShared_Dirty:          0 kB\nPrivate_Clean:     40004 kB\nPrivate_Dirty:    249064 kB\nReferenced:       289876 kB\nAnonymous:        249064 kB\nKSM:                   0 kB\nLazyFree:              0 kB\nAnonHugePages:         0 kB\nShmemPmdMapped:        0 kB\nFilePmdMapped:         0 kB\nShared_Hugetlb:        0 kB\nPrivate_Hugetlb:       0 kB\nSwap:                  0 kB\nSwapPss:               0 kB\nLocked:                0 kB"
+    }
+  ],
+  "ordered_groups_counts_and_hits_equal": true
+}
