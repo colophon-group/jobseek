@@ -1,0 +1,77 @@
+name: Crawler B0 whole-lane admission
+
+on:
+  pull_request:
+    paths:
+      - apps/crawler/admission/lightpanda_b0/**
+      - apps/crawler/src/lightpanda/admission.py
+      - apps/crawler/Dockerfile
+      - .github/workflows/crawler-b0-whole-lane.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crawler-b0-whole-lane-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  measure:
+    name: Measure ARM64 B0 candidate and control
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+      - name: Test admission fixture and controller
+        working-directory: apps/crawler
+        run: |
+          uv sync --frozen --group dev
+          uv run --frozen pytest admission/lightpanda_b0/test_admission.py -q
+          uv run --frozen ruff check admission/lightpanda_b0 src/lightpanda/admission.py
+          uv run --frozen ruff format --check admission/lightpanda_b0 src/lightpanda/admission.py
+          uv run --frozen pyright --level error admission/lightpanda_b0/controller.py admission/lightpanda_b0/fixture_server.py src/lightpanda/admission.py
+      - name: Build exact ARM64 runtime images
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          docker build --target slim \
+            --label "org.opencontainers.image.revision=${source_sha}" \
+            --tag "jobseek-b0-candidate:${source_sha}" apps/crawler
+          docker build --target benchmark-browser \
+            --label "org.opencontainers.image.revision=${source_sha}" \
+            --tag "jobseek-b0-control:${source_sha}" apps/crawler
+          docker build --build-context contracts=apps/crawler/contracts \
+            --build-arg "SOURCE_COMMIT=${source_sha}" \
+            --target service \
+            --tag "jobseek-b0-renderer:${source_sha}" pilots/go-lightpanda
+      - name: Measure exact output and whole-lane resources
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          source_sha="$(git rev-parse HEAD)"
+          candidate="$(docker image inspect --format '{{.Id}}' "jobseek-b0-candidate:${source_sha}")"
+          control="$(docker image inspect --format '{{.Id}}' "jobseek-b0-control:${source_sha}")"
+          renderer="$(docker image inspect --format '{{.Id}}' "jobseek-b0-renderer:${source_sha}")"
+          mkdir -p "${RUNNER_TEMP}/b0-admission"
+          uv run --frozen python admission/lightpanda_b0/controller.py \
+            --candidate-image "$candidate" \
+            --browser-image "$control" \
+            --renderer-image "$renderer" \
+            --source-sha "$source_sha" \
+            --renderer-source-sha "$source_sha" \
+            --output "${RUNNER_TEMP}/b0-admission/report.json"
+      - name: Retain complete numeric report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: crawler-b0-whole-lane-${{ github.run_id }}
+          path: ${{ runner.temp }}/b0-admission/report.json
+          if-no-files-found: warn
+          retention-days: 14

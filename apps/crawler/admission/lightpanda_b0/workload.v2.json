@@ -1,0 +1,222 @@
+{
+  "fixture_ipv4": "11.252.0.2",
+  "input_generation": "lane-v3-generation-1",
+  "origin_count": 4,
+  "schema_version": 3,
+  "tasks_per_arm": 16,
+  "waves": [
+    {
+      "id": "w0",
+      "tasks": [
+        {
+          "delay_ms": 0,
+          "description": "Build reliable ingestion systems. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000001",
+          "location": "Remote",
+          "origin_id": "origin-0",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w0/origin-0",
+          "profile": "normal",
+          "title": "Lane Engineer 01"
+        },
+        {
+          "delay_ms": 0,
+          "description": "Build reliable ingestion systems. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000002",
+          "location": "Remote",
+          "origin_id": "origin-1",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w0/origin-1",
+          "profile": "normal",
+          "title": "Lane Engineer 02"
+        },
+        {
+          "delay_ms": 350,
+          "description": "Build reliable ingestion systems. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000003",
+          "location": "Remote",
+          "origin_id": "origin-2",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w0/origin-2",
+          "profile": "slow",
+          "title": "Lane Engineer 03"
+        },
+        {
+          "delay_ms": 0,
+          "description": "Build reliable ingestion systems. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000004",
+          "location": "Remote",
+          "origin_id": "origin-3",
+          "padding_bytes": 262144,
+          "path": "/lane/v3/w0/origin-3",
+          "profile": "large",
+          "title": "Lane Engineer 04"
+        }
+      ]
+    },
+    {
+      "id": "w1",
+      "tasks": [
+        {
+          "delay_ms": 0,
+          "description": "Build reliable ingestion systems. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000005",
+          "location": "Remote",
+          "origin_id": "origin-0",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w1/origin-0",
+          "profile": "normal",
+          "title": "Lane Engineer 05"
+        },
+        {
+          "delay_ms": 0,
+          "description": "Build reliable ingestion systems. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000006",
+          "location": "Remote",
+          "origin_id": "origin-1",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w1/origin-1",
+          "profile": "normal",
+          "title": "Lane Engineer 06"
+        },
+        {
+          "delay_ms": 350,
+          "description": "Build reliable ingestion systems. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000007",
+          "location": "Remote",
+          "origin_id": "origin-2",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w1/origin-2",
+          "profile": "slow",
+          "title": "Lane Engineer 07"
+        },
+        {
+          "delay_ms": 0,
+          "description": "Build reliable ingestion systems. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000008",
+          "location": "Remote",
+          "origin_id": "origin-3",
+          "padding_bytes": 262144,
+          "path": "/lane/v3/w1/origin-3",
+          "profile": "large",
+          "title": "Lane Engineer 08"
+        }
+      ]
+    },
+    {
+      "id": "w2",
+      "tasks": [
+        {
+          "delay_ms": 0,
+          "description": "Operate bounded browser workloads. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000009",
+          "location": "Remote",
+          "origin_id": "origin-0",
+          "padding_bytes": 262144,
+          "path": "/lane/v3/w2/origin-0",
+          "profile": "large",
+          "title": "Lane Engineer 09"
+        },
+        {
+          "delay_ms": 350,
+          "description": "Operate bounded browser workloads. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-00000000000a",
+          "location": "Remote",
+          "origin_id": "origin-1",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w2/origin-1",
+          "profile": "slow",
+          "title": "Lane Engineer 10"
+        },
+        {
+          "delay_ms": 0,
+          "description": "Operate bounded browser workloads. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-00000000000b",
+          "location": "Remote",
+          "origin_id": "origin-2",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w2/origin-2",
+          "profile": "normal",
+          "title": "Lane Engineer 11"
+        },
+        {
+          "delay_ms": 0,
+          "description": "Operate bounded browser workloads. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-00000000000c",
+          "location": "Remote",
+          "origin_id": "origin-3",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w2/origin-3",
+          "profile": "normal",
+          "title": "Lane Engineer 12"
+        }
+      ]
+    },
+    {
+      "id": "w3",
+      "tasks": [
+        {
+          "delay_ms": 0,
+          "description": "Operate bounded browser workloads. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-00000000000d",
+          "location": "Remote",
+          "origin_id": "origin-0",
+          "padding_bytes": 262144,
+          "path": "/lane/v3/w3/origin-0",
+          "profile": "large",
+          "title": "Lane Engineer 13"
+        },
+        {
+          "delay_ms": 350,
+          "description": "Operate bounded browser workloads. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-00000000000e",
+          "location": "Remote",
+          "origin_id": "origin-1",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w3/origin-1",
+          "profile": "slow",
+          "title": "Lane Engineer 14"
+        },
+        {
+          "delay_ms": 0,
+          "description": "Operate bounded browser workloads. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-00000000000f",
+          "location": "Remote",
+          "origin_id": "origin-2",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w3/origin-2",
+          "profile": "normal",
+          "title": "Lane Engineer 15"
+        },
+        {
+          "delay_ms": 0,
+          "description": "Operate bounded browser workloads. Python and Go.",
+          "employment_type": "FULL_TIME",
+          "id": "00000000-0000-4000-8000-000000000010",
+          "location": "Remote",
+          "origin_id": "origin-3",
+          "padding_bytes": 0,
+          "path": "/lane/v3/w3/origin-3",
+          "profile": "normal",
+          "title": "Lane Engineer 16"
+        }
+      ]
+    }
+  ],
+  "workload_id": "go-lightpanda-whole-lane-v3"
+}
