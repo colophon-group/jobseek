@@ -130,6 +130,20 @@ def api(state, method, path, payload=None, timeout=7200):
     return lab._request_json(state["port"], method, path, payload=payload, timeout=timeout)
 
 
+def wait_for_writes(state, timeout=1800):
+    started, stable, probes = time.monotonic(), 0, 0
+    while time.monotonic() - started < timeout:
+        pending = api(state, "GET", "/stats.json", timeout=10).get("pending_write_batches")
+        if type(pending) is not int or pending < 0:
+            raise RuntimeError("Server did not expose a valid pending-write count")
+        probes += 1
+        stable = stable + 1 if pending == 0 else 0
+        if stable >= 3:
+            return {"probes": probes, "elapsed_seconds": round(time.monotonic() - started, 3)}
+        time.sleep(2)
+    raise RuntimeError("Pending writes did not drain before measurement")
+
+
 def import_documents(state, path, max_documents=None, skip_documents=0):
     accepted, source_hash, batch = 0, hashlib.sha256(), []
     url = f"http://127.0.0.1:{state['port']}/collections/{lab.LAB_COLLECTION}/documents/import?action=upsert&batch_size=1000"
@@ -346,6 +360,88 @@ def fingerprint(state):
     return {"documents": count, "document_sha256_modular_sum": f"{total:064x}"}
 
 
+def cdc_round_trip(state):
+    """Replay a bounded delist/relist batch, then verify every affected payload."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "apps/crawler"))
+    from src.typesense_candidate_order import candidate_order_fields
+
+    originals = []
+    for page in (1, 2):
+        response = lab._search(
+            state["port"],
+            {**query_corpus(state)["stable_candidates"], "page": page},
+        )
+        originals.extend(hit["document"] for hit in response["hits"])
+    expected = {doc["id"]: doc for doc in originals}
+    if len(expected) != len(originals) or not originals:
+        raise RuntimeError("CDC probe needs distinct active documents")
+
+    def counts():
+        return {
+            flag: lab._search(
+                state["port"], {"q": "*", "filter_by": "is_active:" + flag, "per_page": 0}
+            )["found"]
+            for flag in ("true", "false")
+        }
+
+    def upsert(documents):
+        body = b"\n".join(json.dumps(doc, separators=(",", ":")).encode() for doc in documents)
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{state['port']}/collections/{lab.LAB_COLLECTION}/documents/import?action=upsert",
+            data=body,
+            method="POST",
+            headers={"X-TYPESENSE-API-KEY": lab.LAB_API_KEY, "Content-Type": "text/plain"},
+        )
+        with urllib.request.urlopen(request, timeout=180) as response:
+            acknowledgements = [json.loads(line) for line in response.read().splitlines()]
+        if len(acknowledgements) != len(documents) or any(
+            row.get("success") is not True for row in acknowledgements
+        ):
+            raise RuntimeError("CDC probe did not acknowledge every document")
+
+    before = counts()
+    started = time.monotonic()
+    try:
+        upsert(
+            [
+                {
+                    **doc,
+                    "is_active": False,
+                    **candidate_order_fields(uuid.UUID(doc["id"]), active=False),
+                }
+                for doc in originals
+            ]
+        )
+        inactive = counts()
+        if inactive != {
+            "true": before["true"] - len(originals),
+            "false": before["false"] + len(originals),
+        }:
+            raise RuntimeError("CDC delist changed unexpected counts")
+    finally:
+        upsert(originals)
+    after = counts()
+    if after != before:
+        raise RuntimeError("CDC relist did not restore counts")
+    for offset in range(0, len(originals), 100):
+        identifiers = [doc["id"] for doc in originals[offset : offset + 100]]
+        response = lab._search(
+            state["port"],
+            {"q": "*", "filter_by": "id:=[" + ",".join(identifiers) + "]", "per_page": 250},
+        )
+        actual = {hit["document"]["id"]: hit["document"] for hit in response["hits"]}
+        if actual != {identifier: expected[identifier] for identifier in identifiers}:
+            raise RuntimeError("CDC relist did not restore stored payloads")
+    return {
+        "updated_documents": len(originals),
+        "before": before,
+        "delisted": inactive,
+        "restored": after,
+        "payloads_restored": True,
+        "round_trip_ms": round((time.monotonic() - started) * 1000, 3),
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -360,6 +456,7 @@ def main():
             "snapshot",
             "fingerprint",
             "setup",
+            "cdc",
         ),
     )
     parser.add_argument("--root", type=Path, required=True)
@@ -484,6 +581,8 @@ def main():
     started = time.monotonic()
     with Sampler(state) as sampler:
         try:
+            if args.command != "import" or args.skip_documents:
+                result["write_readiness"] = wait_for_writes(state)
             if args.command == "import":
                 if not args.sample:
                     parser.error("import needs --sample")
@@ -504,6 +603,8 @@ def main():
                 result.update(measure(state, args.repeats, args.concurrency, args.cases))
             elif args.command == "fingerprint":
                 result.update(fingerprint(state))
+            elif args.command == "cdc":
+                result.update(cdc_round_trip(state))
             elif args.command in ("migrate", "rollback"):
                 if not args.field:
                     parser.error("migration needs --field")
@@ -515,14 +616,36 @@ def main():
                 result["schema_after"] = api(state, "GET", f"/collections/{lab.LAB_COLLECTION}")
             elif args.command == "restart":
                 expected = api(state, "GET", f"/collections/{lab.LAB_COLLECTION}")["num_documents"]
+                # Match an existing, checkpointed production collection. A
+                # fresh import otherwise replays its entire write journal on
+                # restart, mixing ingestion with the index-rebuild measurement.
+                checkpoint = "/snapshots/" + label + "-checkpoint"
+                subprocess.run(
+                    ["docker", "exec", state["container"], "test", "!", "-e", checkpoint],
+                    check=True,
+                )
+                result["checkpoint_started_at"] = time.time()
+                result["checkpoint"] = api(
+                    state,
+                    "POST",
+                    "/operations/snapshot?" + urllib.parse.urlencode({"snapshot_path": checkpoint}),
+                )
+                result["restart_started_at"] = time.time()
                 subprocess.run(
                     ["docker", "restart", state["container"]], check=True, stdout=subprocess.DEVNULL
                 )
                 lab._wait_for_health(state["port"], timeout=1800)
                 lab._wait_for_document_count(state["port"], expected, timeout=1800)
+                result["write_readiness_after_restart"] = wait_for_writes(state)
                 result["semantic_readiness"] = lab._wait_for_semantic_readiness(
                     state["port"],
                     timeout=1800,
+                )
+                result["rebuild_completed_at"] = time.time()
+                # Only remove the checkpoint just created by this owned lab.
+                # The separately acquired source and labelled snapshots remain.
+                subprocess.run(
+                    ["docker", "exec", state["container"], "rm", "-rf", checkpoint], check=True
                 )
             elif args.command == "setup":
                 # Run with the crawler's uv environment to rehearse the exact

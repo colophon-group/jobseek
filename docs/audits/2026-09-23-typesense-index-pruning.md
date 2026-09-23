@@ -37,7 +37,7 @@ this change are:
 | `location_ids`, `location_direct_ids`, `location_types`, `occupation_ids`, `technology_ids`, `employment_type`, `locales` | Filters and consumed facets | Unchanged |
 | Remaining stored-only fields | Display, compatibility, source URLs and reconciliation | Unchanged; no repeat claim for previously removed indexes |
 
-No current application query sorts by the seven pruned sort fields or searches/
+No current application query sorts by the seven deferred sort fields or searches/
 facets on the four display names. The schemas of the separate company and
 taxonomy collections are unchanged. Numeric facet `avg`, `min`, `max` and `sum`
 have no application readers; bucket labels/counts and `total_values` do.
@@ -111,6 +111,29 @@ Before accepting a rollout:
    delist/relist CDC behavior, and reconciliation parity. Production acceptance
    additionally requires native x86_64 evidence and a post-rollout health/RSS/
    latency/reconciliation soak. The local fixture is not a CDC catch-up soak.
+
+The `cdc` lab command replays a bounded batch of up to 500 active documents,
+using the producer's actual inactive candidate-key representation. It requires
+exact active/inactive count deltas, restores the original documents even on a
+failed assertion, and retrieves every affected payload to check exact restoration.
+The baseline and selected full-corpus runs also repeat query parity after this
+batch. This tests write semantics and memory peaks; it is not a live PostgreSQL
+cursor/catch-up measurement.
+
+Readiness requires three observations of an empty `pending_write_batches` queue,
+exact document count after restart, and stable semantic/allocation probes.
+`/health` alone returned true while an interrupted import was still replaying.
+The restart command now takes a snapshot first, records checkpoint/restart/ready
+timestamps separately, and removes only its own temporary checkpoint afterward.
+The first baseline restart began before that harness revision and replayed the
+import journal; its artifact is retained as recovery evidence. A separate
+`baseline-checkpoint` measurement follows a checkpointed rebuild and is the
+matched baseline for the selected/rollback rebuild comparisons. Colima free-block
+trim ran during that initial journal replay to protect host disk headroom; it
+must not be treated as an uncontended rebuild timing result. The host also
+suspended during that journal replay; its duration is excluded. An idle-sleep
+assertion is held for the remaining rehearsal, and matched latency measurements
+start only after recovery completes.
 
 ## Reproduction
 
@@ -200,4 +223,8 @@ CI. No claim is made that the full macOS suite passed. The narrowed display-only
 revision passes 59 focused unit checks, 46 crawler real-engine tests (including
 full facet-response comparison), and 36 web real-engine tests. Its small live
 migration probe recorded three reads with no mismatch, error or cutoff; the
-full-corpus probe is still required. Fresh CI for this revision is pending.
+full-corpus probe is still required. The narrowed revision at `9959357e5` also
+passes [required Linux CI](https://github.com/colophon-group/jobseek/actions/runs/35928175698):
+13,211 crawler tests plus 46 crawler real-engine tests, with the remaining required
+checks green. The crawler deployment gate remains blocked by the active hold. Later harness
+changes require their own checks before acceptance.

@@ -18,6 +18,12 @@ rss_lab = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(rss_lab)
 
 
+def test_missing_write_queue_metric_cannot_be_reported_as_ready(monkeypatch):
+    monkeypatch.setattr(rss_lab, "api", lambda *_args, **_kwargs: {})
+    with pytest.raises(RuntimeError, match="valid pending-write count"):
+        rss_lab.wait_for_writes({"port": 1})
+
+
 @pytest.mark.parametrize(
     ("acknowledgements", "stored_count", "error"),
     [
