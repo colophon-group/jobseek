@@ -368,12 +368,16 @@ jobs:
       - name: Test installed producer UDS against real Redis and Lua
         run: |
           set -euo pipefail
-          producer_binary="$RUNNER_TEMP/lightpanda-b0-supervisor"
-          integration_binary="$RUNNER_TEMP/lightpanda-b0-integration.test"
+          # RUNNER_TEMP is private to the runner user; the installed producer
+          # test drops to UID 10001 and needs a traversable parent directory.
+          producer_binary="/tmp/lightpanda-b0-supervisor-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          integration_binary="/tmp/lightpanda-b0-integration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
           go build -o "$producer_binary" .
+          chmod 0755 "$producer_binary"
           go test -c -tags=integration -o "$integration_binary" .
+          chmod 0755 "$integration_binary"
           sudo install -d -m 0700 -o 10001 -g 10001 /run/jobseek-lightpanda-producer
-          trap 'sudo rmdir /run/jobseek-lightpanda-producer' EXIT
+          trap 'sudo rmdir /run/jobseek-lightpanda-producer; rm -f "$producer_binary"' EXIT
           sudo env \
             LIGHTPANDA_B0_INTEGRATION_BINARY="$producer_binary" \
             LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://localhost:6379/15 \
@@ -385,12 +389,13 @@ jobs:
       - name: Prove activated Redis authority survives a hard restart
         run: |
           set -euo pipefail
-          integration_binary="$RUNNER_TEMP/lightpanda-b0-integration.test"
+          integration_binary="/tmp/lightpanda-b0-integration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
           redis_container=jobseek-b0-persistence-ci
           redis_volume=jobseek-b0-persistence-ci
           cleanup() {
             docker rm --force "$redis_container" >/dev/null 2>&1 || true
             docker volume rm "$redis_volume" >/dev/null 2>&1 || true
+            rm -f "$integration_binary"
           }
           wait_for_redis() {
             for attempt in $(seq 1 30); do
