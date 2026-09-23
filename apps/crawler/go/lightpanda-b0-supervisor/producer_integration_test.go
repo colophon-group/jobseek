@@ -140,9 +140,12 @@ func TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence(t *test
 		_ = os.Remove(producerSentinelPath)
 	})
 
-	luaPath, err := filepath.Abs("../../src/lua/lightpanda_b0_queue.lua")
-	if err != nil {
-		t.Fatal(err)
+	luaPath := os.Getenv("LIGHTPANDA_B0_INTEGRATION_LUA_PATH")
+	if luaPath == "" {
+		luaPath, err = filepath.Abs("../../src/lua/lightpanda_b0_queue.lua")
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	const namespace = "producer-integration"
 	bootstrapKey := "lightpanda-b0:{" + namespace + "}:route"

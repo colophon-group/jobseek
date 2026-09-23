@@ -372,15 +372,18 @@ jobs:
           # test drops to UID 10001 and needs a traversable parent directory.
           producer_binary="/tmp/lightpanda-b0-supervisor-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           integration_binary="/tmp/lightpanda-b0-integration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
+          lua_fixture="/tmp/lightpanda-b0-lifecycle-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.lua"
           go build -o "$producer_binary" .
           chmod 0755 "$producer_binary"
           go test -c -tags=integration -o "$integration_binary" .
           chmod 0755 "$integration_binary"
+          install -m 0644 ../../src/lua/lightpanda_b0_queue.lua "$lua_fixture"
           sudo install -d -m 0700 -o 10001 -g 10001 /run/jobseek-lightpanda-producer
-          trap 'sudo rmdir /run/jobseek-lightpanda-producer; rm -f "$producer_binary"' EXIT
+          trap 'sudo rmdir /run/jobseek-lightpanda-producer; rm -f "$producer_binary" "$lua_fixture"' EXIT
           sudo env \
             LIGHTPANDA_B0_INTEGRATION_BINARY="$producer_binary" \
             LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://localhost:6379/15 \
+            LIGHTPANDA_B0_INTEGRATION_LUA_PATH="$lua_fixture" \
             LIGHTPANDA_B0_INTEGRATION_PRODUCER_UID=10001 \
             "$integration_binary" \
             -test.run '^(TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence|TestRealRedisFullAuditAndCapacityBounds)$' \
@@ -603,11 +606,16 @@ jobs:
           timeout --foreground --signal=TERM --kill-after=5s 30s \
             "${compose[@]}" up -d --no-deps --force-recreate lightpanda-executor
           for service in lightpanda-producer lightpanda-executor; do
-            container_id="$("${compose[@]}" ps -q "$service")"
+            container_id="$("${compose[@]}" ps -aq "$service")"
+            if [[ -z "$container_id" ]]; then
+              "${compose[@]}" ps -a
+              "${compose[@]}" logs "$service"
+              exit 1
+            fi
             for attempt in $(seq 1 30); do
               state="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id")"
               [[ "$state" == healthy ]] && break
-              if ((attempt == 30)); then
+              if [[ "$state" == exited || "$state" == dead ]] || ((attempt == 30)); then
                 "${compose[@]}" logs "$service"
                 exit 1
               fi
