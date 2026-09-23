@@ -1,0 +1,19 @@
+{
+  "environment": "local Chrome, anonymous, localhost:43189",
+  "seeded_variant": {
+    "company_facts": true,
+    "initial_jobs": true,
+    "similar_companies": true,
+    "title_filter_input": "engineer",
+    "filter_updated_url_and_similar_companies": true,
+    "filtered_jobs_error": "Oops, something went wrong."
+  },
+  "unchanged_main_control": {
+    "build_passed": true,
+    "initial_jobs": true,
+    "title_filter_input": "engineer",
+    "filter_updated_url_and_similar_companies": true,
+    "filtered_jobs_error": "Oops, something went wrong."
+  },
+  "conclusion": "Filter failure reproduced on both variants; cause unestablished. Not a completed functionality gate."
+}
