@@ -4,7 +4,7 @@ Status: implementation checkpoint, 2026-09-23. The initial review used
 `origin/main` `6abfa52e1b061f2898a46355c48105accd1c01f9`; the B0 producer
 implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
-tracks the production c1 admission and its current rollback state.
+tracks current production c1 admission evidence.
 
 The delivery goal is a complete Go crawler using self-hosted Lightpanda for
 browser work and Go HTTP/API execution where that removes a browser need.
@@ -50,10 +50,10 @@ an admission condition for the first B0 cohort.
   per arm came from the transitional Python executor. Production c1 reached
   routing epoch 14 with five Go-owned schedules. Its lightweight executor
   health probe cut measured idle CPU from 10 to 1 seconds per 20-second
-  window. A host-side cold rollback returned all five schedules to the legacy
-  queue at 18:30–18:32 UTC on 2026-09-23, before any task was due; the reason
-  remains under investigation. Production output, requests, and whole-lane
-  capacity still need measurement. The public
+  window. A cold rollback returned all five schedules to the legacy queue
+  before [#9934's crawler deploy](https://github.com/colophon-group/jobseek/actions/runs/35903707755);
+  the supported cutover reactivated c1 at epoch 16 afterward. Production
+  output, requests, and whole-lane capacity still need measurement. The public
   sitemap run in #7935 was inconclusive because the live source changed
   between arms; it is not a Python-versus-Go verdict.
 - [#7959](https://github.com/colophon-group/jobseek/issues/7959) admitted
@@ -83,14 +83,15 @@ an admission condition for the first B0 cohort.
    Redis persistence boundaries, pending-receipt reboot, and rollback from
   current PostgreSQL schedule truth. Bound task occupancy for the next cohort;
    do not build generic compaction or a new distributed scheduler for it.
-3. **Dark default; c1 overlay rolled back.** The merged revision passed real
+3. **Dark default; c1 overlay is receipt guarded.** The merged revision passed real
    Redis/PostgreSQL transitions, container startup, and the required CI/deploy
    gates. The ordinary deploy lists the old Python/Chromium services and dark
-   claimant. The c1 overlay reached epoch 14, then returned to legacy before
-   its first due task. The receipt and B0 Redis owner are absent. Reconcile
-   the initiating host mutation, then use a fresh cold plan and receipt before
-   reactivation. No reviewer or operator approval is an additional gate once
-   the stated checks pass.
+   claimant. The c1 overlay has been cold-rolled back and reactivated around
+   a crawler deploy without changing its five retained due times. Check the
+   current receipt, Redis owner, and host mutation lock before any mutation;
+   [#8648](https://github.com/colophon-group/jobseek/issues/8648) records the
+   current routing epoch. No reviewer or operator approval is an additional
+   gate once the stated checks pass.
 4. **Whole-lane fixture complete.** The merged harness exercised the producer
    with identical immutable fixture inputs and equal 1.5 GiB whole-lane
    budgets. Its report includes exact canonical output, terminal state,
@@ -111,9 +112,8 @@ an admission condition for the first B0 cohort.
    against a 1536 MiB control. The isolated counterbalanced c1/c4 report
    passed. This is fixture evidence; production c1 has not processed a due
    task yet.
-5. **Observe c1, then expand to three origins if the numbers hold.** Reactivate
-   c1 only after the unexpected rollback is reconciled. It held exclusive
-   Go/Lightpanda ownership for one low-rate origin.
+5. **Observe c1, then expand to three origins if the numbers hold.** C1 has
+   exclusive Go/Lightpanda ownership for one low-rate origin.
    Verify no duplicate origin request, stale write, lost schedule, unsupported
    capability, or same-task Chromium fallback. Expand to the other two
    currently validated origins only if c1 remains correct and the combined
