@@ -738,7 +738,12 @@ if [[ "$OPERATION" == activate ]]; then
   # audit, and owner/route mutation is synchronously present in Redis' RDB.
   # A failed or lost SAVE reply therefore contains the lane and retries only
   # through recover-pending; no mutation service is enabled on uncertainty.
+  # Redis SAVE blocks the server longer than the producer's authority probe.
+  # Stop that read-only service while Redis persists the completed transfer.
+  bounded 30s "${compose_enabled[@]}" stop --timeout 15 lightpanda-producer
   persist_redis_rdb
+  bounded 30s "${compose_enabled[@]}" up -d --no-deps --force-recreate lightpanda-producer
+  wait_healthy enabled lightpanda-producer
   bounded 90s "${compose_enabled[@]}" up -d --force-recreate \
     worker-1 worker-2 worker-3 browser-1 drain lightpanda-executor lightpanda-claimant
   wait_healthy enabled worker-1 worker-2 worker-3 browser-1 drain lightpanda-producer lightpanda-executor lightpanda-claimant

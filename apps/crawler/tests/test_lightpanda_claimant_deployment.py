@@ -1023,10 +1023,23 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     arm_restart = wrapper.index("arm_and_verify_active_restart_policies", active_receipt)
     assert pending_restart_check < active_receipt < arm_restart
     assert wrapper.index("activation_failure_containment_armed=0", active_receipt) > active_receipt
-    activation_save = wrapper.index("persist_redis_rdb", wrapper.index("--apply --expect-digest"))
+    activation_apply = wrapper.index("--apply --expect-digest")
+    producer_stop = wrapper.index(
+        '"${compose_enabled[@]}" stop --timeout 15 lightpanda-producer', activation_apply
+    )
+    activation_save = wrapper.index("persist_redis_rdb", producer_stop)
+    producer_restart = wrapper.index(
+        '"${compose_enabled[@]}" up -d --no-deps --force-recreate lightpanda-producer',
+        activation_save,
+    )
     enabled_start = wrapper.index('"${compose_enabled[@]}" up -d --force-recreate', activation_save)
     assert (
-        wrapper.index("--apply --expect-digest") < activation_save < enabled_start < active_receipt
+        activation_apply
+        < producer_stop
+        < activation_save
+        < producer_restart
+        < enabled_start
+        < active_receipt
     )
     assert "trap contain_activation_failure EXIT" in wrapper
     rollback_attestation = wrapper.index('attest_receipt "$RECEIPT_STATE"')
@@ -1206,6 +1219,10 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
         assert apply < save
         if save_reply == "BUSY_THEN_LOST":
             assert sum(" redis-cli --raw SAVE" in event for event in events) == 2
+        assert not any(
+            " up -d --no-deps --force-recreate lightpanda-producer" in event
+            for event in events[save + 1 :]
+        )
         assert not any(" up -d --force-recreate worker-1 worker-2" in event for event in events)
     assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
 
