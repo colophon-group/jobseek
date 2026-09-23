@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import codecs
+import contextlib
 import hashlib
 import io
 import json
@@ -4031,52 +4032,64 @@ async def _extract_links_rendered(
     client: httpx.AsyncClient | None = None,
 ) -> set[str]:
     """Navigate, run actions, and extract job links from a Playwright page."""
+    from src.core.monitors.dom_capture import start_booking_capture
+
     board_url = metadata["_board_url"]
     browser_config = {k: v for k, v in metadata.items() if k in BROWSER_KEYS}
-    await _navigate_board_root(page, board_url, browser_config)
-    await run_actions(page, browser_config.get("actions", []))
+    capture = start_booking_capture(board_url, page)
+    if capture is not None:
+        page.on("response", capture.on_response)
+    try:
+        await _navigate_board_root(page, board_url, browser_config)
+        await run_actions(page, browser_config.get("actions", []))
 
-    # SiteGround returns HTTP 202 followed by a meta-refresh into
-    # ``/.well-known/captcha``.  The page contains no job links, so without
-    # this guard a WAF block is indistinguishable from a genuinely empty
-    # board and the monitor reports a successful empty cycle.
-    html = await safe_content(page)
-    _raise_if_bot_challenge(page.url, html)
+        # SiteGround returns HTTP 202 followed by a meta-refresh into
+        # ``/.well-known/captcha``.  The page contains no job links, so without
+        # this guard a WAF block is indistinguishable from a genuinely empty
+        # board and the monitor reports a successful empty cycle.
+        html = await safe_content(page)
+        _raise_if_bot_challenge(page.url, html)
 
-    oracle_adf_job_ids = _validated_oracle_adf_job_ids(metadata.get("oracle_adf_job_ids"))
-    if oracle_adf_job_ids is not None:
-        if client is None:
-            raise ValueError("DOM monitor oracle_adf_job_ids requires an HTTP client")
-        timeout = metadata.get("timeout", 30_000)
-        if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
-            raise ValueError("DOM monitor timeout must be a positive integer")
-        return await _extract_oracle_adf_job_ids(
-            page,
-            client,
-            board_url,
-            oracle_adf_job_ids,
-            url_matcher,
-            timeout=timeout,
+        oracle_adf_job_ids = _validated_oracle_adf_job_ids(metadata.get("oracle_adf_job_ids"))
+        if oracle_adf_job_ids is not None:
+            if client is None:
+                raise ValueError("DOM monitor oracle_adf_job_ids requires an HTTP client")
+            timeout = metadata.get("timeout", 30_000)
+            if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
+                raise ValueError("DOM monitor timeout must be a positive integer")
+            return await _extract_oracle_adf_job_ids(
+                page,
+                client,
+                board_url,
+                oracle_adf_job_ids,
+                url_matcher,
+                timeout=timeout,
+            )
+
+        link_selector = metadata.get("link_selector")
+        selector = link_selector or "a[href]"
+        links = await page.evaluate(
+            """
+            (selector) => Array.from(document.querySelectorAll(selector))
+                .map(a => a.href)
+                .filter(h => h.startsWith('http'))
+        """,
+            selector,
         )
-
-    link_selector = metadata.get("link_selector")
-    selector = link_selector or "a[href]"
-    links = await page.evaluate(
-        """
-        (selector) => Array.from(document.querySelectorAll(selector))
-            .map(a => a.href)
-            .filter(h => h.startsWith('http'))
-    """,
-        selector,
-    )
-    urls: set[str] = set()
-    for link in links:
-        if url_matcher is not None:
-            if url_matcher.search(link):
+        urls: set[str] = set()
+        for link in links:
+            if url_matcher is not None:
+                if url_matcher.search(link):
+                    urls.add(link)
+            elif link_selector is not None or _matches_default_job_url(link):
                 urls.add(link)
-        elif link_selector is not None or _matches_default_job_url(link):
-            urls.add(link)
-    return urls
+        if capture is not None:
+            await capture.finish(page=page, html=html, links=links, urls=urls)
+        return urls
+    finally:
+        if capture is not None:
+            with contextlib.suppress(Exception):
+                page.remove_listener("response", capture.on_response)
 
 
 async def _navigate_board_root(page, board_url: str, browser_config: dict) -> None:

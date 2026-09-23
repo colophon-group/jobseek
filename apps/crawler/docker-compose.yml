@@ -211,6 +211,9 @@ services:
       CRAWLER_DB_ROLE: browser-1
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "6"
+      # One normal scheduled Booking visit can record its main response and
+      # final DOM for an offline HTTP-vs-browser migration decision.
+      BOOKING_DOM_REPLAY_CAPTURE: ${BOOKING_DOM_REPLAY_CAPTURE:-}
       # Bound the lifetime of each long-lived Playwright Node driver. Recycle
       # only between claims; in-flight browser tasks are never interrupted.
       BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"
