@@ -208,3 +208,23 @@ key would require a durable mapping and exporter/read-path migration; the
 60 ms diagnostic result does not justify introducing that contract casually.
 The lower 30.2 memory footprint remains attractive, but it must be weighed
 against the actual query latency on the production-sized corpus.
+
+## Standalone synthetic upstream reproduction
+
+The [self-contained Python/Docker reproduction](../../scripts/repro-typesense-grouping.py)
+now reproduces the slowdown without the posting sample, credentials, or repository
+dependencies. Its deterministic generator creates 350,000 documents, including
+288,000 inactive documents, across 2,000 synthetic companies. The keyword query
+matches 14,000 documents across 800 companies. This is a separate synthetic
+fixture; its timings should not be mixed with the posting-sample measurements above.
+
+The final paired run (3 warm-ups and 15 measured rounds per variant) returned
+27.1 / 30.2 median times of **39 / 958 ms** for split UUIDs, **39 / 366 ms**
+for whole UUIDs, and **38 / 88 ms** for numeric keys. The ungrouped count control
+was **22 / 19 ms**. All ordered groups, group counts and document IDs matched
+within and across versions; there were no cutoffs or cgroup memory-limit/OOM events.
+
+[Raw evidence](typesense-memory-2026-09-23/grouping-synthetic-repro.json) and
+[the upstream comment draft](2026-09-23-typesense-grouping-issue-comment-draft.md)
+include reproduction steps, image digests, exact queries and limitations.
+The draft is intended for existing upstream #2366 and has not been submitted.
