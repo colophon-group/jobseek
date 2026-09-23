@@ -6,7 +6,7 @@ const VALID_PAYLOAD = {
   authoritativeCount: 123_456,
   benchmarkSha256: "a".repeat(64),
   completedAt: "2026-09-11T10:00:00.123456Z",
-  keyVersion: "uuid-b64lex-v1",
+  keyVersion: "uuid-int64-active-v1",
   partitions: 256,
   reconciliationRunId: "00000000-0000-0000-0000-000000000001",
   schemaVersion: "typesense-stable-candidate-order-readiness-v1",

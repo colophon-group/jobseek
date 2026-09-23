@@ -1,0 +1,60 @@
+{
+  "backup": {
+    "encrypted_backup_completed_at": "2026-09-23T12:08:44Z",
+    "local_consistent_snapshot_bytes": 2701261496,
+    "local_snapshot_removed_after_rollback": true
+  },
+  "baseline": {
+    "allocated_bytes": 3300385336,
+    "documents": 5512512,
+    "resident_bytes": 3741544448,
+    "watchlist_query_found": 1108,
+    "watchlist_query_p95_ms": 96,
+    "watchlist_query_samples": 20
+  },
+  "captured_at": "2026-09-23T12:44:26.755788+00:00",
+  "container_memory_limit_bytes": 6442450944,
+  "decision": {
+    "accepted_for_rollout": false,
+    "measurement_limit": "The increment includes update-related allocation and cache churn. It is an early stop signal, not a validated per-document steady-state index-cost estimate.",
+    "readiness_receipt_emitted": false,
+    "reason": "The first 50,000 updates increased effective working-set memory by 88 MB, leaving less than 1.4 GiB headroom. Continuing toward 5.5 million keys on a 6 GiB container was too risky."
+  },
+  "evidence_files": [
+    "docs/evidence/candidate-order-prod-2026-09-23-preflight.json",
+    "docs/evidence/candidate-order-prod-2026-09-23-memory-method.json"
+  ],
+  "key_version": "uuid-b64lex-v1",
+  "rollback": {
+    "container_restarts": 0,
+    "final_allocated_bytes": 3302261144,
+    "final_documents": 5514373,
+    "final_resident_bytes": 3755261952,
+    "final_watchlist_query_found": 1114,
+    "final_watchlist_query_p95_ms": 103,
+    "final_watchlist_query_samples": 20,
+    "oom_events": 0,
+    "sampled_cleared_documents_without_key": 3,
+    "schema_field_present": false,
+    "temporary_local_files_removed": true,
+    "test_keys_cleared": 50000
+  },
+  "server_type": "Hetzner CX33",
+  "status": "aborted_and_rolled_back",
+  "trial": {
+    "container_restarts": 0,
+    "effective_headroom_after_bytes": 1493377024,
+    "effective_working_set_after_bytes": 4949073920,
+    "effective_working_set_before_bytes": 4860866560,
+    "effective_working_set_increase_bytes": 88207360,
+    "empty_field_allocated_bytes": 3306922320,
+    "empty_field_resident_bytes": 3755991040,
+    "fixed_id_export_count": 5512953,
+    "key_update_seconds": 11.69,
+    "key_updates_accepted": 50000,
+    "oom_events": 0,
+    "schema_added": "optional indexed and sortable candidate_order_key",
+    "schema_alter_completed": true
+  },
+  "typesense_version": "27.1"
+}

@@ -1358,6 +1358,7 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     /actions\/checkout@[0-9a-f]+[^\n]*\n        with:\n          fetch-depth: 0\n          persist-credentials: false/,
   );
   assert.match(crawlerImageJob, /name: Verify exact PR merge provenance/);
+  assert.match(crawlerImageJob, /id: merge-provenance/);
   assert.match(crawlerImageJob, /TESTED_BUILD_SHA: \$\{\{ github\.sha \}\}/);
   assert.match(
     crawlerImageJob,
@@ -1368,10 +1369,12 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
   );
   assert.match(crawlerImageJob, /git rev-list --parents -n 1 HEAD/);
-  assert.match(crawlerImageJob, /test "\$parent_one" = "\$BASE_SHA"/);
+  assert.match(crawlerImageJob, /git merge-base --is-ancestor "\$BASE_SHA" "\$parent_one"/);
+  assert.match(crawlerImageJob, /git merge-base --is-ancestor "\$parent_one" origin\/main/);
   assert.match(crawlerImageJob, /test "\$parent_two" = "\$PR_HEAD_SHA"/);
   assert.match(crawlerImageJob, /git rev-parse HEAD\^1/);
   assert.match(crawlerImageJob, /git rev-parse HEAD\^2/);
+  assert.match(crawlerImageJob, /echo "base_sha=\$parent_one" >> "\$GITHUB_OUTPUT"/);
 
   const buildxIndex = crawlerImageJob.indexOf("docker/setup-buildx-action@");
   const slimGuardIndex = crawlerImageJob.indexOf("name: Guard exact slim image build context");
@@ -1406,7 +1409,8 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     assert.match(guard, /test -z "\$\(git status --porcelain=v1 --untracked-files=all\)"/);
     assert.match(guard, /git rev-list --parents -n 1 HEAD/);
     assert.match(guard, /test "\$commit" = "\$TESTED_BUILD_SHA"/);
-    assert.match(guard, /test "\$parent_one" = "\$BASE_SHA"/);
+    assert.match(guard, /git merge-base --is-ancestor "\$BASE_SHA" "\$parent_one"/);
+    assert.match(guard, /git merge-base --is-ancestor "\$parent_one" origin\/main/);
     assert.match(guard, /test "\$parent_two" = "\$PR_HEAD_SHA"/);
     assert.match(guard, /git rev-parse HEAD\^1/);
     assert.match(guard, /git rev-parse HEAD\^2/);
@@ -1427,8 +1431,12 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     2,
   );
   assert.equal(
-    (crawlerImageJob.match(/com\.colophon-group\.jobseek\.base=/g) ?? []).length,
+    (crawlerImageJob.match(/com\.colophon-group\.jobseek\.base=\$\{\{ steps\.merge-provenance\.outputs\.base_sha \}\}/g) ?? []).length,
     2,
+  );
+  assert.match(
+    crawlerImageJob,
+    /name: Exercise real sampler and container shutdown lifecycle[\s\S]*BASE_SHA: \$\{\{ steps\.merge-provenance\.outputs\.base_sha \}\}/,
   );
 
   assert.match(crawlerImageJob, /crawler-sampler-container-smoke\.py --self-test/);

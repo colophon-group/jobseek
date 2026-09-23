@@ -42,6 +42,7 @@ from src.exporter import (
     run_exporter,
 )
 from src.metrics import export_errors_total
+from src.typesense_candidate_order import candidate_order_key, candidate_order_words
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -1979,6 +1980,7 @@ def _make_taxonomy_maps() -> TaxonomyMaps:
 
 def _make_posting_record(
     *,
+    is_active: bool = True,
     location_ids: list[int] | None = None,
     occupation_id: int | None = None,
     titles: list[str] | None = None,
@@ -2001,7 +2003,7 @@ def _make_posting_record(
         "id": posting_id,
         "company_id": company_id,
         "titles": ["Test Job"] if titles is None else titles,
-        "is_active": True,
+        "is_active": is_active,
         "location_ids": location_ids,
         "location_types": ["onsite"] * len(location_ids or []),
         "occupation_id": occupation_id,
@@ -2062,11 +2064,24 @@ class TestBuildTypesenseDocsAncestors:
         docs = _build_typesense_docs([row], maps)
         assert len(docs) == 1
         assert docs[0]["reconciliation_bucket"] == uuid.UUID(docs[0]["id"]).hex[:2]
+        assert docs[0]["candidate_order_key"] == candidate_order_key(row["id"])
+        assert (
+            docs[0]["candidate_order_hi"],
+            docs[0]["candidate_order_lo"],
+        ) == candidate_order_words(row["id"])
         loc_ids = set(docs[0]["location_ids"])
         assert docs[0]["location_direct_ids"] == [10]
         assert 10 in loc_ids  # leaf (city)
         assert 20 in loc_ids  # region ancestor
         assert 30 in loc_ids  # country ancestor
+
+    def test_inactive_posting_does_not_consume_candidate_sort_index(self):
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(is_active=False)
+        doc = _build_typesense_docs([row], maps)[0]
+        assert doc["candidate_order_key"] is None
+        assert doc["candidate_order_hi"] is None
+        assert doc["candidate_order_lo"] is None
 
     def test_location_names_only_for_leaf_ids(self):
         """location_names should only contain names for leaf IDs, not ancestors."""

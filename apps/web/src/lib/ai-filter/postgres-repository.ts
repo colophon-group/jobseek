@@ -178,7 +178,6 @@ export class PostgresAiFilterExecutionRepository
   constructor(private readonly executionPolicy: {
     user: number | null;
     project: number | null;
-    pilotUserIds: readonly string[];
   }) {
     for (const [scope, limit] of [
       ["user", executionPolicy.user],
@@ -432,9 +431,6 @@ export class PostgresAiFilterExecutionRepository
   async reserveBudget(
     input: Parameters<AiFilterExecutionRepository["reserveBudget"]>[0],
   ): Promise<AiFilterBudgetResult> {
-    if (!this.executionPolicy.pilotUserIds.includes(input.context.ownerId)) {
-      throw new AiFilterAuthorizationError();
-    }
     return db.transaction(async (tx) => {
       await advisoryLock(tx, `ai-filter-reservation:${input.idempotencyKey}`);
       // Serialize the final spend authorization with enable/query-change/

@@ -1,0 +1,27 @@
+{
+  "baseline": {
+    "collection": "job_posting_v1",
+    "documents": 5512512,
+    "query_samples": 20,
+    "representative_query": "is_active:true && location_ids:=[2658434] && seniority_id:=1; first_seen_at:desc; per_page=100",
+    "representative_query_found": 1108,
+    "representative_query_p95_ms": 96,
+    "typesense_resident_bytes": 3741544448
+  },
+  "captured_at": "2026-09-23T12:12:05.829752+00:00",
+  "container_memory_limit_bytes": 6442450944,
+  "purpose": "Predeclared stop thresholds for production candidate_order_key test",
+  "rollback": {
+    "primary": "Drop candidate_order_key from the collection schema to release its in-memory index; leave the web readiness receipt unset",
+    "recovery": "Fresh encrypted backup and local application-consistent snapshot candidate-order-pre-20260923"
+  },
+  "server_type": "Hetzner CX33",
+  "stop_thresholds": {
+    "maximum_representative_query_p95_ms": 192,
+    "minimum_cgroup_headroom_bytes": 1073741824,
+    "minimum_collection_document_count_ratio": 0.99,
+    "oom_events_allowed": 0,
+    "typesense_restarts_allowed": 0
+  },
+  "typesense_version": "27.1"
+}

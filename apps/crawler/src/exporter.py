@@ -41,6 +41,9 @@ from src.metrics import (
     typesense_memory_bytes,
 )
 from src.redis_queue import get_queue_depths
+from src.typesense_candidate_order import (
+    candidate_order_fields,
+)
 
 # These availability gauges are only ever set by this module (the exporter), so we
 # define them here instead of in metrics.py. Defining them at metrics.py's
@@ -559,8 +562,13 @@ def _build_typesense_docs(
         # reflects the latest title/description state on update.
         has_content = bool(title and title.strip()) and (row["description_r2_hash"] is not None)
 
+        posting_id = str(row["id"])
+        # Required candidate reads only search active postings. Clearing these
+        # optional fields on delist keeps old postings out of the sort index;
+        # a relist upsert restores them before the posting becomes eligible.
         doc: dict = {
-            "id": str(row["id"]),
+            "id": posting_id,
+            **candidate_order_fields(row["id"], active=bool(row["is_active"])),
             # Stable UUID range bucket used by the deploy-independent
             # reconciler. Keeping it in the document avoids whole-index loads
             # and bounds normal scans to 1/256 of the collection.

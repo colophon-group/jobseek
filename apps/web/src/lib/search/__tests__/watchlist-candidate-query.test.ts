@@ -5,7 +5,9 @@ import {
   buildWatchlistCandidateSearchParams,
   buildWatchlistCandidateWindowFilter,
   candidateOrderKeyFromCanonicalId,
-  WATCHLIST_CANDIDATE_ORDER_KEY_FIELD,
+  candidateOrderWordsFromCanonicalId,
+  WATCHLIST_CANDIDATE_ORDER_HI_FIELD,
+  WATCHLIST_CANDIDATE_ORDER_LO_FIELD,
   WATCHLIST_CANDIDATE_WINDOW_BOUNDARY,
 } from "../watchlist-candidate-query";
 
@@ -86,7 +88,7 @@ describe("canonical watchlist candidate query", () => {
     expect(search.filter_by).toContain("is_active:true");
     expect(search.filter_by).toContain(filter);
     expect(search.sort_by).toBe(
-      `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`,
+      `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_HI_FIELD}(missing_values: first):asc,${WATCHLIST_CANDIDATE_ORDER_LO_FIELD}(missing_values: first):asc`,
     );
 
     const preBackfillSearch = buildWatchlistCandidateSearchParams({
@@ -120,6 +122,21 @@ describe("canonical watchlist candidate query", () => {
     expect(() =>
       candidateOrderKeyFromCanonicalId(ids[2]!.toUpperCase()),
     ).toThrow("canonical lowercase UUID");
+  });
+
+  it("preserves UUID order across signed int64 boundaries", () => {
+    const ids = [
+      "00000000-0000-0000-0000-000000000000",
+      "00000000-0000-0000-ffff-ffffffffffff",
+      "00000000-0000-0001-0000-000000000000",
+      "7fffffff-ffff-ffff-ffff-ffffffffffff",
+      "80000000-0000-0000-0000-000000000000",
+      "ffffffff-ffff-ffff-ffff-ffffffffffff",
+    ];
+    const words = ids.map(candidateOrderWordsFromCanonicalId);
+    expect(words).toEqual([...words].sort((a, b) =>
+      a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0
+    ));
   });
 
   it("rejects overlapping/ambiguous window bounds", () => {

@@ -51,6 +51,25 @@ def test_job_posting_schema_keeps_unused_compatibility_fields_stored_only() -> N
         assert fields[name]["optional"] is True
 
 
+def test_job_posting_schema_has_numeric_candidate_order() -> None:
+    job_posting = next(c for c in COLLECTIONS if c["name"] == "job_posting")
+    fields = {f["name"]: f for f in job_posting["fields"]}
+
+    assert fields["candidate_order_key"] == {
+        "name": "candidate_order_key",
+        "type": "string",
+        "index": False,
+        "optional": True,
+    }
+    for name in ("candidate_order_hi", "candidate_order_lo"):
+        assert fields[name] == {
+            "name": name,
+            "type": "int64",
+            "sort": True,
+            "optional": True,
+        }
+
+
 def test_taxonomy_schema_carries_web_hierarchy_contract() -> None:
     schemas = {collection["name"]: collection for collection in COLLECTIONS}
     posting_fields = {field["name"]: field for field in schemas["job_posting"]["fields"]}
@@ -165,6 +184,37 @@ def test_patch_adds_genuinely_new_fields() -> None:
     collection.update.assert_called_once()
     payload_names = [f["name"] for f in collection.update.call_args.args[0]["fields"]]
     assert sorted(payload_names) == ["founded_year", "logo"]
+
+
+def test_patch_preserves_candidate_sort_field_rollout_shape() -> None:
+    client, collection = _stub_client(retrieve_fields=[{"name": "first_seen_at", "type": "int64"}])
+
+    _patch_missing_fields(
+        client,
+        "job_posting",
+        desired_fields=[
+            {"name": "first_seen_at", "type": "int64"},
+            {
+                "name": "candidate_order_key",
+                "type": "string",
+                "index": False,
+                "optional": True,
+            },
+            {"name": "candidate_order_hi", "type": "int64", "sort": True, "optional": True},
+            {"name": "candidate_order_lo", "type": "int64", "sort": True, "optional": True},
+        ],
+    )
+
+    assert collection.update.call_args.args[0]["fields"] == [
+        {
+            "name": "candidate_order_key",
+            "type": "string",
+            "index": False,
+            "optional": True,
+        },
+        {"name": "candidate_order_hi", "type": "int64", "sort": True, "optional": True},
+        {"name": "candidate_order_lo", "type": "int64", "sort": True, "optional": True},
+    ]
 
 
 # ---------------------------------------------------------------------------

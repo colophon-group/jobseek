@@ -25,6 +25,8 @@ interface JobPostingDoc {
   source_url?: string | null;
   first_seen_at: number;
   candidate_order_key?: string;
+  candidate_order_hi?: number;
+  candidate_order_lo?: number;
   is_active?: boolean | null;
   company_id?: string | null;
   company_name?: string | null;
