@@ -667,15 +667,19 @@ check_producer_activation_sentinel_absent() {
 }
 
 persist_redis_rdb() {
-  local reply
-  reply="$(bounded 120s "${compose_base[@]}" exec -T redis redis-cli --raw SAVE)" || {
+  local reply attempt
+  for attempt in $(seq 1 40); do
+    reply=""
+    if reply="$(bounded 120s "${compose_base[@]}" exec -T redis redis-cli --raw SAVE)"; then
+      [[ "$reply" == OK ]] && return 0
+    fi
+    if [[ "$reply" == *"Background save already in progress"* && "$attempt" -lt 40 ]]; then
+      sleep 2
+      continue
+    fi
     echo "ERROR: synchronous Redis RDB persistence failed" >&2
     return 1
-  }
-  [[ "$reply" == OK ]] || {
-    echo "ERROR: synchronous Redis RDB persistence returned an invalid reply" >&2
-    return 1
-  }
+  done
 }
 
 RECEIPT_STATE=""
