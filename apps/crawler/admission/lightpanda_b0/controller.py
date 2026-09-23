@@ -812,6 +812,15 @@ def run_arm(
         }
     except Exception as exc:  # noqa: BLE001 - partial arm becomes rejection evidence
         result["error"] = f"{type(exc).__name__}: {exc}"
+        diagnostics: dict[str, str] = {}
+        for service in ("renderer", "producer", "executor", "supervisor", "fixture", "control"):
+            try:
+                logs = _compose(env, "logs", "--no-color", "--tail", "40", service, timeout=10)
+            except Exception as log_exc:  # noqa: BLE001 - diagnostic must not hide the failure
+                logs = f"{type(log_exc).__name__}: {log_exc}"
+            if logs.strip():
+                diagnostics[service] = logs[-8000:]
+        result["diagnostics"] = diagnostics
     finally:
         result["cleanup"] = cleanup_project(env)
     return result
