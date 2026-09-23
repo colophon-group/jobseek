@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { SearchStateSnapshot } from "@/components/providers/SearchStateProvider";
 
 import "@/test-utils/lingui-mock";
 
@@ -26,14 +27,19 @@ vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({ isLoggedIn: false }),
 }));
 
+const snapshotMocks = vi.hoisted(() => ({
+  snapshot: null as SearchStateSnapshot | null,
+  save: vi.fn(),
+}));
+
 vi.mock("@/components/providers/SearchStateProvider", () => ({
   useSearchStateStore: () => ({
-    get: () => null,
-    set: vi.fn(),
+    get: () => snapshotMocks.snapshot,
+    set: snapshotMocks.save,
     setPageActions: vi.fn(),
   }),
   buildCacheKey: () => "",
-  shouldRestoreSnapshot: () => false,
+  shouldRestoreSnapshot: () => snapshotMocks.snapshot !== null,
 }));
 
 // Heavy children: stub to deterministic markers so the test focuses
@@ -56,7 +62,14 @@ vi.mock("@/components/search/search-toolbar", () => ({
 }));
 
 vi.mock("@/components/search/search-results", () => ({
-  SearchResults: () => <div data-testid="search-results-stub" />,
+  SearchResults: ({ companies, hasMore, load }: {
+    companies: { company: { id: string } }[];
+    hasMore: boolean;
+    load: () => Promise<void>;
+  }) => <div data-testid="search-results-stub">
+    <span data-testid="visible-company-ids">{companies.map((c) => c.company.id).join(",")}</span>
+    {hasMore && <button onClick={load}>Load more results</button>}
+  </div>,
 }));
 
 vi.mock("@/components/search/explore-repository-fallback", () => ({
@@ -127,6 +140,8 @@ const runSearchJobsMock = vi.mocked(runSearchJobs);
 const tryListTopCompaniesDirectMock = vi.mocked(tryListTopCompaniesDirect);
 
 beforeEach(() => {
+  snapshotMocks.snapshot = null;
+  snapshotMocks.save.mockClear();
   // jsdom/happy-dom may not set up window.history.replaceState identically
   // across versions; stub to a no-op so the component's URL syncs do not
   // throw in the test environment.
@@ -510,5 +525,61 @@ describe("SearchPage — safe external filter navigation (#7218)", () => {
       .toBe(JSON.stringify({ loc: ["india"] }));
     expect(runSearchJobsMock).not.toHaveBeenCalled();
     expect(runListTopCompaniesMock).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("SearchPage grouped pagination", () => {
+  beforeEach(() => {
+    runSearchJobsMock.mockReset();
+    runSearchJobsMock.mockResolvedValue({ companies: [], totalCompanies: 0 });
+  });
+  const company = (id: string) => ({
+    company: { id, name: id, slug: id, icon: null },
+    activeMatches: 1, yearMatches: 2, postings: [],
+  });
+  const props = {
+    initialCompanies: [company("a")], initialTotalCompanies: 1, initialNextOffset: 10,
+    initialKeywords: ["engineer"], initialLocations: [], initialOccupations: [],
+    initialSeniorities: [], initialTechnologies: [], initialEmploymentTypes: [],
+    initialWorkMode: [], locale: "en", displayCurrency: "EUR", jobLanguages: [], languages: [],
+  };
+
+  it("uses raw offsets through deduplication and restore, then stops despite an overestimate", async () => {
+    runSearchJobsMock.mockResolvedValueOnce({
+      companies: [company("a"), company("b")], totalCompanies: 1, nextOffset: 20,
+    });
+    const first = render(<SearchPage {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Load more results" }));
+    await waitFor(() => expect(screen.getByTestId("visible-company-ids").textContent).toBe("a,b"));
+    expect(runSearchJobsMock).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 10 }), false);
+    first.unmount();
+    const snapshot = snapshotMocks.save.mock.calls.at(-1)![0] as SearchStateSnapshot;
+    expect(snapshot).toMatchObject({ nextOffset: 20, serverOffset: 20 });
+    snapshotMocks.snapshot = snapshot;
+    runSearchJobsMock.mockResolvedValueOnce({ companies: [], totalCompanies: 999, nextOffset: null });
+    render(<SearchPage {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Load more results" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Load more results" })).toBeNull());
+    expect(runSearchJobsMock).toHaveBeenLastCalledWith(expect.objectContaining({ offset: 20 }), false);
+    expect(screen.getByTestId("visible-company-ids").textContent).toBe("a,b");
+  });
+
+  it("does not apply a late page after filters change", async () => {
+    let resolvePage!: (value: Awaited<ReturnType<typeof runSearchJobs>>) => void;
+    runSearchJobsMock.mockImplementationOnce(() => new Promise((resolve) => { resolvePage = resolve; }));
+    runSearchJobsMock.mockResolvedValueOnce({ companies: [company("filtered")], totalCompanies: 1, nextOffset: null });
+    render(<SearchPage {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Load more results" }));
+    fireEvent.click(screen.getByRole("button", { name: "toggle remote" }));
+    await waitFor(() => expect(screen.getByTestId("visible-company-ids").textContent).toBe("filtered"));
+    await act(async () => resolvePage({ companies: [company("stale")], totalCompanies: 999, nextOffset: 20 }));
+    expect(screen.getByTestId("visible-company-ids").textContent).toBe("filtered");
+    expect(screen.queryByRole("button", { name: "Load more results" })).toBeNull();
+  });
+
+  it("keeps anonymous truncation authoritative over a next offset", () => {
+    render(<SearchPage {...props} initialTruncated />);
+    expect(screen.queryByRole("button", { name: "Load more results" })).toBeNull();
   });
 });
