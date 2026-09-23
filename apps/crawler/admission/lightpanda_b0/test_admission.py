@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import yaml
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -105,6 +106,11 @@ def test_fixture_limits_selected_origins() -> None:
 
 def test_compose_counts_real_producer_inside_equal_lane() -> None:
     compose = (HERE / "compose.yml").read_text()
+    services = yaml.safe_load(compose)["services"]
+    for service in services.values():
+        for mount in service.get("tmpfs", []):
+            assert mount.startswith("/")
+            assert "uid=" not in mount or ":" in mount
     assert "LIGHTPANDA_B0_PRODUCER_MODE: enabled" in compose
     assert 'LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "0"' in compose
     assert "producer-socket:/run/jobseek-lightpanda-producer:ro" in compose

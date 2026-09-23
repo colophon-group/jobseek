@@ -67,7 +67,7 @@ services:
     environment:
       <<: *crawler-env
     networks: [claim]
-    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=32m]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,7 +86,7 @@ services:
     volumes:
       - .:/admission:ro
       - ${ADMISSION_PKI_DIR:?ephemeral PKI directory required}:/run/pki:ro
-    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=4m,uid=10001,gid=10001,mode=0700]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=4m,uid=10001,gid=10001,mode=0700"]
     healthcheck: {test: [CMD, test, -f, /tmp/ready], interval: 1s, timeout: 2s, retries: 30}
     mem_limit: 128m
     memswap_limit: 128m
@@ -113,7 +113,7 @@ services:
     volumes:
       - executor-socket:/run/jobseek-lightpanda-executor
     networks: [claim]
-    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,7 +136,7 @@ services:
     networks: {claim: {ipv4_address: 172.30.250.2}, origin: {ipv4_address: 11.252.0.3}}
     volumes:
       - ${ADMISSION_PKI_DIR:?ephemeral PKI directory required}:/run/pki:ro
-    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10002,gid=10002,mode=0700]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10002,gid=10002,mode=0700"]
     mem_limit: 1g
     memswap_limit: 1g
     cpus: 2.0
@@ -221,7 +221,7 @@ services:
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "4"
     networks: {claim: {}, origin: {ipv4_address: 11.252.0.4}}
-    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=256m]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=256m"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -248,7 +248,7 @@ services:
     volumes:
       - ${ADMISSION_INPUT:?workload required}:/admission-input/input.json:ro
       - producer-socket:/run/jobseek-lightpanda-producer:ro
-    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0700]
+    tmpfs: ["/tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0700"]
     depends_on:
       migrate:
         condition: service_completed_successfully
