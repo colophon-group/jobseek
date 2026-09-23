@@ -247,7 +247,7 @@ async def _redis_evidence(redis: Redis, candidate: bool, ids: list[str]) -> dict
         tag = f"lightpanda-b0:{{{os.environ['LIGHTPANDA_B0_QUEUE_NAMESPACE']}}}"
         route = await redis.hgetall(f"{tag}:route")
         records = await redis.hgetall(f"{tag}:records")
-        terminal = sorted(str(value) for value in await redis.zrange(f"{tag}:terminal", 0, -1))
+        terminal = sorted(str(value) for value in await redis.smembers(f"{tag}:terminal"))
         parsed = [json.loads(value) for value in records.values()]
         return {
             "keys": keys,

@@ -8,10 +8,11 @@ import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import yaml
+from redis.asyncio import Redis
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
@@ -69,11 +70,34 @@ def test_candidate_feed_uses_go_prepare_and_activate(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(admission, "enqueue_scrapes", enqueue)
     monkeypatch.setattr(admission, "request_manifest", manifest)
     monkeypatch.setattr(admission, "request_task", request)
-    result = asyncio.run(admission._feed(SimpleNamespace(), tasks, True, 1000.0))
+    result = asyncio.run(admission._feed(cast(Redis, SimpleNamespace()), tasks, True, 1000.0))
     assert result == [task["id"] for task in tasks]
     assert legacy_calls == 0
     assert [call["operation"] for call in calls] == ["prepare", "activate"] * 4
     assert all(call["operator_transfer"] is True and call["browser"] is True for call in calls)
+
+
+def test_candidate_terminal_evidence_reads_redis_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    ids = [task["id"] for task in admission.load_tasks(controller.WORKLOAD, 1)]
+
+    class RedisFixture:
+        async def keys(self, _pattern: str) -> list[str]:
+            return []
+
+        async def hgetall(self, key: str) -> dict[str, str]:
+            if key.endswith(":route"):
+                return {"claim_sequence": "4"}
+            return {task_id: json.dumps({"state": "terminal", "failures": 0}) for task_id in ids}
+
+        async def smembers(self, _key: str) -> set[str]:
+            return set(ids)
+
+    async def fast_sleep(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setenv("LIGHTPANDA_B0_QUEUE_NAMESPACE", "admission-b0")
+    monkeypatch.setattr(admission.asyncio, "sleep", fast_sleep)
+    assert asyncio.run(admission._redis_evidence(RedisFixture(), True, ids))["exact"] is True  # type: ignore[arg-type]
 
 
 def test_legacy_seed_is_separate_from_go_transfer(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -90,7 +114,7 @@ def test_legacy_seed_is_separate_from_go_transfer(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(admission, "enqueue_scrapes", enqueue)
     monkeypatch.setattr(admission, "request_manifest", forbidden)
     monkeypatch.setattr(admission, "request_task", forbidden)
-    assert asyncio.run(admission._feed(SimpleNamespace(), tasks, False, 1000.0)) == [
+    assert asyncio.run(admission._feed(cast(Redis, SimpleNamespace()), tasks, False, 1000.0)) == [
         task["id"] for task in tasks
     ]
     assert seen == [4]
