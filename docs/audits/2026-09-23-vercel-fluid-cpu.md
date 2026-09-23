@@ -113,8 +113,8 @@ The filtered-search failure above was traced to an invalid/revoked browser-key
 parent in the main checkout's env file. A child minted from that parent is
 rejected with HTTP 403. The **same browser search provider and queries**, using
 a public scoped child issued by production's `/api/typesense-key`, succeed:
-Aircall 77 unfiltered / 30 engineer results; HelloFresh 189 / 89; each first
-page returns 20 valid rows. No production secret was extracted or changed.
+Aircall 77 active / 189 in the last year unfiltered, and 30 active / 89 in
+the last year for engineer; each first page returns 20 valid rows. No production secret was extracted or changed.
 This resolves the local credential diagnosis; deployed preview verification
 still needs to exercise the complete UI and actual preview key issuance.
 
