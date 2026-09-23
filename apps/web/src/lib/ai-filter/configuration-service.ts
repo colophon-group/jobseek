@@ -609,6 +609,14 @@ export async function getSharedAiFilterOwnerId(input: {
   const [shared] = await db
     .select({ ownerId: watchlist.userId })
     .from(watchlist)
+    .innerJoin(
+      aiFilterConfiguration,
+      and(
+        eq(aiFilterConfiguration.watchlistId, watchlist.id),
+        eq(aiFilterConfiguration.ownerId, watchlist.userId),
+        eq(aiFilterConfiguration.status, "enabled"),
+      ),
+    )
     .innerJoin(subscription, eq(subscription.userId, watchlist.userId))
     .where(and(
       eq(watchlist.id, input.watchlistId),
