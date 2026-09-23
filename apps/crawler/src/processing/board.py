@@ -1909,6 +1909,8 @@ async def _process_one_board_streaming(
     pw_owned = False  # True when we created pw ourselves and must stop it
     effective_http = http
     monitor_stream = None
+    workday_capture = None
+    capture_succeeded = False
 
     try:
         metadata = board["metadata"] if board["metadata"] else {}
@@ -1927,6 +1929,18 @@ async def _process_one_board_streaming(
             from src.shared.http import create_http_client
 
             effective_http = create_http_client(verify=ssl_verify, use_proxy=use_proxy)
+
+        from src.processing.workday_capture import start_workday_capture
+
+        workday_capture = start_workday_capture(board_id, crawler_type, metadata)
+        if workday_capture is not None:
+            # This board owns its hook. The shared worker client concurrently
+            # serves unrelated boards and must never receive a capture hook.
+            from src.shared.http import create_http_client
+
+            effective_http = create_http_client()
+            effective_http.event_hooks["request"].append(workday_capture.capture_request)
+            effective_http.event_hooks["response"].append(workday_capture.capture_response)
 
         # Start Playwright if this monitor needs a browser and none was provided
         if pw is None and _batch.monitor_needs_browser(crawler_type, metadata):
@@ -2539,6 +2553,7 @@ async def _process_one_board_streaming(
                     with contextlib.suppress(Exception):
                         await _batch.get_redis().delete("cache:platform-stats")
                 _emit_board_recovery(recovered_from, board_log, discovered=0)
+            capture_succeeded = True
             return BoardMonitorResult(True, elapsed, "succeeded")
 
         # Mark as gone any active posting not seen during this monitor run.
@@ -2690,6 +2705,7 @@ async def _process_one_board_streaming(
             with contextlib.suppress(Exception):
                 await _batch.get_redis().delete("cache:platform-stats")
 
+        capture_succeeded = True
         return BoardMonitorResult(True, elapsed, "succeeded")
 
     except TDMReservedError as exc:
@@ -2824,6 +2840,8 @@ async def _process_one_board_streaming(
                 )
         return BoardMonitorResult(False, elapsed, "failed")
     finally:
+        if workday_capture is not None:
+            workday_capture.finish(monitor_succeeded=capture_succeeded)
         if monitor_stream is not None:
             close_stream = getattr(monitor_stream, "aclose", None)
             if close_stream is not None:
