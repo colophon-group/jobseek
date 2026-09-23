@@ -31,10 +31,17 @@ _LOCATION_TYPE_MAP = {
 
 def _parse_job_url(url: str) -> tuple[str, str] | None:
     parsed = urlsplit(url)
-    if parsed.scheme != "https" or (parsed.hostname or "").lower() not in {
-        "app.jobconvo.com",
-        "jobs.jobconvo.com",
-    }:
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower() not in {"app.jobconvo.com", "jobs.jobconvo.com"}
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
         return None
     match = _JOB_PATH_RE.fullmatch(parsed.path)
     if match is None:

@@ -936,6 +936,9 @@ _MONITOR_CONFIG_HINTS = {
     "talentreef": "Optional: alias and locale (auto-filled from a JobAppNetwork URL)",
     "nowhiring": "Optional: slug (auto-filled from a NowHiring career-site URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
+    "jobconvo": (
+        "Requires: listing_url, locale, career_page (auto-filled from a JobConvo career-page URL)"
+    ),
     "jobbank104": (
         "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"
     ),
@@ -1045,6 +1048,7 @@ _MONITOR_CONFIG_HINTS = {
 
 _SCRAPER_CONFIG_HINTS = {
     "json-ld": "Optional: render, actions, wait, timeout",
+    "jobconvo": "Optional: locale (auto-filled from the paired JobConvo monitor)",
     "dom": "Requires: steps[]. Optional: render, actions, wait, timeout",
     "nextdata": "Requires: fields. Optional: path, render, actions",
     "embedded": "Requires: fields + one of: script_id/pattern/variable. Optional: path, render",

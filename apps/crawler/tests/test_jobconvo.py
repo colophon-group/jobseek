@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitors.jobconvo import can_handle, discover
+from src.core.monitors.jobconvo import _listing_identity, can_handle, discover
 from src.core.scrapers.jobconvo import _detail_url, _parse_detail, _parse_job_url, scrape
 from src.workspace._compat import auto_scraper_type
 
@@ -13,7 +13,7 @@ JOB_ONE = "7f2464bf-1bf6-4f8d-bc87-62e0205d536d"
 JOB_TWO = "76dcf0e5-ca85-4acb-a1b0-2dc603c245fe"
 
 
-def _listing(rows: list[tuple[str, str]], pages: list[int]) -> str:
+def _listing(rows: list[tuple[str, str]], pages: list[int], *, active_page: int = 1) -> str:
     job_rows = "".join(
         f"""
         <tr class="joblist"><td>
@@ -27,7 +27,10 @@ def _listing(rows: list[tuple[str, str]], pages: list[int]) -> str:
     return f"""
     <html><body>
       <table id="tbl"><tbody>{job_rows}</tbody></table>
-      <ul class="pagination">{page_links}</ul>
+      <ul class="pagination">
+        <li class="active"><a href="#">{active_page}</a></li>
+        {page_links}
+      </ul>
     </body></html>
     """
 
@@ -35,7 +38,7 @@ def _listing(rows: list[tuple[str, str]], pages: list[int]) -> str:
 @pytest.mark.asyncio
 async def test_jobconvo_monitor_follows_only_advertised_pages():
     page_one = _listing([("one-role", JOB_ONE)], [2])
-    page_two = _listing([("two-role", JOB_TWO)], [1])
+    page_two = _listing([("two-role", JOB_TWO)], [1], active_page=2)
 
     def handler(request: httpx.Request) -> httpx.Response:
         page = request.url.params.get("page")
@@ -73,12 +76,40 @@ async def test_jobconvo_monitor_rejects_cross_tenant_job_link():
       <a href="https://app.jobconvo.com/job/role/{JOB_ONE}/?career_page={other_page}">
         role
       </a>
-    </td></tr></tbody></table><ul class="pagination"></ul>
+    </td></tr></tbody></table>
+    <ul class="pagination"><li class="active"><a href="#">1</a></li></ul>
     """
     async with httpx.AsyncClient(
         transport=httpx.MockTransport(lambda request: httpx.Response(200, text=html))
     ) as client:
         with pytest.raises(ValueError, match="different career page"):
+            await discover({"board_url": BOARD_URL, "metadata": {}}, client)
+
+
+@pytest.mark.asyncio
+async def test_jobconvo_monitor_rejects_missing_authoritative_paginator():
+    html = f"""
+    <table id="tbl"><tbody><tr class="joblist"><td>
+      <a href="https://app.jobconvo.com/job/role/{JOB_ONE}/">role</a>
+    </td></tr></tbody></table>
+    """
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, text=html))
+    ) as client:
+        with pytest.raises(ValueError, match="authoritative paginator"):
+            await discover({"board_url": BOARD_URL, "metadata": {}}, client)
+
+
+@pytest.mark.asyncio
+async def test_jobconvo_monitor_rejects_ignored_page_parameter():
+    page_one = _listing([("one-role", JOB_ONE)], [2])
+    ignored_page_two = _listing([("one-role", JOB_ONE)], [2])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=ignored_page_two if request.url.params else page_one)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="does not match the requested page"):
             await discover({"board_url": BOARD_URL, "metadata": {}}, client)
 
 
@@ -109,6 +140,30 @@ def test_jobconvo_scraper_url_and_auto_config():
         "jobconvo",
         {"locale": "pt-br"},
     )
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        f"https://user@app.jobconvo.com/job/one-role/{JOB_ONE}/",
+        f"https://app.jobconvo.com:444/job/one-role/{JOB_ONE}/",
+        f"https://app.jobconvo.com:invalid/job/one-role/{JOB_ONE}/",
+    ],
+)
+def test_jobconvo_scraper_rejects_credentialed_or_nonstandard_port_urls(url):
+    assert _parse_job_url(url) is None
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        BOARD_URL.replace("jobs.jobconvo.com", "user@jobs.jobconvo.com"),
+        BOARD_URL.replace("jobs.jobconvo.com", "jobs.jobconvo.com:444"),
+        BOARD_URL.replace("jobs.jobconvo.com", "jobs.jobconvo.com:invalid"),
+    ],
+)
+def test_jobconvo_monitor_rejects_credentialed_or_nonstandard_port_urls(url):
+    assert _listing_identity(url) is None
 
 
 def test_jobconvo_parse_detail_maps_all_available_fields():

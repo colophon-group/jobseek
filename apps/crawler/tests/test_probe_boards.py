@@ -372,6 +372,38 @@ class TestProbeRow:
         assert result.status == "ok"
         assert result.message == "production extractor: 0 jobs"
 
+    async def test_jobconvo_probe_accepts_authoritative_empty_table(self):
+        career_page = "ddf2b2f5-cc30-4503-8ec8-458f9869e2ba"
+        board_url = f"https://jobs.jobconvo.com/pt-br/careers/Deloitte/{career_page}/"
+        row = _row(
+            board_slug="deloitte-brazil-jobconvo",
+            board_url=board_url,
+            monitor_type="jobconvo",
+            monitor_config=json.dumps(
+                {
+                    "listing_url": board_url,
+                    "locale": "pt-br",
+                    "career_page": career_page,
+                }
+            ),
+        )
+
+        result = await self._run(
+            row,
+            lambda _request: httpx.Response(
+                200,
+                text=(
+                    '<table id="tbl"><tbody></tbody></table>'
+                    '<ul class="pagination">'
+                    '<li class="active"><a href="#">1</a></li>'
+                    "</ul>"
+                ),
+            ),
+        )
+
+        assert result.status == "ok"
+        assert result.message == "production extractor: 0 jobs"
+
     async def test_dom_static_probe_fails_when_contract_extracts_nothing(self):
         row = _row(
             board_slug="acme-dom",
@@ -1387,6 +1419,7 @@ def test_probe_registry_covers_expected_types():
         "bamboohr",
         "paycom",
         "jazzhr",
+        "jobconvo",
         "icims",
         "gupy",
         "cornerstone",

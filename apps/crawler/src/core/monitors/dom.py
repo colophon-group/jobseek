@@ -63,6 +63,7 @@ _MAX_PDF_EXPIRATION_BYTES = 20 * 1024 * 1024
 _MAX_PDF_EXPIRATION_PAGES = 200
 _MAX_PDF_EXPIRATION_TEXT_CHARS = 2_000_000
 _MAX_EXPLICIT_EMPTY_BODY_BYTES = 2 * 1024 * 1024
+_MAX_MY_JOB_SHOP_BODY_BYTES = 2 * 1024 * 1024
 _RESPONSE_FINGERPRINT_CONCURRENCY = 4
 _MAX_RESPONSE_FINGERPRINT_URLS = 100
 _MAX_RICH_ROWS_LIFECYCLE_URLS = 500
@@ -5390,11 +5391,18 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     if _MY_JOB_SHOP_BOOTSTRAP_MARKER in html:
         # Provider pages place a large inline design-system stylesheet before
         # their SSR job-link payload. The generic 500k probe preview ends in
-        # that stylesheet, so fetch the complete bounded page before deciding
-        # whether current offer links are present.
-        from src.shared.http_retry import fetch_with_retry
+        # that stylesheet, so stream the complete page through a finite cap
+        # before deciding whether current offer links are present.
+        from src.shared.http_retry import fetch_text_page_with_retry
 
-        html = await fetch_with_retry(client, url, max_chars=None)
+        html = await fetch_text_page_with_retry(
+            client,
+            url,
+            retryable_statuses={202, 401, 403},
+            end_of_pagination_statuses=(),
+            require_nonempty=True,
+            max_bytes=_MAX_MY_JOB_SHOP_BODY_BYTES,
+        )
         if not html:
             return None
 
@@ -5854,10 +5862,10 @@ async def _dom_discover_once(
         )
 
         try:
-            if configured_empty_states:
-                # The empty marker is authoritative and may follow large inline
-                # assets, but the body still needs a finite streaming cap before
-                # it is handed to the HTML parser.
+            if configured_empty_states or metadata.get("my_job_shop"):
+                # Authoritative empty markers and My Job Shop's offer payload
+                # may follow large inline assets, but the body still needs a
+                # finite streaming cap before it is handed to the HTML parser.
                 html = await fetch_text_page_with_retry(
                     client,
                     fetch_board_url,
@@ -5866,7 +5874,11 @@ async def _dom_discover_once(
                     retryable_statuses={202, 401, 403},
                     end_of_pagination_statuses=(),
                     require_nonempty=True,
-                    max_bytes=_MAX_EXPLICIT_EMPTY_BODY_BYTES,
+                    max_bytes=(
+                        _MAX_MY_JOB_SHOP_BODY_BYTES
+                        if metadata.get("my_job_shop")
+                        else _MAX_EXPLICIT_EMPTY_BODY_BYTES
+                    ),
                     retries=transport_attempts or 3,
                 )
             else:
@@ -5888,7 +5900,6 @@ async def _dom_discover_once(
                     or script_json_links is not None
                     or onclick_selector is not None
                     or title_matched_url_scan is not None
-                    or metadata.get("my_job_shop")
                     else 500_000,
                     retries=transport_attempts or 3,
                 )

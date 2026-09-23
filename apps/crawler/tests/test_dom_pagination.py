@@ -53,7 +53,7 @@ from src.core.monitors.dom import (
     can_handle,
     dom_discover,
 )
-from src.shared.http_retry import PaginationFetchError
+from src.shared.http_retry import PaginationFetchError, ResponseBodyTooLargeError
 from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 from src.shared.response_fingerprint import (
     MAX_RESPONSE_FINGERPRINT_BYTES,
@@ -3998,14 +3998,38 @@ class TestCanHandle:
                 new=AsyncMock(return_value=preview),
             ),
             patch(
-                "src.shared.http_retry.fetch_with_retry",
+                "src.shared.http_retry.fetch_text_page_with_retry",
                 new=AsyncMock(return_value=complete),
             ) as refetch,
         ):
             result = await can_handle(url, MagicMock())
 
         assert result == _my_job_shop_probe_config(complete, url)
-        refetch.assert_awaited_once_with(ANY, url, max_chars=None)
+        refetch.assert_awaited_once_with(
+            ANY,
+            url,
+            retryable_statuses={202, 401, 403},
+            end_of_pagination_statuses=(),
+            require_nonempty=True,
+            max_bytes=2 * 1024 * 1024,
+        )
+
+    async def test_my_job_shop_probe_rejects_oversized_page(self, monkeypatch):
+        url = "https://jobs.example.com/search"
+        preview = '<link href="https://cdn.job-shop.com/fonts/Skolar/style.css">'
+        monkeypatch.setattr("src.core.monitors.dom._MAX_MY_JOB_SHOP_BODY_BYTES", 8)
+
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=preview),
+        ):
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(
+                    lambda _request: httpx.Response(200, content=b"123456789")
+                )
+            ) as client:
+                with pytest.raises(ResponseBodyTooLargeError):
+                    await can_handle(url, client)
 
     def test_yousty_filtered_board_uses_employer_scoped_preset(self):
         url = (

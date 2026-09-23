@@ -40,7 +40,17 @@ _MAX_HTML_BYTES = 4 * 1024 * 1024
 
 def _listing_identity(url: str) -> tuple[str, str, str] | None:
     parsed = urlsplit(url)
-    if parsed.scheme != "https" or (parsed.hostname or "").lower() not in _LISTING_HOSTS:
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower() not in _LISTING_HOSTS
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
         return None
     match = _LISTING_PATH_RE.fullmatch(parsed.path)
     if match is None:
@@ -59,7 +69,17 @@ def _canonical_listing_url(url: str) -> str:
 
 def _canonical_job_url(href: str, expected_career_page: str) -> tuple[str, str] | None:
     parsed = urlsplit(href)
-    if parsed.scheme != "https" or (parsed.hostname or "").lower() not in _JOB_HOSTS:
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower() not in _JOB_HOSTS
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
         return None
     match = _JOB_PATH_RE.fullmatch(parsed.path)
     if match is None:
@@ -103,6 +123,23 @@ def _parse_page(
     if len(tables) != 1:
         raise ValueError("JobConvo listing omitted its authoritative jobs table")
 
+    paginators = tree.css("ul.pagination")
+    if len(paginators) != 1:
+        raise ValueError("JobConvo listing omitted its authoritative paginator")
+    paginator = paginators[0]
+    active_pages = paginator.css("li.active")
+    if len(active_pages) != 1:
+        raise ValueError("JobConvo paginator did not identify exactly one active page")
+    active_text = active_pages[0].text(strip=True)
+    try:
+        active_page = int(active_text)
+    except ValueError as exc:
+        raise ValueError("JobConvo paginator active page is not an integer") from exc
+    query = parse_qs(urlsplit(page_url).query, keep_blank_values=True)
+    expected_page = int(query.get("page", ["1"])[0])
+    if active_page != expected_page:
+        raise ValueError("JobConvo paginator active page does not match the requested page")
+
     jobs: dict[str, str] = {}
     for row in tables[0].css("tr.joblist"):
         links = row.css('a[href*="jobconvo.com/job/"]')
@@ -118,7 +155,7 @@ def _parse_page(
             raise ValueError(f"JobConvo job {job_id!r} has conflicting detail URLs")
 
     pages: set[str] = set()
-    for link in tree.css("ul.pagination a[href]"):
+    for link in paginator.css("a[href]"):
         candidate = _pagination_url(link.attributes.get("href", ""), page_url, identity)
         if candidate is not None:
             pages.add(candidate)
