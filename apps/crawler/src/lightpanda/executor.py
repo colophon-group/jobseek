@@ -612,36 +612,12 @@ async def _serve() -> None:
 
 
 async def _healthcheck() -> None:
-    _validate_socket(SOCKET_PATH)
-    shard_id = os.environ.get("LIGHTPANDA_B0_SHARD_ID", "")
-    epoch_text = os.environ.get("LIGHTPANDA_B0_ROUTING_EPOCH", "")
-    if shard_id != "lightpanda-b0" or not epoch_text.isascii() or not epoch_text.isdecimal():
-        raise ExecutorProtocolError("executor health route identity is invalid")
-    routing_epoch = int(epoch_text)
-    reader, writer = await asyncio.open_unix_connection(SOCKET_PATH, limit=FRAME_LIMIT + 1)
+    from src.lightpanda.executor_health import HealthcheckError, check
+
     try:
-        await _write_message(
-            writer,
-            {
-                "version": PROTOCOL,
-                "type": "attest_route",
-                "shard_id": shard_id,
-                "routing_epoch": routing_epoch,
-            },
-        )
-        response = _object(
-            await _read_frame(reader),
-            {"type", "shard_id", "routing_epoch"},
-        )
-        if (
-            response["type"] != "route_attested"
-            or response["shard_id"] != shard_id
-            or response["routing_epoch"] != routing_epoch
-        ):
-            raise ExecutorProtocolError("executor health route attestation failed")
-    finally:
-        writer.close()
-        await writer.wait_closed()
+        await check(SOCKET_PATH)
+    except HealthcheckError as exc:
+        raise ExecutorProtocolError(str(exc)) from exc
 
 
 def main() -> None:

@@ -19,6 +19,7 @@ import pytest
 from jobseek_runtime_v1 import runtime_pb2
 
 import src.lightpanda.executor as executor
+from src.lightpanda import executor_health
 from src.lightpanda.claimant import ScheduleState
 from src.lightpanda.client import _encode_record
 from src.lightpanda.routing import resolve_render_assignment
@@ -412,8 +413,11 @@ async def test_resident_health_route_attestation_rechecks_postgres_epoch(
     server = await asyncio.start_unix_server(handle, path=socket_path)
     socket_path.chmod(0o600)
     try:
+        await executor_health.check(socket_path)
         await executor._healthcheck()
         pool.epoch = 8
+        with pytest.raises(executor_health.HealthcheckError):
+            await executor_health.check(socket_path)
         with pytest.raises(executor.ExecutorProtocolError):
             await executor._healthcheck()
     finally:

@@ -204,10 +204,9 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
     healthcheck:
-      test: ["CMD", "/app/.venv/bin/python", "-m", "src.lightpanda.executor", "--healthcheck"]
+      test: ["CMD", "/app/.venv/bin/python", "-m", "src.lightpanda.executor_health"]
       interval: 5s
-      # The health command imports the executor's processing dependencies before
-      # attesting the socket. On the production ARM64 host this takes 2.7-4.6s.
+      # Attest the live socket without importing the executor's processing stack.
       timeout: 15s
       retries: 3
       start_period: 10s
