@@ -1,5 +1,14 @@
 # Go and Lightpanda crawler migration
 
+> [!IMPORTANT]
+> This is the original full-migration design. Its 10M-board projection,
+> full-rewrite checklist, and zero-Chromium **early gate** were superseded by
+> the pilot-first decision in
+> [#7935](https://github.com/colophon-group/jobseek/issues/7935).
+> See the [2026-09-23 resumption plan](24-go-lightpanda-resumption-plan.md)
+> for the current bounded B0 sequence. The detailed historical contracts below
+> remain useful as reference; they do not authorize production activation.
+
 ## Outcome
 
 Replace the production crawler runtime with Go and self-hosted Lightpanda,
