@@ -165,8 +165,8 @@ services:
     init: true
     restart: unless-stopped
     network_mode: host
-    stop_grace_period: 30s  # uniform with workers — gives in-flight R2 PUTs time to complete
-    command: uv run --no-sync crawler drain
+    stop_grace_period: 30s  # stale PostgreSQL claims are reaped by the next sole owner
+    command: ["/usr/local/bin/go-r2-drain"]
     environment:
       <<: *common-env
       METRICS_PORT: "9094"
@@ -176,6 +176,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/go-r2-drain", "--healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     mem_limit: 256m
 
   # IndexNow notifier removed in #2821. Companies are no longer indexed
