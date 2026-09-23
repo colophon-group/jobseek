@@ -69,7 +69,7 @@ def _synthetic_tasks(path: Path, concurrency: int) -> list[dict[str, str]]:
                 {
                     "id": task["id"],
                     "board_slug": COHORT[int(origin.removeprefix("origin-"))],
-                    "source_url": f"https://{origin}.lane.bench.test{task['path']}",
+                    "source_url": f"http://{origin}.lane.bench.test:8080{task['path']}",
                 }
             )
     if len(tasks) != 4 * concurrency or len({item["id"] for item in tasks}) != len(tasks):

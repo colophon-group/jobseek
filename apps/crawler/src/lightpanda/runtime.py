@@ -93,8 +93,15 @@ class LightpandaB0ScrapeRuntime:
 
 
 def _validated_rendered_html(result: Any, *, requested_url: str) -> str:
-    if result.WhichOneof("outcome") != "success":
-        raise LightpandaResultError("Lightpanda B0 render did not succeed")
+    outcome = result.WhichOneof("outcome")
+    if outcome != "success":
+        if outcome == "error":
+            failure = result.error.error
+            raise LightpandaResultError(
+                "Lightpanda B0 render did not succeed: "
+                f"code={failure.code} disposition={failure.disposition}"
+            )
+        raise LightpandaResultError(f"Lightpanda B0 render did not succeed: {outcome}")
     success = result.success
     if (
         not _valid_final_url(success.final_url)

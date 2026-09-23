@@ -6,7 +6,6 @@ import argparse
 import hashlib
 import http.server
 import json
-import ssl
 import threading
 import time
 from pathlib import Path
@@ -167,7 +166,7 @@ class Server(http.server.ThreadingHTTPServer):
 
     def __init__(self, state: FixtureState) -> None:
         self.state = state
-        super().__init__(("0.0.0.0", 443), Handler)
+        super().__init__(("0.0.0.0", 8080), Handler)
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -205,15 +204,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=Path, required=True)
     parser.add_argument("--concurrency", type=int, choices=(1, 4), required=True)
-    parser.add_argument("--certificate", type=Path, required=True)
-    parser.add_argument("--private-key", type=Path, required=True)
     args = parser.parse_args()
     state = FixtureState(load_workload(args.workload), args.concurrency)
     server = Server(state)
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    context.minimum_version = ssl.TLSVersion.TLSv1_3
-    context.load_cert_chain(args.certificate, args.private_key)
-    server.socket = context.wrap_socket(server.socket, server_side=True)
     thread = threading.Thread(target=server.serve_forever, name="b0-fixture")
     thread.start()
     Path("/tmp/ready").touch(mode=0o600)
