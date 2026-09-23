@@ -21,9 +21,11 @@ an admission condition for the first B0 cohort.
   10M-board projection, zero-Chromium premise, and exact evidence chains in
   [the older migration design](23-go-lightpanda-migration.md) are historical,
   not current prerequisites.
-- The Go sitemap worker and its bounded resource evidence landed through
-  [#8660](https://github.com/colophon-group/jobseek/pull/8660) and
-  [#8694](https://github.com/colophon-group/jobseek/pull/8694). The earlier
+- The bounded Go sitemap worker and read-only production shadow landed through
+  [#8644](https://github.com/colophon-group/jobseek/pull/8644); the fleet
+  benchmark landed through [#8660](https://github.com/colophon-group/jobseek/pull/8660)
+  and [#8694](https://github.com/colophon-group/jobseek/pull/8694). Python
+  still owns sitemap schedules and writes. The earlier
   [#8461](https://github.com/colophon-group/jobseek/pull/8461) and
   [#8524](https://github.com/colophon-group/jobseek/pull/8524) drafts are
   closed without merge; they are evidence, not candidate branches.
@@ -52,21 +54,30 @@ an admission condition for the first B0 cohort.
   health probe cut measured idle CPU from 10 to 1 seconds per 20-second
   window. A cold rollback returned all five schedules to the legacy queue
   before [#9934's crawler deploy](https://github.com/colophon-group/jobseek/actions/runs/35903707755);
-  the supported cutover reactivated c1 at epoch 16 afterward. Production
-  output, requests, and whole-lane capacity still need measurement. The public
-  sitemap run in #7935 was inconclusive because the live source changed
+  the supported cutover reactivated c1 at epoch 16 afterward. For the
+  [Go drain deploy](https://github.com/colophon-group/jobseek/actions/runs/35912138580),
+  c1 was cold-rolled back again at retired epoch 17, with all five exact due
+  scores restored, then reactivated on revision `4a88deaf` at epoch 18.
+  Production B0 output, requests, and whole-lane capacity still need
+  measurement. The public sitemap run in #7935 was inconclusive because the live source changed
   between arms; it is not a Python-versus-Go verdict.
 - [#7959](https://github.com/colophon-group/jobseek/issues/7959) admitted
   pinned Lightpanda 0.4.0 for narrow B0/B1 nonproduction use. Its broader
   compatibility results do not justify moving interactive, frame, identity,
   or API-sniffer profiles. Chromium remains an explicit compatibility owner
   where those capabilities are unproven.
-- [PR #9932](https://github.com/colophon-group/jobseek/pull/9932) prepares an
-  exclusive Go R2 drain. A counterbalanced 2,000-description ARM64 fixture
-  preserved every object and database pointer while reducing CPU 3.75–3.86×
-  and retained memory 9.5–10.1×. [PR #9935](https://github.com/colophon-group/jobseek/pull/9935)
-  prepares the three validated production B0 origins. Both await deployment
-  and production measurement.
+- [PR #9932](https://github.com/colophon-group/jobseek/pull/9932) merged and
+  deployed the exclusive Go R2 drain. A counterbalanced 2,000-description
+  ARM64 fixture preserved every object and database pointer while reducing
+  CPU 3.75–3.86× and retained memory 9.5–10.1×. A
+  [200-second production sample](https://github.com/colophon-group/jobseek/issues/7945#issuecomment-5802172400)
+  observed 247 successful uploads, 17.72 ms CPU per upload, 21.9 MiB final
+  cgroup memory, and exact R2/DB/pointer readback on five samples. The prior natural
+  Python sample used 22.14 ms CPU per upload and about 118 MiB memory; the
+  input sizes differed, so only the fixture is an equal-input CPU comparison.
+  [PR #9935](https://github.com/colophon-group/jobseek/pull/9935) prepares
+  the three validated production B0 origins; it remains undeployed pending
+  c1's first due work.
 
 ## Next slice: one real Go-owned B0 cohort
 
@@ -87,7 +98,8 @@ an admission condition for the first B0 cohort.
    Redis/PostgreSQL transitions, container startup, and the required CI/deploy
    gates. The ordinary deploy lists the old Python/Chromium services and dark
    claimant. The c1 overlay has been cold-rolled back and reactivated around
-   a crawler deploy without changing its five retained due times. Check the
+   crawler deploys without changing its five retained due times. The current
+   active epoch is 18 on revision `4a88deaf`. Check the
    current receipt, Redis owner, and host mutation lock before any mutation;
    [#8648](https://github.com/colophon-group/jobseek/issues/8648) records the
    current routing epoch. No reviewer or operator approval is an additional
@@ -138,7 +150,7 @@ resolve the measured limitation before expanding.
 
 After B0, migrate one measured family or independently replaceable process at
 a time: Go HTTP monitors and detail fetches, remaining monitor/scraper
-families and enrichment, drain/export/maintenance, then configuration sync.
+families and enrichment, export/maintenance, then configuration sync.
 For browser profiles, use pinned Lightpanda replay or move the origin to a
 proved HTTP/API route. Track every temporary Chromium assignment until none
 remain. Complete the migration only when the enabled fleet has zero Python or
