@@ -152,7 +152,7 @@ services:
       GOMEMLIMIT: 16MiB
       LIGHTPANDA_B0_PRODUCER_MODE: enabled
       LIGHTPANDA_B0_PRODUCER_COHORT: ${ADMISSION_COHORT:?c1 or c4 required}
-      LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "10001"
+      LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "0"
       LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
       LIGHTPANDA_B0_QUEUE_NAMESPACE: admission-b0
       LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
@@ -236,9 +236,10 @@ services:
     <<: *common
     image: ${CANDIDATE_IMAGE:?immutable candidate image required}
     command: [/app/.venv/bin/python, -m, src.lightpanda.admission, --lane, "${ADMISSION_LANE:?candidate or control}", --workload, /admission-input/input.json, --timeout, "${ADMISSION_TIMEOUT:-180}", --concurrency, "${ADMISSION_CONCURRENCY:?1 or 4}", --phase, "${ADMISSION_PHASE:?reserve seed or collect}", --due, "${ADMISSION_DUE:-0}"]
-    user: "10001:10001"
+    user: "0:0"
     read_only: true
     cap_drop: [ALL]
+    cap_add: [DAC_OVERRIDE]
     environment:
       <<: *crawler-env
       LIGHTPANDA_B0_QUEUE_NAMESPACE: admission-b0
