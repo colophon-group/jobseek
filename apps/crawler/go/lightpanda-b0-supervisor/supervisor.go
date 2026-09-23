@@ -22,6 +22,7 @@ const (
 )
 
 type executorRunner func(context.Context, config, executorRequest, authorizeCommit) (*int64, error)
+type executorRouteAttestor func(context.Context, config) error
 
 type supervisor struct {
 	config         config
@@ -30,6 +31,7 @@ type supervisor struct {
 	renderer       rendererSource
 	metrics        *metrics
 	executor       executorRunner
+	attestRoute    executorRouteAttestor
 	logger         *slog.Logger
 }
 
@@ -45,6 +47,7 @@ type heldReservation interface {
 type leaseQueue interface {
 	heartbeat(context.Context, *lease, time.Duration) error
 	terminal(context.Context, *lease, *int64) error
+	release(context.Context, *lease, int64) error
 	fail(context.Context, *lease, int64) error
 }
 
@@ -81,10 +84,16 @@ func newSupervisor(c config) (*supervisor, *redis.Client, error) {
 		return nil, nil, err
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
-	return &supervisor{config: c, queue: queue, authorityQueue: queue, renderer: renderer, metrics: m, executor: runPythonExecutor, logger: logger}, client, nil
+	return &supervisor{config: c, queue: queue, authorityQueue: queue, renderer: renderer, metrics: m, executor: runPythonExecutor, attestRoute: attestPythonExecutorRoute, logger: logger}, client, nil
 }
 
 func (s *supervisor) run(ctx context.Context) error {
+	if s.attestRoute == nil {
+		return errors.New("DB-only Python executor route attestor is required")
+	}
+	if err := s.attestRoute(ctx, s.config); err != nil {
+		return fmt.Errorf("DB-only Python executor preflight: %w", err)
+	}
 	reservations, err := s.reserveStartup(ctx)
 	if err != nil {
 		return err
@@ -442,7 +451,7 @@ func (a *leaseAuthority) releaseForShutdown() error {
 	if readyAtMS < 0 {
 		return &authorityError{operation: "shutdown-release", err: errors.New("shutdown ready time overflow")}
 	}
-	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.terminal(call, a.lease, &readyAtMS) }); err != nil {
+	if err := bounded(ctx, queueTimeout, func(call context.Context) error { return a.queue.release(call, a.lease, readyAtMS) }); err != nil {
 		return &authorityError{operation: "shutdown-release", err: err}
 	}
 	a.finished = true

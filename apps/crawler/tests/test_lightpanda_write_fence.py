@@ -647,3 +647,47 @@ def test_go_owner_migration_changes_constraint_and_all_fence_functions() -> None
         migration._GO_OWNER_FUNCTIONS  # noqa: SLF001
     )
     assert "Go rows exist" in migration._REFUSE_DOWNGRADE_WITH_GO_ROWS  # noqa: SLF001
+
+
+def test_routing_epoch_allocator_migration_is_monotonic_and_non_recreatable() -> None:
+    migration = importlib.import_module(
+        "src.migrations.versions.0032_add_lightpanda_b0_routing_epoch_sequence"
+    )
+
+    assert migration.revision == "0032"
+    assert migration.down_revision == "0031"
+    create = migration._CREATE_SEQUENCE  # noqa: SLF001
+    assert "START WITH 2" in create
+    assert "MAXVALUE 9999999999999" in create
+    assert "NO CYCLE" in create
+    assert "CACHE 1" in create
+    assert "REVOKE ALL ON SEQUENCE public.lightpanda_b0_routing_epoch_seq FROM PUBLIC" in create
+    refusal = migration._REFUSE_USED_SEQUENCE_DOWNGRADE  # noqa: SLF001
+    assert "SELECT is_called FROM public.lightpanda_b0_routing_epoch_seq" in refusal
+    assert "sequence has been used" in refusal
+    trigger = migration._INSTALL_GO_HIGH_WATER_TRIGGER  # noqa: SLF001
+    assert "BEFORE INSERT OR UPDATE ON public.lightpanda_b0_write_fence" in trigger
+    assert "NEW.engine_owner IS DISTINCT FROM 'go'" in trigger
+    assert "current_epoch IS DISTINCT FROM NEW.routing_epoch" in trigger
+    assert "DETAIL = 'routing_epoch_not_current'" in trigger
+
+
+def test_epoch_retirement_migration_upgrades_an_already_applied_allocator() -> None:
+    allocator = importlib.import_module(
+        "src.migrations.versions.0032_add_lightpanda_b0_routing_epoch_sequence"
+    )
+    ordering = importlib.import_module(
+        "src.migrations.versions.0033_serialize_lightpanda_b0_epoch_retirement"
+    )
+
+    assert ordering.revision == "0033"
+    assert ordering.down_revision == allocator.revision == "0032"
+    original = allocator._INSTALL_GO_HIGH_WATER_TRIGGER  # noqa: SLF001
+    serialized = ordering._INSTALL_SERIALIZED_GO_HIGH_WATER_TRIGGER  # noqa: SLF001
+    restored = ordering._RESTORE_UNSERIALIZED_GO_HIGH_WATER_TRIGGER  # noqa: SLF001
+    assert "pg_advisory_xact_lock" not in original
+    assert "CREATE OR REPLACE FUNCTION" in serialized
+    assert f"pg_advisory_xact_lock_shared({ordering.ROUTING_EPOCH_ADVISORY_LOCK_ID})" in serialized
+    assert "CREATE TRIGGER" not in serialized
+    assert "pg_advisory_xact_lock" not in restored
+    assert " ".join(restored.split()) in " ".join(original.split())

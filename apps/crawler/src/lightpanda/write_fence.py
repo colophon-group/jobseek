@@ -40,6 +40,7 @@ _REJECTION_REASONS = frozenset(
         "revoked_replay",
         "route_change_requires_epoch",
         "routing_epoch_mismatch",
+        "routing_epoch_not_current",
         "shard_id_mismatch",
         "claim_token_mismatch",
     }

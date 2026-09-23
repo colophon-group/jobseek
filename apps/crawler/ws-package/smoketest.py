@@ -68,7 +68,6 @@ SKIP_MODULES: frozenset[str] = frozenset(
         "src.lightpanda.activation",
         "src.lightpanda.claimant",
         "src.lightpanda.executor",
-        "src.lightpanda.producer",
         # enrich providers — optional LLM SDKs imported lazily inside funcs
         "src.core.enrich",
         "src.core.enrich.batch",

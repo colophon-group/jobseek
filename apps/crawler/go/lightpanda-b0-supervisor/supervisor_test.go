@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -35,6 +36,56 @@ type failingRendererSource struct {
 	mu           sync.Mutex
 	calls        int
 	reservations []*fakeHeldReservation
+}
+
+type recordingFailingRenderer struct {
+	attested *atomic.Bool
+	calls    atomic.Int32
+	tooEarly atomic.Bool
+}
+
+func (s *recordingFailingRenderer) reserve(context.Context) (heldReservation, error) {
+	s.calls.Add(1)
+	if !s.attested.Load() {
+		s.tooEarly.Store(true)
+	}
+	return nil, errors.New("stop after ordering proof")
+}
+
+func TestSupervisorAttestsExecutorRouteBeforeAnyRendererOrQueueWork(t *testing.T) {
+	attested := &atomic.Bool{}
+	renderer := &recordingFailingRenderer{attested: attested}
+	s := &supervisor{
+		renderer: renderer,
+		attestRoute: func(context.Context, config) error {
+			attested.Store(true)
+			return nil
+		},
+	}
+	if err := s.run(context.Background()); err == nil {
+		t.Fatal("renderer failure was accepted")
+	}
+	if renderer.calls.Load() != supervisorCapacity || renderer.tooEarly.Load() {
+		t.Fatalf("route attestation did not precede reservation fanout: calls=%d early=%t", renderer.calls.Load(), renderer.tooEarly.Load())
+	}
+
+	attested.Store(false)
+	renderer.calls.Store(0)
+	renderer.tooEarly.Store(false)
+	s.attestRoute = func(context.Context, config) error {
+		return errors.New("stale epoch")
+	}
+	if err := s.run(context.Background()); err == nil {
+		t.Fatal("failed route attestation was accepted")
+	}
+	if renderer.calls.Load() != 0 {
+		t.Fatalf("failed attestation reached renderer/queue work: calls=%d", renderer.calls.Load())
+	}
+
+	s.attestRoute = nil
+	if err := s.run(context.Background()); err == nil {
+		t.Fatal("missing route attestor was accepted")
+	}
 }
 
 func (s *failingRendererSource) reserve(context.Context) (heldReservation, error) {
@@ -99,11 +150,13 @@ type recordingLeaseQueue struct {
 	heartbeatCalls int
 	terminalCalls  int
 	failCalls      int
+	releaseCalls   int
 	heartbeatErr   error
 	terminalErr    error
 	failErr        error
 	failedReadyAt  int64
 	terminalReady  *int64
+	releaseReady   int64
 }
 
 func (q *recordingLeaseQueue) heartbeat(context.Context, *lease, time.Duration) error {
@@ -121,6 +174,14 @@ func (q *recordingLeaseQueue) terminal(_ context.Context, _ *lease, readyAt *int
 		copied := *readyAt
 		q.terminalReady = &copied
 	}
+	return q.terminalErr
+}
+
+func (q *recordingLeaseQueue) release(_ context.Context, _ *lease, readyAtMS int64) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.releaseCalls++
+	q.releaseReady = readyAtMS
 	return q.terminalErr
 }
 
@@ -237,10 +298,10 @@ func TestCancellationReleasesInflightLeaseBeforeWorkerExit(t *testing.T) {
 		t.Fatalf("cancelled lease did not exit after bounded release: err=%v fatal=%t", err, fatal)
 	}
 	queue.mu.Lock()
-	heartbeats, failures, terminals, readyAt := queue.heartbeatCalls, queue.failCalls, queue.terminalCalls, queue.terminalReady
+	heartbeats, failures, terminals, releases, readyAt := queue.heartbeatCalls, queue.failCalls, queue.terminalCalls, queue.releaseCalls, queue.releaseReady
 	queue.mu.Unlock()
-	if heartbeats != 0 || failures != 0 || terminals != 1 || readyAt == nil || *readyAt != 40_000 {
-		t.Fatalf("cancelled lease was not made immediately ready: heartbeats=%d failures=%d terminals=%d ready=%v", heartbeats, failures, terminals, readyAt)
+	if heartbeats != 0 || failures != 0 || terminals != 0 || releases != 1 || readyAt != 40_000 {
+		t.Fatalf("cancelled lease was not made immediately ready: heartbeats=%d failures=%d terminals=%d releases=%d ready=%d", heartbeats, failures, terminals, releases, readyAt)
 	}
 }
 

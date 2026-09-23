@@ -18,6 +18,33 @@ const (
 )
 
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "producer" {
+		configured, err := producerConfigFromEnvironment()
+		if err == nil && len(os.Args) == 3 && os.Args[2] == "--healthcheck" {
+			err = checkProducerReady(configured.Socket, uint32(os.Geteuid()), configured.ClientUID)
+		} else if err == nil && len(os.Args) == 3 && os.Args[2] == "--check-activation-sentinel-clearable" {
+			err = checkProducerActivationSentinelClearable(configured)
+		} else if err == nil && len(os.Args) == 3 && os.Args[2] == "--check-activation-sentinel-absent" {
+			err = checkProducerActivationSentinelAbsent(configured)
+		} else if err == nil && len(os.Args) == 3 && os.Args[2] == "--clear-activation-sentinel" {
+			err = clearProducerActivationSentinel(
+				configured,
+				requiredEnv("LIGHTPANDA_B0_ROLLBACK_PLAN_DIGEST"),
+				requiredEnv("LIGHTPANDA_B0_SOURCE_RECEIPT_SHA256"),
+			)
+		} else if err == nil && len(os.Args) == 2 {
+			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			defer cancel()
+			err = runProducer(ctx, configured)
+		} else if err == nil {
+			err = errors.New("usage: lightpanda-b0-supervisor producer [--healthcheck|--check-activation-sentinel-clearable|--check-activation-sentinel-absent|--clear-activation-sentinel]")
+		}
+		if err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "Lightpanda B0 producer failed closed:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) == 2 && os.Args[1] == "--healthcheck" {
 		configured, err := configFromEnvironment()
 		if err == nil {
@@ -42,7 +69,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		_, _ = fmt.Fprintln(os.Stderr, "usage: lightpanda-b0-supervisor [--healthcheck|--validate-dark]")
+		_, _ = fmt.Fprintln(os.Stderr, "usage: lightpanda-b0-supervisor [--healthcheck|--validate-dark]|producer [--healthcheck|--check-activation-sentinel-clearable|--check-activation-sentinel-absent|--clear-activation-sentinel]")
 		os.Exit(2)
 	}
 	if err := run(); err != nil {

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var queueOperations = []string{"initialize", "claim_next", "heartbeat", "complete", "reschedule_at", "fail_at", "reap_expired", "audit"}
+var queueOperations = []string{"initialize", "initialize_producer", "claim_next", "heartbeat", "complete", "reschedule_at", "fail_at", "reap_expired", "audit"}
 var queueOutcomes = []string{"accepted", "fenced", "not_current", "transport_error"}
 
 type metrics struct {

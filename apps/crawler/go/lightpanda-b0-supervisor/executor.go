@@ -32,6 +32,9 @@ type executorRequest struct {
 
 type executorMessage struct {
 	Type          string `json:"type"`
+	Version       string `json:"version,omitempty"`
+	ShardID       string `json:"shard_id,omitempty"`
+	RoutingEpoch  int64  `json:"routing_epoch,omitempty"`
 	ClaimToken    string `json:"claim_token,omitempty"`
 	LeaseUntilMS  int64  `json:"lease_until_ms,omitempty"`
 	NextReadyAtMS *int64 `json:"next_ready_at_ms,omitempty"`
@@ -40,6 +43,44 @@ type executorMessage struct {
 
 type commitConversation func(context.Context, int64) (*int64, error)
 type authorizeCommit func(context.Context, commitConversation) (*int64, error)
+
+func attestPythonExecutorRoute(ctx context.Context, c config) error {
+	before, err := validateExecutorSocket(c.ExecutorSocket)
+	if err != nil {
+		return fmt.Errorf("validate DB-only Python executor socket: %w", err)
+	}
+	dialer := net.Dialer{Timeout: 3 * time.Second}
+	connection, err := dialer.DialContext(ctx, "unix", c.ExecutorSocket)
+	if err != nil {
+		return fmt.Errorf("connect DB-only Python executor: %w", err)
+	}
+	defer connection.Close()
+	after, err := validateExecutorSocket(c.ExecutorSocket)
+	if err != nil || before != after {
+		return errors.New("DB-only Python executor socket identity changed during preflight")
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	if contextDeadline, ok := ctx.Deadline(); ok && contextDeadline.Before(deadline) {
+		deadline = contextDeadline
+	}
+	_ = connection.SetDeadline(deadline)
+	if err := writeExecutorJSON(connection, executorMessage{
+		Type: "attest_route", Version: "jobseek.lightpanda.executor/v1",
+		ShardID:      c.Route.ShardID,
+		RoutingEpoch: c.Route.RoutingEpoch,
+	}); err != nil {
+		return err
+	}
+	response, err := readExecutorMessage(connection)
+	if err != nil {
+		return err
+	}
+	if response.Type != "route_attested" || response.ShardID != c.Route.ShardID ||
+		response.RoutingEpoch != c.Route.RoutingEpoch {
+		return errors.New("Python executor preflight identity is invalid")
+	}
+	return nil
+}
 
 func runPythonExecutor(ctx context.Context, c config, request executorRequest, authorize authorizeCommit) (*int64, error) {
 	if request.Version != "jobseek.lightpanda.executor/v1" || request.TaskPayload == "" || !hex256.MatchString(request.PayloadSHA256) ||
@@ -200,6 +241,8 @@ func readExecutorMessage(input io.Reader) (executorMessage, error) {
 	}
 	required := map[string]struct{}{"type": {}}
 	switch messageType {
+	case "route_attested":
+		required["shard_id"], required["routing_epoch"] = struct{}{}, struct{}{}
 	case "authorize":
 		required["claim_token"], required["lease_until_ms"] = struct{}{}, struct{}{}
 	case "committed":
@@ -238,6 +281,14 @@ func readExecutorMessage(input io.Reader) (executorMessage, error) {
 		}
 		if message.Error != expected {
 			return executorMessage{}, errors.New("Python executor response has invalid error")
+		}
+		return message, nil
+	}
+	if message.Type == "route_attested" {
+		if message.RoutingEpoch < 1 || message.RoutingEpoch > maxInteger ||
+			message.Version != "" || message.ShardID == "" || message.ClaimToken != "" ||
+			message.LeaseUntilMS != 0 || message.Error != "" {
+			return executorMessage{}, errors.New("Python executor preflight response identity is invalid")
 		}
 		return message, nil
 	}

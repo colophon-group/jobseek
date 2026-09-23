@@ -45,6 +45,9 @@ Status tags:
 - [23 - Go and Lightpanda Crawler Migration](23-go-lightpanda-migration.md)
   `[reference]` - runtime replacement boundaries, projected crawler workload,
   Python-versus-Go cost evidence, cutover safety, and retirement plan.
+- [24 - Go and Lightpanda Resumption Plan](24-go-lightpanda-resumption-plan.md)
+  `[proposal]` - current bounded migration sequence, parity and resource gates,
+  cohort admission, and final legacy retirement criteria.
 
 ## Search, SEO, And Web Read Paths
 

@@ -99,6 +99,43 @@ def test_production_script_keeps_real_redis_payload_hash_checks() -> None:
     assert "redis.sha1hex(payload)" in source
 
 
+async def test_direct_queue_rejects_nonzero_external_first_time(
+    redis: Any, route: RouteIdentity
+) -> None:
+    queue = LightpandaB0Queue(redis, namespace="first-time-contract")
+    with pytest.raises(ValueError, match="immediately ready"):
+        await queue.activate_legacy(
+            task(route, ready_at_ms=500),
+            legacy_config={"board_id": "board-1", "source_url": "ignored"},
+            first_time=True,
+        )
+
+
+async def test_batch_inspect_audits_once_and_decodes_exact_records(
+    redis: Any, route: RouteIdentity, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    queue = LightpandaB0Queue(redis, namespace="batch-inspect")
+    assert (await queue.initialize(route)).accepted
+    first, second = task(route, "batch-1"), task(route, "batch-2")
+    assert (await queue.register(first)).accepted
+    assert (await queue.register(second)).accepted
+    audits = 0
+    audit_conservation = queue.audit_conservation
+
+    async def counted_audit(
+        current_route: RouteIdentity,
+    ) -> queue_module.TransitionResult:
+        nonlocal audits
+        audits += 1
+        return await audit_conservation(current_route)
+
+    monkeypatch.setattr(queue, "audit_conservation", counted_audit)
+    records = await queue.inspect_many(route)
+    assert audits == 1
+    assert set(records) == {"batch-1", "batch-2"}
+    assert all(record.state == "ready" for record in records.values())
+
+
 def test_task_is_canonical_b0_and_deeply_immutable(route: RouteIdentity) -> None:
     original = assignment()
     created = task(route)

@@ -25,6 +25,61 @@ func shortSocketPath(t *testing.T) string {
 	return filepath.Join(directory, "executor.sock")
 }
 
+func TestPythonExecutorRouteAttestationBindsLiveProcessAndExactRoute(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		response executorMessage
+		wantOK   bool
+	}{
+		{name: "exact", response: executorMessage{Type: "route_attested", ShardID: "lightpanda-b0", RoutingEpoch: 7}, wantOK: true},
+		{name: "stale_epoch", response: executorMessage{Type: "route_attested", ShardID: "lightpanda-b0", RoutingEpoch: 6}},
+		{name: "wrong_shard", response: executorMessage{Type: "route_attested", ShardID: "other", RoutingEpoch: 7}},
+		{name: "missing_epoch", response: executorMessage{Type: "route_attested", ShardID: "lightpanda-b0"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			socket := shortSocketPath(t)
+			listener, err := net.Listen("unix", socket)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(socket, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			defer listener.Close()
+			serverDone := make(chan error, 1)
+			go func() {
+				connection, acceptErr := listener.Accept()
+				if acceptErr != nil {
+					serverDone <- acceptErr
+					return
+				}
+				defer connection.Close()
+				payload, readErr := readFramedJSON(connection)
+				if readErr != nil {
+					serverDone <- readErr
+					return
+				}
+				var request executorMessage
+				if json.Unmarshal(payload, &request) != nil || request.Type != "attest_route" ||
+					request.Version != "jobseek.lightpanda.executor/v1" || request.ShardID != "lightpanda-b0" || request.RoutingEpoch != 7 {
+					serverDone <- errors.New("route attestation request mismatch")
+					return
+				}
+				serverDone <- writeExecutorJSON(connection, test.response)
+			}()
+			configuration := testExecutorConfig(socket)
+			configuration.Route = routeIdentity{ShardID: "lightpanda-b0", RoutingEpoch: 7, EngineOwner: engineOwner}
+			err = attestPythonExecutorRoute(context.Background(), configuration)
+			if (err == nil) != test.wantOK {
+				t.Fatalf("route attestation result mismatch: %v", err)
+			}
+			if serverErr := <-serverDone; serverErr != nil {
+				t.Fatal(serverErr)
+			}
+		})
+	}
+}
+
 func TestPythonExecutorHandshakeKeepsAuthorizationConversationBounded(t *testing.T) {
 	current := validQueueTask(t)
 	lease := &lease{Task: current, ClaimToken: "7:9", LeaseUntilMS: 20_000}
