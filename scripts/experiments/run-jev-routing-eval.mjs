@@ -3,8 +3,8 @@ import { performance } from "node:perf_hooks";
 import { categoryRequests, jevRoutingRequest } from "./jev-routing-core.mjs";
 
 const [variant, split, goldPath, tokenEnvPath, baseUrl = "http://localhost:3150"] = process.argv.slice(2);
-if (!["natural", "literal", "minimal", "minimal2"].includes(variant) || !["tune", "holdout"].includes(split)) {
-  throw new Error("Usage: node run-jev-routing-eval.mjs <natural|literal|minimal|minimal2> <tune|holdout> <current-system.json> <token.env> [baseUrl]");
+if (!["natural", "literal", "minimal", "minimal2", "broad3", "catalog3", "catalog4", "catalog5"].includes(variant) || !["tune", "holdout", "all"].includes(split)) {
+  throw new Error("Usage: node run-jev-routing-eval.mjs <natural|literal|minimal|minimal2|broad3|catalog3|catalog4|catalog5> <tune|holdout|all> <current-system.json> <token.env> [baseUrl]");
 }
 const gold = JSON.parse(readFileSync(goldPath, "utf8"));
 const line = readFileSync(tokenEnvPath, "utf8").split(/\r?\n/)
@@ -57,7 +57,7 @@ async function fetchCandidates(fixture, answers) {
 }
 
 const records = [];
-for (const fixture of gold.records.filter((record) => record.split === split)) {
+for (const fixture of gold.records.filter((record) => split === "all" || record.split === split)) {
   const jev = await retry(() => askJev(fixture), `${fixture.id} Jev`);
   const normalized = await retry(() => fetchCandidates(fixture, jev.answers), `${fixture.id} candidates`);
   records.push({
