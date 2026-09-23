@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 CANDIDATE_ORDER_KEY_FIELD = "candidate_order_key"
 CANDIDATE_ORDER_HI_FIELD = "candidate_order_hi"
 CANDIDATE_ORDER_LO_FIELD = "candidate_order_lo"
-CANDIDATE_ORDER_KEY_VERSION = "uuid-int64-pair-v1"
+CANDIDATE_ORDER_KEY_VERSION = "uuid-int64-active-v1"
 CANDIDATE_ORDER_READINESS_SCHEMA = "typesense-stable-candidate-order-readiness-v1"
 CANDIDATE_ORDER_PARTITION_COUNT = 256
 
@@ -45,6 +45,24 @@ def candidate_order_words(value: uuid.UUID) -> tuple[int, int]:
         raise TypeError("candidate order input must be a UUID")
     number = value.int
     return (number >> 64) - (1 << 63), (number & ((1 << 64) - 1)) - (1 << 63)
+
+
+def candidate_order_fields(value: uuid.UUID, *, active: bool) -> dict[str, str | int | None]:
+    """Emit sortable values only while a posting can enter candidate reads."""
+    if not isinstance(value, uuid.UUID):
+        raise TypeError("candidate order input must be a UUID")
+    if not active:
+        return {
+            CANDIDATE_ORDER_KEY_FIELD: None,
+            CANDIDATE_ORDER_HI_FIELD: None,
+            CANDIDATE_ORDER_LO_FIELD: None,
+        }
+    hi, lo = candidate_order_words(value)
+    return {
+        CANDIDATE_ORDER_KEY_FIELD: candidate_order_key(value),
+        CANDIDATE_ORDER_HI_FIELD: hi,
+        CANDIDATE_ORDER_LO_FIELD: lo,
+    }
 
 
 def build_candidate_order_readiness_receipt(

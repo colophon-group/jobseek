@@ -24,7 +24,7 @@ from typesense.exceptions import ObjectNotFound
 
 from src.reconciliation import TypesenseReconciliationClient
 from src.sync import refresh_typesense_counts
-from src.typesense_candidate_order import candidate_order_key
+from src.typesense_candidate_order import candidate_order_fields
 from src.typesense_schema import COLLECTIONS, _patch_missing_fields
 
 # ---------------------------------------------------------------------------
@@ -437,7 +437,7 @@ def _make_postings() -> list[dict]:
         posting_id = str(uuid.UUID(hex=f"{i % 2:02x}{i + 1:030x}"))
         posting: dict = {
             "id": posting_id,
-            "candidate_order_key": candidate_order_key(uuid.UUID(posting_id)),
+            **candidate_order_fields(uuid.UUID(posting_id), active=i < 16),
             "reconciliation_bucket": f"{i % 2:02x}",
             "company_id": company["id"],
             "company_name": company["name"],

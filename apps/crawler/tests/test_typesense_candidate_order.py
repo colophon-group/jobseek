@@ -15,6 +15,7 @@ from src.reconciliation import (
 )
 from src.typesense_candidate_order import (
     build_candidate_order_readiness_receipt,
+    candidate_order_fields,
     candidate_order_key,
     candidate_order_words,
 )
@@ -70,6 +71,20 @@ def test_candidate_order_words_preserve_exact_uuid_order() -> None:
     assert words[-1] == ((1 << 63) - 1, (1 << 63) - 1)
 
 
+def test_candidate_order_fields_only_index_active_postings() -> None:
+    value = uuid.UUID(int=42)
+    assert candidate_order_fields(value, active=True) == {
+        "candidate_order_key": candidate_order_key(value),
+        "candidate_order_hi": candidate_order_words(value)[0],
+        "candidate_order_lo": candidate_order_words(value)[1],
+    }
+    assert candidate_order_fields(value, active=False) == {
+        "candidate_order_key": None,
+        "candidate_order_hi": None,
+        "candidate_order_lo": None,
+    }
+
+
 def test_readiness_receipt_binds_all_reviewed_evidence() -> None:
     run_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
     receipt = build_candidate_order_readiness_receipt(
@@ -85,7 +100,7 @@ def test_readiness_receipt_binds_all_reviewed_evidence() -> None:
         "authoritativeCount": 123_456,
         "benchmarkSha256": "a" * 64,
         "completedAt": "2026-09-11T10:00:00Z",
-        "keyVersion": "uuid-int64-pair-v1",
+        "keyVersion": "uuid-int64-active-v1",
         "partitions": 256,
         "reconciliationRunId": str(run_id),
         "schemaVersion": "typesense-stable-candidate-order-readiness-v1",

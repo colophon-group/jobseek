@@ -30,9 +30,7 @@ FIELDS = (
     {"name": "candidate_order_lo", "type": "int64", "sort": True, "optional": True},
 )
 ALPHABET = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
-CANONICAL_UUID = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+CANONICAL_UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 def load_key(path: Path) -> str:
@@ -112,8 +110,11 @@ def import_batch(base_url: str, key: str, docs: list[dict[str, Any]]) -> None:
         raise RuntimeError(f"import rejected {failures} of {len(docs)} document updates")
 
 
-def export_ids(base_url: str, key: str, destination: Path) -> int:
-    path = "/collections/job_posting/documents/export?include_fields=id"
+def export_ids(base_url: str, key: str, destination: Path, *, active_only: bool) -> int:
+    query = {"include_fields": "id"}
+    if active_only:
+        query["filter_by"] = "is_active:true"
+    path = "/collections/job_posting/documents/export?" + urllib.parse.urlencode(query)
     req = urllib.request.Request(
         f"{base_url.rstrip('/')}{path}",
         headers={"X-TYPESENSE-API-KEY": key},
@@ -207,10 +208,18 @@ def cgroup_memory() -> dict[str, int]:
     current = int((root / "memory.current").read_text())
     limit = int((root / "memory.max").read_text())
     inactive = int(stat["inactive_file"])
+    host_info = dict(
+        line.split(":", 1) for line in Path("/proc/meminfo").read_text().splitlines() if ":" in line
+    )
+    host_available = int(host_info["MemAvailable"].split()[0]) * 1024
     return {
         "cgroup_current_bytes": current,
         "cgroup_limit_bytes": limit,
         "inactive_file_bytes": inactive,
+        "active_file_bytes": int(stat["active_file"]),
+        "anonymous_bytes": int(stat["anon"]),
+        "slab_unreclaimable_bytes": int(stat["slab_unreclaimable"]),
+        "host_available_bytes": host_available,
         "effective_working_set_bytes": current - inactive,
         "effective_headroom_bytes": limit - current + inactive,
         "oom_events": int(events.get("oom", 0)),
@@ -249,11 +258,83 @@ def benchmark(base_url: str, key: str, *, stable: bool) -> dict[str, Any]:
     }
 
 
+def active_count(base_url: str, key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for label, filter_by in (
+        ("active", "is_active:true"),
+        ("eligible", "is_active:true && has_content:!=false"),
+    ):
+        query = urllib.parse.urlencode(
+            {
+                "q": "*",
+                "query_by": "title",
+                "filter_by": filter_by,
+                "per_page": 0,
+            }
+        )
+        result = json.loads(
+            request(
+                base_url,
+                key,
+                "GET",
+                f"/collections/job_posting/documents/search?{query}",
+            )
+        )
+        counts[label] = int(result["found"])
+    return counts
+
+
+def verify_prefix(
+    base_url: str,
+    key: str,
+    source: Path,
+    *,
+    start: int,
+    limit: int,
+    expect_stamped: bool,
+) -> dict[str, Any]:
+    offsets = {start, start + limit // 2, start + limit - 1}
+    verified = 0
+    with gzip.open(source, "rt", encoding="utf-8") as stream:
+        for index, line in enumerate(stream):
+            if index > max(offsets):
+                break
+            if index not in offsets:
+                continue
+            id_text = line.strip()
+            document = json.loads(
+                request(
+                    base_url,
+                    key,
+                    "GET",
+                    f"/collections/job_posting/documents/{urllib.parse.quote(id_text)}",
+                )
+            )
+            expected = document_update(id_text, clear=not expect_stamped)
+            if any(document.get(field["name"]) != expected[field["name"]] for field in FIELDS):
+                raise RuntimeError("sampled candidate order values do not match expected state")
+            verified += 1
+    if verified != len(offsets):
+        raise RuntimeError("ID export ended before all verification samples")
+    return {"sampled": verified, "stamped": expect_stamped}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "command",
-        choices=("status", "bench", "snapshot", "add", "export", "update", "clear", "drop"),
+        choices=(
+            "status",
+            "bench",
+            "count",
+            "snapshot",
+            "add",
+            "export",
+            "update",
+            "clear",
+            "drop",
+            "verify",
+        ),
     )
     parser.add_argument("--url", default="http://127.0.0.1:18111")
     key_source = parser.add_mutually_exclusive_group(required=True)
@@ -265,6 +346,8 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--batch-size", type=int, default=5_000)
     parser.add_argument("--stable", action="store_true")
+    parser.add_argument("--active-only", action="store_true")
+    parser.add_argument("--expect-stamped", action="store_true")
     args = parser.parse_args()
     key = sys.stdin.readline().rstrip("\n") if args.key_stdin else load_key(args.key_env_file)
     if not key:
@@ -290,6 +373,8 @@ def main() -> int:
         )
     elif args.command == "bench":
         print(json.dumps(benchmark(args.url, key, stable=args.stable), sort_keys=True))
+    elif args.command == "count":
+        print(json.dumps(active_count(args.url, key), sort_keys=True))
     elif args.command == "snapshot":
         if not args.snapshot_path or not args.snapshot_path.startswith("/jobseek-snapshots/"):
             parser.error("snapshot requires a path under /jobseek-snapshots/")
@@ -324,17 +409,34 @@ def main() -> int:
     elif args.command == "export":
         if args.id_file is None:
             parser.error("export requires --id-file")
-        print(json.dumps({"exported": export_ids(args.url, key, args.id_file)}))
-    else:
-        if (
-            args.id_file is None
-            or args.start < 0
-            or args.limit <= 0
-            or args.batch_size <= 0
-        ):
-            parser.error(
-                "update/clear require --id-file and valid start, limit, and batch size"
+        print(
+            json.dumps(
+                {
+                    "exported": export_ids(
+                        args.url, key, args.id_file, active_only=args.active_only
+                    ),
+                    "active_only": args.active_only,
+                }
             )
+        )
+    elif args.command == "verify":
+        if args.id_file is None or args.start < 0 or args.limit <= 0:
+            parser.error("verify requires --id-file and valid start and limit")
+        print(
+            json.dumps(
+                verify_prefix(
+                    args.url,
+                    key,
+                    args.id_file,
+                    start=args.start,
+                    limit=args.limit,
+                    expect_stamped=args.expect_stamped,
+                )
+            )
+        )
+    else:
+        if args.id_file is None or args.start < 0 or args.limit <= 0 or args.batch_size <= 0:
+            parser.error("update/clear require --id-file and valid start, limit, and batch size")
         update_prefix(
             args.url,
             key,

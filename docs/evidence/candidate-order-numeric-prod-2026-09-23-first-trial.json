@@ -1,0 +1,56 @@
+{
+  "status": "early_stop_rolled_back",
+  "typesense_version": "27.1",
+  "server_type": "Hetzner CX33",
+  "schema_alter": {
+    "started_at": "2026-09-23T13:37:44Z",
+    "finished_at": "2026-09-23T13:47:15Z",
+    "documents_scanned": 5516318,
+    "fields": ["candidate_order_key (stored only)", "candidate_order_hi (sort)", "candidate_order_lo (sort)"]
+  },
+  "id_export": {
+    "documents": 5516568,
+    "sha256": "83f408e9c33b771ca7646d1d114b64c6b8be0dd54a348bf3564a90cf565acef8",
+    "gzip_integrity_checked": true
+  },
+  "baseline_after_export": {
+    "documents": 5517172,
+    "allocated_bytes": 3304905968,
+    "resident_bytes": 3751002112,
+    "effective_working_set_bytes": 4987154432,
+    "effective_headroom_bytes": 1455296512,
+    "representative_query_found": 1115,
+    "representative_query_p95_ms": 107
+  },
+  "trial": {
+    "updates_accepted": 50000,
+    "allocated_bytes": 3310185768,
+    "resident_bytes": 3753775104,
+    "effective_working_set_bytes": 5644468224,
+    "effective_headroom_bytes": 797982720,
+    "oom_events": 0,
+    "container_restarts": 0
+  },
+  "decision": {
+    "accepted_for_rollout": false,
+    "reason": "Effective cgroup headroom fell below the predeclared 1 GiB stop gate after the first 50,000 updates.",
+    "measurement_limit": "Allocator grew by only 5.3 MB and resident memory by 2.8 MB. The much larger effective-working-set movement reflects cgroup cache state as well as index work. No full-scale safety claim can be made from this trial.",
+    "next_avenue": "Index only active postings; 2,336,890 of roughly 5.52 million documents were active at the read-only count. Delist/relist upserts remove and restore the optional sort values."
+  },
+  "rollback": {
+    "values_cleared": 50000,
+    "schema_drop_completed": true,
+    "schema_fields_present": false,
+    "sampled_documents_without_values": 3,
+    "final_documents": 5517460,
+    "final_allocated_bytes": 3307015528,
+    "final_resident_bytes": 3759878144,
+    "final_effective_headroom_bytes": 797233152,
+    "final_representative_query_p95_ms": 96,
+    "final_query_found": 1115,
+    "container_restarts": 0,
+    "oom_events": 0,
+    "readiness_receipt_emitted": false
+  },
+  "measurement_revision_for_next_trial": "Effective headroom remained near 0.80 GiB after all sort fields were removed. The cgroup then contained 3.82 GiB anonymous memory and 2.50 GiB file cache, including 1.77 GiB active file cache. The next trial will gate on anonymous memory, container resident memory, host available memory, OOM/restarts, and query latency; it will still record effective headroom but not use that cache-sensitive value alone as a stop signal."
+}

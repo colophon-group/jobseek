@@ -185,13 +185,16 @@ Frozen precise-matching feeds use `first_seen_at DESC, candidate ID ASC` after
 the separately gated producer rollout. Typesense's implicit `id` cannot be
 configured for string sorting. Each posting therefore carries signed int64
 `candidate_order_hi` and `candidate_order_lo` fields, derived by subtracting
-2^63 from the unsigned high and low UUID halves (`uuid-int64-pair-v1`). Sorting
+2^63 from the unsigned high and low UUID halves (`uuid-int64-active-v1`). Sorting
 by timestamp, high half, then low half exactly preserves canonical UUID order.
 The 22-character `candidate_order_key` remains stored but unindexed for exact
 per-hit validation in JavaScript, whose JSON numbers cannot represent arbitrary
-int64 values. All three fields are optional only for the in-place transition.
-The exporter, full backfill, reconciliation repairs, and local development
-backfill emit them together.
+int64 values. The exporter and local development backfill emit all three values
+for active postings and explicit nulls for inactive postings. A delist removes
+the sortable values; a relist restores them on the normal upsert. Required
+candidate reads filter to active postings. All three fields are optional during
+the in-place transition, and a complete reconciliation checks both active and
+inactive payloads before activation.
 
 The earlier sortable-string design was stopped after a 50,000-document
 production update showed concerning memory growth. Evidence is in
@@ -201,6 +204,12 @@ per document of incremental allocated memory for the numeric pair versus 998
 bytes for the sortable string, relative to a no-key control. This is an avenue
 to test, not production headroom proof. Activation still requires a reviewed
 production-shaped memory/headroom benchmark and durable complete reconciliation.
+An initial numeric 50,000-document production trial was also rolled back when
+effective cgroup headroom briefly fell below the predeclared 1 GiB gate, even
+though allocator and resident growth were small. The active-only producer
+avoids indexing the roughly 58% of stored postings that are inactive. It must
+be measured separately at production scale; the earlier trial is not its
+acceptance evidence.
 
 For the benchmark, use Typesense 27.1 on the same instance class and memory
 limit as production (currently CX33 with a 6 GiB container limit; verify the
@@ -220,8 +229,10 @@ Activation is deliberately fail-closed. Keep
 
 1. Deploy the crawler schema/exporter change so `setup-typesense` patches the
    optional numeric sort fields before new document writes.
-2. Run `uv run --no-sync crawler backfill-typesense` to stamp all three fields
-   onto every authoritative posting.
+2. Export the active posting IDs through the bounded rollout tool and stamp
+   all three fields onto that set. The full crawler backfill also works but
+   rewrites inactive documents needlessly. Keep the ID export for a precise
+   rollback, and check memory and query latency at predeclared checkpoints.
 3. After the benchmark is reviewed, run the proof and pass its artifact digest:
 
    ```bash

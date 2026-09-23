@@ -10,7 +10,7 @@ export const WATCHLIST_CANDIDATE_ORDER_KEY_FIELD =
   "candidate_order_key" as const;
 export const WATCHLIST_CANDIDATE_ORDER_HI_FIELD = "candidate_order_hi" as const;
 export const WATCHLIST_CANDIDATE_ORDER_LO_FIELD = "candidate_order_lo" as const;
-export const WATCHLIST_CANDIDATE_ORDER_KEY_VERSION = "uuid-int64-pair-v1" as const;
+export const WATCHLIST_CANDIDATE_ORDER_KEY_VERSION = "uuid-int64-active-v1" as const;
 
 const CANDIDATE_ORDER_ALPHABET =
   "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";

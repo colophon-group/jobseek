@@ -61,7 +61,7 @@ const READY_RECEIPT = Buffer.from(JSON.stringify({
   authoritativeCount: 10_000,
   benchmarkSha256: "a".repeat(64),
   completedAt: "2026-09-11T10:00:00Z",
-  keyVersion: "uuid-int64-pair-v1",
+  keyVersion: "uuid-int64-active-v1",
   partitions: 256,
   reconciliationRunId: "00000000-0000-0000-0000-000000000001",
   schemaVersion: "typesense-stable-candidate-order-readiness-v1",
