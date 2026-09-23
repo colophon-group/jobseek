@@ -1,12 +1,12 @@
 # Typesense Deployment State
 
-Current production deployment as of July 2026. The earlier docs in this directory (00-05) describe the migration plan and benchmarks; this document describes what was actually deployed.
+Production architecture, originally captured in July 2026. The earlier docs in this directory (00-05) describe the migration plan and benchmarks. For the current host memory policy, see [`16-hetzner-maintenance.md`](16-hetzner-maintenance.md).
 
 ## Infrastructure
 
 ### Typesense Machine
 
-- **Hetzner CX22**: 4 GB RAM, 2 vCPU, dedicated IPv4
+- **Hetzner CX33**: 8 GB RAM, 4 vCPU, dedicated IPv4; managed Typesense container has a 6 GiB hard memory limit
 - **OS**: Ubuntu (Docker host)
 - **Container**: Typesense 27.1 pinned by manifest digest in the host installer,
   `--network host`, data at
@@ -41,7 +41,7 @@ The Vercel-hosted web app has no stable IPs, so it cannot be firewalled into the
   delivered through systemd `LoadCredential`; neither the unit nor process
   arguments contain the token.
 - **Cache bypass rule**: configured in Cloudflare dashboard -- without it, Cloudflare may cache GET search responses and return stale results (Typesense does not set `Cache-Control` headers by default)
-- **Rate-limit rule** (zone `colophon-group.org`, phase `http_ratelimit`): per-IP, 200 requests / 10 s on `(http.host eq "typesense.colophon-group.org")`, action `block` for 10 s. Required because the search key is exposed to browsers (see "Web App Integration") and the origin is a single 4 GB / 2 vCPU box.
+- **Rate-limit rule** (zone `colophon-group.org`, phase `http_ratelimit`): per-IP, 200 requests / 10 s on `(http.host eq "typesense.colophon-group.org")`, action `block` for 10 s. Required because the search key is exposed to browsers (see "Web App Integration") and the origin is a single Typesense host.
 - **CORS**: Typesense container emits `Access-Control-Allow-Origin: *` directly -- no Cloudflare Transform Rule needed. Verified via `curl -X OPTIONS -H 'Origin: https://jseek.co' https://typesense.colophon-group.org/health`.
 - **Latency overhead**: ~10-30 ms per request (acceptable -- Typesense queries take <10 ms)
 
@@ -198,7 +198,9 @@ prerequisites: a reviewed production-shaped memory/headroom benchmark and a
 durable complete reconciliation proof.
 
 For the benchmark, use Typesense 27.1 on the same instance class and memory
-limit as production, with the production document count and field cardinality.
+limit as production (currently CX33 with a 6 GiB container limit; verify the
+live host before the run), with the live production document count and field
+cardinality.
 Record, at minimum, the Typesense version, instance memory limit, document
 count, baseline resident memory, resident and peak memory with
 `candidate_order_key`, remaining headroom, the headroom threshold chosen before
