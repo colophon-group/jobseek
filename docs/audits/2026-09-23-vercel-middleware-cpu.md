@@ -64,3 +64,30 @@ for each observation and reads the compiled output in the current directory.
 Rebuild before comparing another variant. All evidence is in the adjacent
 [directory](2026-09-23-vercel-middleware-cpu/); it contains no credentials or
 raw client identifiers.
+
+## Repeat on the deployed framework version
+
+The company fix required Next 16.3.6 for Vercel's standalone adapter. Repeated
+the comparison using production builds on **16.3.6 / Node 24.21.0**, preserving
+each compiled server artifact and alternating variants in fresh processes.
+There are eight observations per variant/scenario, with order reversed on
+alternating pairs to reduce drift. Both variants use the same dependency
+installation and environment. The earlier 16.3.4 results remain above.
+
+| Scenario | Baseline module CPU | Deferred module CPU | Baseline first request | Deferred first request | Baseline warm | Deferred warm |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Locale redirect | 234.238ms | 128.023ms | 13.706ms | 11.017ms | 1.061ms | 1.007ms |
+| Obsolete action rejection | 231.956ms | 129.281ms | 10.956ms | 7.852ms | 0.870ms | 0.864ms |
+| Anonymous legacy watchlist 404 | 236.023ms | 127.837ms | 11.813ms | 8.829ms | 0.954ms | 0.967ms |
+| Unknown company guard | 234.829ms | 129.611ms | 12.186ms | 51.671ms | 0.932ms | 1.051ms |
+
+This counterbalanced run again shows a **44–46%** reduction in module-load CPU,
+with essentially unchanged warm CPU. The unknown-company first request moves
+some service loading from startup into its first handler call, as intended.
+The harness accepts `PROXY_BENCH_ARTIFACT` to select a preserved compiled
+`server/middleware.js`; all 64 paired observations are in
+[`proxy-next1636-paired.json`](2026-09-23-vercel-middleware-cpu/proxy-next1636-paired.json).
+A preliminary sequential 16.3.6 run had substantially different absolute
+startup timings, which is why the final comparison alternates both artifacts
+rather than comparing isolated runs at different times. No cross-version CPU
+percentage is inferred.

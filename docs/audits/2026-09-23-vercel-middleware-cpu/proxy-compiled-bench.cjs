@@ -13,7 +13,7 @@ if(!process.env.PROXY_BENCH_CHILD){
  }
 }else{(async()=>{
  const scenario=process.env.PROXY_BENCH_CHILD;
- const s=process.cpuUsage();const {handler}=require(path.resolve('.next/server/middleware.js'));const d=process.cpuUsage(s);
+ const s=process.cpuUsage();const {handler}=require(path.resolve(process.env.PROXY_BENCH_ARTIFACT || '.next/server/middleware.js'));const d=process.cpuUsage(s);
  const urls={'redirect':'/','obsolete-action':'/en/explore','anonymous-legacy':'/en/nonexistent-user/nonexistent-list','unknown-company':'/en/company/definitely-not-a-real-company'};
  const times=[],statuses=[];
  for(let n=0;n<6;n++){
