@@ -243,8 +243,15 @@ func TestProducerControlMapsLostRedisAuthorityToClosedFailure(t *testing.T) {
 	if queue.initialized != 0 || queue.activated != 0 {
 		t.Fatal("lost authority reached producer mutation")
 	}
-	if failure, ok := latch.failure(); !ok || failure.class != "redis" || failure.operation != "prepare" {
-		t.Fatalf("lost authority was not latched: %#v, %v", failure, ok)
+	// The response is written before the handler trips the process-wide latch.
+	// Wait for that bounded asynchronous step rather than racing the handler.
+	select {
+	case failure := <-latch.lost:
+		if failure.class != "redis" || failure.operation != "prepare" {
+			t.Fatalf("lost authority was latched incorrectly: %#v", failure)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("lost authority was not latched")
 	}
 }
 
