@@ -1,0 +1,262 @@
+name: ${ADMISSION_PROJECT:?set a unique admission project}
+x-common: &common
+  restart: "no"
+  init: true
+  security_opt: [no-new-privileges:true]
+x-crawler-env: &crawler-env
+  LOCAL_DATABASE_URL: postgresql://admission:admission@postgres:5432/admission
+  REDIS_URL: redis://redis:6379/0
+  WEB_DATABASE_URL: ""
+  SUPABASE_URL: ""
+  SUPABASE_SERVICE_KEY: ""
+  TYPESENSE_URL: ""
+  TYPESENSE_ADMIN_KEY: ""
+  R2_ACCOUNT_ID: ""
+  R2_ACCESS_KEY_ID: ""
+  R2_SECRET_ACCESS_KEY: ""
+  WEBSHARE_PROXY_USERNAME: ""
+  WEBSHARE_PROXY_PASSWORD: ""
+  LIGHTPANDA_B0_PRODUCER_MODE: ${ADMISSION_PRODUCER_MODE:-off}
+  LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
+  THROTTLE_DELAY_DEFAULT: "1"
+  THROTTLE_DELAY_ATS: "1"
+services:
+  socket-init:
+    <<: *common
+    image: ${CANDIDATE_IMAGE:?immutable candidate image required}
+    command: [/bin/sh, -eu, -c, "chown 10001:10001 /run/jobseek-lightpanda-producer /run/jobseek-lightpanda-executor && chmod 0700 /run/jobseek-lightpanda-producer /run/jobseek-lightpanda-executor"]
+    user: "0:0"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER]
+    volumes:
+      - producer-socket:/run/jobseek-lightpanda-producer
+      - executor-socket:/run/jobseek-lightpanda-executor
+    mem_limit: 16m
+    memswap_limit: 16m
+  postgres:
+    <<: *common
+    image: ${POSTGRES_IMAGE:?immutable postgres image required}
+    environment:
+      POSTGRES_USER: admission
+      POSTGRES_PASSWORD: admission
+      POSTGRES_DB: admission
+    networks: {claim: {ipv4_address: 172.30.250.3}}
+    tmpfs:
+      - /var/lib/postgresql/data:rw,noexec,nosuid,nodev,size=512m
+    healthcheck: {test: [CMD-SHELL, pg_isready -U admission -d admission], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 512m
+    memswap_limit: 512m
+  redis:
+    <<: *common
+    image: ${REDIS_IMAGE:?immutable redis image required}
+    command: [redis-server, --save, "", --appendonly, "no", --maxmemory-policy, noeviction]
+    networks: {claim: {ipv4_address: 172.30.250.4}}
+    tmpfs:
+      - /data:rw,noexec,nosuid,nodev,size=32m
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 96m
+    memswap_limit: 96m
+  migrate:
+    <<: *common
+    image: ${CANDIDATE_IMAGE:?immutable candidate image required}
+    command: [/app/.venv/bin/alembic, -c, src/migrations/alembic.ini, upgrade, head]
+    user: "10001:10001"
+    read_only: true
+    environment:
+      <<: *crawler-env
+    networks: [claim]
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=32m]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+    memswap_limit: 512m
+  fixture:
+    <<: *common
+    image: ${PYTHON_IMAGE:?immutable python image required}
+    command: [python, /admission/fixture_server.py, --workload, /admission/workload.v2.json, --concurrency, "${ADMISSION_CONCURRENCY:?1 or 4}", --certificate, /run/pki/fixture.pem, --private-key, /run/pki/fixture-key.pem]
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    # Reserved .test origins resolve only through these internal aliases.
+    networks: {origin: {ipv4_address: 11.252.0.2, aliases: [origin-0.lane.bench.test, origin-1.lane.bench.test, origin-2.lane.bench.test, origin-3.lane.bench.test]}}
+    volumes:
+      - .:/admission:ro
+      - ${ADMISSION_PKI_DIR:?ephemeral PKI directory required}:/run/pki:ro
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=4m,uid=10001,gid=10001,mode=0700]
+    healthcheck: {test: [CMD, test, -f, /tmp/ready], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 128m
+    memswap_limit: 128m
+  executor:
+    <<: *common
+    image: ${CANDIDATE_IMAGE:?immutable candidate image required}
+    command: [/app/.venv/bin/python, -m, src.lightpanda.executor]
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    environment:
+      LOCAL_DATABASE_URL: postgresql://admission:admission@postgres:5432/admission
+      CRAWLER_DB_ROLE: lightpanda-b0-executor
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "1"
+      LIGHTPANDA_B0_EXECUTOR_MODE: enabled
+      LIGHTPANDA_B0_EXECUTOR_SOCKET: /run/jobseek-lightpanda-executor/executor.sock
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      WEB_DATABASE_URL: ""
+      REDIS_URL: ""
+      R2_ACCOUNT_ID: ""
+      TYPESENSE_URL: ""
+    volumes:
+      - executor-socket:/run/jobseek-lightpanda-executor
+    networks: [claim]
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      socket-init:
+        condition: service_completed_successfully
+    healthcheck: {test: [CMD, /app/.venv/bin/python, -m, src.lightpanda.executor, --healthcheck], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: 0.5
+    pids_limit: 128
+  renderer:
+    <<: *common
+    image: ${RENDERER_IMAGE:?immutable runtime-v1 renderer image required}
+    command: [--runtime-v1-service, --listen, 0.0.0.0:9443, --service-ip, 172.30.250.2, --deployment-deny-cidr, 93.184.216.34/32, --tls-cert, /run/pki/server.pem, --tls-key, /run/pki/server-key.pem, --tls-ca, /run/pki/ca.pem, --tls-ca-sha256, "${ADMISSION_CA_PIN:?required}", --client-leaf-sha256, "${ADMISSION_CLIENT_LEAF_PIN:?required}", --client-spki-sha256, "${ADMISSION_CLIENT_SPKI_PIN:?required}"]
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [KILL, SETGID, SETUID]
+    environment:
+      SSL_CERT_FILE: /run/pki/ca.pem
+    networks: {claim: {ipv4_address: 172.30.250.2}, origin: {ipv4_address: 11.252.0.3}}
+    volumes:
+      - ${ADMISSION_PKI_DIR:?ephemeral PKI directory required}:/run/pki:ro
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10002,gid=10002,mode=0700]
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: 2.0
+    pids_limit: 96
+  producer:
+    <<: *common
+    image: ${CANDIDATE_IMAGE:?immutable candidate image required}
+    command: [/usr/local/bin/lightpanda-b0-supervisor, producer]
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    environment:
+      GOMEMLIMIT: 16MiB
+      LIGHTPANDA_B0_PRODUCER_MODE: enabled
+      LIGHTPANDA_B0_PRODUCER_COHORT: ${ADMISSION_COHORT:?c1 or c4 required}
+      LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "0"
+      LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
+      LIGHTPANDA_B0_QUEUE_NAMESPACE: admission-b0
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      REDIS_URL: redis://redis:6379/0
+    volumes: [producer-socket:/run/jobseek-lightpanda-producer]
+    networks: [claim]
+    depends_on:
+      redis:
+        condition: service_healthy
+      socket-init:
+        condition: service_completed_successfully
+    healthcheck: {test: [CMD, /usr/local/bin/lightpanda-b0-supervisor, producer, --healthcheck], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 32m
+    memswap_limit: 32m
+    cpus: 0.25
+    pids_limit: 32
+  supervisor:
+    <<: *common
+    image: ${CANDIDATE_IMAGE:?immutable candidate image required}
+    command: [/usr/local/bin/lightpanda-b0-supervisor]
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    environment:
+      GOMEMLIMIT: 96MiB
+      LIGHTPANDA_B0_SUPERVISOR_MODE: enabled
+      LIGHTPANDA_B0_CONCURRENCY: ${ADMISSION_CONCURRENCY:?1 or 4}
+      REDIS_URL: redis://redis:6379/0
+      THROTTLE_DELAY_DEFAULT: "1"
+      LIGHTPANDA_B0_SERVICE_HOST: 172.30.250.2
+      LIGHTPANDA_B0_QUEUE_NAMESPACE: admission-b0
+      LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
+      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_CA_CERTIFICATE: /run/pki/ca.pem
+      LIGHTPANDA_B0_CLIENT_CERTIFICATE: /run/pki/client.pem
+      LIGHTPANDA_B0_CLIENT_PRIVATE_KEY: /run/pki/client-key.pem
+      LIGHTPANDA_B0_CA_SHA256_FILE: /run/pki/ca.sha256
+      LIGHTPANDA_B0_SERVER_LEAF_SHA256_FILE: /run/pki/server-leaf.sha256
+      LIGHTPANDA_B0_SERVER_SPKI_SHA256_FILE: /run/pki/server-spki.sha256
+      LIGHTPANDA_B0_EXECUTOR_SOCKET: /run/jobseek-lightpanda-executor/executor.sock
+      LIGHTPANDA_B0_METRICS_ADDRESS: 127.0.0.1:9101
+    volumes:
+      - ${ADMISSION_PKI_DIR:?ephemeral PKI directory required}:/run/pki:ro
+      - executor-socket:/run/jobseek-lightpanda-executor:ro
+    networks: [claim]
+    depends_on:
+      redis:
+        condition: service_healthy
+      executor:
+        condition: service_healthy
+    healthcheck: {test: [CMD, /usr/local/bin/lightpanda-b0-supervisor, --healthcheck], interval: 1s, timeout: 2s, retries: 30}
+    mem_limit: 96m
+    memswap_limit: 96m
+    cpus: 0.25
+    pids_limit: 96
+  control:
+    <<: *common
+    image: ${BROWSER_IMAGE:?immutable production browser-worker image required}
+    command: [/app/.venv/bin/crawler, run-browser]
+    read_only: true
+    environment:
+      <<: *crawler-env
+      DISCOVERY_CONCURRENCY: ${ADMISSION_CONCURRENCY:?1 or 4}
+      METRICS_PORT: "9091"
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "4"
+    networks: {claim: {}, origin: {ipv4_address: 11.252.0.4}}
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=256m]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck: {test: [CMD-SHELL, "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9091/\", timeout=2)'"], interval: 1s, timeout: 3s, retries: 30}
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    cpus: 3.0
+    pids_limit: 1024
+  runner:
+    <<: *common
+    image: ${CANDIDATE_IMAGE:?immutable candidate image required}
+    command: [/app/.venv/bin/python, -m, src.lightpanda.admission, --lane, "${ADMISSION_LANE:?candidate or control}", --workload, /admission-input/input.json, --timeout, "${ADMISSION_TIMEOUT:-180}", --concurrency, "${ADMISSION_CONCURRENCY:?1 or 4}", --phase, "${ADMISSION_PHASE:?reserve seed or collect}", --due, "${ADMISSION_DUE:-0}"]
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    environment:
+      <<: *crawler-env
+      LIGHTPANDA_B0_QUEUE_NAMESPACE: admission-b0
+      LIGHTPANDA_B0_PRODUCER_MODE: ${ADMISSION_PRODUCER_MODE:-off}
+      LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
+    networks: [claim]
+    volumes:
+      - ${ADMISSION_INPUT:?workload required}:/admission-input/input.json:ro
+      - producer-socket:/run/jobseek-lightpanda-producer:ro
+    tmpfs: [/tmp:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0700]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    mem_limit: 256m
+    memswap_limit: 256m
+networks:
+  claim: {internal: true, ipam: {config: [{subnet: 172.30.250.0/24}]}}
+  origin: {internal: true, ipam: {config: [{subnet: 11.252.0.0/24}]}}
+volumes:
+  producer-socket: {}
+  executor-socket: {}

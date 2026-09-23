@@ -52,6 +52,22 @@ FROM base AS slim
 # Default: worker instance. Override via docker-compose command.
 CMD ["uv", "run", "--no-sync", "crawler", "run"]
 
+# Native ARM64 comparator for the B0 fixture. It uses the same Python worker
+# and Playwright Chromium shell as the production browser path; the fixture
+# never selects the optional amd64-only Google Chrome channel.
+FROM base AS benchmark-browser
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64 \
+       libcairo2 libcups2t64 libdbus-1-3 libdrm2 libgbm1 libglib2.0-0t64 \
+       libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 \
+       libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
+       libfontconfig1 libfreetype6 fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+RUN uv run --no-sync playwright install chromium-headless-shell \
+    && test -x /root/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux*/chrome-headless-shell
+CMD ["/app/.venv/bin/crawler", "run-browser"]
+
 # ── Target: full (browser worker — with Playwright + Chromium) ───────
 FROM base AS full
 
