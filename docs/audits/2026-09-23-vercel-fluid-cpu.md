@@ -127,3 +127,14 @@ unavailable Typesense language lookup; all smoke assertions still pass. The
 service-backed build's unseeded company cache checks passed separately. These
 checks establish build and local behavior; they do not establish production
 CPU savings.
+
+The first Vercel preview compiled and prerendered successfully, then failed in
+Vercel's adapter with missing `.next/next-server.js.nft.json` ([#9926](https://github.com/colophon-group/jobseek/issues/9926)).
+This matches the standalone-plus-adapter tracing fix published in
+[Next 16.3.5](https://github.com/vercel/next.js/releases/tag/v16.3.5).
+The release candidate upgrades the web app to
+[16.3.6](https://github.com/vercel/next.js/releases/tag/v16.3.6), also including
+the latest next/og security fix. The existing metadata-tree alignment backport
+is reapplied to all three compiled production checks and the readable server
+implementation; the existing patch regression test verifies those checks.
+The original CPU experiment remains explicitly a 16.3.4 measurement.
