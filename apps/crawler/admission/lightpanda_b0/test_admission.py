@@ -113,6 +113,12 @@ def test_renderer_private_key_has_required_mode(tmp_path: Path) -> None:
 def test_compose_counts_real_producer_inside_equal_lane() -> None:
     compose = (HERE / "compose.yml").read_text()
     services = yaml.safe_load(compose)["services"]
+    assert services["executor"]["healthcheck"]["timeout"] == "3s"
+    assert services["executor"]["healthcheck"]["interval"] == "5s"
+    assert services["executor"]["cpus"] == 1.0
+    assert services["control"]["cpus"] == sum(
+        services[name]["cpus"] for name in ("producer", "supervisor", "executor", "renderer")
+    )
     for service in services.values():
         for mount in service.get("tmpfs", []):
             assert mount.startswith("/")

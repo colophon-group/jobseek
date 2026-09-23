@@ -119,10 +119,10 @@ services:
         condition: service_healthy
       socket-init:
         condition: service_completed_successfully
-    healthcheck: {test: [CMD, /app/.venv/bin/python, -m, src.lightpanda.executor, --healthcheck], interval: 1s, timeout: 2s, retries: 30}
+    healthcheck: {test: [CMD, /app/.venv/bin/python, -m, src.lightpanda.executor, --healthcheck], interval: 5s, timeout: 3s, retries: 3, start_period: 10s}
     mem_limit: 384m
     memswap_limit: 384m
-    cpus: 0.5
+    cpus: 1.0
     pids_limit: 128
   renderer:
     <<: *common
@@ -230,7 +230,7 @@ services:
     healthcheck: {test: [CMD-SHELL, "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9091/\", timeout=2)'"], interval: 1s, timeout: 3s, retries: 30}
     mem_limit: 1536m
     memswap_limit: 1536m
-    cpus: 3.0
+    cpus: 3.5
     pids_limit: 1024
   runner:
     <<: *common
