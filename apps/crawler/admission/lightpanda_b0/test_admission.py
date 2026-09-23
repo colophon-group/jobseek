@@ -112,6 +112,12 @@ def test_compose_counts_real_producer_inside_equal_lane() -> None:
             assert mount.startswith("/")
             assert "uid=" not in mount or ":" in mount
     assert "LIGHTPANDA_B0_PRODUCER_MODE: enabled" in compose
+    assert compose.count('LIGHTPANDA_B0_ROUTING_EPOCH: "2"') == 3
+    migration = (
+        HERE.parent.parent
+        / "src/migrations/versions/0032_add_lightpanda_b0_routing_epoch_sequence.py"
+    ).read_text()
+    assert "START WITH 2" in migration
     assert 'LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "0"' in compose
     assert "producer-socket:/run/jobseek-lightpanda-producer:ro" in compose
     assert "producer-socket:/run/jobseek-lightpanda-producer" in compose

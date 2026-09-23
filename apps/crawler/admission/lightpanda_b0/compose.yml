@@ -105,7 +105,7 @@ services:
       LIGHTPANDA_B0_EXECUTOR_MODE: enabled
       LIGHTPANDA_B0_EXECUTOR_SOCKET: /run/jobseek-lightpanda-executor/executor.sock
       LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_ROUTING_EPOCH: "2"
       WEB_DATABASE_URL: ""
       REDIS_URL: ""
       R2_ACCOUNT_ID: ""
@@ -156,7 +156,7 @@ services:
       LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
       LIGHTPANDA_B0_QUEUE_NAMESPACE: admission-b0
       LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_ROUTING_EPOCH: "2"
       REDIS_URL: redis://redis:6379/0
     volumes: [producer-socket:/run/jobseek-lightpanda-producer]
     networks: [claim]
@@ -186,7 +186,7 @@ services:
       LIGHTPANDA_B0_SERVICE_HOST: 172.30.250.2
       LIGHTPANDA_B0_QUEUE_NAMESPACE: admission-b0
       LIGHTPANDA_B0_SHARD_ID: lightpanda-b0
-      LIGHTPANDA_B0_ROUTING_EPOCH: "1"
+      LIGHTPANDA_B0_ROUTING_EPOCH: "2"
       LIGHTPANDA_B0_CA_CERTIFICATE: /run/pki/ca.pem
       LIGHTPANDA_B0_CLIENT_CERTIFICATE: /run/pki/client.pem
       LIGHTPANDA_B0_CLIENT_PRIVATE_KEY: /run/pki/client-key.pem

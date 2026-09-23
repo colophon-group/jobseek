@@ -692,7 +692,7 @@ def run_arm(
             _compose(env, "run", "--rm", "--no-deps", "runner", timeout=30),
             "ADMISSION_SETUP=",
         )
-        if reserve != {"phase": "reserve", "routing_epoch": 1}:
+        if reserve != {"phase": "reserve", "routing_epoch": 2}:
             raise AdmissionError("disposable PostgreSQL routing epoch was not reserved")
         if lane == "candidate":
             _compose(env, "up", "-d", "--wait", "executor", "renderer", "producer", timeout=120)

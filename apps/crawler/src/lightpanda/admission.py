@@ -268,7 +268,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             value = await pool.fetchval(
                 "SELECT nextval('public.lightpanda_b0_routing_epoch_seq'::regclass)"
             )
-            if value != 1:
+            if value != 2:
                 raise AdmissionDriverError("disposable routing epoch is not the first reservation")
             return {"phase": "reserve", "routing_epoch": value}
         if args.phase == "seed":
