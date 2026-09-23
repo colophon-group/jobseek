@@ -27,7 +27,6 @@ from src.typesense_schema import (
     _index_drift,
     _memory_metrics_snapshot,
     _patch_missing_fields,
-    _unused_sort_drift,
     _warn_field_drift,
     run_setup,
     setup_collections,
@@ -87,7 +86,7 @@ def test_posting_pruning_preserves_consumed_filters_facets_and_sorting() -> None
         "experience_min_years",
         "experience_max_years",
     ):
-        assert fields[name]["sort"] is False
+        assert fields[name].get("sort", True) is True
         assert fields[name].get("index", True) is True
         assert fields[name]["facet"] is True
     for name in ("first_seen_at", "salary_eur", "candidate_order_hi", "candidate_order_lo"):
@@ -97,30 +96,38 @@ def test_posting_pruning_preserves_consumed_filters_facets_and_sorting() -> None
 
 
 @pytest.mark.parametrize(
-    ("live", "desired", "expected"),
+    "name",
     [
-        ({"sort": True}, {"name": "is_active", "sort": False}, True),
-        ({"sort": False}, {"name": "is_active", "sort": False}, False),
-        ({"sort": True}, {"name": "first_seen_at", "sort": False}, False),
-        ({"sort": False}, {"name": "candidate_order_hi", "sort": True}, False),
-        ({"sort": True}, {"name": "is_active"}, False),
+        "is_active",
+        "has_content",
+        "seniority_id",
+        "experience_min",
+        "experience_max",
+        "experience_min_years",
+        "experience_max_years",
     ],
 )
-def test_sort_migration_does_not_repair_unrelated_shape_drift(live, desired, expected) -> None:
-    assert _unused_sort_drift(live, desired) is expected
+def test_setup_does_not_rebuild_consumed_fields_for_sort_only_drift(name) -> None:
+    # Rebuilding a consumed index can temporarily change live filter/facet
+    # results on 27.1. Do not silently extend the display-only migration.
+    schema = next(c for c in COLLECTIONS if c["name"] == "job_posting")
+    desired = {**next(f for f in schema["fields"] if f["name"] == name), "sort": False}
+    client, collection = _stub_client([{**desired, "sort": True}])
+    _patch_missing_fields(client, "job_posting_v1", [desired])
+    collection.update.assert_not_called()
 
 
 def test_setup_prunes_one_index_at_a_time_and_second_run_is_idempotent() -> None:
     desired = [
         {"name": "company_name", "type": "string", "index": False, "optional": True},
-        {"name": "is_active", "type": "bool", "facet": True, "sort": False},
+        {"name": "location_names", "type": "string[]", "index": False, "optional": True},
     ]
     old_name = {"name": "company_name", "type": "string", "facet": True, "index": True}
-    old_active = {"name": "is_active", "type": "bool", "facet": True, "sort": True}
+    old_locations = {"name": "location_names", "type": "string[]", "facet": True, "index": True}
     client, collection = _stub_client([])
     collection.retrieve.side_effect = [
-        {"fields": [old_name, old_active]},
-        {"fields": [desired[0], old_active]},
+        {"fields": [old_name, old_locations]},
+        {"fields": [desired[0], old_locations]},
         {"fields": desired},
     ]
     _patch_missing_fields(client, "job_posting_v1", desired)

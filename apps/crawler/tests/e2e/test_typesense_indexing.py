@@ -61,20 +61,9 @@ def test_pruning_migrates_stored_postings_and_can_roll_back(ts_client) -> None:
     old = copy.deepcopy(desired)
     old["name"] = "e2e_pruning_" + uuid.uuid4().hex
     displays = {"company_name", "location_names", "seniority_name", "technology_names"}
-    sorts = {
-        "is_active",
-        "has_content",
-        "seniority_id",
-        "experience_min",
-        "experience_max",
-        "experience_min_years",
-        "experience_max_years",
-    }
     for field in old["fields"]:
         if field["name"] in displays:
             field.update(index=True, facet=True, optional=field["name"] == "seniority_name")
-        elif field["name"] in sorts:
-            field["sort"] = True
     ts_client.collections.create(old)
     collection = ts_client.collections[old["name"]]
     try:
@@ -127,13 +116,6 @@ def test_pruning_migrates_stored_postings_and_can_roll_back(ts_client) -> None:
             results = []
             for query in queries:
                 result = collection.documents.search(query)
-                # Typesense 27.1's numeric summary statistics can change when
-                # a facet is rebuilt. Readers consume values/counts and the
-                # distinct total, never experience/seniority avg/min/max/sum.
-                for facet in result.get("facet_counts", []):
-                    if facet["field_name"] in {"experience_min", "seniority_id"}:
-                        stats = facet.get("stats", {})
-                        facet["stats"] = {"total_values": stats.get("total_values")}
                 results.append(
                     {
                         key: result.get(key)
@@ -178,7 +160,7 @@ def test_pruning_migrates_stored_postings_and_can_roll_back(ts_client) -> None:
         )
         assert answers() == before
         for field in old["fields"]:
-            if field["name"] in displays | sorts:
+            if field["name"] in displays:
                 collection.update({"fields": [{"name": field["name"], "drop": True}, field]})
         assert documents() == stored
         assert answers() == before

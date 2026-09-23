@@ -1,0 +1,23 @@
+{
+  "pull_request": 9937,
+  "head_sha": "29cb1cede",
+  "workflow_run": 35924172487,
+  "crawler": {
+    "passed": 13209,
+    "skipped": 40
+  },
+  "crawler_typesense_e2e": {
+    "passed": 46
+  },
+  "web_typesense_e2e_local": {
+    "passed": 36
+  },
+  "focused_crawler_local": {
+    "passed": 99
+  },
+  "import_guard_local": {
+    "passed": 4
+  },
+  "deployment_hold_issue": 8648,
+  "production_rollout": false
+}

@@ -327,30 +327,30 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     { name: "company_slug", type: "string", index: false },
     { name: "company_icon", type: "string", index: false, optional: true },
     { name: "title", type: "string" },
-    { name: "is_active", type: "bool", facet: true, sort: false },
+    { name: "is_active", type: "bool", facet: true },
     // `has_content` mirrors the production schema (issue #2917). Seed
     // docs below do NOT set the field; the production filter
     // `has_content:!=false` then matches them by virtue of `!=false`
     // covering both `true` and absent values. This keeps the test data
     // shape representative of the post-deploy-pre-backfill state where
     // existing docs lack the field but stay visible until backfill.
-    { name: "has_content", type: "bool", facet: true, sort: false, optional: true },
+    { name: "has_content", type: "bool", facet: true, optional: true },
     { name: "location_ids", type: "int32[]", facet: true },
     { name: "location_names", type: "string[]", index: false, optional: true },
     { name: "location_types", type: "string[]", facet: true },
     { name: "location_geo_types", type: "string[]", index: false },
     { name: "occupation_id", type: "int32", facet: true, optional: true },
     { name: "occupation_ids", type: "int32[]", facet: true, optional: true },
-    { name: "seniority_id", type: "int32", facet: true, sort: false, optional: true },
+    { name: "seniority_id", type: "int32", facet: true, optional: true },
     { name: "seniority_name", type: "string", index: false, optional: true },
     { name: "technology_ids", type: "int32[]", facet: true },
     { name: "technology_names", type: "string[]", index: false, optional: true },
     { name: "employment_type", type: "string", facet: true, optional: true },
     { name: "salary_eur", type: "int32", facet: true, optional: true },
-    { name: "experience_min_years", type: "float", facet: true, sort: false, optional: true },
-    { name: "experience_max_years", type: "float", facet: true, sort: false, optional: true },
-    { name: "experience_min", type: "int32", facet: true, sort: false },
-    { name: "experience_max", type: "int32", facet: true, sort: false, optional: true },
+    { name: "experience_min_years", type: "float", facet: true, optional: true },
+    { name: "experience_max_years", type: "float", facet: true, optional: true },
+    { name: "experience_min", type: "int32", facet: true },
+    { name: "experience_max", type: "int32", facet: true, optional: true },
     { name: "locales", type: "string[]", facet: true },
     { name: "source_url", type: "string", index: false, optional: true },
     { name: "first_seen_at", type: "int64" },

@@ -7,8 +7,8 @@ Single source of truth for the collection definitions. Used by:
 
 The ``setup_collections`` function is idempotent: it creates missing
 collections + aliases, PATCHes missing fields, and repairs ``index`` drift on
-existing fields. It also removes explicitly allowlisted unused posting sort
-indexes. Other field removals are intentionally manual to avoid accidental data loss.
+existing fields. Other field removals are intentionally manual to avoid
+accidental data loss.
 """
 
 from __future__ import annotations
@@ -38,19 +38,6 @@ _MEMORY_METRIC_KEYS = (
     "typesense_memory_active_bytes",
     "typesense_memory_resident_bytes",
 )
-# Only these proven filter/facet-only posting fields participate in the sort
-# migration. Do not turn every schema difference into an automatic rebuild.
-_POSTING_UNUSED_SORT_FIELDS = frozenset(
-    {
-        "is_active",
-        "has_content",
-        "seniority_id",
-        "experience_min",
-        "experience_max",
-        "experience_min_years",
-        "experience_max_years",
-    }
-)
 
 if TYPE_CHECKING:
     import typesense
@@ -71,13 +58,14 @@ COLLECTIONS: list[dict] = [
                 "optional": True,
             },
             {"name": "company_id", "type": "string", "facet": True},
-            # Display names stay in every document for cards, posting detail,
-            # watchlists and reconciliation. Search/facets use title and IDs.
+            # Keep display names in stored responses and reconciliation, but
+            # omit their unused text/facet indexes. Consumed numeric/bool
+            # indexes stay intact: rebuilding them can change live counts.
             {"name": "company_name", "type": "string", "index": False, "optional": True},
             {"name": "company_slug", "type": "string", "index": False},
             {"name": "company_icon", "type": "string", "index": False, "optional": True},
             {"name": "title", "type": "string"},
-            {"name": "is_active", "type": "bool", "facet": True, "sort": False},
+            {"name": "is_active", "type": "bool", "facet": True},
             # `has_content` is True iff the posting has both a non-empty title
             # AND a description blob in R2 (description_r2_hash IS NOT NULL).
             # Web search surfaces filter on `has_content:!=false` so postings
@@ -85,13 +73,7 @@ COLLECTIONS: list[dict] = [
             # so existing docs stay visible until backfill replays the field;
             # `!=false` matches `true` and absent values, only excluding docs
             # the exporter has explicitly stamped as `false`.
-            {
-                "name": "has_content",
-                "type": "bool",
-                "facet": True,
-                "sort": False,
-                "optional": True,
-            },
+            {"name": "has_content", "type": "bool", "facet": True, "optional": True},
             {"name": "location_ids", "type": "int32[]", "facet": True},
             # Unexpanded source IDs as stored on the crawler row. Company
             # location views need direct-tag counts, while ``location_ids``
@@ -123,13 +105,7 @@ COLLECTIONS: list[dict] = [
                 "index": False,
                 "optional": True,
             },
-            {
-                "name": "seniority_id",
-                "type": "int32",
-                "facet": True,
-                "sort": False,
-                "optional": True,
-            },
+            {"name": "seniority_id", "type": "int32", "facet": True, "optional": True},
             {"name": "seniority_name", "type": "string", "index": False, "optional": True},
             {"name": "technology_ids", "type": "int32[]", "facet": True},
             {"name": "technology_names", "type": "string[]", "index": False, "optional": True},
@@ -145,24 +121,12 @@ COLLECTIONS: list[dict] = [
             # Precise decimal-year experience fields. Added alongside the
             # legacy integer fields below so production can add them in-place
             # without rebuilding the existing job_posting collection first.
-            {
-                "name": "experience_min_years",
-                "type": "float",
-                "facet": True,
-                "sort": False,
-                "optional": True,
-            },
-            {
-                "name": "experience_max_years",
-                "type": "float",
-                "facet": True,
-                "sort": False,
-                "optional": True,
-            },
+            {"name": "experience_min_years", "type": "float", "facet": True, "optional": True},
+            {"name": "experience_max_years", "type": "float", "facet": True, "optional": True},
             # Legacy whole-year compatibility fields. New decimal rows are
             # encoded conservatively by exporter.py (min ceil, max floor) so
             # fallback filters cannot broaden precise float matches.
-            {"name": "experience_min", "type": "int32", "facet": True, "sort": False},
+            {"name": "experience_min", "type": "int32", "facet": True},
             # `experience_max` is stamped alongside `experience_min` so the web
             # filter can do range-overlap matching (e.g. user wants "exactly 6
             # years"; a row stored as 5-10 years must match). Sentinels:
@@ -172,13 +136,7 @@ COLLECTIONS: list[dict] = [
             # docs that haven't been backfilled yet stay valid; the filter
             # treats absent `experience_max` as part of the "no required
             # experience" sentinel bucket. See #3217.
-            {
-                "name": "experience_max",
-                "type": "int32",
-                "facet": True,
-                "sort": False,
-                "optional": True,
-            },
+            {"name": "experience_max", "type": "int32", "facet": True, "optional": True},
             {"name": "locales", "type": "string[]", "facet": True},
             {"name": "source_url", "type": "string", "index": False, "optional": True},
             {"name": "first_seen_at", "type": "int64"},
@@ -432,15 +390,6 @@ def _index_drift(live: dict, desired: dict) -> bool:
     return live.get("index", _FIELD_INDEX_DEFAULT) != desired.get("index", _FIELD_INDEX_DEFAULT)
 
 
-def _unused_sort_drift(live: dict, desired: dict) -> bool:
-    """Select only the reviewed, explicit removal of an unused sort index."""
-    return (
-        desired["name"] in _POSTING_UNUSED_SORT_FIELDS
-        and desired.get("sort") is False
-        and live.get("sort", True) is True
-    )
-
-
 def _warn_field_drift(
     collection_name: str, live_fields: list[dict], desired_fields: list[dict]
 ) -> None:
@@ -466,8 +415,8 @@ def _warn_field_drift(
 
     ``index`` drift is handled separately by ``_patch_missing_fields`` — that
     one is auto-repaired via drop + re-add (Typesense supports a single-PATCH
-    drop+add pair). The allowlisted posting sort-index removals are also
-    repaired; other ``facet``/``optional``/``sort`` drift remains out of scope.
+    drop+add pair). ``facet``/``optional``/``sort`` drift is still out of
+    scope here.
     """
     live_by_name = {f["name"]: f for f in live_fields}
     for desired in desired_fields:
@@ -507,7 +456,7 @@ def _fields_patch_payload(
         # Field exists; check if `index` flipped. The live response always
         # carries `index` explicitly, but compare via _index_drift so a future
         # variant where Typesense omits it stays correct.
-        if _index_drift(field_live, desired) or _unused_sort_drift(field_live, desired):
+        if _index_drift(field_live, desired):
             rebuild_fields.append(desired)
 
     # Typesense 27.1 schema alters are synchronous, block writes, and can scan
@@ -636,10 +585,8 @@ def _patch_missing_fields(
     This lets an ``index: true`` -> ``index: false`` optimization preserve
     response payloads without a full document backfill.
 
-    Explicit removals of the allowlisted unused posting sort indexes use the
-    same one-field-at-a-time migration. Other ``facet``/``sort``/``optional``
-    drift remains out of scope. ``id`` is skipped throughout — Typesense
-    rejects any PATCH touching it.
+    ``facet``/``sort``/``optional`` drift is still out of scope. ``id`` is
+    skipped throughout — Typesense rejects any PATCH touching it.
     """
     deadline = time.monotonic() + _SCHEMA_ALTER_DEADLINE_SECONDS
     retry_delay = _SCHEMA_ALTER_RETRY_INITIAL_SECONDS

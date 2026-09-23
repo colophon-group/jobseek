@@ -23,6 +23,7 @@ import time
 import urllib.parse
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -196,6 +197,7 @@ def query_corpus(state):
     # not conceal a missing choice or produce a false semantic mismatch.
     queries["taxonomy_facets"]["max_facet_values"] = 50000
     queries["active_location_facets"]["max_facet_values"] = 50000
+    queries["experience_overlap"]["max_facet_values"] = 50000
     grouped = copy.deepcopy(queries["keyword_grouped"])
     grouped.update(typo_tokens_threshold=1, drop_tokens_threshold=1, per_page=11)
     for key in ("facet_by", "facet_strategy", "max_facet_values", "include_fields"):
@@ -251,28 +253,84 @@ def project(label, result):
     return value
 
 
-def measure(state, repeats):
+class QueryProbe(Sampler):
+    """Observe read correctness/availability while the schema patcher runs."""
+
+    def __init__(self, state, baseline):
+        super().__init__(state)
+        self.baseline = baseline
+
+    def run(self):
+        queries = query_corpus(self.state)
+        labels = ("keyword_current", "decimal_experience", "taxonomy_facets", "inactive_history")
+        index = 0
+        while not self.stop_event.is_set():
+            label = labels[index % len(labels)]
+            index += 1
+            entry = {"time": time.time(), "query": label}
+            started = time.monotonic()
+            try:
+                params = urllib.parse.urlencode({**queries[label], "use_cache": "false"})
+                result = api(
+                    self.state,
+                    "GET",
+                    f"/collections/{lab.LAB_COLLECTION}/documents/search?{params}",
+                    timeout=5,
+                )
+                projected = digest(project(label, result))
+                entry.update(
+                    search_time_ms=result["search_time_ms"],
+                    projection_sha256=projected,
+                    matches_baseline=projected == self.baseline[label]["projection_sha256"],
+                    search_cutoff=bool(result.get("search_cutoff")),
+                )
+            except Exception as exc:
+                entry["error"] = str(exc)
+                self.errors.append(str(exc))
+            entry["client_ms"] = round((time.monotonic() - started) * 1000, 3)
+            self.samples.append(entry)
+            self.stop_event.wait(1)
+
+
+def measure(state, repeats, concurrency=1, cases=None):
     queries, results = query_corpus(state), {}
-    for label, params in queries.items():
-        times, hashes, found, found_docs = [], [], None, None
-        for repeat in range(-2, repeats):
-            result = lab._search(state["port"], {**params, "use_cache": "false"})
-            if result.get("search_cutoff"):
-                raise RuntimeError(f"Query cutoff: {label}")
-            if repeat >= 0:
-                times.append(result["search_time_ms"])
-                hashes.append(digest(project(label, result)))
-                found, found_docs = result.get("found"), result.get("found_docs")
-        results[label] = {
-            "median_ms": statistics.median(times),
-            "p95_ms": lab._percentile(times, 0.95),
-            "samples_ms": times,
-            "projection_sha256": hashes[0],
-            "repeat_drift": len(set(hashes)) != 1,
-            "found": found,
-            "found_docs": found_docs,
-        }
-    return {"queries": results, "parameters": queries}
+    if cases:
+        if set(cases) - queries.keys():
+            raise ValueError("Unknown query cases")
+        queries = {label: queries[label] for label in cases}
+
+    def search(params):
+        started = time.monotonic()
+        result = lab._search(state["port"], {**params, "use_cache": "false"})
+        return result, round((time.monotonic() - started) * 1000, 3)
+
+    with ThreadPoolExecutor(max_workers=concurrency) as pool:
+        for label, params in queries.items():
+            times, wall_times, hashes, found, found_docs = [], [], [], None, None
+            for repeat in range(-2, repeats):
+                futures = [pool.submit(search, params) for _ in range(concurrency)]
+                for future in futures:
+                    result, wall_time = future.result()
+                    if result.get("search_cutoff"):
+                        raise RuntimeError(f"Query cutoff: {label}")
+                    if repeat >= 0:
+                        times.append(result["search_time_ms"])
+                        wall_times.append(wall_time)
+                        hashes.append(digest(project(label, result)))
+                        found, found_docs = result.get("found"), result.get("found_docs")
+            results[label] = {
+                "median_ms": statistics.median(times),
+                "p95_ms": lab._percentile(times, 0.95),
+                "samples_ms": times,
+                "client_median_ms": statistics.median(wall_times),
+                "client_p95_ms": lab._percentile(wall_times, 0.95),
+                "client_samples_ms": wall_times,
+                "projection_sha256": hashes[0],
+                "repeat_drift": len(set(hashes)) != 1,
+                "found": found,
+                "found_docs": found_docs,
+            }
+    return {"queries": results, "parameters": queries, "concurrency": concurrency}
 
 
 def fingerprint(state):
@@ -309,6 +367,8 @@ def main():
     parser.add_argument("--sample", type=Path)
     parser.add_argument("--field", choices=DISPLAY_FIELDS + SORT_FIELDS)
     parser.add_argument("--repeats", type=int, default=15)
+    parser.add_argument("--concurrency", type=int, default=1)
+    parser.add_argument("--cases", nargs="+")
     parser.add_argument("--max-documents", type=int)
     parser.add_argument("--skip-documents", type=int, default=0)
     parser.add_argument("--settle-seconds", type=int, default=45)
@@ -316,6 +376,7 @@ def main():
     args = parser.parse_args()
     if (
         args.repeats < 1
+        or not 1 <= args.concurrency <= 8
         or args.settle_seconds < 0
         or (args.max_documents is not None and args.max_documents < 1)
         or args.skip_documents < 0
@@ -406,18 +467,41 @@ def main():
         parser.error("Invalid artifact label")
     if (root / (label + ".json")).exists():
         parser.error("Artifact already exists; use a different label")
-    result = {"phase": label, "started_at": datetime.now(UTC).isoformat(), "complete": False}
+    result = {
+        "phase": label,
+        "started_at": datetime.now(UTC).isoformat(),
+        "complete": False,
+        "harness_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "runtime": {
+            "image_id": container["Image"],
+            "native_architecture": state["native_architecture"],
+            "memory_limit_bytes": container["HostConfig"]["Memory"],
+            "nano_cpus": container["HostConfig"]["NanoCpus"],
+            "restart_count_before": container["RestartCount"],
+            "oom_killed_before": container["State"]["OOMKilled"],
+        },
+    }
     started = time.monotonic()
     with Sampler(state) as sampler:
         try:
             if args.command == "import":
                 if not args.sample:
                     parser.error("import needs --sample")
+                if args.skip_documents:
+                    # /health can become true before a recovered write queue
+                    # has fully replayed. Wait for stable content/allocation
+                    # before resuming a previously acknowledged source prefix.
+                    result["resume_readiness"] = lab._wait_for_semantic_readiness(
+                        state["port"], timeout=1800
+                    )
+                    existing = api(state, "GET", f"/collections/{lab.LAB_COLLECTION}")
+                    if existing["num_documents"] < args.skip_documents:
+                        raise RuntimeError("Recovered collection is smaller than the resume prefix")
                 result.update(
                     import_documents(state, args.sample, args.max_documents, args.skip_documents)
                 )
             elif args.command == "measure":
-                result.update(measure(state, args.repeats))
+                result.update(measure(state, args.repeats, args.concurrency, args.cases))
             elif args.command == "fingerprint":
                 result.update(fingerprint(state))
             elif args.command in ("migrate", "rollback"):
@@ -457,9 +541,40 @@ def main():
                         ],
                         "api_key": lab.LAB_API_KEY,
                         "connection_timeout_seconds": 3600,
+                        "num_retries": 0,
                     }
                 )
-                _patch_missing_fields(client, lab.LAB_COLLECTION, desired["fields"])
+                collection = client.collections[lab.LAB_COLLECTION]
+                update = collection.update
+                result["field_patches"] = []
+
+                def measured_update(payload):
+                    patch = {"payload": payload, "started_at": time.time(), "complete": False}
+                    result["field_patches"].append(patch)
+                    patch["os_before"] = capture_os(state["container"])
+                    response = update(payload)
+                    patch["completed_at"] = time.time()
+                    patch["os_after"] = capture_os(state["container"])
+                    patch["allocator_after"] = lab._capture_memory(state["port"])
+                    patch["complete"] = True
+                    return response
+
+                collection.update = measured_update
+                baseline_path = root / "baseline.json"
+                if baseline_path.exists():
+                    baseline = json.loads(baseline_path.read_text())
+                    if not baseline["complete"]:
+                        raise RuntimeError("Incomplete query baseline")
+                    probe = QueryProbe(state, baseline["queries"])
+                    try:
+                        with probe:
+                            _patch_missing_fields(client, lab.LAB_COLLECTION, desired["fields"])
+                    finally:
+                        result["query_probes"] = probe.samples.copy()
+                        result["query_probe_errors"] = probe.errors.copy()
+                else:
+                    result["query_probe_unavailable"] = "No baseline.json in this lab"
+                    _patch_missing_fields(client, lab.LAB_COLLECTION, desired["fields"])
                 result["schema_after"] = api(state, "GET", f"/collections/{lab.LAB_COLLECTION}")
             elif args.command == "snapshot":
                 result["response"] = api(
@@ -473,7 +588,17 @@ def main():
             time.sleep(args.settle_seconds)
             result["allocator"] = lab._capture_memory(state["port"])
             result["os_after"] = capture_os(state["container"])
+            after = json.loads(subprocess.check_output(["docker", "inspect", state["container"]]))[
+                0
+            ]
+            result["runtime"].update(
+                restart_count_after=after["RestartCount"],
+                oom_killed_after=after["State"]["OOMKilled"],
+            )
             result["complete"] = True
+        except Exception as exc:
+            result["error"] = {"type": type(exc).__name__, "message": str(exc)}
+            raise
         finally:
             result["elapsed_seconds"] = round(time.monotonic() - started, 3)
             result["samples"] = sampler.samples.copy()

@@ -1,0 +1,25 @@
+{
+  "documents": 5554279,
+  "active": 2361415,
+  "inactive": 3192864,
+  "content_eligible": 5357991,
+  "year_eligible": 5357991,
+  "inactive_year_eligible": 3047792,
+  "active_candidate_words": 2361415,
+  "inactive_candidate_words": 0,
+  "companies": 5957,
+  "field_coverage": {
+    "experience_min_years": 5554279,
+    "experience_max_years": 5554279,
+    "experience_min": 5554279,
+    "experience_max": 5554279,
+    "seniority_id": 842811,
+    "salary_eur": 949372
+  },
+  "source_sha256": "7f56660fecf6a997b5e5be473f2c7c99d9df7c9df5d7917331fc7f6c7743a14b",
+  "document_sha256_modular_sum": "8238d65e12ff0f06a1ecc04953f8ccdfb3656339a2b7da8599f18c9a5b655557",
+  "source_bytes": 5565850147,
+  "source_gzip_bytes": 1220349142,
+  "elapsed_seconds": 631.0941553750017,
+  "year_start": 1758661332
+}
