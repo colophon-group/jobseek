@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { intentLabels } from "./jev-routing-intent-labels.mjs";
 import { selectedRouteSpans, spansForQuery } from "./jev-routing-core.mjs";
 
-const [mode, evalPath, thresholdArg, longestArg] = process.argv.slice(2);
+const [mode, evalPath, thresholdArg, longestArg, intentPath] = process.argv.slice(2);
 if (!["validate", "grid", "fixed"].includes(mode)) throw new Error("Use validate|grid|fixed");
 const evaluation = evalPath ? JSON.parse(readFileSync(evalPath, "utf8")) : null;
 const goldPath = "docs/experiments/jev-routing-current-system-2026-09-23.json";
 const gold = JSON.parse(readFileSync(goldPath, "utf8"));
-const labelled = gold.records.map((record) => {
+const legacyLabelled = gold.records.map((record) => {
   const terms = (intentLabels[record.id] ?? "").split("|").filter(Boolean).map((label) => {
     const at = label.lastIndexOf(":");
     return { text: label.slice(0, at), category: label.slice(at + 1) };
@@ -26,6 +26,7 @@ const labelled = gold.records.map((record) => {
   return { id: record.id, group: record.group, split: record.split, q: record.q, locale: record.locale, terms };
 });
 if (Object.keys(intentLabels).length !== gold.records.length) throw new Error("Label count mismatch");
+const labelled = intentPath ? JSON.parse(readFileSync(intentPath, "utf8")).records : legacyLabelled;
 if (mode === "validate") {
   console.log(JSON.stringify({ count: labelled.length, labelledSpans: labelled.reduce((n, x) => n + x.terms.length, 0), records: labelled }, null, 2));
   process.exit(0);

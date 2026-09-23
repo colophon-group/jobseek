@@ -1,5 +1,7 @@
 # Jev routing for search filters: quality and latency experiment
 
+**Follow-up:** [Occupation-diverse dataset, tuned prompt, and fresh holdout](jev-routing-diverse-followup-2026-09-24.md).
+
 **Started:** 2026-09-23; completed 2026-09-24
 
 **Code base:** `origin/main` at `eb40e2b2a`, isolated worktree

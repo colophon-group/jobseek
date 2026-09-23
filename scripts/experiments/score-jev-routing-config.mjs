@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { exactSuggestion, fieldAgreement, sameShape, selectedRouteSpans, spansForQuery, tokenize } from "./jev-routing-core.mjs";
 
-const [evaluationPath, intentPath, suggestionPath] = process.argv.slice(2);
+const [evaluationPath, intentPath, suggestionPath, currentPath, overridesPath, thresholdArg, longestArg] = process.argv.slice(2);
 if (!evaluationPath || !intentPath || !suggestionPath) {
   throw new Error("Usage: node score-jev-routing-config.mjs <eval.json> <intent-gold.json> <human-candidates.ndjson>");
 }
 const evaluation = JSON.parse(readFileSync(evaluationPath, "utf8"));
-const current = JSON.parse(readFileSync("docs/experiments/jev-routing-current-system-2026-09-23.json", "utf8"));
+const current = JSON.parse(readFileSync(currentPath ?? "docs/experiments/jev-routing-current-system-2026-09-23.json", "utf8"));
 const intent = JSON.parse(readFileSync(intentPath, "utf8"));
 const humanSuggestions = readFileSync(suggestionPath, "utf8").trim().split("\n").map(JSON.parse);
 const currentById = new Map(current.records.map((r) => [r.id, r]));
@@ -16,7 +16,7 @@ const suggestionsById = new Map(humanSuggestions.map((r) => [r.id, r]));
 // Manual adjudication where the first Typesense hit is missing or materially
 // different from the intended taxonomy concept. Each slug exists in the
 // current taxonomy; these overrides describe gold, not Jev's input.
-const goldOverrides = {
+const legacyGoldOverrides = {
   "verbose-04:software engineering": "software-engineer",
   "verbose-08:cybersecurity engineering": "security-engineer",
   "mistakes-05:pyhton": "python",
@@ -28,6 +28,8 @@ const goldOverrides = {
   "multilingual-01:Softwareentwickler": "software-engineer",
   "multilingual-04:Data Engineer": "data-engineer",
 };
+const goldOverrides = overridesPath ? JSON.parse(readFileSync(overridesPath, "utf8")) : legacyGoldOverrides;
+const routingConfig = { threshold: thresholdArg === undefined ? 0.6 : Number(thresholdArg), longestFirst: longestArg === undefined ? true : longestArg === "true" };
 const employmentType = (text) => {
   const lower = text.toLowerCase().trim();
   if (["contract", "contractor"].includes(lower)) return "contract";
@@ -83,7 +85,7 @@ function goldFor(record) {
   return makeShape(record.q, selections);
 }
 function modelFor(record, normalization) {
-  const chosen = selectedRouteSpans(record.q, record.answers, { threshold: 0.6, longestFirst: true });
+  const chosen = selectedRouteSpans(record.q, record.answers, routingConfig);
   const spans = spansForQuery(record.q).spans;
   const selections = chosen.map((term) => {
     const span = spans.find((s) => s.segment === term.segment && s.start === term.start && s.end === term.end);
@@ -127,6 +129,6 @@ const rows = evaluation.records.map((record) => {
   return { id: record.id, group: record.group, q: record.q, gold, parser,
     strict: modelFor(record, "strict"), top: modelFor(record, "top") };
 });
-console.log(JSON.stringify({ variant: evaluation.variant, split: evaluation.split, count: rows.length,
+console.log(JSON.stringify({ variant: evaluation.variant, split: evaluation.split, count: rows.length, routingConfig,
   goldOverrides, parser: score(rows, (r) => r.parser), strict: score(rows, (r) => r.strict), top: score(rows, (r) => r.top),
   rows }, null, 2));

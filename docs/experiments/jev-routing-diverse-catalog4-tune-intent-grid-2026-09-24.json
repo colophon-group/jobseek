@@ -1,0 +1,457 @@
+{
+  "variant": "catalog4",
+  "split": "tune",
+  "top": [
+    {
+      "config": {
+        "threshold": 0.3,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 32,
+      "spanPrecision": 1,
+      "spanRecall": 1,
+      "spanF1": 1,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 32,
+      "spanPrecision": 1,
+      "spanRecall": 1,
+      "spanF1": 1,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 31,
+      "spanPrecision": 1,
+      "spanRecall": 0.984375,
+      "spanF1": 0.9921259842519685,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.75,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 31,
+      "spanPrecision": 1,
+      "spanRecall": 0.984375,
+      "spanF1": 0.9921259842519685,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.9,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 29,
+      "spanPrecision": 1,
+      "spanRecall": 0.9375,
+      "spanF1": 0.967741935483871,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.9,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 29,
+      "spanPrecision": 1,
+      "spanRecall": 0.9375,
+      "spanF1": 0.967741935483871,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.75,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 26,
+      "spanPrecision": 0.8360655737704918,
+      "spanRecall": 0.796875,
+      "spanF1": 0.816,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 0
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 25,
+      "spanPrecision": 0.8,
+      "spanRecall": 0.75,
+      "spanF1": 0.7741935483870969,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 0
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 25,
+      "spanPrecision": 0.8,
+      "spanRecall": 0.75,
+      "spanF1": 0.7741935483870969,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 0
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 25,
+      "spanPrecision": 0.8,
+      "spanRecall": 0.75,
+      "spanF1": 0.7741935483870969,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 0
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    }
+  ],
+  "bestMismatches": []
+}

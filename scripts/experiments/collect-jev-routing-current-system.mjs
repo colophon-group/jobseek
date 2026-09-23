@@ -1,7 +1,10 @@
 import { performance } from "node:perf_hooks";
-import { routingFixtures } from "./jev-routing-fixtures.mjs";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const baseUrl = process.argv[2] ?? "http://localhost:3150";
+const fixturesPath = process.argv[3] ?? "scripts/experiments/jev-routing-fixtures.mjs";
+const { routingFixtures } = await import(pathToFileURL(resolve(fixturesPath)).href);
 
 function scoreShape(parsed) {
   return {
@@ -40,6 +43,15 @@ const sanity = {
   "atomic-04": ["seniorities", "senior"],
   "atomic-07": ["technologies", "python"],
   "atomic-09": ["locations", "zurich"],
+  "diverse-atomic-01": ["occupations", "accountant"],
+  "diverse-atomic-02": ["occupations", "pharmacist"],
+  "diverse-atomic-03": ["occupations", "customer-success-manager"],
+  "diverse-atomic-04": ["occupations", "warehouse-associate"],
+  // This captures the current parser's incorrect literal location match.
+  "diverse-atomic-05": ["locations", "officer"],
+  "diverse-atomic-06": ["occupations", "mechanical-engineer"],
+  "diverse-atomic-07": ["occupations", "recruiter"],
+  "diverse-atomic-08": ["occupations", "supply-chain-manager"],
 };
 
 const records = [];
