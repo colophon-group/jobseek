@@ -51,6 +51,7 @@ PARTITION_COUNT = 256
 DEFAULT_MAX_PARTITIONS = 16
 REPAIR_BATCH_SIZE = 500
 _TYPESENSE_SOURCE_CHANGE_REPAIR_ATTEMPTS = 2
+_TYPESENSE_PARTITION_REPAIR_ATTEMPTS = 3
 TYPESENSE_EXPORT_BATCH_SIZE = 1_000
 TYPESENSE_DELETE_CONCURRENCY = 20
 RECONCILIATION_LOCK_ID = 0x5245434F4E434C  # positive bigint, ASCII-ish ``RECONCL``
@@ -1408,20 +1409,40 @@ async def run_reconciliation(
                             # never reuse a prior partition's successful result.
                             last_result = None
                             last_result_recorded = False
-                            if target == "typesense":
-                                # Refresh long-running reconciliation proofs on
-                                # the same cadence as ordinary CDC so a stale
-                                # taxonomy cache cannot rewrite current names.
-                                maps = await _get_taxonomy_maps(local_pool)
-                            result = await reconcile_partition(
-                                local_pool,
-                                supa_pool,
-                                target=target,
-                                partition=partition,
-                                repair=repair,
-                                typesense=typesense,
-                                maps=maps,
+                            attempts = (
+                                _TYPESENSE_PARTITION_REPAIR_ATTEMPTS
+                                if repair and target == "typesense"
+                                else 1
                             )
+                            for attempt in range(1, attempts + 1):
+                                if target == "typesense":
+                                    # Refresh long-running proofs and retries
+                                    # so taxonomy changes cannot be rewritten
+                                    # from a stale map.
+                                    maps = await _get_taxonomy_maps(local_pool)
+                                result = await reconcile_partition(
+                                    local_pool,
+                                    supa_pool,
+                                    target=target,
+                                    partition=partition,
+                                    repair=repair,
+                                    typesense=typesense,
+                                    maps=maps,
+                                )
+                                if result.unresolved == 0 or attempt == attempts:
+                                    break
+                                # An exporter/source write can race the scan or
+                                # both bounded candidate rereads. Re-scan the
+                                # entire partition before failing the proof;
+                                # never persist a partial checkpoint.
+                                log.info(
+                                    "reconciliation.partition_retry",
+                                    target=target,
+                                    partition=f"{partition:02x}",
+                                    attempt=attempt,
+                                    attempts=attempts,
+                                    unresolved=result.unresolved,
+                                )
                             last_result = result
                             if repair and result.unresolved:
                                 raise ReconciliationError(
