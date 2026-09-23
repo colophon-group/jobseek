@@ -1,0 +1,1278 @@
+{
+  "captured_at": "2026-09-23T17:32:12.459476+00:00",
+  "complete": true,
+  "cpus": 4,
+  "debug": {
+    "state": 1,
+    "version": "27.1"
+  },
+  "image": "typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455",
+  "import": {
+    "accepted_documents": 345690,
+    "documents_per_second": 18268.84,
+    "elapsed_seconds": 18.922
+  },
+  "memory_after_queries": {
+    "active_bytes": 379650048,
+    "allocated_bytes": 189457144,
+    "fragmentation_ratio": 0.5,
+    "mapped_bytes": 563085312,
+    "metadata_bytes": 12923296,
+    "resident_bytes": 379650048,
+    "retained_bytes": 168296448
+  },
+  "memory_before_queries": {
+    "active_bytes": 348258304,
+    "allocated_bytes": 202135688,
+    "fragmentation_ratio": 0.42,
+    "mapped_bytes": 489488384,
+    "metadata_bytes": 12551200,
+    "resident_bytes": 348258304,
+    "retained_bytes": 212533248
+  },
+  "memory_limit_bytes": 6442450944,
+  "os_memory": "c9fbb4390000-fffff3e48000 ---p 00000000 00:00 0                          [rollup]\nRss:              471428 kB\nPss:              470618 kB\nPss_Dirty:        431108 kB\nPss_Anon:         431108 kB\nPss_File:          39510 kB\nPss_Shmem:             0 kB\nShared_Clean:       1308 kB\nShared_Dirty:          0 kB\nPrivate_Clean:     39012 kB\nPrivate_Dirty:    431108 kB\nReferenced:       471428 kB\nAnonymous:        431108 kB\nKSM:                   0 kB\nLazyFree:              0 kB\nAnonHugePages:         0 kB\nShmemPmdMapped:        0 kB\nFilePmdMapped:         0 kB\nShared_Hugetlb:        0 kB\nPrivate_Hugetlb:       0 kB\nSwap:                  0 kB\nSwapPss:               0 kB\nLocked:                0 kB\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+  "persisted_schema": {
+    "created_at": 1790184757,
+    "default_sorting_field": "first_seen_at",
+    "enable_nested_fields": false,
+    "fields": [
+      {
+        "facet": true,
+        "index": true,
+        "infix": false,
+        "locale": "",
+        "name": "company_id",
+        "optional": false,
+        "sort": false,
+        "stem": false,
+        "store": true,
+        "type": "string"
+      },
+      {
+        "facet": false,
+        "index": true,
+        "infix": false,
+        "locale": "",
+        "name": "title",
+        "optional": false,
+        "sort": false,
+        "stem": false,
+        "store": true,
+        "type": "string"
+      },
+      {
+        "facet": true,
+        "index": true,
+        "infix": false,
+        "locale": "",
+        "name": "is_active",
+        "optional": false,
+        "sort": true,
+        "stem": false,
+        "store": true,
+        "type": "bool"
+      },
+      {
+        "facet": true,
+        "index": true,
+        "infix": false,
+        "locale": "",
+        "name": "has_content",
+        "optional": true,
+        "sort": true,
+        "stem": false,
+        "store": true,
+        "type": "bool"
+      },
+      {
+        "facet": true,
+        "index": true,
+        "infix": false,
+        "locale": "",
+        "name": "experience_min",
+        "optional": false,
+        "sort": true,
+        "stem": false,
+        "store": true,
+        "type": "int32"
+      },
+      {
+        "facet": false,
+        "index": true,
+        "infix": false,
+        "locale": "",
+        "name": "first_seen_at",
+        "optional": false,
+        "sort": true,
+        "stem": false,
+        "store": true,
+        "type": "int64"
+      },
+      {
+        "facet": true,
+        "index": true,
+        "infix": false,
+        "locale": "",
+        "name": "company_atomic",
+        "optional": false,
+        "sort": false,
+        "stem": false,
+        "store": true,
+        "type": "string"
+      },
+      {
+        "facet": true,
+        "index": true,
+        "infix": false,
+        "locale": "",
+        "name": "company_numeric",
+        "optional": false,
+        "sort": false,
+        "stem": false,
+        "store": true,
+        "type": "int32"
+      }
+    ],
+    "name": "job_posting_lab",
+    "num_documents": 345690,
+    "symbols_to_index": [],
+    "token_separators": [
+      "-",
+      "/"
+    ]
+  },
+  "queries": {
+    "count_only": {
+      "cutoff_runs": 0,
+      "median_ms": 10,
+      "p95_ms": 12,
+      "projection": {
+        "facets": [],
+        "found": 3297,
+        "found_docs": null,
+        "groups": [],
+        "hits": [],
+        "search_cutoff": false
+      },
+      "projection_drift": false,
+      "server_ms": [
+        10,
+        9,
+        9,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        9,
+        12,
+        10,
+        11,
+        11
+      ],
+      "wall_ms": [
+        11.968,
+        11.016,
+        11.605,
+        11.941,
+        11.466,
+        11.679,
+        12.013,
+        12.259,
+        12.153,
+        12.047,
+        11.741,
+        13.989,
+        13.656,
+        12.823,
+        13.066
+      ]
+    },
+    "numeric": {
+      "cutoff_runs": 0,
+      "median_ms": 16,
+      "p95_ms": 19,
+      "projection": {
+        "facets": [],
+        "found": 686,
+        "found_docs": 3297,
+        "groups": [
+          {
+            "found": 6,
+            "group_key": [
+              "4ee90896-72df-4017-b5d4-a13a036c5a16"
+            ],
+            "hits": [
+              "08a2bd31-e721-402e-85d1-89f4cdfde58d",
+              "094c548e-9b21-46cf-b6f8-16ab033d2dc5",
+              "07a1c6af-6cf2-4323-a316-8db6b004f8c1",
+              "0cb09494-f891-407f-aba9-df2a7074c55a",
+              "000535af-189f-40d2-bc61-fb710b369e77",
+              "076318d1-8f51-40cb-8a43-4e9717d0c945"
+            ]
+          },
+          {
+            "found": 23,
+            "group_key": [
+              "a261ce9d-a1ef-4530-a613-a9155043353e"
+            ],
+            "hits": [
+              "041d7add-dec2-451c-a982-5a5f461fc72f",
+              "03841619-991e-4274-84af-b976b83e5acf",
+              "0542d926-c545-4618-b9bb-3df6a78dd463",
+              "05270356-7fd5-48ff-84bb-a16780f3ee39",
+              "047e6f1e-4b2b-4fbe-8809-80f02e93cb16",
+              "085fd818-6e0b-406b-804a-2c9a8b88aa67",
+              "00beb082-7afc-4b6d-b6d4-d067734a79e0",
+              "0ef5eb5a-c429-4bd6-b217-c5964f5a7493",
+              "0d9a4345-81a4-4881-ab4f-53f391e8dd7b",
+              "04882251-7d03-4d39-a929-1e9bfde4b541"
+            ]
+          },
+          {
+            "found": 36,
+            "group_key": [
+              "74b0f23d-dc8c-40f0-b08e-4544c6500302"
+            ],
+            "hits": [
+              "05652822-9346-4d1e-87eb-b9b2cb6fc49f",
+              "098e2752-df3c-4a32-9f30-b28516bdd166",
+              "0ac52d50-c0ec-44d6-aea3-ce9e1eb098a1",
+              "00182ba3-085a-4682-ba91-d58f52d2ae31",
+              "0536030a-7442-4c0c-89c3-d699009fece8",
+              "0cc797b7-b0a4-4e2a-9a44-ca1081f2364e",
+              "085f2383-e461-49ca-9de3-279bd91742a7",
+              "09575216-573c-45de-80d8-a94575ea5226",
+              "0e17b738-5500-4401-b76a-44022e75d6e2",
+              "0d62a9be-2c9b-4b5f-9555-4cf5a50eb638"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "778595b8-6a9d-41a8-a8dd-497f14534a92"
+            ],
+            "hits": [
+              "06c4fdb6-64c7-4128-8601-4c1461b75b08",
+              "0e5ce9be-cc79-4177-aecb-e6b3d1c6e717",
+              "00221e27-ea7a-438b-ac27-50229477559c",
+              "06f87b7a-c347-4f65-8ae5-a631ce325c7f",
+              "0fc2a85b-1ce4-4e6e-b005-5432a82aabe1",
+              "05ab4350-0200-4607-aa57-69277d9736b1"
+            ]
+          },
+          {
+            "found": 4,
+            "group_key": [
+              "9009d6d8-6247-47b4-8425-d22581cd2a4d"
+            ],
+            "hits": [
+              "0e899ee5-9cd9-42ee-af0e-7a9c4321b92a",
+              "0e7e1761-ec06-4880-8add-1f9c1c4869fa",
+              "00951ef8-955c-4483-8782-075f77e26912",
+              "006436b3-f5ac-4064-84c1-e7e658d60e09"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "7129ff0d-a57c-42cb-ac40-5443ca7b7904"
+            ],
+            "hits": [
+              "08678ee1-36a8-429d-8598-4ca640574b0c",
+              "03a2e73e-0d02-4573-983e-844ecee1a116"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "04e88f7a-46a3-45ea-afaa-c2ff78d9d4ee"
+            ],
+            "hits": [
+              "0885a859-c3b0-4e10-be83-86cfa4d1bd2e",
+              "08f1d8ce-0d91-4de5-a50d-d3397e6db5db"
+            ]
+          },
+          {
+            "found": 56,
+            "group_key": [
+              "e67d5ddd-fdba-4811-b4ea-a1528b30b034"
+            ],
+            "hits": [
+              "0ef5c70a-def0-492a-baeb-c0118e349551",
+              "070f615c-48d8-484a-83a5-f7732dced3b8",
+              "0b83b4d5-515d-4cc4-abe1-eceec991abd6",
+              "0524de88-2089-4022-b3c1-d1356cf8609b",
+              "0054c372-b30c-4320-9ef8-9b76c1424339",
+              "05a3c80c-92b3-4563-9eaf-4e8b4bb8766d",
+              "01bc79d4-7286-4e3b-bdd9-61ceaf4a904e",
+              "05a00ff4-a1c5-41d6-8001-2f6c2d52973d",
+              "049cbd6c-bcf5-4c74-8598-2405425035dc",
+              "0de1ae6d-8f81-4082-b34c-38279083409d"
+            ]
+          },
+          {
+            "found": 1,
+            "group_key": [
+              "a57075fc-9a3f-4404-97c3-37de6bb37e19"
+            ],
+            "hits": [
+              "05d70d7b-d8de-48bf-af3f-cd5de6ce85b6"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "4bf99a6c-5dee-44ff-841d-e8dd3d5ac727"
+            ],
+            "hits": [
+              "0ef612f2-cba4-4f5f-92c2-5f366e6e80eb",
+              "04349992-a1cb-4f64-9e58-43f488cdacfe"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "cffee454-0fc6-43d3-9f1a-fd283144485e"
+            ],
+            "hits": [
+              "05c05a7c-8c4e-436b-9edd-967effca0ca8",
+              "026a2de8-d3c2-4a90-bb6f-aa137db437e0",
+              "08c735b1-c3f8-4757-b3d8-52218384dede",
+              "0af5612f-a330-4153-b7eb-db3b0fc039ba",
+              "0bc9ceaa-8ea8-435d-ab43-c275ae66c35c",
+              "007f9785-563f-4020-ae34-36d2103eec00"
+            ]
+          },
+          {
+            "found": 8,
+            "group_key": [
+              "dfb98d3c-1af5-48ca-bf52-a8e19ecd97b0"
+            ],
+            "hits": [
+              "0f442359-3ccd-4f5b-b834-9a5aee813f3a",
+              "0ebc8d0e-b0e7-4593-8c57-5bc063eb5d33",
+              "0311add9-daff-4fe4-a8fa-2b857fbc670e",
+              "05fbaae5-bf7a-4865-98eb-2b97809cc732",
+              "0ec8c5a7-ef4d-4894-84bc-17dd2d40dee7",
+              "0b2fbfe4-6fcf-43da-b8fd-fa91c1e12e88",
+              "01b5a6f4-136b-40ab-9cc0-02e6dbf5169c",
+              "0a25b126-8e68-4749-b828-091c996e9e56"
+            ]
+          },
+          {
+            "found": 24,
+            "group_key": [
+              "72e86775-77f2-498d-90a4-13f263b86526"
+            ],
+            "hits": [
+              "0d7ef65b-bbde-4910-aa89-793df011b0d7",
+              "032eb91e-9cdb-47c5-b866-16d1e7d1ccc9",
+              "0f5b0476-484f-42d4-95e3-ef7cf1d128e3",
+              "0f217247-e8fc-4d42-a21b-68403dd320d3",
+              "0a67b237-0378-489d-813e-2f1bc708315b",
+              "0e0767ed-f866-4952-bf65-7e6bb70f1a3e",
+              "00162a2c-319b-4b04-89c6-a5b7b01bced5",
+              "0f5a1f5a-b1a0-438c-9e21-02a4f8dc4a95",
+              "08bffc6b-b309-4386-9bca-de0247b593cd",
+              "0616d0a7-6067-4789-a1f4-361a26ff4210"
+            ]
+          },
+          {
+            "found": 10,
+            "group_key": [
+              "cb6437c5-dfcf-4d45-99e9-de986149e147"
+            ],
+            "hits": [
+              "0ab172ce-bfff-44db-85e1-36ed13133378",
+              "0c677be7-9244-469a-bcc8-d2a4d5fb540c",
+              "0852bfde-04a8-4d4a-8e1b-650b74d39ba6",
+              "037f0134-ed3f-48aa-8ac9-522dc573e017",
+              "0071734a-a5d7-402c-b8ce-cc6cd41edf98",
+              "0fba8c6d-18c2-448d-856e-b5080872d864",
+              "0ed00935-ef71-42bf-be12-9bb4b550d29f",
+              "0cafa86e-5a62-4cc7-98e4-c49d43137540",
+              "0a138254-f83e-405d-bd3f-ebe7649a1a9b",
+              "09f6b770-9e44-42d4-9f13-b8c3926fae27"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "a0c81062-07e2-4c42-a62e-a66a7eb6d324"
+            ],
+            "hits": [
+              "0ea9fed1-9343-4f16-b8e1-c2902e301704",
+              "082cfb37-26c1-4535-b956-1395166e3000",
+              "0566ca80-148c-4d48-a729-1af4ef34796c",
+              "0a5c7d92-f38a-49b5-a4c9-37c6c50a69c3",
+              "08a23467-7952-4a58-860e-58d078e037e4",
+              "00ecef84-3b05-4bcd-be04-b3d5e934a4f9"
+            ]
+          },
+          {
+            "found": 30,
+            "group_key": [
+              "26dfdc4e-2dde-43b7-8fc8-1fb27c80351b"
+            ],
+            "hits": [
+              "0245d196-5127-4569-a3b4-d698bff5d204",
+              "0ba9d258-33c2-4c2b-8a4d-dd69feea7ed7",
+              "07ea5629-6a59-431f-8f53-fc3d55cd1926",
+              "0581ba33-5a43-4ebe-a850-ad188784d815",
+              "0eab4036-7fda-430b-86dd-d3763d6b1e31",
+              "0f5e4304-65c7-474f-8c74-c5d40ce879d2",
+              "0e488096-1138-4f0b-b97c-ead219ad575a",
+              "0c23f9dd-5b05-496a-9da9-46bce4c1c827",
+              "03ce234f-ef4f-4332-993b-8e7c1abc3d25",
+              "003899af-09b2-494d-92b2-518cc2e5c8b6"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "4d845e25-3f25-4b4e-9e5a-c8756d701534"
+            ],
+            "hits": [
+              "06cc32b2-6a51-40c7-9ef7-1edc7fc02405",
+              "0a7aac2c-696a-4985-9521-86b52c5308af"
+            ]
+          },
+          {
+            "found": 3,
+            "group_key": [
+              "35501d05-bed7-42af-8d59-0d7c6ac84843"
+            ],
+            "hits": [
+              "0bbbfd2b-8a3a-4428-87aa-cd77a597f589",
+              "0c948111-2fc5-4c5b-87f6-6f708c610c72",
+              "031f14df-5ba2-4999-b244-f488560ea72f"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "b85ca9e5-038a-436b-a9ce-d8fd4f86c57c"
+            ],
+            "hits": [
+              "0eef0919-1dba-4477-8c74-635c27ceb5b5",
+              "0acb1512-a091-437f-87e6-25c1df3b14e8"
+            ]
+          },
+          {
+            "found": 3,
+            "group_key": [
+              "067c1c3f-9405-45f4-92c7-d1bc874d373a"
+            ],
+            "hits": [
+              "043846b0-ffca-4922-9996-efe8d5315242",
+              "0e5a771e-ce5c-449e-95c6-788188e0a06d",
+              "0ee8a394-7cf4-421d-8ff4-94f62c32bb9f"
+            ]
+          }
+        ],
+        "hits": [],
+        "search_cutoff": false
+      },
+      "projection_drift": false,
+      "server_ms": [
+        14,
+        14,
+        15,
+        15,
+        15,
+        16,
+        16,
+        15,
+        16,
+        16,
+        16,
+        19,
+        17,
+        17,
+        17
+      ],
+      "wall_ms": [
+        16.198,
+        16.614,
+        18.029,
+        17.595,
+        17.274,
+        18.8,
+        18.825,
+        18.626,
+        19.815,
+        18.925,
+        20.109,
+        22.193,
+        20.203,
+        20.379,
+        19.652
+      ]
+    },
+    "string_atomic": {
+      "cutoff_runs": 0,
+      "median_ms": 16,
+      "p95_ms": 19,
+      "projection": {
+        "facets": [],
+        "found": 686,
+        "found_docs": 3297,
+        "groups": [
+          {
+            "found": 6,
+            "group_key": [
+              "4ee90896-72df-4017-b5d4-a13a036c5a16"
+            ],
+            "hits": [
+              "08a2bd31-e721-402e-85d1-89f4cdfde58d",
+              "094c548e-9b21-46cf-b6f8-16ab033d2dc5",
+              "07a1c6af-6cf2-4323-a316-8db6b004f8c1",
+              "0cb09494-f891-407f-aba9-df2a7074c55a",
+              "000535af-189f-40d2-bc61-fb710b369e77",
+              "076318d1-8f51-40cb-8a43-4e9717d0c945"
+            ]
+          },
+          {
+            "found": 23,
+            "group_key": [
+              "a261ce9d-a1ef-4530-a613-a9155043353e"
+            ],
+            "hits": [
+              "041d7add-dec2-451c-a982-5a5f461fc72f",
+              "03841619-991e-4274-84af-b976b83e5acf",
+              "0542d926-c545-4618-b9bb-3df6a78dd463",
+              "05270356-7fd5-48ff-84bb-a16780f3ee39",
+              "047e6f1e-4b2b-4fbe-8809-80f02e93cb16",
+              "085fd818-6e0b-406b-804a-2c9a8b88aa67",
+              "00beb082-7afc-4b6d-b6d4-d067734a79e0",
+              "0ef5eb5a-c429-4bd6-b217-c5964f5a7493",
+              "0d9a4345-81a4-4881-ab4f-53f391e8dd7b",
+              "04882251-7d03-4d39-a929-1e9bfde4b541"
+            ]
+          },
+          {
+            "found": 36,
+            "group_key": [
+              "74b0f23d-dc8c-40f0-b08e-4544c6500302"
+            ],
+            "hits": [
+              "05652822-9346-4d1e-87eb-b9b2cb6fc49f",
+              "098e2752-df3c-4a32-9f30-b28516bdd166",
+              "0ac52d50-c0ec-44d6-aea3-ce9e1eb098a1",
+              "00182ba3-085a-4682-ba91-d58f52d2ae31",
+              "0536030a-7442-4c0c-89c3-d699009fece8",
+              "0cc797b7-b0a4-4e2a-9a44-ca1081f2364e",
+              "085f2383-e461-49ca-9de3-279bd91742a7",
+              "09575216-573c-45de-80d8-a94575ea5226",
+              "0e17b738-5500-4401-b76a-44022e75d6e2",
+              "0d62a9be-2c9b-4b5f-9555-4cf5a50eb638"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "778595b8-6a9d-41a8-a8dd-497f14534a92"
+            ],
+            "hits": [
+              "06c4fdb6-64c7-4128-8601-4c1461b75b08",
+              "0e5ce9be-cc79-4177-aecb-e6b3d1c6e717",
+              "00221e27-ea7a-438b-ac27-50229477559c",
+              "06f87b7a-c347-4f65-8ae5-a631ce325c7f",
+              "0fc2a85b-1ce4-4e6e-b005-5432a82aabe1",
+              "05ab4350-0200-4607-aa57-69277d9736b1"
+            ]
+          },
+          {
+            "found": 4,
+            "group_key": [
+              "9009d6d8-6247-47b4-8425-d22581cd2a4d"
+            ],
+            "hits": [
+              "0e899ee5-9cd9-42ee-af0e-7a9c4321b92a",
+              "0e7e1761-ec06-4880-8add-1f9c1c4869fa",
+              "00951ef8-955c-4483-8782-075f77e26912",
+              "006436b3-f5ac-4064-84c1-e7e658d60e09"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "7129ff0d-a57c-42cb-ac40-5443ca7b7904"
+            ],
+            "hits": [
+              "08678ee1-36a8-429d-8598-4ca640574b0c",
+              "03a2e73e-0d02-4573-983e-844ecee1a116"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "04e88f7a-46a3-45ea-afaa-c2ff78d9d4ee"
+            ],
+            "hits": [
+              "0885a859-c3b0-4e10-be83-86cfa4d1bd2e",
+              "08f1d8ce-0d91-4de5-a50d-d3397e6db5db"
+            ]
+          },
+          {
+            "found": 56,
+            "group_key": [
+              "e67d5ddd-fdba-4811-b4ea-a1528b30b034"
+            ],
+            "hits": [
+              "0ef5c70a-def0-492a-baeb-c0118e349551",
+              "070f615c-48d8-484a-83a5-f7732dced3b8",
+              "0b83b4d5-515d-4cc4-abe1-eceec991abd6",
+              "0524de88-2089-4022-b3c1-d1356cf8609b",
+              "0054c372-b30c-4320-9ef8-9b76c1424339",
+              "05a3c80c-92b3-4563-9eaf-4e8b4bb8766d",
+              "01bc79d4-7286-4e3b-bdd9-61ceaf4a904e",
+              "05a00ff4-a1c5-41d6-8001-2f6c2d52973d",
+              "049cbd6c-bcf5-4c74-8598-2405425035dc",
+              "0de1ae6d-8f81-4082-b34c-38279083409d"
+            ]
+          },
+          {
+            "found": 1,
+            "group_key": [
+              "a57075fc-9a3f-4404-97c3-37de6bb37e19"
+            ],
+            "hits": [
+              "05d70d7b-d8de-48bf-af3f-cd5de6ce85b6"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "4bf99a6c-5dee-44ff-841d-e8dd3d5ac727"
+            ],
+            "hits": [
+              "0ef612f2-cba4-4f5f-92c2-5f366e6e80eb",
+              "04349992-a1cb-4f64-9e58-43f488cdacfe"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "cffee454-0fc6-43d3-9f1a-fd283144485e"
+            ],
+            "hits": [
+              "05c05a7c-8c4e-436b-9edd-967effca0ca8",
+              "026a2de8-d3c2-4a90-bb6f-aa137db437e0",
+              "08c735b1-c3f8-4757-b3d8-52218384dede",
+              "0af5612f-a330-4153-b7eb-db3b0fc039ba",
+              "0bc9ceaa-8ea8-435d-ab43-c275ae66c35c",
+              "007f9785-563f-4020-ae34-36d2103eec00"
+            ]
+          },
+          {
+            "found": 8,
+            "group_key": [
+              "dfb98d3c-1af5-48ca-bf52-a8e19ecd97b0"
+            ],
+            "hits": [
+              "0f442359-3ccd-4f5b-b834-9a5aee813f3a",
+              "0ebc8d0e-b0e7-4593-8c57-5bc063eb5d33",
+              "0311add9-daff-4fe4-a8fa-2b857fbc670e",
+              "05fbaae5-bf7a-4865-98eb-2b97809cc732",
+              "0ec8c5a7-ef4d-4894-84bc-17dd2d40dee7",
+              "0b2fbfe4-6fcf-43da-b8fd-fa91c1e12e88",
+              "01b5a6f4-136b-40ab-9cc0-02e6dbf5169c",
+              "0a25b126-8e68-4749-b828-091c996e9e56"
+            ]
+          },
+          {
+            "found": 24,
+            "group_key": [
+              "72e86775-77f2-498d-90a4-13f263b86526"
+            ],
+            "hits": [
+              "0d7ef65b-bbde-4910-aa89-793df011b0d7",
+              "032eb91e-9cdb-47c5-b866-16d1e7d1ccc9",
+              "0f5b0476-484f-42d4-95e3-ef7cf1d128e3",
+              "0f217247-e8fc-4d42-a21b-68403dd320d3",
+              "0a67b237-0378-489d-813e-2f1bc708315b",
+              "0e0767ed-f866-4952-bf65-7e6bb70f1a3e",
+              "00162a2c-319b-4b04-89c6-a5b7b01bced5",
+              "0f5a1f5a-b1a0-438c-9e21-02a4f8dc4a95",
+              "08bffc6b-b309-4386-9bca-de0247b593cd",
+              "0616d0a7-6067-4789-a1f4-361a26ff4210"
+            ]
+          },
+          {
+            "found": 10,
+            "group_key": [
+              "cb6437c5-dfcf-4d45-99e9-de986149e147"
+            ],
+            "hits": [
+              "0ab172ce-bfff-44db-85e1-36ed13133378",
+              "0c677be7-9244-469a-bcc8-d2a4d5fb540c",
+              "0852bfde-04a8-4d4a-8e1b-650b74d39ba6",
+              "037f0134-ed3f-48aa-8ac9-522dc573e017",
+              "0071734a-a5d7-402c-b8ce-cc6cd41edf98",
+              "0fba8c6d-18c2-448d-856e-b5080872d864",
+              "0ed00935-ef71-42bf-be12-9bb4b550d29f",
+              "0cafa86e-5a62-4cc7-98e4-c49d43137540",
+              "0a138254-f83e-405d-bd3f-ebe7649a1a9b",
+              "09f6b770-9e44-42d4-9f13-b8c3926fae27"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "a0c81062-07e2-4c42-a62e-a66a7eb6d324"
+            ],
+            "hits": [
+              "0ea9fed1-9343-4f16-b8e1-c2902e301704",
+              "082cfb37-26c1-4535-b956-1395166e3000",
+              "0566ca80-148c-4d48-a729-1af4ef34796c",
+              "0a5c7d92-f38a-49b5-a4c9-37c6c50a69c3",
+              "08a23467-7952-4a58-860e-58d078e037e4",
+              "00ecef84-3b05-4bcd-be04-b3d5e934a4f9"
+            ]
+          },
+          {
+            "found": 30,
+            "group_key": [
+              "26dfdc4e-2dde-43b7-8fc8-1fb27c80351b"
+            ],
+            "hits": [
+              "0245d196-5127-4569-a3b4-d698bff5d204",
+              "0ba9d258-33c2-4c2b-8a4d-dd69feea7ed7",
+              "07ea5629-6a59-431f-8f53-fc3d55cd1926",
+              "0581ba33-5a43-4ebe-a850-ad188784d815",
+              "0eab4036-7fda-430b-86dd-d3763d6b1e31",
+              "0f5e4304-65c7-474f-8c74-c5d40ce879d2",
+              "0e488096-1138-4f0b-b97c-ead219ad575a",
+              "0c23f9dd-5b05-496a-9da9-46bce4c1c827",
+              "03ce234f-ef4f-4332-993b-8e7c1abc3d25",
+              "003899af-09b2-494d-92b2-518cc2e5c8b6"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "4d845e25-3f25-4b4e-9e5a-c8756d701534"
+            ],
+            "hits": [
+              "06cc32b2-6a51-40c7-9ef7-1edc7fc02405",
+              "0a7aac2c-696a-4985-9521-86b52c5308af"
+            ]
+          },
+          {
+            "found": 3,
+            "group_key": [
+              "35501d05-bed7-42af-8d59-0d7c6ac84843"
+            ],
+            "hits": [
+              "0bbbfd2b-8a3a-4428-87aa-cd77a597f589",
+              "0c948111-2fc5-4c5b-87f6-6f708c610c72",
+              "031f14df-5ba2-4999-b244-f488560ea72f"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "b85ca9e5-038a-436b-a9ce-d8fd4f86c57c"
+            ],
+            "hits": [
+              "0eef0919-1dba-4477-8c74-635c27ceb5b5",
+              "0acb1512-a091-437f-87e6-25c1df3b14e8"
+            ]
+          },
+          {
+            "found": 3,
+            "group_key": [
+              "067c1c3f-9405-45f4-92c7-d1bc874d373a"
+            ],
+            "hits": [
+              "043846b0-ffca-4922-9996-efe8d5315242",
+              "0e5a771e-ce5c-449e-95c6-788188e0a06d",
+              "0ee8a394-7cf4-421d-8ff4-94f62c32bb9f"
+            ]
+          }
+        ],
+        "hits": [],
+        "search_cutoff": false
+      },
+      "projection_drift": false,
+      "server_ms": [
+        14,
+        14,
+        15,
+        15,
+        15,
+        16,
+        16,
+        16,
+        17,
+        16,
+        16,
+        18,
+        19,
+        18,
+        18
+      ],
+      "wall_ms": [
+        16.395,
+        18.018,
+        17.629,
+        17.851,
+        18.124,
+        18.675,
+        18.671,
+        18.408,
+        19.826,
+        19.339,
+        18.776,
+        20.984,
+        22.617,
+        20.687,
+        21.451
+      ]
+    },
+    "string_split": {
+      "cutoff_runs": 0,
+      "median_ms": 16,
+      "p95_ms": 19,
+      "projection": {
+        "facets": [],
+        "found": 686,
+        "found_docs": 3297,
+        "groups": [
+          {
+            "found": 6,
+            "group_key": [
+              "4ee90896-72df-4017-b5d4-a13a036c5a16"
+            ],
+            "hits": [
+              "08a2bd31-e721-402e-85d1-89f4cdfde58d",
+              "094c548e-9b21-46cf-b6f8-16ab033d2dc5",
+              "07a1c6af-6cf2-4323-a316-8db6b004f8c1",
+              "0cb09494-f891-407f-aba9-df2a7074c55a",
+              "000535af-189f-40d2-bc61-fb710b369e77",
+              "076318d1-8f51-40cb-8a43-4e9717d0c945"
+            ]
+          },
+          {
+            "found": 23,
+            "group_key": [
+              "a261ce9d-a1ef-4530-a613-a9155043353e"
+            ],
+            "hits": [
+              "041d7add-dec2-451c-a982-5a5f461fc72f",
+              "03841619-991e-4274-84af-b976b83e5acf",
+              "0542d926-c545-4618-b9bb-3df6a78dd463",
+              "05270356-7fd5-48ff-84bb-a16780f3ee39",
+              "047e6f1e-4b2b-4fbe-8809-80f02e93cb16",
+              "085fd818-6e0b-406b-804a-2c9a8b88aa67",
+              "00beb082-7afc-4b6d-b6d4-d067734a79e0",
+              "0ef5eb5a-c429-4bd6-b217-c5964f5a7493",
+              "0d9a4345-81a4-4881-ab4f-53f391e8dd7b",
+              "04882251-7d03-4d39-a929-1e9bfde4b541"
+            ]
+          },
+          {
+            "found": 36,
+            "group_key": [
+              "74b0f23d-dc8c-40f0-b08e-4544c6500302"
+            ],
+            "hits": [
+              "05652822-9346-4d1e-87eb-b9b2cb6fc49f",
+              "098e2752-df3c-4a32-9f30-b28516bdd166",
+              "0ac52d50-c0ec-44d6-aea3-ce9e1eb098a1",
+              "00182ba3-085a-4682-ba91-d58f52d2ae31",
+              "0536030a-7442-4c0c-89c3-d699009fece8",
+              "0cc797b7-b0a4-4e2a-9a44-ca1081f2364e",
+              "085f2383-e461-49ca-9de3-279bd91742a7",
+              "09575216-573c-45de-80d8-a94575ea5226",
+              "0e17b738-5500-4401-b76a-44022e75d6e2",
+              "0d62a9be-2c9b-4b5f-9555-4cf5a50eb638"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "778595b8-6a9d-41a8-a8dd-497f14534a92"
+            ],
+            "hits": [
+              "06c4fdb6-64c7-4128-8601-4c1461b75b08",
+              "0e5ce9be-cc79-4177-aecb-e6b3d1c6e717",
+              "00221e27-ea7a-438b-ac27-50229477559c",
+              "06f87b7a-c347-4f65-8ae5-a631ce325c7f",
+              "0fc2a85b-1ce4-4e6e-b005-5432a82aabe1",
+              "05ab4350-0200-4607-aa57-69277d9736b1"
+            ]
+          },
+          {
+            "found": 4,
+            "group_key": [
+              "9009d6d8-6247-47b4-8425-d22581cd2a4d"
+            ],
+            "hits": [
+              "0e899ee5-9cd9-42ee-af0e-7a9c4321b92a",
+              "0e7e1761-ec06-4880-8add-1f9c1c4869fa",
+              "00951ef8-955c-4483-8782-075f77e26912",
+              "006436b3-f5ac-4064-84c1-e7e658d60e09"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "7129ff0d-a57c-42cb-ac40-5443ca7b7904"
+            ],
+            "hits": [
+              "08678ee1-36a8-429d-8598-4ca640574b0c",
+              "03a2e73e-0d02-4573-983e-844ecee1a116"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "04e88f7a-46a3-45ea-afaa-c2ff78d9d4ee"
+            ],
+            "hits": [
+              "0885a859-c3b0-4e10-be83-86cfa4d1bd2e",
+              "08f1d8ce-0d91-4de5-a50d-d3397e6db5db"
+            ]
+          },
+          {
+            "found": 56,
+            "group_key": [
+              "e67d5ddd-fdba-4811-b4ea-a1528b30b034"
+            ],
+            "hits": [
+              "0ef5c70a-def0-492a-baeb-c0118e349551",
+              "070f615c-48d8-484a-83a5-f7732dced3b8",
+              "0b83b4d5-515d-4cc4-abe1-eceec991abd6",
+              "0524de88-2089-4022-b3c1-d1356cf8609b",
+              "0054c372-b30c-4320-9ef8-9b76c1424339",
+              "05a3c80c-92b3-4563-9eaf-4e8b4bb8766d",
+              "01bc79d4-7286-4e3b-bdd9-61ceaf4a904e",
+              "05a00ff4-a1c5-41d6-8001-2f6c2d52973d",
+              "049cbd6c-bcf5-4c74-8598-2405425035dc",
+              "0de1ae6d-8f81-4082-b34c-38279083409d"
+            ]
+          },
+          {
+            "found": 1,
+            "group_key": [
+              "a57075fc-9a3f-4404-97c3-37de6bb37e19"
+            ],
+            "hits": [
+              "05d70d7b-d8de-48bf-af3f-cd5de6ce85b6"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "4bf99a6c-5dee-44ff-841d-e8dd3d5ac727"
+            ],
+            "hits": [
+              "0ef612f2-cba4-4f5f-92c2-5f366e6e80eb",
+              "04349992-a1cb-4f64-9e58-43f488cdacfe"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "cffee454-0fc6-43d3-9f1a-fd283144485e"
+            ],
+            "hits": [
+              "05c05a7c-8c4e-436b-9edd-967effca0ca8",
+              "026a2de8-d3c2-4a90-bb6f-aa137db437e0",
+              "08c735b1-c3f8-4757-b3d8-52218384dede",
+              "0af5612f-a330-4153-b7eb-db3b0fc039ba",
+              "0bc9ceaa-8ea8-435d-ab43-c275ae66c35c",
+              "007f9785-563f-4020-ae34-36d2103eec00"
+            ]
+          },
+          {
+            "found": 8,
+            "group_key": [
+              "dfb98d3c-1af5-48ca-bf52-a8e19ecd97b0"
+            ],
+            "hits": [
+              "0f442359-3ccd-4f5b-b834-9a5aee813f3a",
+              "0ebc8d0e-b0e7-4593-8c57-5bc063eb5d33",
+              "0311add9-daff-4fe4-a8fa-2b857fbc670e",
+              "05fbaae5-bf7a-4865-98eb-2b97809cc732",
+              "0ec8c5a7-ef4d-4894-84bc-17dd2d40dee7",
+              "0b2fbfe4-6fcf-43da-b8fd-fa91c1e12e88",
+              "01b5a6f4-136b-40ab-9cc0-02e6dbf5169c",
+              "0a25b126-8e68-4749-b828-091c996e9e56"
+            ]
+          },
+          {
+            "found": 24,
+            "group_key": [
+              "72e86775-77f2-498d-90a4-13f263b86526"
+            ],
+            "hits": [
+              "0d7ef65b-bbde-4910-aa89-793df011b0d7",
+              "032eb91e-9cdb-47c5-b866-16d1e7d1ccc9",
+              "0f5b0476-484f-42d4-95e3-ef7cf1d128e3",
+              "0f217247-e8fc-4d42-a21b-68403dd320d3",
+              "0a67b237-0378-489d-813e-2f1bc708315b",
+              "0e0767ed-f866-4952-bf65-7e6bb70f1a3e",
+              "00162a2c-319b-4b04-89c6-a5b7b01bced5",
+              "0f5a1f5a-b1a0-438c-9e21-02a4f8dc4a95",
+              "08bffc6b-b309-4386-9bca-de0247b593cd",
+              "0616d0a7-6067-4789-a1f4-361a26ff4210"
+            ]
+          },
+          {
+            "found": 10,
+            "group_key": [
+              "cb6437c5-dfcf-4d45-99e9-de986149e147"
+            ],
+            "hits": [
+              "0ab172ce-bfff-44db-85e1-36ed13133378",
+              "0c677be7-9244-469a-bcc8-d2a4d5fb540c",
+              "0852bfde-04a8-4d4a-8e1b-650b74d39ba6",
+              "037f0134-ed3f-48aa-8ac9-522dc573e017",
+              "0071734a-a5d7-402c-b8ce-cc6cd41edf98",
+              "0fba8c6d-18c2-448d-856e-b5080872d864",
+              "0ed00935-ef71-42bf-be12-9bb4b550d29f",
+              "0cafa86e-5a62-4cc7-98e4-c49d43137540",
+              "0a138254-f83e-405d-bd3f-ebe7649a1a9b",
+              "09f6b770-9e44-42d4-9f13-b8c3926fae27"
+            ]
+          },
+          {
+            "found": 6,
+            "group_key": [
+              "a0c81062-07e2-4c42-a62e-a66a7eb6d324"
+            ],
+            "hits": [
+              "0ea9fed1-9343-4f16-b8e1-c2902e301704",
+              "082cfb37-26c1-4535-b956-1395166e3000",
+              "0566ca80-148c-4d48-a729-1af4ef34796c",
+              "0a5c7d92-f38a-49b5-a4c9-37c6c50a69c3",
+              "08a23467-7952-4a58-860e-58d078e037e4",
+              "00ecef84-3b05-4bcd-be04-b3d5e934a4f9"
+            ]
+          },
+          {
+            "found": 30,
+            "group_key": [
+              "26dfdc4e-2dde-43b7-8fc8-1fb27c80351b"
+            ],
+            "hits": [
+              "0245d196-5127-4569-a3b4-d698bff5d204",
+              "0ba9d258-33c2-4c2b-8a4d-dd69feea7ed7",
+              "07ea5629-6a59-431f-8f53-fc3d55cd1926",
+              "0581ba33-5a43-4ebe-a850-ad188784d815",
+              "0eab4036-7fda-430b-86dd-d3763d6b1e31",
+              "0f5e4304-65c7-474f-8c74-c5d40ce879d2",
+              "0e488096-1138-4f0b-b97c-ead219ad575a",
+              "0c23f9dd-5b05-496a-9da9-46bce4c1c827",
+              "03ce234f-ef4f-4332-993b-8e7c1abc3d25",
+              "003899af-09b2-494d-92b2-518cc2e5c8b6"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "4d845e25-3f25-4b4e-9e5a-c8756d701534"
+            ],
+            "hits": [
+              "06cc32b2-6a51-40c7-9ef7-1edc7fc02405",
+              "0a7aac2c-696a-4985-9521-86b52c5308af"
+            ]
+          },
+          {
+            "found": 3,
+            "group_key": [
+              "35501d05-bed7-42af-8d59-0d7c6ac84843"
+            ],
+            "hits": [
+              "0bbbfd2b-8a3a-4428-87aa-cd77a597f589",
+              "0c948111-2fc5-4c5b-87f6-6f708c610c72",
+              "031f14df-5ba2-4999-b244-f488560ea72f"
+            ]
+          },
+          {
+            "found": 2,
+            "group_key": [
+              "b85ca9e5-038a-436b-a9ce-d8fd4f86c57c"
+            ],
+            "hits": [
+              "0eef0919-1dba-4477-8c74-635c27ceb5b5",
+              "0acb1512-a091-437f-87e6-25c1df3b14e8"
+            ]
+          },
+          {
+            "found": 3,
+            "group_key": [
+              "067c1c3f-9405-45f4-92c7-d1bc874d373a"
+            ],
+            "hits": [
+              "043846b0-ffca-4922-9996-efe8d5315242",
+              "0e5a771e-ce5c-449e-95c6-788188e0a06d",
+              "0ee8a394-7cf4-421d-8ff4-94f62c32bb9f"
+            ]
+          }
+        ],
+        "hits": [],
+        "search_cutoff": false
+      },
+      "projection_drift": false,
+      "server_ms": [
+        15,
+        15,
+        15,
+        15,
+        15,
+        15,
+        16,
+        15,
+        16,
+        16,
+        16,
+        17,
+        19,
+        18,
+        17
+      ],
+      "wall_ms": [
+        17.586,
+        18.282,
+        18.116,
+        18.035,
+        17.522,
+        18.011,
+        18.551,
+        18.334,
+        19.171,
+        19.257,
+        19.047,
+        19.781,
+        22.49,
+        21.653,
+        20.383
+      ]
+    }
+  },
+  "query_parameters": {
+    "count_only": {
+      "drop_tokens_threshold": 1,
+      "filter_by": "is_active:true && has_content:!=false",
+      "include_fields": "id",
+      "per_page": 0,
+      "q": "software engineer",
+      "query_by": "title",
+      "typo_tokens_threshold": 1,
+      "use_cache": "false"
+    },
+    "numeric": {
+      "drop_tokens_threshold": 1,
+      "filter_by": "is_active:true && has_content:!=false",
+      "group_by": "company_numeric",
+      "group_limit": 10,
+      "include_fields": "id",
+      "per_page": 20,
+      "q": "software engineer",
+      "query_by": "title",
+      "sort_by": "_text_match:desc,first_seen_at:desc",
+      "typo_tokens_threshold": 1,
+      "use_cache": "false"
+    },
+    "string_atomic": {
+      "drop_tokens_threshold": 1,
+      "filter_by": "is_active:true && has_content:!=false",
+      "group_by": "company_atomic",
+      "group_limit": 10,
+      "include_fields": "id",
+      "per_page": 20,
+      "q": "software engineer",
+      "query_by": "title",
+      "sort_by": "_text_match:desc,first_seen_at:desc",
+      "typo_tokens_threshold": 1,
+      "use_cache": "false"
+    },
+    "string_split": {
+      "drop_tokens_threshold": 1,
+      "filter_by": "is_active:true && has_content:!=false",
+      "group_by": "company_id",
+      "group_limit": 10,
+      "include_fields": "id",
+      "per_page": 20,
+      "q": "software engineer",
+      "query_by": "title",
+      "sort_by": "_text_match:desc,first_seen_at:desc",
+      "typo_tokens_threshold": 1,
+      "use_cache": "false"
+    }
+  },
+  "readiness": {
+    "allocated_bytes": 202140616,
+    "elapsed_seconds": 4.478,
+    "probes": 3,
+    "stable_probes": 3
+  },
+  "rebuild_seconds": 21.17666320799617,
+  "repeats": 15,
+  "sample_uncompressed_sha256": "8bfcc8810fce8cf236a9d71d363a2ee4bdc808b10bc99050ac85138fcea61eff",
+  "schema": {
+    "default_sorting_field": "first_seen_at",
+    "fields": [
+      {
+        "facet": true,
+        "name": "company_id",
+        "type": "string"
+      },
+      {
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "facet": true,
+        "name": "is_active",
+        "type": "bool"
+      },
+      {
+        "facet": true,
+        "name": "has_content",
+        "optional": true,
+        "type": "bool"
+      },
+      {
+        "facet": true,
+        "name": "experience_min",
+        "type": "int32"
+      },
+      {
+        "name": "first_seen_at",
+        "type": "int64"
+      },
+      {
+        "facet": true,
+        "name": "company_atomic",
+        "symbols_to_index": [
+          "-"
+        ],
+        "token_separators": [
+          "/"
+        ],
+        "type": "string"
+      },
+      {
+        "facet": true,
+        "name": "company_numeric",
+        "sort": false,
+        "type": "int32"
+      }
+    ],
+    "name": "job_posting_lab",
+    "token_separators": [
+      "-",
+      "/"
+    ]
+  },
+  "variant": "key-types"
+}

@@ -297,6 +297,15 @@ candidate bound restored 686 but was slower still; it is not the fix in this
 sample. `found_docs` stayed 3,297 and ordered groups were preserved when dropping
 the facet. The unmodified 30.2 schema's experience facet remained correct.
 
+Further [upgrade diagnosis](2026-09-23-typesense-upgrade-diagnosis.md) isolates
+substantial string group-key overhead. Preserving whole UUID tokens reduces
+the full-schema no-count-facet median from 802 to 201 ms in a later run. A
+matched smaller-schema fixture measures split UUID / whole UUID / numeric
+group keys at 16 / 16 / 16 ms on 27.1 versus 890 / 248 / 60 ms on 30.2, with
+identical ordered groups and postings. Configuration mitigates the regression
+but does not satisfy the existing latency gate. That follow-up also identifies
+the pagination change required before replacing exact totals with estimates.
+
 Recommendation: stage an upgrade to 30.2, but **do not roll it out as the immediate
 memory fix**. Reproduce/profile the grouped query on x86_64 and resolve its
 latency regression first. Separately test the experience-facet behavior under
