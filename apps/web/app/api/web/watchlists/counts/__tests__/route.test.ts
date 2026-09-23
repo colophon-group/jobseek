@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getSessionUserIdFromHeaders: vi.fn(),
   getUserWatchlistActivityPreviewsForUser: vi.fn(),
+  getViewerLanguages: vi.fn(),
   limit: vi.fn(),
   logExternalError: vi.fn(),
 }));
@@ -14,6 +15,10 @@ vi.mock("@/lib/sessionCache", () => ({
 vi.mock("@/lib/services/watchlists", () => ({
   getUserWatchlistActivityPreviewsForUser:
     mocks.getUserWatchlistActivityPreviewsForUser,
+}));
+
+vi.mock("@/lib/viewer", () => ({
+  getViewerLanguages: mocks.getViewerLanguages,
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
@@ -30,6 +35,7 @@ describe("GET /api/web/watchlists/counts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSessionUserIdFromHeaders.mockResolvedValue("user-1");
+    mocks.getViewerLanguages.mockResolvedValue([]);
     mocks.limit.mockResolvedValue({
       success: true,
       reset: Date.now() + 60_000,
@@ -123,7 +129,9 @@ describe("GET /api/web/watchlists/counts", () => {
     expect(mocks.getUserWatchlistActivityPreviewsForUser).toHaveBeenCalledWith(
       "user-1",
       "de",
+      [],
     );
+    expect(mocks.getViewerLanguages).toHaveBeenCalledWith("de");
   });
 
   it("falls back to English for an unsupported locale", async () => {
@@ -132,6 +140,7 @@ describe("GET /api/web/watchlists/counts", () => {
     expect(mocks.getUserWatchlistActivityPreviewsForUser).toHaveBeenCalledWith(
       "user-1",
       "en",
+      [],
     );
   });
 });

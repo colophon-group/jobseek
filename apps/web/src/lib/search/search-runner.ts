@@ -197,7 +197,7 @@ export async function runGetWatchlistPostings(
     return truncated ? { ...result, truncated } : result;
   } catch (err) {
     logExternalError(
-      "error",
+      "warn",
       { service: "typesense", operation: "browser_watchlist_postings" },
       err,
     );

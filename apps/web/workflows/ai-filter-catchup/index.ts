@@ -12,10 +12,12 @@ export async function aiFilterCatchupWorkflow(
 ) {
   "use workflow";
 
-  // One scroll demand may fill at most two 50-candidate segments. This is
-  // enough to get several UI pages ahead while preventing an interaction from
-  // cascading through the entire historical feed.
+  // One demand maintains a 500-candidate runway. Each step is still a bounded,
+  // durable 50-decision segment, and the fixed cap prevents a single drawer
+  // interaction from cascading through the full 10k historical ceiling.
   let result = await runCatchupStep(input);
-  if (result.status === "continue") result = await runCatchupStep(input);
+  for (let segment = 1; segment < 10 && result.status === "continue"; segment += 1) {
+    result = await runCatchupStep(input);
+  }
   return result;
 }

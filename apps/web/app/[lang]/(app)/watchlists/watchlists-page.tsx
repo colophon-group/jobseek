@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, LogIn } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -14,6 +14,7 @@ import type {
 import {
   createWatchlist,
   createWatchlistFromHandoff,
+  copySharedWatchlist,
   deleteWatchlist,
   shareWatchlist,
 } from "@/lib/actions/watchlists";
@@ -21,7 +22,6 @@ import {
   WatchlistCard,
   CreateWatchlistCard,
 } from "@/components/watchlist/watchlist-card";
-import { Button } from "@/components/ui/Button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import {
   parseEmploymentTypeParam,
@@ -30,10 +30,62 @@ import {
 import { withAuthReturnPath } from "@/lib/auth-return";
 import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
 import { copyTextToClipboard } from "@/lib/copy-text-to-clipboard";
+import { getSessionWatchlistActivityPreviews } from "@/lib/actions/session-watchlists";
+import {
+  PENDING_WATCHLIST_LIMIT,
+  clearPendingWatchlist,
+  readPendingWatchlists,
+  removePendingWatchlist,
+  stagePendingWatchlistEntry,
+  type PendingWatchlistEntry,
+  type PendingWatchlistIntent,
+} from "@/lib/pending-watchlist";
 
 function commaSeparatedValues(value: string | null): string[] {
   if (!value) return [];
   return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+const SESSION_WATCHLIST_DATE = new Date(0).toISOString();
+
+function sessionEntryOverview(
+  entry: PendingWatchlistEntry,
+  cloneFallbackTitle: string,
+): UserWatchlistOverview {
+  const { id, intent } = entry;
+  return {
+    id,
+    slug: id,
+    title: intent.kind === "create"
+      ? intent.draft.title
+      : intent.title ?? cloneFallbackTitle,
+    description: intent.kind === "create"
+      ? intent.draft.description ?? null
+      : null,
+    isShared: false,
+    alertsEnabled: false,
+    companyCount: intent.kind === "create" ? intent.draft.companyIds.length : 0,
+    activeJobCount: null,
+    lastAccessedAt: SESSION_WATCHLIST_DATE,
+    createdAt: SESSION_WATCHLIST_DATE,
+  };
+}
+
+async function loadAccountActivityPreviews(
+  locale: string,
+  signal: AbortSignal,
+): Promise<Record<string, UserWatchlistActivityPreview>> {
+  const response = await fetch(
+    `/api/web/watchlists/counts?locale=${encodeURIComponent(locale)}`,
+    { cache: "no-store", signal },
+  );
+  if (!response.ok) {
+    throw new Error(`Watchlist previews failed: ${response.status}`);
+  }
+  const result = await response.json() as {
+    previews?: Record<string, UserWatchlistActivityPreview>;
+  };
+  return result.previews ?? {};
 }
 
 export function WatchlistsPage({
@@ -53,6 +105,7 @@ export function WatchlistsPage({
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [pendingWatchlists, setPendingWatchlists] = useState<PendingWatchlistEntry[]>([]);
   const [activityById, setActivityById] = useState<
     Record<string, UserWatchlistActivityPreview>
   >({});
@@ -67,41 +120,43 @@ export function WatchlistsPage({
   });
 
   useEffect(() => {
+    if (isPending) return;
+    const entries = isLoggedIn ? [] : readPendingWatchlists();
+    if (!isLoggedIn) setPendingWatchlists(entries);
+    const watchlistCount = isLoggedIn ? initialWatchlists.length : entries.length;
     setActivityById({});
-    setActivityPending(isLoggedIn && initialWatchlists.length > 0);
-    if (!isLoggedIn || initialWatchlists.length === 0) return;
+    setActivityPending(watchlistCount > 0);
+    if (watchlistCount === 0) return;
 
     const controller = new AbortController();
     let disposed = false;
-    const timeoutId = setTimeout(() => controller.abort(), 12_000);
+    const timeoutId = isLoggedIn
+      ? setTimeout(() => controller.abort(), 12_000)
+      : undefined;
+    const previews = isLoggedIn
+      ? loadAccountActivityPreviews(locale, controller.signal)
+      : getSessionWatchlistActivityPreviews({ entries, locale }).then(
+          (result) => "previews" in result ? result.previews ?? {} : {},
+        );
 
-    void fetch(`/api/web/watchlists/counts?locale=${encodeURIComponent(locale)}`, {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Watchlist previews failed: ${response.status}`);
-        return response.json() as Promise<{
-          previews?: Record<string, UserWatchlistActivityPreview>;
-        }>;
-      })
-      .then(({ previews }) => {
-        if (previews && !disposed) setActivityById(previews);
+    void previews
+      .then((nextActivity) => {
+        if (!disposed) setActivityById(nextActivity);
       })
       .catch(() => {
-        // The overview remains navigable when optional live activity fails.
+        // Watchlists remain navigable when optional live activity fails.
       })
       .finally(() => {
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
         if (!disposed) setActivityPending(false);
       });
 
     return () => {
       disposed = true;
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [initialWatchlists, isLoggedIn, locale]);
+  }, [initialWatchlists, isLoggedIn, isPending, locale]);
 
   function navigateToCreatedWatchlist(
     id: string,
@@ -181,8 +236,95 @@ export function WatchlistsPage({
     }) => handleCreate(prefill, "replace"),
   );
 
+  const runPendingWatchlistHandoff = useEffectEvent(
+    async (entries: PendingWatchlistEntry[]) => {
+      setCreating(true);
+      setCreateError("");
+      const availableSlots = Math.max(0, 10 - initialWatchlists.length);
+      const importable = entries.slice(0, availableSlots);
+      const overflow = entries.slice(availableSlots);
+      const overflowed = overflow.length > 0;
+      const createdIds: string[] = [];
+      try {
+        for (let index = 0; index < importable.length; index += 1) {
+          const { id, intent } = importable[index];
+          let result;
+          try {
+            result = intent.kind === "clone"
+              ? await copySharedWatchlist(intent.watchlistId)
+              : await createWatchlist(intent.draft);
+          } catch {
+            setCreateError(t({
+              id: "watchlists.createFailed",
+              comment: "Error shown when a new watchlist cannot be created",
+              message: "Could not create this watchlist.",
+            }));
+            return;
+          }
+          if ("error" in result) {
+            if (result.error !== "limit_reached") {
+              setCreateError(t({
+                id: "watchlists.createFailed",
+                comment: "Error shown when a new watchlist cannot be created",
+                message: "Could not create this watchlist.",
+              }));
+              return;
+            }
+            clearPendingWatchlist();
+            setCreateError(t({
+              id: "watchlists.pending.limitDiscarded",
+              comment: "Notice that signed-out watchlists were discarded because the account is full",
+              message: "Maximum of 10 watchlists reached. Extra saved watchlists were discarded.",
+            }));
+            break;
+          }
+          removePendingWatchlist(id);
+          createdIds.push(result.id);
+        }
+
+        if (overflowed) {
+          for (const entry of overflow) removePendingWatchlist(entry.id);
+          setCreateError(t({
+            id: "watchlists.pending.limitDiscarded",
+            comment: "Notice that signed-out watchlists were discarded because the account is full",
+            message: "Maximum of 10 watchlists reached. Extra saved watchlists were discarded.",
+          }));
+        }
+        if (createdIds.length === 1) {
+          navigateToCreatedWatchlist(createdIds[0], "replace");
+        } else if (createdIds.length > 1) {
+          router.refresh();
+        }
+      } catch {
+        setCreateError(t({
+          id: "watchlists.createFailed",
+          comment: "Error shown when a new watchlist cannot be created",
+          message: "Could not create this watchlist.",
+        }));
+      } finally {
+        setCreating(false);
+      }
+    },
+  );
+
   useEffect(() => {
     if (isPending || handoffAttemptedRef.current) return;
+
+    const pendingWatchlists = isLoggedIn ? readPendingWatchlists() : [];
+    if (pendingWatchlists.length > 0) {
+      handoffAttemptedRef.current = true;
+      if (limitReached) {
+        clearPendingWatchlist();
+        setCreateError(t({
+          id: "watchlists.pending.limitDiscarded",
+          comment: "Notice that signed-out watchlists were discarded because the account is full",
+          message: "Maximum of 10 watchlists reached. Extra saved watchlists were discarded.",
+        }));
+        return;
+      }
+      void runPendingWatchlistHandoff(pendingWatchlists);
+      return;
+    }
 
     const title = searchParams.get("title");
     if (!title) return;
@@ -245,13 +387,59 @@ export function WatchlistsPage({
     }).catch(() => {
       // Keep the handoff URL intact after a terminal action/database failure.
     });
-  }, [currencyRates, isLoggedIn, isPending, limitReached, searchParams]);
+  }, [currencyRates, isLoggedIn, isPending, limitReached, searchParams, t]);
+
+  function stageBlankWatchlist() {
+    const intent: PendingWatchlistIntent = {
+      kind: "create",
+      draft: {
+        title: defaultWatchlistTitle,
+        companyIds: [],
+        filters: { anyCompany: true },
+        isPublic: false,
+      },
+    };
+    const entry = stagePendingWatchlistEntry(intent);
+    if (entry) {
+      setPendingWatchlists(readPendingWatchlists());
+      router.push(lp(`/watchlists/${entry.id}`));
+      return;
+    }
+    router.push(loginHref);
+  }
+
+  function discardPendingWatchlist(id: string) {
+    removePendingWatchlist(id);
+    setPendingWatchlists(readPendingWatchlists());
+    setActivityById((current) => {
+      const { [id]: _discarded, ...remaining } = current;
+      return remaining;
+    });
+  }
 
   const loginHref = withAuthReturnPath(
     lp("/sign-in"),
     searchParams.has("title")
       ? `${lp("/watchlists")}?${searchParams.toString()}`
       : null,
+  );
+  const cloneFallbackTitle = t({
+    id: "watchlists.pending.cloneTitle",
+    comment: "Fallback title for a shared-watchlist copy saved in browser session state",
+    message: "Shared watchlist copy",
+  });
+  const displayedWatchlists = isLoggedIn
+    ? initialWatchlists
+    : pendingWatchlists.map((entry) => sessionEntryOverview(entry, cloneFallbackTitle));
+  const shareUnavailable = isLoggedIn
+    ? undefined
+    : t({
+        id: "watchlists.actions.loginToShare",
+        comment: "Disabled share tooltip for a browser-only watchlist",
+        message: "Log in to share",
+      });
+  const hasLoadedActivity = displayedWatchlists.some(
+    (watchlist) => activityById[watchlist.id] !== undefined,
   );
 
   return (
@@ -271,25 +459,19 @@ export function WatchlistsPage({
             </Trans>
           </span>
         </div>
-      ) : !isLoggedIn ? (
-        <div className="flex flex-col items-center gap-3 py-8 text-center text-muted">
-          <Eye size={32} aria-hidden="true" />
-          <p className="text-sm">
-            <Trans
-              id="watchlists.page.loginPrompt"
-              comment="Prompt for non-logged-in users to sign in to create watchlists"
-            >
-              Sign in to create and manage your own watchlists.
-            </Trans>
-          </p>
-          <Button href={loginHref} variant="primary" size="sm" className="gap-2">
-            <LogIn size={16} aria-hidden="true" />
-            {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
-          </Button>
-        </div>
       ) : (
         <div className="mx-auto w-full max-w-3xl" aria-busy={activityPending}>
-          {initialWatchlists.length > 0 && !activityPending ? (
+          {!isLoggedIn && displayedWatchlists.length > 0 ? (
+            <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning-border/60 bg-warning-bg px-3 py-2.5 text-xs leading-relaxed text-warning" role="status">
+              <AlertTriangle size={15} className="mt-0.5 shrink-0" aria-hidden="true" />
+              {t({
+                id: "watchlists.pending.collectionWarning",
+                comment: "Compact warning above anonymous watchlists stored in the current browser tab",
+                message: "Saved in this browser until you log in. Sharing and alerts are unavailable. Closing this tab may remove them.",
+              })}
+            </div>
+          ) : null}
+          {hasLoadedActivity && !activityPending ? (
             <span className="sr-only" role="status" aria-live="polite">
               {t({
                 id: "watchlists.activity.loaded",
@@ -303,7 +485,7 @@ export function WatchlistsPage({
               {createError}
             </p>
           ) : null}
-          {initialWatchlists.length === 0 ? (
+          {displayedWatchlists.length === 0 ? (
             <p className="mb-4 text-sm text-muted">
               <Trans id="watchlists.page.empty" comment="Empty state when user has no watchlists">
                 No watchlists yet. Create one to track jobs from your favorite companies.
@@ -314,26 +496,35 @@ export function WatchlistsPage({
             wrapperClassName="max-h-[max(12rem,calc(100dvh_-_8rem))]"
             className="overscroll-contain pr-2"
             fadeSize="h-8"
-            deps={[initialWatchlists.length, activityById]}
+            deps={[displayedWatchlists.length, activityById]}
           >
             <ul className="space-y-3 pb-10 md:pb-6">
-              {initialWatchlists.map((watchlist) => (
+              {displayedWatchlists.map((watchlist) => (
                 <li key={watchlist.id}>
                   <WatchlistCard
                     watchlist={watchlist}
                     activity={activityById[watchlist.id] ?? null}
                     activityPending={activityPending}
+                    shareDisabledReason={shareUnavailable}
                     href={lp(`/watchlists/${watchlist.id}`)}
-                    onShare={() => handleShare(watchlist.id)}
-                    onDelete={() => handleDelete(watchlist.id)}
+                    onShare={isLoggedIn
+                      ? () => handleShare(watchlist.id)
+                      : () => Promise.resolve()}
+                    onDelete={isLoggedIn
+                      ? () => handleDelete(watchlist.id)
+                      : async () => discardPendingWatchlist(watchlist.id)}
                   />
                 </li>
               ))}
               <li>
                 <CreateWatchlistCard
-                  onClick={() => void handleCreate()}
-                  creating={creating}
-                  disabled={limitReached}
+                  onClick={isLoggedIn
+                    ? () => void handleCreate()
+                    : stageBlankWatchlist}
+                  creating={isLoggedIn && creating}
+                  disabled={isLoggedIn
+                    ? limitReached
+                    : pendingWatchlists.length >= PENDING_WATCHLIST_LIMIT}
                 />
               </li>
             </ul>

@@ -48,6 +48,7 @@ const SERVER_INTERNAL_SERVICE_READERS = [
   "getSharedWatchlistById",
   "getUserWatchlistCountsForUser",
   "getUserWatchlistActivityPreviewsForUser",
+  "getWatchlistActivityPreviewsForDrafts",
   ...RETIRED_PUBLIC_SERVICE_READERS,
 ] as const;
 
@@ -112,8 +113,8 @@ describe("watchlists service tier boundary (#3332)", () => {
     expect(routeSrc).toContain(
       "const userId = await getSessionUserIdFromHeaders(request.headers)",
     );
-    expect(routeSrc).toContain(
-      "getUserWatchlistActivityPreviewsForUser(userId, locale)",
+    expect(routeSrc).toMatch(
+      /getUserWatchlistActivityPreviewsForUser\(\s*userId,\s*locale,\s*viewerLanguages,?\s*\)/,
     );
   });
 

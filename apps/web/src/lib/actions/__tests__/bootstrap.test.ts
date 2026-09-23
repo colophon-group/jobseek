@@ -18,6 +18,11 @@ vi.mock("@/lib/sessionCache", () => ({
   getSessionUserId: () => mockGetSession()?.user?.id ?? null,
 }));
 
+const mockReadAnonJobLanguagesCookie = vi.fn();
+vi.mock("@/lib/anon-preferences", () => ({
+  readAnonJobLanguagesCookie: () => mockReadAnonJobLanguagesCookie(),
+}));
+
 // Drizzle's tagged-template `sql` helper — bootstrap.ts only constructs a
 // query and passes it to db.execute, so a no-op stand-in is sufficient.
 vi.mock("drizzle-orm", () => ({
@@ -29,6 +34,8 @@ import { fetchAppBootstrap } from "../bootstrap";
 beforeEach(() => {
   mockExecute.mockReset();
   mockGetSession.mockReset();
+  mockReadAnonJobLanguagesCookie.mockReset();
+  mockReadAnonJobLanguagesCookie.mockResolvedValue(null);
 });
 
 describe("fetchAppBootstrap", () => {
@@ -111,6 +118,34 @@ describe("fetchAppBootstrap", () => {
     expect(result.plan).toBe("free");
     expect(result.savedStatuses).toEqual([]);
     expect(result.starredIds).toEqual([]);
+  });
+
+  it("inherits an anonymous language choice for a newly authenticated user", async () => {
+    mockGetSession.mockResolvedValue({
+      user: { id: "u2", email: "x@y.z", name: "New User", emailVerified: true },
+    });
+    mockReadAnonJobLanguagesCookie.mockResolvedValue(["*"]);
+    mockExecute
+      .mockResolvedValueOnce([
+        { plan: "unlimited", prefs: null, saved_statuses: [], starred_ids: [] },
+      ])
+      .mockResolvedValueOnce([{
+        theme: "light",
+        locale: "en",
+        cookieConsent: false,
+        displayCurrency: "EUR",
+        salaryPeriod: null,
+        dismissedBanners: [],
+        jobLanguages: ["*"],
+        themeUpdatedAt: null,
+        localeUpdatedAt: null,
+      }]);
+
+    const result = await fetchAppBootstrap();
+
+    expect(result.prefs).toEqual(expect.objectContaining({ jobLanguages: ["*"] }));
+    expect(result.plan).toBe("unlimited");
+    expect(mockExecute).toHaveBeenCalledTimes(2);
   });
 
   it("survives a totally empty execute result (defensive)", async () => {

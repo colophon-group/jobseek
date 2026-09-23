@@ -972,6 +972,10 @@ export const aiFilterQueryVersion = pgTable(
     schemaVersion: text("schema_version").notNull(),
     normalizerVersion: text("normalizer_version").notNull(),
     filterFingerprint: text("filter_fingerprint").notNull(),
+    candidateLanguages: jsonb("candidate_languages")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
     horizonStartedAt: timestamp("horizon_started_at", { withTimezone: true })
       .notNull(),
     horizonEndsAt: timestamp("horizon_ends_at", { withTimezone: true })
@@ -1182,7 +1186,8 @@ export const aiFilterDecision = pgTable(
     ),
     check(
       "ai_filter_decision_retention_check",
-      sql`${table.expiresAt} <= ${table.postingFirstSeenAt} + interval '30 days'`,
+      sql`${table.expiresAt} > ${table.decidedAt}
+        AND ${table.expiresAt} <= ${table.decidedAt} + interval '30 days'`,
     ),
   ],
 );

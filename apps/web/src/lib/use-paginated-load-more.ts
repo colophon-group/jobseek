@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export interface PaginatedFetchResult<T> {
   postings: T[];
@@ -11,6 +11,8 @@ export interface UsePaginatedLoadMoreOptions<T> {
   initialItems: T[];
   /** Server-reported total matching the current filter set. */
   initialTotal: number;
+  /** The server already stopped at an anonymous-viewer result cap. */
+  initialTruncated?: boolean;
   /** Page size requested per fetch. */
   batchSize: number;
   /**
@@ -33,6 +35,8 @@ export interface UsePaginatedLoadMoreOptions<T> {
    * re-fetches page 1 and replaces the local state.
    */
   resetKey?: unknown;
+  /** Keep the document at its pre-append offset when rows are added. */
+  preserveDocumentScroll?: boolean;
 }
 
 /**
@@ -52,17 +56,19 @@ export interface UsePaginatedLoadMoreOptions<T> {
 export function usePaginatedLoadMore<T>({
   initialItems,
   initialTotal,
+  initialTruncated = false,
   batchSize,
   itemKey,
   fetcher,
   resetKey,
+  preserveDocumentScroll = false,
 }: UsePaginatedLoadMoreOptions<T>) {
   const [items, setItems] = useState(initialItems);
   const [total, setTotal] = useState(initialTotal);
   const [exhausted, setExhausted] = useState(
-    initialItems.length >= initialTotal,
+    initialTruncated || initialItems.length >= initialTotal,
   );
-  const [truncated, setTruncated] = useState(false);
+  const [truncated, setTruncated] = useState(initialTruncated);
   const [resultRevision, setResultRevision] = useState(0);
 
   // The fetcher closure can be redefined every render — keep a ref
@@ -82,6 +88,14 @@ export function usePaginatedLoadMore<T>({
   // an in-flight fetch.
   const itemsRef = useRef(items);
   itemsRef.current = items;
+  const pendingScrollTopRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    const top = pendingScrollTopRef.current;
+    if (top == null) return;
+    pendingScrollTopRef.current = null;
+    window.scrollTo(window.scrollX, top);
+  }, [items.length]);
 
   // `fetcherRef` is intentionally read via ref (not listed in deps)
   // so callers can pass a fresh closure each render without triggering
@@ -136,6 +150,9 @@ export function usePaginatedLoadMore<T>({
     );
 
     if (fresh.length > 0) {
+      if (preserveDocumentScroll) {
+        pendingScrollTopRef.current = window.scrollY;
+      }
       setItems((prev) => {
         // Re-dedupe against the latest committed state in case a
         // concurrent filter-change fetch raced this one. Cheap and

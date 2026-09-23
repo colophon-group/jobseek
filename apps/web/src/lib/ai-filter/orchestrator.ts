@@ -134,8 +134,15 @@ function batch<T>(values: readonly T[], size: number): T[][] {
   return batches;
 }
 
-function reservationKey(segmentId: string, cacheKeys: readonly string[]): string {
-  return `${segmentId}:${cacheKeys.join(":")}`;
+function reservationKey(
+  segmentId: string,
+  leaseOwner: string,
+  cacheKeys: readonly string[],
+): string {
+  // A resumed segment may legitimately re-claim a batch whose previous
+  // worker died after reserving spend. The execution lease distinguishes
+  // that retry while preserving idempotency within one workflow attempt.
+  return `${segmentId}:${leaseOwner}:${cacheKeys.join(":")}`;
 }
 
 function initialOutcome(
@@ -241,6 +248,7 @@ export async function executeAiFilterSegment(input: {
   for (const claimedBatch of batch(resolution.claims, JEV_BATCH_SIZE)) {
     const idempotencyKey = reservationKey(
       input.context.segmentId,
+      input.context.leaseOwner,
       claimedBatch.map((candidate) => candidate.cacheKey),
     );
     const budget = await input.repository.reserveBudget({

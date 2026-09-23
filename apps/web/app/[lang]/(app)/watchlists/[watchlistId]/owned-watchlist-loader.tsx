@@ -15,14 +15,19 @@ import type { Locale } from "@/lib/i18n";
 import {
   AiFilterNotFoundError,
   getAiFilterOwnerState,
+  getSharedAiFilterState,
 } from "@/lib/ai-filter/configuration-service";
-import { listAiFilterDecisions } from "@/lib/ai-filter/decision-service";
+import {
+  listAiFilterDecisions,
+  listSharedAiFilterDecisions,
+} from "@/lib/ai-filter/decision-service";
 import { AiFilterCandidateLoadError } from "@/lib/ai-filter/candidate-loader";
 import type {
   AiFilterAcceptedPage,
   AiFilterUiState,
 } from "@/lib/ai-filter/ui-contract";
-import { WatchlistViewPage } from "../../[userSlug]/[watchlistSlug]/watchlist-view-page";
+import { WatchlistViewPage } from "@/components/watchlist/watchlist-view-page";
+import { SessionWatchlistLoader } from "./session-watchlist-loader";
 
 function viewDetail(
   detail: WatchlistViewDetail,
@@ -50,22 +55,41 @@ async function getOptionalAiFilterState(input: {
   }
 }
 
+async function getOptionalSharedAiFilterState(input: {
+  watchlistId: string;
+}): Promise<AiFilterUiState | null> {
+  try {
+    return await getSharedAiFilterState(input);
+  } catch (error) {
+    if (error instanceof AiFilterNotFoundError) return null;
+    throw error;
+  }
+}
+
 async function getInitialAcceptedPage(input: {
-  ownerId: string;
+  ownerId?: string;
   watchlistId: string;
   state: AiFilterUiState | null;
 }): Promise<AiFilterAcceptedPage | null> {
   if (!input.state?.enabled) return null;
   try {
-    const page = await listAiFilterDecisions({
-      ownerId: input.ownerId,
-      watchlistId: input.watchlistId,
-      bucket: "accepted",
-      offset: 0,
-      limit: 20,
-    });
+    const page = input.ownerId
+      ? await listAiFilterDecisions({
+          ownerId: input.ownerId,
+          watchlistId: input.watchlistId,
+          bucket: "accepted",
+          offset: 0,
+          limit: 20,
+        })
+      : await listSharedAiFilterDecisions({
+          watchlistId: input.watchlistId,
+          offset: 0,
+          limit: 20,
+        });
     return {
+      queryVersionId: input.state.queryVersionId,
       postings: page.decisions.map((decision) => decision.posting),
+      total: page.total,
       nextOffset: page.nextOffset,
       hasMore: page.hasMore,
     };
@@ -94,12 +118,25 @@ export async function OwnedWatchlistLoader({
   const ownedDetail = session
     ? await getOwnedWatchlistById(watchlistId, session.user.id)
     : null;
-  const detail = ownedDetail ?? await getSharedWatchlistById(watchlistId);
-  if (!detail) notFound();
+  const sharedDetail = ownedDetail
+    ? null
+    : await getSharedWatchlistById(watchlistId);
+  const detail = ownedDetail ?? sharedDetail;
+  if (!detail) {
+    return (
+      <SessionWatchlistLoader
+        locale={locale}
+        watchlistId={watchlistId}
+        overviewLabel={overviewLabel}
+      />
+    );
+  }
   const isOwner = ownedDetail !== null;
 
   const [jobLanguages, limit, aiFilterState] = await Promise.all([
-    getViewerJobLanguages(),
+    isOwner
+      ? getViewerJobLanguages()
+      : Promise.resolve(sharedDetail!.ownerJobLanguages),
     session
       ? canCreateWatchlist(session.user.id)
       : Promise.resolve({ allowed: true }),
@@ -108,7 +145,7 @@ export async function OwnedWatchlistLoader({
           ownerId: session.user.id,
           watchlistId,
         })
-      : Promise.resolve(null),
+      : getOptionalSharedAiFilterState({ watchlistId }),
   ]);
 
   const [data, initialAiAcceptedPage] = await Promise.all([
@@ -118,15 +155,16 @@ export async function OwnedWatchlistLoader({
       isOwner,
       limitReached: !limit.allowed,
       jobLanguages,
-      publicSnapshot: !isOwner,
+      // Shared is a permissions mode, not an anonymous-viewer mode. Signed-in
+      // non-owners can browse the complete feed just like any other signed-in
+      // viewer; only a genuinely anonymous request uses the capped snapshot.
+      publicSnapshot: !isOwner && !session,
     }),
-    isOwner && session
-      ? getInitialAcceptedPage({
-          ownerId: session.user.id,
-          watchlistId,
-          state: aiFilterState,
-        })
-      : Promise.resolve(null),
+    getInitialAcceptedPage({
+      ownerId: isOwner && session ? session.user.id : undefined,
+      watchlistId,
+      state: aiFilterState,
+    }),
   ]);
 
   return (
@@ -140,21 +178,8 @@ export async function OwnedWatchlistLoader({
         {overviewLabel}
       </Link>
       <WatchlistViewPage
-        detail={data.detail}
-        isOwner={isOwner}
-        limitReached={data.limitReached}
-        initialPostings={data.postings}
-        initialTotal={data.total}
-        yearTotal={data.yearTotal}
-        initialSearchUnavailable={data.searchUnavailable}
+        data={data}
         locale={locale}
-        resolvedLocations={data.resolvedLocations}
-        resolvedOccupations={data.resolvedOccupations}
-        resolvedSeniorities={data.resolvedSeniorities}
-        resolvedTechnologies={data.resolvedTechnologies}
-        jobLanguages={data.jobLanguages}
-        languages={data.languages}
-        initialPostingFilters={data.browserPostingFilters ?? null}
         initialAiFilterState={aiFilterState}
         initialAiAcceptedPage={initialAiAcceptedPage}
       />

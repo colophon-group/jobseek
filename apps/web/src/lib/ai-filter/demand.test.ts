@@ -7,9 +7,9 @@ import {
 } from "./demand";
 
 describe("AI filter scroll demand", () => {
-  it("keeps three pages ahead without crossing the candidate ceiling", () => {
-    expect(AI_FILTER_PREFETCH_CANDIDATES).toBe(60);
-    expect(aiFilterDemandTarget(0)).toBe(60);
+  it("keeps a selective-feed runway without crossing the candidate ceiling", () => {
+    expect(AI_FILTER_PREFETCH_CANDIDATES).toBe(500);
+    expect(aiFilterDemandTarget(0)).toBe(500);
     expect(aiFilterDemandTarget(9_980)).toBe(10_000);
   });
 

@@ -8,12 +8,17 @@ const mocks = vi.hoisted(() => ({
   deleteWatchlist: vi.fn(),
   shareWatchlist: vi.fn(),
   toggleWatchlistAlerts: vi.fn(),
+  push: vi.fn(),
   replace: vi.fn(),
   refresh: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
+  useRouter: () => ({
+    push: mocks.push,
+    replace: mocks.replace,
+    refresh: mocks.refresh,
+  }),
 }));
 
 vi.mock("@/lib/useLocalePath", () => ({
@@ -37,13 +42,19 @@ import { WatchlistActionBar } from "../watchlist-action-bar";
 
 function renderActionBar({
   alertsEnabled = false,
+  accountRequired = false,
+  onDelete,
 }: {
   alertsEnabled?: boolean;
+  accountRequired?: boolean;
+  onDelete?: () => void | Promise<void>;
 } = {}) {
   return render(
     <WatchlistActionBar
       watchlistId="watchlist-1"
       alertsEnabled={alertsEnabled}
+      accountRequired={accountRequired}
+      onDelete={onDelete}
     />,
   );
 }
@@ -107,6 +118,31 @@ describe("WatchlistActionBar delete focus", () => {
       expect(mocks.deleteWatchlist).toHaveBeenCalledWith("watchlist-1");
       expect(mocks.replace).toHaveBeenCalledWith("/en/watchlists");
     });
+  });
+
+  it("keeps owner controls visible while disabling account-only actions for browser-backed watchlists", async () => {
+    const user = userEvent.setup();
+    const deleteLocal = vi.fn();
+    renderActionBar({
+      accountRequired: true,
+      onDelete: deleteLocal,
+    });
+
+    const share = screen.getByRole("button", { name: "Log in to share" });
+    expect(share.getAttribute("aria-disabled")).toBe("true");
+    await user.click(share);
+    expect(mocks.shareWatchlist).not.toHaveBeenCalled();
+
+    const alerts = screen.getByRole("button", { name: "Log in to manage alerts" });
+    expect(alerts.getAttribute("aria-disabled")).toBe("true");
+    await user.click(alerts);
+    expect(mocks.toggleWatchlistAlerts).not.toHaveBeenCalled();
+
+    const { dialog } = await openDeleteDialog(user);
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(deleteLocal).toHaveBeenCalledOnce());
+    expect(mocks.deleteWatchlist).not.toHaveBeenCalled();
+    expect(mocks.replace).toHaveBeenCalledWith("/en/watchlists");
   });
 
   it("enables sharing, copies the canonical link, and confirms above the button", async () => {

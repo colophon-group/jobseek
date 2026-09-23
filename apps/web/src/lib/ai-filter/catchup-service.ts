@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -19,8 +19,8 @@ import {
   AI_FILTER_USER_MONTHLY_BUDGET_NANODOLLARS,
   readAiFilterRuntimePolicy,
 } from "./policy";
+import { aiFilterHistoricalHorizonStart } from "./horizon";
 
-const DAY_MS = 24 * 60 * 60 * 1_000;
 const SEGMENT_LEASE_MS = 5 * 60 * 1_000;
 
 export type AiFilterCatchupStepResult = Readonly<{
@@ -36,10 +36,6 @@ export type AiFilterCatchupStepResult = Readonly<{
     | "paused_kill";
   segmentId: string | null;
 }>;
-
-function roundedHorizonEnd(now: Date): Date {
-  return new Date(Math.floor(now.getTime() / 1_000) * 1_000 + 1_000);
-}
 
 async function entitled(ownerId: string, now: Date): Promise<boolean> {
   const [row] = await db
@@ -119,6 +115,8 @@ async function claimSegment(input: {
         queryText: aiFilterQueryVersion.queryText,
         horizonStartedAt: aiFilterQueryVersion.horizonStartedAt,
         horizonEndsAt: aiFilterQueryVersion.horizonEndsAt,
+        lastCaughtUpAt: aiFilterConfiguration.lastCaughtUpAt,
+        lastSweepAt: aiFilterConfiguration.lastSweepAt,
       })
       .from(aiFilterConfiguration)
       .innerJoin(
@@ -167,12 +165,35 @@ async function claimSegment(input: {
           ))
           .orderBy(desc(aiFilterSegment.createdAt))
           .limit(1);
-    if (!active && previous?.status === "caught_up") {
+    const [historicalFoundation] = await tx
+      .select({ id: aiFilterSegment.id })
+      .from(aiFilterSegment)
+      .where(and(
+        eq(aiFilterSegment.watchlistId, input.watchlistId),
+        eq(aiFilterSegment.queryVersionId, current.queryVersionId),
+        eq(aiFilterSegment.status, "caught_up"),
+        lte(aiFilterSegment.windowStart, current.horizonStartedAt),
+      ))
+      .limit(1);
+    const previousCoversQueryHorizon = Boolean(
+      previous?.status === "caught_up" &&
+      historicalFoundation &&
+      current.lastCaughtUpAt &&
+      current.lastCaughtUpAt.getTime() >= current.horizonEndsAt.getTime() &&
+      previous.windowEnd.getTime() >= current.horizonEndsAt.getTime(),
+    );
+    if (
+      !active &&
+      previous?.status === "caught_up" &&
+      previousCoversQueryHorizon &&
+      current.lastSweepAt
+    ) {
       return { kind: "caught_up" as const, segment: previous };
     }
     if (
       !active &&
       previous?.status === "completed" &&
+      !previous.idempotencyKey.startsWith("repair:") &&
       previous.selectionOffset + previous.scannedCount >= input.demandTargetOffset
     ) {
       return { kind: "demand_satisfied" as const, segment: previous };
@@ -210,17 +231,46 @@ async function claimSegment(input: {
 
     let segment = active;
     if (!segment) {
-      const continuePrevious =
-        previous?.status === "completed" &&
-        previous.scannedCount > 0;
-      const windowEnd = continuePrevious
-        ? previous.windowEnd
-        : roundedHorizonEnd(input.now);
-      const windowStart = continuePrevious
-        ? previous.windowStart
-        : new Date(windowEnd.getTime() - 30 * DAY_MS);
-      const selectionOffset = continuePrevious
-        ? previous.selectionOffset + previous.scannedCount
+      // Older deployments created 30-day segment windows even when the
+      // immutable query revision already described the full historical
+      // horizon. Expanding the window backwards is cursor-safe under the
+      // newest-first order: the previously scanned prefix is unchanged and
+      // the older jobs are appended after it. Do not let that stale segment
+      // mark the larger query horizon caught up.
+      const continuesOpenWindow = Boolean(
+        previous?.status === "completed" && previous.scannedCount > 0,
+      );
+      const repairsMissingDecisions = Boolean(
+        previous?.status === "caught_up" &&
+        previousCoversQueryHorizon &&
+        !current.lastSweepAt,
+      );
+      const continuesRepair = Boolean(
+        continuesOpenWindow && previous?.idempotencyKey.startsWith("repair:"),
+      );
+      const advancesFreshWindow = Boolean(
+        previous?.status === "caught_up" &&
+        historicalFoundation &&
+        current.lastCaughtUpAt &&
+        current.lastCaughtUpAt.getTime() < current.horizonEndsAt.getTime(),
+      );
+      const continuesHistoricalBackfill = Boolean(
+        previous?.status === "caught_up" &&
+        !historicalFoundation &&
+        previous.scannedCount > 0,
+      );
+      const windowEnd = continuesOpenWindow
+        ? previous!.windowEnd
+        : current.horizonEndsAt;
+      const windowStart = continuesOpenWindow
+        ? previous!.windowStart
+        : repairsMissingDecisions
+          ? current.horizonStartedAt
+        : advancesFreshWindow
+          ? current.lastCaughtUpAt!
+          : current.horizonStartedAt;
+      const selectionOffset = continuesOpenWindow || continuesHistoricalBackfill
+        ? previous!.selectionOffset + previous!.scannedCount
         : 0;
       const segmentId = randomUUID();
       const initialStatus = !input.hasEntitlement
@@ -250,8 +300,9 @@ async function claimSegment(input: {
           : initialStatus === "paused_kill"
             ? "kill_switch_active"
             : null,
-        idempotencyKey:
-          `${current.queryVersionId}:${windowStart.toISOString()}:${windowEnd.toISOString()}:${selectionOffset}`,
+        idempotencyKey: repairsMissingDecisions || continuesRepair
+          ? `repair:${current.queryVersionId}:${windowStart.toISOString()}:${windowEnd.toISOString()}:${selectionOffset}`
+          : `${current.queryVersionId}:${windowStart.toISOString()}:${windowEnd.toISOString()}:${selectionOffset}`,
         startedAt: initialStatus === "processing" ? input.now : null,
         createdAt: input.now,
         updatedAt: input.now,
@@ -391,6 +442,7 @@ export async function runAiFilterCatchupStep(input: {
   }
 
   let page: Awaited<ReturnType<typeof loadAiFilterCandidatePage>>;
+  const repairsMissingDecisions = claim.segment.idempotencyKey.startsWith("repair:");
   try {
     page = await loadAiFilterCandidatePage({
       ownerId: input.ownerId,
@@ -398,6 +450,9 @@ export async function runAiFilterCatchupStep(input: {
       offset: claim.segment.selectionOffset,
       windowStart: claim.segment.windowStart,
       windowEnd: claim.segment.windowEnd,
+      excludeDecidedForQueryVersionId: repairsMissingDecisions
+        ? claim.segment.queryVersionId
+        : undefined,
       signal: input.signal,
     });
   } catch (error) {
@@ -487,7 +542,14 @@ export async function runAiFilterCatchupStep(input: {
     if (updated.length !== 1) return false;
     await tx
       .update(aiFilterConfiguration)
-      .set({ lastCaughtUpAt: claim.segment.windowEnd, updatedAt: completedAt })
+      .set({
+        lastCaughtUpAt: claim.segment.windowEnd,
+        ...(claim.segment.windowStart.getTime() <=
+          aiFilterHistoricalHorizonStart().getTime()
+          ? { lastSweepAt: completedAt }
+          : {}),
+        updatedAt: completedAt,
+      })
       .where(eq(aiFilterConfiguration.id, claim.configurationId));
     await tx.insert(aiFilterEvent).values({
       watchlistId: input.watchlistId,

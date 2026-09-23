@@ -5,16 +5,10 @@ import { AlertTriangle, Check, Loader2, Building2, Copy, Pencil, Share2 } from "
 import { useRouter } from "next/navigation";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import type {
-  WatchlistViewDetail,
-  WatchlistFilters,
-  WatchlistPostingEntry,
-} from "@/lib/actions/watchlists";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
+import type { WatchlistFilters } from "@/lib/actions/watchlists";
 import {
   updateWatchlist,
-  addCompanyToWatchlist,
-  removeCompanyFromWatchlist,
-  clearWatchlistCompanies,
   copySharedWatchlist,
 } from "@/lib/actions/watchlists";
 import { CompanyPill } from "@/components/watchlist/company-pill";
@@ -23,27 +17,30 @@ import { WatchlistActionBar } from "@/components/watchlist/watchlist-action-bar"
 import { WatchlistJobList } from "@/components/watchlist/watchlist-job-list";
 import { FilterPillsReadOnly } from "@/components/search/filter-pills-readonly";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
-import {
-  AiSearchFilter,
-  parseAiSearchFilterDemoState,
-} from "@/components/search/ai-search-filter";
+import { AiSearchFilter } from "@/components/search/ai-search-filter";
 import type { SelectedLocation } from "@/lib/search/types";
 import type { HistogramFilters, WorkMode } from "@/lib/search";
 import { mergeWatchlistTaxonomySlugs } from "@/lib/watchlist-utils";
 import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
 import { convertToEur } from "@/lib/salary";
-import type { WatchlistPostingsParams } from "@/lib/search/typesense-browser-watchlist";
 import { Button } from "@/components/ui/Button";
 import { tooltipClass, tooltipWarningClass } from "@/components/ui/tooltip-styles";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { withAuthReturnPath } from "@/lib/auth-return";
 import { copyTextToClipboard } from "@/lib/copy-text-to-clipboard";
-import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
 import type {
   AiFilterAcceptedPage,
   AiFilterUiState,
 } from "@/lib/ai-filter/ui-contract";
+import {
+  readPendingWatchlists,
+  removePendingWatchlist,
+  stagePendingWatchlistEntry,
+  updatePendingWatchlist,
+} from "@/lib/pending-watchlist";
+import type { SearchWatchlistDraft } from "@/lib/search/watchlist-draft";
+import type { WatchlistPageData } from "@/lib/services/watchlist-page-data";
 
 // Sentinel set used to re-validate the JSONB-stored `workMode` strings
 // before they reach Typesense. The watchlist column accepts arbitrary
@@ -55,25 +52,74 @@ const WORK_MODE_VALUES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
 
 type Company = { id: string; name: string; slug: string; icon: string | null };
 type TaxonomyItem = { id: number; slug: string; name: string };
+type WatchlistChanges = {
+  title?: string;
+  description?: string | null;
+  companyIds?: string[];
+  filters?: WatchlistFilters;
+};
+
+/**
+ * All editable controls use one persistence contract. Browser-backed and
+ * persisted watchlists differ only at this boundary, so UI behavior cannot
+ * silently drift as controls are added or changed.
+ */
+function useWatchlistPersistence(
+  watchlistId: string,
+  sessionWatchlistId?: string,
+) {
+  return useCallback(async (changes: WatchlistChanges): Promise<boolean> => {
+    if (!sessionWatchlistId) {
+      const result = await updateWatchlist({ watchlistId, ...changes });
+      return !("error" in result);
+    }
+
+    const entry = readPendingWatchlists().find(
+      (candidate) => candidate.id === sessionWatchlistId,
+    );
+    if (entry?.intent.kind !== "create") return false;
+
+    const draft: SearchWatchlistDraft = {
+      ...entry.intent.draft,
+      ...(changes.title !== undefined ? { title: changes.title } : {}),
+      ...(changes.companyIds !== undefined ? { companyIds: changes.companyIds } : {}),
+      ...(changes.filters !== undefined ? { filters: changes.filters } : {}),
+    };
+    if (changes.description !== undefined) {
+      if (changes.description) draft.description = changes.description;
+      else delete draft.description;
+    }
+    return updatePendingWatchlist(sessionWatchlistId, {
+      kind: "create",
+      draft,
+    });
+  }, [sessionWatchlistId, watchlistId]);
+}
 
 function SharedWatchlistCloneAction({
   watchlistId,
+  watchlistTitle,
   limitReached,
+  hasAiFilter,
   onErrorChange,
 }: {
   watchlistId: string;
+  watchlistTitle: string;
   limitReached: boolean;
+  hasAiFilter: boolean;
   onErrorChange: (error: string) => void;
 }) {
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { isLoggedIn, isPending } = useSession();
+  const { isLoggedIn, plan } = useSession();
   const [busy, setBusy] = useState(false);
+  const [aiWarningOpen, setAiWarningOpen] = useState(false);
   const [limitRaceReached, setLimitRaceReached] = useState(false);
   const [limitOpen, setLimitOpen] = useState(false);
   const limitCloseRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const cloneBlocked = limitReached || limitRaceReached;
+  const shouldWarnAboutNarrowedCopy = hasAiFilter && plan !== "unlimited";
   const label = t({
     id: "watchlists.actions.clone",
     comment: "Action to clone an unlisted shared watchlist into the signed-in user's account",
@@ -93,24 +139,8 @@ function SharedWatchlistCloneAction({
     limitCloseRef.current = setTimeout(() => setLimitOpen(false), 3_000);
   }
 
-  if (!isPending && !isLoggedIn) {
-    return (
-      <Button
-        href={withAuthReturnPath(
-          lp("/sign-in"),
-          lp(`/watchlists/${watchlistId}`),
-        )}
-        size="sm"
-        className="gap-2"
-      >
-        <Copy size={15} aria-hidden="true" />
-        {label}
-      </Button>
-    );
-  }
-
-  async function handleClone() {
-    if (busy || isPending) return;
+  async function performClone() {
+    if (busy) return;
     if (cloneBlocked) {
       showLimitTooltip();
       return;
@@ -140,14 +170,40 @@ function SharedWatchlistCloneAction({
     }
   }
 
+  function continueClone() {
+    if (!isLoggedIn) {
+      const staged = stagePendingWatchlistEntry({
+        kind: "clone",
+        watchlistId,
+        title: watchlistTitle,
+      });
+      router.push(staged
+        ? lp(`/watchlists/${staged.id}`)
+        : withAuthReturnPath(lp("/sign-in"), lp(`/watchlists/${watchlistId}`)));
+      return;
+    }
+    void performClone();
+  }
+
   const button = (
     <Button
       type="button"
       size="sm"
       className={`gap-2 ${cloneBlocked ? "!cursor-not-allowed !opacity-50 hover:!opacity-50" : ""}`}
-      onClick={handleClone}
-      disabled={busy || isPending}
+      onClick={() => {
+        if (cloneBlocked) {
+          showLimitTooltip();
+          return;
+        }
+        if (shouldWarnAboutNarrowedCopy) {
+          setAiWarningOpen(true);
+          return;
+        }
+        continueClone();
+      }}
+      disabled={busy}
       aria-disabled={cloneBlocked || undefined}
+      aria-label={label}
     >
       {busy
         ? <Loader2 size={15} className="motion-safe:animate-spin" aria-hidden="true" />
@@ -157,28 +213,70 @@ function SharedWatchlistCloneAction({
   );
 
   return (
-    <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
-      <Tooltip.Root
-        open={cloneBlocked && limitOpen}
-        onOpenChange={(open) => {
-          if (!cloneBlocked) return;
-          clearTimeout(limitCloseRef.current);
-          setLimitOpen(open);
-        }}
-      >
-        <Tooltip.Trigger asChild>{button}</Tooltip.Trigger>
-        <Tooltip.Portal>
-          <Tooltip.Content
-            className={`${tooltipWarningClass} flex items-center gap-1.5`}
-            side="top"
-            sideOffset={6}
-          >
-            <AlertTriangle size={12} className="shrink-0" aria-hidden="true" />
-            <span role="status" aria-live="polite">{limitLabel}</span>
-          </Tooltip.Content>
-        </Tooltip.Portal>
-      </Tooltip.Root>
-    </Tooltip.Provider>
+    <>
+      <Tooltip.Provider delayDuration={0} skipDelayDuration={300}>
+        <Tooltip.Root
+          open={cloneBlocked && limitOpen}
+          onOpenChange={(open) => {
+            if (!cloneBlocked) return;
+            clearTimeout(limitCloseRef.current);
+            setLimitOpen(open);
+          }}
+        >
+          <Tooltip.Trigger asChild>{button}</Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content
+              className={`${tooltipWarningClass} flex items-center gap-1.5`}
+              side="top"
+              sideOffset={6}
+            >
+              <AlertTriangle size={12} className="shrink-0" aria-hidden="true" />
+              <span role="status" aria-live="polite">{limitLabel}</span>
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </Tooltip.Provider>
+      <AlertDialog.Root open={aiWarningOpen} onOpenChange={setAiWarningOpen}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none" />
+          <AlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border-soft bg-surface p-5 shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 motion-reduce:animate-none">
+            <AlertDialog.Title className="text-base font-semibold">
+              {t({
+                id: "watchlists.clone.narrowedFree.title",
+                comment: "Title warning a free user that a shared narrowed feed is not copied",
+                message: "Clone without narrowed results?",
+              })}
+            </AlertDialog.Title>
+            <AlertDialog.Description className="mt-2 text-sm leading-relaxed text-muted">
+              {t({
+                id: "watchlists.clone.narrowedFree.description",
+                comment: "Explanation that a free clone keeps ordinary filters but cannot use the shared narrowed feed",
+                message: "Your copy will keep the standard filters. On Free, you won’t be able to set up or view its narrowed feed.",
+              })}
+            </AlertDialog.Description>
+            <div className="mt-5 flex justify-end gap-2">
+              <AlertDialog.Cancel asChild>
+                <button className="cursor-pointer rounded-md border border-border-soft px-3 py-1.5 text-sm font-medium transition-colors hover:bg-border-soft">
+                  {t({ id: "common.actions.cancel", comment: "Cancel cloning a shared narrowed watchlist", message: "Cancel" })}
+                </button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <button
+                  onClick={continueClone}
+                  className="cursor-pointer rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90"
+                >
+                  {t({
+                    id: "watchlists.clone.narrowedFree.confirm",
+                    comment: "Confirm cloning only the standard filters from a shared narrowed watchlist",
+                    message: "Clone standard filters",
+                  })}
+                </button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
+    </>
   );
 }
 
@@ -269,10 +367,14 @@ function SharedWatchlistShareAction({ watchlistId }: { watchlistId: string }) {
 
 function SharedWatchlistActions({
   watchlistId,
+  watchlistTitle,
   limitReached,
+  hasAiFilter,
 }: {
   watchlistId: string;
+  watchlistTitle: string;
   limitReached: boolean;
+  hasAiFilter: boolean;
 }) {
   const [cloneError, setCloneError] = useState("");
 
@@ -282,7 +384,9 @@ function SharedWatchlistActions({
         <SharedWatchlistShareAction watchlistId={watchlistId} />
         <SharedWatchlistCloneAction
           watchlistId={watchlistId}
+          watchlistTitle={watchlistTitle}
           limitReached={limitReached}
+          hasAiFilter={hasAiFilter}
           onErrorChange={setCloneError}
         />
       </div>
@@ -296,55 +400,76 @@ function SharedWatchlistActions({
 }
 
 export function WatchlistViewPage({
-  detail,
-  isOwner,
-  limitReached,
-  initialPostings,
-  initialTotal,
-  yearTotal,
-  initialSearchUnavailable,
+  data,
   locale,
-  resolvedLocations,
-  resolvedOccupations,
-  resolvedSeniorities,
-  resolvedTechnologies,
-  jobLanguages,
-  languages,
-  initialPostingFilters,
   initialAiFilterState = null,
   initialAiAcceptedPage = null,
+  sessionWatchlistId,
 }: {
-  detail: WatchlistViewDetail;
-  isOwner: boolean;
-  limitReached: boolean;
-  initialPostings: WatchlistPostingEntry[];
-  initialTotal: number;
-  yearTotal: number;
-  initialSearchUnavailable: boolean;
+  data: WatchlistPageData;
   locale: string;
-  resolvedLocations: SelectedLocation[];
-  resolvedOccupations: TaxonomyItem[];
-  resolvedSeniorities: TaxonomyItem[];
-  resolvedTechnologies: TaxonomyItem[];
-  jobLanguages: string[];
-  languages: string[];
-  initialPostingFilters: Omit<WatchlistPostingsParams, "offset" | "limit"> | null;
   initialAiFilterState?: AiFilterUiState | null;
   initialAiAcceptedPage?: AiFilterAcceptedPage | null;
+  /** Browser-backed watchlists use the normal view with a local persistence adapter. */
+  sessionWatchlistId?: string;
 }) {
+  const {
+    detail,
+    isOwner,
+    limitReached,
+    postings: initialPostings,
+    total: initialTotal,
+    truncated: initialTruncated,
+    yearTotal,
+    searchUnavailable: initialSearchUnavailable,
+    resolvedLocations,
+    resolvedOccupations,
+    resolvedSeniorities,
+    resolvedTechnologies,
+    jobLanguages,
+    languages,
+    browserPostingFilters: initialPostingFilters = null,
+  } = data;
   const { t } = useLingui();
   const currencyRates = useSalaryRates();
-  const { plan } = useSession();
-  const browserSearchParams = useBrowserSearchParams();
+  const { plan, isLoggedIn, isPending: isSessionPending, refresh } = useSession();
+  const ownerRefreshAttemptedRef = useRef(false);
+  const isSessionWatchlist = sessionWatchlistId !== undefined;
+  const canManage = isOwner && (isLoggedIn || isSessionWatchlist);
   const [aiCandidateCount, setAiCandidateCount] = useState<number | undefined>(
     initialSearchUnavailable ? undefined : initialTotal,
   );
   const [aiFilterState, setAiFilterState] = useState<AiFilterUiState | null>(
     initialAiFilterState,
   );
+  const [aiMatchCount, setAiMatchCount] = useState<number>(
+    initialAiAcceptedPage?.total ?? initialAiFilterState?.counts.accepted ?? 0,
+  );
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const scopeRevisionRef = useRef(0);
   const [scopeRevision, setScopeRevision] = useState(0);
   const [persistedScopeRevision, setPersistedScopeRevision] = useState(0);
+  const persistWatchlistChanges = useWatchlistPersistence(
+    detail.id,
+    sessionWatchlistId,
+  );
+
+  useEffect(() => {
+    // The server can still hold a valid httpOnly session when the readable
+    // login hint is missing. Reconcile that split once on an owner-rendered
+    // route; controls remain read-only until the client confirms identity.
+    if (
+      !isOwner ||
+      isSessionWatchlist ||
+      isLoggedIn ||
+      isSessionPending ||
+      ownerRefreshAttemptedRef.current
+    ) return;
+    ownerRefreshAttemptedRef.current = true;
+    void refresh().catch(() => {
+      // Keep the page read-only. Every mutation remains server-authorized.
+    });
+  }, [isLoggedIn, isOwner, isSessionPending, isSessionWatchlist, refresh]);
 
   function beginScopeMutation(): number {
     const revision = scopeRevisionRef.current + 1;
@@ -392,8 +517,9 @@ export function WatchlistViewPage({
     setSavingTitle(true);
     setMutationError("");
     try {
-      const result = await updateWatchlist({ watchlistId: detail.id, title: trimmed });
-      if ("error" in result) throw new Error(result.error);
+      if (!await persistWatchlistChanges({ title: trimmed })) {
+        throw new Error("watchlist_write_failed");
+      }
       persistedTitleRef.current = trimmed;
       setTitle(trimmed);
     } catch {
@@ -404,7 +530,7 @@ export function WatchlistViewPage({
       setSavingTitle(false);
       setEditingTitle(false);
     }
-  }, [title, detail.id, updateErrorMessage]);
+  }, [title, persistWatchlistChanges, updateErrorMessage]);
 
   // ── Editable description ──
   const [description, setDescription] = useState(detail.description ?? "");
@@ -435,11 +561,9 @@ export function WatchlistViewPage({
     setSavingDescription(true);
     setMutationError("");
     try {
-      const result = await updateWatchlist({
-        watchlistId: detail.id,
-        description: trimmed || null,
-      });
-      if ("error" in result) throw new Error(result.error);
+      if (!await persistWatchlistChanges({ description: trimmed || null })) {
+        throw new Error("watchlist_write_failed");
+      }
       persistedDescriptionRef.current = trimmed;
       setDescription(trimmed);
     } catch {
@@ -450,7 +574,7 @@ export function WatchlistViewPage({
       setSavingDescription(false);
       setEditingDescription(false);
     }
-  }, [description, detail.id, updateErrorMessage]);
+  }, [description, persistWatchlistChanges, updateErrorMessage]);
 
   // ── Editable companies ──
   const [companies, setCompanies] = useState<Company[]>(detail.companies);
@@ -460,7 +584,6 @@ export function WatchlistViewPage({
 
   async function applyCompanyMutation(
     nextCompanies: Company[],
-    mutation: () => Promise<{ ok: boolean }>,
   ) {
     if (companyMutationInFlightRef.current) return;
     const scopeRevision = beginScopeMutation();
@@ -469,8 +592,10 @@ export function WatchlistViewPage({
     setMutationError("");
     setCompanies(nextCompanies);
     try {
-      const result = await mutation();
-      if (!result.ok) throw new Error("company_update_failed");
+      const persisted = await persistWatchlistChanges({
+        companyIds: nextCompanies.map((candidate) => candidate.id),
+      });
+      if (!persisted) throw new Error("company_update_failed");
     } catch {
       setCompanies(previousCompanies);
       setMutationError(updateErrorMessage());
@@ -484,32 +609,23 @@ export function WatchlistViewPage({
     if (companyMutationInFlightRef.current) return;
     const exists = companies.some((c) => c.id === company.id);
     if (exists) {
-      void applyCompanyMutation(
-        companies.filter((candidate) => candidate.id !== company.id),
-        () => removeCompanyFromWatchlist(detail.id, company.id),
-      );
+      const next = companies.filter((candidate) => candidate.id !== company.id);
+      void applyCompanyMutation(next);
     } else {
-      void applyCompanyMutation(
-        [...companies, company],
-        () => addCompanyToWatchlist(detail.id, company.id),
-      );
+      const next = [...companies, company];
+      void applyCompanyMutation(next);
     }
   }
 
   function handleRemoveCompany(companyId: string) {
     if (companyMutationInFlightRef.current) return;
-    void applyCompanyMutation(
-      companies.filter((company) => company.id !== companyId),
-      () => removeCompanyFromWatchlist(detail.id, companyId),
-    );
+    const next = companies.filter((company) => company.id !== companyId);
+    void applyCompanyMutation(next);
   }
 
   function handleClearAllCompanies() {
     if (companyMutationInFlightRef.current) return;
-    void applyCompanyMutation(
-      [],
-      () => clearWatchlistCompanies(detail.id),
-    );
+    void applyCompanyMutation([]);
   }
 
   // ── Editable filters (using resolved objects) ──
@@ -551,7 +667,7 @@ export function WatchlistViewPage({
     languages: languages.length > 0 ? languages : undefined,
   }), [locations, occupations, seniorities, technologies, workMode, employmentTypes, languages]);
 
-  // Persist filters to DB (debounced, cleaned up on unmount)
+  // Persist filters through the shared adapter (debounced and flushed on unmount).
   const saveFiltersTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const pendingFiltersRef = useRef<{
     filters: WatchlistFilters;
@@ -566,11 +682,9 @@ export function WatchlistViewPage({
   ) {
     filterSaveChainRef.current = filterSaveChainRef.current.then(async () => {
       try {
-        const result = await updateWatchlist({
-          watchlistId: detail.id,
-          filters: updated,
-        });
-        if ("error" in result) throw new Error(result.error);
+        if (!await persistWatchlistChanges({ filters: updated })) {
+          throw new Error("watchlist_write_failed");
+        }
         if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
       } catch {
         if (reportError && mountedRef.current) {
@@ -589,7 +703,7 @@ export function WatchlistViewPage({
         enqueueFilterSave(pending.filters, false, pending.scopeRevision);
       }
     };
-  }, [detail.id]);
+  }, [persistWatchlistChanges]);
   function persistFilters(updated: WatchlistFilters) {
     const scopeRevision = beginScopeMutation();
     clearTimeout(saveFiltersTimeout.current);
@@ -790,30 +904,28 @@ export function WatchlistViewPage({
     previousAiScopeKeyRef.current = aiScopeKey;
     setAiCandidateCount(undefined);
   }, [aiScopeKey]);
-  const aiFilterDemoState = process.env.NODE_ENV === "development"
-    ? parseAiSearchFilterDemoState(browserSearchParams.get("ai-demo"))
-    : undefined;
-  const aiFilterUiEnabled =
-    process.env.NEXT_PUBLIC_AI_FILTER_UI_ENABLED === "true" ||
-    aiFilterDemoState !== undefined;
   const hasAiFilterScope = hasFilters || (!anyCompany && companies.length > 0);
-  const aiFilterControl = isOwner && aiFilterUiEnabled ? (
-    <AiSearchFilter
-      isSubscribed={plan === "unlimited"}
-      hasSearchFilters={hasAiFilterScope}
-      candidateCount={aiCandidateCount}
-      isSearchPending={aiCandidateCount === undefined}
-      demoState={aiFilterDemoState}
-      watchlistId={detail.id}
-      initialQuery={aiFilterState?.enabled ? aiFilterState.query : null}
-      onStateChange={setAiFilterState}
-      onApply={aiFilterDemoState === "eligible"
-        ? async () => {
-            await new Promise((resolve) => setTimeout(resolve, 650));
-          }
-        : undefined}
-    />
-  ) : undefined;
+  const postingFilters = {
+    companyIds: anyCompany ? [] : companies.map((company) => company.id),
+    anyCompany,
+    keywords: keywords.length > 0 ? keywords : undefined,
+    locationIds: locations.length > 0 ? locations.map((location) => location.id) : undefined,
+    occupationIds: occupations.length > 0 ? occupations.map((occupation) => occupation.id) : undefined,
+    seniorityIds: seniorities.length > 0 ? seniorities.map((seniority) => seniority.id) : undefined,
+    technologyIds: technologies.length > 0 ? technologies.map((technology) => technology.id) : undefined,
+    workMode: workMode.length > 0 ? workMode : undefined,
+    employmentType: employmentTypes.length > 0 ? employmentTypes : undefined,
+    salaryMin: salaryMinEur,
+    salaryMax: salaryMaxEur,
+    experienceMin,
+    experienceMax,
+    languages: languages.length > 0 ? languages : undefined,
+  };
+  const initialDrawerAiPage =
+    scopeRevision === 0 &&
+    aiFilterState?.queryVersionId === initialAiFilterState?.queryVersionId
+      ? initialAiAcceptedPage
+      : null;
   const handleAiResultStateChange = useCallback((state: {
     candidateCount: number | undefined;
     unavailable: boolean;
@@ -822,23 +934,77 @@ export function WatchlistViewPage({
       state.unavailable ? undefined : state.candidateCount,
     );
   }, []);
+  const aiFilterControl = canManage || (!isOwner && aiFilterState?.enabled === true) ? (
+    <AiSearchFilter
+      isSubscribed={!isOwner || (canManage && plan === "unlimited")}
+      hasSearchFilters={hasAiFilterScope}
+      candidateCount={aiCandidateCount}
+      isSearchPending={aiCandidateCount === undefined}
+      watchlistId={detail.id}
+      initialQuery={aiFilterState?.enabled ? aiFilterState.query : null}
+      narrowedResultCount={aiMatchCount}
+      onStateChange={canManage
+        ? (state) => {
+            setAiFilterState(state);
+            if (!state) setAiMatchCount(0);
+          }
+        : undefined}
+      presentation="drawer"
+      readOnly={!canManage}
+      onDrawerOpenChange={setAiDrawerOpen}
+      drawerContent={(isOpen) => aiFilterState?.enabled ? (
+        <WatchlistJobList
+          key={`${postingSnapshotKey}:narrowed`}
+          resultMode="narrowed"
+          filters={postingFilters}
+          initialPostings={[]}
+          initialTotal={0}
+          yearTotal={yearTotal}
+          initialSearchUnavailable={initialSearchUnavailable}
+          jobLanguages={jobLanguages}
+          locale={locale}
+          aiFilterState={aiFilterState}
+          initialAiAcceptedPage={initialDrawerAiPage}
+          onAiFilterStateChange={canManage ? setAiFilterState : undefined}
+          onAiMatchCountChange={setAiMatchCount}
+          aiFilterScopeKey={aiScopeKey}
+          aiFilterScopeReady={isOpen && (
+            !canManage || scopeRevision === persistedScopeRevision
+          )}
+          candidateTotal={aiCandidateCount}
+          aiFilterReadOnly={!canManage}
+          sharedSnapshot={!isOwner}
+        />
+      ) : null}
+    />
+  ) : undefined;
 
   return (
     <div className="space-y-6">
+      {isSessionWatchlist ? (
+        <p className="flex items-start gap-2 rounded-md border border-warning-border/60 bg-warning-bg px-3 py-2 text-xs leading-relaxed text-warning" role="status">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+          {t({
+            id: "watchlists.pending.viewDisclaimer",
+            comment: "Passive disclaimer on a browser-backed watchlist before login",
+            message: "Saved in this browser until you log in. Sharing and alerts are unavailable. It may be lost if this tab is closed or browser data is cleared.",
+          })}
+        </p>
+      ) : null}
       {mutationError ? (
         <p className="rounded-md border border-error/30 bg-error-bg px-3 py-2 text-sm text-error" role="alert">
           {mutationError}
         </p>
       ) : null}
       {/* Configuration area */}
-      <div className="space-y-4 rounded-lg border border-border-soft bg-surface p-4">
+      <div className="space-y-4 rounded-lg bg-surface p-4 ring-1 ring-inset ring-border-soft">
         {/* Header */}
-        <div className={isOwner
+        <div className={canManage
           ? "flex items-start justify-between gap-4"
           : "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"}
         >
           <div className="min-w-0 flex-1">
-            {isOwner && editingTitle ? (
+            {canManage && editingTitle ? (
               <div className="flex items-center gap-2">
                 <input
                   ref={titleInputRef}
@@ -860,7 +1026,7 @@ export function WatchlistViewPage({
               </div>
             ) : (
               <h1 className="text-xl font-semibold">
-                {isOwner ? (
+                {canManage ? (
                   <button
                     type="button"
                     className="group/title -mx-2 -my-1 rounded px-2 py-1 text-left transition-colors hover:bg-border-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
@@ -878,21 +1044,27 @@ export function WatchlistViewPage({
               </h1>
             )}
           </div>
-          {isOwner ? (
+          {canManage ? (
             <WatchlistActionBar
               watchlistId={detail.id}
               alertsEnabled={detail.alertsEnabled === true}
+              accountRequired={isSessionWatchlist}
+              onDelete={isSessionWatchlist
+                ? () => removePendingWatchlist(detail.id)
+                : undefined}
             />
-          ) : (
+          ) : !isOwner ? (
             <SharedWatchlistActions
               watchlistId={detail.id}
+              watchlistTitle={detail.title}
               limitReached={limitReached}
+              hasAiFilter={aiFilterState?.enabled === true}
             />
-          )}
+          ) : null}
         </div>
 
         {/* Description */}
-        {isOwner ? (
+        {canManage ? (
           editingDescription ? (
             <div className="flex items-start gap-2">
               <textarea
@@ -943,7 +1115,7 @@ export function WatchlistViewPage({
 
         {/* Companies */}
         <div className="space-y-2 !mt-6">
-          {isOwner && (
+          {canManage && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCompanyModalOpen(true)}
@@ -972,10 +1144,10 @@ export function WatchlistViewPage({
                 <CompanyPill
                   key={c.id}
                   company={c}
-                  onRemove={isOwner ? handleRemoveCompany : undefined}
+                  onRemove={canManage ? handleRemoveCompany : undefined}
                 />
               ))}
-              {isOwner && companies.length > 1 && (
+              {canManage && companies.length > 1 && (
                 <button
                   onClick={handleClearAllCompanies}
                   className="cursor-pointer text-xs text-muted transition-colors hover:text-foreground"
@@ -985,7 +1157,7 @@ export function WatchlistViewPage({
               )}
             </div>
           )}
-          {isOwner && (
+          {canManage && (
             <CompanySearchModal
               open={companyModalOpen}
               onOpenChange={setCompanyModalOpen}
@@ -1010,10 +1182,9 @@ export function WatchlistViewPage({
         </div>
 
         {/* Filters */}
-        {isOwner ? (
+        {canManage ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
-              <AdvancedSearchPanel
+            <AdvancedSearchPanel
                 locale={locale}
                 locations={locations}
                 occupations={occupations}
@@ -1039,11 +1210,7 @@ export function WatchlistViewPage({
                 onSalaryChange={onSalaryChange}
                 onExperienceChange={onExperienceChange}
                 histogramFilters={histogramFilters}
-              />
-              <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end">
-                {aiFilterControl}
-              </div>
-            </div>
+            />
             <FilterPillsReadOnly
               filters={buildFilters()}
               locations={locations}
@@ -1087,39 +1254,19 @@ export function WatchlistViewPage({
           not stacked above the detail panel. */}
       <WatchlistJobList
         key={postingSnapshotKey}
-        filters={{
-          companyIds: anyCompany ? [] : companies.map((c) => c.id),
-          anyCompany,
-          keywords: keywords.length > 0 ? keywords : undefined,
-          locationIds: locations.length > 0 ? locations.map((l) => l.id) : undefined,
-          occupationIds: occupations.length > 0 ? occupations.map((o) => o.id) : undefined,
-          seniorityIds: seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined,
-          technologyIds: technologies.length > 0 ? technologies.map((t) => t.id) : undefined,
-          workMode: workMode.length > 0 ? workMode : undefined,
-          employmentType: employmentTypes.length > 0 ? employmentTypes : undefined,
-          salaryMin: salaryMinEur,
-          salaryMax: salaryMaxEur,
-          experienceMin,
-          experienceMax,
-          languages: languages.length > 0 ? languages : undefined,
-        }}
+        resultMode="broad"
+        filters={postingFilters}
         initialPostings={initialPostings}
         initialTotal={initialTotal}
+        initialTruncated={initialTruncated}
         yearTotal={yearTotal}
         initialSearchUnavailable={initialSearchUnavailable}
         jobLanguages={jobLanguages}
         locale={locale}
         onResultStateChange={handleAiResultStateChange}
-        aiFilterState={aiFilterState}
-        initialAiAcceptedPage={
-          scopeRevision === 0 &&
-          aiFilterState?.queryVersionId === initialAiFilterState?.queryVersionId
-            ? initialAiAcceptedPage
-            : null
-        }
-        onAiFilterStateChange={setAiFilterState}
-        aiFilterScopeKey={aiScopeKey}
-        aiFilterScopeReady={scopeRevision === persistedScopeRevision}
+        drawerControl={aiFilterControl}
+        drawerOpen={aiDrawerOpen}
+        sharedSnapshot={!isOwner}
       />
     </div>
   );

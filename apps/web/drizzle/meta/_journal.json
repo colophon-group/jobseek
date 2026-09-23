@@ -568,6 +568,13 @@
       "when": 1789988400000,
       "tag": "0092_jev_ai_filter_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1790078400000,
+      "tag": "0093_ai_filter_historical_horizon",
+      "breakpoints": true
     }
   ]
 }

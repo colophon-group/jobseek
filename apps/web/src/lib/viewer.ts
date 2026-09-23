@@ -23,7 +23,9 @@ export async function getViewerLanguages(locale: string): Promise<string[]> {
   let stored: string[];
   if (session) {
     const prefs = await getPreferences();
-    stored = prefs?.jobLanguages ?? [];
+    stored = prefs
+      ? prefs.jobLanguages ?? []
+      : (await readAnonJobLanguagesCookie()) ?? [];
   } else {
     stored = (await readAnonJobLanguagesCookie()) ?? [];
   }

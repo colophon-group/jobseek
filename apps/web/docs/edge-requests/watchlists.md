@@ -1,6 +1,7 @@
 # Watchlists Page (`/:lang/watchlists`)
 
-**Route group:** `(app)` | **Rendering:** Dynamic (`force-dynamic` on app layout)
+**Route group:** `(app)` | **Rendering:** cached app shell plus a Suspense-bound
+overview loader
 
 ## Edge requests on first visit
 
@@ -19,9 +20,9 @@
 
 ## Server-side data fetching (during SSR)
 
-- App layout: `getSession()`, `getPreferences()`, `getSavedJobStatuses()`, `getStarredCompanyIds()`
-- `getUserWatchlists()` — all user's watchlists
-- `canCreateWatchlist(userId)` — check plan limits
+- App layout: viewer-independent cached currency rates only
+- `getUserWatchlistsWithLimit(locale)` — persisted metadata, memberships,
+  activity previews, viewer language scope, and account limit
 
 ## Client-side requests (user interaction)
 
@@ -29,9 +30,14 @@
 |---------|------|---------|
 | Server action: `createWatchlist()` | Serverless function | Create new watchlist |
 | Server action: `deleteWatchlist()` | Serverless function | Delete a watchlist |
+| `getSessionWatchlistActivityPreviews()` | Serverless function | One bounded preview batch for anonymous drafts |
 
 ## Notes
 
+- Signed-out viewers see the same card list for browser-backed drafts in the
+  current tab. Up to ten previews resolve in one bounded action.
+- After authentication, pending drafts import until the account limit;
+  overflow is discarded with an explicit notice.
 - Watchlist cards may show company logos if the watchlist is scoped to specific companies.
 - Number of company logo `/_next/image` requests depends on watchlist content.
 
@@ -41,16 +47,12 @@
 
 | Step | Queries | Pattern | Cache | Est. duration |
 |------|---------|---------|-------|---------------|
-| `getSession()` | 1 | — | Redis 5min | 5-90ms |
-| `getPreferences()` | 1 | parallel | None | 10-30ms |
-| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
-| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `getUserWatchlists()` metadata | 1 | parallel with language preferences | None | 12-38ms |
-| Active posting counts | 1 Typesense `multi_search` | after metadata | None | 20-100ms |
-| `canCreateWatchlist()` | 1 | — | None | 10-20ms |
+| App bootstrap | 0 for anonymous; one conditional client request when the login hint exists | conditional | Session cache | 0-120ms |
+| `getUserWatchlistsWithLimit()` metadata | bounded DB reads | parallel where independent | None | workload-dependent |
+| Activity previews | 1 Typesense `multi_search` | after metadata | None | workload-dependent |
 
-**Total DB queries:** 5 (constant in N — fixed by #3176). Posting counts do not query the web database.
-**Estimated function duration:** 50-100ms (warm instance)
+Query count remains bounded rather than growing once per watchlist. Posting
+counts do not query the retired crawler mirror.
 
 **Previously the worst N+1 pattern in the app.** Pre-fix, `getUserWatchlists`
 ran `resolveFilteredJobCount()` once per watchlist — each leg ran 4

@@ -23,6 +23,24 @@ function parseRootMargin(m: string): [number, number, number, number] {
   return [parts[0], parts[1], parts[2], parts[3]];
 }
 
+function isWithinRootMargin(
+  sentinel: Element,
+  root: Element | null,
+  rootMargin: string,
+): boolean {
+  const rect = sentinel.getBoundingClientRect();
+  const rootRect = root
+    ? root.getBoundingClientRect()
+    : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+  const [mt, mr, mb, ml] = parseRootMargin(rootMargin);
+  return (
+    rect.top < rootRect.bottom + mb &&
+    rect.bottom > rootRect.top - mt &&
+    rect.left < rootRect.right + mr &&
+    rect.right > rootRect.left - ml
+  );
+}
+
 interface UseInfiniteScrollOptions {
   /** Whether there are more items to load */
   hasMore: boolean;
@@ -64,6 +82,7 @@ export function useInfiniteScroll({
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadRef = useRef(load);
   const loadingRef = useRef(false);
+  const lastLoadFailedRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
 
   loadRef.current = load;
@@ -78,14 +97,20 @@ export function useInfiniteScroll({
   const doLoad = useCallback(() => {
     if (loadingRef.current) return;
     loadingRef.current = true;
+    lastLoadFailedRef.current = false;
     setIsLoading(true);
 
     loadRef.current()
       .then(() => {
+        lastLoadFailedRef.current = false;
         loadingRef.current = false;
         setIsLoading(false);
       })
       .catch(() => {
+        // Do not immediately chain another request while the sentinel is
+        // still visible. IntersectionObserver will naturally retry after
+        // the user scrolls the sentinel out of view and back in.
+        lastLoadFailedRef.current = true;
         loadingRef.current = false;
         setIsLoading(false);
       });
@@ -111,6 +136,32 @@ export function useInfiniteScroll({
     };
   }, [sentinelEl, hasMore, root, rootMargin, doLoad, observerKey]);
 
+  // IntersectionObserver occasionally misses a transition when the sentinel
+  // lives in a grid layer whose sibling is toggled with `hidden`/`invisible`
+  // (the broad/narrowed watchlist drawer). Keep a lightweight scroll fallback
+  // so an explicit user scroll can still advance the feed. `loadingRef` makes
+  // this safe when both the observer and fallback fire for the same frame.
+  useEffect(() => {
+    if (!sentinelEl || !hasMore) return;
+    const rootEl = root?.current ?? null;
+    const target: EventTarget = rootEl ?? window;
+    let animationFrame = 0;
+    const check = () => {
+      animationFrame = 0;
+      if (loadingRef.current) return;
+      if (isWithinRootMargin(sentinelEl, rootEl, rootMargin)) doLoad();
+    };
+    const onScroll = () => {
+      if (animationFrame !== 0) return;
+      animationFrame = window.requestAnimationFrame(check);
+    };
+    target.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      target.removeEventListener("scroll", onScroll);
+      if (animationFrame !== 0) window.cancelAnimationFrame(animationFrame);
+    };
+  }, [sentinelEl, hasMore, root, rootMargin, doLoad, observerKey]);
+
   // After a load finishes, check whether the sentinel is still in the
   // viewport and, if so, trigger the next load. This covers a case the
   // bare IntersectionObserver misses on cold-start with the `?show=`
@@ -130,26 +181,11 @@ export function useInfiniteScroll({
     const justFinished = prevLoadingRef.current && !isLoading;
     prevLoadingRef.current = isLoading;
     if (!justFinished) return;
+    if (lastLoadFailedRef.current) return;
     if (!hasMore || !sentinelEl) return;
     if (loadingRef.current) return;
-    const rect = sentinelEl.getBoundingClientRect();
     const rootEl = root?.current ?? null;
-    const rootRect = rootEl
-      ? rootEl.getBoundingClientRect()
-      : { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
-    // Apply rootMargin on BOTH axes — IntersectionObserver expands the
-    // root's intersection rect by [top, right, bottom, left] independently.
-    // A vertical-only check breaks horizontal carousels (e.g. the
-    // similar-companies strip with `rootMargin: "0px 200px 0px 0px"`)
-    // because a sentinel scrolled far off-screen to the right would still
-    // satisfy the vertical predicate and chain-load every remaining page.
-    const [mt, mr, mb, ml] = parseRootMargin(rootMargin);
-    const inView =
-      rect.top < rootRect.bottom + mb &&
-      rect.bottom > rootRect.top - mt &&
-      rect.left < rootRect.right + mr &&
-      rect.right > rootRect.left - ml;
-    if (inView) doLoad();
+    if (isWithinRootMargin(sentinelEl, rootEl, rootMargin)) doLoad();
   }, [isLoading, hasMore, sentinelEl, root, rootMargin, doLoad]);
 
   return { sentinelRef, isLoading };

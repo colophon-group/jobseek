@@ -17,6 +17,7 @@ import type { SelectedLocation } from "@/lib/search/types";
 import type { WorkMode } from "@/lib/search/types";
 import { withAuthReturnPath } from "@/lib/auth-return";
 import { buildSearchWatchlistDraft } from "@/lib/search/watchlist-draft";
+import { stagePendingWatchlistEntry } from "@/lib/pending-watchlist";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
 
@@ -74,34 +75,37 @@ export function SaveSearchButton({
   }
 
   async function handleSave() {
+    const draft = buildSearchWatchlistDraft({
+      fallbackTitle: t({
+        id: "watchlists.savedSearch.defaultTitle",
+        comment: "Default watchlist title when saving a search without descriptive filters",
+        message: "My search",
+      }),
+      keywords,
+      locations,
+      occupations,
+      seniorities,
+      technologies,
+      employmentTypes,
+      workMode,
+      salaryMin,
+      salaryMax,
+      salaryCurrency,
+      experienceMin,
+      experienceMax,
+      companyScope,
+    });
     if (!isLoggedIn) {
       const returnPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-      router.push(withAuthReturnPath(lp("/sign-in"), returnPath));
+      const staged = stagePendingWatchlistEntry({ kind: "create", draft });
+      router.push(staged
+        ? lp(`/watchlists/${staged.id}`)
+        : withAuthReturnPath(lp("/sign-in"), returnPath));
       return;
     }
 
     setSaving(true);
     try {
-      const draft = buildSearchWatchlistDraft({
-        fallbackTitle: t({
-          id: "watchlists.savedSearch.defaultTitle",
-          comment: "Default watchlist title when saving a search without descriptive filters",
-          message: "My search",
-        }),
-        keywords,
-        locations,
-        occupations,
-        seniorities,
-        technologies,
-        employmentTypes,
-        workMode,
-        salaryMin,
-        salaryMax,
-        salaryCurrency,
-        experienceMin,
-        experienceMax,
-        companyScope,
-      });
       const result = await createWatchlist(draft);
 
       if ("error" in result) {
@@ -134,7 +138,7 @@ export function SaveSearchButton({
     : t({
         id: "search.saveSearch.tooltipLogin",
         comment: "Tooltip when user needs to log in to save search",
-        message: "Log in to save this search as a watchlist",
+        message: "Save this search now and add it after login",
       });
   const limitLabel = t({
     id: "watchlists.card.limitReached",

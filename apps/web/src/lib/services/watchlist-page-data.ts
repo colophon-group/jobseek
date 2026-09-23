@@ -26,6 +26,8 @@ export interface WatchlistPageData {
   limitReached: boolean;
   postings: WatchlistPostingEntry[];
   total: number;
+  /** The initial page ended at the anonymous-viewer result cap. */
+  truncated: boolean;
   /** Count of postings first seen in the last year matching the same filters. */
   yearTotal: number;
   /** Search failed or timed out; zero counts in this payload are placeholders. */
@@ -64,6 +66,7 @@ function degradedWatchlistPageData(
     limitReached: params.limitReached,
     postings: [],
     total: 0,
+    truncated: false,
     yearTotal: 0,
     searchUnavailable: true,
     resolvedLocations: [],
@@ -114,7 +117,7 @@ async function buildWatchlistPageDataUnbounded(
     abortSignal,
     failOnUnavailable: true,
   };
-  const [{ postings, total }, yearTotal] = await Promise.all([
+  const [{ postings, total, truncated = false }, yearTotal] = await Promise.all([
     (publicSnapshot ? getPublicWatchlistPostings : getWatchlistPostings)({
       ...sharedCountsParams,
       offset: 0,
@@ -129,6 +132,7 @@ async function buildWatchlistPageDataUnbounded(
     limitReached,
     postings,
     total,
+    truncated,
     yearTotal,
     searchUnavailable: false,
     resolvedLocations,

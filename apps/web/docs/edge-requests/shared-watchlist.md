@@ -1,84 +1,65 @@
-# Shared Watchlist Page (`/:lang/:userSlug/:watchlistSlug`)
+# Watchlist Detail (`/:lang/watchlists/:watchlistId`)
 
-**Route group:** `(app)` | **Rendering:** Dynamic (`force-dynamic` on app layout)
+**Route group:** `(app)` | **Rendering:** cached app shell plus a Suspense-bound,
+request-specific watchlist loader
 
-## Edge requests on first visit
+The UUID route is the single detail surface for owned, unlisted shared, and
+browser-backed session watchlists. The former
+`/:lang/:userSlug/:watchlistSlug` route is a private compatibility handler: it
+redirects an authenticated owner to the UUID route and otherwise returns the
+same private 404 boundary.
 
-| # | Request | Type | Source |
-|---|---------|------|--------|
-| 1 | `/:lang/:userSlug/:watchlistSlug` HTML document | SSR | Serverless function — fetches watchlist + postings + resolves filters |
-| 2 | Middleware redirect | Edge function | Only if visiting without locale prefix |
-| 3-9 | JS chunks | Static (CDN) | Framework + WatchlistViewPage + job cards + filter display |
-| 10 | CSS bundle | Static (CDN) | Tailwind |
-| 11 | `/fonts/JetBrainsMono-Regular.woff2` | Static (CDN) | Primary font |
-| 12 | `/js_wide_logo_black.svg` or `_white.svg` | Static (CDN) | AppHeader logo |
-| 13 | `/favicon.ico` | Static (CDN) | Browser |
-| 14 | Vercel Analytics script | Static (CDN) | `@vercel/analytics` |
-| 15 | Vercel Speed Insights script | Static (CDN) | `@vercel/speed-insights` |
-| 16 | Analytics beacon POST | Edge | Post-load telemetry |
-| 17-N | `/_next/image?url=...` (company logos) | Edge | Logos for companies in the watchlist |
+## Server-side data fetching
 
-## Server-side data fetching (during SSR)
+The cached app layout resolves only viewer-independent currency rates. Inside
+the route Suspense boundary, `OwnedWatchlistLoader`:
 
-- App layout: `getSession()`, `getPreferences()`, `getSavedJobStatuses()`, `getStarredCompanyIds()`
-- `getWatchlistByUserAndSlug(userSlug, watchlistSlug)` — watchlist details + companies
-- `resolveLocationSlugs()`, `resolveOccupationSlugs()`, `resolveSenioritySlugs()`, `resolveTechnologySlugs()` — resolve filter slugs to display names
-- `getWatchlistPostings(...)` — matching job postings
-- `getUserPlan()`, `canCreateWatchlist()` — plan checks
+1. resolves the session and exact UUID;
+2. tries the owned row, then an explicitly shared row;
+3. resolves language scope, clone limit, and optional narrowed state in
+   parallel;
+4. builds the initial broad page and initial persisted accepted page in
+   parallel; and
+5. renders one `WatchlistPageData` contract through `WatchlistViewPage`.
 
-## Client-side requests (user interaction)
+If no database row exists, `SessionWatchlistLoader` validates an anonymous
+draft from `sessionStorage`, materializes companies and filters through one
+bounded server action, then renders the same detail component with a local
+persistence adapter.
 
-| Request | Type | Trigger |
-|---------|------|---------|
-| Server action: `getWatchlistPostings()` | Serverless function | Paginate results |
-| Server action: `getPostingDetail()` | Serverless function | Click on a job |
-| Server action: `toggleSavedJob()` | Serverless function | Save a job from the watchlist |
-| Server action: `forkWatchlist()` | Serverless function | Fork/clone the watchlist |
+Search reads use Typesense; watchlist metadata, ownership, sharing,
+subscriptions, and narrowed decisions use web Postgres. A six-second Typesense
+budget aborts an unavailable initial search and returns the editable shell with
+an explicit degraded result state instead of failing the whole route.
 
-## Notes
+## Client requests
 
-- **Publicly accessible** — visitors without accounts can view public watchlists.
-- Contains BreadcrumbList JSON-LD structured data.
-- The heaviest SSR of all pages: resolves multiple filter types + fetches postings in parallel.
-- Company logos depend on watchlist scope — a watchlist tracking 5 companies shows ~5 logos.
+| Request | Trigger |
+|---|---|
+| Browser-direct Typesense or bounded server fallback | Broad infinite scroll and filter edits |
+| `GET .../ai-filter/decisions` | Open/page persisted narrowed results; owner response also includes current state |
+| `POST .../ai-filter/reconcile` | Entitled owner opens or scrolls beyond evaluated demand |
+| `GET .../ai-filter` | Bounded owner progress polling while durable work is active |
+| Posting-detail and saved-job actions | Open or save a job |
+| Watchlist mutation actions | Persist owner edits, sharing, alerts, or delete |
+| Session-watchlist action | Validate/materialize an anonymous draft or its overview previews |
 
-## Fluid compute (serverless function duration)
+Shared viewers never start Jev work. Anonymous viewers are capped at 20 broad
+or narrowed jobs and receive the same login prompt as other truncated search
+surfaces. Signed-in non-owners may page the complete shared feed. Shared
+language scope always comes from the owner and cannot be changed by the viewer.
 
-### SSR render
+## Fluid Compute
 
-| Step | Queries | Pattern | Cache | Est. duration |
-|------|---------|---------|-------|---------------|
-| `getSession()` | 1 | — | Redis 5min | 5-90ms |
-| `getPreferences()` | 1 | parallel | None | 10-30ms |
-| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
-| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `getWatchlistByUserAndSlug()` | 4 | sequential | None | 30-100ms |
-| Resolve filter slugs (×4 types) | 4 | parallel | None | 10-30ms |
-| `getWatchlistPostings()` | 4 | mixed | None | 30-100ms |
-| `getUserPlan()` + `canCreateWatchlist()` | 2 | sequential | None | 15-40ms |
+- No session read occurs in the shared app layout.
+- Independent database, page, state, and count reads are parallelized.
+- Accepted pages hydrate only requested IDs through one Typesense query; the
+  total is a Postgres aggregate, not an all-result hydration fan-out.
+- A cached accepted page is consumed before reconcile is considered.
+- Owner decisions and state share one response; foreground polling is bounded
+  at 1.5 seconds and safe GETs abort on scope change or unmount.
+- Durable Jev work runs in Workflow in at most ten 50-candidate steps per
+  500-candidate demand, so a route invocation does not wait for provider work.
 
-**Total DB queries:** 10-14
-**Estimated function duration:** 100-350ms (warm instance)
-
-**Heaviest single render in the app.** `getWatchlistByUserAndSlug()` alone
-runs 4 sequential queries (resolve user → fetch watchlist → touch
-lastAccessedAt → fetch companies). Then filter slug resolution and posting
-queries add another 8 queries.
-
-No Redis caching on any watchlist query — every render hits the DB. This is
-a strong candidate for caching, especially for public watchlists that are
-shared via social media and may receive bursts of traffic.
-
-### Client-side server actions
-
-| Action | Queries | Cache | Est. duration |
-|--------|---------|-------|---------------|
-| `getWatchlistPostings()` (paginate) | 4 (mixed) | None | 30-120ms |
-| `getPostingDetail()` | 3 (sequential) | Redis 5min | 20-100ms |
-| `toggleSavedJob()` | 2 | None | 15-50ms |
-| `copyWatchlist()` | 3 (sequential) | None | 20-80ms |
-
-## Estimated edge requests
-
-**First visit (cold cache):** ~21 (16 base + ~5 company logos)
-**Subsequent visit (warm cache):** ~2
+See `docs/24-ai-filter.md` for the execution, cache, budget, and activation
+contract.

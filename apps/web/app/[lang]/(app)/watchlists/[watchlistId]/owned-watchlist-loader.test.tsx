@@ -13,8 +13,11 @@ const mocks = vi.hoisted(() => ({
   getViewerJobLanguages: vi.fn(),
   canCreate: vi.fn(),
   getAiFilterOwnerState: vi.fn(),
+  getSharedAiFilterState: vi.fn(),
   listAiFilterDecisions: vi.fn(),
+  listSharedAiFilterDecisions: vi.fn(),
   viewProps: vi.fn(),
+  sessionProps: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -57,31 +60,33 @@ vi.mock("@/lib/ai-filter/configuration-service", () => ({
   AiFilterNotFoundError: class AiFilterNotFoundError extends Error {},
   getAiFilterOwnerState: (...args: unknown[]) =>
     mocks.getAiFilterOwnerState(...args),
+  getSharedAiFilterState: (...args: unknown[]) =>
+    mocks.getSharedAiFilterState(...args),
 }));
 
 vi.mock("@/lib/ai-filter/decision-service", () => ({
   listAiFilterDecisions: (...args: unknown[]) =>
     mocks.listAiFilterDecisions(...args),
+  listSharedAiFilterDecisions: (...args: unknown[]) =>
+    mocks.listSharedAiFilterDecisions(...args),
 }));
 
 vi.mock("@/lib/ai-filter/candidate-loader", () => ({
   AiFilterCandidateLoadError: class AiFilterCandidateLoadError extends Error {},
 }));
 
-vi.mock("../../[userSlug]/[watchlistSlug]/watchlist-view-page", () => ({
+vi.mock("@/components/watchlist/watchlist-view-page", () => ({
   WatchlistViewPage: (props: {
-    detail: Record<string, unknown> & { id: string };
-    isOwner: boolean;
-    limitReached: boolean;
+    data: {
+      detail: Record<string, unknown> & { id: string };
+      isOwner: boolean;
+      limitReached: boolean;
+    };
     initialAiFilterState: unknown;
     initialAiAcceptedPage: unknown;
   }) => {
     mocks.viewProps(props);
-    const {
-    detail,
-    isOwner,
-    limitReached,
-    } = props;
+    const { detail, isOwner, limitReached } = props.data;
     return (
     <div
       data-testid="watchlist-detail"
@@ -91,6 +96,13 @@ vi.mock("../../[userSlug]/[watchlistSlug]/watchlist-view-page", () => ({
       data-detail-keys={Object.keys(detail).sort().join(",")}
     />
     );
+  },
+}));
+
+vi.mock("./session-watchlist-loader", () => ({
+  SessionWatchlistLoader: (props: Record<string, unknown>) => {
+    mocks.sessionProps(props);
+    return <div data-testid="session-watchlist" />;
   },
 }));
 
@@ -128,10 +140,16 @@ const sharedViewDetail = {
   companies: [],
 };
 
+const sharedDetail = {
+  ...detail,
+  ownerJobLanguages: ["de"],
+};
+
 const pageData = {
   detail,
   postings: [],
   total: 0,
+  truncated: false,
   yearTotal: 0,
   searchUnavailable: false,
   resolvedLocations: [],
@@ -151,15 +169,26 @@ describe("OwnedWatchlistLoader direct private detail", () => {
     mocks.getViewerJobLanguages.mockResolvedValue(["en"]);
     mocks.canCreate.mockResolvedValue({ allowed: false });
     mocks.getAiFilterOwnerState.mockRejectedValue(new AiFilterNotFoundError());
+    mocks.getSharedAiFilterState.mockRejectedValue(new AiFilterNotFoundError());
     mocks.listAiFilterDecisions.mockResolvedValue({
       decisions: [],
       nextOffset: 0,
       hasMore: true,
     });
-    mocks.build.mockImplementation(async (params: { detail: typeof detail }) => ({
+    mocks.listSharedAiFilterDecisions.mockResolvedValue({
+      decisions: [],
+      nextOffset: 0,
+      hasMore: false,
+    });
+    mocks.build.mockImplementation(async (params: {
+      detail: typeof detail;
+      isOwner?: boolean;
+      limitReached?: boolean;
+    }) => ({
       ...pageData,
       detail: params.detail,
-      limitReached: (params as { limitReached?: boolean }).limitReached ?? false,
+      isOwner: params.isOwner ?? false,
+      limitReached: params.limitReached ?? false,
     }));
   });
 
@@ -175,26 +204,33 @@ describe("OwnedWatchlistLoader direct private detail", () => {
     expect(mocks.getShared).not.toHaveBeenCalled();
   });
 
-  it("returns the same not-found boundary for anonymous and non-owner requests", async () => {
+  it("falls back to the normal route's session loader when no persisted watchlist exists", async () => {
     mocks.getSession.mockResolvedValueOnce(null);
-    await expect(OwnedWatchlistLoader({
+    const anonymous = await OwnedWatchlistLoader({
       locale: "en",
       watchlistId: WATCHLIST_ID,
       overviewLabel: "Watchlists",
-    })).rejects.toThrow("NEXT_NOT_FOUND");
+    });
+    render(anonymous);
+    expect(screen.getByTestId("session-watchlist")).toBeTruthy();
     expect(mocks.getOwned).not.toHaveBeenCalled();
     expect(mocks.getShared).toHaveBeenCalledWith(WATCHLIST_ID);
 
     mocks.getSession.mockResolvedValue({ user: { id: "user-2" } });
     mocks.getOwned.mockResolvedValue(null);
     mocks.getShared.mockClear();
-    await expect(OwnedWatchlistLoader({
+    const authenticated = await OwnedWatchlistLoader({
       locale: "en",
       watchlistId: WATCHLIST_ID,
       overviewLabel: "Watchlists",
-    })).rejects.toThrow("NEXT_NOT_FOUND");
+    });
+    render(authenticated);
     expect(mocks.getOwned).toHaveBeenCalledWith(WATCHLIST_ID, "user-2");
     expect(mocks.getShared).toHaveBeenCalledWith(WATCHLIST_ID);
+    expect(mocks.sessionProps).toHaveBeenCalledWith(expect.objectContaining({
+      watchlistId: WATCHLIST_ID,
+      locale: "en",
+    }));
     expect(mocks.build).not.toHaveBeenCalled();
   });
 
@@ -203,6 +239,7 @@ describe("OwnedWatchlistLoader direct private detail", () => {
     mocks.getOwned.mockResolvedValue(null);
     mocks.getShared.mockResolvedValue({
       ...detail,
+      ownerJobLanguages: ["de"],
       isPublic: true,
       sourceWatchlistId: "private-source-id",
       createdAt: "2026-09-10T00:00:00.000Z",
@@ -228,9 +265,10 @@ describe("OwnedWatchlistLoader direct private detail", () => {
       locale: "en",
       isOwner: false,
       limitReached: false,
-      jobLanguages: ["en"],
+      jobLanguages: ["de"],
       publicSnapshot: true,
     });
+    expect(mocks.getViewerJobLanguages).not.toHaveBeenCalled();
     expect(screen.getByTestId("watchlist-detail").getAttribute("data-is-owner"))
       .toBe("false");
     expect(screen.getByTestId("watchlist-detail").getAttribute("data-detail-keys"))
@@ -240,7 +278,7 @@ describe("OwnedWatchlistLoader direct private detail", () => {
   it("checks the authenticated non-owner's clone limit", async () => {
     mocks.getSession.mockResolvedValue({ user: { id: "user-2" } });
     mocks.getOwned.mockResolvedValue(null);
-    mocks.getShared.mockResolvedValue(detail);
+    mocks.getShared.mockResolvedValue(sharedDetail);
     mocks.canCreate.mockResolvedValue({ allowed: false });
 
     render(await OwnedWatchlistLoader({
@@ -253,10 +291,62 @@ describe("OwnedWatchlistLoader direct private detail", () => {
     expect(mocks.build).toHaveBeenCalledWith(expect.objectContaining({
       isOwner: false,
       limitReached: true,
-      publicSnapshot: true,
+      publicSnapshot: false,
     }));
     expect(screen.getByTestId("watchlist-detail").getAttribute("data-limit-reached"))
       .toBe("true");
+  });
+
+  it("restores a shared narrowed feed without owner-only access", async () => {
+    const aiState = {
+      watchlistId: WATCHLIST_ID,
+      enabled: true,
+      entitled: true,
+      query: "Backend roles without management",
+      queryRevision: 2,
+      queryVersionId: "22222222-2222-4222-8222-222222222222",
+      status: "caught_up",
+      counts: { accepted: 1, rejected: 2, total: 3 },
+      progress: { selectionOffset: 0, scannedCount: 3, completedCount: 3, stopReason: null },
+      lastCaughtUpAt: "2026-09-22T00:00:00.000Z",
+      latestEventSequence: 4,
+    };
+    const posting = { id: "posting-1" };
+    mocks.getSession.mockResolvedValue(null);
+    mocks.getOwned.mockResolvedValue(null);
+    mocks.getShared.mockResolvedValue(sharedDetail);
+    mocks.getSharedAiFilterState.mockResolvedValue(aiState);
+    mocks.listSharedAiFilterDecisions.mockResolvedValue({
+      decisions: [{ posting }],
+      total: 1,
+      nextOffset: 1,
+      hasMore: false,
+    });
+
+    render(await OwnedWatchlistLoader({
+      locale: "en",
+      watchlistId: WATCHLIST_ID,
+      overviewLabel: "Watchlists",
+    }));
+
+    expect(mocks.getSharedAiFilterState).toHaveBeenCalledWith({ watchlistId: WATCHLIST_ID });
+    expect(mocks.getAiFilterOwnerState).not.toHaveBeenCalled();
+    expect(mocks.listSharedAiFilterDecisions).toHaveBeenCalledWith({
+      watchlistId: WATCHLIST_ID,
+      offset: 0,
+      limit: 20,
+    });
+    expect(mocks.viewProps.mock.lastCall?.[0]).toEqual(expect.objectContaining({
+      data: expect.objectContaining({ isOwner: false }),
+      initialAiFilterState: aiState,
+      initialAiAcceptedPage: {
+        queryVersionId: aiState.queryVersionId,
+        postings: [posting],
+        total: 1,
+        nextOffset: 1,
+        hasMore: false,
+      },
+    }));
   });
 
   it("owner-validates by exact id before building and rendering detail data", async () => {
@@ -327,6 +417,7 @@ describe("OwnedWatchlistLoader direct private detail", () => {
     expect(mocks.viewProps.mock.lastCall?.[0]).toEqual(expect.objectContaining({
       initialAiFilterState: aiState,
       initialAiAcceptedPage: {
+        queryVersionId: aiState.queryVersionId,
         postings: [posting],
         nextOffset: 3,
         hasMore: true,
