@@ -111,9 +111,10 @@ an admission condition for the first B0 cohort.
    work, exact output and queue effects, request conservation, CPU, and memory
    on the actual cohort. Record sample size and uncertainty; cold-rollback on
    a material regression. The
-   fixed c4 manifest currently contains a `suspect` board. Revise the
-   production manifest to the three validated origins before expansion;
-   never activate the suspect board just to reach four.
+   fixed c4 benchmark manifest contains a `suspect` board. Production cutover
+   uses a separate c3 manifest with only the three validated origins; c4 stays
+   available to the frozen four-origin fixture and is rejected by the production
+   activation wrapper. Never activate the suspect board just to reach four.
 
 ## Decision after B0
 
