@@ -1,0 +1,286 @@
+{
+  "productionBefore": {
+    "traceId": "c141e391f744b5eb375b7cfaf57f68d8",
+    "measurement": "Trace spans and wall duration; NOT Active CPU",
+    "spans": [
+      {
+        "name": "GET /en/company/aircall",
+        "startTime": [
+          1790184905,
+          917000000
+        ],
+        "duration": [
+          1,
+          870359808
+        ],
+        "attributes": {
+          "deployment.environment": "production",
+          "http.response.header.x-vercel-cache": "HIT",
+          "vercel.deployment_id": "dpl_5L9jxrm7V36uJCkmjWywYP3cSRMM"
+        }
+      },
+      {
+        "name": "Resolve Deployment",
+        "startTime": [
+          1790184905,
+          918000000
+        ],
+        "duration": [
+          0,
+          15283968
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Resolve Route",
+        "startTime": [
+          1790184905,
+          933000000
+        ],
+        "duration": [
+          0,
+          29964032
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Handle PPR",
+        "startTime": [
+          1790184905,
+          968000000
+        ],
+        "duration": [
+          1,
+          819219968
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Get Static PPR Content",
+        "startTime": [
+          1790184905,
+          968000000
+        ],
+        "duration": [
+          0,
+          2551040
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Get Dynamic PPR Content",
+        "startTime": [
+          1790184905,
+          971000000
+        ],
+        "duration": [
+          0,
+          78959104
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Stream Static PPR Content",
+        "startTime": [
+          1790184905,
+          972000000
+        ],
+        "duration": [
+          0,
+          38912
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Invoke Function",
+        "startTime": [
+          1790184905,
+          988000000
+        ],
+        "duration": [
+          1,
+          784940117
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "POST Upstash pipeline",
+        "startTime": [
+          1790184906,
+          20000000
+        ],
+        "duration": [
+          0,
+          39000000
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Stream Dynamic PPR Content",
+        "startTime": [
+          1790184906,
+          50000000
+        ],
+        "duration": [
+          1,
+          737114880
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "GET typesense.colophon-group.org/collections/company/documents/search",
+        "startTime": [
+          1790184906,
+          60000000
+        ],
+        "duration": [
+          0,
+          167000000
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "POST Upstash pipeline",
+        "startTime": [
+          1790184906,
+          229000000
+        ],
+        "duration": [
+          0,
+          5000000
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "POST typesense.colophon-group.org/multi_search",
+        "startTime": [
+          1790184906,
+          236000000
+        ],
+        "duration": [
+          1,
+          369000000
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "GET typesense.colophon-group.org/collections/company/documents/search",
+        "startTime": [
+          1790184906,
+          237000000
+        ],
+        "duration": [
+          0,
+          100000000
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "GET jobseek-assets.colophon-group.org/og/company/3e40c77940a9f29e/_complete/current.json",
+        "startTime": [
+          1790184907,
+          611000000
+        ],
+        "duration": [
+          0,
+          152000000
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "waitUntil",
+        "startTime": [
+          1790184907,
+          772000000
+        ],
+        "duration": [
+          0,
+          862214
+        ],
+        "attributes": {}
+      }
+    ]
+  },
+  "companyPreview": {
+    "traceId": "5e725298e4a286f8de4e92a968b37021",
+    "measurement": "Trace spans and wall duration; NOT Active CPU",
+    "spans": [
+      {
+        "name": "GET /en/company/aircall",
+        "startTime": [
+          1790184946,
+          644000000
+        ],
+        "duration": [
+          0,
+          28349184
+        ],
+        "attributes": {
+          "deployment.environment": "preview",
+          "http.response.header.x-vercel-cache": "HIT",
+          "vercel.deployment_id": "dpl_8Mwvc8TjTYid5ipCHADMtYsFgqmT"
+        }
+      },
+      {
+        "name": "Resolve Deployment",
+        "startTime": [
+          1790184946,
+          644000000
+        ],
+        "duration": [
+          0,
+          13725952
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Resolve Route",
+        "startTime": [
+          1790184946,
+          658000000
+        ],
+        "duration": [
+          0,
+          8590080
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Handle PPR",
+        "startTime": [
+          1790184946,
+          668000000
+        ],
+        "duration": [
+          0,
+          4270080
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Get Static PPR Content",
+        "startTime": [
+          1790184946,
+          668000000
+        ],
+        "duration": [
+          0,
+          3364864
+        ],
+        "attributes": {}
+      },
+      {
+        "name": "Stream Static PPR Content",
+        "startTime": [
+          1790184946,
+          672000000
+        ],
+        "duration": [
+          0,
+          121088
+        ],
+        "attributes": {}
+      }
+    ]
+  }
+}

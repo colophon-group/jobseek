@@ -113,8 +113,8 @@ The filtered-search failure above was traced to an invalid/revoked browser-key
 parent in the main checkout's env file. A child minted from that parent is
 rejected with HTTP 403. The **same browser search provider and queries**, using
 a public scoped child issued by production's `/api/typesense-key`, succeed:
-Aircall 77 unfiltered / 30 engineer results; HelloFresh 189 / 89; each first
-page returns 20 valid rows. No production secret was extracted or changed.
+Aircall 77 active / 189 in the last year unfiltered, and 30 active / 89 in
+the last year for engineer; each first page returns 20 valid rows. No production secret was extracted or changed.
 This resolves the local credential diagnosis; deployed preview verification
 still needs to exercise the complete UI and actual preview key issuance.
 
@@ -142,3 +142,29 @@ The analyzer package imports `NextConfig` in its declarations but declares no
 Next peer. With two workspace Next versions, its hoisted type import selected
 the shim's 16.3.4 and failed the web build. A version-scoped pnpm package
 extension declares the missing peer, so the web analyzer resolves 16.3.6.
+
+## Vercel preview verification
+
+PR [#9925](https://github.com/colophon-group/jobseek/pull/9925) merged as
+`8c91480ef3f7bd8a11e06f768cd938d6f78eaf41` after all exact-head CI checks
+passed. Preview `dpl_J3fa1pxQwfgQ68bGK7pxKfuNXBiz` verified actual company
+filtering (Aircall 77 active / 189 yearly → engineer 30 / 89, with 20 rows),
+filtered Explore navigation, and a true 404 for an unknown company.
+
+Preview had lacked both the scoped-key parent and browser-direct feature flag.
+Their existing environment entries now include Preview while preserving their
+values and Production targets; a rebuild verified the complete browser flow
+([#9928](https://github.com/colophon-group/jobseek/issues/9928)).
+
+The included [sanitized Vercel traces](2026-09-23-vercel-fluid-cpu/vercel-cache-traces.json)
+show production's Aircall HIT invoking a Function, streaming a dynamic PPR
+response, and fetching external data. The fixed preview's cached Aircall HIT
+has only static PPR retrieval and streaming. A second preview trace for French
+HelloFresh confirms the same absence of Function and dynamic-resume spans.
+Trace durations are wall time; these observations establish avoided work, not
+a measured percentage of billed CPU savings.
+
+The full production gate remains pending a clean post-deployment 12-hour
+window. A user-authorized follow-up is scheduled for 10:00 Europe/Zurich on
+September 24, continuing fixes until the gate passes. Issues #9916, #9917, and
+#9918 remain open for that measured result and billing reconciliation.
