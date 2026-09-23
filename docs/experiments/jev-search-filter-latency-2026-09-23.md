@@ -1,5 +1,7 @@
 # Jev for search filter mapping: latency experiment
 
+**Follow-up:** [84-query routing-quality and normalization evaluation](jev-routing-quality-2026-09-23.md). Its human-labeled holdout and app-level Typesense results supersede this report's mapping-quality caveat and simple latency estimate.
+
 **Date:** 2026-09-23
 
 **Base:** `origin/main` at `eb40e2b2a`

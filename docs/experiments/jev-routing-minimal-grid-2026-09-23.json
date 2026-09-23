@@ -1,0 +1,909 @@
+{
+  "variant": "minimal",
+  "split": "tune",
+  "top": [
+    {
+      "config": {
+        "threshold": 0.3,
+        "literalWorkMode": true,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 47,
+      "filtersExact": 47,
+      "keywordsExact": 48,
+      "fieldExact": {
+        "keywords": 48,
+        "locations": 51,
+        "occupations": 54,
+        "seniorities": 54,
+        "technologies": 55,
+        "workMode": 55,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 7
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 8
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 8
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 7
+        }
+      },
+      "filterPrecision": 0.9318181818181818,
+      "filterRecall": 0.9213483146067416,
+      "filterF1": 0.9265536723163842
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "literalWorkMode": true,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 47,
+      "filtersExact": 47,
+      "keywordsExact": 48,
+      "fieldExact": {
+        "keywords": 48,
+        "locations": 51,
+        "occupations": 54,
+        "seniorities": 54,
+        "technologies": 55,
+        "workMode": 55,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 7
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 8
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 8
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 7
+        }
+      },
+      "filterPrecision": 0.9318181818181818,
+      "filterRecall": 0.9213483146067416,
+      "filterF1": 0.9265536723163842
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "literalWorkMode": true,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 47,
+      "filtersExact": 47,
+      "keywordsExact": 48,
+      "fieldExact": {
+        "keywords": 48,
+        "locations": 51,
+        "occupations": 54,
+        "seniorities": 54,
+        "technologies": 55,
+        "workMode": 55,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 7
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 8
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 8
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 7
+        }
+      },
+      "filterPrecision": 0.9318181818181818,
+      "filterRecall": 0.9213483146067416,
+      "filterF1": 0.9265536723163842
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "literalWorkMode": true,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 47,
+      "filtersExact": 47,
+      "keywordsExact": 48,
+      "fieldExact": {
+        "keywords": 48,
+        "locations": 51,
+        "occupations": 54,
+        "seniorities": 54,
+        "technologies": 55,
+        "workMode": 55,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 7
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 8
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 8
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 7
+        }
+      },
+      "filterPrecision": 0.9318181818181818,
+      "filterRecall": 0.9213483146067416,
+      "filterF1": 0.9265536723163842
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "literalWorkMode": true,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 44,
+      "filtersExact": 44,
+      "keywordsExact": 45,
+      "fieldExact": {
+        "keywords": 45,
+        "locations": 51,
+        "occupations": 52,
+        "seniorities": 53,
+        "technologies": 55,
+        "workMode": 55,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 6
+        },
+        "terse": {
+          "count": 8,
+          "exact": 6
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 8
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 7
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 7
+        }
+      },
+      "filterPrecision": 0.9294117647058824,
+      "filterRecall": 0.8876404494382022,
+      "filterF1": 0.9080459770114941
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "literalWorkMode": true,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 44,
+      "filtersExact": 44,
+      "keywordsExact": 45,
+      "fieldExact": {
+        "keywords": 45,
+        "locations": 51,
+        "occupations": 52,
+        "seniorities": 53,
+        "technologies": 55,
+        "workMode": 55,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 6
+        },
+        "terse": {
+          "count": 8,
+          "exact": 6
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 8
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 7
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 7
+        }
+      },
+      "filterPrecision": 0.9294117647058824,
+      "filterRecall": 0.8876404494382022,
+      "filterF1": 0.9080459770114941
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "literalWorkMode": false,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 42,
+      "filtersExact": 42,
+      "keywordsExact": 42,
+      "fieldExact": {
+        "keywords": 42,
+        "locations": 51,
+        "occupations": 54,
+        "seniorities": 54,
+        "technologies": 55,
+        "workMode": 50,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 7
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 7
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 6
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 5
+        }
+      },
+      "filterPrecision": 0.8817204301075269,
+      "filterRecall": 0.9213483146067416,
+      "filterF1": 0.901098901098901
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "literalWorkMode": false,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 42,
+      "filtersExact": 42,
+      "keywordsExact": 42,
+      "fieldExact": {
+        "keywords": 42,
+        "locations": 51,
+        "occupations": 54,
+        "seniorities": 54,
+        "technologies": 55,
+        "workMode": 50,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 7
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 7
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 6
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 5
+        }
+      },
+      "filterPrecision": 0.8817204301075269,
+      "filterRecall": 0.9213483146067416,
+      "filterF1": 0.901098901098901
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "literalWorkMode": false,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 40,
+      "filtersExact": 42,
+      "keywordsExact": 41,
+      "fieldExact": {
+        "keywords": 41,
+        "locations": 51,
+        "occupations": 54,
+        "seniorities": 54,
+        "technologies": 55,
+        "workMode": 50,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 7
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 5
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 6
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 5
+        }
+      },
+      "filterPrecision": 0.8817204301075269,
+      "filterRecall": 0.9213483146067416,
+      "filterF1": 0.901098901098901
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "literalWorkMode": false,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 40,
+      "filtersExact": 42,
+      "keywordsExact": 41,
+      "fieldExact": {
+        "keywords": 41,
+        "locations": 51,
+        "occupations": 54,
+        "seniorities": 54,
+        "technologies": 55,
+        "workMode": 50,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 7
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 5
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 6
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 5
+        }
+      },
+      "filterPrecision": 0.8817204301075269,
+      "filterRecall": 0.9213483146067416,
+      "filterF1": 0.901098901098901
+    }
+  ],
+  "bestMismatches": [
+    {
+      "id": "atomic-07",
+      "q": "Python",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "Python"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "terse-02",
+      "q": "wfh py dev",
+      "gold": {
+        "keywords": [
+          "py"
+        ],
+        "locations": [],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "py",
+          "dev"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "wfh",
+          "category": "remote",
+          "slug": "remote",
+          "probability": 0.99
+        }
+      ]
+    },
+    {
+      "id": "multiword-01",
+      "q": "San Francisco software engineer",
+      "gold": {
+        "keywords": [
+          "Francisco"
+        ],
+        "locations": [
+          "san"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [],
+        "locations": [
+          "san-francisco-california-united-states"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "San Francisco",
+          "category": "location",
+          "slug": "san-francisco-california-united-states",
+          "probability": 1
+        },
+        {
+          "text": "software engineer",
+          "category": "occupation",
+          "slug": "software-engineer",
+          "probability": 1
+        }
+      ]
+    },
+    {
+      "id": "multiword-02",
+      "q": "New York data scientist",
+      "gold": {
+        "keywords": [
+          "New"
+        ],
+        "locations": [
+          "york-england-united-kingdom"
+        ],
+        "occupations": [
+          "data-scientist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [],
+        "locations": [
+          "new-york-united-states"
+        ],
+        "occupations": [
+          "data-scientist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "New York",
+          "category": "location",
+          "slug": "new-york-united-states",
+          "probability": 1
+        },
+        {
+          "text": "data scientist",
+          "category": "occupation",
+          "slug": "data-scientist",
+          "probability": 1
+        }
+      ]
+    },
+    {
+      "id": "multiword-03",
+      "q": "Los Angeles designer",
+      "gold": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [],
+        "locations": [
+          "los-angeles-california-united-states"
+        ],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "designer",
+          "category": "occupation",
+          "slug": "designer",
+          "probability": 0.99
+        },
+        {
+          "text": "Los Angeles",
+          "category": "location",
+          "slug": "los-angeles-california-united-states",
+          "probability": 0.98
+        }
+      ]
+    },
+    {
+      "id": "multiword-05",
+      "q": "in office senior accountant",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "senior accountant",
+          "category": "occupation",
+          "slug": "accountant",
+          "probability": 0.93
+        },
+        {
+          "text": "in office",
+          "category": "onsite",
+          "slug": "onsite",
+          "probability": 0.63
+        }
+      ]
+    },
+    {
+      "id": "unrelated-02",
+      "q": "weather tomorrow Zurich",
+      "gold": {
+        "keywords": [
+          "weather",
+          "tomorrow"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "weather",
+          "tomorrow",
+          "Zurich"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "unrelated-08",
+      "q": "remote control batteries",
+      "gold": {
+        "keywords": [
+          "control",
+          "batteries"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "remote",
+          "control",
+          "batteries"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "multilingual-08",
+      "q": "ingénieur logiciel senior à Montréal",
+      "gold": {
+        "keywords": [
+          "ingénieur",
+          "logiciel",
+          "senior",
+          "à",
+          "Montréal"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "à"
+        ],
+        "locations": [
+          "montreal"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Montréal",
+          "category": "location",
+          "slug": "montreal",
+          "probability": 1
+        },
+        {
+          "text": "ingénieur logiciel",
+          "category": "occupation",
+          "slug": "software-engineer",
+          "probability": 0.92
+        },
+        {
+          "text": "senior",
+          "category": "seniority",
+          "slug": "senior",
+          "probability": 0.84
+        }
+      ]
+    }
+  ]
+}

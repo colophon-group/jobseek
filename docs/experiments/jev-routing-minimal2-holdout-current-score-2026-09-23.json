@@ -1,0 +1,689 @@
+{
+  "variant": "minimal2",
+  "split": "holdout",
+  "config": {
+    "threshold": 0.3,
+    "literalWorkMode": true,
+    "longestFirst": true
+  },
+  "count": 28,
+  "exact": 14,
+  "filtersExact": 14,
+  "keywordsExact": 14,
+  "fieldExact": {
+    "keywords": 14,
+    "locations": 17,
+    "occupations": 24,
+    "seniorities": 26,
+    "technologies": 27,
+    "workMode": 28,
+    "employmentTypes": 28
+  },
+  "groups": {
+    "atomic": {
+      "count": 4,
+      "exact": 3
+    },
+    "terse": {
+      "count": 4,
+      "exact": 4
+    },
+    "verbose": {
+      "count": 4,
+      "exact": 1
+    },
+    "mistakes": {
+      "count": 4,
+      "exact": 4
+    },
+    "multiword": {
+      "count": 4,
+      "exact": 2
+    },
+    "unrelated": {
+      "count": 4,
+      "exact": 0
+    },
+    "multilingual": {
+      "count": 4,
+      "exact": 0
+    }
+  },
+  "filterPrecision": 0.6216216216216216,
+  "filterRecall": 0.7666666666666667,
+  "filterF1": 0.6865671641791045,
+  "mismatches": [
+    {
+      "id": "atomic-12",
+      "q": "backend developer",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "backend"
+        ],
+        "locations": [],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "developer",
+          "category": "occupation",
+          "slug": "software-engineer",
+          "probability": 0.85
+        }
+      ]
+    },
+    {
+      "id": "verbose-09",
+      "q": "I need an onsite recruiter position in Munich as soon as possible",
+      "gold": {
+        "keywords": [
+          "I",
+          "need",
+          "an",
+          "recruiter",
+          "position",
+          "in",
+          "Munich",
+          "as",
+          "soon",
+          "possible"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "I",
+          "need",
+          "an",
+          "position",
+          "in",
+          "as",
+          "soon",
+          "possible"
+        ],
+        "locations": [
+          "munich"
+        ],
+        "occupations": [
+          "recruiter"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "onsite",
+          "category": "onsite",
+          "slug": "onsite",
+          "probability": 0.98
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "slug": "munich",
+          "probability": 0.98
+        },
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "slug": "recruiter",
+          "probability": 0.9
+        }
+      ]
+    },
+    {
+      "id": "verbose-10",
+      "q": "Looking for React jobs in Amsterdam with a senior title",
+      "gold": {
+        "keywords": [
+          "Looking",
+          "for",
+          "jobs",
+          "in",
+          "Amsterdam",
+          "with",
+          "a",
+          "title"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "react"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "Looking",
+          "for",
+          "jobs",
+          "in",
+          "with",
+          "a",
+          "title"
+        ],
+        "locations": [
+          "amsterdam-north-holland-the-netherlands"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "react"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "React",
+          "category": "technology",
+          "slug": "react",
+          "probability": 1
+        },
+        {
+          "text": "senior",
+          "category": "seniority",
+          "slug": "senior",
+          "probability": 1
+        },
+        {
+          "text": "Amsterdam",
+          "category": "location",
+          "slug": "amsterdam-north-holland-the-netherlands",
+          "probability": 0.99
+        }
+      ]
+    },
+    {
+      "id": "verbose-11",
+      "q": "Please show me contract work for designers in Vienna",
+      "gold": {
+        "keywords": [
+          "Please",
+          "show",
+          "me",
+          "contract",
+          "work",
+          "for",
+          "designers",
+          "in",
+          "Vienna"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "Please",
+          "show",
+          "me",
+          "contract",
+          "work",
+          "for",
+          "designers",
+          "in"
+        ],
+        "locations": [
+          "vienna-austria"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Vienna",
+          "category": "location",
+          "slug": "vienna-austria",
+          "probability": 0.99
+        }
+      ]
+    },
+    {
+      "id": "multiword-09",
+      "q": "United Kingdom nurse",
+      "gold": {
+        "keywords": [
+          "United",
+          "Kingdom",
+          "nurse"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "nurse"
+        ],
+        "locations": [
+          "united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "United Kingdom",
+          "category": "location",
+          "slug": "united-kingdom",
+          "probability": 0.87
+        }
+      ]
+    },
+    {
+      "id": "multiword-11",
+      "q": "New York City finance analyst",
+      "gold": {
+        "keywords": [
+          "New",
+          "City",
+          "finance",
+          "analyst"
+        ],
+        "locations": [
+          "york-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "City",
+          "finance",
+          "analyst"
+        ],
+        "locations": [
+          "new-york-united-states"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "New York",
+          "category": "location",
+          "slug": "new-york-united-states",
+          "probability": 0.71
+        }
+      ]
+    },
+    {
+      "id": "unrelated-09",
+      "q": "senior discount tickets",
+      "gold": {
+        "keywords": [
+          "discount",
+          "tickets"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "senior",
+          "discount",
+          "tickets"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "unrelated-10",
+      "q": "python snake habitat",
+      "gold": {
+        "keywords": [
+          "snake",
+          "habitat"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "python",
+          "snake",
+          "habitat"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "unrelated-11",
+      "q": "Berlin wall history",
+      "gold": {
+        "keywords": [
+          "wall",
+          "history"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "Berlin",
+          "wall",
+          "history"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "unrelated-12",
+      "q": "book a flight to Paris",
+      "gold": {
+        "keywords": [
+          "book",
+          "a",
+          "flight"
+        ],
+        "locations": [
+          "to",
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "book",
+          "a",
+          "flight",
+          "to",
+          "Paris"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "multilingual-09",
+      "q": "sviluppatore backend remoto Milano",
+      "gold": {
+        "keywords": [
+          "sviluppatore",
+          "backend",
+          "remoto",
+          "Milano"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "backend",
+          "remoto"
+        ],
+        "locations": [
+          "milan"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Milano",
+          "category": "location",
+          "slug": "milan",
+          "probability": 0.99
+        },
+        {
+          "text": "sviluppatore",
+          "category": "occupation",
+          "slug": "software-engineer",
+          "probability": 0.92
+        }
+      ]
+    },
+    {
+      "id": "multilingual-10",
+      "q": "ingegnere dati junior Roma",
+      "gold": {
+        "keywords": [
+          "ingegnere",
+          "dati",
+          "junior",
+          "Roma"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "ingegnere",
+          "dati"
+        ],
+        "locations": [
+          "rome-lazio-italy"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "junior",
+          "category": "seniority",
+          "slug": "entry",
+          "probability": 0.99
+        },
+        {
+          "text": "Roma",
+          "category": "location",
+          "slug": "rome-lazio-italy",
+          "probability": 0.98
+        }
+      ]
+    },
+    {
+      "id": "multilingual-11",
+      "q": "designer UX ibrido Zurigo",
+      "gold": {
+        "keywords": [
+          "designer",
+          "UX",
+          "ibrido",
+          "Zurigo"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "UX",
+          "ibrido"
+        ],
+        "locations": [
+          "canton-of-zurich-switzerland"
+        ],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Zurigo",
+          "category": "location",
+          "slug": "canton-of-zurich-switzerland",
+          "probability": 0.99
+        },
+        {
+          "text": "designer",
+          "category": "occupation",
+          "slug": "designer",
+          "probability": 0.85
+        }
+      ]
+    },
+    {
+      "id": "multilingual-12",
+      "q": "lavoro Python a Milano",
+      "gold": {
+        "keywords": [
+          "lavoro",
+          "a",
+          "Milano"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "lavoro",
+          "a"
+        ],
+        "locations": [
+          "milan"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Python",
+          "category": "technology",
+          "slug": "python",
+          "probability": 1
+        },
+        {
+          "text": "Milano",
+          "category": "location",
+          "slug": "milan",
+          "probability": 0.99
+        }
+      ]
+    }
+  ]
+}
