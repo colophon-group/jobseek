@@ -41,13 +41,15 @@ an admission condition for the first B0 cohort.
   succeeded with only the dark claimant in the ordinary service list. There is
   no evidence of enabled B0 traffic in that deployment.
 - [#8648](https://github.com/colophon-group/jobseek/issues/8648) owns the
-  remaining whole-lane admission. The first complete [ARM64 fixture run](https://github.com/colophon-group/jobseek/actions/runs/35857877535)
+  remaining whole-lane admission. [PR #9880](https://github.com/colophon-group/jobseek/pull/9880)
+  merged the real-producer harness. Its exact-source [ARM64 fixture run](https://github.com/colophon-group/jobseek/actions/runs/35861227140)
   exercised the real Go producer in all 16 arms with exact output, request,
-  persistence, and queue parity. Median correct-URL density improved 3.46×
-  at c1 and 6.82× at c4; peak memory and completion latency fell. CPU use
-  rose from 13.94 to 24.48 seconds at c1 and 17.86 to 23.99 seconds at c4
-  across the common due and retained measurement window. Per-service CPU and
-  production host capacity need confirmation during canary. The public
+  persistence, and queue parity. Median correct-URL density improved 3.42×
+  at c1 and 6.71× at c4; peak memory and completion latency fell. CPU use
+  rose from 12.88 to 23.06 seconds at c1 and 17.53 to 23.88 seconds at c4
+  across the common due and retained measurement window. About 20 CPU seconds
+  per arm came from the transitional Python executor. Production host capacity
+  still needs confirmation during canary. The public
   sitemap run in #7935 was inconclusive because the live source changed
   between arms; it is not a Python-versus-Go verdict.
 - [#7959](https://github.com/colophon-group/jobseek/issues/7959) admitted
@@ -77,42 +79,37 @@ an admission condition for the first B0 cohort.
    claimant; enabled producer/executor services are absent. Check the live
    receipt and Redis owner before any future activation. No reviewer or
    operator approval is an additional gate once the stated checks pass.
-4. **Run #8648 against the actual whole lane.** Reconcile its held harness
-   with the producer. Use identical immutable fixture inputs and equal 1.5 GiB
-   whole-lane budgets, including the producer in Go's budget. Compare exact
-   canonical output, terminal state, requests, and queue conservation first.
-   Then report paired whole-lane CPU seconds, peak/steady RSS, elapsed time,
-   and correct terminal URLs per GiB-minute. A repeatable resource improvement
-   with the same output and no material freshness or request regression is
-   sufficient to proceed; no arbitrary 1.25x hurdle or approval is required.
-   Treat live-input drift as inconclusive. Run small live-source parity without
-   production writes; do not repeat fixed-order public benchmarks for a
-   favorable result.
+4. **Whole-lane fixture complete.** The merged harness exercised the producer
+   with identical immutable fixture inputs and equal 1.5 GiB whole-lane
+   budgets. Its report includes exact canonical output, terminal state,
+   requests, queue conservation, paired CPU seconds, peak/retained RSS,
+   elapsed time, and correct terminal URLs per GiB-minute. The measured
+   density improvement and identical output meet the fixture decision rule;
+   no arbitrary 1.25x hurdle or approval is required. Small live-source
+   parity and production host telemetry remain part of c1 admission. Treat
+   live-input drift as inconclusive.
 
    The held `fix-crawler/go-b0-admission` branch at `266725d45` is source
-   material, not a merge candidate. Its `admission.py` seeds the candidate via
-   Python `LightpandaB0Queue.activate_legacy`, and its Compose file sets
-   `LIGHTPANDA_B0_PRODUCER_MODE: off`. Reuse the immutable fixture server,
-   pinned PKI, canonical output comparison, and external cgroup sampler. Feed
-   the candidate through the merged Go producer's Unix socket using
-   `producer_client.request_task` after reserving the test routing epoch and
-   installing the same pending/active authority shape as a real cutover.
-   Count the producer in the candidate cgroup and budget: 32 MiB producer,
+   material, not a merge candidate. It bypassed the Go producer via Python
+   queue mutation. The merged harness retained its immutable fixture, PKI,
+   output comparison, and external cgroup sampler, then fed the candidate
+   through the Go producer's Unix socket. It counted the producer in the
+   candidate cgroup and budget: 32 MiB producer,
    96 MiB supervisor, 384 MiB executor, 1024 MiB renderer (1536 MiB total),
-   against a 1536 MiB control. Remove the old Python queue mutation path and
-   its broad live admission guards from the first hermetic run. Keep the
-   fixture and Docker network isolated with no production credentials. Run
-   c1 and c4 in counterbalanced pairs, recording every parity and resource
-   result before deciding whether to activate traffic.
-5. **Admit c1, then c4 if the numbers hold.** After #8648 demonstrates output
-   parity and resource efficiency, use the cutover to give one low-rate origin
+   against a 1536 MiB control. The isolated counterbalanced c1/c4 report
+   passed. This is fixture evidence; production traffic has not yet been
+   admitted.
+5. **Admit c1, then c4 if the numbers hold.** With fixture parity and resource
+   efficiency established, use the cutover to give one low-rate origin
    exclusive Go/Lightpanda ownership.
    Verify no duplicate origin request, stale write, lost schedule, unsupported
    capability, or same-task Chromium fallback. Expand to four origins only if
    c1 remains correct and the combined lane stays inside its memory and
-   freshness limits. Observe at least seven scheduling cycles and 200 terminal
-   URLs across the admitted cohort; otherwise cold-rollback and retain the
-   evidence.
+   freshness limits. Judge complete scheduled work, exact output and queue
+   effects, request conservation, CPU, and memory on the actual cohort. Record
+   sample size and uncertainty; cold-rollback on a material regression. The
+   fixed c4 manifest currently contains a `suspect` board, so it needs a
+   validated replacement or recovery before its planner can admit traffic.
 
 ## Decision after B0
 
