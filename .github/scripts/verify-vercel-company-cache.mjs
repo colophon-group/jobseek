@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { verifySmokeResponse } from "./verify-vercel-smoke-response.mjs";
 
-const execFileAsync = promisify(execFile);
 const CLI = "vercel@59.25.4";
 const ROUTES = ["/en/company/aircall", "/fr/company/hellofresh"];
 
@@ -36,16 +34,20 @@ export function verifyStaticCompanyTrace(trace, route, deploymentId) {
 }
 
 async function main() {
-  const { DEPLOYMENT_URL, EXPECTED_DEPLOYMENT_ID, VERCEL_ORG_ID } = process.env;
+  const { DEPLOYMENT_URL, EXPECTED_DEPLOYMENT_ID, VERCEL_ORG_ID, VERCEL_PROJECT_ID } = process.env;
   if (!/^https:\/\/[A-Za-z0-9.-]+\.vercel\.app$/.test(DEPLOYMENT_URL ?? "") ||
       !/^dpl_[A-Za-z0-9]+$/.test(EXPECTED_DEPLOYMENT_ID ?? "") ||
-      !/^team_[A-Za-z0-9]+$/.test(VERCEL_ORG_ID ?? "")) {
+      !/^team_[A-Za-z0-9]+$/.test(VERCEL_ORG_ID ?? "") ||
+      !/^prj_[A-Za-z0-9]+$/.test(VERCEL_PROJECT_ID ?? "")) {
     throw new Error("Invalid staged deployment identity");
   }
   const run = async (args) => {
-    const { stdout } = await execFileAsync("pnpm", ["dlx", CLI, ...args], {
+    const stdout = execFileSync("pnpm", ["dlx", CLI, ...args], {
       maxBuffer: 10_000_000,
       timeout: 60_000,
+      encoding: "utf8",
+      // `vercel curl` consumes piped stdin. These GETs have no request body.
+      stdio: ["ignore", "pipe", "pipe"],
     });
     return JSON.parse(stdout);
   };
@@ -55,6 +57,7 @@ async function main() {
     for (let attempt = 1; attempt <= 6; attempt++) {
       let response;
       let trace;
+      console.log(`Cache check ${route}, attempt ${attempt}: capturing request`);
       try {
         response = await run([
           "curl", route, "--deployment", DEPLOYMENT_URL,
@@ -65,10 +68,20 @@ async function main() {
         if (typeof response.requestId !== "string" || !response.requestId) {
           throw new Error("Missing request ID");
         }
-        trace = await run([
-          "traces", "get", response.requestId, "--json",
-          "--scope", VERCEL_ORG_ID,
-        ]);
+        console.log(`Cache check ${route}: waiting for captured trace`);
+        // Trace ingestion lags the response. Poll this request ID instead of
+        // repeatedly creating fresh traces that are also not available yet.
+        for (let poll = 0; poll < 4 && !trace; poll++) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          try {
+            trace = await run([
+              "traces", "get", response.requestId, "--json",
+              "--scope", VERCEL_ORG_ID, "--non-interactive",
+            ]);
+          } catch {
+            reason = "Trace retrieval unavailable";
+          }
+        }
       } catch {
         reason = "Trace retrieval unavailable";
       }
@@ -83,6 +96,7 @@ async function main() {
           reason = error.message;
         }
       }
+      console.log(`Cache check ${route}, attempt ${attempt}: ${reason}`);
       if (attempt < 6) await new Promise((resolve) => setTimeout(resolve, 3000));
     }
     if (!accepted) throw new Error(`${route}: ${reason}`);
