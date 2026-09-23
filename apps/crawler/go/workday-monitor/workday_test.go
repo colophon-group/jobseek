@@ -2,9 +2,11 @@ package workday
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -41,6 +43,17 @@ func TestSelectedCohortSizeUsesSixteenBoundedPages(t *testing.T) {
 		if want := i * 20; offset != want {
 			t.Fatalf("offset %d = %d, want %d", i, offset, want)
 		}
+	}
+	// Python discover_stream over the identical 305-response MockTransport
+	// produces this SHA-256 of compact JSON with sorted canonical URLs.
+	canonical := append([]string(nil), got.URLs...)
+	sort.Strings(canonical)
+	encoded, err := json.Marshal(canonical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "f9090998a9688916d58c78a3e2ee3c28fef1b8a1bd819c402269b693b36a2102"; fmt.Sprintf("%x", sha256.Sum256(encoded)) != want {
+		t.Fatal("canonical URLs differ from Python's synthetic 305-job response")
 	}
 }
 
