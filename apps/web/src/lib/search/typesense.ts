@@ -55,6 +55,8 @@ interface JobPostingDoc {
   locales: string[];
   first_seen_at: number;
   candidate_order_key?: string;
+  candidate_order_hi?: number;
+  candidate_order_lo?: number;
   last_seen_at?: number;
 }
 

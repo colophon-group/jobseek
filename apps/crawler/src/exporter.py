@@ -42,8 +42,11 @@ from src.metrics import (
 )
 from src.redis_queue import get_queue_depths
 from src.typesense_candidate_order import (
+    CANDIDATE_ORDER_HI_FIELD,
     CANDIDATE_ORDER_KEY_FIELD,
+    CANDIDATE_ORDER_LO_FIELD,
     candidate_order_key,
+    candidate_order_words,
 )
 
 # These availability gauges are only ever set by this module (the exporter), so we
@@ -564,9 +567,12 @@ def _build_typesense_docs(
         has_content = bool(title and title.strip()) and (row["description_r2_hash"] is not None)
 
         posting_id = str(row["id"])
+        order_hi, order_lo = candidate_order_words(row["id"])
         doc: dict = {
             "id": posting_id,
             CANDIDATE_ORDER_KEY_FIELD: candidate_order_key(row["id"]),
+            CANDIDATE_ORDER_HI_FIELD: order_hi,
+            CANDIDATE_ORDER_LO_FIELD: order_lo,
             # Stable UUID range bucket used by the deploy-independent
             # reconciler. Keeping it in the document avoids whole-index loads
             # and bounds normal scans to 1/256 of the collection.

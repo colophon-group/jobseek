@@ -97,7 +97,9 @@ Legend: Q = `query_by`; F = filter; A = facet; G = group; S = sort; R = returned
 | `locales` | F, A, R, C | language preferences, watchlists, description-locale selection | retain facet/index |
 | `source_url` | R, C | posting redirect and saved-job snapshot | already stored-only |
 | `first_seen_at` | F, S, R, C | historical/year cutoff, freshness ordering, rendered timestamp | retain sort/index and default sorting field |
-| `candidate_order_key` | S, C | stable UUID tie-break for opted-in frozen AI filter candidate reads | retain sort/index; optional only during the backfill transition |
+| `candidate_order_key` | R, C | exact UUID-order validation for opted-in frozen AI filter reads | stored-only; optional during the backfill transition (updated 2026-09-23) |
+| `candidate_order_hi` | S, R, C | signed high UUID half for stable candidate ordering | retain sort/index; optional during the backfill transition (updated 2026-09-23) |
+| `candidate_order_lo` | S, R, C | signed low UUID half for stable candidate ordering | retain sort/index; optional during the backfill transition (updated 2026-09-23) |
 | `last_seen_at` | C | emitted by exporter but not in the reconciliation payload or a current web projection | stored-only candidate; later consider removing from Typesense |
 
 ### Read-path coverage behind the matrix

@@ -30,9 +30,11 @@ import { normalizePostingTitle } from "@/lib/posting-title";
 import { canonicalStringCompare } from "@/lib/sort";
 import {
   buildWatchlistCandidateSearchParams,
-  candidateOrderKeyFromCanonicalId,
+  candidateOrderProofFromCanonicalId,
   hasWatchlistCandidateScope,
+  WATCHLIST_CANDIDATE_ORDER_HI_FIELD,
   WATCHLIST_CANDIDATE_ORDER_KEY_FIELD,
+  WATCHLIST_CANDIDATE_ORDER_LO_FIELD,
   WATCHLIST_CANDIDATE_WINDOW_BOUNDARY,
   type WatchlistCandidateOrder,
   type WatchlistCandidateSearchParams,
@@ -54,8 +56,10 @@ const WORK_MODES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
 const MULTI_SEARCH_CHUNK_SIZE = 40;
 const TYPESENSE_MAX_PAGE_SIZE = 250;
 const TYPESENSE_BATCH_SAFETY_OFFSET = Number.MAX_SAFE_INTEGER;
-const STABLE_CANDIDATE_MISSING_FIRST_SORT =
-  `${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`;
+const STABLE_CANDIDATE_GUARD_FIELDS = [
+  WATCHLIST_CANDIDATE_ORDER_HI_FIELD,
+  WATCHLIST_CANDIDATE_ORDER_LO_FIELD,
+] as const;
 
 export type CompiledWatchlistFilter = CompiledWatchlistMatcher & {
   resolvedLocations: ResolvedLocation[];
@@ -250,25 +254,32 @@ function stableCandidateId(hit: CandidateHit): string {
   const doc = hit.document as Record<string, unknown>;
   const id = doc.id;
   const sortKey = doc[WATCHLIST_CANDIDATE_ORDER_KEY_FIELD];
-  if (typeof id !== "string" || typeof sortKey !== "string") {
+  const hi = doc[WATCHLIST_CANDIDATE_ORDER_HI_FIELD];
+  const lo = doc[WATCHLIST_CANDIDATE_ORDER_LO_FIELD];
+  if (typeof id !== "string" || typeof sortKey !== "string" ||
+      typeof hi !== "number" || typeof lo !== "number") {
     throw malformedTypesenseResponseError();
   }
-  let expected: string;
+  let expected: ReturnType<typeof candidateOrderProofFromCanonicalId>;
   try {
-    expected = candidateOrderKeyFromCanonicalId(id);
+    expected = candidateOrderProofFromCanonicalId(id);
   } catch {
     throw malformedTypesenseResponseError();
   }
-  if (expected !== sortKey) throw malformedTypesenseResponseError();
+  // JSON numbers lose low int64 bits in JavaScript. Exact equality is proven
+  // during reconciliation; the unindexed string verifies the full UUID here.
+  if (expected.key !== sortKey || hi !== Number(expected.words[0]) ||
+      lo !== Number(expected.words[1])) throw malformedTypesenseResponseError();
   return id;
 }
 
 function stableCandidateGuardParams<T extends WatchlistCandidateSearchParams>(
   params: T,
+  field: typeof STABLE_CANDIDATE_GUARD_FIELDS[number],
 ): T {
   return {
     ...params,
-    sort_by: STABLE_CANDIDATE_MISSING_FIRST_SORT,
+    sort_by: `${field}(missing_values: first):asc`,
     per_page: 1,
     page: 1,
   } as T;
@@ -546,7 +557,7 @@ export async function readWatchlistCandidates(params: {
     : [params.filters];
   const guardStableCandidateOrder = async () => {
     const guards = await Promise.all(
-      filterBatches.map((filters) =>
+      filterBatches.flatMap((filters) => STABLE_CANDIDATE_GUARD_FIELDS.map((field) =>
         withTypesenseRetry(
           () =>
             client.collections("job_posting").documents().search(
@@ -557,14 +568,14 @@ export async function readWatchlistCandidates(params: {
                 window: params.window,
                 order,
                 stableNewestReady,
-              })),
+              }), field),
               { abortSignal: params.abortSignal },
             ),
           {
             label: "readWatchlistCandidates.stable-order-guard",
             abortSignal: params.abortSignal,
           },
-        ),
+        )),
       ),
     );
     for (const result of guards) assertStableCandidateGuard(result);
@@ -802,8 +813,10 @@ export async function matchCompiledWatchlistsInWindow(params: {
           () =>
             client.multiSearch.perform(
               {
-                searches: chunk.map((entry) =>
-                  stableCandidateGuardParams(entry.search)
+                searches: chunk.flatMap((entry) =>
+                  STABLE_CANDIDATE_GUARD_FIELDS.map((field) =>
+                    stableCandidateGuardParams(entry.search, field)
+                  )
                 ),
               },
               {},
@@ -816,7 +829,7 @@ export async function matchCompiledWatchlistsInWindow(params: {
         );
         const guardResults = parseTypesenseMultiSearchResults<object>(
           raw,
-          chunk.length,
+          chunk.length * STABLE_CANDIDATE_GUARD_FIELDS.length,
         );
         for (const result of guardResults) assertStableCandidateGuard(result);
       }

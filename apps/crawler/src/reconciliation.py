@@ -36,7 +36,9 @@ from src.exporter import (
     _upsert_to_typesense,
 )
 from src.typesense_candidate_order import (
+    CANDIDATE_ORDER_HI_FIELD,
     CANDIDATE_ORDER_KEY_FIELD,
+    CANDIDATE_ORDER_LO_FIELD,
     build_candidate_order_readiness_receipt,
 )
 
@@ -147,6 +149,8 @@ TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "locales",
     "first_seen_at",
     CANDIDATE_ORDER_KEY_FIELD,
+    CANDIDATE_ORDER_HI_FIELD,
+    CANDIDATE_ORDER_LO_FIELD,
     "source_url",
 )
 _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS = frozenset(("locales", "occupation_ids"))

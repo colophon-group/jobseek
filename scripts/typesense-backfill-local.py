@@ -26,8 +26,11 @@ import structlog
 import typesense
 
 from src.typesense_candidate_order import (
+    CANDIDATE_ORDER_HI_FIELD,
     CANDIDATE_ORDER_KEY_FIELD,
+    CANDIDATE_ORDER_LO_FIELD,
     candidate_order_key,
+    candidate_order_words,
 )
 
 log = structlog.get_logger()
@@ -244,9 +247,12 @@ def _build_doc(row: asyncpg.Record, maps: dict, csv_companies: dict) -> dict:
     last_seen = row["last_seen_at"]
 
     posting_id = str(row["id"])
+    order_hi, order_lo = candidate_order_words(row["id"])
     doc = {
         "id": posting_id,
         CANDIDATE_ORDER_KEY_FIELD: candidate_order_key(row["id"]),
+        CANDIDATE_ORDER_HI_FIELD: order_hi,
+        CANDIDATE_ORDER_LO_FIELD: order_lo,
         "company_id": company_id,
         "company_name": company_info["name"],
         "company_slug": company_slug,

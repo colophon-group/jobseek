@@ -45,13 +45,23 @@ import {
   readWatchlistCandidates,
   readWatchlistCandidatesByIds,
 } from "../watchlist-matcher";
-import { candidateOrderKeyFromCanonicalId } from "@/lib/search/watchlist-candidate-query";
+import {
+  candidateOrderKeyFromCanonicalId,
+  candidateOrderWordsFromCanonicalId,
+} from "@/lib/search/watchlist-candidate-query";
+
+const GUARD_SORTS = [
+  "candidate_order_hi(missing_values: first):asc",
+  "candidate_order_lo(missing_values: first):asc",
+];
+const isGuardSort = (value: string | undefined) =>
+  value !== undefined && GUARD_SORTS.includes(value);
 
 const READY_RECEIPT = Buffer.from(JSON.stringify({
   authoritativeCount: 10_000,
   benchmarkSha256: "a".repeat(64),
   completedAt: "2026-09-11T10:00:00Z",
-  keyVersion: "uuid-b64lex-v1",
+  keyVersion: "uuid-int64-pair-v1",
   partitions: 256,
   reconciliationRunId: "00000000-0000-0000-0000-000000000001",
   schemaVersion: "typesense-stable-candidate-order-readiness-v1",
@@ -68,6 +78,12 @@ function posting(id: string, firstSeenAt: number) {
       id,
       candidate_order_key: isCanonicalUuid
         ? candidateOrderKeyFromCanonicalId(id)
+        : undefined,
+      candidate_order_hi: isCanonicalUuid
+        ? Number(candidateOrderWordsFromCanonicalId(id)[0])
+        : undefined,
+      candidate_order_lo: isCanonicalUuid
+        ? Number(candidateOrderWordsFromCanonicalId(id)[1])
         : undefined,
       title: `Role ${id}`,
       source_url: `https://example.test/${id}`,
@@ -285,7 +301,7 @@ describe("readWatchlistCandidates", () => {
       sort_by?: string;
     }) => {
       if (
-        search.sort_by === "candidate_order_key(missing_values: first):asc"
+        isGuardSort(search.sort_by)
       ) {
         return { found: hits.length, hits: hits.slice(0, 1) };
       }
@@ -304,15 +320,15 @@ describe("readWatchlistCandidates", () => {
     });
 
     expect(result.postings.map((posting) => posting.id)).toEqual(ids.slice(3, 5));
-    expect(mocks.singleSearch).toHaveBeenCalledTimes(3);
-    expect(mocks.singleSearch.mock.calls[1]?.[0]).toMatchObject({
+    expect(mocks.singleSearch).toHaveBeenCalledTimes(5);
+    expect(mocks.singleSearch.mock.calls[2]?.[0]).toMatchObject({
       offset: 3,
       limit: 2,
       sort_by:
-        "first_seen_at:desc,candidate_order_key(missing_values: first):asc",
+        "first_seen_at:desc,candidate_order_hi(missing_values: first):asc,candidate_order_lo(missing_values: first):asc",
     });
-    expect(mocks.singleSearch.mock.calls[1]?.[0]).not.toHaveProperty("page");
-    expect(mocks.singleSearch.mock.calls[1]?.[0]).not.toHaveProperty("per_page");
+    expect(mocks.singleSearch.mock.calls[2]?.[0]).not.toHaveProperty("page");
+    expect(mocks.singleSearch.mock.calls[2]?.[0]).not.toHaveProperty("per_page");
   });
 
   it("preserves per_page zero for a direct count-only read", async () => {
@@ -359,7 +375,7 @@ describe("readWatchlistCandidates", () => {
         posting(id, 1_700_000_000),
       );
       if (
-        search.sort_by === "candidate_order_key(missing_values: first):asc"
+        isGuardSort(search.sort_by)
       ) {
         return { found: hits.length, hits: hits.slice(0, 1) };
       }
@@ -400,12 +416,29 @@ describe("readWatchlistCandidates", () => {
       order: "newest",
       requireStableOrder: true,
     })).rejects.toThrow("response was malformed");
-    expect(mocks.singleSearch).toHaveBeenCalledTimes(1);
+    expect(mocks.singleSearch).toHaveBeenCalledTimes(2);
     expect(mocks.singleSearch.mock.calls[0]?.[0]).toMatchObject({
       page: 1,
       per_page: 1,
-      sort_by: "candidate_order_key(missing_values: first):asc",
+      sort_by: GUARD_SORTS[0],
     });
+  });
+
+  it("rejects a missing low word before reading a direct offset page", async () => {
+    const hit = posting(makeUuid(1), 1_700_000_000);
+    delete (hit.document as { candidate_order_lo?: number }).candidate_order_lo;
+    mocks.singleSearch.mockResolvedValue({ found: 1, hits: [hit] });
+
+    await expect(readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(1)] },
+      offset: 200,
+      limit: 1,
+      order: "newest",
+      requireStableOrder: true,
+    })).rejects.toThrow("response was malformed");
+    expect(mocks.singleSearch.mock.calls.map(
+      ([search]) => (search as { sort_by?: string }).sort_by,
+    )).toEqual(GUARD_SORTS);
   });
 
   it("fails a direct read when the key disappears after its preflight", async () => {
@@ -415,6 +448,8 @@ describe("readWatchlistCandidates", () => {
     mocks.singleSearch
       .mockResolvedValueOnce({ found: 1, hits: [valid] })
       .mockResolvedValueOnce({ found: 1, hits: [valid] })
+      .mockResolvedValueOnce({ found: 1, hits: [valid] })
+      .mockResolvedValueOnce({ found: 1, hits: [missing] })
       .mockResolvedValueOnce({ found: 1, hits: [missing] });
 
     await expect(readWatchlistCandidates({
@@ -425,10 +460,10 @@ describe("readWatchlistCandidates", () => {
       requireStableOrder: true,
     })).rejects.toThrow("response was malformed");
 
-    expect(mocks.singleSearch).toHaveBeenCalledTimes(3);
-    expect(mocks.singleSearch.mock.calls[1]?.[0]).toMatchObject({
+    expect(mocks.singleSearch).toHaveBeenCalledTimes(5);
+    expect(mocks.singleSearch.mock.calls[2]?.[0]).toMatchObject({
       sort_by:
-        "first_seen_at:desc,candidate_order_key(missing_values: first):asc",
+        "first_seen_at:desc,candidate_order_hi(missing_values: first):asc,candidate_order_lo(missing_values: first):asc",
     });
   });
 
@@ -447,7 +482,7 @@ describe("readWatchlistCandidates", () => {
       sort_by?: string;
     }) => {
       if (
-        search.sort_by === "candidate_order_key(missing_values: first):asc"
+        isGuardSort(search.sort_by)
       ) {
         return { found: 1, hits: [rowsRead ? missing : valid] };
       }
@@ -472,7 +507,7 @@ describe("readWatchlistCandidates", () => {
       ([search]) => (search as { sort_by?: string }).sort_by,
     );
     expect(sorts.at(-1)).toBe(
-      "candidate_order_key(missing_values: first):asc",
+      GUARD_SORTS[1],
     );
   });
 
@@ -670,9 +705,9 @@ describe("matchCompiledWatchlistsInWindow", () => {
     const missing = posting(makeUuid(1), 1_700_000_000);
     delete (missing.document as { candidate_order_key?: string }).candidate_order_key;
     mocks.multiSearch
+      .mockResolvedValueOnce({ results: Array(2).fill({ found: 1, hits: [valid] }) })
       .mockResolvedValueOnce({ results: [{ found: 1, hits: [valid] }] })
-      .mockResolvedValueOnce({ results: [{ found: 1, hits: [valid] }] })
-      .mockResolvedValueOnce({ results: [{ found: 1, hits: [missing] }] });
+      .mockResolvedValueOnce({ results: Array(2).fill({ found: 1, hits: [missing] }) });
 
     await expect(matchCompiledWatchlistsInWindow({
       watchlists: [{
@@ -693,11 +728,9 @@ describe("matchCompiledWatchlistsInWindow", () => {
     "propagates in-flight abort to the %s multi-search",
     async (phase) => {
       const controller = new AbortController();
-      const valid = {
-        results: [{
-          found: 1,
-          hits: [posting(makeUuid(1), 1_700_000_000)],
-        }],
+      const validResult = {
+        found: 1,
+        hits: [posting(makeUuid(1), 1_700_000_000)],
       };
       let markStarted: (() => void) | undefined;
       const started = new Promise<void>((resolve) => {
@@ -711,7 +744,9 @@ describe("matchCompiledWatchlistsInWindow", () => {
       ) => {
         const current = callIndex++;
         const shouldBlock = phase === "guard" ? current === 0 : current === 1;
-        if (!shouldBlock) return Promise.resolve(valid);
+        if (!shouldBlock) return Promise.resolve({
+          results: Array(current === 1 ? 1 : 2).fill(validResult),
+        });
         return new Promise((_resolve, reject) => {
           options.abortSignal?.addEventListener(
             "abort",
@@ -767,14 +802,12 @@ describe("matchCompiledWatchlistsInWindow", () => {
       searches: Array<{ sort_by: string }>;
     }) => {
       if (
-        request.searches[0]?.sort_by ===
-        "candidate_order_key(missing_values: first):asc"
+        isGuardSort(request.searches[0]?.sort_by)
       ) {
         return {
-          results: searchResults.results.map((result) => ({
-            ...result,
-            hits: result.hits.slice(0, 1),
-          })),
+          results: searchResults.results.flatMap((result) =>
+            Array(2).fill({ ...result, hits: result.hits.slice(0, 1) })
+          ),
         };
       }
       return searchResults;
@@ -814,7 +847,7 @@ describe("matchCompiledWatchlistsInWindow", () => {
     };
     expect(guardRequest.searches.every(
       (search) =>
-        search.sort_by === "candidate_order_key(missing_values: first):asc" &&
+        isGuardSort(search.sort_by) &&
         search.per_page === 1 &&
         search.page === 1,
     )).toBe(true);
@@ -831,7 +864,7 @@ describe("matchCompiledWatchlistsInWindow", () => {
         `first_seen_at:<${end.getTime() / 1_000}`,
       );
       expect(search.sort_by).toBe(
-        "first_seen_at:desc,candidate_order_key(missing_values: first):asc",
+        "first_seen_at:desc,candidate_order_hi(missing_values: first):asc,candidate_order_lo(missing_values: first):asc",
       );
     }
     expect(mocks.multiSearch.mock.calls[2]?.[0]).toEqual(

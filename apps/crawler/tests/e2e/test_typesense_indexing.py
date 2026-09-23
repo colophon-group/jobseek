@@ -616,9 +616,12 @@ class TestSchemas:
         assert fields_by_name["salary_eur"].get("optional") is True
         assert fields_by_name["first_seen_at"]["type"] == "int64"
         assert fields_by_name["candidate_order_key"]["type"] == "string"
-        assert fields_by_name["candidate_order_key"].get("index") is True
-        assert fields_by_name["candidate_order_key"].get("sort") is True
+        assert fields_by_name["candidate_order_key"].get("index") is False
         assert fields_by_name["candidate_order_key"].get("optional") is True
+        for field in ("candidate_order_hi", "candidate_order_lo"):
+            assert fields_by_name[field]["type"] == "int64"
+            assert fields_by_name[field].get("sort") is True
+            assert fields_by_name[field].get("optional") is True
         assert fields_by_name["company_id"]["type"] == "string"
         assert fields_by_name["company_name"]["type"] == "string"
         assert fields_by_name["experience_min_years"]["type"] == "float"

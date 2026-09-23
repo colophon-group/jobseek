@@ -1,4 +1,4 @@
-"""Compact, order-preserving Typesense key for canonical posting UUIDs."""
+"""Exact UUID ordering via two sortable signed Typesense integers."""
 
 from __future__ import annotations
 
@@ -9,7 +9,9 @@ import uuid
 from datetime import UTC, datetime
 
 CANDIDATE_ORDER_KEY_FIELD = "candidate_order_key"
-CANDIDATE_ORDER_KEY_VERSION = "uuid-b64lex-v1"
+CANDIDATE_ORDER_HI_FIELD = "candidate_order_hi"
+CANDIDATE_ORDER_LO_FIELD = "candidate_order_lo"
+CANDIDATE_ORDER_KEY_VERSION = "uuid-int64-pair-v1"
 CANDIDATE_ORDER_READINESS_SCHEMA = "typesense-stable-candidate-order-readiness-v1"
 CANDIDATE_ORDER_PARTITION_COUNT = 256
 
@@ -31,6 +33,18 @@ def candidate_order_key(value: uuid.UUID) -> str:
     if number:
         raise ValueError("posting UUID exceeds candidate order key width")
     return "".join(digits)
+
+
+def candidate_order_words(value: uuid.UUID) -> tuple[int, int]:
+    """Bias unsigned UUID halves into signed int64 order for Typesense.
+
+    The full UUID cannot fit a Typesense int64. Splitting it into two sortable
+    fields preserves its unsigned lexical order without a string sort index.
+    """
+    if not isinstance(value, uuid.UUID):
+        raise TypeError("candidate order input must be a UUID")
+    number = value.int
+    return (number >> 64) - (1 << 63), (number & ((1 << 64) - 1)) - (1 << 63)
 
 
 def build_candidate_order_readiness_receipt(

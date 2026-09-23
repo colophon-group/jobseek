@@ -20,7 +20,7 @@ import { withTestEnvForAll } from "@/test-utils/env";
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
 import { TypesenseSearchProvider } from "../typesense";
 import { generateScopedSearchKey } from "../scoped-key";
-import { candidateOrderKeyFromCanonicalId } from "../watchlist-candidate-query";
+import { candidateOrderKeyFromCanonicalId, candidateOrderWordsFromCanonicalId } from "../watchlist-candidate-query";
 import { readWatchlistCandidates } from "@/lib/services/watchlist-matcher";
 
 vi.mock("server-only", () => ({}));
@@ -41,7 +41,7 @@ withTestEnvForAll({
     authoritativeCount: 1,
     benchmarkSha256: "a".repeat(64),
     completedAt: "2026-09-11T10:00:00Z",
-    keyVersion: "uuid-b64lex-v1",
+    keyVersion: "uuid-int64-pair-v1",
     partitions: 256,
     reconciliationRunId: "00000000-0000-0000-0000-000000000001",
     schemaVersion: "typesense-stable-candidate-order-readiness-v1",
@@ -294,6 +294,12 @@ const JOB_POSTINGS = RAW_JOB_POSTINGS.map((posting) => {
     candidate_order_key: posting.id.startsWith("jp")
       ? undefined
       : candidateOrderKeyFromCanonicalId(posting.id),
+    candidate_order_hi: posting.id.startsWith("jp")
+      ? undefined
+      : Number(candidateOrderWordsFromCanonicalId(posting.id)[0]),
+    candidate_order_lo: posting.id.startsWith("jp")
+      ? undefined
+      : Number(candidateOrderWordsFromCanonicalId(posting.id)[1]),
     experience_max: experienceMax,
     experience_min_years: experienceMin,
     experience_max_years: experienceMax,
@@ -349,10 +355,11 @@ const JOB_POSTING_SCHEMA: CollectionCreateSchema = {
     {
       name: "candidate_order_key",
       type: "string",
-      index: true,
-      sort: true,
+      index: false,
       optional: true,
     },
+    { name: "candidate_order_hi", type: "int64", sort: true, optional: true },
+    { name: "candidate_order_lo", type: "int64", sort: true, optional: true },
     { name: "last_seen_at", type: "int64", optional: true },
   ],
   default_sorting_field: "first_seen_at",
@@ -522,16 +529,28 @@ describe("stable candidate ordering", () => {
 
     try {
       for (const id of [...ids].reverse()) {
-        await adminClient
-          .collections(JOB_POSTING_COLLECTION)
-          .documents()
-          .create({
-            ...template,
-            id,
-            candidate_order_key: candidateOrderKeyFromCanonicalId(id),
-            title: "Stableboundaryfixture Engineer",
-            first_seen_at: NOW_UNIX,
-          });
+        const [hi, lo] = candidateOrderWordsFromCanonicalId(id);
+        // Send exact JSON int64 tokens; JSON.stringify(Number) rounds UUID
+        // halves beyond JavaScript's 53-bit safe integer range.
+        const body = JSON.stringify({
+          ...template,
+          id,
+          candidate_order_key: candidateOrderKeyFromCanonicalId(id),
+          candidate_order_hi: null,
+          candidate_order_lo: null,
+          title: "Stableboundaryfixture Engineer",
+          first_seen_at: NOW_UNIX,
+        }).replace('"candidate_order_hi":null', `"candidate_order_hi":${hi}`)
+          .replace('"candidate_order_lo":null', `"candidate_order_lo":${lo}`);
+        const response = await fetch(
+          `http://localhost:8108/collections/${JOB_POSTING_COLLECTION}/documents`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-TYPESENSE-API-KEY": API_KEY },
+            body,
+          },
+        );
+        expect(response.ok, await response.text()).toBe(true);
       }
 
       const page = async (pageNumber: number) => {
@@ -542,7 +561,7 @@ describe("stable candidate ordering", () => {
             q: "Stableboundaryfixture",
             query_by: "title",
             sort_by:
-              "first_seen_at:desc,candidate_order_key(missing_values: first):asc",
+              "first_seen_at:desc,candidate_order_hi(missing_values: first):asc,candidate_order_lo(missing_values: first):asc",
             per_page: 2,
             page: pageNumber,
           });

@@ -51,17 +51,23 @@ def test_job_posting_schema_keeps_unused_compatibility_fields_stored_only() -> N
         assert fields[name]["optional"] is True
 
 
-def test_job_posting_schema_has_compact_candidate_order_key() -> None:
+def test_job_posting_schema_has_numeric_candidate_order() -> None:
     job_posting = next(c for c in COLLECTIONS if c["name"] == "job_posting")
-    field = next(f for f in job_posting["fields"] if f["name"] == "candidate_order_key")
+    fields = {f["name"]: f for f in job_posting["fields"]}
 
-    assert field == {
+    assert fields["candidate_order_key"] == {
         "name": "candidate_order_key",
         "type": "string",
-        "index": True,
-        "sort": True,
+        "index": False,
         "optional": True,
     }
+    for name in ("candidate_order_hi", "candidate_order_lo"):
+        assert fields[name] == {
+            "name": name,
+            "type": "int64",
+            "sort": True,
+            "optional": True,
+        }
 
 
 def test_taxonomy_schema_carries_web_hierarchy_contract() -> None:
@@ -191,10 +197,11 @@ def test_patch_preserves_candidate_sort_field_rollout_shape() -> None:
             {
                 "name": "candidate_order_key",
                 "type": "string",
-                "index": True,
-                "sort": True,
+                "index": False,
                 "optional": True,
             },
+            {"name": "candidate_order_hi", "type": "int64", "sort": True, "optional": True},
+            {"name": "candidate_order_lo", "type": "int64", "sort": True, "optional": True},
         ],
     )
 
@@ -202,10 +209,11 @@ def test_patch_preserves_candidate_sort_field_rollout_shape() -> None:
         {
             "name": "candidate_order_key",
             "type": "string",
-            "index": True,
-            "sort": True,
+            "index": False,
             "optional": True,
-        }
+        },
+        {"name": "candidate_order_hi", "type": "int64", "sort": True, "optional": True},
+        {"name": "candidate_order_lo", "type": "int64", "sort": True, "optional": True},
     ]
 
 

@@ -66,7 +66,9 @@ REQUIRED_FACET_FIELDS = frozenset(
 # ``first_seen_at`` is explicitly sorted by current read paths. Typesense 27.1
 # also requires a sort index for numerical range facets, so ``salary_eur``
 # remains sortable even though it never appears in a ``sort_by`` clause.
-REQUIRED_SORT_FIELDS = frozenset({"candidate_order_key", "first_seen_at", "salary_eur"})
+REQUIRED_SORT_FIELDS = frozenset(
+    {"candidate_order_hi", "candidate_order_lo", "first_seen_at", "salary_eur"}
+)
 
 # These values are returned to callers or retained for compatibility, but no
 # production read path searches, filters, facets, groups, or sorts on them.

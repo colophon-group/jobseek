@@ -5,21 +5,29 @@ import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-f
 export const WATCHLIST_CANDIDATE_WINDOW_BOUNDARY =
   "[windowStart, windowEnd)" as const;
 
-/** Compact sortable producer field derived from the canonical posting UUID. */
+/** Stored validation key and two sortable signed halves of the posting UUID. */
 export const WATCHLIST_CANDIDATE_ORDER_KEY_FIELD =
   "candidate_order_key" as const;
-export const WATCHLIST_CANDIDATE_ORDER_KEY_VERSION = "uuid-b64lex-v1" as const;
+export const WATCHLIST_CANDIDATE_ORDER_HI_FIELD = "candidate_order_hi" as const;
+export const WATCHLIST_CANDIDATE_ORDER_LO_FIELD = "candidate_order_lo" as const;
+export const WATCHLIST_CANDIDATE_ORDER_KEY_VERSION = "uuid-int64-pair-v1" as const;
 
 const CANDIDATE_ORDER_ALPHABET =
   "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
 const CANONICAL_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const UUID_WORD_BIAS = BigInt(1) << BigInt(63);
+const UUID_WORD_MASK = (BigInt(1) << BigInt(64)) - BigInt(1);
 
-export function candidateOrderKeyFromCanonicalId(id: string): string {
+function canonicalUuidValue(id: string): bigint {
   if (!CANONICAL_UUID.test(id)) {
     throw new TypeError("candidate ID must be a canonical lowercase UUID");
   }
-  let value = BigInt(`0x${id.replaceAll("-", "")}`);
+  return BigInt(`0x${id.replaceAll("-", "")}`);
+}
+
+function candidateOrderKeyFromValue(initialValue: bigint): string {
+  let value = initialValue;
   const radix = BigInt(64);
   const digits = Array<string>(22).fill(CANDIDATE_ORDER_ALPHABET[0]!);
   for (let index = digits.length - 1; index >= 0; index -= 1) {
@@ -30,6 +38,32 @@ export function candidateOrderKeyFromCanonicalId(id: string): string {
     throw new RangeError("candidate ID exceeds order key width");
   }
   return digits.join("");
+}
+
+function candidateOrderWordsFromValue(value: bigint): [bigint, bigint] {
+  return [
+    (value >> BigInt(64)) - UUID_WORD_BIAS,
+    (value & UUID_WORD_MASK) - UUID_WORD_BIAS,
+  ];
+}
+
+export function candidateOrderKeyFromCanonicalId(id: string): string {
+  return candidateOrderKeyFromValue(canonicalUuidValue(id));
+}
+
+export function candidateOrderWordsFromCanonicalId(id: string): [bigint, bigint] {
+  return candidateOrderWordsFromValue(canonicalUuidValue(id));
+}
+
+export function candidateOrderProofFromCanonicalId(id: string): {
+  key: string;
+  words: [bigint, bigint];
+} {
+  const value = canonicalUuidValue(id);
+  return {
+    key: candidateOrderKeyFromValue(value),
+    words: candidateOrderWordsFromValue(value),
+  };
 }
 
 export type WatchlistCandidateWindow = {
@@ -157,7 +191,7 @@ export function buildWatchlistCandidateSearchParams(params: {
       order === "interactive" && hasKeywords
         ? "_text_match:desc,first_seen_at:desc"
         : order === "newest" && params.stableNewestReady === true
-          ? `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_KEY_FIELD}(missing_values: first):asc`
+          ? `first_seen_at:desc,${WATCHLIST_CANDIDATE_ORDER_HI_FIELD}(missing_values: first):asc,${WATCHLIST_CANDIDATE_ORDER_LO_FIELD}(missing_values: first):asc`
           : "first_seen_at:desc",
     per_page: params.limit,
     page:

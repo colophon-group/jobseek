@@ -181,31 +181,36 @@ Both are idempotent. On every run, the setup logic:
 
 ### Stable candidate-order rollout
 
-Frozen precise-matching feeds will use a total newest-first order after the
-separately gated producer rollout:
-`first_seen_at DESC, candidate ID ASC`. Typesense's implicit `id` cannot be
-configured for string sorting, so each `job_posting` document carries
-`candidate_order_key`: a 22-character, fixed-width, ASCII-lexicographic base-64
-encoding of the UUID's unsigned 128-bit value (`uuid-b64lex-v1`). It preserves
-canonical lowercase UUID order while being 39% shorter than a copied 36-byte
-UUID. The field is `index: true, sort: true` and optional only for the in-place
-transition. The activation change must update the steady exporter, full
-backfill, reconciliation repairs, and local development backfill to emit it.
+Frozen precise-matching feeds use `first_seen_at DESC, candidate ID ASC` after
+the separately gated producer rollout. Typesense's implicit `id` cannot be
+configured for string sorting. Each posting therefore carries signed int64
+`candidate_order_hi` and `candidate_order_lo` fields, derived by subtracting
+2^63 from the unsigned high and low UUID halves (`uuid-int64-pair-v1`). Sorting
+by timestamp, high half, then low half exactly preserves canonical UUID order.
+The 22-character `candidate_order_key` remains stored but unindexed for exact
+per-hit validation in JavaScript, whose JSON numbers cannot represent arbitrary
+int64 values. All three fields are optional only for the in-place transition.
+The exporter, full backfill, reconciliation repairs, and local development
+backfill emit them together.
 
-Do not infer memory safety from the compact representation. A sortable string
-still has an in-memory sort structure. Activation therefore has two independent
-prerequisites: a reviewed production-shaped memory/headroom benchmark and a
-durable complete reconciliation proof.
+The earlier sortable-string design was stopped after a 50,000-document
+production update showed concerning memory growth. Evidence is in
+`docs/evidence/candidate-order-prod-2026-09-23-result.json`. A local Typesense
+27.1 comparison of 100,000 synthetic documents found approximately 103 bytes
+per document of incremental allocated memory for the numeric pair versus 998
+bytes for the sortable string, relative to a no-key control. This is an avenue
+to test, not production headroom proof. Activation still requires a reviewed
+production-shaped memory/headroom benchmark and durable complete reconciliation.
 
 For the benchmark, use Typesense 27.1 on the same instance class and memory
 limit as production (currently CX33 with a 6 GiB container limit; verify the
 live host before the run), with the live production document count and field
 cardinality.
 Record, at minimum, the Typesense version, instance memory limit, document
-count, baseline resident memory, resident and peak memory with
-`candidate_order_key`, remaining headroom, the headroom threshold chosen before
-the run, representative two-key sort p95 latency, measurement time, and key
-version. The human reviewer must approve the resulting headroom before rollout.
+count, baseline resident memory, resident and peak memory with both numeric
+sort fields, remaining headroom, the headroom threshold chosen before the run,
+representative three-key sort p95 latency, measurement time, and key version.
+The human reviewer must approve the resulting headroom before rollout.
 Keep that small JSON artifact with the release evidence and compute its
 lowercase SHA-256; the reconciliation receipt binds this digest. A unit estimate
 or a smaller synthetic collection is not an activation benchmark.
@@ -214,9 +219,9 @@ Activation is deliberately fail-closed. Keep
 `TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT` unset while rolling out the producer:
 
 1. Deploy the crawler schema/exporter change so `setup-typesense` patches the
-   optional sortable field before new document writes.
-2. Run `uv run --no-sync crawler backfill-typesense` to stamp the field onto
-   every authoritative posting.
+   optional numeric sort fields before new document writes.
+2. Run `uv run --no-sync crawler backfill-typesense` to stamp all three fields
+   onto every authoritative posting.
 3. After the benchmark is reviewed, run the proof and pass its artifact digest:
 
    ```bash
@@ -225,8 +230,8 @@ Activation is deliberately fail-closed. Keep
      --candidate-order-benchmark-sha256 <reviewed-artifact-sha256>
    ```
 
-   `candidate_order_key` is part of the reconciliation payload fingerprint, so
-   a missing or mismatched value is payload drift. Only a successful, fresh,
+   All three fields are part of the reconciliation payload fingerprint, so a
+   missing or mismatched value is payload drift. Only a successful, fresh,
    full 256-partition repair with zero unresolved rows emits a receipt. The
    receipt binds the key/schema versions, durable run UUID and completion time,
    authoritative checked count, partition count, unresolved count, and reviewed
@@ -236,17 +241,18 @@ Activation is deliberately fail-closed. Keep
    `TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT` and deploy the web reader. A legacy
    boolean such as `1`, a partial receipt, or a wrong key version is rejected.
 
-Only callers that explicitly set `requireStableOrder: true` use the second sort
-key. This is the AF-2 extraction contract. Existing notifications and ordinary
+Only callers that explicitly set `requireStableOrder: true` use the two UUID
+sort fields. This is the AF-2 extraction contract. Existing notifications and ordinary
 interactive watchlist reads remain on their legacy order even when a valid
 receipt exists, so producer rollout cannot change them. Immediately before and
 after every required candidate read, the reader runs the exact eligible
-filter/window with `candidate_order_key(missing_values: first):asc` and requests
-one hit. It fails if that hit lacks a valid paired key, including when the
+filter/window with each numeric field separately sorted missing-first and
+requests one hit per field. It fails if either hit lacks a valid paired key,
+including when the
 requested page has a deep offset or a rollout race removes the key during the
 read. The candidate read itself also specifies `missing_values: first` on its
-stable secondary sort. Required reads reject a malformed, non-canonical, or
-mismatched key on every returned hit; the optional schema field therefore
+stable secondary and tertiary sorts. Required reads reject a malformed,
+non-canonical, or mismatched key on every returned hit; the optional fields therefore
 cannot silently corrupt a frozen prefix.
 If later reconciliation finds drift or memory headroom changes materially,
 remove the receipt before investigating. Required callers then fail closed.

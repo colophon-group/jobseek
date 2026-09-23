@@ -137,18 +137,18 @@ COLLECTIONS: list[dict] = [
             {"name": "locales", "type": "string[]", "facet": True},
             {"name": "source_url", "type": "string", "index": False, "optional": True},
             {"name": "first_seen_at", "type": "int64"},
-            # Compact total-order tie-break for frozen candidate feeds. The
-            # implicit ``id`` cannot be configured for string sorting in
-            # Typesense 27.1. Optional only for the in-place schema transition;
-            # activation still requires measured memory headroom and a complete
-            # verified backfill.
+            # An unindexed exact key validates returned hits. Signed int64
+            # halves provide the UUID tie-break without a string sort index.
+            # Optional only for the in-place transition; readiness requires a
+            # measured full backfill and reconciliation proof.
             {
                 "name": "candidate_order_key",
                 "type": "string",
-                "index": True,
-                "sort": True,
+                "index": False,
                 "optional": True,
             },
+            {"name": "candidate_order_hi", "type": "int64", "sort": True, "optional": True},
+            {"name": "candidate_order_lo", "type": "int64", "sort": True, "optional": True},
             # Emitted for compatibility and diagnostics, but no search, filter,
             # facet, sort, web response, or reconciliation path consumes it.
             # The value remains stored on disk and returned on direct retrieval.
