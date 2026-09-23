@@ -3,8 +3,8 @@
 Status: implementation checkpoint, 2026-09-23. The initial review used
 `origin/main` `6abfa52e1b061f2898a46355c48105accd1c01f9`; the B0 producer
 implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
-This document does not authorize production activation without the measured
-whole-lane parity and efficiency result below.
+The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
+tracks current production evidence and the active c1 cohort.
 
 The delivery goal is a complete Go crawler using self-hosted Lightpanda for
 browser work and Go HTTP/API execution where that removes a browser need.
@@ -30,8 +30,7 @@ an admission condition for the first B0 cohort.
 - [#8881](https://github.com/colophon-group/jobseek/pull/8881) merged the
   bounded B0 Go supervisor, Lightpanda renderer route, Python database-only
   executor, and explicit c1/c4 cutover tooling. Ordinary deployment is dark.
-  The issue record does not establish that production B0 traffic has been
-  activated; verify live state before any future cutover.
+  Production c1 uses the separate, receipt-guarded activation overlay.
 - [#8738](https://github.com/colophon-group/jobseek/issues/8738) landed the
   bounded Go producer authority through [#9874](https://github.com/colophon-group/jobseek/pull/9874).
   The 48-file predecessor at `d6d583515` was reassessed against concrete
@@ -48,8 +47,11 @@ an admission condition for the first B0 cohort.
   at c1 and 6.71× at c4; peak memory and completion latency fell. CPU use
   rose from 12.88 to 23.06 seconds at c1 and 17.53 to 23.88 seconds at c4
   across the common due and retained measurement window. About 20 CPU seconds
-  per arm came from the transitional Python executor. Production host capacity
-  still needs confirmation during canary. The public
+  per arm came from the transitional Python executor. The production c1 lane
+  is active at routing epoch 12 with five Go-owned schedules. Its lightweight
+  executor health probe cut measured idle CPU from 10 to 1 seconds per
+  20-second window. No task has been due yet, so production output, requests,
+  and whole-lane capacity still need measurement. The public
   sitemap run in #7935 was inconclusive because the live source changed
   between arms; it is not a Python-versus-Go verdict.
 - [#7959](https://github.com/colophon-group/jobseek/issues/7959) admitted
@@ -60,7 +62,7 @@ an admission condition for the first B0 cohort.
 
 ## Next slice: one real Go-owned B0 cohort
 
-1. **Producer implementation landed dark.** The producer successor was
+1. **Producer implementation landed.** The producer successor was
    assembled separately from the held #8648 admission harness. It keeps only
    the c1/c4 producer, four bounded Go claim slots, existing Redis/SQL fences,
    the Python database-only executor, and cold rollback. The large patch
@@ -71,14 +73,15 @@ an admission condition for the first B0 cohort.
    must be monotonic across activation and rollback, including restored Redis
    or host snapshots. Cover lease loss, failed render/executor transitions,
    Redis persistence boundaries, pending-receipt reboot, and rollback from
-   current PostgreSQL schedule truth. Bound task occupancy for the c4 cohort;
+  current PostgreSQL schedule truth. Bound task occupancy for the next cohort;
    do not build generic compaction or a new distributed scheduler for it.
-3. **Dark deployment complete.** The merged revision passed real
+3. **Dark default and c1 overlay active.** The merged revision passed real
    Redis/PostgreSQL transitions, container startup, and the required CI/deploy
    gates. The ordinary deploy lists the old Python/Chromium services and dark
-   claimant; enabled producer/executor services are absent. Check the live
-   receipt and Redis owner before any future activation. No reviewer or
-   operator approval is an additional gate once the stated checks pass.
+   claimant. The c1 overlay at epoch 12 runs the enabled producer, executor,
+   and claimant with an active receipt. Check that receipt and Redis owner
+   before any mutation. No reviewer or operator approval is an additional
+   gate once the stated checks pass.
 4. **Whole-lane fixture complete.** The merged harness exercised the producer
    with identical immutable fixture inputs and equal 1.5 GiB whole-lane
    budgets. Its report includes exact canonical output, terminal state,
@@ -97,26 +100,27 @@ an admission condition for the first B0 cohort.
    candidate cgroup and budget: 32 MiB producer,
    96 MiB supervisor, 384 MiB executor, 1024 MiB renderer (1536 MiB total),
    against a 1536 MiB control. The isolated counterbalanced c1/c4 report
-   passed. This is fixture evidence; production traffic has not yet been
-   admitted.
-5. **Admit c1, then c4 if the numbers hold.** With fixture parity and resource
-   efficiency established, use the cutover to give one low-rate origin
-   exclusive Go/Lightpanda ownership.
+   passed. This is fixture evidence; production c1 has not processed a due
+   task yet.
+5. **Observe c1, then expand to three origins if the numbers hold.** C1 has
+   exclusive Go/Lightpanda ownership for one low-rate origin.
    Verify no duplicate origin request, stale write, lost schedule, unsupported
-   capability, or same-task Chromium fallback. Expand to four origins only if
-   c1 remains correct and the combined lane stays inside its memory and
-   freshness limits. Judge complete scheduled work, exact output and queue
-   effects, request conservation, CPU, and memory on the actual cohort. Record
-   sample size and uncertainty; cold-rollback on a material regression. The
-   fixed c4 manifest currently contains a `suspect` board, so it needs a
-   validated replacement or recovery before its planner can admit traffic.
+   capability, or same-task Chromium fallback. Expand to the other two
+   currently validated origins only if c1 remains correct and the combined
+   lane stays inside its memory and freshness limits. Judge complete scheduled
+   work, exact output and queue effects, request conservation, CPU, and memory
+   on the actual cohort. Record sample size and uncertainty; cold-rollback on
+   a material regression. The
+   fixed c4 manifest currently contains a `suspect` board. Revise the
+   production manifest to the three validated origins before expansion;
+   never activate the suspect board just to reach four.
 
 ## Decision after B0
 
-If the admitted c4 lane preserves output and uses fewer whole-lane resources
-under the equal workload, choose one additional bounded family. The Go HTTP
-sitemap worker already on `main` is the natural
-candidate, subject to a stable-source cohort and the same exclusive ownership
+If the admitted multi-origin lane preserves output and uses fewer whole-lane
+resources under the equal workload, choose one additional bounded family. The
+Go HTTP sitemap worker already on `main` is the natural candidate, subject to
+a stable-source cohort and the same exclusive ownership
 and publisher-policy checks. Port only the semantics required by that cohort.
 If the B0 result is weak or inconclusive, keep the working Python path and
 resolve the measured limitation before expanding.
@@ -144,7 +148,7 @@ evidence. A new abstraction is justified only by a measured migration need.
   cold reversal. #8881 is the merged dark foundation; #9874 merged the
   producer and deployed dark. Traffic admission remains #8648.
 - #8648: whole-lane output parity and measured resource efficiency, followed
-  by c1/c4 admission after the real producer lands.
+  by c1 observation and the validated three-origin expansion.
 - #7941: cohort switch/reversal tracking folded into #8738; avoid a parallel
   generic cutover program.
 - #7938: parked queue-v2 contract; it does not gate B0.
