@@ -204,9 +204,10 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
     healthcheck:
-      test: ["CMD", "/app/.venv/bin/python", "-m", "src.lightpanda.executor_health"]
+      test: ["CMD", "/usr/local/bin/lightpanda-b0-supervisor", "executor-health"]
       interval: 5s
-      # Attest the live socket without importing the executor's processing stack.
+      # Attest the live socket with the same Go client as real claims; avoid a
+      # fresh Python interpreter/asyncio startup on every health interval.
       timeout: 15s
       retries: 3
       start_period: 10s
