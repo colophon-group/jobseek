@@ -1,0 +1,194 @@
+[
+  {
+    "route": "/en/company/[slug]",
+    "invocations": 210,
+    "cpu_s": 44.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/fr/company/[slug]",
+    "invocations": 97,
+    "cpu_s": 19.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/watchlists/[watchlistId]",
+    "invocations": 275,
+    "cpu_s": 19.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/mcp",
+    "invocations": 344,
+    "cpu_s": 15.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/it/company/[slug]",
+    "invocations": 51,
+    "cpu_s": 12.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/de/company/[slug]",
+    "invocations": 58,
+    "cpu_s": 12.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/explore",
+    "invocations": 84,
+    "cpu_s": 9.0,
+    "error_rate": "3.6%"
+  },
+  {
+    "route": "/api/typesense-key",
+    "invocations": 102,
+    "cpu_s": 9.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/api/v1/search",
+    "invocations": 42,
+    "cpu_s": 6.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/[lang]/[userSlug]/[watchlistSlug]",
+    "invocations": 136,
+    "cpu_s": 4.97,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/api/v1/resolve",
+    "invocations": 17,
+    "cpu_s": 3.35,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/api/web/watchlists/counts",
+    "invocations": 9,
+    "cpu_s": 3.34,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/api/v1/job",
+    "invocations": 42,
+    "cpu_s": 2.43,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/sitemap.xml",
+    "invocations": 14,
+    "cpu_s": 1.69,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/watchlists",
+    "invocations": 19,
+    "cpu_s": 1.14,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/sign-in",
+    "invocations": 11,
+    "cpu_s": 0.96,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/settings/billing",
+    "invocations": 8,
+    "cpu_s": 0.87,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en",
+    "invocations": 4,
+    "cpu_s": 0.84,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/api/v1/companies",
+    "invocations": 8,
+    "cpu_s": 0.59,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/settings",
+    "invocations": 25,
+    "cpu_s": 0.495,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/de/blog/welcome-to-the-job-seek-blog",
+    "invocations": 1,
+    "cpu_s": 0.45,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/de/watchlists",
+    "invocations": 3,
+    "cpu_s": 0.42,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/api/auth/[...all]",
+    "invocations": 1,
+    "cpu_s": 0.39,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/sign-up",
+    "invocations": 2,
+    "cpu_s": 0.37,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/my-jobs",
+    "invocations": 4,
+    "cpu_s": 0.31,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/fr/blog",
+    "invocations": 1,
+    "cpu_s": 0.29,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/settings/account",
+    "invocations": 3,
+    "cpu_s": 0.11,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/api/web/watchlists/[id]/ai-filter/decisions",
+    "invocations": 1,
+    "cpu_s": 0.09,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/api/web/watchlists/[id]/ai-filter",
+    "invocations": 1,
+    "cpu_s": 0.05,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/faq",
+    "invocations": 3,
+    "cpu_s": 0.05,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/_middleware",
+    "invocations": 0,
+    "cpu_s": 0.0,
+    "error_rate": "0%"
+  },
+  {
+    "route": "/en/settings.segments/_tree.segment",
+    "invocations": 1,
+    "cpu_s": 0.0,
+    "error_rate": "0%"
+  }
+]

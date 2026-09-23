@@ -5,6 +5,7 @@ import path from "node:path";
 import { computeCompanyOgRendererVersion } from "./src/lib/og/company-og-renderer-version";
 import { computeCompanyOgSourceVersion } from "./src/lib/og/company-og-source-version";
 import { SITE_OG_PUBLIC_URL } from "./src/lib/og/site-og-key";
+import { companyPrerenderSeed } from "./script/company-prerender-seed";
 
 const companyOgRendererVersion = computeCompanyOgRendererVersion(__dirname);
 const companyOgSourceVersion = computeCompanyOgSourceVersion(__dirname);
@@ -48,6 +49,10 @@ function configuredR2PublicOrigin(): string | null {
  * explicitly confirmed, write-budgeted manual full rebuild.
  */
 export const nextConfig: NextConfig = {
+  // Alongside the company's nonempty generateStaticParams seed, this lets
+  // unlisted public company pages upgrade to complete cached HTML at runtime.
+  // A per-page prefetch="partial" export alone still resumes every request.
+  partialPrefetching: true,
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   experimental: {
@@ -58,6 +63,7 @@ export const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "128kb" },
   },
   env: {
+    COMPANY_PRERENDER_SLUG: companyPrerenderSeed(__dirname),
     COMPANY_OG_RENDERER_VERSION: companyOgRendererVersion,
     COMPANY_OG_SOURCE_VERSION: companyOgSourceVersion,
   },

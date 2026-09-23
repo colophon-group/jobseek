@@ -138,6 +138,23 @@ Lift `'use cache'` functions to module scope unless you have a specific reason t
 
 ## Recipes
 
+### Complete company-page caching
+
+Company pages have no viewer-specific server content. With Next 16.3.4,
+`cacheComponents` alone still resumes the company PPR shell on cache hits.
+`partialPrefetching: true` plus a **nonempty** leaf `generateStaticParams`
+allows unlisted company paths to upgrade to complete cached HTML on demand.
+A per-page `prefetch = "partial"` export did not enable that upgrade in our
+production-build smoke test. See the [measured audit](../../../docs/audits/2026-09-23-vercel-fluid-cpu.md).
+
+`next.config.ts` selects one stable canonical company from the repository CSV
+at build time and embeds its slug into `COMPANY_PRERENDER_SLUG`. The locale
+layout expands this into four concrete pages; every other company retains
+an on-demand fallback. Do not enumerate the whole registry or read the CSV
+from the runtime page bundle. The build classifier checks this bounded
+prerender set, and the service-backed smoke test checks that two unlisted
+paths become cache hits without `x-nextjs-postponed`.
+
 ### Company OG images
 
 Company Open Graph PNGs are not stored in Next's `'use cache'` layer because

@@ -1,0 +1,170 @@
+[
+  {
+    "path": "/en/company/aircall",
+    "attempt": 1,
+    "status": 200,
+    "bytes": 276869,
+    "wall_ms": 2826.084,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/en/company/aircall",
+    "attempt": 2,
+    "status": 200,
+    "bytes": 276705,
+    "wall_ms": 40.001,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/en/company/aircall",
+    "attempt": 3,
+    "status": 200,
+    "bytes": 276705,
+    "wall_ms": 44.486,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/en/company/aircall",
+    "attempt": 4,
+    "status": 200,
+    "bytes": 276705,
+    "wall_ms": 28.069,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/en/company/aircall",
+    "attempt": 5,
+    "status": 200,
+    "bytes": 276705,
+    "wall_ms": 31.047,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/en/company/aircall",
+    "attempt": 6,
+    "status": 200,
+    "bytes": 276705,
+    "wall_ms": 41.001,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/fr/company/hellofresh",
+    "attempt": 1,
+    "status": 200,
+    "bytes": 292457,
+    "wall_ms": 1777.017,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/fr/company/hellofresh",
+    "attempt": 2,
+    "status": 200,
+    "bytes": 292371,
+    "wall_ms": 25.612,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/fr/company/hellofresh",
+    "attempt": 3,
+    "status": 200,
+    "bytes": 292371,
+    "wall_ms": 37.759,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/fr/company/hellofresh",
+    "attempt": 4,
+    "status": 200,
+    "bytes": 292371,
+    "wall_ms": 35.4,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/fr/company/hellofresh",
+    "attempt": 5,
+    "status": 200,
+    "bytes": 292371,
+    "wall_ms": 31.969,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  },
+  {
+    "path": "/fr/company/hellofresh",
+    "attempt": 6,
+    "status": 200,
+    "bytes": 292371,
+    "wall_ms": 33.306,
+    "headers": {
+      "x-nextjs-prerender": "1",
+      "x-nextjs-postponed": "1",
+      "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate",
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "has_company": true
+  }
+]

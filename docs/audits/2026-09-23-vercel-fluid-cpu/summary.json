@@ -1,0 +1,53 @@
+{
+  "observed_on": "2026-09-23",
+  "project": "jobseek-web",
+  "plan": "Hobby",
+  "source_commit": "479d4734767f6f1e5fe3c740d9dc7b755b34b92f",
+  "production_at_collection": "b72bcd59a02528d5d9a3b398e1c0a58519d93210",
+  "code_difference": "No apps/web or packages/mcp-server differences between these commits.",
+  "window_start": "2026-09-23T04:05:00Z",
+  "window_end": "2026-09-23T16:05:00Z",
+  "billing_function_cpu_seconds_rounded": 215,
+  "billing_middleware_cpu_seconds_rounded": 56,
+  "visible_route_cpu_seconds_sum": 168.205,
+  "visible_route_invocations_sum": 1577,
+  "unreconciled_function_cpu_seconds_approx": 46.795,
+  "visible_company_route_cpu_seconds": 87.0,
+  "company_invocations": 416,
+  "ppr_shells": {
+    "hit": 421,
+    "stale": 38,
+    "miss": 402,
+    "dynamic_invocations": 771
+  },
+  "logs": {
+    "retained_requests": 130,
+    "sample_start": "2026-09-23T15:14:20.729Z",
+    "sample_end": "2026-09-23T16:04:51.780Z",
+    "company_requests": 18,
+    "company_hit_requests_resuming": 12,
+    "company_stale_requests_resuming": 3,
+    "company_bypass_requests": 3
+  },
+  "limits": [
+    "Dashboard times are rounded.",
+    "Route CPU and billing CPU do not reconcile; reason unverified.",
+    "Window spans deployments; not a before/after experiment.",
+    "Logs contain wall duration, not CPU time.",
+    "All-environment and production route totals were identical.",
+    "Paths/Duration drilldowns with DEMO DATA were excluded.",
+    "Company log POST records include internal PPR resumes."
+  ],
+  "sources": {
+    "function_routes": "https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/observability/vercel-functions?environment=all&pageSize=50&from=1790136300&to=1790179500",
+    "billing": "https://vercel.com/viktor-shcherbakovs-projects/~/usage/vercel-functions-fluid-cpu-duration?view=Type&from=1790136300000&to=1790179500000",
+    "ppr": "https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/observability/ppr?from=1790136300&to=1790179500"
+  },
+  "latest_allowance_overview": {
+    "captured_approximately_utc": "2026-09-23T16:17:00Z",
+    "cpu_display": "4h 3m / 4h",
+    "used_percent": 101.24666666666667,
+    "invocations_display": "97K / 1M",
+    "memory_display": "71.5 / 360 GB-hours"
+  }
+}

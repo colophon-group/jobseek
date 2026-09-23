@@ -179,6 +179,31 @@ async function smokeExploreRawHtml(route: string, heading: string) {
   console.log(`smoke ok ${route} raw localized results`);
 }
 
+async function smokeCompanyRouteUpgrade() {
+  if (!hasServerTypesenseConfiguration()) return;
+  // Neither fixture is the registry's single build-time seed. Checking two
+  // locales also exercises the parent params while the company leaf upgrades.
+  for (const route of ["/en/company/aircall", "/fr/company/hellofresh"]) {
+    let cached = false;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await fetch(`${baseUrl}${route}`, {
+        headers: { accept: "text/html" },
+      });
+      const html = await response.text();
+      if (response.status !== 200 || !html.includes("<h1")) {
+        throw new Error(`${route} failed to render a company document`);
+      }
+      cached = response.headers.get("x-nextjs-cache") === "HIT" &&
+        !response.headers.has("x-nextjs-postponed") &&
+        /s-maxage=\d+/.test(response.headers.get("cache-control") ?? "");
+      if (cached) break;
+      await delay(500);
+    }
+    if (!cached) throw new Error(`${route} kept resuming after repeated visits`);
+    console.log(`smoke ok ${route} upgraded to complete cached HTML`);
+  }
+}
+
 async function smokeNavigationServerActions(
   browser: Browser,
   route: string,
@@ -388,6 +413,7 @@ async function main() {
   let browser: Browser | undefined;
   try {
     await waitForServer();
+    await smokeCompanyRouteUpgrade();
     browser = await chromium.launch();
     for (const route of discoveryNotFoundRoutes) {
       await smokeDiscoveryRoute(route, 404);
