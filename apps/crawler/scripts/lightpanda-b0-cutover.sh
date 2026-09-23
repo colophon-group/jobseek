@@ -56,6 +56,9 @@ set -a
 # shellcheck disable=SC1090
 source "$ENV_FILE"
 set +a
+# The deploy .env escapes JSON for Compose. Sourcing it through Bash removes
+# those escapes, so let Compose read this one list directly from its .env file.
+unset WEBSHARE_PROXY_URLS
 
 : "${LIGHTPANDA_B0_QUEUE_NAMESPACE:?required}"
 : "${LIGHTPANDA_B0_SHARD_ID:?required}"
