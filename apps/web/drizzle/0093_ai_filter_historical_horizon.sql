@@ -5,6 +5,4 @@ ALTER TABLE public.ai_filter_decision
   CHECK (
     expires_at > decided_at
     AND expires_at <= decided_at + interval '30 days'
-  );--> statement-breakpoint
-ALTER TABLE "ai_filter_query_version"
-  ADD COLUMN "candidate_languages" jsonb DEFAULT '[]'::jsonb NOT NULL;
+  );

@@ -169,7 +169,7 @@ versions, leased segments, the global exact cache, materialized decisions,
 fixed-point budgets and usage, events, and the historical feedback table.
 Owner correction and feedback actions are not part of the product. Migration
 `0093` changes decision retention to a 30-day interval from evaluation time so
-historical active jobs can be evaluated lazily. It also persists the exact
+historical active jobs can be evaluated lazily. `0094` persists the exact
 candidate language scope on each query version so it can be included in the
 hard-filter fingerprint.
 
