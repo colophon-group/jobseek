@@ -209,9 +209,19 @@ roughly 58% of stored postings that are inactive. Its separate 250,000-document
 production trial still projected 4.70 GiB anonymous memory at full active
 coverage, above the predeclared 4.5 GiB gate on the 6 GiB container. That trial
 was stopped and rolled back; see
-`docs/evidence/candidate-order-active-prod-2026-09-23-result.json`. Activation
-still requires a reviewed full-scale memory/headroom benchmark and durable
-complete reconciliation.
+`docs/evidence/candidate-order-active-prod-2026-09-23-result.json`. A
+full-size snapshot clone then measured approximately 157 bytes of settled
+allocated memory per active posting. A second production trial stamped all
+2,344,524 active IDs from its export and measured approximately 154 bytes of
+allocated-memory growth and 164 bytes of anonymous-memory growth per posting.
+After an idle interval, anonymous memory was 3.92 GiB on the 6 GiB container,
+the representative stable-sort query was 107 ms at p95, and there were no OOM
+events or restarts. See
+`docs/evidence/candidate-order-active-clone-2026-09-23-result.json` and
+`docs/evidence/candidate-order-active-prod-2026-09-23-retry-result.json`.
+The original short-run slope did not predict the settled full-index cost.
+Activation still requires review of the production benchmark and a fresh
+durable complete reconciliation after deploying the producer.
 
 For the benchmark, use Typesense 27.1 on the same instance class and memory
 limit as production (currently CX33 with a 6 GiB container limit; verify the

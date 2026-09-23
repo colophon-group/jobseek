@@ -1,0 +1,42 @@
+{
+  "captured_at": "2026-09-23T15:46:16Z",
+  "purpose": "Full-size local Typesense snapshot memory test after production short-run slope was inconclusive",
+  "source": "application-consistent production snapshot from 2026-09-23T14:13:39Z",
+  "typesense_version": "27.1",
+  "test_architecture": "linux/arm64 on local Colima",
+  "production_architecture": "linux/amd64 on Hetzner CX33",
+  "container_memory_limit_bytes": 6442450944,
+  "production_writes_during_test": false,
+  "collection_documents": 5517955,
+  "active_ids_exported": 2337390,
+  "before_schema_after_export": {
+    "allocated_bytes": 3210548800
+  },
+  "after_schema": {
+    "allocated_bytes": 3208472504
+  },
+  "checkpoints": [
+    {"active_ids_stamped": 50000, "allocated_bytes": 3224285008},
+    {"active_ids_stamped": 250000, "allocated_bytes": 3250213952},
+    {"active_ids_stamped": 1000000, "allocated_bytes": 3363534024},
+    {"active_ids_stamped": 1500000, "allocated_bytes": 3437187368},
+    {"active_ids_stamped": 2337390, "allocated_bytes": 3571857488}
+  ],
+  "full_active_after_45s_idle": {
+    "allocated_bytes": 3578629872,
+    "allocated_increase_from_baseline_bytes": 368081072,
+    "allocated_increase_per_active_posting_bytes": 157.47,
+    "resident_bytes": 4128440320,
+    "anonymous_bytes": 4082909184,
+    "cgroup_current_bytes": 6043893760,
+    "inactive_file_bytes": 867893248,
+    "active_file_bytes": 1068953600,
+    "cgroup_memory_max_events": 45417,
+    "oom_events": 0,
+    "oom_kill_events": 0,
+    "representative_stable_query_p95_ms": 56,
+    "representative_query_samples": 20,
+    "sampled_values_correct": true
+  },
+  "interpretation": "The full-size clone's settled allocator cost was much lower than the live 50k-to-250k short-run slope. It stayed below the prior 4.5 GiB anonymous-memory gate, but reached the 6 GiB cgroup limit transiently and reclaimed file cache. ARM64 and absent concurrent production writes limit how directly this result predicts the live AMD64 host. A new gated production trial must measure observed plateaus before activation; this clone result is not a readiness receipt."
+}
