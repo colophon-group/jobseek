@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  assertAiFilterEntitlement,
   AiFilterEntitlementError,
   disableAiFilterConfiguration,
   putAiFilterConfiguration,
@@ -34,6 +35,7 @@ export async function configureAiFilter(
   if (!isWatchlistId(watchlistId)) return { error: "not_found" };
 
   try {
+    await assertAiFilterEntitlement({ ownerId, watchlistId });
     await assertAiFilterCandidateScope({ ownerId, watchlistId });
     const state = await putAiFilterConfiguration({ ownerId, watchlistId, query });
     return { ok: true, state };
@@ -78,6 +80,20 @@ export async function createAiFilteredWatchlist(input: {
 }): Promise<{ id: string; slug: string } | { error: AiFilterMutationError }> {
   const ownerId = await getSessionUserId();
   if (!ownerId) return { error: "not_authenticated" };
+
+  try {
+    await assertAiFilterEntitlement({ ownerId });
+  } catch (error) {
+    if (error instanceof AiFilterEntitlementError) {
+      return { error: "subscription_required" };
+    }
+    logExternalError(
+      "error",
+      { service: "database", operation: "authorize_ai_filter_watchlist_create" },
+      error,
+    );
+    return { error: "temporarily_unavailable" };
+  }
 
   const created = await createWatchlist(input.draft);
   if ("error" in created) return { error: mappedCreationError(created.error) };

@@ -36,11 +36,14 @@ component across all three modes.
 
 - Owners may configure narrow results only while entitled.
 - Anyone with an unlisted shared URL may read the owner's persisted accepted
-  feed while the watchlist is shared and the owner remains entitled.
+  feed while the watchlist is shared, the filter is enabled, and the owner
+  remains entitled. The saved matching request is visible to link viewers.
 - Anonymous shared viewers retain the normal 20-job anti-scraping cap. Signed-in
-  non-owners may page the full broad and narrowed feeds.
+  non-owners may page the full broad and narrowed feeds. The cap is enforced by
+  the accepted-results API as well as the page loader.
 - A shared viewer never starts or extends Jev evaluation. Shared reads page
-  durable decisions only.
+  durable accepted postings only; decision IDs, model outcomes, overrides, and
+  timestamps are omitted from the shared response.
 - Cloning copies standard filters, not the owner's natural-language request or
   decisions. Free and anonymous viewers receive an explicit warning before
   cloning a watchlist that has narrow results.
@@ -93,7 +96,9 @@ Before requesting more work, the client reads the persisted accepted page. A
 complete cached page causes no reconcile request. One reconcile mutation starts
 or joins durable work; one consolidated decisions response returns both the
 accepted page and current owner state. Foreground polling is bounded and uses a
-1.5-second interval. The former duplicate decisions/state polling loops and
+1.5-second interval. Background state polling uses a five-second interval and
+stops after 24 reads; hidden tabs suspend reads. The former duplicate
+decisions/state polling loops and
 automatic full-history cascade are intentionally absent.
 
 Reads never start paid work. The only execution trigger is the owner-authorized
@@ -208,12 +213,12 @@ unauthorized access share a not-found boundary.
 
 | Operation | Authorization and behavior |
 |---|---|
-| `GET /api/web/watchlists/{id}/ai-filter/estimate` | Owner only; candidate count, cost range, entitlement, and monthly spend |
+| `GET /api/web/watchlists/{id}/ai-filter/estimate` | Owner only; entitled owners receive candidate count, cost range, and monthly spend; ineligible owners receive entitlement and spend without an extra search count |
 | `PUT /api/web/watchlists/{id}/ai-filter` | Owner only; validate 1-10,000 candidate scope and enable/replace query |
 | `DELETE /api/web/watchlists/{id}/ai-filter` | Owner only; disable and cooperatively cancel new work |
 | `GET /api/web/watchlists/{id}/ai-filter` | Owner-only state read; never starts Jev |
 | `GET /api/web/watchlists/{id}/ai-filter/events?after=N` | Owner-only cursor-resumable event snapshot |
-| `POST /api/web/watchlists/{id}/ai-filter/reconcile` | Owner-only demand trigger; validates scope and starts/joins Workflow |
+| `POST /api/web/watchlists/{id}/ai-filter/reconcile` | Owner-only demand trigger; rate-limited to 12 per minute, validates scope, clamps the requested cursor to the persisted frontier, and starts/joins Workflow |
 | `GET /api/web/watchlists/{id}/ai-filter/decisions?bucket=accepted` | Owner reads accepted results plus state; shared viewers may read persisted accepted results only |
 
 ## Fluid Compute profile
@@ -228,7 +233,7 @@ The web path is designed around fewer invocations and bounded active CPU:
 - page-zero totals use a Postgres aggregate rather than hydrating every match;
 - owner decisions and progress return from one endpoint invocation;
 - polling is bounded, cancellable for safe GETs, and suspended while a
-  foreground load is active;
+  foreground load is active or the browser tab is hidden;
 - background prefetch starts one 500-candidate demand per visible result cursor,
   not an automatic loop through the full horizon; and
 - long-running provider work runs in Workflow rather than holding a route

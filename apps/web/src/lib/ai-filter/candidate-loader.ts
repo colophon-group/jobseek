@@ -29,7 +29,9 @@ import { AI_FILTER_MAX_SEARCH_CANDIDATES } from "./search-eligibility";
 const DESCRIPTION_FETCH_TIMEOUT_MS = 5_000;
 const DESCRIPTION_FETCH_MAX_BYTES = 512 * 1024;
 const DESCRIPTION_FETCH_RETRIES = 1;
-const CANDIDATE_OVERFETCH_LIMIT = 100;
+// One segment selects at most 50 jobs. Fetching more eagerly downloads and
+// normalizes descriptions that belong to the next segment.
+const CANDIDATE_OVERFETCH_LIMIT = 50;
 const RETRYABLE_DESCRIPTION_STATUS = new Set([429, 500, 502, 503, 504]);
 const DAY_MS = 24 * 60 * 60 * 1_000;
 

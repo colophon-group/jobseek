@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getSessionUserIdFromHeaders: vi.fn(),
   getAiFilterOwnerState: vi.fn(),
+  assertAiFilterEntitlement: vi.fn(),
   putAiFilterConfiguration: vi.fn(),
   disableAiFilterConfiguration: vi.fn(),
   assertAiFilterCandidateScope: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock("@/lib/ai-filter/configuration-service", () => ({
   AiFilterNotFoundError: class AiFilterNotFoundError extends Error {},
   AiFilterEntitlementError: class AiFilterEntitlementError extends Error {},
   getAiFilterOwnerState: mocks.getAiFilterOwnerState,
+  assertAiFilterEntitlement: mocks.assertAiFilterEntitlement,
   putAiFilterConfiguration: mocks.putAiFilterConfiguration,
   disableAiFilterConfiguration: mocks.disableAiFilterConfiguration,
 }));
@@ -60,6 +62,7 @@ describe("owner-only AI filter configuration route", () => {
     vi.clearAllMocks();
     mocks.getSessionUserIdFromHeaders.mockResolvedValue("owner-1");
     mocks.getAiFilterOwnerState.mockResolvedValue(state);
+    mocks.assertAiFilterEntitlement.mockResolvedValue(undefined);
     mocks.putAiFilterConfiguration.mockResolvedValue(state);
     mocks.disableAiFilterConfiguration.mockResolvedValue(undefined);
     mocks.assertAiFilterCandidateScope.mockResolvedValue(500);
@@ -107,11 +110,15 @@ describe("owner-only AI filter configuration route", () => {
       watchlistId,
       query: "remote Rust",
     });
+    expect(mocks.assertAiFilterEntitlement).toHaveBeenCalledWith({
+      ownerId: "owner-1",
+      watchlistId,
+    });
     expect(mocks.startAiFilterCatchup).not.toHaveBeenCalled();
   });
 
   it("does not start a workflow when owner authorization fails", async () => {
-    mocks.putAiFilterConfiguration.mockRejectedValue(new AiFilterNotFoundError());
+    mocks.assertAiFilterEntitlement.mockRejectedValue(new AiFilterNotFoundError());
     const response = await PUT(
       new Request(`https://jseek.co/api/web/watchlists/${watchlistId}/ai-filter`, {
         method: "PUT",
@@ -120,6 +127,7 @@ describe("owner-only AI filter configuration route", () => {
       context,
     );
     expect(response.status).toBe(404);
+    expect(mocks.assertAiFilterCandidateScope).not.toHaveBeenCalled();
     expect(mocks.startAiFilterCatchup).not.toHaveBeenCalled();
   });
 

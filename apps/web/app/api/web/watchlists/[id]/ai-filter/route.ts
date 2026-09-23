@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  assertAiFilterEntitlement,
   disableAiFilterConfiguration,
   getAiFilterOwnerState,
   putAiFilterConfiguration,
@@ -44,6 +45,7 @@ export async function PUT(request: Request, context: Context) {
     if (Reflect.ownKeys(body).length !== 1 || !("query" in body)) {
       throw new TypeError("AI filter configuration contains unsupported fields");
     }
+    await assertAiFilterEntitlement(owner);
     await assertAiFilterCandidateScope({ ...owner, signal: request.signal });
     const state = await putAiFilterConfiguration({ ...owner, query: body.query });
     return NextResponse.json(

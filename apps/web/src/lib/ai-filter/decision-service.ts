@@ -13,6 +13,10 @@ import {
 import type { AiFilterDecisionValue } from "./contract";
 import { readWatchlistCandidatesByIds } from "@/lib/services/watchlist-matcher";
 import {
+  projectSharedAcceptedPage,
+  sharedAcceptedPageBounds,
+} from "./decision-page-policy";
+import {
   AiFilterNotFoundError,
   getSharedAiFilterOwnerId,
 } from "./configuration-service";
@@ -113,29 +117,33 @@ export async function listAiFilterDecisions(input: {
             sql`COALESCE(${aiFilterDecision.userOverride}, ${aiFilterDecision.modelDecision}) = ${input.bucket}`,
           ))
       : Promise.resolve([{ total: 0 }]),
-    db
-      .select({
-        status: aiFilterSegment.status,
-        windowStart: aiFilterSegment.windowStart,
-        windowEnd: aiFilterSegment.windowEnd,
-      })
-      .from(aiFilterSegment)
-      .where(and(
-        eq(aiFilterSegment.watchlistId, input.watchlistId),
-        eq(aiFilterSegment.queryVersionId, resource.queryVersionId),
-      ))
-      .orderBy(desc(aiFilterSegment.createdAt))
-      .limit(1),
-    db
-      .select({ id: aiFilterSegment.id })
-      .from(aiFilterSegment)
-      .where(and(
-        eq(aiFilterSegment.watchlistId, input.watchlistId),
-        eq(aiFilterSegment.queryVersionId, resource.queryVersionId),
-        eq(aiFilterSegment.status, "caught_up"),
-        lte(aiFilterSegment.windowStart, resource.horizonStartedAt),
-      ))
-      .limit(1),
+    input.persistedOnly
+      ? Promise.resolve([])
+      : db
+          .select({
+            status: aiFilterSegment.status,
+            windowStart: aiFilterSegment.windowStart,
+            windowEnd: aiFilterSegment.windowEnd,
+          })
+          .from(aiFilterSegment)
+          .where(and(
+            eq(aiFilterSegment.watchlistId, input.watchlistId),
+            eq(aiFilterSegment.queryVersionId, resource.queryVersionId),
+          ))
+          .orderBy(desc(aiFilterSegment.createdAt))
+          .limit(1),
+    input.persistedOnly
+      ? Promise.resolve([])
+      : db
+          .select({ id: aiFilterSegment.id })
+          .from(aiFilterSegment)
+          .where(and(
+            eq(aiFilterSegment.watchlistId, input.watchlistId),
+            eq(aiFilterSegment.queryVersionId, resource.queryVersionId),
+            eq(aiFilterSegment.status, "caught_up"),
+            lte(aiFilterSegment.windowStart, resource.horizonStartedAt),
+          ))
+          .limit(1),
   ]);
   const pageRows = rows.slice(0, limit);
   const hydrationIds = pageRows.map((row) => row.candidateId);
@@ -185,6 +193,7 @@ export async function listAiFilterDecisions(input: {
 /** Read accepted decisions from an entitled owner's unlisted shared watchlist. */
 export async function listSharedAiFilterDecisions(input: {
   watchlistId: string;
+  anonymous?: boolean;
   offset?: number;
   limit?: number;
   now?: Date;
@@ -194,10 +203,27 @@ export async function listSharedAiFilterDecisions(input: {
     watchlistId: input.watchlistId,
     now: input.now,
   });
-  return listAiFilterDecisions({
+  const offset = input.offset ?? 0;
+  const limit = input.limit ?? 25;
+  const bounds = sharedAcceptedPageBounds({
+    anonymous: input.anonymous ?? false,
+    offset,
+    limit,
+  });
+  if (bounds.exhausted) {
+    return {
+      decisions: [],
+      total: undefined,
+      nextOffset: bounds.nextOffset,
+      hasMore: false,
+    };
+  }
+  const page = await listAiFilterDecisions({
     ...input,
     ownerId,
     bucket: "accepted",
+    limit: bounds.limit,
     persistedOnly: true,
   });
+  return projectSharedAcceptedPage(page, bounds.maxOffset);
 }
