@@ -30,7 +30,9 @@ FIELDS = (
     {"name": "candidate_order_lo", "type": "int64", "sort": True, "optional": True},
 )
 ALPHABET = "-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz"
-CANONICAL_UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+CANONICAL_UUID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+)
 
 
 def load_key(path: Path) -> str:
@@ -331,7 +333,7 @@ def main() -> int:
             or args.batch_size <= 0
         ):
             parser.error(
-                "update/clear require --id-file, nonnegative --start and positive --limit and --batch-size"
+                "update/clear require --id-file and valid start, limit, and batch size"
             )
         update_prefix(
             args.url,

@@ -28,6 +28,6 @@
     "minimum_collection_document_count_ratio": 0.99
   },
   "checkpoints": [50000, 250000, 1000000, 2500000, 4000000, "full"],
-  "decision_rule": "At each checkpoint, stop before the next batch if observed or linearly projected full-rollout effective headroom falls below 1 GiB, if query p95 exceeds twice baseline, or on any OOM/restart. Clear stamped values and drop fields after an early stop.",
+  "decision_rule": "At 50k, enforce the observed hard gates. At 250k and later, project full-rollout headroom using the incremental memory slope since the previous checkpoint, so fixed first-batch allocation is not multiplied 110 times. Stop before the next batch if observed or projected full-rollout effective headroom falls below 1 GiB, if query p95 exceeds twice baseline, or on any OOM/restart. Clear stamped values and drop fields after an early stop.",
   "readiness_receipt": "unset during rollout and until a fresh full reconciliation succeeds"
 }
