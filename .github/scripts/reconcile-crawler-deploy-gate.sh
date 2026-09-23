@@ -80,6 +80,32 @@ while IFS= read -r pr; do
     fi
   fi
 
+  # This workflow rechecks every open PR on every event. GitHub caps the
+  # number of statuses per SHA/context, so a long-lived PR can exhaust its
+  # allowance even when its gate decision never changed. The combined-status
+  # endpoint returns the latest status for each context.
+  status_json="$(
+    gh api "repos/$REPO/commits/$head_sha/status"
+  )" || {
+    echo "ERROR: could not read current gate status for PR #$pr" >&2
+    exit 1
+  }
+  jq -e '
+    type == "object" and (.statuses | type == "array")
+  ' <<<"$status_json" >/dev/null || {
+    echo "ERROR: malformed current gate status for PR #$pr" >&2
+    exit 1
+  }
+  if jq -e --arg state "$state" --arg description "$description" '
+    any(.statuses[];
+      .context == "Crawler Deploy Gate" and
+      .state == $state and
+      .description == $description)
+  ' <<<"$status_json" >/dev/null; then
+    echo "PR #$pr crawler deployment gate unchanged"
+    continue
+  fi
+
   gh api --method POST "repos/$REPO/statuses/$head_sha" \
     -f state="$state" \
     -f context="Crawler Deploy Gate" \
