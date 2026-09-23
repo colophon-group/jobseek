@@ -814,6 +814,7 @@ def run_arm(
     except Exception as exc:  # noqa: BLE001 - partial arm becomes rejection evidence
         result["error"] = f"{type(exc).__name__}: {exc}"
         diagnostics: dict[str, str] = {}
+        states: dict[str, Any] = {}
         for service in ("renderer", "producer", "executor", "supervisor", "fixture", "control"):
             try:
                 logs = _compose(env, "logs", "--no-color", "--tail", "40", service, timeout=10)
@@ -821,7 +822,20 @@ def run_arm(
                 logs = f"{type(log_exc).__name__}: {log_exc}"
             if logs.strip():
                 diagnostics[service] = logs[-8000:]
+            try:
+                identifier = _compose(env, "ps", "-a", "-q", service, timeout=10).strip()
+                if identifier:
+                    state = _inspect(identifier)["State"]
+                    states[service] = {
+                        "status": state.get("Status"),
+                        "exit_code": state.get("ExitCode"),
+                        "error": state.get("Error"),
+                        "health": state.get("Health"),
+                    }
+            except Exception as state_exc:  # noqa: BLE001 - preserve the original failure
+                states[service] = f"{type(state_exc).__name__}: {state_exc}"
         result["diagnostics"] = diagnostics
+        result["service_states"] = states
     finally:
         result["cleanup"] = cleanup_project(env)
     return result
