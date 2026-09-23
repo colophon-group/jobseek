@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,11 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
+
+type testRedisError string
+
+func (failure testRedisError) Error() string { return string(failure) }
+func (failure testRedisError) RedisError()   {}
 
 func validQueueTask(t *testing.T) queueTask {
 	t.Helper()
@@ -69,6 +75,22 @@ func TestQueueRejectsNonzeroExternalFirstTimeActivation(t *testing.T) {
 	queue := &b0Queue{namespace: owner.Namespace, route: owner.Route}
 	if _, err := queue.activateLegacy(context.Background(), &task, 500, `{}`, "", false, true, owner); err == nil {
 		t.Fatal("nonzero first-time activation reached Redis")
+	}
+}
+
+func TestQueueRedisDiagnosticDoesNotExposeScriptArguments(t *testing.T) {
+	for _, test := range []struct {
+		err  error
+		want string
+	}{
+		{context.DeadlineExceeded, "deadline"},
+		{testRedisError("ERR Error running script (call to f_123): @user_script:1164: bad https://private.example/posting"), "ERR/script_line=1164"},
+		{testRedisError("OOM command not allowed when used memory > maxmemory"), "OOM"},
+		{errors.New("https://private.example/posting"), "transport_error"},
+	} {
+		if got := queueRedisDiagnostic(test.err); got != test.want {
+			t.Fatalf("diagnostic = %q, want %q", got, test.want)
+		}
 	}
 }
 
