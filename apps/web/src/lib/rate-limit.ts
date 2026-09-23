@@ -95,3 +95,10 @@ export const watchlistActivityLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(12, "60 s"),
   prefix: "rl:watchlist-activity:minute:v1",
 });
+
+/** Owner-authorized Jev demand can start durable work and must resist replay. */
+export const aiFilterDemandLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(12, "60 s"),
+  prefix: "rl:ai-filter-demand:minute:v1",
+});

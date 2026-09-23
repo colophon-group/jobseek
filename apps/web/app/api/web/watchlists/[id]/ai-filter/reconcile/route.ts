@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  AiFilterEntitlementError,
   getAiFilterOwnerState,
   putAiFilterConfiguration,
 } from "@/lib/ai-filter/configuration-service";
@@ -19,6 +20,7 @@ import { startAiFilterCatchup } from "@/lib/ai-filter/workflow-trigger";
 import { getSessionUserIdFromHeaders } from "@/lib/sessionCache";
 import { resolveJobLanguages } from "@/lib/job-languages";
 import { assertAiFilterCandidateScope } from "@/lib/ai-filter/candidate-loader";
+import { aiFilterDemandLimiter } from "@/lib/rate-limit";
 
 export async function POST(
   request: Request,
@@ -41,7 +43,7 @@ export async function POST(
     ) {
       throw new TypeError("AI filter demand contains unsupported fields");
     }
-    const demandTargetOffset = aiFilterDemandTarget(body.offset);
+    const requestedTargetOffset = aiFilterDemandTarget(body.offset);
     let candidateLanguages: string[] | undefined;
     if ("jobLanguages" in body || "locale" in body) {
       if (
@@ -61,6 +63,22 @@ export async function POST(
         { headers: AI_FILTER_PRIVATE_HEADERS },
       );
     }
+    if (!state.entitled) throw new AiFilterEntitlementError();
+    const quota = await aiFilterDemandLimiter.limit(ownerId);
+    if (!quota.success) {
+      return NextResponse.json(
+        { error: "too_many_requests" },
+        {
+          status: 429,
+          headers: {
+            ...AI_FILTER_PRIVATE_HEADERS,
+            "Retry-After": String(
+              Math.max(1, Math.ceil((quota.reset - Date.now()) / 1_000)),
+            ),
+          },
+        },
+      );
+    }
     await assertAiFilterCandidateScope({
       ...owner,
       candidateLanguages,
@@ -74,6 +92,13 @@ export async function POST(
       query: state.query,
       candidateLanguages,
     });
+    // A client cannot skip unseen candidates by claiming an arbitrary future
+    // cursor. Stale clients are clamped to the current persisted frontier.
+    const frontier = state.progress.selectionOffset + state.progress.scannedCount;
+    const demandTargetOffset = Math.min(
+      requestedTargetOffset,
+      aiFilterDemandTarget(frontier),
+    );
     if (aiFilterDemandIsCovered({
       targetOffset: demandTargetOffset,
       selectionOffset: state.progress.selectionOffset,

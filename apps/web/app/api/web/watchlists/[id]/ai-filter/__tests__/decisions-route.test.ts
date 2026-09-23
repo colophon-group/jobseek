@@ -77,7 +77,7 @@ describe("AI filter accepted-result route", () => {
     }));
   });
 
-  it("lets an anonymous viewer page accepted results from a shared watchlist", async () => {
+  it("marks anonymous shared reads for the server-side 20-job cap", async () => {
     mocks.getSessionUserIdFromHeaders.mockResolvedValue(null);
 
     const response = await listDecisions(
@@ -91,6 +91,7 @@ describe("AI filter accepted-result route", () => {
     expect(mocks.listAiFilterDecisions).not.toHaveBeenCalled();
     expect(mocks.listSharedAiFilterDecisions).toHaveBeenCalledWith(expect.objectContaining({
       watchlistId,
+      anonymous: true,
       offset: 20,
       limit: 20,
     }));

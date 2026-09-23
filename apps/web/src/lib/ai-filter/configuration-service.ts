@@ -183,6 +183,22 @@ async function activeEntitlement(
   return Boolean(row);
 }
 
+/** Reject ineligible mutations before running the external candidate count. */
+export async function assertAiFilterEntitlement(input: {
+  ownerId: string;
+  watchlistId?: string;
+  now?: Date;
+}): Promise<void> {
+  await db.transaction(async (tx) => {
+    if (input.watchlistId) {
+      await ownedWatchlist(tx, input.ownerId, input.watchlistId);
+    }
+    if (!await activeEntitlement(tx, input.ownerId, input.now ?? new Date())) {
+      throw new AiFilterEntitlementError();
+    }
+  });
+}
+
 async function lockConfiguration(tx: Transaction, watchlistId: string): Promise<void> {
   await tx.execute(
     sql`SELECT pg_advisory_xact_lock(hashtextextended(${`ai-filter-config:${watchlistId}`}, 119_027))`,
@@ -256,10 +272,12 @@ export async function putAiFilterConfiguration(input: {
             .set({ horizonEndsAt: nextHorizonEnd })
             .where(eq(aiFilterQueryVersion.id, currentQuery.id));
         }
-        await tx
-          .update(aiFilterConfiguration)
-          .set({ status: "enabled", disabledAt: null, updatedAt: now })
-          .where(eq(aiFilterConfiguration.id, configuration.id));
+        if (configuration.status !== "enabled" || configuration.disabledAt) {
+          await tx
+            .update(aiFilterConfiguration)
+            .set({ status: "enabled", disabledAt: null, updatedAt: now })
+            .where(eq(aiFilterConfiguration.id, configuration.id));
+        }
         return;
       }
 
