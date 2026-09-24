@@ -67,8 +67,22 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) == 2 && (os.Args[1] == "--refresh-counts" || os.Args[1] == "--shadow-refresh-counts") {
+		if err := runRefreshCounts(os.Args[1] == "--shadow-refresh-counts"); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(os.Args) == 2 && os.Args[1] == "--project-refresh-counts" {
+		if err := projectRefreshSnapshotCLI(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--transfer-owner python go|--transfer-owner go python]")
+		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
 		os.Exit(2)
 	}
 	var input struct {
