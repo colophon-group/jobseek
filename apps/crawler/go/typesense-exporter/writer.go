@@ -265,7 +265,7 @@ func runExporter() error {
 		if time.Since(lastLagCheck) >= 30*time.Second {
 			var lag int64
 			if err := conn.QueryRow(ctx,
-				"SELECT count(*) FROM job_posting WHERE (updated_at, id) > ($1, $2)",
+				"SELECT count(*) FROM job_posting WHERE (updated_at, id) > ($1::timestamptz, $2::uuid)",
 				result.Position.UpdatedAt, result.Position.ID,
 			).Scan(&lag); err != nil {
 				slog.Warn("exporter.metrics_typesense_lag_error", "error", err)

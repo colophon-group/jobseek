@@ -89,7 +89,9 @@ Go writer has not imported a production document or advanced the cursor.
 The handoff command is an explicit compare-and-swap:
 
 ```bash
-docker compose run --rm --no-deps \
+cd /home/deploy
+flock -x /run/lock/jobseek-crawler-mutation.lock \
+  docker compose run --rm --no-deps \
   -e GO_TYPESENSE_EXPORTER_TRANSFER=1 exporter \
   /usr/local/bin/go-typesense-exporter --transfer-owner python go
 ```
