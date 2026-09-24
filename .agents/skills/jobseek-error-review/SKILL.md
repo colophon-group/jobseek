@@ -24,7 +24,7 @@ when the current run has large independent evidence sets and the user
 explicitly asks for them. If subagents are used, keep them read-only and make
 the main agent responsible for dedupe, classification, redaction, and all
 GitHub write decisions. Use the project custom agent
-`jobseek-error-review-researcher` (GPT-5.6 Terra, high reasoning) for each
+`jobseek-error-review-researcher` (GPT-6 Sol, high reasoning) for each
 bounded evidence set.
 
 ## Mission
