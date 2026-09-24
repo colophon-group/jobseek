@@ -1,6 +1,6 @@
-# Typesense posting-index pruning — September 23, 2026
+# Typesense posting-index pruning — September 23–24, 2026
 
-## Decision under test
+## Decision
 
 Follow-up to [#9919](https://github.com/colophon-group/jobseek/issues/9919).
 Remove four unused display-field indexes on Typesense 27.1. Defer the seven
@@ -14,6 +14,141 @@ Those measurements establish a latency improvement under concurrent load, not a
 steady RSS reduction. Earlier sample allocator-active reductions of 8.0% for
 display indexes and 13.4% for sort indexes are hypotheses for this rehearsal;
 they are neither additive nor full-corpus RSS predictions.
+
+## Native full-corpus result: latency gate failed
+
+**Do not roll out this candidate yet.** On native x86_64, the four-field pruning
+reduces steady process RSS after restart, but a decimal-experience query becomes
+consistently slower. The RSS benefit therefore does not satisfy the requested
+no-regression merge condition. PR #9937 remains draft. The open crawler deployment
+hold in #8648 independently blocks merge/deployment.
+
+[Native run](https://github.com/colophon-group/jobseek/actions/runs/35939841315) ·
+[artifact manifest](typesense-index-pruning-2026-09-23/native-x86_64/manifest.json) ·
+[complete derived report](typesense-index-pruning-2026-09-23/native-x86_64/report.json).
+The archived JSON.gz files contain measurements and schemas, not posting bodies
+or production credentials. The report script also reads this compressed archive
+directly. Its measured schema, lab, suite and shared helper exactly match the
+candidate files; their SHA-256s are recorded in the manifest.
+
+All 31 operational/semantic phases completed within the **6 GiB, four-CPU**
+container. Five full-document fingerprints matched all **5,554,279** source
+postings, including **3,192,864 inactive** postings. All consumed results stayed
+identical through migration, restart, 500-document delist/relist and rollback.
+All **887 reads during forward migration** met the five-second deadline, with
+zero mismatch or cutoff; the slowest client observation was 1,726.879 ms.
+Setup was idempotent, and rollback restored every original field definition
+(the returned field-array order changed). No OOM or OOM kill was observed.
+A successful workflow establishes these gates, not latency acceptance.
+
+### RSS and allocator attribution
+
+These are final-20-second medians after the same 16-query workload, except for
+allocator values, which are captured once at the end of the settling window.
+All values are **MiB**:
+
+| Metric | Original schema | Pruned, restarted | Restored, restarted |
+| --- | ---: | ---: | ---: |
+| Process RSS | 3,946.6 | 3,635.3 | 3,919.1 |
+| Cgroup anonymous memory | 3,903.1 | 3,591.2 | 3,874.8 |
+| Sampled query RSS peak | 4,189.5 | 3,861.0 | 4,112.8 |
+| Allocator allocated | 3,363.0 | 3,062.7 | 3,364.2 |
+| Allocator active | 3,763.7 | 3,453.4 | 3,737.9 |
+
+The pruned process uses **283.8–311.3 MiB less RSS (7.2–7.9%)** than the two
+original-schema controls. Anonymous memory falls by a similar amount. Under four
+concurrent keyword requests, settled RSS is 3,657.1 MiB versus 3,960.1 MiB before
+and 3,939.2 MiB after rollback; the pruned sampled peak is 3,917.5 MiB versus
+4,165.1 / 4,178.0 MiB for those controls.
+
+The live alteration alone does **not** produce that saving: matched post-write
+RSS was 3,978.9 MiB before migration and 3,982.2 MiB after the subsequent query
+workload. Allocator allocated bytes fell by 296.4 MiB during alteration while
+allocator active fell only 14.8 MiB. This is consistent with retained/fragmented
+allocator pages; it is not evidence that the API's mislabeled resident metric is
+OS RSS. The ordinary crawler deploy does not restart Typesense, so merging the
+schema change alone must not be advertised as an immediate RSS reduction.
+
+Migration sampled RSS peaked at **4,132.3 MiB**. Import, migration, snapshots and
+checkpoint/restart phases approached the 6,144 MiB cgroup cap and recorded
+memory-limit events, despite zero OOMs. Forward migration alone recorded 45,439
+observed `memory.events.max` increments. File cache remains a material part of
+cgroup charge; the RSS reduction is not a matching guaranteed reduction of
+`memory.current`. Full per-phase peaks, sample gaps and counter resets are in
+the derived report. All native OS sample gaps were below two seconds.
+
+### Latency comparison
+
+Each cell is **median / p95 server ms**, with two warm-ups and 15 timed uncached
+requests per sequential case. All result projections are identical. These are
+within-run comparisons on the lab host, not predictions of public-endpoint ms.
+
+| Query | Original | Pruned, restarted | Restored, restarted |
+| --- | ---: | ---: | ---: |
+| `active_location_facets` | 241 / 264 | 243 / 261 | 250 / 277 |
+| `combined_filters` | 169 / 181 | 167 / 178 | 170 / 180 |
+| `decimal_experience` | 209 / 221 | 241 / 264 | 209 / 216 |
+| `experience_overlap` | 176 / 187 | 186 / 197 | 181 / 255 |
+| `inactive_history` | 657 / 914 | 668 / 689 | 675 / 706 |
+| `keyword_current` | 177 / 187 | 175 / 184 | 185 / 201 |
+| `keyword_grouped` | 197 / 206 | 191 / 207 | 206 / 221 |
+| `keyword_page5` | 177 / 188 | 174 / 184 | 184 / 190 |
+| `keyword_remote` | 240 / 243 | 247 / 262 | 241 / 248 |
+| `keyword_sales` | 202 / 213 | 202 / 213 | 216 / 227 |
+| `reconciliation_partition` | 1 / 2 | 1 / 1 | 2 / 3 |
+| `salary_histogram` | 180 / 200 | 183 / 199 | 195 / 221 |
+| `stable_candidates` | 327 / 358 | 341 / 372 | 361 / 418 |
+| `taxonomy_facets` | 992 / 1471 | 1003 / 1191 | 1002 / 1077 |
+| `year_flow` | 596 / 639 | 627 / 674 | 625 / 654 |
+| `zero` | 74 / 78 | 76 / 80 | 74 / 77 |
+
+The decimal-experience query has **465,201 exact matches**. Its median increases
+**15.3%** against both controls; p95 increases **19.5–22.2%**. Every pruned timed
+sample (236–264 ms) is slower than every first-baseline sample (203–221 ms).
+The client-time measurements show the same regression. It remains slow after a
+write cycle (three samples: 257 / 267 / 257 ms) and after live rollback
+(249 / 258 ms median/p95), then returns to 209 / 216 ms after rebuilding the
+restored schema. Before the pruned restart, the same query measured 210 / 231 ms.
+The root cause is not established; this is sufficient evidence to reject the
+candidate under the stated latency budget, rather than dismiss it as one tail
+outlier or loosen the threshold.
+
+This strict probe isolates the two precise numeric fields. The app's
+`buildFilterString` also includes legacy-integer and unspecified-experience
+fallback branches. The result above therefore does not establish the latency
+of that complete UI expression. Follow-up measurements must include the actual
+application expression while preserving this failed probe and its original
+acceptance threshold.
+
+The initial post-alter screen also flagged active-location facets, combined
+filters and the legacy experience histogram; the full report preserves those
+failures. After restart, decimal experience is the only sequential case outside
+both original-schema controls by more than 10% and 2 ms. Four-concurrency keyword
+queries pass the initial screen (60 timed requests per case):
+
+| Query | Original median / p95 | Pruned median / p95 | Restored median / p95 |
+| --- | ---: | ---: | ---: |
+| `keyword_current` | 242 / 250 | 244 / 255 | 258 / 272 |
+| `keyword_remote` | 349.5 / 358 | 350.5 / 379 | 385.5 / 412 |
+| `keyword_sales` | 275.5 / 295 | 273 / 286 | 297 / 328 |
+
+### Operational cost and next qualification
+
+Forward migration took **24m 25s**, including readiness and settling; its four
+PATCH calls totalled 23m 35s. The current deployment pauses ingestion through
+this work. Restart-to-validated-readiness was **252.094 seconds** for the pruned
+schema, versus 277.423 and 290.061 seconds for the original-schema controls;
+checkpointing and the final settling window are additional. A single-node
+restart therefore requires an explicit maintenance/readiness plan. Neither a
+production restart nor an ingestion catch-up soak was performed here. The
+bounded delist/relist probes restored exact payloads/counts in 802.888 and
+805.997 ms before and after pruning; they are not a live exporter catch-up test.
+
+The next bounded experiment is to isolate the four display-field changes and
+query execution choices across fresh-process controls, retaining the decimal
+range query and the same RSS/latency gates. Do not attribute this timing behavior
+to an upstream correctness bug without a separate reproduction. The seven sort
+index removals remain deferred for their independent live-result regression.
 
 ## Field/consumer review
 
@@ -55,6 +190,16 @@ Each PATCH can scan the full collection and temporarily block writes. Rebuilding
 one field at a time bounds overlapping work but does not prove a safe RSS peak.
 No second full posting collection is created on production.
 
+The current deployment quiesces crawler workers, exporter and drain before
+`setup-typesense`, and resumes them after schema setup and sync. Consequently,
+the measured four-field migration duration also contributes to ingestion pause;
+read availability alone does not establish uninterrupted crawl freshness.
+The setup client allows a one-hour request and the state-aware patcher has a
+two-hour overall deadline; deployment has a three-hour SSH command timeout
+inside a six-hour workflow job limit.
+Record the native alteration duration and subsequent CDC catch-up explicitly
+when judging the rollout window.
+
 Capture the complete live schema before rollout. Rollback requires explicitly
 drop/adding the four original field definitions, one at a time. Reverting the
 source change and rerunning setup also restores their index flags. The lab's
@@ -80,6 +225,16 @@ on every posting, whereas seniority is populated on 842,811. The source is
 5,565,850,147 bytes uncompressed and 1,220,349,142 bytes compressed.
 [Aggregate counts and full-source fingerprints](typesense-index-pruning-2026-09-23/corpus.json).
 
+A [read-only production snapshot](typesense-index-pruning-2026-09-23/production-before.json)
+at September 24 01:34 UTC found 5,563,531 live stored postings, 4,028.5 MiB process
+RSS, 3,520.9 MiB allocator-allocated and 3,959.3 MiB allocator-active memory.
+The cgroup charged 5,852.2 MiB, including 1,773.5 MiB file memory; the host had
+3,017.3 MiB available and the write queue was empty. The 6 GiB hard/no-swap limit
+was unchanged. This includes all production collections, whereas the lab holds
+only postings, and is starting-headroom context rather than a production saving.
+A read-only application of the patch planner to that live schema yielded exactly
+the four intended display-field rebuilds and no missing-field additions.
+
 The local host is ARM64. Native ARM64 results are useful full-cardinality evidence
 but do **not** satisfy the issue's x86_64 production-equivalence gate. An x86 image
 under QEMU was rejected for memory acceptance because jemalloc reported different
@@ -93,7 +248,11 @@ Only aggregate measurement artifacts are uploaded. The encrypted transfer object
 and temporary repository secret were deleted after the runner downloaded the
 corpus. That first native run failed the source-checksum gate before pruning. Its
 measurements are retained as failed import-parity evidence, not accepted
-performance results. A new run will use the crawler client's JSON serialization.
+performance results. The [second native run](https://github.com/colophon-group/jobseek/actions/runs/35939841315)
+uses the crawler client's JSON serialization and the unchanged source corpus.
+Its schema, lab and suite files match PR commit `26ea6874d`; subsequent base/version
+updates leave those files unchanged. The second encrypted transfer object and
+temporary repository secret were also deleted after its successful download.
 
 Before accepting a rollout:
 
@@ -176,6 +335,22 @@ python3 scripts/typesense-rss-lab.py measure --root /tmp/pruning-lab --label sel
 python3 scripts/typesense-rss-lab.py fingerprint --root /tmp/pruning-lab --label selected-fingerprint
 ```
 
+Summarize a completed lab directory with:
+
+```sh
+python3 scripts/typesense-rss-report.py /tmp/pruning-lab > /tmp/pruning-report.json
+```
+
+The report uses the median of samples in each phase's final **20 seconds** for
+settled RSS and anonymous/file memory, and reports sampled peaks separately.
+It preserves the initial p95 screen against the first baseline and also lists
+the baseline/pruned/restored measurements for every query. A candidate outside
+both controls by more than 10% and 2 ms needs investigation; the control range
+is descriptive, not a statistical confidence bound or an automatic acceptance.
+Restart phase elapsed time includes its checkpoint and settling window; use
+`restart_started_at` through `rebuild_completed_at` for restart-to-validated-
+readiness time. Neither value is a guarantee of a production outage duration.
+
 Also repeat `setup` to verify idempotence, restart/measure/fingerprint/snapshot the
 selected state, explicitly roll back every modified field, and repeat baseline
 checks. Artifact labels cannot be overwritten. A failed phase retains its samples
@@ -185,9 +360,11 @@ prefix; replay the uncertain batch and require the final exact document count.
 
 ## Evidence status
 
-Measurements are in progress. No full-corpus RSS result or production rollout is
-claimed yet. The populated 27.1 fixture passes the actual migration, idempotence,
-stored-payload/consumed-query parity, delist/relist and explicit rollback checks.
+The native full-corpus run completed all 31 semantic/migration phases, but the
+latency comparison rejects the candidate for rollout as described above. No
+production schema change or RSS saving has been deployed. The smaller populated
+27.1 fixture also passes migration, idempotence, stored-payload/consumed-query
+parity, delist/relist and explicit rollback checks.
 
 The earlier combined sort/display fixture exposed a 27.1 numeric-facet summary
 statistic discrepancy after rebuilding numeric fields. More seriously, reads
@@ -211,12 +388,14 @@ The first full post-import fingerprint did not match the source. Recomputing the
 source with both JSON Unicode encodings confirmed the original source checksum;
 this was not a canonicalization mismatch. A field-by-field comparison of all
 5,554,279 documents found the same IDs in the same order and exactly two differing
-values, both titles. One was missing a Chinese character. No pruning had run.
+values, both titles. Each was missing one Chinese character (U+7A0B and U+7545).
+No pruning had run.
 Both documents round-tripped exactly through separate fresh UTF-8 and ASCII-escaped
 imports on 27.1, so no general engine-causation claim is made from this local
 incident. The two known document differences account for the entire modular-hash
 delta. They were restored from the untouched source corpus in the owned lab only;
-a new full fingerprint and checkpointed baseline are required before continuing.
+the repaired lab's full 5,554,279-document fingerprint exactly matches the original
+source. A new checkpointed baseline was established before migration.
 The original fingerprints/measurements are retained as failed import-parity evidence.
 
 The native x86_64 run performs its own fresh import and full-source checksum gate;
@@ -232,8 +411,40 @@ escaped on the wire. The original byte-level source hash is retained separately.
 A regression test requires exact Unicode values and signed 64-bit candidate keys
 after serialization; all six importer guards pass. This does not change the
 crawler producer, source corpus, or full-document checksum acceptance criterion.
-Whether this transport alignment avoids the large-import discrepancy still
-requires the new full-corpus run; the two-document test alone cannot establish it.
+The second native run passed the complete source checksum after a fresh import
+using this serialization, then continued into snapshot/concurrency/CDC phases.
+That is evidence for the aligned importer on this corpus; the underlying cause
+of the raw UTF-8 discrepancy is still unproven. The completed native migration
+and rollback results are summarized above.
+
+The repaired ARM64 run completed all four field changes in 4,048.886 seconds,
+but **failed the live-read availability gate**: 52 of 1,336 rotating probes
+exceeded the five-second client deadline. All 1,284 successful reads matched the
+baseline; none reported a search cutoff. Timeouts affected taxonomy facets (36),
+inactive-history counts (13), keyword search (2) and decimal experience (1).
+They occurred mainly during the first two field changes (27 and 22 respectively).
+No OOM occurred. The largest OS sampling gap was 5.057 seconds, rather than the
+long host-suspension gap excluded from the earlier recovery trace.
+The matched baseline's slowest taxonomy request already took 4,803.824 ms.
+These observations show limited availability margin on that ARM64 VM; they do
+not establish the same behavior on production x86_64. The driver stopped with
+exit 1 and did not run its restart/rollback sequence. Later settled-state
+diagnostics are recorded separately and cannot turn this failed migration into
+a passing rehearsal.
+[Preserved ARM64 trace and gate result](typesense-index-pruning-2026-09-23/arm64-checkpointed/manifest.json).
+
+After that failure, a diagnostic run matched all 16 consumed query projections
+and the complete source fingerprint. A further 120 rotating reads with the same
+five-second deadline had no error, mismatch or cutoff. The settled query run
+still failed the initial p95 screen for active-location facets (558 → 618 ms)
+and sales (345 → 665 ms); it is not accepted ARM64 latency evidence.
+Its final-20-second RSS median was 4,003.754 MiB, versus 3,992.145 MiB for the
+matched baseline. No ARM64 restart or rollback was performed after the failed
+gate; the owned container was stopped after diagnostics. A separate alternating
+page-one parameter check (`per_page:11` versus `limit:11, offset:0`) preserved
+all results across 192 timed reads on three keyword cases. This checks the lab's
+page-one query shape against the app's native-offset spelling; it does not
+establish equal latency between different hosts or accept the failed migration.
 
 ## Why sort pruning is deferred
 
@@ -284,3 +495,10 @@ responses, three live migration reads without errors/mismatch/cutoff, successful
 CDC and explicit rollback, with zero OOM kills. This fixture uses no settling
 window and supplies semantic/harness evidence only, not performance acceptance.
 [Suite fixture summary](typesense-index-pruning-2026-09-23/suite-smoke.json).
+
+After updating to main's crawler-cohort change, commit `577992acf` passes
+[Linux CI](https://github.com/colophon-group/jobseek/actions/runs/35940612930):
+13,214 crawler tests (40 skipped), crawler/web Typesense integration, PostgreSQL
+integration, web tests/build, lint, coverage and image checks. The Typesense
+schema/lab/suite files are unchanged from the native rehearsal's input. The
+separate deployment gate remains blocked by #8648.

@@ -2,6 +2,16 @@
 
 Status: investigation and initial production tuning for [GitHub issue #8033](https://github.com/colophon-group/jobseek/issues/8033), captured 2026-08-26. The schema change described below is selected for rollout by the ordinary crawler deploy; it was not applied directly during this investigation.
 
+**Measurement correction, September 24:** the historical “resident” values and
+savings below came from `typesense_memory_resident_bytes`, not Linux process RSS.
+Typesense 27.1 mistakenly serializes allocator-active bytes into that field.
+Consequently, the 19.0–20.1 MB “resident” reduction is an allocator-active
+reduction; this report did not measure a corresponding RSS saving. The original
+observations remain intact below. Allocator retained bytes represent virtual
+address space, not additional physical RAM. See [#9924](https://github.com/colophon-group/jobseek/issues/9924)
+for the source-level defect and [the full-corpus follow-up](audits/2026-09-23-typesense-index-pruning.md)
+for separate OS RSS, allocator and cgroup measurements.
+
 ## Executive finding
 
 The current 3 GiB cgroup does not have enough demonstrated headroom to hold `job_posting_v1` and a full `job_posting_v2` concurrently. The production process was already at 2,642,509,824 resident bytes (2.46 GiB) after the 2026-08-25 OOM recovery. The first production change therefore removes only the in-memory indexes for `occupation_id`, `occupation_name`, and `last_seen_at`. The values remain stored and returned, while all live occupation filters continue to use the retained ancestor-expanded `occupation_ids` field.

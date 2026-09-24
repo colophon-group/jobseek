@@ -641,7 +641,7 @@ Metrics exposed by the exporter and scraped by Alloy:
 | `typesense_export_lag` | Cursor lag (seconds behind latest Postgres change) |
 | `typesense_export_duration_seconds` | Time per Typesense batch upsert |
 | `typesense_healthy` | 0 or 1, from `/health` endpoint |
-| `typesense_memory_bytes` | Typesense process memory from `/stats.json` |
+| `typesense_memory_bytes` | Allocator-active bytes from `/metrics.json`, with allocator-allocated bytes as fallback; not process RSS |
 | `jobseek_typesense_open_file_descriptors` / `jobseek_typesense_nofile_{soft,hard}_limit` | Live descriptor use and managed process limits from the Typesense host |
 | `jobseek_typesense_threadpool_queue_depth` | Maximum queue depth reported during the bounded five-minute log window |
 | `jobseek_typesense_slow_request_max_milliseconds` | Slowest request reported during the bounded five-minute log window |

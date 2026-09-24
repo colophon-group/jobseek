@@ -1,0 +1,108 @@
+{
+  "at": "2026-09-24T01:34:30.882306+00:00",
+  "read_only": true,
+  "architecture": "x86_64",
+  "version": "27.1",
+  "memory_policy": {
+    "Memory": 6442450944,
+    "MemoryReservation": 5368709120,
+    "MemorySwap": 6442450944,
+    "NanoCpus": 0
+  },
+  "rss_bytes": 4224159744,
+  "anonymous_bytes": 4211449856,
+  "host_available_bytes": 3163914240,
+  "cgroup_current_bytes": 6136512512,
+  "cgroup_stat": {
+    "anon": 4211453952,
+    "file": 1859690496,
+    "kernel": 65372160,
+    "sock": 0,
+    "slab_unreclaimable": 2426440
+  },
+  "cgroup_lifetime_events": {
+    "low": 0,
+    "high": 0,
+    "max": 1454574,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0
+  },
+  "oom_killed": false,
+  "started_at": "2026-08-26T16:30:10.490951673Z",
+  "pending_write_batches": 0,
+  "allocator_bytes": {
+    "allocated_bytes": 3691968640,
+    "active_bytes": 4151578624,
+    "resident_bytes": 4151578624,
+    "mapped_bytes": 4299075584,
+    "retained_bytes": 6542151680
+  },
+  "collection_counts": {
+    "watchlist_v1": 0,
+    "company_v1": 6023,
+    "technology_v1": 186,
+    "seniority_v1": 36,
+    "occupation_v1": 562,
+    "location_v1": 37526,
+    "job_posting_v1": 5563531
+  },
+  "display_field_definitions": [
+    {
+      "facet": true,
+      "index": true,
+      "infix": false,
+      "locale": "",
+      "name": "company_name",
+      "optional": false,
+      "sort": false,
+      "stem": false,
+      "store": true,
+      "type": "string"
+    },
+    {
+      "facet": true,
+      "index": true,
+      "infix": false,
+      "locale": "",
+      "name": "location_names",
+      "optional": false,
+      "sort": false,
+      "stem": false,
+      "store": true,
+      "type": "string[]"
+    },
+    {
+      "facet": true,
+      "index": true,
+      "infix": false,
+      "locale": "",
+      "name": "seniority_name",
+      "optional": true,
+      "sort": false,
+      "stem": false,
+      "store": true,
+      "type": "string"
+    },
+    {
+      "facet": true,
+      "index": true,
+      "infix": false,
+      "locale": "",
+      "name": "technology_names",
+      "optional": false,
+      "sort": false,
+      "stem": false,
+      "store": true,
+      "type": "string[]"
+    }
+  ],
+  "predicted_schema_migration": [
+    "company_name",
+    "location_names",
+    "seniority_name",
+    "technology_names"
+  ],
+  "missing_fields": [],
+  "note": "Live all-collection snapshot; lab contains the posting collection only. This snapshot is headroom context, not a before/after production performance claim."
+}
