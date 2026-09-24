@@ -25,8 +25,18 @@ type importFailure struct {
 // cursor pinned; individual rejected documents are returned for the current
 // exporter's logged poison-row semantics. The caller owns cross-tick backoff.
 func importDocs(ctx context.Context, client *http.Client, baseURL, apiKey string, docs []map[string]any) (map[string]importFailure, error) {
+	return importCollectionDocs(ctx, client, baseURL, apiKey, "job_posting", "upsert", docs)
+}
+
+func importCollectionDocs(ctx context.Context, client *http.Client, baseURL, apiKey, collection, action string, docs []map[string]any) (map[string]importFailure, error) {
 	if client == nil || apiKey == "" {
 		return nil, errors.New("Typesense client and operations key are required")
+	}
+	if collection != "job_posting" && collection != "location" && collection != "occupation" && collection != "seniority" && collection != "technology" && collection != "company" {
+		return nil, errors.New("unsupported Typesense collection")
+	}
+	if action != "upsert" && action != "update" {
+		return nil, errors.New("unsupported Typesense import action")
 	}
 	if len(docs) == 0 {
 		return nil, errors.New("Typesense import requires at least one document")
@@ -35,8 +45,8 @@ func importDocs(ctx context.Context, client *http.Client, baseURL, apiKey string
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path != "" {
 		return nil, errors.New("Typesense base URL must be an HTTP(S) origin")
 	}
-	u.Path = "/collections/job_posting/documents/import"
-	u.RawQuery = "action=upsert"
+	u.Path = "/collections/" + collection + "/documents/import"
+	u.RawQuery = "action=" + action
 	var payload bytes.Buffer
 	for i, doc := range docs {
 		id, ok := doc["id"].(string)

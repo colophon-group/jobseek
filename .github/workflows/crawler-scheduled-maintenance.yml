@@ -211,7 +211,12 @@ jobs:
             else
               operation_budget=7200
               operation_command=(uv run --no-sync crawler "$TASK")
-              if [[ "$TASK" == backfill-typesense ]]; then
+              if [[ "$TASK" == refresh-typesense ]]; then
+                # The Go exporter owns the scheduled count refresh. The
+                # container is one-shot and uses the same bounded authority
+                # and Typesense operations credentials as the Python command.
+                operation_command=(go-typesense-exporter --refresh-counts)
+              elif [[ "$TASK" == backfill-typesense ]]; then
                 # Prove the entire local PostgreSQL posting set after the
                 # backfill and verify every retained taxonomy document while
                 # the same host mutation lock remains held.
