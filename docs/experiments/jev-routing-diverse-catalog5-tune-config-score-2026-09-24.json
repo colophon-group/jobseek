@@ -1,0 +1,5220 @@
+{
+  "variant": "catalog5",
+  "split": "tune",
+  "count": 32,
+  "routingConfig": {
+    "threshold": 0.3,
+    "longestFirst": false
+  },
+  "goldOverrides": {
+    "diverse-multiword-02:New York": "new-york-new-york-united-states"
+  },
+  "parser": {
+    "exact": 14,
+    "filtersExact": 14,
+    "keywordsExact": 14,
+    "filterPrecision": 0.8545454545454545,
+    "filterRecall": 0.734375,
+    "filterF1": 0.7899159663865547,
+    "groups": {
+      "atomic": {
+        "count": 4,
+        "exact": 4
+      },
+      "terse": {
+        "count": 4,
+        "exact": 3
+      },
+      "verbose": {
+        "count": 4,
+        "exact": 2
+      },
+      "mistakes": {
+        "count": 4,
+        "exact": 0
+      },
+      "multiword": {
+        "count": 4,
+        "exact": 1
+      },
+      "employment": {
+        "count": 4,
+        "exact": 0
+      },
+      "unrelated": {
+        "count": 4,
+        "exact": 2
+      },
+      "multilingual": {
+        "count": 4,
+        "exact": 2
+      }
+    }
+  },
+  "strict": {
+    "exact": 26,
+    "filtersExact": 26,
+    "keywordsExact": 27,
+    "filterPrecision": 0.9827586206896551,
+    "filterRecall": 0.890625,
+    "filterF1": 0.9344262295081966,
+    "groups": {
+      "atomic": {
+        "count": 4,
+        "exact": 4
+      },
+      "terse": {
+        "count": 4,
+        "exact": 3
+      },
+      "verbose": {
+        "count": 4,
+        "exact": 4
+      },
+      "mistakes": {
+        "count": 4,
+        "exact": 0
+      },
+      "multiword": {
+        "count": 4,
+        "exact": 3
+      },
+      "employment": {
+        "count": 4,
+        "exact": 4
+      },
+      "unrelated": {
+        "count": 4,
+        "exact": 4
+      },
+      "multilingual": {
+        "count": 4,
+        "exact": 4
+      }
+    }
+  },
+  "top": {
+    "exact": 30,
+    "filtersExact": 30,
+    "keywordsExact": 31,
+    "filterPrecision": 0.9841269841269841,
+    "filterRecall": 0.96875,
+    "filterF1": 0.9763779527559054,
+    "groups": {
+      "atomic": {
+        "count": 4,
+        "exact": 4
+      },
+      "terse": {
+        "count": 4,
+        "exact": 3
+      },
+      "verbose": {
+        "count": 4,
+        "exact": 4
+      },
+      "mistakes": {
+        "count": 4,
+        "exact": 4
+      },
+      "multiword": {
+        "count": 4,
+        "exact": 3
+      },
+      "employment": {
+        "count": 4,
+        "exact": 4
+      },
+      "unrelated": {
+        "count": 4,
+        "exact": 4
+      },
+      "multilingual": {
+        "count": 4,
+        "exact": 4
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "diverse-atomic-01",
+      "group": "atomic",
+      "q": "accountant",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-atomic-02",
+      "group": "atomic",
+      "q": "pharmacist",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "pharmacist"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "pharmacist",
+            "category": "occupation",
+            "slug": "pharmacist",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "pharmacist",
+                "name": "Pharmacist"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "pharmacist"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "pharmacist"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "pharmacist",
+            "category": "occupation",
+            "slug": "pharmacist",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "pharmacist",
+                "name": "Pharmacist"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "pharmacist"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "pharmacist",
+            "category": "occupation",
+            "slug": "pharmacist",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "pharmacist",
+                "name": "Pharmacist"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-atomic-03",
+      "group": "atomic",
+      "q": "customer success manager",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "customer-success-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "customer success manager",
+            "category": "occupation",
+            "slug": "customer-success-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "customer-success-manager",
+                "name": "Customer Success Manager"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "customer-success-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "customer-success-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "customer success manager",
+            "category": "occupation",
+            "slug": "customer-success-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "customer-success-manager",
+                "name": "Customer Success Manager"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "customer-success-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "customer success manager",
+            "category": "occupation",
+            "slug": "customer-success-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "customer-success-manager",
+                "name": "Customer Success Manager"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-atomic-04",
+      "group": "atomic",
+      "q": "warehouse associate",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "warehouse associate",
+            "category": "occupation",
+            "slug": "warehouse-associate",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "warehouse associate",
+            "category": "occupation",
+            "slug": "warehouse-associate",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "warehouse associate",
+            "category": "occupation",
+            "slug": "warehouse-associate",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-terse-01",
+      "group": "terse",
+      "q": "sr accountant basel",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "basel"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "sr",
+            "category": "seniority",
+            "slug": "senior",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          },
+          {
+            "text": "basel",
+            "category": "location",
+            "slug": "basel",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "basel",
+                "name": "Basel"
+              },
+              {
+                "slug": "canton-of-basel-city-switzerland",
+                "name": "Canton of Basel-City"
+              },
+              {
+                "slug": "basel-landschaft-switzerland",
+                "name": "Basel-Landschaft"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "basel"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "basel"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "sr",
+            "category": "seniority",
+            "slug": "senior",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          },
+          {
+            "text": "basel",
+            "category": "location",
+            "slug": "basel",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "basel",
+                "name": "Basel"
+              },
+              {
+                "slug": "canton-of-basel-city-switzerland",
+                "name": "Canton of Basel-City"
+              },
+              {
+                "slug": "basel-landschaft-switzerland",
+                "name": "Basel-Landschaft"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "basel"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "sr",
+            "category": "seniority",
+            "slug": "senior",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          },
+          {
+            "text": "basel",
+            "category": "location",
+            "slug": "basel",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "basel",
+                "name": "Basel"
+              },
+              {
+                "slug": "canton-of-basel-city-switzerland",
+                "name": "Canton of Basel-City"
+              },
+              {
+                "slug": "basel-landschaft-switzerland",
+                "name": "Basel-Landschaft"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-terse-02",
+      "group": "terse",
+      "q": "hr manager remote",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "hr-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "hr manager",
+            "category": "occupation",
+            "slug": "hr-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "hr-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "hr-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "hr manager",
+            "category": "occupation",
+            "slug": "hr-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "hr-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "hr manager",
+            "category": "occupation",
+            "slug": "hr-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-terse-03",
+      "group": "terse",
+      "q": "salesforce sales engineer",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "sales-engineer"
+          ],
+          "seniorities": [],
+          "technologies": [
+            "salesforce"
+          ],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "salesforce",
+            "category": "technology",
+            "slug": "salesforce",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "salesforce",
+                "name": "Salesforce"
+              }
+            ]
+          },
+          {
+            "text": "sales engineer",
+            "category": "occupation",
+            "slug": "sales-engineer",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "sales-engineer",
+                "name": "Sales Engineer"
+              },
+              {
+                "slug": "ai-engineer",
+                "name": "AI Engineer"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "sales-engineer"
+          ],
+          "seniorities": [],
+          "technologies": [
+            "salesforce"
+          ],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "salesforce"
+          ],
+          "locations": [],
+          "occupations": [
+            "sales-engineer"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "sales engineer",
+            "category": "occupation",
+            "slug": "sales-engineer",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "sales-engineer",
+                "name": "Sales Engineer"
+              },
+              {
+                "slug": "ai-engineer",
+                "name": "AI Engineer"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "salesforce"
+          ],
+          "locations": [],
+          "occupations": [
+            "sales-engineer"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "sales engineer",
+            "category": "occupation",
+            "slug": "sales-engineer",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "sales-engineer",
+                "name": "Sales Engineer"
+              },
+              {
+                "slug": "ai-engineer",
+                "name": "AI Engineer"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-terse-04",
+      "group": "terse",
+      "q": "contract ux researcher paris",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "ux-researcher"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "contract"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "contract",
+            "category": "employmentType",
+            "slug": "contract",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "ux researcher",
+            "category": "occupation",
+            "slug": "ux-researcher",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "ux-researcher",
+                "name": "UX Researcher"
+              }
+            ]
+          },
+          {
+            "text": "paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "contract"
+          ],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "ux-researcher"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "ux-researcher"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "contract"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "contract",
+            "category": "employmentType",
+            "slug": "contract",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "ux researcher",
+            "category": "occupation",
+            "slug": "ux-researcher",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "ux-researcher",
+                "name": "UX Researcher"
+              }
+            ]
+          },
+          {
+            "text": "paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "ux-researcher"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "contract"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "contract",
+            "category": "employmentType",
+            "slug": "contract",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "ux researcher",
+            "category": "occupation",
+            "slug": "ux-researcher",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "ux-researcher",
+                "name": "UX Researcher"
+              }
+            ]
+          },
+          {
+            "text": "paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-verbose-01",
+      "group": "verbose",
+      "q": "I'm looking for a remote executive assistant role in Berlin",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "I'm",
+            "looking",
+            "for",
+            "a",
+            "role",
+            "in"
+          ],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "executive-assistant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "executive assistant",
+            "category": "occupation",
+            "slug": "executive-assistant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "executive-assistant",
+                "name": "Executive Assistant"
+              }
+            ]
+          },
+          {
+            "text": "Berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "I'm",
+            "looking",
+            "for",
+            "a",
+            "assistant",
+            "role",
+            "in"
+          ],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [],
+          "seniorities": [
+            "executive"
+          ],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "I'm",
+            "looking",
+            "for",
+            "a",
+            "role",
+            "in"
+          ],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "executive-assistant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "executive assistant",
+            "category": "occupation",
+            "slug": "executive-assistant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "executive-assistant",
+                "name": "Executive Assistant"
+              }
+            ]
+          },
+          {
+            "text": "Berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "I'm",
+            "looking",
+            "for",
+            "a",
+            "role",
+            "in"
+          ],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "executive-assistant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "executive assistant",
+            "category": "occupation",
+            "slug": "executive-assistant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "executive-assistant",
+                "name": "Executive Assistant"
+              }
+            ]
+          },
+          {
+            "text": "Berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-verbose-02",
+      "group": "verbose",
+      "q": "Please show senior marketing manager jobs in Paris",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "Please",
+            "show",
+            "jobs",
+            "in"
+          ],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "senior",
+            "category": "seniority",
+            "slug": "senior",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "marketing manager",
+            "category": "occupation",
+            "slug": "marketing-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Marketing Manager"
+              },
+              {
+                "slug": "content-strategist",
+                "name": "Content Strategist"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "Please",
+            "show",
+            "jobs",
+            "in"
+          ],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "Please",
+            "show",
+            "jobs",
+            "in"
+          ],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "senior",
+            "category": "seniority",
+            "slug": "senior",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "marketing manager",
+            "category": "occupation",
+            "slug": "marketing-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Marketing Manager"
+              },
+              {
+                "slug": "content-strategist",
+                "name": "Content Strategist"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "Please",
+            "show",
+            "jobs",
+            "in"
+          ],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "senior",
+            "category": "seniority",
+            "slug": "senior",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "marketing manager",
+            "category": "occupation",
+            "slug": "marketing-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Marketing Manager"
+              },
+              {
+                "slug": "content-strategist",
+                "name": "Content Strategist"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-verbose-03",
+      "group": "verbose",
+      "q": "Can you find operations manager roles near Geneva with hybrid work",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "Can",
+            "you",
+            "find",
+            "roles",
+            "near",
+            "with",
+            "work"
+          ],
+          "locations": [
+            "geneva-canton-of-geneva-switzerland"
+          ],
+          "occupations": [
+            "operations-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "hybrid"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "operations manager",
+            "category": "occupation",
+            "slug": "operations-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "operations-manager",
+                "name": "Operations Manager"
+              },
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              },
+              {
+                "slug": "facilities-manager",
+                "name": "Facilities Manager"
+              }
+            ]
+          },
+          {
+            "text": "Geneva",
+            "category": "location",
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "geneva-canton-of-geneva-switzerland",
+                "name": "Geneva"
+              },
+              {
+                "slug": "geneva-illinois-united-states",
+                "name": "Geneva"
+              },
+              {
+                "slug": "canton-of-geneva-switzerland",
+                "name": "Canton of Geneva"
+              }
+            ]
+          },
+          {
+            "text": "hybrid",
+            "category": "hybrid",
+            "slug": "hybrid",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "you",
+            "find",
+            "roles",
+            "near",
+            "with",
+            "work"
+          ],
+          "locations": [
+            "can",
+            "geneva-canton-of-geneva-switzerland"
+          ],
+          "occupations": [
+            "operations-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "hybrid"
+          ],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "Can",
+            "you",
+            "find",
+            "roles",
+            "near",
+            "with",
+            "work"
+          ],
+          "locations": [
+            "geneva-canton-of-geneva-switzerland"
+          ],
+          "occupations": [
+            "operations-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "hybrid"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "operations manager",
+            "category": "occupation",
+            "slug": "operations-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "operations-manager",
+                "name": "Operations Manager"
+              },
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              },
+              {
+                "slug": "facilities-manager",
+                "name": "Facilities Manager"
+              }
+            ]
+          },
+          {
+            "text": "Geneva",
+            "category": "location",
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "geneva-canton-of-geneva-switzerland",
+                "name": "Geneva"
+              },
+              {
+                "slug": "geneva-illinois-united-states",
+                "name": "Geneva"
+              },
+              {
+                "slug": "canton-of-geneva-switzerland",
+                "name": "Canton of Geneva"
+              }
+            ]
+          },
+          {
+            "text": "hybrid",
+            "category": "hybrid",
+            "slug": "hybrid",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "Can",
+            "you",
+            "find",
+            "roles",
+            "near",
+            "with",
+            "work"
+          ],
+          "locations": [
+            "geneva-canton-of-geneva-switzerland"
+          ],
+          "occupations": [
+            "operations-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "hybrid"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "operations manager",
+            "category": "occupation",
+            "slug": "operations-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "operations-manager",
+                "name": "Operations Manager"
+              },
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              },
+              {
+                "slug": "facilities-manager",
+                "name": "Facilities Manager"
+              }
+            ]
+          },
+          {
+            "text": "Geneva",
+            "category": "location",
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "geneva-canton-of-geneva-switzerland",
+                "name": "Geneva"
+              },
+              {
+                "slug": "geneva-illinois-united-states",
+                "name": "Geneva"
+              },
+              {
+                "slug": "canton-of-geneva-switzerland",
+                "name": "Canton of Geneva"
+              }
+            ]
+          },
+          {
+            "text": "hybrid",
+            "category": "hybrid",
+            "slug": "hybrid",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-verbose-04",
+      "group": "verbose",
+      "q": "Seeking a support engineer position in London",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "Seeking",
+            "a",
+            "position",
+            "in"
+          ],
+          "locations": [
+            "london-england-united-kingdom"
+          ],
+          "occupations": [
+            "support-engineer"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "support engineer",
+            "category": "occupation",
+            "slug": "support-engineer",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "support-engineer",
+                "name": "Support Engineer"
+              }
+            ]
+          },
+          {
+            "text": "London",
+            "category": "location",
+            "slug": "london-england-united-kingdom",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "london-england-united-kingdom",
+                "name": "London"
+              },
+              {
+                "slug": "london-ontario-canada",
+                "name": "London"
+              },
+              {
+                "slug": "east-london",
+                "name": "East London"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "Seeking",
+            "a",
+            "position",
+            "in"
+          ],
+          "locations": [
+            "london-england-united-kingdom"
+          ],
+          "occupations": [
+            "support-engineer"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "Seeking",
+            "a",
+            "position",
+            "in"
+          ],
+          "locations": [
+            "london-england-united-kingdom"
+          ],
+          "occupations": [
+            "support-engineer"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "support engineer",
+            "category": "occupation",
+            "slug": "support-engineer",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "support-engineer",
+                "name": "Support Engineer"
+              }
+            ]
+          },
+          {
+            "text": "London",
+            "category": "location",
+            "slug": "london-england-united-kingdom",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "london-england-united-kingdom",
+                "name": "London"
+              },
+              {
+                "slug": "london-ontario-canada",
+                "name": "London"
+              },
+              {
+                "slug": "east-london",
+                "name": "East London"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "Seeking",
+            "a",
+            "position",
+            "in"
+          ],
+          "locations": [
+            "london-england-united-kingdom"
+          ],
+          "occupations": [
+            "support-engineer"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "support engineer",
+            "category": "occupation",
+            "slug": "support-engineer",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "support-engineer",
+                "name": "Support Engineer"
+              }
+            ]
+          },
+          {
+            "text": "London",
+            "category": "location",
+            "slug": "london-england-united-kingdom",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "london-england-united-kingdom",
+                "name": "London"
+              },
+              {
+                "slug": "london-ontario-canada",
+                "name": "London"
+              },
+              {
+                "slug": "east-london",
+                "name": "East London"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-mistakes-01",
+      "group": "mistakes",
+      "q": "recruter remote berlin",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "recruiter"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "recruter",
+            "category": "occupation",
+            "slug": "recruiter",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "recruiter",
+                "name": "Recruiter"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "recruter"
+          ],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "recruter"
+          ],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "recruter",
+            "category": "occupation",
+            "status": "unresolved",
+            "suggestions": [
+              {
+                "slug": "recruiter",
+                "name": "Recruiter"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "recruiter"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "recruter",
+            "category": "occupation",
+            "slug": "recruiter",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "recruiter",
+                "name": "Recruiter"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-mistakes-02",
+      "group": "mistakes",
+      "q": "pharmacst geneva",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "geneva-canton-of-geneva-switzerland"
+          ],
+          "occupations": [
+            "pharmacist"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "pharmacst",
+            "category": "occupation",
+            "slug": "pharmacist",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "pharmacist",
+                "name": "Pharmacist"
+              }
+            ]
+          },
+          {
+            "text": "geneva",
+            "category": "location",
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "geneva-canton-of-geneva-switzerland",
+                "name": "Geneva"
+              },
+              {
+                "slug": "geneva-illinois-united-states",
+                "name": "Geneva"
+              },
+              {
+                "slug": "canton-of-geneva-switzerland",
+                "name": "Canton of Geneva"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "pharmacst"
+          ],
+          "locations": [
+            "geneva-canton-of-geneva-switzerland"
+          ],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "pharmacst"
+          ],
+          "locations": [
+            "geneva-canton-of-geneva-switzerland"
+          ],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "pharmacst",
+            "category": "occupation",
+            "status": "unresolved",
+            "suggestions": [
+              {
+                "slug": "pharmacist",
+                "name": "Pharmacist"
+              }
+            ]
+          },
+          {
+            "text": "geneva",
+            "category": "location",
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "geneva-canton-of-geneva-switzerland",
+                "name": "Geneva"
+              },
+              {
+                "slug": "geneva-illinois-united-states",
+                "name": "Geneva"
+              },
+              {
+                "slug": "canton-of-geneva-switzerland",
+                "name": "Canton of Geneva"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "geneva-canton-of-geneva-switzerland"
+          ],
+          "occupations": [
+            "pharmacist"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "pharmacst",
+            "category": "occupation",
+            "slug": "pharmacist",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "pharmacist",
+                "name": "Pharmacist"
+              }
+            ]
+          },
+          {
+            "text": "geneva",
+            "category": "location",
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "geneva-canton-of-geneva-switzerland",
+                "name": "Geneva"
+              },
+              {
+                "slug": "geneva-illinois-united-states",
+                "name": "Geneva"
+              },
+              {
+                "slug": "canton-of-geneva-switzerland",
+                "name": "Canton of Geneva"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-mistakes-03",
+      "group": "mistakes",
+      "q": "senor marketng manager paris",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "senor",
+            "category": "seniority",
+            "slug": "senior",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "marketng manager",
+            "category": "occupation",
+            "slug": "marketing-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Marketing Manager"
+              },
+              {
+                "slug": "content-strategist",
+                "name": "Content Strategist"
+              }
+            ]
+          },
+          {
+            "text": "paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "senor",
+            "marketng",
+            "manager"
+          ],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "senor",
+            "marketng",
+            "manager"
+          ],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "senor",
+            "category": "seniority",
+            "status": "unresolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "marketng manager",
+            "category": "occupation",
+            "status": "unresolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Marketing Manager"
+              },
+              {
+                "slug": "content-strategist",
+                "name": "Content Strategist"
+              }
+            ]
+          },
+          {
+            "text": "paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "senor",
+            "category": "seniority",
+            "slug": "senior",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "senior",
+                "name": "Senior"
+              }
+            ]
+          },
+          {
+            "text": "marketng manager",
+            "category": "occupation",
+            "slug": "marketing-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Marketing Manager"
+              },
+              {
+                "slug": "content-strategist",
+                "name": "Content Strategist"
+              }
+            ]
+          },
+          {
+            "text": "paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-mistakes-04",
+      "group": "mistakes",
+      "q": "warehose associate zurich",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "zurich"
+          ],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "warehose associate",
+            "category": "occupation",
+            "slug": "warehouse-associate",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          },
+          {
+            "text": "zurich",
+            "category": "location",
+            "slug": "zurich",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "zurich",
+                "name": "Zurich"
+              },
+              {
+                "slug": "canton-of-zurich-switzerland",
+                "name": "Canton of Zurich"
+              },
+              {
+                "slug": "lake-zurich",
+                "name": "Lake Zurich"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "warehose",
+            "associate"
+          ],
+          "locations": [
+            "zurich"
+          ],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "warehose",
+            "associate"
+          ],
+          "locations": [
+            "zurich"
+          ],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "warehose associate",
+            "category": "occupation",
+            "status": "unresolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          },
+          {
+            "text": "zurich",
+            "category": "location",
+            "slug": "zurich",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "zurich",
+                "name": "Zurich"
+              },
+              {
+                "slug": "canton-of-zurich-switzerland",
+                "name": "Canton of Zurich"
+              },
+              {
+                "slug": "lake-zurich",
+                "name": "Lake Zurich"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "zurich"
+          ],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "warehose associate",
+            "category": "occupation",
+            "slug": "warehouse-associate",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          },
+          {
+            "text": "zurich",
+            "category": "location",
+            "slug": "zurich",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "zurich",
+                "name": "Zurich"
+              },
+              {
+                "slug": "canton-of-zurich-switzerland",
+                "name": "Canton of Zurich"
+              },
+              {
+                "slug": "lake-zurich",
+                "name": "Lake Zurich"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-multiword-01",
+      "group": "multiword",
+      "q": "customer success manager San Francisco",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "san-francisco-california-united-states"
+          ],
+          "occupations": [
+            "customer-success-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "customer success manager",
+            "category": "occupation",
+            "slug": "customer-success-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "customer-success-manager",
+                "name": "Customer Success Manager"
+              }
+            ]
+          },
+          {
+            "text": "San Francisco",
+            "category": "location",
+            "slug": "san-francisco-california-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "san-francisco-california-united-states",
+                "name": "San Francisco"
+              },
+              {
+                "slug": "san-francisco-heredia-province-costa-rica",
+                "name": "San Francisco"
+              },
+              {
+                "slug": "san-francisco-caraga-philippines",
+                "name": "San Francisco"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "Francisco"
+          ],
+          "locations": [
+            "san"
+          ],
+          "occupations": [
+            "customer-success-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "san-francisco-california-united-states"
+          ],
+          "occupations": [
+            "customer-success-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "customer success manager",
+            "category": "occupation",
+            "slug": "customer-success-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "customer-success-manager",
+                "name": "Customer Success Manager"
+              }
+            ]
+          },
+          {
+            "text": "San Francisco",
+            "category": "location",
+            "slug": "san-francisco-california-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "san-francisco-california-united-states",
+                "name": "San Francisco"
+              },
+              {
+                "slug": "san-francisco-heredia-province-costa-rica",
+                "name": "San Francisco"
+              },
+              {
+                "slug": "san-francisco-caraga-philippines",
+                "name": "San Francisco"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "san-francisco-california-united-states"
+          ],
+          "occupations": [
+            "customer-success-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "customer success manager",
+            "category": "occupation",
+            "slug": "customer-success-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "customer-success-manager",
+                "name": "Customer Success Manager"
+              }
+            ]
+          },
+          {
+            "text": "San Francisco",
+            "category": "location",
+            "slug": "san-francisco-california-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "san-francisco-california-united-states",
+                "name": "San Francisco"
+              },
+              {
+                "slug": "san-francisco-heredia-province-costa-rica",
+                "name": "San Francisco"
+              },
+              {
+                "slug": "san-francisco-caraga-philippines",
+                "name": "San Francisco"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-multiword-02",
+      "group": "multiword",
+      "q": "executive assistant New York",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "new-york-new-york-united-states"
+          ],
+          "occupations": [
+            "executive-assistant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "executive assistant",
+            "category": "occupation",
+            "slug": "executive-assistant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "executive-assistant",
+                "name": "Executive Assistant"
+              }
+            ]
+          },
+          {
+            "text": "New York",
+            "category": "location",
+            "slug": "new-york-new-york-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "new-york-united-states",
+                "name": "New York"
+              },
+              {
+                "slug": "new-york-new-york-united-states",
+                "name": "New York"
+              },
+              {
+                "slug": "west-new-york",
+                "name": "West New York"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "assistant",
+            "New"
+          ],
+          "locations": [
+            "york-england-united-kingdom"
+          ],
+          "occupations": [],
+          "seniorities": [
+            "executive"
+          ],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "new-york-united-states"
+          ],
+          "occupations": [
+            "executive-assistant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "executive assistant",
+            "category": "occupation",
+            "slug": "executive-assistant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "executive-assistant",
+                "name": "Executive Assistant"
+              }
+            ]
+          },
+          {
+            "text": "New York",
+            "category": "location",
+            "slug": "new-york-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "new-york-united-states",
+                "name": "New York"
+              },
+              {
+                "slug": "new-york-new-york-united-states",
+                "name": "New York"
+              },
+              {
+                "slug": "west-new-york",
+                "name": "West New York"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "new-york-united-states"
+          ],
+          "occupations": [
+            "executive-assistant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "executive assistant",
+            "category": "occupation",
+            "slug": "executive-assistant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "executive-assistant",
+                "name": "Executive Assistant"
+              }
+            ]
+          },
+          {
+            "text": "New York",
+            "category": "location",
+            "slug": "new-york-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "new-york-united-states",
+                "name": "New York"
+              },
+              {
+                "slug": "new-york-new-york-united-states",
+                "name": "New York"
+              },
+              {
+                "slug": "west-new-york",
+                "name": "West New York"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-multiword-03",
+      "group": "multiword",
+      "q": "supply chain manager Paris",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "supply-chain-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "supply chain manager",
+            "category": "occupation",
+            "slug": "supply-chain-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "supply-chain-manager",
+                "name": "Supply Chain Manager"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "supply-chain-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "supply-chain-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "supply chain manager",
+            "category": "occupation",
+            "slug": "supply-chain-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "supply-chain-manager",
+                "name": "Supply Chain Manager"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "supply-chain-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "supply chain manager",
+            "category": "occupation",
+            "slug": "supply-chain-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "supply-chain-manager",
+                "name": "Supply Chain Manager"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-multiword-04",
+      "group": "multiword",
+      "q": "data center technician Los Angeles",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "los-angeles-california-united-states"
+          ],
+          "occupations": [
+            "data-center-technician"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "data center technician",
+            "category": "occupation",
+            "slug": "data-center-technician",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "data-center-technician",
+                "name": "Data Center Technician"
+              }
+            ]
+          },
+          {
+            "text": "Los Angeles",
+            "category": "location",
+            "slug": "los-angeles-california-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "los-angeles-california-united-states",
+                "name": "Los Angeles"
+              },
+              {
+                "slug": "los-angeles-biobio-chile",
+                "name": "Los Ángeles"
+              },
+              {
+                "slug": "los-angeles-madrid-spain",
+                "name": "Los Angeles"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "Los",
+            "Angeles"
+          ],
+          "locations": [],
+          "occupations": [
+            "data-center-technician"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "los-angeles-california-united-states"
+          ],
+          "occupations": [
+            "data-center-technician"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "data center technician",
+            "category": "occupation",
+            "slug": "data-center-technician",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "data-center-technician",
+                "name": "Data Center Technician"
+              }
+            ]
+          },
+          {
+            "text": "Los Angeles",
+            "category": "location",
+            "slug": "los-angeles-california-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "los-angeles-california-united-states",
+                "name": "Los Angeles"
+              },
+              {
+                "slug": "los-angeles-biobio-chile",
+                "name": "Los Ángeles"
+              },
+              {
+                "slug": "los-angeles-madrid-spain",
+                "name": "Los Angeles"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "los-angeles-california-united-states"
+          ],
+          "occupations": [
+            "data-center-technician"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "data center technician",
+            "category": "occupation",
+            "slug": "data-center-technician",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "data-center-technician",
+                "name": "Data Center Technician"
+              }
+            ]
+          },
+          {
+            "text": "Los Angeles",
+            "category": "location",
+            "slug": "los-angeles-california-united-states",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "los-angeles-california-united-states",
+                "name": "Los Angeles"
+              },
+              {
+                "slug": "los-angeles-biobio-chile",
+                "name": "Los Ángeles"
+              },
+              {
+                "slug": "los-angeles-madrid-spain",
+                "name": "Los Angeles"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-employment-01",
+      "group": "employment",
+      "q": "part time cashier",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "cashier"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "part_time"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "part time",
+            "category": "employmentType",
+            "slug": "part_time",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "part",
+            "time",
+            "cashier"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "cashier"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "part_time"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "part time",
+            "category": "employmentType",
+            "slug": "part_time",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "cashier",
+            "category": "occupation",
+            "status": "unresolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "cashier"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "part_time"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "part time",
+            "category": "employmentType",
+            "slug": "part_time",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "cashier",
+            "category": "occupation",
+            "status": "unresolved",
+            "suggestions": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-employment-02",
+      "group": "employment",
+      "q": "contract accountant remote",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": [
+            "contract"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "contract",
+            "category": "employmentType",
+            "slug": "contract",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "contract"
+          ],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": [
+            "contract"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "contract",
+            "category": "employmentType",
+            "slug": "contract",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": [
+            "contract"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "contract",
+            "category": "employmentType",
+            "slug": "contract",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "accountant",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Accountant"
+              }
+            ]
+          },
+          {
+            "text": "remote",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-employment-03",
+      "group": "employment",
+      "q": "volunteer hr manager berlin",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "hr-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "volunteer"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "volunteer",
+            "category": "employmentType",
+            "slug": "volunteer",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "hr manager",
+            "category": "occupation",
+            "slug": "hr-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              }
+            ]
+          },
+          {
+            "text": "berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "volunteer"
+          ],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "hr-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "hr-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "volunteer"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "volunteer",
+            "category": "employmentType",
+            "slug": "volunteer",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "hr manager",
+            "category": "occupation",
+            "slug": "hr-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              }
+            ]
+          },
+          {
+            "text": "berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "hr-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "volunteer"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "volunteer",
+            "category": "employmentType",
+            "slug": "volunteer",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "hr manager",
+            "category": "occupation",
+            "slug": "hr-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "hr-manager",
+                "name": "HR Manager"
+              }
+            ]
+          },
+          {
+            "text": "berlin",
+            "category": "location",
+            "slug": "berlin",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "State of Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-employment-04",
+      "group": "employment",
+      "q": "temporary warehouse associate london",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "london-england-united-kingdom"
+          ],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "temporary"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "temporary",
+            "category": "employmentType",
+            "slug": "temporary",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "warehouse associate",
+            "category": "occupation",
+            "slug": "warehouse-associate",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          },
+          {
+            "text": "london",
+            "category": "location",
+            "slug": "london-england-united-kingdom",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "london-england-united-kingdom",
+                "name": "London"
+              },
+              {
+                "slug": "london-ontario-canada",
+                "name": "London"
+              },
+              {
+                "slug": "east-london",
+                "name": "East London"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "temporary"
+          ],
+          "locations": [
+            "london-england-united-kingdom"
+          ],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "london-england-united-kingdom"
+          ],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "temporary"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "temporary",
+            "category": "employmentType",
+            "slug": "temporary",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "warehouse associate",
+            "category": "occupation",
+            "slug": "warehouse-associate",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          },
+          {
+            "text": "london",
+            "category": "location",
+            "slug": "london-england-united-kingdom",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "london-england-united-kingdom",
+                "name": "London"
+              },
+              {
+                "slug": "london-ontario-canada",
+                "name": "London"
+              },
+              {
+                "slug": "east-london",
+                "name": "East London"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "london-england-united-kingdom"
+          ],
+          "occupations": [
+            "warehouse-associate"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": [
+            "temporary"
+          ]
+        },
+        "proposals": [
+          {
+            "text": "temporary",
+            "category": "employmentType",
+            "slug": "temporary",
+            "status": "resolved",
+            "suggestions": []
+          },
+          {
+            "text": "warehouse associate",
+            "category": "occupation",
+            "slug": "warehouse-associate",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "warehouse-associate",
+                "name": "Warehouse Associate"
+              }
+            ]
+          },
+          {
+            "text": "london",
+            "category": "location",
+            "slug": "london-england-united-kingdom",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "london-england-united-kingdom",
+                "name": "London"
+              },
+              {
+                "slug": "london-ontario-canada",
+                "name": "London"
+              },
+              {
+                "slug": "east-london",
+                "name": "East London"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-unrelated-01",
+      "group": "unrelated",
+      "q": "sales report template",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "sales",
+            "report",
+            "template"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "sales",
+            "report",
+            "template"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "sales",
+            "report",
+            "template"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "sales",
+            "report",
+            "template"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      }
+    },
+    {
+      "id": "diverse-unrelated-02",
+      "group": "unrelated",
+      "q": "accountant joke",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "accountant",
+            "joke"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "joke"
+          ],
+          "locations": [],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "accountant",
+            "joke"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "accountant",
+            "joke"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      }
+    },
+    {
+      "id": "diverse-unrelated-03",
+      "group": "unrelated",
+      "q": "how to become a pharmacist",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "how",
+            "to",
+            "become",
+            "a",
+            "pharmacist"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "how",
+            "become",
+            "a"
+          ],
+          "locations": [
+            "to"
+          ],
+          "occupations": [
+            "pharmacist"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "how",
+            "to",
+            "become",
+            "a",
+            "pharmacist"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "how",
+            "to",
+            "become",
+            "a",
+            "pharmacist"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      }
+    },
+    {
+      "id": "diverse-unrelated-04",
+      "group": "unrelated",
+      "q": "manager training course",
+      "gold": {
+        "shape": {
+          "keywords": [
+            "manager",
+            "training",
+            "course"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "manager",
+            "training",
+            "course"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [
+            "manager",
+            "training",
+            "course"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      },
+      "top": {
+        "shape": {
+          "keywords": [
+            "manager",
+            "training",
+            "course"
+          ],
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": []
+      }
+    },
+    {
+      "id": "diverse-multilingual-01",
+      "group": "multilingual",
+      "q": "Buchhalter Berlin hybrid",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "state-of-berlin-germany"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "hybrid"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Buchhalter",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Buchhalter"
+              }
+            ]
+          },
+          {
+            "text": "Berlin",
+            "category": "location",
+            "slug": "state-of-berlin-germany",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "Berlin"
+              },
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          },
+          {
+            "text": "hybrid",
+            "category": "hybrid",
+            "slug": "hybrid",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "state-of-berlin-germany"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "hybrid"
+          ],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "state-of-berlin-germany"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "hybrid"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Buchhalter",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Buchhalter"
+              }
+            ]
+          },
+          {
+            "text": "Berlin",
+            "category": "location",
+            "slug": "state-of-berlin-germany",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "Berlin"
+              },
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          },
+          {
+            "text": "hybrid",
+            "category": "hybrid",
+            "slug": "hybrid",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "state-of-berlin-germany"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "hybrid"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Buchhalter",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Buchhalter"
+              }
+            ]
+          },
+          {
+            "text": "Berlin",
+            "category": "location",
+            "slug": "state-of-berlin-germany",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "state-of-berlin-germany",
+                "name": "Berlin"
+              },
+              {
+                "slug": "berlin",
+                "name": "Berlin"
+              },
+              {
+                "slug": "new-berlin",
+                "name": "New Berlin"
+              }
+            ]
+          },
+          {
+            "text": "hybrid",
+            "category": "hybrid",
+            "slug": "hybrid",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-multilingual-02",
+      "group": "multilingual",
+      "q": "Responsable marketing Paris télétravail",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Responsable marketing",
+            "category": "occupation",
+            "slug": "marketing-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Responsable marketing"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          },
+          {
+            "text": "télétravail",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "télétravail"
+          ],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Responsable marketing",
+            "category": "occupation",
+            "slug": "marketing-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Responsable marketing"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          },
+          {
+            "text": "télétravail",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "paris-ile-de-france-region-france"
+          ],
+          "occupations": [
+            "marketing-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Responsable marketing",
+            "category": "occupation",
+            "slug": "marketing-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "marketing-manager",
+                "name": "Responsable marketing"
+              }
+            ]
+          },
+          {
+            "text": "Paris",
+            "category": "location",
+            "slug": "paris-ile-de-france-region-france",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "paris-ile-de-france-region-france",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-texas-united-states",
+                "name": "Paris"
+              },
+              {
+                "slug": "paris-13e-arrondissement",
+                "name": "Paris 13e Arrondissement"
+              }
+            ]
+          },
+          {
+            "text": "télétravail",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-multilingual-03",
+      "group": "multilingual",
+      "q": "Contabile Milano remoto",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "milan"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Contabile",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Contabile"
+              }
+            ]
+          },
+          {
+            "text": "Milano",
+            "category": "location",
+            "slug": "milan",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "milan",
+                "name": "Milano"
+              },
+              {
+                "slug": "gornji-milanovac",
+                "name": "Gornji Milanovac"
+              },
+              {
+                "slug": "milanowek",
+                "name": "Milanówek"
+              }
+            ]
+          },
+          {
+            "text": "remoto",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [
+            "remoto"
+          ],
+          "locations": [
+            "milan"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "milan"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Contabile",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Contabile"
+              }
+            ]
+          },
+          {
+            "text": "Milano",
+            "category": "location",
+            "slug": "milan",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "milan",
+                "name": "Milano"
+              },
+              {
+                "slug": "gornji-milanovac",
+                "name": "Gornji Milanovac"
+              },
+              {
+                "slug": "milanowek",
+                "name": "Milanówek"
+              }
+            ]
+          },
+          {
+            "text": "remoto",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "milan"
+          ],
+          "occupations": [
+            "accountant"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Contabile",
+            "category": "occupation",
+            "slug": "accountant",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "accountant",
+                "name": "Contabile"
+              }
+            ]
+          },
+          {
+            "text": "Milano",
+            "category": "location",
+            "slug": "milan",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "milan",
+                "name": "Milano"
+              },
+              {
+                "slug": "gornji-milanovac",
+                "name": "Gornji Milanovac"
+              },
+              {
+                "slug": "milanowek",
+                "name": "Milanówek"
+              }
+            ]
+          },
+          {
+            "text": "remoto",
+            "category": "remote",
+            "slug": "remote",
+            "status": "resolved",
+            "suggestions": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "diverse-multilingual-04",
+      "group": "multilingual",
+      "q": "Vertriebsleiter München",
+      "gold": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "munich"
+          ],
+          "occupations": [
+            "sales-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Vertriebsleiter",
+            "category": "occupation",
+            "slug": "sales-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "sales-manager",
+                "name": "Vertriebsleiter"
+              }
+            ]
+          },
+          {
+            "text": "München",
+            "category": "location",
+            "slug": "munich",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "munich",
+                "name": "München"
+              },
+              {
+                "slug": "garching",
+                "name": "Garching bei München"
+              },
+              {
+                "slug": "haar",
+                "name": "Haar bei München"
+              }
+            ]
+          }
+        ]
+      },
+      "parser": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "munich"
+          ],
+          "occupations": [
+            "sales-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        }
+      },
+      "strict": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "munich"
+          ],
+          "occupations": [
+            "sales-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Vertriebsleiter",
+            "category": "occupation",
+            "slug": "sales-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "sales-manager",
+                "name": "Vertriebsleiter"
+              }
+            ]
+          },
+          {
+            "text": "München",
+            "category": "location",
+            "slug": "munich",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "munich",
+                "name": "München"
+              },
+              {
+                "slug": "garching",
+                "name": "Garching bei München"
+              },
+              {
+                "slug": "haar",
+                "name": "Haar bei München"
+              }
+            ]
+          }
+        ]
+      },
+      "top": {
+        "shape": {
+          "keywords": [],
+          "locations": [
+            "munich"
+          ],
+          "occupations": [
+            "sales-manager"
+          ],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [],
+          "employmentTypes": []
+        },
+        "proposals": [
+          {
+            "text": "Vertriebsleiter",
+            "category": "occupation",
+            "slug": "sales-manager",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "sales-manager",
+                "name": "Vertriebsleiter"
+              }
+            ]
+          },
+          {
+            "text": "München",
+            "category": "location",
+            "slug": "munich",
+            "status": "resolved",
+            "suggestions": [
+              {
+                "slug": "munich",
+                "name": "München"
+              },
+              {
+                "slug": "garching",
+                "name": "Garching bei München"
+              },
+              {
+                "slug": "haar",
+                "name": "Haar bei München"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

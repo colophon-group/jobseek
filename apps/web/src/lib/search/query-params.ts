@@ -13,6 +13,7 @@ import { isEmploymentType, isWorkMode, type EmploymentType, type WorkMode } from
  */
 export const SEARCH_FILTER_PARAM_KEYS = [
   "q",
+  "qmode",
   "loc",
   "occ",
   "sen",

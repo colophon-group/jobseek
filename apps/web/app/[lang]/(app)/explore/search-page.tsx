@@ -367,6 +367,7 @@ export function SearchPage({
 
     // External navigation: parse URL params and update state
     const q = searchParams.get("q") ?? undefined;
+    const qmode = searchParams.get("qmode") === "literal" ? "literal" as const : undefined;
     const loc = searchParams.get("loc") ?? undefined;
     const occ = searchParams.get("occ") ?? undefined;
     const sen = searchParams.get("sen") ?? undefined;
@@ -400,7 +401,7 @@ export function SearchPage({
     setExperienceMax(newExpMax);
 
     setIsSearching(true);
-    fetchExploreFilterPageData({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+    fetchExploreFilterPageData({ q, qmode, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
       .then(({ parsed, degraded }) => {
         if (externalNavigationCounterRef.current !== navigationId) return;
         setKeywords(parsed.keywords);
@@ -433,7 +434,7 @@ export function SearchPage({
         // The browser URL already moved. Keeping the previous companies here
         // would put stale/broader results beneath the new filter state. Parse
         // everything that is safe offline and show explicit unavailability.
-        const parsed = parseOfflineSearchFilters({ q, loc, occ, sen, tech, wm, etype });
+        const parsed = parseOfflineSearchFilters({ q, qmode, loc, occ, sen, tech, wm, etype });
         setKeywords(parsed.keywords);
         setLocations([]);
         setOccupations([]);
@@ -597,6 +598,8 @@ export function SearchPage({
       getOccupations: () => occupationsRef.current,
       getSeniorities: () => senioritiesRef.current,
       getTechnologies: () => technologiesRef.current,
+      getWorkMode: () => workModeRef.current,
+      getEmploymentTypes: () => employmentTypesRef.current,
       addEmploymentType: (type: string) => {
         if (employmentTypesRef.current.includes(type)) return;
         const updated = [...employmentTypesRef.current, type];
@@ -699,6 +702,7 @@ export function SearchPage({
   const updateUrlRef = useRef(() => {});
   updateUrlRef.current = () => {
     const extra: Record<string, string> = {};
+    if (new URLSearchParams(window.location.search).get("qmode") === "literal") extra.qmode = "literal";
     if (showPostingIdRef.current) extra.show = showPostingIdRef.current;
     if (salaryMinRef.current || salaryMaxRef.current) {
       extra.sal = `${salaryMinRef.current ?? ""}-${salaryMaxRef.current ?? ""}`;

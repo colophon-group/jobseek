@@ -1,0 +1,7093 @@
+{
+  "timestamp": "2026-09-23T21:51:46.109Z",
+  "source": "apps/web/src/lib/services/search-input.ts via local Next.js runtime",
+  "baseCommit": "eb40e2b2a",
+  "fixtureCount": 84,
+  "stableCount": 84,
+  "sanityPassedCount": 84,
+  "records": [
+    {
+      "id": "atomic-01",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "remote",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 797,
+          "clientMs": 9444,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 13,
+          "clientMs": 100,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-02",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "hybrid",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 219,
+          "clientMs": 239,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 16,
+          "clientMs": 96,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-03",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "onsite",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 134,
+          "clientMs": 180,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "onsite"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 8,
+          "clientMs": 50,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "onsite"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-04",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "senior",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 91,
+          "clientMs": 112,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 9,
+          "clientMs": 119,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-05",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "junior",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 2,
+            "slug": "entry",
+            "name": "Entry Level"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 129,
+          "clientMs": 172,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 11,
+          "clientMs": 46,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-06",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "staff",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 6,
+            "slug": "staff",
+            "name": "Staff"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 112,
+          "clientMs": 160,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "staff"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 7,
+          "clientMs": 37,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "staff"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-07",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "Python",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 1,
+            "slug": "python",
+            "name": "Python"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 155,
+          "clientMs": 178,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 7,
+          "clientMs": 46,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-08",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "Kubernetes",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 77,
+            "slug": "kubernetes",
+            "name": "Kubernetes"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "kubernetes"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 354,
+          "clientMs": 386,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "kubernetes"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 20,
+          "clientMs": 81,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "kubernetes"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-09",
+      "group": "atomic",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Zurich",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 190,
+          "clientMs": 223,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 24,
+          "clientMs": 55,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-10",
+      "group": "atomic",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Berlin",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 97,
+          "clientMs": 145,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 6,
+          "clientMs": 40,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-11",
+      "group": "atomic",
+      "split": "holdout",
+      "locale": "en",
+      "q": "accountant",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 121,
+          "clientMs": 152,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 35,
+          "clientMs": 57,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "atomic-12",
+      "group": "atomic",
+      "split": "holdout",
+      "locale": "en",
+      "q": "backend developer",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 3,
+            "slug": "backend-developer",
+            "name": "Backend Developer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 364,
+          "clientMs": 426,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "backend-developer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 16,
+          "clientMs": 72,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "backend-developer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-01",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "sr swe zurich",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 202,
+          "clientMs": 233,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 40,
+          "clientMs": 96,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-02",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "wfh py dev",
+      "gold": {
+        "keywords": [
+          "py"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "py"
+        ],
+        "locations": [],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 395,
+          "clientMs": 413,
+          "shape": {
+            "keywords": [
+              "py"
+            ],
+            "locations": [],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 55,
+          "clientMs": 77,
+          "shape": {
+            "keywords": [
+              "py"
+            ],
+            "locations": [],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-03",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "jr data analyst",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 9,
+            "slug": "data-analyst",
+            "name": "Data Analyst"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 2,
+            "slug": "entry",
+            "name": "Entry Level"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "data-analyst"
+        ],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 443,
+          "clientMs": 468,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "data-analyst"
+            ],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 74,
+          "clientMs": 104,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "data-analyst"
+            ],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-04",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "react dev berlin",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 26,
+            "slug": "react",
+            "name": "React"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "react"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 229,
+          "clientMs": 269,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "react"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 60,
+          "clientMs": 551,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "react"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-05",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "go backend remote",
+      "gold": {
+        "keywords": [
+          "backend"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 5,
+            "slug": "golang",
+            "name": "Go"
+          }
+        ],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "backend"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "golang"
+        ],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 173,
+          "clientMs": 211,
+          "shape": {
+            "keywords": [
+              "backend"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "golang"
+            ],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 48,
+          "clientMs": 76,
+          "shape": {
+            "keywords": [
+              "backend"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "golang"
+            ],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-06",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "sde 2 london",
+      "gold": {
+        "keywords": [
+          "2"
+        ],
+        "locations": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "2"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 177,
+          "clientMs": 195,
+          "shape": {
+            "keywords": [
+              "2"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 22,
+          "clientMs": 49,
+          "shape": {
+            "keywords": [
+              "2"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-07",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "qa remote",
+      "gold": {
+        "keywords": [
+          "qa"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "qa"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 161,
+          "clientMs": 193,
+          "shape": {
+            "keywords": [
+              "qa"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 17,
+          "clientMs": 51,
+          "shape": {
+            "keywords": [
+              "qa"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-08",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "pm hybrid",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 10,
+            "slug": "product-manager",
+            "name": "Product Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "product-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 144,
+          "clientMs": 185,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "product-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 42,
+          "clientMs": 66,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "product-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-09",
+      "group": "terse",
+      "split": "holdout",
+      "locale": "en",
+      "q": "nurse geneva",
+      "gold": {
+        "keywords": [
+          "nurse"
+        ],
+        "locations": [
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "nurse"
+        ],
+        "locations": [
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 183,
+          "clientMs": 208,
+          "shape": {
+            "keywords": [
+              "nurse"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 15,
+          "clientMs": 35,
+          "shape": {
+            "keywords": [
+              "nurse"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-10",
+      "group": "terse",
+      "split": "holdout",
+      "locale": "en",
+      "q": "fullstack typescript",
+      "gold": {
+        "keywords": [
+          "fullstack"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 3,
+            "slug": "typescript",
+            "name": "TypeScript"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "fullstack"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "typescript"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 565,
+          "clientMs": 1258,
+          "shape": {
+            "keywords": [
+              "fullstack"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "typescript"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 27,
+          "clientMs": 84,
+          "shape": {
+            "keywords": [
+              "fullstack"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "typescript"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-11",
+      "group": "terse",
+      "split": "holdout",
+      "locale": "en",
+      "q": "devops aws",
+      "gold": {
+        "keywords": [
+          "devops"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 69,
+            "slug": "aws",
+            "name": "AWS"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "devops"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "aws"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 220,
+          "clientMs": 247,
+          "shape": {
+            "keywords": [
+              "devops"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "aws"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 45,
+          "clientMs": 76,
+          "shape": {
+            "keywords": [
+              "devops"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "aws"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "terse-12",
+      "group": "terse",
+      "split": "holdout",
+      "locale": "en",
+      "q": "ux designer paris",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 13,
+            "slug": "designer",
+            "name": "Designer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 472,
+          "clientMs": 508,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "designer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 56,
+          "clientMs": 93,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "designer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-01",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Looking for a remote senior Python backend role in Zurich",
+      "gold": {
+        "keywords": [
+          "Looking",
+          "for",
+          "a",
+          "backend",
+          "role",
+          "in"
+        ],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [
+          {
+            "id": 1,
+            "slug": "python",
+            "name": "Python"
+          }
+        ],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Looking",
+          "for",
+          "a",
+          "backend",
+          "role",
+          "in"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 814,
+          "clientMs": 859,
+          "shape": {
+            "keywords": [
+              "Looking",
+              "for",
+              "a",
+              "backend",
+              "role",
+              "in"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 126,
+          "clientMs": 176,
+          "shape": {
+            "keywords": [
+              "Looking",
+              "for",
+              "a",
+              "backend",
+              "role",
+              "in"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-02",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "I want a hybrid product designer position around Berlin",
+      "gold": {
+        "keywords": [
+          "I",
+          "want",
+          "a",
+          "position",
+          "around"
+        ],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 13,
+            "slug": "designer",
+            "name": "Designer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "I",
+          "want",
+          "a",
+          "position",
+          "around"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 404,
+          "clientMs": 429,
+          "shape": {
+            "keywords": [
+              "I",
+              "want",
+              "a",
+              "position",
+              "around"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [
+              "designer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 181,
+          "clientMs": 216,
+          "shape": {
+            "keywords": [
+              "I",
+              "want",
+              "a",
+              "position",
+              "around"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [
+              "designer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-03",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Find me junior data jobs in London preferably remote",
+      "gold": {
+        "keywords": [
+          "Find",
+          "me",
+          "data",
+          "jobs",
+          "in",
+          "preferably"
+        ],
+        "locations": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 2,
+            "slug": "entry",
+            "name": "Entry Level"
+          }
+        ],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Find",
+          "me",
+          "data",
+          "jobs",
+          "in",
+          "preferably"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 458,
+          "clientMs": 484,
+          "shape": {
+            "keywords": [
+              "Find",
+              "me",
+              "data",
+              "jobs",
+              "in",
+              "preferably"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 471,
+          "clientMs": 494,
+          "shape": {
+            "keywords": [
+              "Find",
+              "me",
+              "data",
+              "jobs",
+              "in",
+              "preferably"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-04",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Show software engineering positions using Rust and Kubernetes in Switzerland",
+      "gold": {
+        "keywords": [
+          "Show",
+          "software",
+          "engineering",
+          "positions",
+          "using",
+          "and",
+          "in"
+        ],
+        "locations": [
+          {
+            "id": 2658434,
+            "slug": "switzerland",
+            "name": "Switzerland",
+            "type": "country",
+            "parentName": null
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 12,
+            "slug": "rust",
+            "name": "Rust"
+          },
+          {
+            "id": 77,
+            "slug": "kubernetes",
+            "name": "Kubernetes"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Show",
+          "software",
+          "engineering",
+          "positions",
+          "using",
+          "and",
+          "in"
+        ],
+        "locations": [
+          "switzerland"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 1000,
+          "clientMs": 1031,
+          "shape": {
+            "keywords": [
+              "Show",
+              "software",
+              "engineering",
+              "positions",
+              "using",
+              "and",
+              "in"
+            ],
+            "locations": [
+              "switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "rust",
+              "kubernetes"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 166,
+          "clientMs": 208,
+          "shape": {
+            "keywords": [
+              "Show",
+              "software",
+              "engineering",
+              "positions",
+              "using",
+              "and",
+              "in"
+            ],
+            "locations": [
+              "switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "rust",
+              "kubernetes"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-05",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Could you find finance analyst roles in Paris for graduates",
+      "gold": {
+        "keywords": [
+          "Could",
+          "you",
+          "find",
+          "finance",
+          "analyst",
+          "roles",
+          "in",
+          "for",
+          "graduates"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Could",
+          "you",
+          "find",
+          "finance",
+          "analyst",
+          "roles",
+          "in",
+          "for",
+          "graduates"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 532,
+          "clientMs": 724,
+          "shape": {
+            "keywords": [
+              "Could",
+              "you",
+              "find",
+              "finance",
+              "analyst",
+              "roles",
+              "in",
+              "for",
+              "graduates"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 68,
+          "clientMs": 123,
+          "shape": {
+            "keywords": [
+              "Could",
+              "you",
+              "find",
+              "finance",
+              "analyst",
+              "roles",
+              "in",
+              "for",
+              "graduates"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-06",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "I'm interested in staff backend developer roles working from home",
+      "gold": {
+        "keywords": [
+          "I'm",
+          "interested",
+          "in",
+          "roles",
+          "working",
+          "from",
+          "home"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 3,
+            "slug": "backend-developer",
+            "name": "Backend Developer"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 6,
+            "slug": "staff",
+            "name": "Staff"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "I'm",
+          "interested",
+          "in",
+          "roles",
+          "working",
+          "from",
+          "home"
+        ],
+        "locations": [],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 460,
+          "clientMs": 476,
+          "shape": {
+            "keywords": [
+              "I'm",
+              "interested",
+              "in",
+              "roles",
+              "working",
+              "from",
+              "home"
+            ],
+            "locations": [],
+            "occupations": [
+              "backend-developer"
+            ],
+            "seniorities": [
+              "staff"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 115,
+          "clientMs": 127,
+          "shape": {
+            "keywords": [
+              "I'm",
+              "interested",
+              "in",
+              "roles",
+              "working",
+              "from",
+              "home"
+            ],
+            "locations": [],
+            "occupations": [
+              "backend-developer"
+            ],
+            "seniorities": [
+              "staff"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-07",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Search for a nursing job near Geneva with flexible hours",
+      "gold": {
+        "keywords": [
+          "Search",
+          "for",
+          "a",
+          "nursing",
+          "job",
+          "near",
+          "with",
+          "flexible",
+          "hours"
+        ],
+        "locations": [
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Search",
+          "for",
+          "a",
+          "nursing",
+          "job",
+          "near",
+          "with",
+          "flexible",
+          "hours"
+        ],
+        "locations": [
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 793,
+          "clientMs": 812,
+          "shape": {
+            "keywords": [
+              "Search",
+              "for",
+              "a",
+              "nursing",
+              "job",
+              "near",
+              "with",
+              "flexible",
+              "hours"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 968,
+          "clientMs": 1050,
+          "shape": {
+            "keywords": [
+              "Search",
+              "for",
+              "a",
+              "nursing",
+              "job",
+              "near",
+              "with",
+              "flexible",
+              "hours"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-08",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Any remote cybersecurity engineering positions in Europe right now",
+      "gold": {
+        "keywords": [
+          "Any",
+          "cybersecurity",
+          "engineering",
+          "positions",
+          "in",
+          "Europe",
+          "right",
+          "now"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Any",
+          "cybersecurity",
+          "engineering",
+          "positions",
+          "in",
+          "Europe",
+          "right",
+          "now"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 601,
+          "clientMs": 646,
+          "shape": {
+            "keywords": [
+              "Any",
+              "cybersecurity",
+              "engineering",
+              "positions",
+              "in",
+              "Europe",
+              "right",
+              "now"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 1024,
+          "clientMs": 1097,
+          "shape": {
+            "keywords": [
+              "Any",
+              "cybersecurity",
+              "engineering",
+              "positions",
+              "in",
+              "Europe",
+              "right",
+              "now"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-09",
+      "group": "verbose",
+      "split": "holdout",
+      "locale": "en",
+      "q": "I need an onsite recruiter position in Munich as soon as possible",
+      "gold": {
+        "keywords": [
+          "I",
+          "need",
+          "an",
+          "recruiter",
+          "position",
+          "in",
+          "Munich",
+          "as",
+          "soon",
+          "possible"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "I",
+          "need",
+          "an",
+          "recruiter",
+          "position",
+          "in",
+          "Munich",
+          "as",
+          "soon",
+          "possible"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 688,
+          "clientMs": 714,
+          "shape": {
+            "keywords": [
+              "I",
+              "need",
+              "an",
+              "recruiter",
+              "position",
+              "in",
+              "Munich",
+              "as",
+              "soon",
+              "possible"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "onsite"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 1775,
+          "clientMs": 1857,
+          "shape": {
+            "keywords": [
+              "I",
+              "need",
+              "an",
+              "recruiter",
+              "position",
+              "in",
+              "Munich",
+              "as",
+              "soon",
+              "possible"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "onsite"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-10",
+      "group": "verbose",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Looking for React jobs in Amsterdam with a senior title",
+      "gold": {
+        "keywords": [
+          "Looking",
+          "for",
+          "jobs",
+          "in",
+          "Amsterdam",
+          "with",
+          "a",
+          "title"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [
+          {
+            "id": 26,
+            "slug": "react",
+            "name": "React"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Looking",
+          "for",
+          "jobs",
+          "in",
+          "Amsterdam",
+          "with",
+          "a",
+          "title"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "react"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 537,
+          "clientMs": 581,
+          "shape": {
+            "keywords": [
+              "Looking",
+              "for",
+              "jobs",
+              "in",
+              "Amsterdam",
+              "with",
+              "a",
+              "title"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [
+              "react"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 641,
+          "clientMs": 702,
+          "shape": {
+            "keywords": [
+              "Looking",
+              "for",
+              "jobs",
+              "in",
+              "Amsterdam",
+              "with",
+              "a",
+              "title"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [
+              "react"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-11",
+      "group": "verbose",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Please show me contract work for designers in Vienna",
+      "gold": {
+        "keywords": [
+          "Please",
+          "show",
+          "me",
+          "contract",
+          "work",
+          "for",
+          "designers",
+          "in",
+          "Vienna"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Please",
+          "show",
+          "me",
+          "contract",
+          "work",
+          "for",
+          "designers",
+          "in",
+          "Vienna"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 461,
+          "clientMs": 513,
+          "shape": {
+            "keywords": [
+              "Please",
+              "show",
+              "me",
+              "contract",
+              "work",
+              "for",
+              "designers",
+              "in",
+              "Vienna"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 413,
+          "clientMs": 459,
+          "shape": {
+            "keywords": [
+              "Please",
+              "show",
+              "me",
+              "contract",
+              "work",
+              "for",
+              "designers",
+              "in",
+              "Vienna"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "verbose-12",
+      "group": "verbose",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Find jobs for somebody who knows Python SQL and AWS",
+      "gold": {
+        "keywords": [
+          "Find",
+          "jobs",
+          "for",
+          "somebody",
+          "who",
+          "knows",
+          "and"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 1,
+            "slug": "python",
+            "name": "Python"
+          },
+          {
+            "id": 23,
+            "slug": "sql",
+            "name": "SQL"
+          },
+          {
+            "id": 69,
+            "slug": "aws",
+            "name": "AWS"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Find",
+          "jobs",
+          "for",
+          "somebody",
+          "who",
+          "knows",
+          "and"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python",
+          "sql",
+          "aws"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 568,
+          "clientMs": 637,
+          "shape": {
+            "keywords": [
+              "Find",
+              "jobs",
+              "for",
+              "somebody",
+              "who",
+              "knows",
+              "and"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "python",
+              "sql",
+              "aws"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 85,
+          "clientMs": 129,
+          "shape": {
+            "keywords": [
+              "Find",
+              "jobs",
+              "for",
+              "somebody",
+              "who",
+              "knows",
+              "and"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "python",
+              "sql",
+              "aws"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-01",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "remtoe python dev zurich",
+      "gold": {
+        "keywords": [
+          "remtoe"
+        ],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 1,
+            "slug": "python",
+            "name": "Python"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "remtoe"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 436,
+          "clientMs": 467,
+          "shape": {
+            "keywords": [
+              "remtoe"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 86,
+          "clientMs": 117,
+          "shape": {
+            "keywords": [
+              "remtoe"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-02",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "hybird data analyst berlin",
+      "gold": {
+        "keywords": [
+          "hybird"
+        ],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 9,
+            "slug": "data-analyst",
+            "name": "Data Analyst"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "hybird"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "data-analyst"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 167,
+          "clientMs": 198,
+          "shape": {
+            "keywords": [
+              "hybird"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [
+              "data-analyst"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 166,
+          "clientMs": 186,
+          "shape": {
+            "keywords": [
+              "hybird"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [
+              "data-analyst"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-03",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "senor java engineer",
+      "gold": {
+        "keywords": [
+          "senor",
+          "engineer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 4,
+            "slug": "java",
+            "name": "Java"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "senor",
+          "engineer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "java"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 261,
+          "clientMs": 274,
+          "shape": {
+            "keywords": [
+              "senor",
+              "engineer"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "java"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 25,
+          "clientMs": 92,
+          "shape": {
+            "keywords": [
+              "senor",
+              "engineer"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "java"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-04",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "junor accountant paris",
+      "gold": {
+        "keywords": [
+          "junor"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "junor"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 171,
+          "clientMs": 201,
+          "shape": {
+            "keywords": [
+              "junor"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 24,
+          "clientMs": 86,
+          "shape": {
+            "keywords": [
+              "junor"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-05",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "pyhton backend remote",
+      "gold": {
+        "keywords": [
+          "pyhton",
+          "backend"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "pyhton",
+          "backend"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 172,
+          "clientMs": 199,
+          "shape": {
+            "keywords": [
+              "pyhton",
+              "backend"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 23,
+          "clientMs": 47,
+          "shape": {
+            "keywords": [
+              "pyhton",
+              "backend"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-06",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "react develper london",
+      "gold": {
+        "keywords": [
+          "develper"
+        ],
+        "locations": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 26,
+            "slug": "react",
+            "name": "React"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "develper"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "react"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 155,
+          "clientMs": 173,
+          "shape": {
+            "keywords": [
+              "develper"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "react"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 22,
+          "clientMs": 52,
+          "shape": {
+            "keywords": [
+              "develper"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "react"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-07",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "kubernets platform engineer",
+      "gold": {
+        "keywords": [
+          "kubernets"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 36141,
+            "slug": "platform-engineer",
+            "name": "Platform Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "kubernets"
+        ],
+        "locations": [],
+        "occupations": [
+          "platform-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 245,
+          "clientMs": 274,
+          "shape": {
+            "keywords": [
+              "kubernets"
+            ],
+            "locations": [],
+            "occupations": [
+              "platform-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 43,
+          "clientMs": 79,
+          "shape": {
+            "keywords": [
+              "kubernets"
+            ],
+            "locations": [],
+            "occupations": [
+              "platform-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-08",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "zurcih software engineer",
+      "gold": {
+        "keywords": [
+          "zurcih"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "zurcih"
+        ],
+        "locations": [],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 422,
+          "clientMs": 440,
+          "shape": {
+            "keywords": [
+              "zurcih"
+            ],
+            "locations": [],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 29,
+          "clientMs": 46,
+          "shape": {
+            "keywords": [
+              "zurcih"
+            ],
+            "locations": [],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-09",
+      "group": "mistakes",
+      "split": "holdout",
+      "locale": "en",
+      "q": "berln frontend dev",
+      "gold": {
+        "keywords": [
+          "berln",
+          "frontend"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "berln",
+          "frontend"
+        ],
+        "locations": [],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 348,
+          "clientMs": 397,
+          "shape": {
+            "keywords": [
+              "berln",
+              "frontend"
+            ],
+            "locations": [],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 22,
+          "clientMs": 48,
+          "shape": {
+            "keywords": [
+              "berln",
+              "frontend"
+            ],
+            "locations": [],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-10",
+      "group": "mistakes",
+      "split": "holdout",
+      "locale": "en",
+      "q": "engeneer remote",
+      "gold": {
+        "keywords": [
+          "engeneer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "engeneer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 177,
+          "clientMs": 252,
+          "shape": {
+            "keywords": [
+              "engeneer"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 12,
+          "clientMs": 26,
+          "shape": {
+            "keywords": [
+              "engeneer"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-11",
+      "group": "mistakes",
+      "split": "holdout",
+      "locale": "en",
+      "q": "frnch speaking recruiter geneva",
+      "gold": {
+        "keywords": [
+          "frnch",
+          "speaking"
+        ],
+        "locations": [
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 30,
+            "slug": "recruiter",
+            "name": "Recruiter"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "frnch",
+          "speaking"
+        ],
+        "locations": [
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [
+          "recruiter"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 639,
+          "clientMs": 661,
+          "shape": {
+            "keywords": [
+              "frnch",
+              "speaking"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [
+              "recruiter"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 141,
+          "clientMs": 222,
+          "shape": {
+            "keywords": [
+              "frnch",
+              "speaking"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [
+              "recruiter"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "mistakes-12",
+      "group": "mistakes",
+      "split": "holdout",
+      "locale": "en",
+      "q": "work form home rust dev",
+      "gold": {
+        "keywords": [
+          "work",
+          "form",
+          "home"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 12,
+            "slug": "rust",
+            "name": "Rust"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "work",
+          "form",
+          "home"
+        ],
+        "locations": [],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "rust"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 257,
+          "clientMs": 282,
+          "shape": {
+            "keywords": [
+              "work",
+              "form",
+              "home"
+            ],
+            "locations": [],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "rust"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 45,
+          "clientMs": 87,
+          "shape": {
+            "keywords": [
+              "work",
+              "form",
+              "home"
+            ],
+            "locations": [],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "rust"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-01",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "San Francisco software engineer",
+      "gold": {
+        "keywords": [
+          "Francisco"
+        ],
+        "locations": [
+          {
+            "id": 2451778,
+            "slug": "san",
+            "name": "San",
+            "type": "city",
+            "parentName": "Ségou"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Software Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Francisco"
+        ],
+        "locations": [
+          "san"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 449,
+          "clientMs": 494,
+          "shape": {
+            "keywords": [
+              "Francisco"
+            ],
+            "locations": [
+              "san"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 192,
+          "clientMs": 227,
+          "shape": {
+            "keywords": [
+              "Francisco"
+            ],
+            "locations": [
+              "san"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-02",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "New York data scientist",
+      "gold": {
+        "keywords": [
+          "New"
+        ],
+        "locations": [
+          {
+            "id": 2633352,
+            "slug": "york-england-united-kingdom",
+            "name": "York",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 8,
+            "slug": "data-scientist",
+            "name": "Data Scientist"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "New"
+        ],
+        "locations": [
+          "york-england-united-kingdom"
+        ],
+        "occupations": [
+          "data-scientist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 671,
+          "clientMs": 696,
+          "shape": {
+            "keywords": [
+              "New"
+            ],
+            "locations": [
+              "york-england-united-kingdom"
+            ],
+            "occupations": [
+              "data-scientist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 61,
+          "clientMs": 89,
+          "shape": {
+            "keywords": [
+              "New"
+            ],
+            "locations": [
+              "york-england-united-kingdom"
+            ],
+            "occupations": [
+              "data-scientist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-03",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "Los Angeles designer",
+      "gold": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 13,
+            "slug": "designer",
+            "name": "Designer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 322,
+          "clientMs": 338,
+          "shape": {
+            "keywords": [
+              "Los",
+              "Angeles"
+            ],
+            "locations": [],
+            "occupations": [
+              "designer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 35,
+          "clientMs": 62,
+          "shape": {
+            "keywords": [
+              "Los",
+              "Angeles"
+            ],
+            "locations": [],
+            "occupations": [
+              "designer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-04",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "work from home backend developer",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 3,
+            "slug": "backend-developer",
+            "name": "Backend Developer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 213,
+          "clientMs": 245,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "backend-developer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 45,
+          "clientMs": 69,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "backend-developer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-05",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "in office senior accountant",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 258,
+          "clientMs": 376,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [
+              "onsite"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 153,
+          "clientMs": 186,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [
+              "onsite"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-06",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "backend developer Zurich",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 3,
+            "slug": "backend-developer",
+            "name": "Backend Developer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 88,
+          "clientMs": 128,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "backend-developer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 73,
+          "clientMs": 179,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "backend-developer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-07",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "machine learning engineer remote",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 381,
+            "slug": "ml-engineer",
+            "name": "ML Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "ml-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 380,
+          "clientMs": 508,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "ml-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 36,
+          "clientMs": 75,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "ml-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-08",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "product manager London",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 10,
+            "slug": "product-manager",
+            "name": "Product Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "product-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 275,
+          "clientMs": 310,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "product-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 92,
+          "clientMs": 118,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "product-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-09",
+      "group": "multiword",
+      "split": "holdout",
+      "locale": "en",
+      "q": "United Kingdom nurse",
+      "gold": {
+        "keywords": [
+          "United",
+          "Kingdom",
+          "nurse"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "United",
+          "Kingdom",
+          "nurse"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 401,
+          "clientMs": 450,
+          "shape": {
+            "keywords": [
+              "United",
+              "Kingdom",
+              "nurse"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 324,
+          "clientMs": 444,
+          "shape": {
+            "keywords": [
+              "United",
+              "Kingdom",
+              "nurse"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-10",
+      "group": "multiword",
+      "split": "holdout",
+      "locale": "en",
+      "q": "European Union policy analyst",
+      "gold": {
+        "keywords": [
+          "European",
+          "Union",
+          "policy",
+          "analyst"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "European",
+          "Union",
+          "policy",
+          "analyst"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 420,
+          "clientMs": 453,
+          "shape": {
+            "keywords": [
+              "European",
+              "Union",
+              "policy",
+              "analyst"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 67,
+          "clientMs": 95,
+          "shape": {
+            "keywords": [
+              "European",
+              "Union",
+              "policy",
+              "analyst"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-11",
+      "group": "multiword",
+      "split": "holdout",
+      "locale": "en",
+      "q": "New York City finance analyst",
+      "gold": {
+        "keywords": [
+          "New",
+          "City",
+          "finance",
+          "analyst"
+        ],
+        "locations": [
+          {
+            "id": 2633352,
+            "slug": "york-england-united-kingdom",
+            "name": "York",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "New",
+          "City",
+          "finance",
+          "analyst"
+        ],
+        "locations": [
+          "york-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 238,
+          "clientMs": 260,
+          "shape": {
+            "keywords": [
+              "New",
+              "City",
+              "finance",
+              "analyst"
+            ],
+            "locations": [
+              "york-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 54,
+          "clientMs": 138,
+          "shape": {
+            "keywords": [
+              "New",
+              "City",
+              "finance",
+              "analyst"
+            ],
+            "locations": [
+              "york-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multiword-12",
+      "group": "multiword",
+      "split": "holdout",
+      "locale": "en",
+      "q": "front end developer Paris",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 2,
+            "slug": "frontend-developer",
+            "name": "Frontend Developer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "frontend-developer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 487,
+          "clientMs": 514,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "frontend-developer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 86,
+          "clientMs": 155,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "frontend-developer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-01",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "pizza near me",
+      "gold": {
+        "keywords": [
+          "pizza",
+          "near",
+          "me"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "pizza",
+          "near",
+          "me"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 311,
+          "clientMs": 366,
+          "shape": {
+            "keywords": [
+              "pizza",
+              "near",
+              "me"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 83,
+          "clientMs": 187,
+          "shape": {
+            "keywords": [
+              "pizza",
+              "near",
+              "me"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-02",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "weather tomorrow Zurich",
+      "gold": {
+        "keywords": [
+          "weather",
+          "tomorrow"
+        ],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "weather",
+          "tomorrow"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 939,
+          "clientMs": 2060,
+          "shape": {
+            "keywords": [
+              "weather",
+              "tomorrow"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 112,
+          "clientMs": 200,
+          "shape": {
+            "keywords": [
+              "weather",
+              "tomorrow"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-03",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "how do I reset my password",
+      "gold": {
+        "keywords": [
+          "how",
+          "do",
+          "I",
+          "reset",
+          "my",
+          "password"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "how",
+          "do",
+          "I",
+          "reset",
+          "my",
+          "password"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 2393,
+          "clientMs": 2489,
+          "shape": {
+            "keywords": [
+              "how",
+              "do",
+              "I",
+              "reset",
+              "my",
+              "password"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 114,
+          "clientMs": 174,
+          "shape": {
+            "keywords": [
+              "how",
+              "do",
+              "I",
+              "reset",
+              "my",
+              "password"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-04",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "what is the meaning of life",
+      "gold": {
+        "keywords": [
+          "what",
+          "is",
+          "the",
+          "meaning",
+          "of",
+          "life"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "what",
+          "is",
+          "the",
+          "meaning",
+          "of",
+          "life"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 704,
+          "clientMs": 777,
+          "shape": {
+            "keywords": [
+              "what",
+              "is",
+              "the",
+              "meaning",
+              "of",
+              "life"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 130,
+          "clientMs": 151,
+          "shape": {
+            "keywords": [
+              "what",
+              "is",
+              "the",
+              "meaning",
+              "of",
+              "life"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-05",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "hello",
+      "gold": {
+        "keywords": [
+          "hello"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "hello"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 247,
+          "clientMs": 281,
+          "shape": {
+            "keywords": [
+              "hello"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 15,
+          "clientMs": 50,
+          "shape": {
+            "keywords": [
+              "hello"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-06",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "asdf qwerty",
+      "gold": {
+        "keywords": [
+          "asdf",
+          "qwerty"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "asdf",
+          "qwerty"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 210,
+          "clientMs": 232,
+          "shape": {
+            "keywords": [
+              "asdf",
+              "qwerty"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 57,
+          "clientMs": 103,
+          "shape": {
+            "keywords": [
+              "asdf",
+              "qwerty"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-07",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "12345",
+      "gold": {
+        "keywords": [
+          "12345"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "12345"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 214,
+          "clientMs": 272,
+          "shape": {
+            "keywords": [
+              "12345"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 5,
+          "clientMs": 50,
+          "shape": {
+            "keywords": [
+              "12345"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-08",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "remote control batteries",
+      "gold": {
+        "keywords": [
+          "control",
+          "batteries"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "control",
+          "batteries"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 286,
+          "clientMs": 310,
+          "shape": {
+            "keywords": [
+              "control",
+              "batteries"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 21,
+          "clientMs": 38,
+          "shape": {
+            "keywords": [
+              "control",
+              "batteries"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-09",
+      "group": "unrelated",
+      "split": "holdout",
+      "locale": "en",
+      "q": "senior discount tickets",
+      "gold": {
+        "keywords": [
+          "discount",
+          "tickets"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "discount",
+          "tickets"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 391,
+          "clientMs": 450,
+          "shape": {
+            "keywords": [
+              "discount",
+              "tickets"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 30,
+          "clientMs": 59,
+          "shape": {
+            "keywords": [
+              "discount",
+              "tickets"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-10",
+      "group": "unrelated",
+      "split": "holdout",
+      "locale": "en",
+      "q": "python snake habitat",
+      "gold": {
+        "keywords": [
+          "snake",
+          "habitat"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 1,
+            "slug": "python",
+            "name": "Python"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "snake",
+          "habitat"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 249,
+          "clientMs": 274,
+          "shape": {
+            "keywords": [
+              "snake",
+              "habitat"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 198,
+          "clientMs": 261,
+          "shape": {
+            "keywords": [
+              "snake",
+              "habitat"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-11",
+      "group": "unrelated",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Berlin wall history",
+      "gold": {
+        "keywords": [
+          "wall",
+          "history"
+        ],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "wall",
+          "history"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 253,
+          "clientMs": 271,
+          "shape": {
+            "keywords": [
+              "wall",
+              "history"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 80,
+          "clientMs": 110,
+          "shape": {
+            "keywords": [
+              "wall",
+              "history"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "unrelated-12",
+      "group": "unrelated",
+      "split": "holdout",
+      "locale": "en",
+      "q": "book a flight to Paris",
+      "gold": {
+        "keywords": [
+          "book",
+          "a",
+          "flight"
+        ],
+        "locations": [
+          {
+            "id": 2354340,
+            "slug": "to",
+            "name": "Tô",
+            "type": "city",
+            "parentName": "Centre-Ouest Region"
+          },
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "book",
+          "a",
+          "flight"
+        ],
+        "locations": [
+          "to",
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 850,
+          "clientMs": 869,
+          "shape": {
+            "keywords": [
+              "book",
+              "a",
+              "flight"
+            ],
+            "locations": [
+              "to",
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 101,
+          "clientMs": 119,
+          "shape": {
+            "keywords": [
+              "book",
+              "a",
+              "flight"
+            ],
+            "locations": [
+              "to",
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-01",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "de",
+      "q": "Softwareentwickler München remote",
+      "gold": {
+        "keywords": [
+          "Softwareentwickler"
+        ],
+        "locations": [
+          {
+            "id": 2867714,
+            "slug": "munich",
+            "name": "München",
+            "type": "city",
+            "parentName": "Bavaria"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Softwareentwickler"
+        ],
+        "locations": [
+          "munich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 343,
+          "clientMs": 406,
+          "shape": {
+            "keywords": [
+              "Softwareentwickler"
+            ],
+            "locations": [
+              "munich"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 22,
+          "clientMs": 112,
+          "shape": {
+            "keywords": [
+              "Softwareentwickler"
+            ],
+            "locations": [
+              "munich"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-02",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "de",
+      "q": "Senior Java Entwickler Berlin",
+      "gold": {
+        "keywords": [
+          "Entwickler"
+        ],
+        "locations": [
+          {
+            "id": 2950157,
+            "slug": "state-of-berlin-germany",
+            "name": "Berlin",
+            "type": "region",
+            "parentName": "Germany"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [
+          {
+            "id": 4,
+            "slug": "java",
+            "name": "Java"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Entwickler"
+        ],
+        "locations": [
+          "state-of-berlin-germany"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "java"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 301,
+          "clientMs": 467,
+          "shape": {
+            "keywords": [
+              "Entwickler"
+            ],
+            "locations": [
+              "state-of-berlin-germany"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [
+              "java"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 65,
+          "clientMs": 93,
+          "shape": {
+            "keywords": [
+              "Entwickler"
+            ],
+            "locations": [
+              "state-of-berlin-germany"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [
+              "java"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-03",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "de",
+      "q": "Teilzeit Buchhalter Zürich",
+      "gold": {
+        "keywords": [
+          "Teilzeit"
+        ],
+        "locations": [
+          {
+            "id": 2657895,
+            "slug": "canton-of-zurich-switzerland",
+            "name": "Zürich",
+            "type": "region",
+            "parentName": "Switzerland"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Buchhalter"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Teilzeit"
+        ],
+        "locations": [
+          "canton-of-zurich-switzerland"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 566,
+          "clientMs": 595,
+          "shape": {
+            "keywords": [
+              "Teilzeit"
+            ],
+            "locations": [
+              "canton-of-zurich-switzerland"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 24,
+          "clientMs": 89,
+          "shape": {
+            "keywords": [
+              "Teilzeit"
+            ],
+            "locations": [
+              "canton-of-zurich-switzerland"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-04",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "de",
+      "q": "Ich suche eine Stelle als Data Engineer in Hamburg",
+      "gold": {
+        "keywords": [
+          "Ich",
+          "suche",
+          "eine",
+          "Stelle",
+          "als",
+          "Data",
+          "Engineer",
+          "in"
+        ],
+        "locations": [
+          {
+            "id": 2911297,
+            "slug": "hamburg-germany",
+            "name": "Hamburg",
+            "type": "region",
+            "parentName": "Germany"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Ich",
+          "suche",
+          "eine",
+          "Stelle",
+          "als",
+          "Data",
+          "Engineer",
+          "in"
+        ],
+        "locations": [
+          "hamburg-germany"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 1402,
+          "clientMs": 1524,
+          "shape": {
+            "keywords": [
+              "Ich",
+              "suche",
+              "eine",
+              "Stelle",
+              "als",
+              "Data",
+              "Engineer",
+              "in"
+            ],
+            "locations": [
+              "hamburg-germany"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 142,
+          "clientMs": 200,
+          "shape": {
+            "keywords": [
+              "Ich",
+              "suche",
+              "eine",
+              "Stelle",
+              "als",
+              "Data",
+              "Engineer",
+              "in"
+            ],
+            "locations": [
+              "hamburg-germany"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-05",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "fr",
+      "q": "développeur Python à Paris en télétravail",
+      "gold": {
+        "keywords": [
+          "à",
+          "en",
+          "télétravail"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 1,
+            "slug": "software-engineer",
+            "name": "Ingénieur logiciel"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 1,
+            "slug": "python",
+            "name": "Python"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "à",
+          "en",
+          "télétravail"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 830,
+          "clientMs": 859,
+          "shape": {
+            "keywords": [
+              "à",
+              "en",
+              "télétravail"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 110,
+          "clientMs": 141,
+          "shape": {
+            "keywords": [
+              "à",
+              "en",
+              "télétravail"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "software-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-06",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "fr",
+      "q": "analyste financier junior Genève",
+      "gold": {
+        "keywords": [
+          "analyste",
+          "financier"
+        ],
+        "locations": [
+          {
+            "id": 2660645,
+            "slug": "canton-of-geneva-switzerland",
+            "name": "Genève",
+            "type": "region",
+            "parentName": "Switzerland"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 2,
+            "slug": "entry",
+            "name": "Débutant"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "analyste",
+          "financier"
+        ],
+        "locations": [
+          "canton-of-geneva-switzerland"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 669,
+          "clientMs": 690,
+          "shape": {
+            "keywords": [
+              "analyste",
+              "financier"
+            ],
+            "locations": [
+              "canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 76,
+          "clientMs": 125,
+          "shape": {
+            "keywords": [
+              "analyste",
+              "financier"
+            ],
+            "locations": [
+              "canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-07",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "fr",
+      "q": "poste hybride à Lyon pour designer",
+      "gold": {
+        "keywords": [
+          "poste",
+          "hybride",
+          "à",
+          "pour"
+        ],
+        "locations": [
+          {
+            "id": 2996944,
+            "slug": "lyon",
+            "name": "Lyon",
+            "type": "city",
+            "parentName": "Rhône-Alpes"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 13,
+            "slug": "designer",
+            "name": "Designer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "poste",
+          "hybride",
+          "à",
+          "pour"
+        ],
+        "locations": [
+          "lyon"
+        ],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 521,
+          "clientMs": 537,
+          "shape": {
+            "keywords": [
+              "poste",
+              "hybride",
+              "à",
+              "pour"
+            ],
+            "locations": [
+              "lyon"
+            ],
+            "occupations": [
+              "designer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 201,
+          "clientMs": 237,
+          "shape": {
+            "keywords": [
+              "poste",
+              "hybride",
+              "à",
+              "pour"
+            ],
+            "locations": [
+              "lyon"
+            ],
+            "occupations": [
+              "designer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-08",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "fr",
+      "q": "ingénieur logiciel senior à Montréal",
+      "gold": {
+        "keywords": [
+          "ingénieur",
+          "logiciel",
+          "senior",
+          "à",
+          "Montréal"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "ingénieur",
+          "logiciel",
+          "senior",
+          "à",
+          "Montréal"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 364,
+          "clientMs": 408,
+          "shape": {
+            "keywords": [
+              "ingénieur",
+              "logiciel",
+              "senior",
+              "à",
+              "Montréal"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 329,
+          "clientMs": 352,
+          "shape": {
+            "keywords": [
+              "ingénieur",
+              "logiciel",
+              "senior",
+              "à",
+              "Montréal"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-09",
+      "group": "multilingual",
+      "split": "holdout",
+      "locale": "it",
+      "q": "sviluppatore backend remoto Milano",
+      "gold": {
+        "keywords": [
+          "sviluppatore",
+          "backend",
+          "remoto",
+          "Milano"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "sviluppatore",
+          "backend",
+          "remoto",
+          "Milano"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 399,
+          "clientMs": 445,
+          "shape": {
+            "keywords": [
+              "sviluppatore",
+              "backend",
+              "remoto",
+              "Milano"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 539,
+          "clientMs": 588,
+          "shape": {
+            "keywords": [
+              "sviluppatore",
+              "backend",
+              "remoto",
+              "Milano"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-10",
+      "group": "multilingual",
+      "split": "holdout",
+      "locale": "it",
+      "q": "ingegnere dati junior Roma",
+      "gold": {
+        "keywords": [
+          "ingegnere",
+          "dati",
+          "junior",
+          "Roma"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "ingegnere",
+          "dati",
+          "junior",
+          "Roma"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 359,
+          "clientMs": 424,
+          "shape": {
+            "keywords": [
+              "ingegnere",
+              "dati",
+              "junior",
+              "Roma"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 314,
+          "clientMs": 345,
+          "shape": {
+            "keywords": [
+              "ingegnere",
+              "dati",
+              "junior",
+              "Roma"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-11",
+      "group": "multilingual",
+      "split": "holdout",
+      "locale": "it",
+      "q": "designer UX ibrido Zurigo",
+      "gold": {
+        "keywords": [
+          "designer",
+          "UX",
+          "ibrido",
+          "Zurigo"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "designer",
+          "UX",
+          "ibrido",
+          "Zurigo"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 266,
+          "clientMs": 379,
+          "shape": {
+            "keywords": [
+              "designer",
+              "UX",
+              "ibrido",
+              "Zurigo"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 335,
+          "clientMs": 351,
+          "shape": {
+            "keywords": [
+              "designer",
+              "UX",
+              "ibrido",
+              "Zurigo"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "multilingual-12",
+      "group": "multilingual",
+      "split": "holdout",
+      "locale": "it",
+      "q": "lavoro Python a Milano",
+      "gold": {
+        "keywords": [
+          "lavoro",
+          "a",
+          "Milano"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 1,
+            "slug": "python",
+            "name": "Python"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "lavoro",
+          "a",
+          "Milano"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 135,
+          "clientMs": 181,
+          "shape": {
+            "keywords": [
+              "lavoro",
+              "a",
+              "Milano"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 251,
+          "clientMs": 287,
+          "shape": {
+            "keywords": [
+              "lavoro",
+              "a",
+              "Milano"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [
+              "python"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    }
+  ],
+  "labelRole": "current-system-baseline-not-human-gold"
+}

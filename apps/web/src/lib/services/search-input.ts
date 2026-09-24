@@ -163,6 +163,8 @@ function wordInMultiWordOccupation(
 
 export async function parseSearchFilters(params: {
   q?: string;
+  /** Preserve residual keywords from an already routed whole-query proposal. */
+  qmode?: "literal";
   loc?: string;
   occ?: string;
   sen?: string;
@@ -278,6 +280,19 @@ export async function parseSearchFilters(params: {
   const employmentTypes: EmploymentType[] = parseEmploymentTypeParam(
     migratedLegacyFilters.employmentType,
   );
+
+  if (params.qmode === "literal") {
+    return {
+      keywords: uniqCaseInsensitive((params.q ?? "").split(",").map((part) => part.trim()).filter(Boolean)),
+      locations,
+      occupations,
+      seniorities,
+      technologies,
+      workMode,
+      employmentTypes,
+      ...unresolvedResult,
+    };
+  }
 
   const locationIds = new Set(locations.map((location) => location.id));
   const occupationIds = new Set(occupations.map((o) => o.id));

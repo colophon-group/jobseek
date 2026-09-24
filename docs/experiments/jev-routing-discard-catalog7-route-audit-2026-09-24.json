@@ -1,0 +1,410 @@
+{
+  "timestamp": "2026-09-24T01:04:29.010Z",
+  "dataset": "docs/experiments/jev-routing-discard-gold-2026-09-24.json",
+  "note": "Post-hoc production-route audit on frozen span labels, not a blind complete-configuration evaluation",
+  "count": 16,
+  "records": [
+    {
+      "id": "h01",
+      "query": "Show me entry level warehouse associate jobs in Basel",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 1573,
+      "serverTiming": "query-intent;dur=1189",
+      "keywords": [],
+      "locations": [
+        "basel"
+      ],
+      "occupations": [
+        "warehouse-associate"
+      ],
+      "seniorities": [
+        "entry"
+      ],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h02",
+      "query": "I want a contract recruiter in London",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 481,
+      "serverTiming": "query-intent;dur=432",
+      "keywords": [
+        "London"
+      ],
+      "locations": [],
+      "occupations": [
+        "recruiter"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [
+        "contract"
+      ],
+      "unresolved": [
+        {
+          "text": "London",
+          "category": "location",
+          "status": "ambiguous",
+          "alternatives": [
+            "london-england-united-kingdom",
+            "london-ontario-canada",
+            "east-london"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "h03",
+      "query": "Marketing manager hybrid roles around Amsterdam",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 441,
+      "serverTiming": "query-intent;dur=386",
+      "keywords": [
+        "Amsterdam"
+      ],
+      "locations": [],
+      "occupations": [
+        "marketing-manager"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [
+        "hybrid"
+      ],
+      "employmentTypes": [],
+      "unresolved": [
+        {
+          "text": "Amsterdam",
+          "category": "location",
+          "status": "ambiguous",
+          "alternatives": [
+            "amsterdam-north-holland-the-netherlands",
+            "amsterdam-new-york-united-states"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "h04",
+      "query": "Find software engineer jobs using React in Berlin",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 495,
+      "serverTiming": "query-intent;dur=460",
+      "keywords": [],
+      "locations": [
+        "berlin"
+      ],
+      "occupations": [
+        "software-engineer"
+      ],
+      "seniorities": [],
+      "technologies": [
+        "react"
+      ],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h05",
+      "query": "What does a pharmacist do",
+      "locale": "en",
+      "intent": "other",
+      "wallMs": 342,
+      "serverTiming": "query-intent;dur=308",
+      "keywords": [
+        "What",
+        "does",
+        "a",
+        "pharmacist",
+        "do"
+      ],
+      "locations": [],
+      "occupations": [],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h06",
+      "query": "nurse Zurich remote",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 381,
+      "serverTiming": "query-intent;dur=351",
+      "keywords": [
+        "nurse"
+      ],
+      "locations": [
+        "zurich"
+      ],
+      "occupations": [],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [
+        "remote"
+      ],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h07",
+      "query": "sr acctnt munich",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 419,
+      "serverTiming": "query-intent;dur=393",
+      "keywords": [
+        "acctnt"
+      ],
+      "locations": [
+        "munich"
+      ],
+      "occupations": [],
+      "seniorities": [
+        "senior"
+      ],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": [
+        {
+          "text": "acctnt",
+          "category": "occupation",
+          "status": "unresolved",
+          "alternatives": []
+        }
+      ]
+    },
+    {
+      "id": "h08",
+      "query": "Customer success manager roles in Dublin please",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 399,
+      "serverTiming": "query-intent;dur=367",
+      "keywords": [
+        "Dublin"
+      ],
+      "locations": [],
+      "occupations": [
+        "customer-success-manager"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": [
+        {
+          "text": "Dublin",
+          "category": "location",
+          "status": "ambiguous",
+          "alternatives": [
+            "dublin-leinster-ireland",
+            "dublin-ohio-united-states",
+            "dublin-california-united-states"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "h09",
+      "query": "consultant positions in New York",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 517,
+      "serverTiming": "query-intent;dur=486",
+      "keywords": [
+        "New",
+        "York"
+      ],
+      "locations": [],
+      "occupations": [
+        "consultant"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": [
+        {
+          "text": "New York",
+          "category": "location",
+          "status": "ambiguous",
+          "alternatives": [
+            "new-york-united-states",
+            "new-york-new-york-united-states",
+            "west-new-york"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "h10",
+      "query": "Get me temporary auditor work from home",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 389,
+      "serverTiming": "query-intent;dur=360",
+      "keywords": [],
+      "locations": [],
+      "occupations": [
+        "auditor"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [
+        "remote"
+      ],
+      "employmentTypes": [
+        "temporary"
+      ],
+      "unresolved": []
+    },
+    {
+      "id": "h11",
+      "query": "data analyst jobs Zürich",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 1112,
+      "serverTiming": "query-intent;dur=900",
+      "keywords": [],
+      "locations": [
+        "zurich"
+      ],
+      "occupations": [
+        "data-analyst"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h12",
+      "query": "jobs at Google for legal counsel",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 422,
+      "serverTiming": "query-intent;dur=393",
+      "keywords": [
+        "Google"
+      ],
+      "locations": [],
+      "occupations": [
+        "legal-counsel"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h13",
+      "query": "Find me pharmacst in Bern",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 454,
+      "serverTiming": "query-intent;dur=427",
+      "keywords": [],
+      "locations": [
+        "bern"
+      ],
+      "occupations": [
+        "pharmacist"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h14",
+      "query": "salary for accountant in Zurich",
+      "locale": "en",
+      "intent": "other",
+      "wallMs": 345,
+      "serverTiming": "query-intent;dur=316",
+      "keywords": [
+        "salary",
+        "for",
+        "accountant",
+        "in",
+        "Zurich"
+      ],
+      "locations": [],
+      "occupations": [],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h15",
+      "query": "remote logistics coordinator jobs Berlin",
+      "locale": "en",
+      "intent": "jobSearch",
+      "wallMs": 325,
+      "serverTiming": "query-intent;dur=284",
+      "keywords": [
+        "logistics",
+        "coordinator"
+      ],
+      "locations": [
+        "berlin"
+      ],
+      "occupations": [],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [
+        "remote"
+      ],
+      "employmentTypes": [],
+      "unresolved": []
+    },
+    {
+      "id": "h16",
+      "query": "cherche un poste de comptable à Genève",
+      "locale": "fr",
+      "intent": "jobSearch",
+      "wallMs": 391,
+      "serverTiming": "query-intent;dur=367",
+      "keywords": [
+        "Genève"
+      ],
+      "locations": [],
+      "occupations": [
+        "accountant"
+      ],
+      "seniorities": [],
+      "technologies": [],
+      "workMode": [],
+      "employmentTypes": [],
+      "unresolved": [
+        {
+          "text": "Genève",
+          "category": "location",
+          "status": "ambiguous",
+          "alternatives": [
+            "canton-of-geneva-switzerland",
+            "geneva-canton-of-geneva-switzerland"
+          ]
+        }
+      ]
+    }
+  ]
+}

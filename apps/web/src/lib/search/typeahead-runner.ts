@@ -14,6 +14,8 @@ import type { TypeaheadBoostFilters } from "./typeahead-boost";
 import type {
   SearchBarTypeaheadParams,
   SearchBarTypeaheadResults,
+  SearchBarTermTypeaheadParams,
+  SearchBarTermResult,
 } from "./typeahead-contract";
 
 const directEnabled = process.env.NEXT_PUBLIC_TYPESENSE_DIRECT === "1";
@@ -39,6 +41,19 @@ async function tryBrowser<T>(fn: () => Promise<T>): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+export async function runSearchBarTermTypeahead(
+  params: SearchBarTermTypeaheadParams,
+): Promise<SearchBarTermResult[]> {
+  if (params.terms.length === 0) return [];
+  const browser = await tryBrowser(async () => {
+    const m = await import("./typesense-browser-typeahead");
+    return m.suggestSearchBarTermsBrowser(params);
+  });
+  if (browser !== null) return browser;
+  const m = await import("@/lib/actions/typeahead");
+  return m.suggestSearchBarTermTypeahead(params);
 }
 
 /**

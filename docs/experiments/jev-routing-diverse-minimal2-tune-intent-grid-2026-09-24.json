@@ -1,0 +1,511 @@
+{
+  "variant": "minimal2",
+  "split": "tune",
+  "top": [
+    {
+      "config": {
+        "threshold": 0.3,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 30,
+      "spanPrecision": 0.9696969696969697,
+      "spanRecall": 1,
+      "spanF1": 0.9846153846153847,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 3
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 30,
+      "spanPrecision": 0.9696969696969697,
+      "spanRecall": 1,
+      "spanF1": 0.9846153846153847,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 3
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 30,
+      "spanPrecision": 0.9696969696969697,
+      "spanRecall": 1,
+      "spanF1": 0.9846153846153847,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 3
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.75,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 30,
+      "spanPrecision": 0.9696969696969697,
+      "spanRecall": 1,
+      "spanF1": 0.9846153846153847,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 4
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 3
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.75,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 29,
+      "spanPrecision": 0.9545454545454546,
+      "spanRecall": 0.984375,
+      "spanF1": 0.9692307692307692,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 3
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 29,
+      "spanPrecision": 0.9393939393939394,
+      "spanRecall": 0.96875,
+      "spanF1": 0.9538461538461539,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 3
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 27,
+      "spanPrecision": 0.9090909090909091,
+      "spanRecall": 0.9375,
+      "spanF1": 0.923076923076923,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 1
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 3
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 27,
+      "spanPrecision": 0.9090909090909091,
+      "spanRecall": 0.9375,
+      "spanF1": 0.923076923076923,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 1
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 3
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 3
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.9,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 25,
+      "spanPrecision": 1,
+      "spanRecall": 0.875,
+      "spanF1": 0.9333333333333333,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 1
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 1
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.9,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 25,
+      "spanPrecision": 1,
+      "spanRecall": 0.875,
+      "spanF1": 0.9333333333333333,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 1
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 1
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    }
+  ],
+  "bestMismatches": [
+    {
+      "id": "diverse-employment-01",
+      "group": "employment",
+      "q": "part time cashier",
+      "expected": [
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "selected": [
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "cashier",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "exact": false
+    },
+    {
+      "id": "diverse-unrelated-03",
+      "group": "unrelated",
+      "q": "how to become a pharmacist",
+      "expected": [],
+      "selected": [
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "exact": false
+    }
+  ]
+}

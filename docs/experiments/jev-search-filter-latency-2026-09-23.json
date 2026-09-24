@@ -1,0 +1,698 @@
+{
+  "timestamp": "2026-09-23T20:57:19.793Z",
+  "location": "local macOS, Europe/Zurich",
+  "model": "jev-1.13.0",
+  "typesenseMode": "off",
+  "repetitions": 12,
+  "warmup": {
+    "typesense": null,
+    "jev": {
+      "latencyMs": 374,
+      "inputTokens": 443,
+      "outputTokens": 66,
+      "choices": [
+        "remote",
+        "keyword"
+      ]
+    }
+  },
+  "summaries": {
+    "short": {
+      "typesenseMs": null,
+      "jevMs": {
+        "min": 245,
+        "median": 285,
+        "p90": 312,
+        "p95": 314,
+        "max": 314
+      },
+      "serialMs": null,
+      "requests": null,
+      "inputTokens": 443
+    },
+    "typical": {
+      "typesenseMs": null,
+      "jevMs": {
+        "min": 250,
+        "median": 280,
+        "p90": 439,
+        "p95": 472,
+        "max": 472
+      },
+      "serialMs": null,
+      "requests": null,
+      "inputTokens": 697
+    },
+    "long": {
+      "typesenseMs": null,
+      "jevMs": {
+        "min": 252,
+        "median": 281,
+        "p90": 361,
+        "p95": 364,
+        "max": 364
+      },
+      "serialMs": null,
+      "requests": null,
+      "inputTokens": 878
+    }
+  },
+  "observations": [
+    {
+      "fixture": "short",
+      "round": 1,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 312,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 1,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 280,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 1,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 252,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 2,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 439,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 2,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 333,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 2,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 285,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 3,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 281,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 3,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 292,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 3,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 252,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 4,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 258,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 4,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 264,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 4,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 254,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 5,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 472,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 5,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 364,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 5,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 270,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 6,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 278,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 6,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 284,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 6,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 274,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 7,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 284,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 7,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 270,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 7,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 292,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 8,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 308,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 8,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 269,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 8,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 245,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 9,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 328,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 9,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 308,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 9,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 344,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 10,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 292,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 10,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 250,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 10,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 274,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 11,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 410,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 11,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 290,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 11,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 314,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "long",
+      "round": 12,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 361,
+        "inputTokens": 878,
+        "outputTokens": 232,
+        "choices": [
+          "hybrid",
+          "staff",
+          "keyword",
+          "software_engineer",
+          "rust",
+          "kubernetes",
+          "berlin"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "short",
+      "round": 12,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 288,
+        "inputTokens": 443,
+        "outputTokens": 66,
+        "choices": [
+          "remote",
+          "keyword"
+        ]
+      },
+      "serialMs": null
+    },
+    {
+      "fixture": "typical",
+      "round": 12,
+      "typesense": null,
+      "jev": {
+        "latencyMs": 290,
+        "inputTokens": 697,
+        "outputTokens": 160,
+        "choices": [
+          "senior",
+          "python",
+          "keyword",
+          "zurich",
+          "remote"
+        ]
+      },
+      "serialMs": null
+    }
+  ]
+}

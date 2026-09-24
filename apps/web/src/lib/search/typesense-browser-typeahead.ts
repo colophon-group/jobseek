@@ -11,6 +11,8 @@ import type { CompanySuggestion } from "@/lib/services/company";
 import type {
   SearchBarTypeaheadParams,
   SearchBarTypeaheadResults,
+  SearchBarTermTypeaheadParams,
+  SearchBarTermResult,
 } from "./typeahead-contract";
 
 export type { LocationSuggestion, TaxonomySuggestion };
@@ -620,6 +622,71 @@ export async function suggestSearchBarBrowser(
     seniorities: seniorities ?? [],
     technologies: technologies ?? [],
   };
+}
+
+/** One Typesense multi_search for up to four earlier terms/phrases. */
+export async function suggestSearchBarTermsBrowser(
+  params: SearchBarTermTypeaheadParams,
+): Promise<SearchBarTermResult[]> {
+  const terms = [...new Set(params.terms.map((term) => term.trim()).filter((term) => term.length >= 2))].slice(0, 4);
+  if (terms.length === 0) return [];
+  const searches: MultiSearchRequest[] = [];
+  const tags: Array<{ index: number; kind: "location" | "occupation" | "seniority" | "technology" }> = [];
+  const result: SearchBarTermResult[] = terms.map((term) => ({
+    term, locations: [], occupations: [], seniorities: [], technologies: [],
+  }));
+  const add = (index: number, kind: typeof tags[number]["kind"], search: MultiSearchRequest) => {
+    tags.push({ index, kind });
+    searches.push(search);
+  };
+  terms.forEach((term, index) => {
+    const localeSearch = {
+      q: term, query_by: "name,aliases",
+      filter_by: `has_active_postings:true && locale:${params.locale}`,
+      sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 5, prefix: "true", num_typos: "1",
+    };
+    add(index, "location", {
+      collection: "location", q: term,
+      query_by: params.locale === "en" ? "name_en,aliases" : `name_${params.locale},name_en,aliases`,
+      filter_by: "has_active_postings:true", sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 5, prefix: "true", num_typos: "1", drop_tokens_threshold: 0,
+    });
+    add(index, "occupation", { collection: "occupation", ...localeSearch });
+    add(index, "seniority", { collection: "seniority", ...localeSearch });
+    add(index, "technology", {
+      collection: "technology", q: term, query_by: "name,slug",
+      filter_by: "has_active_postings:true", sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 5, prefix: "true", num_typos: "0",
+    });
+  });
+  const raw = await searchMany(await getTypesenseBrowserConfig(), searches);
+  tags.forEach(({ index, kind }, position) => {
+    const search = requireSearchResult(raw[position], `${kind} term`);
+    if (kind === "location") {
+      result[index].locations = (search.hits ?? []).map((hit) => {
+        const doc = hit.document as unknown as LocationDoc;
+        return { id: doc.location_id, slug: doc.slug,
+          name: (doc[`name_${params.locale}`] ?? doc.name_en ?? doc.slug) as string,
+          type: doc.type as LocationSuggestion["type"], parentName: doc.parent_name ?? null };
+      });
+    } else if (kind === "technology") {
+      result[index].technologies = (search.hits ?? []).map((hit) => {
+        const doc = hit.document as unknown as TechnologyDoc;
+        return { id: doc.technology_id, slug: doc.slug, name: doc.name ?? doc.slug };
+      });
+    } else {
+      const mapped = (search.hits ?? []).map((hit) => {
+        const doc = hit.document as unknown as OccupationDoc | SeniorityDoc;
+        return { id: "occupation_id" in doc ? doc.occupation_id : doc.seniority_id,
+          slug: doc.slug, name: doc.name,
+          matchedName: mapAliasMatch(hit as SearchHit<unknown>, doc.name) };
+      });
+      if (kind === "occupation") result[index].occupations = mapped;
+      else result[index].seniorities = mapped;
+    }
+  });
+  return result;
 }
 
 interface LocaleAwareDoc {

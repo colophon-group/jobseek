@@ -1,0 +1,239 @@
+{
+  "timestamp": "2026-09-23T21:36:13.868Z",
+  "samples": 12,
+  "validSamples": 12,
+  "parserMedianMs": 146,
+  "parserP95Ms": 483,
+  "observations": [
+    {
+      "q": "remote nurse Geneva",
+      "expectedLocation": "geneva",
+      "locations": [
+        "geneva-canton-of-geneva-switzerland"
+      ],
+      "valid": true,
+      "parserMs": 483,
+      "clientMs": 3745,
+      "otherFilters": {
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "q": "hybrid accountant London",
+      "expectedLocation": "london",
+      "locations": [
+        "london-england-united-kingdom"
+      ],
+      "valid": true,
+      "parserMs": 114,
+      "clientMs": 131,
+      "otherFilters": {
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "q": "onsite designer Paris",
+      "expectedLocation": "paris",
+      "locations": [
+        "paris-ile-de-france-region-france"
+      ],
+      "valid": true,
+      "parserMs": 177,
+      "clientMs": 237,
+      "otherFilters": {
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ]
+      }
+    },
+    {
+      "q": "senior recruiter Munich",
+      "expectedLocation": "munich",
+      "locations": [
+        "munich"
+      ],
+      "valid": true,
+      "parserMs": 146,
+      "clientMs": 161,
+      "otherFilters": {
+        "occupations": [
+          "recruiter"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": []
+      }
+    },
+    {
+      "q": "junior analyst Amsterdam",
+      "expectedLocation": "amsterdam",
+      "locations": [
+        "amsterdam-north-holland-the-netherlands"
+      ],
+      "valid": true,
+      "parserMs": 149,
+      "clientMs": 164,
+      "otherFilters": {
+        "occupations": [],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": []
+      }
+    },
+    {
+      "q": "staff architect Vienna",
+      "expectedLocation": "vienna",
+      "locations": [
+        "vienna-austria"
+      ],
+      "valid": true,
+      "parserMs": 104,
+      "clientMs": 113,
+      "otherFilters": {
+        "occupations": [],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [],
+        "workMode": []
+      }
+    },
+    {
+      "q": "lead pharmacist Madrid",
+      "expectedLocation": "madrid",
+      "locations": [
+        "madrid-spain"
+      ],
+      "valid": true,
+      "parserMs": 107,
+      "clientMs": 115,
+      "otherFilters": {
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [
+          "lead"
+        ],
+        "technologies": [],
+        "workMode": []
+      }
+    },
+    {
+      "q": "remote developer Toronto",
+      "expectedLocation": "toronto",
+      "locations": [
+        "toronto"
+      ],
+      "valid": true,
+      "parserMs": 124,
+      "clientMs": 137,
+      "otherFilters": {
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "q": "hybrid scientist Milan",
+      "expectedLocation": "milan",
+      "locations": [
+        "milan"
+      ],
+      "valid": true,
+      "parserMs": 170,
+      "clientMs": 185,
+      "otherFilters": {
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "q": "onsite teacher Stockholm",
+      "expectedLocation": "stockholm",
+      "locations": [
+        "stockholm"
+      ],
+      "valid": true,
+      "parserMs": 143,
+      "clientMs": 166,
+      "otherFilters": {
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ]
+      }
+    },
+    {
+      "q": "principal consultant Copenhagen",
+      "expectedLocation": "copenhagen",
+      "locations": [
+        "copenhagen"
+      ],
+      "valid": true,
+      "parserMs": 222,
+      "clientMs": 247,
+      "otherFilters": {
+        "occupations": [
+          "consultant"
+        ],
+        "seniorities": [
+          "principal"
+        ],
+        "technologies": [],
+        "workMode": []
+      }
+    },
+    {
+      "q": "intern auditor Dublin",
+      "expectedLocation": "dublin",
+      "locations": [
+        "dublin-leinster-ireland"
+      ],
+      "valid": true,
+      "parserMs": 199,
+      "clientMs": 224,
+      "otherFilters": {
+        "occupations": [
+          "auditor"
+        ],
+        "seniorities": [
+          "intern"
+        ],
+        "technologies": [],
+        "workMode": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+
+ RUN  v5.0.0 /Users/Viktor/.codex/worktrees/jev-filter-latency/jobseek/apps/web
+
+{"fixture":"short","samples":2000,"medianMs":0.01895799999999781,"p95Ms":0.043915999999967426,"maxMs":3.623207999999977}
+{"fixture":"typical","samples":2000,"medianMs":0.05116700000007768,"p95Ms":0.130333999999948,"maxMs":5.607582999999977}
+{"fixture":"long","samples":2000,"medianMs":0.05604199999993398,"p95Ms":0.1352919999999358,"maxMs":13.03429200000005}
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  23:00:24
+   Duration  1.43s (tests 45%, environment 38%, transform 12%, import 3%, worker 1%)
