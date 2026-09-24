@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 import structlog
 
@@ -27,17 +28,32 @@ _MAX_MAIN_BODY = 2_000_000
 _MAX_RENDERED_HTML = 4_000_000
 _MAX_LINKS = 1_000
 _MAX_LINK_BYTES = 1_000_000
+_MAX_API_RESPONSES = 16
+_MAX_API_BODY = 2_000_000
+_MAX_API_TOTAL = 4_000_000
 
 
 class BookingDOMCapture:
     def __init__(self, page: Page) -> None:
         self.page = page
         self.main_response = None
+        self.api_responses = []
+        self.api_overflow = False
 
     def on_response(self, response: Response) -> None:
         try:
             if response.frame == self.page.main_frame and response.request.is_navigation_request():
                 self.main_response = response
+            elif (
+                response.request.method == "GET"
+                and urlsplit(response.url).scheme == "https"
+                and urlsplit(response.url).netloc == "jobs.booking.com"
+                and urlsplit(response.url).path == "/api/jobs"
+            ):
+                if len(self.api_responses) < _MAX_API_RESPONSES:
+                    self.api_responses.append(response)
+                else:
+                    self.api_overflow = True
         except (AttributeError, TypeError):
             return
 
@@ -45,7 +61,7 @@ class BookingDOMCapture:
         if _PATH.exists() or _PATH.with_suffix(".json.partial").exists():
             return
         response = self.main_response
-        if response is None or len(links) > _MAX_LINKS:
+        if response is None or len(links) > _MAX_LINKS or self.api_overflow:
             log.warning("dom.replay_capture_incomplete", reason="missing_response_or_links_cap")
             return
         try:
@@ -61,6 +77,29 @@ class BookingDOMCapture:
             if len(body) > _MAX_MAIN_BODY or len(html_bytes) > _MAX_RENDERED_HTML:
                 log.warning("dom.replay_capture_limit")
                 return
+            api_records = []
+            api_bytes = 0
+            for api_response in self.api_responses:
+                api_length = api_response.headers.get("content-length", "")
+                if api_length.isdecimal() and int(api_length) > _MAX_API_BODY:
+                    log.warning("dom.replay_capture_api_limit")
+                    return
+                api_body = await asyncio.wait_for(api_response.body(), timeout=5)
+                api_bytes += len(api_body)
+                if len(api_body) > _MAX_API_BODY or api_bytes > _MAX_API_TOTAL:
+                    log.warning("dom.replay_capture_api_limit")
+                    return
+                api_records.append(
+                    {
+                        "method": "GET",
+                        "url": api_response.url,
+                        "status": api_response.status,
+                        "content_type": api_response.headers.get("content-type", ""),
+                        "tdm_reservation": api_response.headers.get("tdm-reservation", ""),
+                        "tdm_policy": api_response.headers.get("tdm-policy", ""),
+                        "body_b64": base64.b64encode(api_body).decode("ascii"),
+                    }
+                )
             record = {
                 "schema": "jobseek.dom-replay/v1",
                 "board_url": _BOARD_URL,
@@ -75,6 +114,7 @@ class BookingDOMCapture:
                 "rendered_html": html,
                 "resolved_links": sorted(links),
                 "matched_urls": sorted(urls),
+                "api_responses": api_records,
             }
             path = _PATH.with_suffix(".json.partial")
             descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)

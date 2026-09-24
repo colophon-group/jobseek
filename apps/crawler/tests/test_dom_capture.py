@@ -41,6 +41,13 @@ class FakeRequest:
         return True
 
 
+class FakeAPIRequest:
+    method = "GET"
+
+    def is_navigation_request(self) -> bool:
+        return False
+
+
 class FakeResponse:
     def __init__(self, page: FakePage, body: bytes) -> None:
         self.frame = page.main_frame
@@ -84,6 +91,36 @@ async def test_booking_capture_is_opt_in_and_writes_one_private_snapshot(
     assert record["matched_urls"] == ["https://jobs.booking.com/booking/jobs/123"]
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
     assert dom_capture.start_booking_capture(page.url, page) is None
+
+
+@pytest.mark.asyncio
+async def test_booking_capture_records_only_natural_same_origin_jobs_api(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    page = FakePage()
+    path = tmp_path / "booking.json"
+    monkeypatch.setattr(dom_capture, "_PATH", path)
+    monkeypatch.setenv("BOOKING_DOM_REPLAY_CAPTURE", "1")
+    capture = dom_capture.start_booking_capture(page.url, page)
+    assert capture is not None
+    main = FakeResponse(page, b"<html>main</html>")
+    api = FakeResponse(page, b'{"jobs":[]}')
+    api.request = FakeAPIRequest()
+    api.url = "https://jobs.booking.com/api/jobs?page=1&limit=10"
+    api.headers = {"content-type": "application/json"}
+    ignored = FakeResponse(page, b"private")
+    ignored.request = FakeAPIRequest()
+    ignored.url = "https://other.example/api/jobs"
+    capture.on_response(main)
+    capture.on_response(ignored)
+    capture.on_response(api)
+    await capture.finish(page=page, html="<html>rendered</html>", links=[], urls=set())
+    record = json.loads(path.read_text())
+    assert len(record["api_responses"]) == 1
+    assert record["api_responses"][0]["url"] == api.url
+    assert base64.b64decode(record["api_responses"][0]["body_b64"]) == b'{"jobs":[]}'
+    assert main.body_reads == api.body_reads == 1
+    assert ignored.body_reads == 0
 
 
 @pytest.mark.asyncio
