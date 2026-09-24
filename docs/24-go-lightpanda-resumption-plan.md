@@ -1,6 +1,6 @@
 # Go + Lightpanda migration: resumption plan
 
-Status: implementation checkpoint, 2026-09-23. The initial review used
+Status: implementation checkpoint, 2026-09-24. The initial review used
 `origin/main` `6abfa52e1b061f2898a46355c48105accd1c01f9`; the B0 producer
 implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
@@ -17,38 +17,40 @@ an admission condition for the first B0 cohort.
 ## Execution checkpoint: 2026-09-24
 
 This checkpoint supersedes the older epoch and pending-run statements below.
-On deployed main `1f8e9113bfc4730ca9ba9ada183dbdd507827fa4`, the first
-natural post-fix Elevance Go Workday cycle completed at 16:18 UTC. Go returned
-308 URLs in 16 requests with no transport error, and the Python board writer
-persisted exactly the same URL set and digest. The board retained its next
-schedule and zero failures. The preceding Python cycle saw 306 URLs because
-the publisher changed between runs; the two cycle durations are not an
-equal-input resource comparison. The one-board Workday host flag remains
-active. Remove its line entirely under the host mutation lock before any
-crawler deploy. [#7955](https://github.com/colophon-group/jobseek/issues/7955#issuecomment-5818161956)
-has the measured counts and digest.
+On the prior deployed revision `1f8e9113bfc4730ca9ba9ada183dbdd507827fa4`,
+two natural Elevance Go Workday cycles completed at 16:18 and 17:25 UTC.
+They found 308 and 309 URLs in 16 requests each with zero transport errors.
+Both cycles' sorted URL digests matched their exact database readbacks after
+the existing Python board writer ran. The publisher changed between cycles;
+these are live persistence results, not same-input Python-versus-Go resource
+comparisons. [#7955](https://github.com/colophon-group/jobseek/issues/7955#issuecomment-5818925063)
+records the second run.
 
-After that result, the supported B0 cutover wrapper reactivated `c1` at Go
-routing epoch **24**. Its active receipt, producer owner, and route agree;
-five Browser Use schedules are ready, none inflight or dead, and the worker,
-browser, producer, claimant, executor, and drain services are healthy. The
-five existing detail jobs are not due until 2026-09-25, so this is an
-ownership result, not yet a live Lightpanda detail-output or whole-lane
-resource result. [#8648](https://github.com/colophon-group/jobseek/issues/8648#issuecomment-5818260335)
-records the transition. Keep `deployment-hold:crawler` until the live gate is
-resolved, and cold-rollback c1 before a crawler deploy.
+[PR #9989](https://github.com/colophon-group/jobseek/pull/9989) merged as
+`d0077bdc3459c5f2380caae8e55b33a387b811d3` and
+[deployed successfully](https://github.com/colophon-group/jobseek/actions/runs/36036386828).
+It combines the default-off rich Elastic Go Greenhouse monitor, one scheduled
+Elastic response capture, Kandou rendered-DOM capture, Booking main-response
+and DOM capture, and the c2 legacy scrape-enqueue owner guard. Earlier draft
+PRs #9979, #9987, and #9944 were closed as superseded. Synthetic same-byte
+Greenhouse Go/Python field replay passes; live Elastic capture and whole-lane
+measurement still gate exclusive Go activation. Kandou's intermittent
+required-title failure keeps c2 dark.
 
-The next HTTP slice is a default-off rich Greenhouse monitor for one exact
-Elastic board in [draft PR #9989](https://github.com/colophon-group/jobseek/pull/9989).
-Synthetic same-byte Go/Python field replay passes. Its scheduled Python
-response capture has not run in production, so exact live-source replay and
-whole-lane measurement still gate activation. The c2 legacy enqueue guard is
-in [PR #9979](https://github.com/colophon-group/jobseek/pull/9979), and the
-default-off Kandou rendered-DOM capture is in
-[draft PR #9987](https://github.com/colophon-group/jobseek/pull/9987).
-Kandou's intermittent required-title failure still keeps c2 dark. The full
-fleet remains Python-owned outside the named pilots; zero Python and zero
-Chromium are not achieved.
+For this deploy, supported c1 cold rollback retired epoch 25 and restored all
+five future due schedules to Python before the crawler image changed. The
+temporary one-board Workday selector line was removed entirely under the host
+mutation lock. After deployment, the one-board selector and Elastic capture
+path were staged under that lock, and supported c1 reactivation transferred
+the same five due scores to Go at routing epoch **26**. The active receipt,
+producer owner, and route agree; no B0 job is inflight or dead, all services
+are healthy, and the mutation lock is free. The first existing c1 detail is
+due 2026-09-25 00:26 UTC, so live Lightpanda detail output and production
+whole-lane resources remain unmeasured. Remove the Workday selector line
+entirely before any later crawler deploy, and cold-rollback c1 first.
+[#8648](https://github.com/colophon-group/jobseek/issues/8648#issuecomment-5819378524)
+records the transition. The fleet remains Python-owned outside the named
+pilots; zero Python and zero Chromium are not achieved.
 
 ## Current state
 
