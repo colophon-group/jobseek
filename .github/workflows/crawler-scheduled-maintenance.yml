@@ -107,7 +107,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: GITHUB_SHA,EXPECTED_CRAWLER_REVISION,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD
+          envs: GITHUB_SHA,EXPECTED_CRAWLER_REVISION
           # A full production re-index currently takes about 45 minutes.
           # Allow the two-hour host-lock wait plus the bounded four-hour
           # operation and leave cleanup headroom beyond ssh-action's default.
@@ -119,9 +119,6 @@ jobs:
               echo "Timed out waiting for the crawler mutation lock" >&2
               exit 1
             }
-            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler/scripts/postgresql-operational-preflight.py"
-            TASK="${{ steps.task.outputs.task }}"
-            NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
             read_exact_env() {
               key="$1"
               mapfile -t matches < <(sed -n "s/^${key}=//p" /home/deploy/.env 2>/dev/null)
@@ -131,6 +128,17 @@ jobs:
               }
               printf '%s' "${matches[0]}"
             }
+            # The SSH action embeds forwarded environment values in its remote
+            # shell command line. Read Grafana credentials from the host's
+            # attested release environment so they never appear in argv.
+            for key in GRAFANA_PROM_URL GRAFANA_PROM_USERNAME GRAFANA_PROM_PASSWORD; do
+              value="$(read_exact_env "$key")"
+              export "$key=$value"
+            done
+            unset value
+            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler/scripts/postgresql-operational-preflight.py"
+            TASK="${{ steps.task.outputs.task }}"
+            NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
             image="$(read_exact_env CRAWLER_IMAGE_REF)"
             [[ "$image" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
               echo "Crawler image reference is not an approved immutable digest" >&2
@@ -261,6 +269,3 @@ jobs:
         env:
           GITHUB_SHA: ${{ github.sha }}
           EXPECTED_CRAWLER_REVISION: ${{ steps.task.outputs.expected_revision }}
-          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
-          GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
-          GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}
