@@ -14,6 +14,52 @@ export, maintenance, and configuration sync. Temporary Chromium assignments
 remain explicit during migration; eliminating them is a completion task, not
 an admission condition for the first B0 cohort.
 
+## Production checkpoint: 2026-09-24 20:20 UTC
+
+This checkpoint supersedes the deployment and owner statements below. The
+latest code baseline for further work is `origin/main` `3e9e737c4`.
+[PR #9991](https://github.com/colophon-group/jobseek/pull/9991) merged the
+guarded Go Typesense CDC exporter as `2ade431d9` and
+[deploy run 36052100515](https://github.com/colophon-group/jobseek/actions/runs/36052100515)
+successfully promoted that revision. The first deploy attempt failed before
+the image changed because a temporary Elastic capture variable in the host
+environment differed from the committed release. Its rollback restored the
+old image and workers; the successful retry ran with both temporary pilot
+variables removed. Clear pilot variables **entirely** before each future
+deploy and check host environment attestation, excluding only `COMPOSE_FILE`.
+
+The fenced production `python -> go` Typesense owner transfer succeeded at
+about 20:13 UTC. Python exited on its ownership check, and the same exporter
+service restarted under the Go entrypoint. At 20:19 UTC, Go had acknowledged
+566 live documents with zero rejected documents, export errors, or unknown CDC
+writers. The Typesense downstream availability metric was healthy, the process
+was running without an OOM, and its cgroup used about 57 MiB of its 256 MiB
+limit. The owner query returned `go`. This is a live ownership and correctness
+checkpoint, not an equal-workload resource comparison for the whole crawler.
+Keep the Go owner unless a concrete failure requires the documented reverse
+transfer; never rewind the cursor.
+
+The supported c1 rollback before deployment restored five due schedules to
+Python at retired epoch 27. After the successful deploy, the one-board
+Elevance Workday Go selector was staged again and confirmed inside a recreated
+HTTP worker. The supported B0 c1 activation selected five boards at routing
+epoch **28** and wrote `/home/deploy/.lightpanda-b0-active-v1` for the
+`2ade431d9` image. Producer, executor, claimant, workers, browser, and drain
+were healthy; the host mutation lock was free. C1's first retained detail is
+due 2026-09-25 00:26 UTC. C2 remains dark because the Kandou required-title
+mismatch has not been resolved. The Elastic natural response capture has not
+arrived; its temporary capture variable is currently absent. Before another
+crawler deploy, cold-rollback c1 with the supported wrapper, remove the
+`WORKDAY_GO_BOARD_ID` line under the host mutation lock, and verify release
+environment attestation. Reactivate c1 only after that deploy succeeds.
+
+The completion gate remains [#7966](https://github.com/colophon-group/jobseek/issues/7966):
+most enabled boards still use the Python worker and Chromium routes. Next,
+observe c1's retained natural detail, continue the exclusive Workday monitor
+cohort with same-input resource evidence, resolve a concrete Lightpanda
+capability or Go HTTP profile, and replace the remaining Python runtime stages
+and board families. Do not infer whole-fleet efficiency from these pilots.
+
 ## Execution checkpoint: 2026-09-24
 
 This checkpoint supersedes the older epoch and pending-run statements below.
