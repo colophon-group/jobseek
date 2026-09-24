@@ -1,0 +1,42 @@
+[
+  {
+    "phase": "import",
+    "complete": false,
+    "source_sha256": "d10d92fab4ec1b3e7e81c9168536adbd19715e1a8f72429efcd61a6465e7499e",
+    "gzip_sha256": "fbe2325997d7b5de9da9a2081ffd2637099f56a01535e017aad98097c96c9a40",
+    "bytes": 100330,
+    "gzip_bytes": 10649
+  },
+  {
+    "phase": "import-resume",
+    "complete": false,
+    "source_sha256": "fafd1a04119df76afdcdff762571c0174fdbb7174079edee27d073a80e58908b",
+    "gzip_sha256": "4c760a5f3142944e31580d2fab781e086f57cc15a7739b6c37128fc97e83083b",
+    "bytes": 302523,
+    "gzip_bytes": 29006
+  },
+  {
+    "phase": "import-storage-recovered",
+    "complete": true,
+    "source_sha256": "a6921b496971d4f6e79cf123d79e603effc2586f6f8c5d0012478ed920888537",
+    "gzip_sha256": "746669e24e05398e3b48bcc96d081f31e946d04a7f861e205550a83bff7e1c43",
+    "bytes": 763834,
+    "gzip_bytes": 73317
+  },
+  {
+    "phase": "baseline-rebuild",
+    "complete": true,
+    "source_sha256": "79164c31acfe090321b4aa5e0af8f25b5fea409c6aff2f9dbc2800c71f9637a8",
+    "gzip_sha256": "d43aa208c7655391a0a9d051dd45bcd1f84c41a26458290948f3a484ca9457fd",
+    "bytes": 702287,
+    "gzip_bytes": 67828
+  },
+  {
+    "phase": "baseline",
+    "complete": true,
+    "source_sha256": "341cb7bac0cf08a30f68473071c846f4c32f8fd5dc0954c91ceb8b1b6c846376",
+    "gzip_sha256": "b884ae055d9c56a8736afa8e93a32ad1cc6f0e377bbae4d4806e028887e4c344",
+    "bytes": 98137,
+    "gzip_bytes": 10370
+  }
+]

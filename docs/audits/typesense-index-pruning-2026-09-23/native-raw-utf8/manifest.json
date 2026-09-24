@@ -1,0 +1,32 @@
+{
+  "workflow_run": 35936721447,
+  "performance_acceptance": false,
+  "reason": "Fresh raw UTF-8 import failed the untouched-source full-document checksum gate before pruning",
+  "artifacts": [
+    {
+      "file": "host.json.gz",
+      "source_sha256": "7555c95c778160ba7c2ef6bf46d3d1daad9d1a564757d9d42ba29db1a8dd8f7d",
+      "gzip_sha256": "ce71b33c2801e920ad121a6b243fa0d0b1e931de33ed4b0df5e9a677d060cd24"
+    },
+    {
+      "file": "import.json.gz",
+      "source_sha256": "66d67f04128a2568557190ad1f1ebc94873440e632766d7e3c54e31da5912b3e",
+      "gzip_sha256": "c9f6f3ca6579ffd69160e78ed13038d305d69bb15cb9500e79c6a9ff3a16a410"
+    },
+    {
+      "file": "baseline-rebuild.json.gz",
+      "source_sha256": "bed2e068fb8297a6b7c88a04d8dad6466a21849898de2639f188963fec34f0c7",
+      "gzip_sha256": "98df974a78fce623ef2cc3facb50d1777b5b378673378eb77ae59a9134d47b62"
+    },
+    {
+      "file": "baseline.json.gz",
+      "source_sha256": "5d27cee1fbf3832372d4573cf7fea0df86d8dfbb8abfa4005d6051cc5de5208f",
+      "gzip_sha256": "20d8b7ab1508c2657db20daa33617a034a093ed464e430c3224f8ee0b623c210"
+    },
+    {
+      "file": "baseline-fingerprint.json.gz",
+      "source_sha256": "845a255a24dc14824d2e997d97162c044763fe0dd4ff885a3d0730c7f42608fa",
+      "gzip_sha256": "ece5f4590567c8b8bed6c942aa34c57f522755350c0f3497734002a1a7b4a7c3"
+    }
+  ]
+}

@@ -83,7 +83,17 @@ on every posting, whereas seniority is populated on 842,811. The source is
 The local host is ARM64. Native ARM64 results are useful full-cardinality evidence
 but do **not** satisfy the issue's x86_64 production-equivalence gate. An x86 image
 under QEMU was rejected for memory acceptance because jemalloc reported different
-`MADV_DONTNEED` behavior under emulation.
+`MADV_DONTNEED` behavior under emulation. A separate
+[native x86_64 run](https://github.com/colophon-group/jobseek/actions/runs/35936721447)
+uses a disposable standard GitHub runner, the same complete corpus and a 6 GiB
+container limit. Its measured code matches PR head `a4ba256b0`; the temporary
+benchmark branch only supplies the manual runner workflow and encrypted-input
+transport. That workflow is not a production CI change and must not be merged.
+Only aggregate measurement artifacts are uploaded. The encrypted transfer object
+and temporary repository secret were deleted after the runner downloaded the
+corpus. That first native run failed the source-checksum gate before pruning. Its
+measurements are retained as failed import-parity evidence, not accepted
+performance results. A new run will use the crawler client's JSON serialization.
 
 Before accepting a rollout:
 
@@ -197,6 +207,34 @@ occupied roughly 71 GiB on the Mac; the guest journal aborted and remounted
 read-only. Colima's documented free-block trim recovered host space. This
 storage failure is not a measured Typesense memory limit or a successful import.
 
+The first full post-import fingerprint did not match the source. Recomputing the
+source with both JSON Unicode encodings confirmed the original source checksum;
+this was not a canonicalization mismatch. A field-by-field comparison of all
+5,554,279 documents found the same IDs in the same order and exactly two differing
+values, both titles. One was missing a Chinese character. No pruning had run.
+Both documents round-tripped exactly through separate fresh UTF-8 and ASCII-escaped
+imports on 27.1, so no general engine-causation claim is made from this local
+incident. The two known document differences account for the entire modular-hash
+delta. They were restored from the untouched source corpus in the owned lab only;
+a new full fingerprint and checkpointed baseline are required before continuing.
+The original fingerprints/measurements are retained as failed import-parity evidence.
+
+The native x86_64 run performs its own fresh import and full-source checksum gate;
+it does not inherit the local database or its repair history. The first native
+run also failed the source checksum after acknowledging and storing all 5,554,279
+documents, with no OOM event. Its hash was different from both the source and the
+local failed import, so the local disk incident alone cannot explain all failures.
+[Native failed-import artifacts](typesense-index-pruning-2026-09-23/native-raw-utf8/manifest.json).
+
+The lab importer now follows the locked `typesense-python` 2.0.0 client, whose
+`import_` serializes each dictionary with `json.dumps(doc)`: Unicode is ASCII
+escaped on the wire. The original byte-level source hash is retained separately.
+A regression test requires exact Unicode values and signed 64-bit candidate keys
+after serialization; all six importer guards pass. This does not change the
+crawler producer, source corpus, or full-document checksum acceptance criterion.
+Whether this transport alignment avoids the large-import discrepancy still
+requires the new full-corpus run; the two-document test alone cannot establish it.
+
 ## Why sort pruning is deferred
 
 A populated 1,000-posting 27.1 clone passed before/after parity for the original
@@ -240,4 +278,9 @@ full-corpus probe is still required. The narrowed revision at `9959357e5` also
 passes [required Linux CI](https://github.com/colophon-group/jobseek/actions/runs/35928175698):
 13,211 crawler tests plus 46 crawler real-engine tests, with the remaining required
 checks green. The crawler deployment gate remains blocked by the active hold. Later harness
-changes require their own checks before acceptance.
+changes require their own checks before acceptance. The complete suite also
+passes all 31 phases on 1,000 real postings: identical fingerprints, stable query
+responses, three live migration reads without errors/mismatch/cutoff, successful
+CDC and explicit rollback, with zero OOM kills. This fixture uses no settling
+window and supplies semantic/harness evidence only, not performance acceptance.
+[Suite fixture summary](typesense-index-pruning-2026-09-23/suite-smoke.json).
