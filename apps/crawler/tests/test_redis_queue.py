@@ -248,8 +248,20 @@ async def test_scrape_fallback_can_enqueue_while_previous_step_is_inflight():
     assert await r.zcard(f"ft_scrapes_simple:{domain}") == 1
 
 
+@pytest.mark.parametrize(
+    ("cohort", "board_slugs"),
+    [
+        ("c1", ["browser-use-careers"]),
+        ("c2", ["browser-use-careers", "kandou-ai-careers"]),
+        ("c3", ["browser-use-careers", "kandou-ai-careers", "eclypsium-careers"]),
+        (
+            "c4",
+            ["browser-use-careers", "kandou-ai-careers", "eclypsium-careers", "suspect-careers"],
+        ),
+    ],
+)
 async def test_off_mode_scrape_enqueue_obeys_redis_wide_go_cohort_owner(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, cohort: str, board_slugs: list[str]
 ) -> None:
     r = rq.get_redis()
     monkeypatch.setattr(settings, "lightpanda_b0_producer_mode", "off")
@@ -271,9 +283,9 @@ async def test_off_mode_scrape_enqueue_obeys_redis_wide_go_cohort_owner(
             "shard_id": "lightpanda-b0",
             "routing_epoch": "1",
             "engine_owner": "go",
-            "cohort": "c1",
-            "board_count": "1",
-            "board_slug:browser-use-careers": "1",
+            "cohort": cohort,
+            "board_count": str(len(board_slugs)),
+            **{f"board_slug:{slug}": "1" for slug in board_slugs},
         },
     )
     await r.hset("board:cohort-board", mapping={"board_slug": "browser-use-careers"})
