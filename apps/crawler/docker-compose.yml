@@ -27,6 +27,8 @@ x-common-env: &common-env
   PROXY_PROVIDER: ${PROXY_PROVIDER:-none}
   WEBSHARE_PROXY_URLS: "${WEBSHARE_PROXY_URLS:-[]}"
   WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
+  # Opt-in one-cycle capture of an existing Workday schedule for Go replay.
+  WORKDAY_REPLAY_CAPTURE_BOARD_ID: ${WORKDAY_REPLAY_CAPTURE_BOARD_ID:-}
 
 services:
   # -- Redis -------------------------------------------------------
