@@ -3,7 +3,7 @@ import { performance } from "node:perf_hooks";
 import { categoryRequests, jevRoutingRequest } from "./jev-routing-core.mjs";
 
 const [variant, split, goldPath, tokenEnvPath, baseUrl = "http://localhost:3150"] = process.argv.slice(2);
-if (!["natural", "literal", "minimal", "minimal2", "broad3", "catalog3", "catalog4", "catalog5"].includes(variant) || !["tune", "holdout", "all"].includes(split)) {
+if (!["natural", "literal", "minimal", "minimal2", "broad3", "catalog3", "catalog4", "catalog5", "catalog6", "catalog7"].includes(variant) || !["tune", "holdout", "all"].includes(split)) {
   throw new Error("Usage: node run-jev-routing-eval.mjs <natural|literal|minimal|minimal2|broad3|catalog3|catalog4|catalog5> <tune|holdout|all> <current-system.json> <token.env> [baseUrl]");
 }
 const gold = JSON.parse(readFileSync(goldPath, "utf8"));

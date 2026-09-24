@@ -1,9 +1,9 @@
 {
-  "version": "jev-search-catalog5-v1",
+  "version": "jev-search-catalog7-v1",
   "model": "jev-1.13.0",
-  "policy": "Route a JOB SEARCH query into filters for all career families, using the occupation catalog in state. First decide if the WHOLE QUERY seeks jobs; informational, shopping, advice, history, and joke requests have NO filters. For a job search, choose the SHORTEST complete text span for each independent filter. Single words and common abbreviations/typos can be filters: seniority (senior, staff, junior, sr, jr), work mode (remote, wfh, hybrid, onsite and translations), named technologies/tools, or a known place. Employment type is limited to full-time, part-time, contract, temporary, and volunteer. An occupation is a complete one- to three-word job title in the catalog OR a clear alias, abbreviation, translation, or typo of one, across software, healthcare, finance, legal, sales, operations, administration, and other fields. Keep a complete role title together, including a specialty such as backend, product, or sales; these job specialties are not technologies by themselves. But a named technology/tool, seniority, work mode, employment type, or place NEXT TO a role is a SEPARATE filter and must not be swallowed by the occupation. If a title is unsupported, retain it as keyword; never map it to a different occupation with one shared word. Never include generic filler such as job, role, work, positions, in, or and inside a filter span. All unchosen overlapping spans are keyword.",
+  "policy": "Route a JOB SEARCH query into filters for all career families, using the occupation catalog in state. Answer the intent question for the WHOLE QUERY first. If intent is other, every span must be keyword: no filters and no discard. For a job search, choose the SHORTEST complete text span for each independent filter. Single words and common abbreviations/typos can be filters: seniority (senior, staff, junior, sr, jr), work mode (remote, wfh, hybrid, onsite and translations), named technologies/tools, or a known place. Employment type is limited to full-time, part-time, contract, temporary, and volunteer. An occupation is a complete one- to three-word job title in the catalog OR a clear alias, abbreviation, translation, or typo of one, across software, healthcare, finance, legal, sales, operations, administration, and other fields. Keep a complete role title together, including a specialty such as backend, product, or sales; these job specialties are not technologies by themselves. But a named technology/tool, seniority, work mode, employment type, or place NEXT TO a role is a SEPARATE filter and must not be swallowed by the occupation. If a title is unsupported, retain it as keyword; never map it to a different occupation with one shared word. In job searches, label filler words and instruction phrases as discard so they do not become title keywords. Do not discard meaningful unsupported job titles, specialties, skills, or company names. All unchosen overlapping spans are keyword.",
   "categories": {
-    "keyword": "Keep this text in keyword search; it is filler, unrelated, or only part of another selected span.",
+    "keyword": "Retain this meaningful unmatched term in job-title keyword search, including unsupported occupations and domain terms.",
     "location": "A location to resolve against the job location taxonomy.",
     "occupation": "A job occupation or title to resolve against the occupation taxonomy.",
     "seniority": "A career level to resolve against the seniority taxonomy.",
@@ -11,7 +11,12 @@
     "remote": "The remote or work-from-home work mode.",
     "hybrid": "The hybrid work mode.",
     "onsite": "The on-site or in-office work mode.",
-    "employmentType": "An employment type such as contract or part-time."
+    "employmentType": "An employment type such as contract or part-time.",
+    "discard": "Discard filler or instructions that should not constrain job results, such as 'find', 'looking for', 'jobs', 'role', 'in', or 'please'. Use only when the whole query is a job search; do not erase an unrelated or informational request."
+  },
+  "intentCriteria": {
+    "jobSearch": "The user wants job postings or a job search, including an unsupported occupation.",
+    "other": "This is an informational, advice, shopping, joke, or unrelated request rather than a job-posting search."
   },
   "occupationCatalog": [
     {

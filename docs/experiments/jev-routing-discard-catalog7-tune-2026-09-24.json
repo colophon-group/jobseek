@@ -1,0 +1,1030 @@
+{
+  "timestamp": "2026-09-24T00:53:03.565Z",
+  "variant": "catalog7",
+  "dataset": "docs/experiments/jev-routing-discard-gold-2026-09-24.json",
+  "count": 16,
+  "filterExact": 16,
+  "discardExact": 16,
+  "discardLabelled": 16,
+  "records": [
+    {
+      "id": "t01",
+      "split": "tune",
+      "group": "verbose",
+      "q": "Find an on site compliance officer role in Munich",
+      "locale": "en",
+      "latencyMs": 1022,
+      "intent": "jobSearch",
+      "inputTokens": 9417,
+      "selected": [
+        {
+          "text": "Find",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "an",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "on site",
+          "category": "onsite",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        },
+        {
+          "text": "role",
+          "category": "discard",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "on site",
+          "category": "onsite",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "Find an",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "discard"
+        },
+        {
+          "text": "role in",
+          "segment": 0,
+          "start": 6,
+          "end": 8,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t02",
+      "split": "tune",
+      "group": "verbose",
+      "q": "Looking for legal counsel positions in Vienna",
+      "locale": "en",
+      "latencyMs": 345,
+      "intent": "jobSearch",
+      "inputTokens": 7317,
+      "selected": [
+        {
+          "text": "Looking",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "for",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "legal counsel",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "positions",
+          "category": "discard",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        },
+        {
+          "text": "Vienna",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "legal counsel",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "Vienna",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "Looking for",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "discard"
+        },
+        {
+          "text": "positions in",
+          "segment": 0,
+          "start": 4,
+          "end": 6,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t03",
+      "split": "tune",
+      "group": "verbose",
+      "q": "please find me remote Python work",
+      "locale": "en",
+      "latencyMs": 343,
+      "intent": "jobSearch",
+      "inputTokens": 6253,
+      "selected": [
+        {
+          "text": "please",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "find",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "me",
+          "category": "discard",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "Python",
+          "category": "technology",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "work",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "Python",
+          "category": "technology",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "please find me",
+          "segment": 0,
+          "start": 0,
+          "end": 3,
+          "category": "discard"
+        },
+        {
+          "text": "work",
+          "segment": 0,
+          "start": 5,
+          "end": 6,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t04",
+      "split": "tune",
+      "group": "terse",
+      "q": "junior accountant Zurich hybrid",
+      "locale": "en",
+      "latencyMs": 375,
+      "intent": "jobSearch",
+      "inputTokens": 4190,
+      "selected": [
+        {
+          "text": "junior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "Zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "junior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "Zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t05",
+      "split": "tune",
+      "group": "unsupported",
+      "q": "nurse Berlin part time",
+      "locale": "en",
+      "latencyMs": 373,
+      "intent": "jobSearch",
+      "inputTokens": 4166,
+      "selected": [
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t06",
+      "split": "tune",
+      "group": "informational",
+      "q": "what is a compliance officer",
+      "locale": "en",
+      "latencyMs": 381,
+      "intent": "other",
+      "inputTokens": 5215,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t07",
+      "split": "tune",
+      "group": "terse",
+      "q": "senior pharmacist Berlin remote",
+      "locale": "en",
+      "latencyMs": 340,
+      "intent": "jobSearch",
+      "inputTokens": 4184,
+      "selected": [
+        {
+          "text": "senior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "senior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t08",
+      "split": "tune",
+      "group": "unsupported",
+      "q": "delivery driver jobs near Paris",
+      "locale": "en",
+      "latencyMs": 365,
+      "intent": "jobSearch",
+      "inputTokens": 5205,
+      "selected": [
+        {
+          "text": "jobs",
+          "category": "discard",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "near",
+          "category": "discard",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "jobs near",
+          "segment": 0,
+          "start": 2,
+          "end": 4,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t09",
+      "split": "tune",
+      "group": "unsupported",
+      "q": "part time cashier jobs",
+      "locale": "en",
+      "latencyMs": 340,
+      "intent": "jobSearch",
+      "inputTokens": 4163,
+      "selected": [
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "jobs",
+          "category": "discard",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "jobs",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t10",
+      "split": "tune",
+      "group": "verbose",
+      "q": "sales manager jobs near Paris",
+      "locale": "en",
+      "latencyMs": 342,
+      "intent": "jobSearch",
+      "inputTokens": 5205,
+      "selected": [
+        {
+          "text": "sales manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "jobs",
+          "category": "discard",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "near",
+          "category": "discard",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "sales manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "jobs near",
+          "segment": 0,
+          "start": 2,
+          "end": 4,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t11",
+      "split": "tune",
+      "group": "meaningful",
+      "q": "remote product manager no startup",
+      "locale": "en",
+      "latencyMs": 285,
+      "intent": "jobSearch",
+      "inputTokens": 5205,
+      "selected": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "product manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "product manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t12",
+      "split": "tune",
+      "group": "ambiguous",
+      "q": "Find an accountant in New York",
+      "locale": "en",
+      "latencyMs": 373,
+      "intent": "jobSearch",
+      "inputTokens": 6265,
+      "selected": [
+        {
+          "text": "Find",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "an",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "New York",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "New York",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "Find an",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "discard"
+        },
+        {
+          "text": "in",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t13",
+      "split": "tune",
+      "group": "informational",
+      "q": "Which skills does a recruiter need",
+      "locale": "en",
+      "latencyMs": 337,
+      "intent": "other",
+      "inputTokens": 6265,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t14",
+      "split": "tune",
+      "group": "terse",
+      "q": "hr manager Basel contract",
+      "locale": "en",
+      "latencyMs": 308,
+      "intent": "jobSearch",
+      "inputTokens": 4163,
+      "selected": [
+        {
+          "text": "hr manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Basel",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "hr manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Basel",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t15",
+      "split": "tune",
+      "group": "verbose",
+      "q": "software engineer jobs with Rust in Amsterdam",
+      "locale": "en",
+      "latencyMs": 315,
+      "intent": "jobSearch",
+      "inputTokens": 7323,
+      "selected": [
+        {
+          "text": "software engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "jobs",
+          "category": "discard",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "with",
+          "category": "discard",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "Rust",
+          "category": "technology",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        },
+        {
+          "text": "Amsterdam",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "software engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Rust",
+          "category": "technology",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "Amsterdam",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "jobs with",
+          "segment": 0,
+          "start": 2,
+          "end": 4,
+          "category": "discard"
+        },
+        {
+          "text": "in",
+          "segment": 0,
+          "start": 5,
+          "end": 6,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    },
+    {
+      "id": "t16",
+      "split": "tune",
+      "group": "verbose",
+      "q": "I want warehouse associate work in London",
+      "locale": "en",
+      "latencyMs": 328,
+      "intent": "jobSearch",
+      "inputTokens": 7301,
+      "selected": [
+        {
+          "text": "I want",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "warehouse associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "work in",
+          "category": "discard",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        },
+        {
+          "text": "London",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "warehouse associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "London",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldDiscard": [
+        {
+          "text": "I want",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "discard"
+        },
+        {
+          "text": "work in",
+          "segment": 0,
+          "start": 4,
+          "end": 6,
+          "category": "discard"
+        }
+      ],
+      "filterExact": true,
+      "discardExact": true
+    }
+  ]
+}

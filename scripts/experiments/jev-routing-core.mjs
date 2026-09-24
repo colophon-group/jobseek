@@ -14,6 +14,16 @@ const CATEGORIES = {
   employmentType: "An employment type such as contract or part-time.",
 };
 
+const CATEGORIES_WITH_DISCARD = {
+  ...CATEGORIES,
+  keyword: "Retain this meaningful unmatched term in job-title keyword search, including unsupported occupations and domain terms.",
+  discard: "Discard filler or instructions that should not constrain job results, such as 'find', 'looking for', 'jobs', 'role', 'in', or 'please'. Use only when the whole query is a job search; do not erase an unrelated or informational request.",
+};
+const INTENT_CRITERIA = {
+  jobSearch: "The user wants job postings or a job search, including an unsupported occupation.",
+  other: "This is an informational, advice, shopping, joke, or unrelated request rather than a job-posting search.",
+};
+
 const POLICIES = {
   natural: "Route search text into useful job filters. Use the whole query to understand intent. Prefer the longest meaningful span and classify its shorter overlapping spans as keyword. A clear typo or abbreviation may still indicate a filter. Unrelated requests should stay as keywords. Never invent a filter outside the listed categories.",
   literal: "Reproduce a literal search parser rather than correcting the user. Route a location, seniority, or technology only when its single-word text exactly names a taxonomy item or known alias. Occupations may be one to three words, but choose the longest exact name or alias; shorter overlapping spans should stay as keywords. Recognize remote, wfh, hybrid, onsite, work from home, on site, and in office literally. Do not repair typos, infer unstated filters, remove filler words, or use semantic synonyms. Even an unrelated query can contain a literal filter name.",
@@ -23,12 +33,18 @@ const POLICIES = {
   catalog3: "Interpret the query as a search for jobs across ALL career families. The state lists the actual occupation taxonomy. Select each filter's smallest complete phrase. A one-, two-, or three-word occupation span must name one taxonomy occupation or a clear alias/translation/typo of it; do not accept a different role merely because one word overlaps a listed title. Keep a complete occupational title together, including its specializing words. Route a technology or tool, seniority, work mode, employment type, or place as its own span; never swallow it into an occupation. A role modifier such as a job function is not a technology unless it is a named tool. For overlaps, select one complete occupation and separate non-title filters, marking other spans keyword. Employment type is limited to full-time, part-time, contract, temporary, or volunteer. In an informational or unrelated request, every span is keyword even if a listed occupation or place appears. Never include filler words in a filter span.",
   catalog4: "Identify intended JOB SEARCH filters for every career family, using the occupation catalog in state. Choose the SHORTEST complete span for EACH independent filter. Keep all words of one listed occupation title together: a function or specialty followed by a role is one title when the catalog contains that role. A clear alias, abbreviation, translation, or typo of a catalog occupation may also be an occupation. Do not turn an unsupported title into another occupation that merely shares one word. A named technology/tool is a separate technology filter; a job specialty by itself is not a technology. Seniority, place, work mode, and employment type are separate filters and must NEVER be swallowed by an occupation phrase. For work modes select only the mode expression, not generic nearby words such as 'work' or 'jobs'. Employment types are only full-time, part-time, contract, temporary, and volunteer or direct translations. In informational or unrelated queries (questions about becoming a professional, advice, jokes, shopping, history), every span stays keyword, even a catalog title or place. For overlapping spans, mark the unselected overlaps keyword. Do not include filler words or neighboring filter concepts in any selected span.",
   catalog5: "Route a JOB SEARCH query into filters for all career families, using the occupation catalog in state. First decide if the WHOLE QUERY seeks jobs; informational, shopping, advice, history, and joke requests have NO filters. For a job search, choose the SHORTEST complete text span for each independent filter. Single words and common abbreviations/typos can be filters: seniority (senior, staff, junior, sr, jr), work mode (remote, wfh, hybrid, onsite and translations), named technologies/tools, or a known place. Employment type is limited to full-time, part-time, contract, temporary, and volunteer. An occupation is a complete one- to three-word job title in the catalog OR a clear alias, abbreviation, translation, or typo of one, across software, healthcare, finance, legal, sales, operations, administration, and other fields. Keep a complete role title together, including a specialty such as backend, product, or sales; these job specialties are not technologies by themselves. But a named technology/tool, seniority, work mode, employment type, or place NEXT TO a role is a SEPARATE filter and must not be swallowed by the occupation. If a title is unsupported, retain it as keyword; never map it to a different occupation with one shared word. Never include generic filler such as job, role, work, positions, in, or and inside a filter span. All unchosen overlapping spans are keyword.",
+  catalog6: "Route a JOB SEARCH query into filters for all career families, using the occupation catalog in state. First decide if the WHOLE QUERY seeks jobs; informational, shopping, advice, history, and joke requests have NO filters and NO discarded words. For a job search, choose the SHORTEST complete text span for each independent filter. Single words and common abbreviations/typos can be filters: seniority (senior, staff, junior, sr, jr), work mode (remote, wfh, hybrid, onsite and translations), named technologies/tools, or a known place. Employment type is limited to full-time, part-time, contract, temporary, and volunteer. An occupation is a complete one- to three-word job title in the catalog OR a clear alias, abbreviation, translation, or typo of one, across software, healthcare, finance, legal, sales, operations, administration, and other fields. Keep a complete role title together, including a specialty such as backend, product, or sales; these job specialties are not technologies by themselves. But a named technology/tool, seniority, work mode, employment type, or place NEXT TO a role is a SEPARATE filter and must not be swallowed by the occupation. If a title is unsupported, retain it as keyword; never map it to a different occupation with one shared word. In job searches, label filler words and instruction phrases such as 'find', 'looking for', 'jobs', 'role', 'positions', 'in', 'near', and 'please' as discard so they do not become title keywords. Do not discard meaningful unsupported job titles, specialties, skills, or company names. All unchosen overlapping spans are keyword.",
+  catalog7: "Route a JOB SEARCH query into filters for all career families, using the occupation catalog in state. Answer the intent question for the WHOLE QUERY first. If intent is other, every span must be keyword: no filters and no discard. For a job search, choose the SHORTEST complete text span for each independent filter. Single words and common abbreviations/typos can be filters: seniority (senior, staff, junior, sr, jr), work mode (remote, wfh, hybrid, onsite and translations), named technologies/tools, or a known place. Employment type is limited to full-time, part-time, contract, temporary, and volunteer. An occupation is a complete one- to three-word job title in the catalog OR a clear alias, abbreviation, translation, or typo of one, across software, healthcare, finance, legal, sales, operations, administration, and other fields. Keep a complete role title together, including a specialty such as backend, product, or sales; these job specialties are not technologies by themselves. But a named technology/tool, seniority, work mode, employment type, or place NEXT TO a role is a SEPARATE filter and must not be swallowed by the occupation. If a title is unsupported, retain it as keyword; never map it to a different occupation with one shared word. In job searches, label filler words and instruction phrases as discard so they do not become title keywords. Do not discard meaningful unsupported job titles, specialties, skills, or company names. All unchosen overlapping spans are keyword.",
 };
 
 // The production search-query router consumes these through the checked-in
 // generator so the evaluated catalog5 wording stays byte-for-byte identical.
 export const JEV_ROUTING_CATEGORIES = CATEGORIES;
 export const JEV_ROUTING_POLICY_CATALOG5 = POLICIES.catalog5;
+export const JEV_ROUTING_CATEGORIES_WITH_DISCARD = CATEGORIES_WITH_DISCARD;
+export const JEV_ROUTING_POLICY_CATALOG6 = POLICIES.catalog6;
+export const JEV_ROUTING_POLICY_CATALOG7 = POLICIES.catalog7;
+export const JEV_ROUTING_INTENT_CRITERIA = INTENT_CRITERIA;
 
 export function tokenize(query) {
   return query.split(/[,\n\r\t/|]+|-+/).map((part) => part.trim()).filter(Boolean)
@@ -58,22 +74,28 @@ export function spansForQuery(query) {
 export function jevRoutingRequest(query, locale, variant) {
   if (!POLICIES[variant]) throw new Error(`Unknown routing variant ${variant}`);
   const { spans } = spansForQuery(query);
+  const questions = Object.fromEntries(spans.map((span) => [span.id, {
+    type: "choice",
+    instructions: `For span ${span.id} (${span.text}), choose its role in this exact query, following state.policy.`,
+    criteria: ["catalog6", "catalog7"].includes(variant) ? CATEGORIES_WITH_DISCARD : CATEGORIES,
+  }]));
+  if (variant === "catalog7") questions.intent = {
+    type: "choice",
+    instructions: "Classify the whole query before interpreting spans. Does it ask to find job postings, or is it an informational/unrelated request?",
+    criteria: INTENT_CRITERIA,
+  };
   return {
     model: "jev-1.13.0",
     state: {
       query,
       locale,
       policy: POLICIES[variant],
-      ...(["catalog3", "catalog4", "catalog5"].includes(variant) ? {
+      ...(["catalog3", "catalog4", "catalog5", "catalog6", "catalog7"].includes(variant) ? {
         occupationCatalog: occupationCatalog.map((row) => row[locale] || row.en).join(" | "),
       } : {}),
       spans: spans.map(({ id, text, segment, start, end }) => ({ id, text, segment, start, end })),
     },
-    questions: Object.fromEntries(spans.map((span) => [span.id, {
-      type: "choice",
-      instructions: `For span ${span.id} (${span.text}), choose its role in this exact query, following state.policy.`,
-      criteria: CATEGORIES,
-    }])),
+    questions,
   };
 }
 
@@ -142,6 +164,11 @@ export function reconstruct(query, answers, candidates, options = {}) {
     if (consumed[span.segment].slice(span.start, span.end).some(Boolean)) continue;
     let field;
     let value;
+    if (category === "discard") {
+      for (let index = span.start; index < span.end; index++) consumed[span.segment][index] = true;
+      selectedSpans.push({ text: span.text, category, slug: null, probability });
+      continue;
+    }
     if (["remote", "hybrid", "onsite"].includes(category)) {
       if (literalWorkMode && !workModeLiterals[category].has(span.text.toLowerCase())) continue;
       field = "workMode";
@@ -170,11 +197,15 @@ export function reconstruct(query, answers, candidates, options = {}) {
 }
 
 export function selectedRouteSpans(query, answers, options = {}) {
+  if (options.intent === "other") return [];
   const threshold = options.threshold ?? 0.5;
   const longestFirst = options.longestFirst ?? true;
   const { segments, spans } = spansForQuery(query);
   const consumed = segments.map((words) => Array(words.length).fill(false));
   const ordered = [...spans].sort((a, b) => {
+    const aDiscard = answers[a.id]?.choice === "discard";
+    const bDiscard = answers[b.id]?.choice === "discard";
+    if (aDiscard !== bDiscard) return aDiscard ? 1 : -1;
     const lengthDifference = (b.end - b.start) - (a.end - a.start);
     if (longestFirst && lengthDifference) return lengthDifference;
     const confidenceDifference = (answers[b.id]?.probabilities?.[answers[b.id]?.choice] ?? 0)
