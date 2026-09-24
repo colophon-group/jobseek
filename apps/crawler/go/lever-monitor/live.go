@@ -126,6 +126,8 @@ func onePage(ctx context.Context, client requestDoer, token, region string, skip
 				err = readErr
 			} else if len(body) > maxPageBytes {
 				return nil, 0, errors.New("Lever page exceeded 64 MiB")
+			} else if result.Bytes > maxPageBytes {
+				return nil, 0, errors.New("Lever run exceeded 64 MiB of responses")
 			} else if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
 				result.TDMPolicy = response.Header.Get("TDM-Policy")
 				return nil, 0, errors.New("tdm-reservation=1")

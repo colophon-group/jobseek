@@ -82,6 +82,12 @@ func description(raw map[string]any) (*string, error) {
 				content = ""
 			}
 			if truthy(text) || truthy(content) {
+				if _, ok := text.(string); !ok && truthy(text) {
+					return nil, errors.New("Lever list text must be text")
+				}
+				if _, ok := content.(string); !ok && truthy(content) {
+					return nil, errors.New("Lever list content must be text")
+				}
 				parts = append(parts, "<h3>"+pythonText(text)+"</h3><ul>"+pythonText(content)+"</ul>")
 			}
 		}
@@ -140,6 +146,11 @@ func salary(raw any) (map[string]any, error) {
 	interval, exists := rangeValue["interval"]
 	if !exists {
 		interval = ""
+	}
+	if interval != nil {
+		if _, ok := interval.(string); !ok {
+			return nil, errors.New("Lever salary interval must be text")
+		}
 	}
 	return map[string]any{
 		"currency": rangeValue["currency"],
