@@ -9,7 +9,7 @@ import {
   Briefcase,
   BarChart3,
   Code2,
-  Sparkles,
+  Loader2,
   Home,
 } from "lucide-react";
 import { CompanyIcon } from "@/components/CompanyIcon";
@@ -757,7 +757,7 @@ export function SearchBar({
           }
         />
         {proposalPending && (
-          <Sparkles size={14} className="shrink-0 animate-pulse text-muted" aria-hidden="true" />
+          <Loader2 size={14} className="shrink-0 animate-spin text-muted" aria-hidden="true" />
         )}
       </div>
 
@@ -808,7 +808,6 @@ export function SearchBar({
                 proposalIndex === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
               }`}
             >
-              <Sparkles size={14} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{visibleProposal.intent === "other"
                   ? t({ id: "search.bar.searchAsEntered", message: "Search these words as entered" })
@@ -1017,7 +1016,6 @@ export function SearchBar({
                 requestIndex === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
               }`}
             >
-              <Sparkles size={14} className="mt-0.5 shrink-0 text-primary" />
               <div className="min-w-0 flex-1">
                 <div className="font-medium">
                   {t({
