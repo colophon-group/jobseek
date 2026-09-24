@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -61,6 +62,29 @@ from src.shared.langdetect import detect_all_languages, detect_language
 from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 
 log = structlog.get_logger()
+
+
+def _runtime_for_scrape(
+    board_id: str,
+    scraper_type: str,
+    scraper_config: dict | None,
+    provided: ScrapeRuntime | None,
+) -> ScrapeRuntime | None:
+    if provided is not None or scraper_type != "workday" or not board_id:
+        return provided
+    selected = {
+        value.strip()
+        for value in os.environ.get("WORKDAY_GO_DETAIL_BOARD_IDS", "").split(",")
+        if value.strip()
+    }
+    if board_id in selected:
+        if (scraper_config or {}).get("proxy") or (scraper_config or {}).get("skip_ssl"):
+            raise ValueError("Go Workday detail requires direct verified TLS transport")
+        from src.runtime.workday_go_detail import GoWorkdayDetailRuntime
+
+        return GoWorkdayDetailRuntime()
+    return None
+
 
 # ``descriptions (posting_id, locale)`` is the content authority. The scalar
 # hash on ``job_posting`` is updated only after an R2 upload and is unsafe as a
@@ -1006,7 +1030,9 @@ async def _process_one_scrape(
                     scraper_config,
                     enrich_fields,
                     pw=pw,
-                    scrape_runtime=scrape_runtime,
+                    scrape_runtime=_runtime_for_scrape(
+                        item.board_id, scraper_type, scraper_config, scrape_runtime
+                    ),
                     write_fence=write_fence,
                     recover_browser_target=recover_browser_target,
                     authority_guard=authority_guard,
@@ -1022,7 +1048,7 @@ async def _process_one_scrape(
             step_cfg or None,
             http,
             pw=pw,
-            scrape_runtime=scrape_runtime,
+            scrape_runtime=_runtime_for_scrape(item.board_id, step_type, step_cfg, scrape_runtime),
             recover_browser_target=recover_browser_target,
         )
         content = _apply_defaults(content, step_cfg)

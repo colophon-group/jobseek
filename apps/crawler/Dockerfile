@@ -32,7 +32,9 @@ WORKDIR /workspace/apps/crawler/go/workday-monitor
 COPY go/workday-monitor/ ./
 RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
-       -o /out/workday-monitor-live ./cmd/live
+       -o /out/workday-monitor-live ./cmd/live \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/workday-detail-live ./cmd/detail-live
 
 # ── Default-off, single-origin Go Greenhouse rich monitor ───────────
 FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-greenhouse-build
@@ -83,6 +85,7 @@ COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bi
 COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint
 RUN chmod 0755 /usr/local/bin/exporter-entrypoint
 COPY --from=go-workday-build /out/workday-monitor-live /usr/local/bin/workday-monitor-live
+COPY --from=go-workday-build /out/workday-detail-live /usr/local/bin/workday-detail-live
 COPY --from=go-greenhouse-build /out/greenhouse-monitor-live /usr/local/bin/greenhouse-monitor-live
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
