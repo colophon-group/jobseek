@@ -9,7 +9,7 @@ RECEIPT="$DEPLOY_DIR/.lightpanda-b0-active-v1"
 LOCK=/run/lock/jobseek-crawler-mutation.lock
 
 usage() {
-  echo "usage: $0 activate|rollback|recover-pending c1|c4" >&2
+  echo "usage: $0 activate|rollback|recover-pending c1|c3" >&2
   exit 2
 }
 
@@ -31,7 +31,7 @@ validate_fixed_b0_identity() {
 OPERATION=$1
 COHORT=$2
 [[ "$OPERATION" == activate || "$OPERATION" == rollback || "$OPERATION" == recover-pending ]] || usage
-[[ "$COHORT" == c1 || "$COHORT" == c4 ]] || usage
+[[ "$COHORT" == c1 || "$COHORT" == c3 ]] || usage
 [[ "$(id -un)" == deploy ]] || {
   echo "ERROR: B0 cutover must run as the deploy user" >&2
   exit 1

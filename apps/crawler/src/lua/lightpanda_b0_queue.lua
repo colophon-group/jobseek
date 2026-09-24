@@ -250,7 +250,7 @@ local function producer_owner_valid(require_arguments)
         return false
     end
     local cohort = redis.call("HGET", PRODUCER_OWNER_KEY, "cohort")
-    if cohort ~= "c1" and cohort ~= "c4" then return false end
+    if cohort ~= "c1" and cohort ~= "c3" and cohort ~= "c4" then return false end
     local seen = {}
     local slugs = {}
     for _, field in ipairs(redis.call("HKEYS", PRODUCER_OWNER_KEY)) do
@@ -281,7 +281,7 @@ end
 
 local function create_producer_owner()
     local count = canonical_positive(ARGV[22])
-    if (ARGV[21] ~= "c1" and ARGV[21] ~= "c4") or not count or count > 16 then
+    if (ARGV[21] ~= "c1" and ARGV[21] ~= "c3" and ARGV[21] ~= "c4") or not count or count > 16 then
         return false
     end
     local previous = nil
@@ -307,7 +307,7 @@ end
 
 local function rollback_tombstone_arguments_valid()
     return engine_owner == "go" and safe_identifier(ARGV[18])
-        and (ARGV[21] == "c1" or ARGV[21] == "c4")
+        and (ARGV[21] == "c1" or ARGV[21] == "c3" or ARGV[21] == "c4")
         and valid_sha(ARGV[16], 64) and valid_sha(ARGV[23], 64)
 end
 
