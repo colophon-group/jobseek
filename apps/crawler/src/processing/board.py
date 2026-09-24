@@ -1882,6 +1882,12 @@ class BoardMonitorResult:
 def _monitor_runtime_for_board(board_id: str, provided: MonitorRuntime | None) -> MonitorRuntime:
     if provided is not None:
         return provided
+    if os.environ.get("GREENHOUSE_GO_BOARD_ID") == board_id:
+        from src.runtime.greenhouse_go import ELASTIC_BOARD_ID, GoGreenhouseMonitorRuntime
+
+        if board_id != ELASTIC_BOARD_ID:
+            raise ValueError("Go Greenhouse routing is restricted to the selected origin")
+        return GoGreenhouseMonitorRuntime()
     if os.environ.get("WORKDAY_GO_BOARD_ID") == board_id:
         from src.runtime.workday_go import ELEVANCE_BOARD_ID, GoWorkdayMonitorRuntime
 
