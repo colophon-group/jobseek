@@ -599,7 +599,7 @@ export function SearchBar({
       });
   }, [inputValue, lang, userLat, userLng, getPageActions, onSubmitSearch, router, lp, searchParams, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp, workModeProp, currentKeywords, clearResults]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       if (!isOpen || allSuggestions.length === 0) return;
       e.preventDefault();
