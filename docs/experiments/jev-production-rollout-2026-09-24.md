@@ -35,9 +35,11 @@ before the deterministic fallback. Existing explicit dropdown choices win.
    duration with the rest of production via Vercel Metrics. Sample the browser
    Enter-to-results and idle-proposal times. Check provider usage and the
    number of Typesense normalization calls. Keep query text out of telemetry.
-5. Widen to 100% only after the canary is healthy; rebuild from exact `main`
-   with the new public percentage, then repeat smoke checks. Keep the old
-   deployment available for rollback.
+5. Widen to 100% only after the canary is healthy. Set the new public
+   percentage, then dispatch `Deploy web production` with the exact current
+   `main` revision and `rebuild=true`. The manual rebuild follows the same
+   migration, staged smoke, current-main, and promotion gates as a code push.
+   Repeat live checks and keep the old deployment available for rollback.
 6. Capture a clean, fully post-deployment 12-hour Fluid CPU window following
    `docs/18-vercel-fluid-cpu.md`. Do not represent a short synthetic probe as
    the all-traffic CPU gate.
