@@ -203,7 +203,7 @@ export function SearchToolbar({
             onExperienceChange={onExperienceChange}
             histogramFilters={histogramFilters}
         />
-        <div className="col-start-1 row-start-2 flex flex-wrap items-center justify-end gap-2 md:col-start-2 md:row-start-1">
+        <div className="col-start-1 row-start-2 flex flex-wrap items-center justify-start gap-1 md:col-start-2 md:row-start-1 md:justify-end md:gap-2">
           {(hasFilters || companyScope) && !hasUnresolvedExplicitSlugs && (
             <SaveSearchButton
               keywords={keywords}
