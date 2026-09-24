@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.codex/agents/**'
       - '.agents/**'
       - 'AGENTS.md'
       - 'apps/crawler/AGENTS.md'

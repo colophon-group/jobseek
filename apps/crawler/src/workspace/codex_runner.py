@@ -81,7 +81,7 @@ DEFAULT_CODEX_ARGS = (
     "--json",
     "--dangerously-bypass-approvals-and-sandbox",
 )
-DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
+DEFAULT_CODEX_MODEL = "gpt-6-astra"
 DEFAULT_CODEX_REASONING_EFFORT = "high"
 
 

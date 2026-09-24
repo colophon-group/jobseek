@@ -156,7 +156,7 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
         "--json",
         "--dangerously-bypass-approvals-and-sandbox",
     )
-    assert config.codex_model == "gpt-5.6-sol"
+    assert config.codex_model == "gpt-6-astra"
     assert config.codex_reasoning_effort == "high"
     assert config.trace_export_enabled
     assert config.trace_cleanup_enabled
@@ -178,7 +178,7 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
         "--json",
         "--dangerously-bypass-approvals-and-sandbox",
         "--model",
-        "gpt-5.6-sol",
+        "gpt-6-astra",
         "--config",
         "model_reasoning_effort=high",
         "do the task",
@@ -560,14 +560,14 @@ def test_terminal_run_without_trace_is_accounted_for(tmp_path: Path) -> None:
 def test_project_agents_pin_role_specific_model_policy() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     expected = {
-        "jobseek-company-enricher.toml": ("gpt-5.6-terra", "medium"),
-        "jobseek-logo-selector.toml": ("gpt-5.6-luna", "medium"),
-        "jobseek-board-researcher.toml": ("gpt-5.6-terra", "high"),
-        "jobseek-config-tester.toml": ("gpt-5.6-terra", "high"),
-        "jobseek-error-review-researcher.toml": ("gpt-5.6-terra", "high"),
-        "jobseek-labeller-normalizer.toml": ("gpt-5.6-luna", "low"),
-        "jobseek-labeller-splitter.toml": ("gpt-5.6-luna", "medium"),
-        "jobseek-labeller-extractor.toml": ("gpt-5.6-terra", "high"),
+        "jobseek-company-enricher.toml": ("gpt-6-sol", "medium"),
+        "jobseek-logo-selector.toml": ("gpt-6-luna", "medium"),
+        "jobseek-board-researcher.toml": ("gpt-6-sol", "high"),
+        "jobseek-config-tester.toml": ("gpt-6-sol", "high"),
+        "jobseek-error-review-researcher.toml": ("gpt-6-sol", "high"),
+        "jobseek-labeller-normalizer.toml": ("gpt-6-luna", "low"),
+        "jobseek-labeller-splitter.toml": ("gpt-6-luna", "medium"),
+        "jobseek-labeller-extractor.toml": ("gpt-6-sol", "high"),
     }
 
     for filename, (model, effort) in expected.items():
