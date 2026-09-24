@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from collections.abc import AsyncIterator
 from time import monotonic
 from urllib.parse import urlparse
 
 import httpx
+import structlog
 
 from src.core.monitor import MonitorResult
 from src.metrics import (
@@ -42,6 +44,7 @@ _BOOKKEEPING = {
     "_monitor_config_fingerprint",
     "_confirmed_drop_candidate",
 }
+log = structlog.get_logger()
 
 
 class GoWorkdayMonitorRuntime:
@@ -142,6 +145,16 @@ class GoWorkdayMonitorRuntime:
                 raise ValueError("Go Workday returned a URL outside the selected origin")
             if len(set(urls)) != len(urls) or len(urls) >= 2_000:
                 raise ValueError("Go Workday returned a duplicate or unsupported inventory")
+            log.info(
+                "go_workday.monitor_complete",
+                board_id=ELEVANCE_BOARD_ID,
+                urls=len(urls),
+                url_sha256=hashlib.sha256("\n".join(sorted(urls)).encode()).hexdigest(),
+                requests=attempts,
+                responses=responses,
+                transport_errors=transport_errors,
+                response_bytes=byte_count,
+            )
             mark_reachable_response(_LIST_URL)
             outcome = "success"
             runtime_output_items_total.labels(
