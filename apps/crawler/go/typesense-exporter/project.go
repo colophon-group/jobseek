@@ -200,7 +200,9 @@ func project(row Row, maps Maps) (map[string]any, error) {
 		if !ok {
 			ancestors = []int{id}
 		}
-		doc["occupation_ids"] = ancestors
+		ordered := append([]int{}, ancestors...)
+		sort.Ints(ordered)
+		doc["occupation_ids"] = ordered
 		if name, ok := maps.OccupationNames[id]; ok {
 			doc["occupation_name"] = name
 		}

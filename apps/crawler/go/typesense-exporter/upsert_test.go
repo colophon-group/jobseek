@@ -29,8 +29,19 @@ func TestImportDocsAcknowledgements(t *testing.T) {
 	if len(failed) != 1 {
 		t.Fatalf("failed IDs: %v", failed)
 	}
-	if _, ok := failed["two"]; !ok {
+	if failure, ok := failed["two"]; !ok || failure.Reason != "bad row" {
 		t.Fatalf("wrong failed ID: %v", failed)
+	}
+}
+
+func TestImportDocsAcceptsOneTerminalNewline(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("{\"success\":true}\n"))
+	}))
+	defer server.Close()
+	failed, err := importDocs(context.Background(), server.Client(), server.URL, "test-key", []map[string]any{{"id": "one"}})
+	if err != nil || len(failed) != 0 {
+		t.Fatalf("single terminated acknowledgement was rejected: %v, %v", failed, err)
 	}
 }
 

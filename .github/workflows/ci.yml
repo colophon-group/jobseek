@@ -471,6 +471,30 @@ jobs:
           go mod tidy -diff
           test -z "$(gofmt -l .)"
 
+  test-go-typesense-exporter:
+    name: Test Go Typesense exporter
+    needs: changes
+    if: needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/crawler/go/typesense-exporter
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/typesense-exporter/go.mod
+          cache-dependency-path: apps/crawler/go/typesense-exporter/go.sum
+      - name: Test projection, cursor, and import acknowledgements
+        run: |
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
   crawler-image:
     name: Build Crawler Browser Image
     needs: changes
@@ -1643,6 +1667,7 @@ jobs:
       - test-go-http-pilot
       - test-go-b0-supervisor
       - test-go-r2-drain
+      - test-go-typesense-exporter
       - crawler-image
       - lint-web
       - i18n-coverage
@@ -1704,6 +1729,7 @@ jobs:
           requireSuccess("data-validation");
           requireSuccess("test-go-http-pilot", goHttpPilot);
           requireSuccess("test-go-b0-supervisor", crawlerCode);
+          requireSuccess("test-go-typesense-exporter", crawlerCode);
           requireSuccess("dependency-review", eventName === "pull_request" && code);
           requireSuccess("crawler-image", eventName === "pull_request" && isPr && crawlerCode);
 

@@ -41,7 +41,7 @@ func fetchPostings(ctx context.Context, db postingQuerier, after cursor, cutoff 
 		return nil, after, fmt.Errorf("posting batch limit must be 1..2000")
 	}
 	if !after.UpdatedAt.Before(cutoff) {
-		return nil, after, fmt.Errorf("CDC cutoff must be later than cursor")
+		return []Row{}, after, nil
 	}
 	rows, err := db.Query(ctx, changedPostingsSQL, after.UpdatedAt, after.ID, limit, cutoff)
 	if err != nil {

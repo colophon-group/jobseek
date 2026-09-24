@@ -14,12 +14,17 @@ import (
 
 const maxImportResponseBytes = 64 << 20
 
+type importFailure struct {
+	Reason string
+	Code   int
+}
+
 // importDocs performs one idempotent Typesense upsert. Every submitted row
 // must receive an explicit boolean acknowledgement in the same position.
 // A transport, HTTP, cardinality, or decode error leaves the caller's CDC
 // cursor pinned; individual rejected documents are returned for the current
 // exporter's logged poison-row semantics. The caller owns cross-tick backoff.
-func importDocs(ctx context.Context, client *http.Client, baseURL, apiKey string, docs []map[string]any) (map[string]struct{}, error) {
+func importDocs(ctx context.Context, client *http.Client, baseURL, apiKey string, docs []map[string]any) (map[string]importFailure, error) {
 	if client == nil || apiKey == "" {
 		return nil, errors.New("Typesense client and operations key are required")
 	}
@@ -68,11 +73,13 @@ func importDocs(ctx context.Context, client *http.Client, baseURL, apiKey string
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("Typesense import returned HTTP %d", resp.StatusCode)
 	}
-	lines := strings.Split(string(body), "\n")
+	// Typesense may end its JSONL reply with one line terminator. That does
+	// not represent an additional acknowledgement; any other extra line does.
+	lines := strings.Split(strings.TrimSuffix(string(body), "\n"), "\n")
 	if len(lines) != len(docs) {
 		return nil, fmt.Errorf("Typesense import acknowledgement cardinality %d != %d", len(lines), len(docs))
 	}
-	failed := make(map[string]struct{})
+	failed := make(map[string]importFailure)
 	for i, line := range lines {
 		var result map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(line), &result); err != nil {
@@ -86,7 +93,10 @@ func importDocs(ctx context.Context, client *http.Client, baseURL, apiKey string
 			return nil, fmt.Errorf("Typesense acknowledgement %d has non-boolean success", i)
 		}
 		if string(raw) == "false" {
-			failed[docs[i]["id"].(string)] = struct{}{}
+			var failure importFailure
+			_ = json.Unmarshal(result["error"], &failure.Reason)
+			_ = json.Unmarshal(result["code"], &failure.Code)
+			failed[docs[i]["id"].(string)] = failure
 		}
 	}
 	return failed, nil

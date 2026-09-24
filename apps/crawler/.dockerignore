@@ -8,6 +8,7 @@ tmp/
 tests/
 scripts/*
 !scripts/with-xvfb.sh
+!scripts/exporter-entrypoint.sh
 dist/
 traces/
 *.md

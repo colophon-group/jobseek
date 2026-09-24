@@ -6,15 +6,46 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash"
+	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Both commands are dark and read-only. Projection consumes offline JSON;
-// --check-maps loads production taxonomy inputs but writes no cursor or index.
+// Projection consumes offline JSON; --check-maps and --shadow-batch read
+// production inputs without writing a cursor or index. --run requires an
+// explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--owner" {
+		if err := printOwner(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(os.Args) == 4 && os.Args[1] == "--transfer-owner" {
+		if err := transferOwner(os.Args[2], os.Args[3]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(os.Args) == 2 && os.Args[1] == "--healthcheck" {
+		if err := healthcheck(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(os.Args) == 2 && os.Args[1] == "--run" {
+		if err := runExporter(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) == 2 && os.Args[1] == "--check-maps" {
 		if err := checkMaps(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -29,8 +60,15 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) == 2 && os.Args[1] == "--project-batch" {
+		if err := projectBatch(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--check-maps|--shadow-batch]")
+		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--transfer-owner python go|--transfer-owner go python]")
 		os.Exit(2)
 	}
 	var input struct {
@@ -52,6 +90,51 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func projectBatch() error {
+	var input struct {
+		Rows []Row `json:"rows"`
+		Maps Maps  `json:"maps"`
+	}
+	decoder := json.NewDecoder(os.Stdin)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil {
+		return fmt.Errorf("decode projection batch: %w", err)
+	}
+	if len(input.Rows) == 0 || len(input.Rows) > 2000 {
+		return fmt.Errorf("projection batch must have 1..2000 rows")
+	}
+	docs := make([]map[string]any, 0, len(input.Rows))
+	for _, row := range input.Rows {
+		doc, err := project(row, input.Maps)
+		if err != nil {
+			return err
+		}
+		docs = append(docs, doc)
+	}
+	return json.NewEncoder(os.Stdout).Encode(docs)
+}
+
+func healthcheck() error {
+	port := 9093
+	if raw := os.Getenv("METRICS_PORT"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 65535 {
+			return fmt.Errorf("METRICS_PORT must be valid")
+		}
+		port = parsed
+	}
+	client := &http.Client{Timeout: 3 * time.Second}
+	response, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port))
+	if err != nil {
+		return fmt.Errorf("exporter health request: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("exporter health returned HTTP %d", response.StatusCode)
+	}
+	return nil
 }
 
 func checkMaps() error {
@@ -116,6 +199,11 @@ func shadowBatch() error {
 		return fmt.Errorf("read shadow postings: %w", err)
 	}
 	var digest hash.Hash = sha256.New()
+	includeDocs := os.Getenv("GO_TYPESENSE_SHADOW_DOCS") == "1"
+	var projected []map[string]any
+	if includeDocs {
+		projected = make([]map[string]any, 0, len(rows))
+	}
 	for _, row := range rows {
 		doc, err := project(row, maps)
 		if err != nil {
@@ -127,9 +215,16 @@ func shadowBatch() error {
 		}
 		digest.Write(encoded)
 		digest.Write([]byte{'\n'})
+		if includeDocs {
+			projected = append(projected, doc)
+		}
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]any{
+	result := map[string]any{
 		"rows": len(rows), "document_sha256": fmt.Sprintf("%x", digest.Sum(nil)),
 		"cutoff": cutoff.UTC().Format(time.RFC3339Nano),
-	})
+	}
+	if includeDocs {
+		result["documents"] = projected
+	}
+	return json.NewEncoder(os.Stdout).Encode(result)
 }

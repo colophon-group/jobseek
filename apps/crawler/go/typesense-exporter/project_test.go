@@ -44,7 +44,7 @@ func TestProjectRichAndInactive(t *testing.T) {
 		LocationTypes:       map[int]string{10: "city", 11: "city"},
 		LocationAncestors:   map[int][]int{10: {10, 20, 30}, 11: {11, 20, 30}},
 		OccupationNames:     map[int]string{100: "Software Engineer"},
-		OccupationAncestors: map[int][]int{100: {100, 200}},
+		OccupationAncestors: map[int][]int{100: {200, 100}},
 		SeniorityNames:      map[int]string{1: "Senior"}, TechnologyNames: map[int]string{50: "Python"},
 	}
 	doc, err := project(row, maps)
