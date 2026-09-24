@@ -32,10 +32,19 @@ x-common-env: &common-env
   # Exclusive Go list handoff for admitted single-site boards; empty keeps Python authoritative.
   WORKDAY_GO_BOARD_ID: ${WORKDAY_GO_BOARD_ID:-}
   WORKDAY_GO_BOARD_IDS: ${WORKDAY_GO_BOARD_IDS:-}
+  # Default-off Go detail handoff and one natural Python detail response capture.
+  WORKDAY_GO_DETAIL_BOARD_IDS: ${WORKDAY_GO_DETAIL_BOARD_IDS:-}
+  WORKDAY_DETAIL_CAPTURE_HOST: ${WORKDAY_DETAIL_CAPTURE_HOST:-}
   # One existing scheduled Elastic response, saved locally for exact replay.
   GREENHOUSE_ELASTIC_CAPTURE_PATH: ${GREENHOUSE_ELASTIC_CAPTURE_PATH:-}
   # Exclusive Elastic rich-monitor handoff after same-byte replay admission.
   GREENHOUSE_GO_BOARD_ID: ${GREENHOUSE_GO_BOARD_ID:-}
+  # Explicit-token rich cohort and bounded natural API response capture.
+  GREENHOUSE_GO_BOARD_IDS: ${GREENHOUSE_GO_BOARD_IDS:-}
+  GREENHOUSE_CAPTURE_TOKENS: ${GREENHOUSE_CAPTURE_TOKENS:-}
+  # Exclusive rich Ashby monitor handoff and bounded natural response capture.
+  ASHBY_GO_BOARD_IDS: ${ASHBY_GO_BOARD_IDS:-}
+  ASHBY_CAPTURE_TOKENS: ${ASHBY_CAPTURE_TOKENS:-}
 
 services:
   # -- Redis -------------------------------------------------------

@@ -1,4 +1,4 @@
-"""Default-off Go rich monitor for the exact Elastic Greenhouse board."""
+"""Default-off exclusive Go rich monitor for explicit Ashby board tokens."""
 
 from __future__ import annotations
 
@@ -6,14 +6,14 @@ import asyncio
 import hashlib
 import json
 import re
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator
 from time import monotonic
 
 import httpx
 import structlog
 
 from src.core.monitor import MonitorResult, _normalize_discovered
-from src.core.monitors import BoardGoneError, DiscoveredJob
+from src.core.monitors import BoardGoneError, DiscoveredJob, all_monitor_types
 from src.metrics import (
     runtime_execution_duration_seconds,
     runtime_executions_total,
@@ -29,7 +29,6 @@ from src.shared.egress import (
 from src.shared.http import mark_external_response, mark_reachable_response
 from src.shared.tdm import TDMReservedError
 
-ELASTIC_BOARD_ID = "0b0b0ae8-3635-47b3-929d-79e439879598"
 _TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}")
 _BOOKKEEPING = {
     "scraper_type",
@@ -41,40 +40,10 @@ _BOOKKEEPING = {
 log = structlog.get_logger()
 
 
-def inventory_digests(jobs: Sequence[DiscoveredJob]) -> tuple[str, str]:
-    """Hash the selected origin's URL set and complete rich-job fields."""
-    url_digest = hashlib.sha256("\n".join(sorted(job.url for job in jobs)).encode()).hexdigest()
-    fields_digest = hashlib.sha256()
-    for job in sorted(jobs, key=lambda item: item.url):
-        fields_digest.update(
-            json.dumps(
-                {
-                    "url": job.url,
-                    "title": job.title,
-                    "description": job.description,
-                    "locations": job.locations,
-                    "date_posted": job.date_posted,
-                    "language": job.language,
-                    "metadata": job.metadata,
-                },
-                sort_keys=True,
-                ensure_ascii=False,
-                separators=(",", ":"),
-            ).encode()
-        )
-        fields_digest.update(b"\n")
-    return url_digest, fields_digest.hexdigest()
+class GoAshbyMonitorRuntime:
+    implementation = "go-ashby"
 
-
-class GoGreenhouseMonitorRuntime:
-    implementation = "go-greenhouse"
-
-    def __init__(
-        self,
-        binary: str = "/usr/local/bin/greenhouse-monitor-live",
-        *,
-        board_id: str = ELASTIC_BOARD_ID,
-    ) -> None:
+    def __init__(self, binary: str = "/usr/local/bin/ashby-monitor-live", *, board_id: str) -> None:
         self.binary = binary
         self.board_id = board_id
 
@@ -91,7 +60,7 @@ class GoGreenhouseMonitorRuntime:
         config = monitor_config or {}
         token = config.get("token")
         if (
-            monitor_type != "greenhouse"
+            monitor_type != "ashby"
             or not board_url.startswith("https://")
             or pw is not None
             or not isinstance(token, str)
@@ -99,11 +68,8 @@ class GoGreenhouseMonitorRuntime:
             or config.get("scraper_type") != "skip"
             or set(config) - {"token"} - _BOOKKEEPING
         ):
-            raise ValueError(
-                "Go Greenhouse requires an explicit unchanged rich token configuration"
-            )
-        api_url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
-
+            raise ValueError("Go Ashby requires an explicit unchanged rich token configuration")
+        api_url = f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true"
         started = monotonic()
         outcome = "error"
         proc = None
@@ -117,10 +83,10 @@ class GoGreenhouseMonitorRuntime:
             )
             stdout, stderr = await proc.communicate()
             if len(stdout) > 80_000_000:
-                raise ValueError("Go Greenhouse output exceeded the selected origin bound")
+                raise ValueError("Go Ashby output exceeded the selected origin bound")
             payload = json.loads(stdout)
             if not isinstance(payload, dict):
-                raise ValueError("invalid Go Greenhouse response")
+                raise ValueError("invalid Go Ashby response")
             attempts = payload.get("requests")
             responses = payload.get("responses")
             byte_count = payload.get("bytes")
@@ -129,27 +95,25 @@ class GoGreenhouseMonitorRuntime:
                 or attempts != 1
                 or type(responses) is not int
                 or responses not in (0, 1)
-                or not isinstance(byte_count, int)
-                or isinstance(byte_count, bool)
+                or type(byte_count) is not int
                 or byte_count < 0
                 or (responses == 0 and byte_count != 0)
             ):
-                raise ValueError("invalid Go Greenhouse request accounting")
+                raise ValueError("invalid Go Ashby request accounting")
             attribution = current_egress_attribution()
             record_origin_attempt(attribution, "direct")
             record_origin_outcome(
                 attribution, "direct", "response" if responses else "transport_error"
             )
             record_response_body_bytes(attribution, "direct", byte_count)
-
             status = payload.get("status")
             final_url = payload.get("final_url")
             if type(status) is not int or (status != 0 and not 100 <= status <= 599):
-                raise ValueError("invalid Go Greenhouse status")
+                raise ValueError("invalid Go Ashby status")
             if responses and (final_url != api_url or status == 0):
-                raise ValueError("Go Greenhouse returned an unexpected response endpoint")
+                raise ValueError("Go Ashby returned an unexpected response endpoint")
             if not responses and (final_url or status):
-                raise ValueError("Go Greenhouse returned an inconsistent transport outcome")
+                raise ValueError("Go Ashby returned an inconsistent transport outcome")
             if proc.returncode != 0 or payload.get("error"):
                 if payload.get("error") == "tdm-reservation=1":
                     raise TDMReservedError(
@@ -157,27 +121,26 @@ class GoGreenhouseMonitorRuntime:
                     )
                 if status == 404:
                     raise BoardGoneError(
-                        f"Greenhouse board token {token!r} returned 404",
+                        f"Ashby board token {token!r} returned 404",
                         url=api_url,
                         status_code=404,
                     )
                 if responses:
                     mark_external_response(api_url, status)
                 detail = payload.get("error") or stderr.decode(errors="replace")[:300]
-                if status != 0 and status != 200:
+                if status and status != 200:
                     request = httpx.Request("GET", api_url)
                     response = httpx.Response(status, request=request)
                     raise httpx.HTTPStatusError(str(detail), request=request, response=response)
-                raise RuntimeError(f"Go Greenhouse list failed: {detail}")
-
+                raise RuntimeError(f"Go Ashby list failed: {detail}")
             if status != 200 or responses != 1:
-                raise ValueError("Go Greenhouse success had no HTTP 200 response")
+                raise ValueError("Go Ashby success had no HTTP 200 response")
             raw_jobs = payload.get("jobs")
             truncated = payload.get("truncated")
             if not isinstance(raw_jobs, list) or not isinstance(truncated, bool):
-                raise ValueError("invalid Go Greenhouse inventory")
+                raise ValueError("invalid Go Ashby inventory")
             if truncated != (len(raw_jobs) > 50_000):
-                raise ValueError("invalid Go Greenhouse truncation marker")
+                raise ValueError("invalid Go Ashby truncation marker")
             jobs = []
             for index, raw in enumerate(raw_jobs):
                 if (
@@ -185,25 +148,14 @@ class GoGreenhouseMonitorRuntime:
                     or not isinstance(raw.get("url"), str)
                     or not raw["url"]
                 ):
-                    raise ValueError(f"invalid Go Greenhouse job at index {index}")
-                jobs.append(
-                    DiscoveredJob(
-                        url=raw["url"],
-                        title=raw.get("title"),
-                        description=raw.get("description"),
-                        locations=raw.get("locations"),
-                        date_posted=raw.get("date_posted"),
-                        language=raw.get("language"),
-                        metadata=raw.get("metadata"),
-                    )
-                )
-            url_digest, fields_digest = inventory_digests(jobs)
+                    raise ValueError(f"invalid Go Ashby job at index {index}")
+                jobs.append(DiscoveredJob(**raw))
+            digest = hashlib.sha256("\n".join(sorted(job.url for job in jobs)).encode()).hexdigest()
             log.info(
-                "go_greenhouse.monitor_complete",
+                "go_ashby.monitor_complete",
                 board_id=self.board_id,
                 urls=len(jobs),
-                url_sha256=url_digest,
-                fields_sha256=fields_digest,
+                url_sha256=digest,
                 requests=attempts,
                 responses=responses,
                 response_bytes=byte_count,
@@ -229,8 +181,6 @@ class GoGreenhouseMonitorRuntime:
             if proc is not None and proc.returncode is None:
                 proc.terminate()
                 await proc.wait()
-            from src.core.monitors import all_monitor_types
-
             runtime_execution_duration_seconds.labels(
                 stage="monitor", implementation=self.implementation
             ).observe(monotonic() - started)
