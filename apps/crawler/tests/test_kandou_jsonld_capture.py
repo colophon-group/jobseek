@@ -40,7 +40,7 @@ async def test_selected_natural_scrape_captures_both_renders_without_extra_reque
         json.loads(line)
         for line in (tmp_path / "jobseek-kandou-jsonld-360.jsonl").read_text().splitlines()
     ]
-    assert records[0] == {"schema": "jobseek.kandou-jsonld-replay/v1", "url": URL}
+    assert records[0] == {"schema": "jobseek.kandou-rendered-dom-capture/v1", "url": URL}
     assert [record["title_found"] for record in records[1:-1]] == [False, True]
     assert [base64.b64decode(record["html_b64"]).decode() for record in records[1:-1]] == [
         EMPTY,

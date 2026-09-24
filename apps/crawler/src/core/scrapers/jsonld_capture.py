@@ -59,7 +59,7 @@ class KandouJsonLdCapture:
         try:
             with os.fdopen(descriptor, "w", encoding="utf-8") as output:
                 for record in (
-                    {"schema": "jobseek.kandou-jsonld-replay/v1", "url": self.url},
+                    {"schema": "jobseek.kandou-rendered-dom-capture/v1", "url": self.url},
                     *self.records,
                     {"complete": True, "attempts": len(self.records)},
                 ):
