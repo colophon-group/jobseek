@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 import pytest
 
+from src.core.monitors import greenhouse as greenhouse_monitor
 from src.core.monitors.greenhouse import discover
 from src.processing.board import _monitor_runtime_for_board
 from src.runtime.greenhouse_go import GoGreenhouseMonitorRuntime
@@ -113,6 +114,33 @@ async def test_scheduled_capture_uses_existing_response_once(tmp_path: Path, mon
     assert requests == 2
     assert capture.read_bytes() == body
     assert stat.S_IMODE(capture.stat().st_mode) == 0o600
+
+
+@pytest.mark.asyncio
+async def test_explicit_token_capture_uses_only_natural_requests(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(greenhouse_monitor, "_CAPTURE_DIR", tmp_path)
+    monkeypatch.setenv("GREENHOUSE_CAPTURE_TOKENS", "acme-careers")
+    body = b'{"jobs":[]}'
+    requests = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, content=body)
+
+    board = {
+        "board_url": "https://job-boards.greenhouse.io/acme-careers",
+        "metadata": {"token": "acme-careers"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        await discover(board, client)
+        await discover(board, client)
+    artifact = tmp_path / "jobseek-greenhouse-acme-careers.body"
+    assert requests == 2
+    assert artifact.read_bytes() == body
+    assert stat.S_IMODE(artifact.stat().st_mode) == 0o600
 
 
 @pytest.mark.asyncio
