@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from collections.abc import AsyncIterator
 from time import monotonic
 
 import httpx
+import structlog
 
 from src.core.monitor import MonitorResult, _normalize_discovered
 from src.core.monitors import BoardGoneError, DiscoveredJob
@@ -35,6 +37,7 @@ _BOOKKEEPING = {
     "_monitor_config_fingerprint",
     "_confirmed_drop_candidate",
 }
+log = structlog.get_logger()
 
 
 class GoGreenhouseMonitorRuntime:
@@ -155,6 +158,37 @@ class GoGreenhouseMonitorRuntime:
                         metadata=raw.get("metadata"),
                     )
                 )
+            fields_digest = hashlib.sha256()
+            for job in sorted(jobs, key=lambda item: item.url):
+                fields_digest.update(
+                    json.dumps(
+                        {
+                            "url": job.url,
+                            "title": job.title,
+                            "description": job.description,
+                            "locations": job.locations,
+                            "date_posted": job.date_posted,
+                            "language": job.language,
+                            "metadata": job.metadata,
+                        },
+                        sort_keys=True,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ).encode()
+                )
+                fields_digest.update(b"\n")
+            log.info(
+                "go_greenhouse.monitor_complete",
+                board_id=ELASTIC_BOARD_ID,
+                urls=len(jobs),
+                url_sha256=hashlib.sha256(
+                    "\n".join(sorted(job.url for job in jobs)).encode()
+                ).hexdigest(),
+                fields_sha256=fields_digest.hexdigest(),
+                requests=attempts,
+                responses=responses,
+                response_bytes=byte_count,
+            )
             mark_reachable_response(_API_URL)
             outcome = "success"
             runtime_output_items_total.labels(
