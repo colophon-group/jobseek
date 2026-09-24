@@ -439,12 +439,50 @@ five-second deadline had no error, mismatch or cutoff. The settled query run
 still failed the initial p95 screen for active-location facets (558 → 618 ms)
 and sales (345 → 665 ms); it is not accepted ARM64 latency evidence.
 Its final-20-second RSS median was 4,003.754 MiB, versus 3,992.145 MiB for the
-matched baseline. No ARM64 restart or rollback was performed after the failed
-gate; the owned container was stopped after diagnostics. A separate alternating
+matched baseline. The owned container was initially stopped after these
+diagnostics. A separate alternating
 page-one parameter check (`per_page:11` versus `limit:11, offset:0`) preserved
 all results across 192 timed reads on three keyword cases. This checks the lab's
 page-one query shape against the app's native-offset spelling; it does not
 establish equal latency between different hosts or accept the failed migration.
+
+A later diagnostic restart replayed the last schema alteration before the write
+queue drained. The subsequent probes waited for the queue to empty, exact count,
+semantic readiness and 45 seconds of settling. This startup is **not** matched
+checkpointed-rebuild timing or RSS evidence. No ARM64 rollback was performed.
+After the probes, a final acknowledged snapshot was taken and the owned
+container stopped, preserving its volumes and the source corpus.
+
+The strict decimal query retained identical results over 60 interleaved timed
+reads. Reversing the two experience predicates did not recover latency:
+original **252 / 262 ms** median/p95, maximum-first **247 / 274 ms**, and placing
+experience before the boolean predicates **246 / 273 ms**. These ARM64 numbers
+are diagnostic only; the native A/B/A latency gate remains failed.
+
+The complete application expression was then measured with valid integer
+bounds **3–6**, including legacy and unknown-experience branches. All 180 timed
+reads retained identical results (15 per variant and shape):
+
+| App query shape | Original median / p95 | Maximum-first | Experience-first |
+| --- | ---: | ---: | ---: |
+| Ungrouped, 50 hits | 649 / 751 | 647 / 693 | 650 / 785 |
+| Grouped company page | 1,278 / 1,784 | 1,109 / 1,585 | 1,111 / 1,762 |
+| Exact count | 737 / 955 | 696 / 953 | 733 / 846 |
+| Stable candidates | 862 / 1,204 | 809 / 1,004 | 821 / 1,193 |
+
+This single ARM64 ordering comparison has no original-schema control and does
+not establish a safe optimization. No application predicate order was changed.
+The full parameters, timings, response fingerprints and diagnostic source are
+preserved in the [ARM64 manifest](typesense-index-pruning-2026-09-23/arm64-checkpointed/manifest.json).
+
+Trying the complete app expression with **2.5–6.5** instead uncovered a separate
+application error: its legacy `int32` clauses also received decimal literals,
+and Typesense returned HTTP 400, `Error with filter field experience_max: Not an
+int32.` The separate [web fix #9972](https://github.com/colophon-group/jobseek/pull/9972)
+rounds only legacy comparison bounds (floor for
+`<=`, ceiling for `>=`), preserving precise decimal fields and integer queries.
+This is independent of index pruning and does not explain or repair the strict
+native query's measured regression.
 
 ## Why sort pruning is deferred
 
@@ -502,3 +540,8 @@ After updating to main's crawler-cohort change, commit `577992acf` passes
 integration, web tests/build, lint, coverage and image checks. The Typesense
 schema/lab/suite files are unchanged from the native rehearsal's input. The
 separate deployment gate remains blocked by #8648.
+
+The evidence/report revision at `3d025eda9` also passes
+[fresh Linux CI](https://github.com/colophon-group/jobseek/actions/runs/35949191186),
+including 13,214 crawler tests and the real-engine suites. These automated
+passes do not override the failed performance acceptance gate.

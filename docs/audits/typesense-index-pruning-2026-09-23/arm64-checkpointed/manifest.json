@@ -80,6 +80,27 @@
       "gzip_sha256": "cbc1414028cc34aa346bdd38a2d62a2778b358a4d69aec914983fa246aac1a98",
       "source_bytes": 57177,
       "gzip_bytes": 2391
+    },
+    {
+      "file": "experience-order-diagnostic.json.gz",
+      "source_sha256": "7b1bbcd56b1bce9260e2a033f824b850fa1fbc01baf5e742d83dad6d5f39667d",
+      "gzip_sha256": "7fcb2afbb9f522dbe9a611976c5316cf790939f1797eb2430d370bee4a0acfc7",
+      "source_bytes": 13406,
+      "gzip_bytes": 1121
+    },
+    {
+      "file": "experience-app-diagnostic.json.gz",
+      "source_sha256": "795b5bd17110b0db65a89372bb19798241ecf89dec92975c3486052c475c205c",
+      "gzip_sha256": "c216b0364820421ff98d25162d48fa09e6138af26137ad3cfd267ed2848caa27",
+      "source_bytes": 52620,
+      "gzip_bytes": 2672
+    },
+    {
+      "file": "followup-final-checkpoint.json.gz",
+      "source_sha256": "48f683a0e3c7450de6f3d2ad8da7bf8f271045093f909b8c7ee64d1dec58fa10",
+      "gzip_sha256": "974598a689478763bc99030dbbcfde7b6f1eb6c0e0a38715fe44d6d0749de3b5",
+      "source_bytes": 12403,
+      "gzip_bytes": 1736
     }
   ],
   "migration_acceptance": {
@@ -107,7 +128,40 @@
       "timed_reads": 192,
       "all_result_hashes_match": true
     },
-    "note": "Different latency distributions remain; these checks do not override the failed live-migration gate. No ARM restart/rollback was performed."
+    "note": "Different latency distributions remain; these checks do not override the failed live-migration gate. The acceptance driver did not restart or roll back. A later diagnostic restart replayed the last alteration before the write queue drained; its startup/RSS are not matched rebuild evidence. No ARM rollback was performed.",
+    "predicate_order": {
+      "strict_timed_reads": 60,
+      "app_timed_reads": 180,
+      "all_result_hashes_match": true,
+      "strict_median_p95_ms": {
+        "original": [
+          252,
+          262
+        ],
+        "max_first": [
+          247,
+          274
+        ],
+        "range_first": [
+          246,
+          273
+        ]
+      },
+      "native_latency_gate_still_failed": true
+    },
+    "final_checkpoint": "followup-final-checkpoint.json.gz"
   },
-  "owned_container_stopped": true
+  "owned_container_stopped": true,
+  "diagnostic_sources": [
+    {
+      "file": "typesense-experience-app-probe.py",
+      "sha256": "7863ec6ccfd9ce2c18703be42d34f782de0e38d6dbf155eada9edee0bebcadf2",
+      "note": "Formatting normalized; local paths identify the isolated lab used for this diagnostic. Adjust paths for another owned lab."
+    },
+    {
+      "file": "typesense-experience-order-probe.py",
+      "sha256": "7e8b3d490058742163996a0986bbdb14defe5266aaa427d501f1b12a4264ad66",
+      "note": "Formatting normalized; local paths identify the isolated lab used for this diagnostic. Adjust paths for another owned lab."
+    }
+  ]
 }
