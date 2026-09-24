@@ -6,8 +6,12 @@ Returns full job data — title, HTML description, locations, departments, etc.
 
 from __future__ import annotations
 
+import hashlib
+import os
 import re
+from contextlib import suppress
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -22,9 +26,14 @@ from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_han
 from src.core.monitors.raw import save_json_response
 from src.shared.truncation import truncated_rich_result
 
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
+
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
+_ELASTIC_URL = "https://job-boards.greenhouse.io/elastic"
+_ELASTIC_CAPTURE_MAX_BYTES = 64 << 20
 
 _PAGE_PATTERNS = [
     re.compile(r"boards-api\.greenhouse\.io/v1/boards/([\w-]+)"),
@@ -138,6 +147,49 @@ def _api_url(token: str) -> str:
     return f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
 
 
+def _capture_scheduled_elastic_response(
+    board_url: str, token: str, response: httpx.Response
+) -> None:
+    """Save one existing scheduled response for exact Go/Python replay.
+
+    This is default-off, performs no request, and never changes the monitor
+    result. The operator retrieves the mode-0600 file before container reuse.
+    """
+    path = os.environ.get("GREENHOUSE_ELASTIC_CAPTURE_PATH")
+    if not path or board_url != _ELASTIC_URL or token != "elastic":
+        return
+    if not os.path.isabs(path) or len(response.content) > _ELASTIC_CAPTURE_MAX_BYTES:
+        log.warning("greenhouse.capture_skipped", reason="path_or_size")
+        return
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    created = False
+    try:
+        fd = os.open(path, flags, 0o600)
+        created = True
+        with os.fdopen(fd, "wb") as output:
+            output.write(response.content)
+            output.flush()
+            os.fsync(output.fileno())
+    except FileExistsError:
+        return
+    except OSError as exc:
+        if created:
+            with suppress(OSError):
+                os.unlink(path)
+        log.warning("greenhouse.capture_failed", error_type=type(exc).__name__)
+    else:
+        log.info(
+            "greenhouse.response_captured",
+            status=response.status_code,
+            final_url=str(response.url),
+            bytes=len(response.content),
+            sha256=hashlib.sha256(response.content).hexdigest(),
+            path=path,
+        )
+
+
 async def _probe_token(token: str, client: httpx.AsyncClient) -> tuple[bool, int | None]:
     """Probe the Greenhouse API for a token. Returns (found, job_count)."""
     try:
@@ -198,7 +250,9 @@ async def _probe_template_token(
     return await _probe_token(token, client)
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
+async def discover(
+    board: dict, client: httpx.AsyncClient, pw=None
+) -> list[DiscoveredJob] | MonitorResult:
     """Fetch job listings with full content from the Greenhouse public API."""
     metadata = board.get("metadata") or {}
     token = metadata.get("token") or _token_from_url(board["board_url"])
@@ -211,6 +265,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     url = _api_url(token)
     response = await client.get(url, params={"content": "true"})
+    _capture_scheduled_elastic_response(board["board_url"], token, response)
     if response.status_code == 404:
         # Greenhouse returns 404 when the board token has been deleted
         # upstream — i.e. the company removed the board. Surface this
