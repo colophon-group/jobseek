@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import os
 import random
 import re
 from collections import defaultdict
@@ -1878,6 +1879,18 @@ class BoardMonitorResult:
         yield self.duration_seconds
 
 
+def _monitor_runtime_for_board(board_id: str, provided: MonitorRuntime | None) -> MonitorRuntime:
+    if provided is not None:
+        return provided
+    if os.environ.get("WORKDAY_GO_BOARD_ID") == board_id:
+        from src.runtime.workday_go import ELEVANCE_BOARD_ID, GoWorkdayMonitorRuntime
+
+        if board_id != ELEVANCE_BOARD_ID:
+            raise ValueError("Go Workday routing is restricted to the selected origin")
+        return GoWorkdayMonitorRuntime()
+    return PythonMonitorRuntime(_batch.monitor_one_stream)
+
+
 async def _process_one_board_streaming(
     board: asyncpg.Record | dict[str, Any],
     pool: asyncpg.Pool,
@@ -1998,7 +2011,7 @@ async def _process_one_board_streaming(
         # by the monitor's own MAX_JOBS cap and is discarded after the cycle.
         guard_inventory_identities: set[str] = set()
 
-        runtime = monitor_runtime or PythonMonitorRuntime(_batch.monitor_one_stream)
+        runtime = _monitor_runtime_for_board(board_id, monitor_runtime)
         monitor_stream = runtime.stream(
             board_url,
             crawler_type,
