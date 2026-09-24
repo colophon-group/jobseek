@@ -8,6 +8,8 @@
 
 This follows the [first routing and latency evaluation](jev-routing-quality-2026-09-23.md). That evaluation's 84 examples leaned toward developer roles, and its frozen `minimal2` prompt matched 20/28 complete configurations on its original holdout. The original holdout had already been inspected, so this follow-up uses a new 32-query holdout.
 
+The [dataset and prompt evolution index](jev-routing-dataset-and-prompt-evolution-2026-09-24.md) links the tuning examples, human labels, each policy revision, and raw runs.
+
 ## Result
 
 The catalog grounded `catalog5` prompt matched **32/32 fresh holdout intent labels and 32/32 complete configurations** on its first run. Two further runs of the same 32 queries also matched 32/32 each. These are repeated measurements of **32 distinct cases**, not 96 independent holdout cases. On the same new cases, the prior `minimal2` prompt matched **30/32** configurations and the actual current parser matched **11/32**. All eight query groups had four exact configurations with `catalog5`.
