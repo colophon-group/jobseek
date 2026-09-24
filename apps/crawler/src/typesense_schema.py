@@ -58,7 +58,10 @@ COLLECTIONS: list[dict] = [
                 "optional": True,
             },
             {"name": "company_id", "type": "string", "facet": True},
-            {"name": "company_name", "type": "string", "facet": True},
+            # Keep display names in stored responses and reconciliation, but
+            # omit their unused text/facet indexes. Consumed numeric/bool
+            # indexes stay intact: rebuilding them can change live counts.
+            {"name": "company_name", "type": "string", "index": False, "optional": True},
             {"name": "company_slug", "type": "string", "index": False},
             {"name": "company_icon", "type": "string", "index": False, "optional": True},
             {"name": "title", "type": "string"},
@@ -81,7 +84,7 @@ COLLECTIONS: list[dict] = [
                 "facet": True,
                 "optional": True,
             },
-            {"name": "location_names", "type": "string[]", "facet": True},
+            {"name": "location_names", "type": "string[]", "index": False, "optional": True},
             {"name": "location_types", "type": "string[]", "facet": True},
             {"name": "location_geo_types", "type": "string[]", "index": False},
             # The leaf occupation scalar and its display name remain stored for
@@ -103,9 +106,9 @@ COLLECTIONS: list[dict] = [
                 "optional": True,
             },
             {"name": "seniority_id", "type": "int32", "facet": True, "optional": True},
-            {"name": "seniority_name", "type": "string", "facet": True, "optional": True},
+            {"name": "seniority_name", "type": "string", "index": False, "optional": True},
             {"name": "technology_ids", "type": "int32[]", "facet": True},
-            {"name": "technology_names", "type": "string[]", "facet": True},
+            {"name": "technology_names", "type": "string[]", "index": False, "optional": True},
             {"name": "employment_type", "type": "string", "facet": True, "optional": True},
             {"name": "salary_eur", "type": "int32", "facet": True, "optional": True},
             # Original salary fields are required by posting detail and saved-job
@@ -458,8 +461,8 @@ def _fields_patch_payload(
 
     # Typesense 27.1 schema alters are synchronous, block writes, and can scan
     # every document. Rebuild at most one existing field per PATCH so a large
-    # collection sheds memory monotonically and each operation has a bounded
-    # blast radius. Missing fields can still be added alongside that operation;
+    # collection avoids overlapping index rebuilds. Allocator/RSS peaks still
+    # need a measured rehearsal. Missing fields can be added alongside it;
     # unlike rebuilds, they have no old in-memory index to duplicate or drop.
     selected_rebuilds = rebuild_fields[:1]
     payload_fields: list[dict] = []

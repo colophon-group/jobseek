@@ -1,0 +1,245 @@
+[
+  {
+    "trial": 0,
+    "field": "has_content",
+    "baseline_found": 155,
+    "patch_started": 1790201707.263176,
+    "patch_completed": 1790201707.879232,
+    "after_matches": true,
+    "probes": [
+      {
+        "time": 1790201707.057133,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201707.121137,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201707.283175,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201707.442293,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201707.5751739,
+        "found": 157,
+        "matches": false,
+        "changed_facets": [
+          {
+            "field_name": "seniority_id",
+            "before_total_values": 4,
+            "after_total_values": 4,
+            "before_count_sum": 28,
+            "after_count_sum": 29
+          },
+          {
+            "field_name": "locales",
+            "before_total_values": 9,
+            "after_total_values": 10,
+            "before_count_sum": 164,
+            "after_count_sum": 166
+          }
+        ]
+      },
+      {
+        "time": 1790201707.65067,
+        "found": 157,
+        "matches": false,
+        "changed_facets": [
+          {
+            "field_name": "seniority_id",
+            "before_total_values": 4,
+            "after_total_values": 4,
+            "before_count_sum": 28,
+            "after_count_sum": 29
+          },
+          {
+            "field_name": "locales",
+            "before_total_values": 9,
+            "after_total_values": 10,
+            "before_count_sum": 164,
+            "after_count_sum": 166
+          }
+        ]
+      },
+      {
+        "time": 1790201707.763544,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201707.891849,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201707.9419992,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201707.987669,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201708.032337,
+        "found": 155,
+        "matches": true
+      }
+    ]
+  },
+  {
+    "trial": 1,
+    "field": "has_content",
+    "baseline_found": 155,
+    "patch_started": 1790201708.799252,
+    "patch_completed": 1790201709.0557141,
+    "after_matches": true,
+    "probes": [
+      {
+        "time": 1790201708.598837,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201708.639445,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201708.679372,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201708.7295098,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201708.787016,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201708.874037,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201708.946976,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201708.995302,
+        "found": 157,
+        "matches": false,
+        "changed_facets": [
+          {
+            "field_name": "seniority_id",
+            "before_total_values": 4,
+            "after_total_values": 4,
+            "before_count_sum": 28,
+            "after_count_sum": 29
+          },
+          {
+            "field_name": "locales",
+            "before_total_values": 9,
+            "after_total_values": 10,
+            "before_count_sum": 164,
+            "after_count_sum": 166
+          }
+        ]
+      },
+      {
+        "time": 1790201709.053677,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201709.0954828,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201709.169004,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201709.231234,
+        "found": 155,
+        "matches": true
+      }
+    ]
+  },
+  {
+    "trial": 2,
+    "field": "has_content",
+    "baseline_found": 155,
+    "patch_started": 1790201709.933045,
+    "patch_completed": 1790201710.222096,
+    "after_matches": true,
+    "probes": [
+      {
+        "time": 1790201709.728838,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201709.7813382,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201709.84762,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201709.895318,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201709.949537,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201709.996041,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201710.076517,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201710.1307578,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201710.3096871,
+        "found": 155,
+        "matches": true
+      },
+      {
+        "time": 1790201710.408491,
+        "found": 155,
+        "matches": true
+      }
+    ]
+  }
+]

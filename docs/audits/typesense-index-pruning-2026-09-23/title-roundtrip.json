@@ -1,0 +1,34 @@
+[
+  {
+    "source_row": 680274,
+    "ascii_mode": false,
+    "exact_document_match": true,
+    "source_title_length": 18,
+    "stored_title_length": 18,
+    "differences": []
+  },
+  {
+    "source_row": 4595216,
+    "ascii_mode": false,
+    "exact_document_match": true,
+    "source_title_length": 15,
+    "stored_title_length": 15,
+    "differences": []
+  },
+  {
+    "source_row": 680274,
+    "ascii_mode": true,
+    "exact_document_match": true,
+    "source_title_length": 18,
+    "stored_title_length": 18,
+    "differences": []
+  },
+  {
+    "source_row": 4595216,
+    "ascii_mode": true,
+    "exact_document_match": true,
+    "source_title_length": 15,
+    "stored_title_length": 15,
+    "differences": []
+  }
+]

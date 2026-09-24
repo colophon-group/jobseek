@@ -1,0 +1,27 @@
+{
+  "pull_request": 9937,
+  "head_sha": "9959357e520c8c1186d90cc1045d655e2aa88f15",
+  "workflow_run": 35928175698,
+  "crawler": {
+    "passed": 13211,
+    "skipped": 40
+  },
+  "crawler_typesense_e2e": {
+    "passed": 46
+  },
+  "web_typesense_e2e_local": {
+    "passed": 36
+  },
+  "focused_crawler_local": {
+    "passed": 59
+  },
+  "later_harness_guards_local": {
+    "passed": 5
+  },
+  "checkpoint_rebuild_smoke": {
+    "documents": 1000,
+    "complete": true
+  },
+  "deployment_hold_issue": 8648,
+  "production_rollout": false
+}

@@ -1,0 +1,7 @@
+{
+  "postings_outside_export_buckets": 0,
+  "search_cutoff": false,
+  "search_time_ms": 4487,
+  "recorded_at": "2026-09-23T22:30:03.884040+00:00",
+  "note": "Read-only check after acquisition; the bucket export is not a point-in-time snapshot."
+}

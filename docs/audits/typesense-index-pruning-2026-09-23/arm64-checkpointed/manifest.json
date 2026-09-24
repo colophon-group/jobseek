@@ -1,0 +1,167 @@
+{
+  "architecture": "arm64",
+  "source_documents": 5554279,
+  "source_document_sha256_modular_sum": "8238d65e12ff0f06a1ecc04953f8ccdfb3656339a2b7da8599f18c9a5b655557",
+  "note": "Full source parity was restored before this checkpointed baseline. ARM64 only. The schema alteration completed, but the acceptance driver stopped with exit 1: 52 of 1336 live reads exceeded the five-second deadline. All 1284 successful reads retained exact consumed-result parity; no cutoff or OOM was observed. This is failed availability evidence, not a successful full rehearsal. Any subsequent diagnostic phases do not erase that failure.",
+  "artifacts": [
+    {
+      "file": "baseline-restored-fingerprint.json.gz",
+      "source_sha256": "6cbbe0f3857d05f36546e31cd10c2545c01fd6f6dfb32ba309ea5e3c0390cb64",
+      "gzip_sha256": "b94d40049d315ee3cf162ff91121e4c281b51fdc30d06cdf9329a19e79a1d365",
+      "source_bytes": 122062,
+      "gzip_bytes": 9917
+    },
+    {
+      "file": "baseline-checkpoint-rebuild.json.gz",
+      "source_sha256": "9fcdcba3ea2f456f69d6e2ecc9bb317bd02c841b497625fe71dd432c2330c087",
+      "gzip_sha256": "1e4c62994dd3ca12126984403b194d8dccf77716c4b34ebfadb9533119daaf5e",
+      "source_bytes": 361354,
+      "gzip_bytes": 36082
+    },
+    {
+      "file": "baseline-checkpoint.json.gz",
+      "source_sha256": "71827b6291774e85704bd7276ac012e2d9e07950d118158e5d9c4e8733c252cd",
+      "gzip_sha256": "fed2a142b94edce415af4972601463e282aa40479193630afc2e7bcdce4bd3c4",
+      "source_bytes": 109221,
+      "gzip_bytes": 11372
+    },
+    {
+      "file": "baseline-concurrent.json.gz",
+      "source_sha256": "95501fbab2c49bbc72d759aaf769b01c5e47c9ad4a451b47b9811d3f0d46349b",
+      "gzip_sha256": "86e8877d67e743c756950ae5c6518dfd78bc79af03190d24d233b97db3174d85",
+      "source_bytes": 41638,
+      "gzip_bytes": 4782
+    },
+    {
+      "file": "baseline-cdc.json.gz",
+      "source_sha256": "cd1a1889c69d53041498bef7146238810c0872e5b5dff0846d957f7eab81b45f",
+      "gzip_sha256": "1796cd46e6000d3e7ab9cae417de20ed4d68367852eee4d259c9d3a68cd978d4",
+      "source_bytes": 24080,
+      "gzip_bytes": 1993
+    },
+    {
+      "file": "baseline-after-cdc.json.gz",
+      "source_sha256": "1ec266f470c18a1855a6609d0d29cd9ab8d055a69315dfdd5fee3d3aeccf1153",
+      "gzip_sha256": "b23a4c126b8f75dc5b7b697951e13ac680fe9edac76aec7624a544d670f6124b",
+      "source_bytes": 48531,
+      "gzip_bytes": 5413
+    },
+    {
+      "file": "selected-migration.json.gz",
+      "source_sha256": "582e1b94a19ba25fa17445590a6f100ea5031933ff9b08b9ae4fa5eea0993e47",
+      "gzip_sha256": "8e6128d770b2f5f4fb8b5b1971b7fd4e52f1578a0674b2069d0131155f5ffdb3",
+      "source_bytes": 1944085,
+      "gzip_bytes": 142577
+    },
+    {
+      "file": "selected-diagnostic.json.gz",
+      "source_sha256": "81c92933433f8c8f888086a8285bf82fbb97c301c5ce5af660206b1a326d0148",
+      "gzip_sha256": "84e142038ce2d3f1e953895a5168043111ccf221590f8e5a6485c1b348a40b5b",
+      "source_bytes": 90300,
+      "gzip_bytes": 9430
+    },
+    {
+      "file": "selected-diagnostic-fingerprint.json.gz",
+      "source_sha256": "7a18a23a470491390c91efbae7a862dd03226e88c9014a9f98fb409414eec14c",
+      "gzip_sha256": "44b785ab9cb12db7b106ce9302b0f71854f6d744a30690ea25c794dd2c7f3303",
+      "source_bytes": 95370,
+      "gzip_bytes": 7167
+    },
+    {
+      "file": "post-alter-read-probe.json.gz",
+      "source_sha256": "67b7b9401b1ac53f6df763aa026ca6462c304e459e07242c9ad689d3c28a6636",
+      "gzip_sha256": "b65368c5fc4dba06258926ba2072bab1d306cd4c60acbbbb425808312656477e",
+      "source_bytes": 35719,
+      "gzip_bytes": 2645
+    },
+    {
+      "file": "page-alias-diagnostic.json.gz",
+      "source_sha256": "938ee6f1da121b6cda1ccb0b608ffb961a36b679ee191d60cf5a0f9df4153528",
+      "gzip_sha256": "cbc1414028cc34aa346bdd38a2d62a2778b358a4d69aec914983fa246aac1a98",
+      "source_bytes": 57177,
+      "gzip_bytes": 2391
+    },
+    {
+      "file": "experience-order-diagnostic.json.gz",
+      "source_sha256": "7b1bbcd56b1bce9260e2a033f824b850fa1fbc01baf5e742d83dad6d5f39667d",
+      "gzip_sha256": "7fcb2afbb9f522dbe9a611976c5316cf790939f1797eb2430d370bee4a0acfc7",
+      "source_bytes": 13406,
+      "gzip_bytes": 1121
+    },
+    {
+      "file": "experience-app-diagnostic.json.gz",
+      "source_sha256": "795b5bd17110b0db65a89372bb19798241ecf89dec92975c3486052c475c205c",
+      "gzip_sha256": "c216b0364820421ff98d25162d48fa09e6138af26137ad3cfd267ed2848caa27",
+      "source_bytes": 52620,
+      "gzip_bytes": 2672
+    },
+    {
+      "file": "followup-final-checkpoint.json.gz",
+      "source_sha256": "48f683a0e3c7450de6f3d2ad8da7bf8f271045093f909b8c7ee64d1dec58fa10",
+      "gzip_sha256": "974598a689478763bc99030dbbcfde7b6f1eb6c0e0a38715fe44d6d0749de3b5",
+      "source_bytes": 12403,
+      "gzip_bytes": 1736
+    }
+  ],
+  "migration_acceptance": {
+    "passed": false,
+    "reason": "live-read timeout",
+    "probes": 1336,
+    "timeouts": 52,
+    "successful_reads": 1284,
+    "mismatches_among_successful_reads": 0,
+    "cutoffs": 0,
+    "suite_exit_code": 1
+  },
+  "diagnostic_result": {
+    "post_migration_query_cases": 16,
+    "all_result_hashes_match": true,
+    "post_migration_fingerprint_matches_source": true,
+    "post_alter_deadline_probe": {
+      "reads": 120,
+      "errors": 0,
+      "mismatches": 0,
+      "cutoffs": 0
+    },
+    "page_one_parameter_aliases": {
+      "cases": 3,
+      "timed_reads": 192,
+      "all_result_hashes_match": true
+    },
+    "note": "Different latency distributions remain; these checks do not override the failed live-migration gate. The acceptance driver did not restart or roll back. A later diagnostic restart replayed the last alteration before the write queue drained; its startup/RSS are not matched rebuild evidence. No ARM rollback was performed.",
+    "predicate_order": {
+      "strict_timed_reads": 60,
+      "app_timed_reads": 180,
+      "all_result_hashes_match": true,
+      "strict_median_p95_ms": {
+        "original": [
+          252,
+          262
+        ],
+        "max_first": [
+          247,
+          274
+        ],
+        "range_first": [
+          246,
+          273
+        ]
+      },
+      "native_latency_gate_still_failed": true
+    },
+    "final_checkpoint": "followup-final-checkpoint.json.gz"
+  },
+  "owned_container_stopped": true,
+  "diagnostic_sources": [
+    {
+      "file": "typesense-experience-app-probe.py",
+      "sha256": "7863ec6ccfd9ce2c18703be42d34f782de0e38d6dbf155eada9edee0bebcadf2",
+      "note": "Formatting normalized; local paths identify the isolated lab used for this diagnostic. Adjust paths for another owned lab."
+    },
+    {
+      "file": "typesense-experience-order-probe.py",
+      "sha256": "7e8b3d490058742163996a0986bbdb14defe5266aaa427d501f1b12a4264ad66",
+      "note": "Formatting normalized; local paths identify the isolated lab used for this diagnostic. Adjust paths for another owned lab."
+    }
+  ]
+}

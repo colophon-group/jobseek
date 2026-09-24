@@ -1,0 +1,50 @@
+{
+  "compared": 5554279,
+  "different_documents": 2,
+  "unequal_values": 2,
+  "first_order_mismatch": null,
+  "field_differences": [
+    {
+      "field": "title",
+      "source_type": "str",
+      "stored_type": "str",
+      "equal_value": false,
+      "source_present": true,
+      "stored_present": true,
+      "documents": 2
+    }
+  ],
+  "examples": [
+    {
+      "row": 680274,
+      "differences": [
+        {
+          "field": "title",
+          "source_type": "str",
+          "stored_type": "str",
+          "equal_value": false,
+          "source_present": true,
+          "stored_present": true,
+          "source": "str",
+          "stored": "str"
+        }
+      ]
+    },
+    {
+      "row": 4595216,
+      "differences": [
+        {
+          "field": "title",
+          "source_type": "str",
+          "stored_type": "str",
+          "equal_value": false,
+          "source_present": true,
+          "stored_present": true,
+          "source": "str",
+          "stored": "str"
+        }
+      ]
+    }
+  ],
+  "elapsed_seconds": 357.395
+}

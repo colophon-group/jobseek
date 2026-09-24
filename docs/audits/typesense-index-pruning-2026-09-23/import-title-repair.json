@@ -1,0 +1,29 @@
+{
+  "completed_at": 1790209870.113017,
+  "owned_local_lab_only": true,
+  "source_documents": 5554279,
+  "repaired_documents": [
+    {
+      "source_row": 680274,
+      "id_sha256": "f0f81005060fa89bae358dcdec50b5ab3d2734498e3462af130fa0a75714852b",
+      "before_sha256": "7a05ffc900d3f3287476382fe7880bb948b3cd8c3c5a39864e2e246a9c0de58d",
+      "source_sha256": "ce7897229e5c1131ab132e47bd1db6e44f87129a0b9c25f8b1935dd44a02905a",
+      "changed_fields": [
+        "title"
+      ],
+      "after_sha256": "ce7897229e5c1131ab132e47bd1db6e44f87129a0b9c25f8b1935dd44a02905a"
+    },
+    {
+      "source_row": 4595216,
+      "id_sha256": "98f40d882eda2fe6019f25e508b110152c3241967e69e29faef34f24f72e47b6",
+      "before_sha256": "a83dcd9a65d1fd4a8ca67187632a45aec7122f08b7830e0fbdef3c8b81c2a54c",
+      "source_sha256": "16e4da6269e3c55cc3f0d3966879b4b863fb5a4ed7252439e22b8e73ec8858eb",
+      "changed_fields": [
+        "title"
+      ],
+      "after_sha256": "16e4da6269e3c55cc3f0d3966879b4b863fb5a4ed7252439e22b8e73ec8858eb"
+    }
+  ],
+  "two_differences_explain_entire_checksum_delta": true,
+  "full_fingerprint_recheck_required": true
+}

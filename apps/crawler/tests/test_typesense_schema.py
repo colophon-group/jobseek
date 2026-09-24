@@ -70,6 +70,73 @@ def test_job_posting_schema_has_numeric_candidate_order() -> None:
         }
 
 
+def test_posting_pruning_preserves_consumed_filters_facets_and_sorting() -> None:
+    schema = next(c for c in COLLECTIONS if c["name"] == "job_posting")
+    fields = {f["name"]: f for f in schema["fields"]}
+    for name in ("company_name", "location_names", "seniority_name", "technology_names"):
+        assert fields[name]["index"] is False
+        assert fields[name].get("store", True) is True
+        assert fields[name].get("facet", False) is False
+    for name in (
+        "is_active",
+        "has_content",
+        "seniority_id",
+        "experience_min",
+        "experience_max",
+        "experience_min_years",
+        "experience_max_years",
+    ):
+        assert fields[name].get("sort", True) is True
+        assert fields[name].get("index", True) is True
+        assert fields[name]["facet"] is True
+    for name in ("first_seen_at", "salary_eur", "candidate_order_hi", "candidate_order_lo"):
+        assert fields[name].get("sort", True) is True
+    assert fields["company_id"]["facet"] is True
+    assert schema["default_sorting_field"] == "first_seen_at"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "is_active",
+        "has_content",
+        "seniority_id",
+        "experience_min",
+        "experience_max",
+        "experience_min_years",
+        "experience_max_years",
+    ],
+)
+def test_setup_does_not_rebuild_consumed_fields_for_sort_only_drift(name) -> None:
+    # Rebuilding a consumed index can temporarily change live filter/facet
+    # results on 27.1. Do not silently extend the display-only migration.
+    schema = next(c for c in COLLECTIONS if c["name"] == "job_posting")
+    desired = {**next(f for f in schema["fields"] if f["name"] == name), "sort": False}
+    client, collection = _stub_client([{**desired, "sort": True}])
+    _patch_missing_fields(client, "job_posting_v1", [desired])
+    collection.update.assert_not_called()
+
+
+def test_setup_prunes_one_index_at_a_time_and_second_run_is_idempotent() -> None:
+    desired = [
+        {"name": "company_name", "type": "string", "index": False, "optional": True},
+        {"name": "location_names", "type": "string[]", "index": False, "optional": True},
+    ]
+    old_name = {"name": "company_name", "type": "string", "facet": True, "index": True}
+    old_locations = {"name": "location_names", "type": "string[]", "facet": True, "index": True}
+    client, collection = _stub_client([])
+    collection.retrieve.side_effect = [
+        {"fields": [old_name, old_locations]},
+        {"fields": [desired[0], old_locations]},
+        {"fields": desired},
+    ]
+    _patch_missing_fields(client, "job_posting_v1", desired)
+    _patch_missing_fields(client, "job_posting_v1", desired)
+    assert [call.args[0] for call in collection.update.call_args_list] == [
+        {"fields": [{"name": field["name"], "drop": True}, field]} for field in desired
+    ]
+
+
 def test_taxonomy_schema_carries_web_hierarchy_contract() -> None:
     schemas = {collection["name"]: collection for collection in COLLECTIONS}
     posting_fields = {field["name"]: field for field in schemas["job_posting"]["fields"]}
