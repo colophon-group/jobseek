@@ -91,6 +91,38 @@ describe("SearchBar Jev proposal lifecycle", () => {
     expect(screen.queryByTestId("search-bar-query-proposal")).toBeNull();
   });
 
+  it("routes an unfamiliar single term through Jev when Enter beats typeahead", async () => {
+    mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({
+      ...proposal, query: "pharmacst", keywords: ["pharmacst"],
+      locations: [], occupations: [], seniorities: [], workMode: [], employmentTypes: [],
+    }) });
+    render(<SearchBar />);
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: "pharmacst" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledTimes(1));
+    const url = new URL(mocks.push.mock.calls[0][0], "https://jobseek.test");
+    expect(url.searchParams.get("q")).toBe("pharmacst");
+    expect(url.searchParams.get("qmode")).toBe("literal");
+    expect(mocks.parse).not.toHaveBeenCalled();
+  });
+
+  it("clears an old keyboard highlight before immediate Enter on edited text", async () => {
+    mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ ...proposal, query: "nurse Berlin" }) });
+    render(<SearchBar />);
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: proposal.query } });
+    await waitFor(() => expect(screen.getByRole("listbox")).toBeTruthy());
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(input.getAttribute("aria-activedescendant")).toMatch(/option-0$/);
+    fireEvent.change(input, { target: { value: "nurse Berlin" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledTimes(1));
+    expect(mocks.parse).not.toHaveBeenCalled();
+  });
+
   it("does not submit an old answer after the same text is retyped", async () => {
     const resolvers: Array<(value: unknown) => void> = [];
     mocks.fetch.mockImplementation(() => new Promise((resolve) => { resolvers.push(resolve); }));

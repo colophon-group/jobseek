@@ -217,8 +217,10 @@ export function SearchBar({
     seniorityResults, technologyResults };
   const isUnresolvedAtomic = useCallback((query: string) => {
     const state = atomicSuggestionsRef.current;
-    if (state.sourceQuery.toLowerCase() !== query.toLowerCase()) return false;
     if (matchWorkModes(query, new Set()).length) return false;
+    // Enter can precede the 200 ms typeahead response. Until taxonomy
+    // suggestions for this exact text arrive, an atomic query is unresolved.
+    if (state.sourceQuery.toLowerCase() !== query.toLowerCase()) return true;
     const normalize = (value: string) => value.toLowerCase().normalize("NFKD")
       .replace(/[^\p{L}\p{N}]+/gu, "");
     const desired = normalize(query);
@@ -535,8 +537,8 @@ export function SearchBar({
     [onAddLocation, onAddOccupation, onAddSeniority, onAddTechnology, onAddWorkMode, getPageActions, router, lp, searchParams, currentKeywords, currentLocationSlugs, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp, workModeProp, clearResults, submitProposal, replaceProposal, sourceQuery, activeTerm, inputValue, onQueryInput, fetchSuggestions],
   );
 
-  const submitFreeTextSearch = useCallback(() => {
-    const input = inputValue.trim();
+  const submitFreeTextSearch = useCallback((rawInput?: string) => {
+    const input = (rawInput ?? inputValue).trim();
     if (!input) return;
 
     // Clear input immediately for instant feedback
@@ -614,19 +616,22 @@ export function SearchBar({
       );
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (activeIndex >= 0 && activeIndex < allSuggestions.length) {
-        selectItem(allSuggestions[activeIndex]);
-      } else if (trimmedInput.length >= 2) {
+      // Read the live input: an Enter immediately after the last keystroke
+      // must route the complete text even before React has rerendered.
+      const entered = e.currentTarget.value.trim();
+      const selectedIndex = activeIndexRef.current;
+      if (selectedIndex >= 0 && selectedIndex < allSuggestions.length) {
+        selectItem(allSuggestions[selectedIndex]);
+      } else if (entered.length >= 2) {
         if (submittingRef.current) return;
         submittingRef.current = true;
         const submitId = ++submissionVersion.current;
-        const entered = trimmedInput;
         const editVersion = inputEditVersion.current;
         void requestQueryIntent(entered).then((draft) => {
           if (submissionVersion.current !== submitId || inputEditVersion.current !== editVersion ||
             inputRef.current?.value.trim() !== entered) return;
           if (draft) submitProposal(draft);
-          else submitFreeTextSearch();
+          else submitFreeTextSearch(entered);
         }).finally(() => { if (submissionVersion.current === submitId) submittingRef.current = false; });
       }
     } else if (e.key === "Escape") {
@@ -734,6 +739,8 @@ export function SearchBar({
             inputEditVersion.current += 1;
             submissionVersion.current += 1;
             submittingRef.current = false;
+            activeIndexRef.current = -1;
+            setActiveIndex(-1);
             setInputValue(e.target.value);
             setShowProposal(false);
             onQueryInput(e.target.value);
