@@ -40,6 +40,7 @@ _BOOKKEEPING = {
     "suspect_streak",
     "recent_discovered_counts",
     "_monitor_config_fingerprint",
+    "_confirmed_drop_candidate",
 }
 
 

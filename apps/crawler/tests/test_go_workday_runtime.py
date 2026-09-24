@@ -15,6 +15,12 @@ CONFIG = {
     "site": "ANT",
     "all_sites": False,
     "scraper_type": "workday",
+    "suspect_streak": 0,
+    "recent_discovered_counts": [301, 301, 301, 301, 300],
+    "_monitor_config_fingerprint": (
+        "2b4ae021c5e69c4c9544ad046330ee9116eed11cb1b5e7064fc800d5013c1e4b"
+    ),
+    "_confirmed_drop_candidate": None,
 }
 
 
