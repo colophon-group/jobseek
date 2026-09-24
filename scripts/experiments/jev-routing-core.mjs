@@ -25,6 +25,11 @@ const POLICIES = {
   catalog5: "Route a JOB SEARCH query into filters for all career families, using the occupation catalog in state. First decide if the WHOLE QUERY seeks jobs; informational, shopping, advice, history, and joke requests have NO filters. For a job search, choose the SHORTEST complete text span for each independent filter. Single words and common abbreviations/typos can be filters: seniority (senior, staff, junior, sr, jr), work mode (remote, wfh, hybrid, onsite and translations), named technologies/tools, or a known place. Employment type is limited to full-time, part-time, contract, temporary, and volunteer. An occupation is a complete one- to three-word job title in the catalog OR a clear alias, abbreviation, translation, or typo of one, across software, healthcare, finance, legal, sales, operations, administration, and other fields. Keep a complete role title together, including a specialty such as backend, product, or sales; these job specialties are not technologies by themselves. But a named technology/tool, seniority, work mode, employment type, or place NEXT TO a role is a SEPARATE filter and must not be swallowed by the occupation. If a title is unsupported, retain it as keyword; never map it to a different occupation with one shared word. Never include generic filler such as job, role, work, positions, in, or and inside a filter span. All unchosen overlapping spans are keyword.",
 };
 
+// The production search-query router consumes these through the checked-in
+// generator so the evaluated catalog5 wording stays byte-for-byte identical.
+export const JEV_ROUTING_CATEGORIES = CATEGORIES;
+export const JEV_ROUTING_POLICY_CATALOG5 = POLICIES.catalog5;
+
 export function tokenize(query) {
   return query.split(/[,\n\r\t/|]+|-+/).map((part) => part.trim()).filter(Boolean)
     .map((part) => part.split(/\s+/).filter(Boolean));
