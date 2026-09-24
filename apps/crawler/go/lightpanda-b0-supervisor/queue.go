@@ -32,7 +32,7 @@ const (
 	producerOwnerKey         = "lightpanda-b0:producer-owner"
 	legacyGuardKey           = "lightpanda-b0:legacy-guard"
 	producerOwnerV1          = "jobseek.lightpanda.producer-owner/v1"
-	expectedLuaSHA256        = "3ab1a2126e26febe165553cb6fb03406b1463b7e11d501faaf60f1d4711bc4a0"
+	expectedLuaSHA256        = "5cf344b6b20f5ca1650a876d85226d1ac82308cda911602e659735cbcee39d3b"
 )
 
 var (
