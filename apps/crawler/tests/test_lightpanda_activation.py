@@ -115,9 +115,11 @@ async def _initialize_producer(
         route=route,
         producer_cohort=cohort,
         producer_board_slugs=(
-            ("browser-use-careers", "eclypsium-careers", "kandou-ai-careers")
-            if cohort == "c3"
-            else ("browser-use-careers",)
+            {
+                "c1": ("browser-use-careers",),
+                "c2": ("browser-use-careers", "kandou-ai-careers"),
+                "c3": ("browser-use-careers", "eclypsium-careers", "kandou-ai-careers"),
+            }[cohort]
         ),
     )
     initialized = queue._decode_transition("initialize_producer", raw, route=route)
@@ -255,9 +257,11 @@ async def _activate_legacy(
         first_time=first_time,
         producer_cohort=cohort,
         producer_board_slugs=(
-            ("browser-use-careers", "eclypsium-careers", "kandou-ai-careers")
-            if cohort == "c3"
-            else ("browser-use-careers",)
+            {
+                "c1": ("browser-use-careers",),
+                "c2": ("browser-use-careers", "kandou-ai-careers"),
+                "c3": ("browser-use-careers", "eclypsium-careers", "kandou-ai-careers"),
+            }[cohort]
         ),
     )
     return queue._decode_transition("activate_legacy", raw, task=task)
@@ -618,7 +622,7 @@ async def test_missing_legacy_guard_blocks_go_claim_without_mutation(redis: Any)
     assert await redis.zcard(queue._keys.inflight) == 0
 
 
-@pytest.mark.parametrize("cohort", ["c1", "c3"])
+@pytest.mark.parametrize("cohort", ["c1", "c2", "c3"])
 async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(
     redis: Any, cohort: str
 ) -> None:
