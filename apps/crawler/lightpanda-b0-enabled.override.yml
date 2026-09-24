@@ -144,7 +144,7 @@ services:
     environment:
       GOMEMLIMIT: 16MiB
       LIGHTPANDA_B0_PRODUCER_MODE: enabled
-      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
+      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c3}
       LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "0"
       LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
       LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0

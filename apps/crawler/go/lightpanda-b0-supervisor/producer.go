@@ -35,6 +35,8 @@ const (
 
 var producerCohorts = map[string]map[string]struct{}{
 	"c1": set("browser-use-careers"),
+	"c3": set("browser-use-careers", "eclypsium-careers", "kandou-ai-careers"),
+	// c4 is retained for the frozen four-origin admission fixture, not production cutover.
 	"c4": set("browser-use-careers", "eclypsium-careers", "kandou-ai-careers", "poke-and-wiggle-careers"),
 }
 
@@ -79,7 +81,9 @@ func producerConfigFromEnvironment() (producerConfig, error) {
 		DefaultDelay: env("THROTTLE_DELAY_DEFAULT", "2.0"),
 		ClientUID:    uint32(clientUID),
 	}
-	if _, ok := producerCohorts[result.Cohort]; !ok || !safeID.MatchString(result.Namespace) || result.Socket != producerSocketPath || result.ClientUID == uint32(os.Geteuid()) {
+	if _, ok := producerCohorts[result.Cohort]; !ok || !safeID.MatchString(result.Namespace) ||
+		(result.Cohort == "c4" && result.Namespace != "admission-b0") ||
+		result.Socket != producerSocketPath || result.ClientUID == uint32(os.Geteuid()) {
 		return producerConfig{}, errors.New("invalid fixed B0 producer identity")
 	}
 	if err := result.Route.validate(); err != nil {
@@ -203,7 +207,7 @@ type producerOwnerIdentity struct {
 }
 
 func (owner producerOwnerIdentity) validate() error {
-	if !safeID.MatchString(owner.Namespace) || !contains(set("c1", "c4"), owner.Cohort) ||
+	if !safeID.MatchString(owner.Namespace) || !contains(set("c1", "c3", "c4"), owner.Cohort) ||
 		owner.Route.validate() != nil || owner.Route.EngineOwner != engineOwner ||
 		len(owner.BoardSlugs) == 0 || len(owner.BoardSlugs) > 16 || !sort.StringsAreSorted(owner.BoardSlugs) {
 		return errors.New("invalid producer owner identity")
