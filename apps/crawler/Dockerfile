@@ -44,6 +44,14 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/greenhouse-monitor-live ./cmd/live
 
+# ── Default-off Go Ashby rich monitor ────────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-ashby-build
+WORKDIR /workspace/apps/crawler/go/ashby-monitor
+COPY go/ashby-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/ashby-monitor-live ./cmd/live
+
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
 FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 
@@ -87,6 +95,7 @@ RUN chmod 0755 /usr/local/bin/exporter-entrypoint
 COPY --from=go-workday-build /out/workday-monitor-live /usr/local/bin/workday-monitor-live
 COPY --from=go-workday-build /out/workday-detail-live /usr/local/bin/workday-detail-live
 COPY --from=go-greenhouse-build /out/greenhouse-monitor-live /usr/local/bin/greenhouse-monitor-live
+COPY --from=go-ashby-build /out/ashby-monitor-live /usr/local/bin/ashby-monitor-live
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
 FROM base AS slim

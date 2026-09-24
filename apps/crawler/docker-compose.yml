@@ -42,6 +42,9 @@ x-common-env: &common-env
   # Explicit-token rich cohort and bounded natural API response capture.
   GREENHOUSE_GO_BOARD_IDS: ${GREENHOUSE_GO_BOARD_IDS:-}
   GREENHOUSE_CAPTURE_TOKENS: ${GREENHOUSE_CAPTURE_TOKENS:-}
+  # Exclusive rich Ashby monitor handoff and bounded natural response capture.
+  ASHBY_GO_BOARD_IDS: ${ASHBY_GO_BOARD_IDS:-}
+  ASHBY_CAPTURE_TOKENS: ${ASHBY_CAPTURE_TOKENS:-}
 
 services:
   # -- Redis -------------------------------------------------------
