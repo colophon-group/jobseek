@@ -1891,6 +1891,15 @@ def _monitor_runtime_for_board(board_id: str, provided: MonitorRuntime | None) -
         from src.runtime.ashby_go import GoAshbyMonitorRuntime
 
         return GoAshbyMonitorRuntime(board_id=board_id)
+    lever_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("LEVER_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in lever_board_ids:
+        from src.runtime.lever_go import GoLeverMonitorRuntime
+
+        return GoLeverMonitorRuntime(board_id=board_id)
     greenhouse_board_ids = {
         selected.strip()
         for selected in os.environ.get("GREENHOUSE_GO_BOARD_IDS", "").split(",")

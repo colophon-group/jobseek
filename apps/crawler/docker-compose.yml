@@ -45,6 +45,10 @@ x-common-env: &common-env
   # Exclusive rich Ashby monitor handoff and bounded natural response capture.
   ASHBY_GO_BOARD_IDS: ${ASHBY_GO_BOARD_IDS:-}
   ASHBY_CAPTURE_TOKENS: ${ASHBY_CAPTURE_TOKENS:-}
+  # Explicit-token Go Lever rich monitor cohort; empty keeps Python authoritative.
+  LEVER_GO_BOARD_IDS: ${LEVER_GO_BOARD_IDS:-}
+  # One bounded response from each selected natural Lever schedule.
+  LEVER_CAPTURE_TOKENS: ${LEVER_CAPTURE_TOKENS:-}
 
 services:
   # -- Redis -------------------------------------------------------
