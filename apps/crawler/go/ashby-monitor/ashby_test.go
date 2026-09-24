@@ -1,8 +1,13 @@
 package ashby
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -26,6 +31,31 @@ func TestParseRichJobsAndCompensation(t *testing.T) {
 	want := map[string]any{"url": "https://jobs.ashbyhq.com/acme/1", "title": "Engineer", "description": "<p>Build</p>", "locations": []any{"Zurich", "London"}, "employment_type": "FullTime", "job_location_type": "hybrid", "date_posted": "2026-09-01", "base_salary": map[string]any{"currency": "CHF", "min": float64(80000), "max": float64(120000), "unit": "year"}, "metadata": map[string]any{"department": "Engineering", "id": "one"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got=%#v want=%#v", got, want)
+	}
+}
+
+func TestTokenURLAndOneRequest(t *testing.T) {
+	endpoint, err := TokenURL("Acme-Careers")
+	if err != nil || endpoint != "https://api.ashbyhq.com/posting-api/job-board/Acme-Careers?includeCompensation=true" {
+		t.Fatalf("endpoint=%q error=%v", endpoint, err)
+	}
+	for _, token := range []string{"", "../other", "a/b", "a?x=1", strings.Repeat("x", 129)} {
+		if _, err := TokenURL(token); err == nil {
+			t.Errorf("accepted token %q", token)
+		}
+	}
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		calls++
+		if request.Method != http.MethodGet || request.URL.RawQuery != "includeCompensation=true" || request.Header.Get("User-Agent") != userAgent {
+			t.Errorf("publisher request changed: %+v", request)
+		}
+		io.WriteString(writer, `{"jobs":[]}`)
+	}))
+	defer server.Close()
+	result, err := Fetch(context.Background(), server.Client(), server.URL+"/posting-api/job-board/acme?includeCompensation=true")
+	if err != nil || calls != 1 || result.Responses != 1 || len(result.Jobs) != 0 {
+		t.Fatalf("result=%+v error=%v calls=%d", result, err, calls)
 	}
 }
 
