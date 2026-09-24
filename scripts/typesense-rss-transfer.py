@@ -1,7 +1,9 @@
 """Retrieve one encrypted corpus; neither the URL nor password is logged."""
 
 from __future__ import annotations
+
 import hashlib
+import http.client
 import json
 import os
 import shutil
@@ -24,7 +26,7 @@ try:
         while chunk := response.read(1024**2):
             out.write(chunk)
             received.update(chunk)
-except Exception:
+except (OSError, ValueError, http.client.HTTPException):
     raise SystemExit(
         "Encrypted corpus download failed; transfer details suppressed"
     ) from None
