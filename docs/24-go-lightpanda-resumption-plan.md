@@ -14,6 +14,42 @@ export, maintenance, and configuration sync. Temporary Chromium assignments
 remain explicit during migration; eliminating them is a completion task, not
 an admission condition for the first B0 cohort.
 
+## Execution checkpoint: 2026-09-24
+
+This checkpoint supersedes the older epoch and pending-run statements below.
+On deployed main `1f8e9113bfc4730ca9ba9ada183dbdd507827fa4`, the first
+natural post-fix Elevance Go Workday cycle completed at 16:18 UTC. Go returned
+308 URLs in 16 requests with no transport error, and the Python board writer
+persisted exactly the same URL set and digest. The board retained its next
+schedule and zero failures. The preceding Python cycle saw 306 URLs because
+the publisher changed between runs; the two cycle durations are not an
+equal-input resource comparison. The one-board Workday host flag remains
+active. Remove its line entirely under the host mutation lock before any
+crawler deploy. [#7955](https://github.com/colophon-group/jobseek/issues/7955#issuecomment-5818161956)
+has the measured counts and digest.
+
+After that result, the supported B0 cutover wrapper reactivated `c1` at Go
+routing epoch **24**. Its active receipt, producer owner, and route agree;
+five Browser Use schedules are ready, none inflight or dead, and the worker,
+browser, producer, claimant, executor, and drain services are healthy. The
+five existing detail jobs are not due until 2026-09-25, so this is an
+ownership result, not yet a live Lightpanda detail-output or whole-lane
+resource result. [#8648](https://github.com/colophon-group/jobseek/issues/8648#issuecomment-5818260335)
+records the transition. Keep `deployment-hold:crawler` until the live gate is
+resolved, and cold-rollback c1 before a crawler deploy.
+
+The next HTTP slice is a default-off rich Greenhouse monitor for one exact
+Elastic board in [draft PR #9989](https://github.com/colophon-group/jobseek/pull/9989).
+Synthetic same-byte Go/Python field replay passes. Its scheduled Python
+response capture has not run in production, so exact live-source replay and
+whole-lane measurement still gate activation. The c2 legacy enqueue guard is
+in [PR #9979](https://github.com/colophon-group/jobseek/pull/9979), and the
+default-off Kandou rendered-DOM capture is in
+[draft PR #9987](https://github.com/colophon-group/jobseek/pull/9987).
+Kandou's intermittent required-title failure still keeps c2 dark. The full
+fleet remains Python-owned outside the named pilots; zero Python and zero
+Chromium are not achieved.
+
 ## Current state
 
 - [#7935](https://github.com/colophon-group/jobseek/issues/7935) reset the
