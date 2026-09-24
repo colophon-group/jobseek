@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 from collections.abc import AsyncIterator, Sequence
 from time import monotonic
 
@@ -23,13 +24,13 @@ from src.shared.egress import (
     record_origin_attempt,
     record_origin_outcome,
     record_response_body_bytes,
+    record_runtime_capability,
 )
 from src.shared.http import mark_external_response, mark_reachable_response
 from src.shared.tdm import TDMReservedError
 
 ELASTIC_BOARD_ID = "0b0b0ae8-3635-47b3-929d-79e439879598"
-_BOARD_URL = "https://job-boards.greenhouse.io/elastic"
-_API_URL = "https://boards-api.greenhouse.io/v1/boards/elastic/jobs?content=true"
+_TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}")
 _BOOKKEEPING = {
     "scraper_type",
     "suspect_streak",
@@ -68,8 +69,14 @@ def inventory_digests(jobs: Sequence[DiscoveredJob]) -> tuple[str, str]:
 class GoGreenhouseMonitorRuntime:
     implementation = "go-greenhouse"
 
-    def __init__(self, binary: str = "/usr/local/bin/greenhouse-monitor-live") -> None:
+    def __init__(
+        self,
+        binary: str = "/usr/local/bin/greenhouse-monitor-live",
+        *,
+        board_id: str = ELASTIC_BOARD_ID,
+    ) -> None:
         self.binary = binary
+        self.board_id = board_id
 
     async def stream(
         self,
@@ -82,15 +89,20 @@ class GoGreenhouseMonitorRuntime:
     ) -> AsyncIterator[MonitorResult]:
         del http
         config = monitor_config or {}
+        token = config.get("token")
         if (
             monitor_type != "greenhouse"
-            or board_url != _BOARD_URL
+            or not board_url.startswith("https://")
             or pw is not None
-            or config.get("token") != "elastic"
+            or not isinstance(token, str)
+            or _TOKEN.fullmatch(token) is None
             or config.get("scraper_type") != "skip"
             or set(config) - {"token"} - _BOOKKEEPING
         ):
-            raise ValueError("Go Greenhouse pilot requires the unchanged Elastic configuration")
+            raise ValueError(
+                "Go Greenhouse requires an explicit unchanged rich token configuration"
+            )
+        api_url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true"
 
         started = monotonic()
         outcome = "error"
@@ -98,6 +110,8 @@ class GoGreenhouseMonitorRuntime:
         try:
             proc = await asyncio.create_subprocess_exec(
                 self.binary,
+                "--token",
+                token,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -132,26 +146,26 @@ class GoGreenhouseMonitorRuntime:
             final_url = payload.get("final_url")
             if type(status) is not int or (status != 0 and not 100 <= status <= 599):
                 raise ValueError("invalid Go Greenhouse status")
-            if responses and (final_url != _API_URL or status == 0):
+            if responses and (final_url != api_url or status == 0):
                 raise ValueError("Go Greenhouse returned an unexpected response endpoint")
             if not responses and (final_url or status):
                 raise ValueError("Go Greenhouse returned an inconsistent transport outcome")
             if proc.returncode != 0 or payload.get("error"):
                 if payload.get("error") == "tdm-reservation=1":
                     raise TDMReservedError(
-                        _API_URL, source="header", policy_url=payload.get("tdm_policy")
+                        api_url, source="header", policy_url=payload.get("tdm_policy")
                     )
                 if status == 404:
                     raise BoardGoneError(
-                        "Greenhouse board token 'elastic' returned 404",
-                        url=_API_URL,
+                        f"Greenhouse board token {token!r} returned 404",
+                        url=api_url,
                         status_code=404,
                     )
                 if responses:
-                    mark_external_response(_API_URL, status)
+                    mark_external_response(api_url, status)
                 detail = payload.get("error") or stderr.decode(errors="replace")[:300]
                 if status != 0 and status != 200:
-                    request = httpx.Request("GET", _API_URL)
+                    request = httpx.Request("GET", api_url)
                     response = httpx.Response(status, request=request)
                     raise httpx.HTTPStatusError(str(detail), request=request, response=response)
                 raise RuntimeError(f"Go Greenhouse list failed: {detail}")
@@ -186,7 +200,7 @@ class GoGreenhouseMonitorRuntime:
             url_digest, fields_digest = inventory_digests(jobs)
             log.info(
                 "go_greenhouse.monitor_complete",
-                board_id=ELASTIC_BOARD_ID,
+                board_id=self.board_id,
                 urls=len(jobs),
                 url_sha256=url_digest,
                 fields_sha256=fields_digest,
@@ -194,7 +208,7 @@ class GoGreenhouseMonitorRuntime:
                 responses=responses,
                 response_bytes=byte_count,
             )
-            mark_reachable_response(_API_URL)
+            mark_reachable_response(api_url)
             outcome = "success"
             runtime_output_items_total.labels(
                 stage="monitor", implementation=self.implementation
@@ -215,9 +229,18 @@ class GoGreenhouseMonitorRuntime:
             if proc is not None and proc.returncode is None:
                 proc.terminate()
                 await proc.wait()
+            from src.core.monitors import all_monitor_types
+
             runtime_execution_duration_seconds.labels(
                 stage="monitor", implementation=self.implementation
             ).observe(monotonic() - started)
             runtime_executions_total.labels(
                 stage="monitor", implementation=self.implementation, outcome=outcome
             ).inc()
+            record_runtime_capability(
+                stage="monitor",
+                implementation=self.implementation,
+                capability=monitor_type,
+                allowed_capabilities=all_monitor_types(),
+                outcome=outcome,
+            )

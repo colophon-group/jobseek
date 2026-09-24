@@ -34,6 +34,18 @@ func TestParseRichInventoryAndFailClosed(t *testing.T) {
 	}
 }
 
+func TestTokenURLRejectsUnconfiguredPathExpansion(t *testing.T) {
+	endpoint, err := TokenURL("Acme_Careers-1")
+	if err != nil || endpoint != "https://boards-api.greenhouse.io/v1/boards/Acme_Careers-1/jobs?content=true" {
+		t.Fatalf("endpoint=%q error=%v", endpoint, err)
+	}
+	for _, token := range []string{"", "../other", "a/b", "a?content=false", "a%2Fother", strings.Repeat("x", 129)} {
+		if _, err := TokenURL(token); err == nil {
+			t.Errorf("accepted invalid token %q", token)
+		}
+	}
+}
+
 func TestPublicAddressesRejectMixedDNS(t *testing.T) {
 	public := net.IPAddr{IP: net.ParseIP("1.1.1.1")}
 	private := net.IPAddr{IP: net.ParseIP("10.0.0.1")}
