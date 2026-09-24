@@ -137,8 +137,21 @@ start only after recovery completes.
 
 ## Reproduction
 
-Use `scripts/typesense-rss-lab.py` with an operator-acquired schema JSON and
-JSONL.GZ corpus. No production credentials are accepted by the script.
+Use `scripts/typesense-rss-suite.py` for the complete sequence, or
+`scripts/typesense-rss-lab.py` for individual phases. Neither accepts production
+credentials. The input directory contains `schema.json`, `postings.jsonl.gz` and
+`corpus.json` (the complete source count/hash and frozen historical cutoff).
+The suite aborts on incomplete imports, document/query drift, live-read failures,
+cutoffs, non-idempotent setup or OOM. RSS and latency still require comparison of
+the resulting artifacts; a zero exit status alone is not performance acceptance.
+
+```sh
+# Run with the crawler environment, or install the locked typesense/httpx/structlog versions.
+uv run --directory apps/crawler python ../../scripts/typesense-rss-suite.py \
+  --root /tmp/pruning-lab --input /private/pruning-input
+```
+
+Individual phases are also available:
 
 ```sh
 python3 scripts/typesense-rss-lab.py init --root /tmp/pruning-lab --schema /private/schema.json

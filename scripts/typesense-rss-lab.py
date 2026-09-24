@@ -486,6 +486,15 @@ def main():
     if args.command == "init":
         if state_path.exists() or not args.schema:
             parser.error("init needs --schema and a new root")
+        architecture = platform.machine().lower()
+        docker_platform = {
+            "arm64": "linux/arm64",
+            "aarch64": "linux/arm64",
+            "x86_64": "linux/amd64",
+            "amd64": "linux/amd64",
+        }.get(architecture)
+        if docker_platform is None:
+            parser.error("This lab requires native ARM64 or x86_64")
         schema = json.loads(args.schema.read_text())
         schema = {
             k: v
@@ -505,7 +514,7 @@ def main():
             "container": name,
             "port": lab._free_loopback_port(),
             "year_start": lab._one_year_ago_unix(),
-            "native_architecture": platform.machine(),
+            "native_architecture": architecture,
             "image": lab.PINNED_TYPESENSE_IMAGE,
             "data_volume": name + "-data",
             "snapshot_volume": name + "-snapshots",
@@ -528,7 +537,7 @@ def main():
                 "--label",
                 LABEL + "=" + str(root),
                 "--platform",
-                "linux/arm64" if platform.machine() == "arm64" else "linux/amd64",
+                docker_platform,
                 "--memory",
                 "6g",
                 "--memory-swap",
@@ -630,6 +639,8 @@ def main():
                     "POST",
                     "/operations/snapshot?" + urllib.parse.urlencode({"snapshot_path": checkpoint}),
                 )
+                if result["checkpoint"].get("success") is not True:
+                    raise RuntimeError("Checkpoint was not acknowledged")
                 result["restart_started_at"] = time.time()
                 subprocess.run(
                     ["docker", "restart", state["container"]], check=True, stdout=subprocess.DEVNULL
@@ -706,6 +717,8 @@ def main():
                     "/operations/snapshot?"
                     + urllib.parse.urlencode({"snapshot_path": "/snapshots/" + label}),
                 )
+                if result["response"].get("success") is not True:
+                    raise RuntimeError("Snapshot was not acknowledged")
             # Match the settling window between phases; don't mistake retained
             # allocator pages immediately after a rebuild for steady RSS.
             time.sleep(args.settle_seconds)

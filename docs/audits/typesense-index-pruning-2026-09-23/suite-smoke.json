@@ -1,0 +1,20 @@
+{
+  "documents": 1000,
+  "completed_phases": 31,
+  "all_complete": true,
+  "migration_fields": [
+    "company_name",
+    "location_names",
+    "seniority_name",
+    "technology_names"
+  ],
+  "live_probes": 3,
+  "live_mismatches": 0,
+  "live_errors": 0,
+  "live_cutoffs": 0,
+  "all_fingerprints_equal": true,
+  "all_query_repeats_stable": true,
+  "oom_kills": 0,
+  "settle_seconds": 0,
+  "timing_acceptance": false
+}
