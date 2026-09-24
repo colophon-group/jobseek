@@ -55,6 +55,15 @@ def test_only_exact_sorted_go_manifest_is_accepted() -> None:
         2048,
         2048,
     )
+    two_origin = client._decode(
+        _response(
+            outcome="manifest",
+            reason="manifest",
+            cohort="c2",
+            board_slugs=["browser-use-careers", "kandou-ai-careers"],
+        )
+    )
+    assert two_origin.board_slugs == ("browser-use-careers", "kandou-ai-careers")
     with pytest.raises(client.ProducerClientError, match="decision"):
         client._decode(
             _response(
