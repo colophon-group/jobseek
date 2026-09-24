@@ -1,6 +1,6 @@
 # Search-query routing dataset and Jev prompt evolution
 
-This index makes the query datasets, reference answers, prompt revisions, and raw experiment outputs discoverable together. The [first evaluation](jev-routing-quality-2026-09-23.md) and [occupation-diverse follow-up](jev-routing-diverse-followup-2026-09-24.md) contain the interpretation and latency findings. All inputs are **synthetic, editorial search-box examples**, not user logs. Human reference labels were authored by one annotator.
+This index makes the query datasets, reference answers, prompt revisions, and raw experiment outputs discoverable together. The [first evaluation](jev-routing-quality-2026-09-23.md), [occupation-diverse follow-up](jev-routing-diverse-followup-2026-09-24.md), and [contextual-discard correction](jev-routing-contextual-discard-2026-09-24.md) contain the interpretation and latency findings. All inputs are **synthetic, editorial search-box examples**, not user logs. Human reference labels were authored by one annotator.
 
 ## Datasets
 
@@ -8,6 +8,7 @@ This index makes the query datasets, reference answers, prompt revisions, and ra
 |---|---:|---:|---:|---|---|
 | Original | 84 | 56 | 28 | Atomic, terse, verbose, mistakes, multiword, unrelated, multilingual; more developer roles | [queries](../../scripts/experiments/jev-routing-fixtures.mjs), [human labels](../../scripts/experiments/jev-routing-intent-labels.mjs) |
 | Occupation diverse | 64 | 32 | 32 | Four development and four holdout examples in each of eight groups; finance, healthcare, legal, operations, sales, construction, administration, marketing, and software | [queries](../../scripts/experiments/jev-routing-diverse-fixtures.mjs), [human labels](../../scripts/experiments/jev-routing-diverse-intent-labels.mjs) |
+| Contextual discard | 32 | 16 | 16 | Verbose/short queries, mistakes, unrelated and informational input, unsupported occupations, multilingual text, and place ambiguity | [gold labels](jev-routing-discard-gold-2026-09-24.json), [current parser answers](jev-routing-discard-current-system-2026-09-24.json) |
 
 The original 28-case holdout was first opened for the `minimal2` evaluation and was then **development data** for the follow-up revisions. The occupation-diverse final 32 cases were frozen with their human labels in commit `44a286bf9` and first evaluated with the frozen `catalog5` prompt after commit `6ed895a9b`. That second holdout is now exposed too; future prompt work needs a new holdout.
 
@@ -31,7 +32,9 @@ The exact policy strings, Jev request construction, and overlap selection live i
 5. `broad3`: explicitly broadens career families and handles unsupported titles. It worsened new development routing to 27/32 under the eventual routing rule.
 6. `catalog3`: supplies actual taxonomy occupation names, allowing multiword non-developer roles and discouraging overlap-based substitutions.
 7. `catalog4`: makes separate adjacent filters, generic words, and informational questions more explicit.
-8. `catalog5`: combines the catalog with a whole-query job-search decision and explicit rules for abbreviations, typos, independent spans, unsupported roles, and filler words. This is the selected prompt.
+8. `catalog5`: combines the catalog with a whole-query job-search decision and explicit rules for abbreviations, typos, independent spans, unsupported roles, and filler words. Its old 32/32 complete-configuration score had flawed keyword labels, as explained in the contextual-discard correction.
+9. `catalog6`: adds a context-dependent `discard` choice for words that should not constrain a job search. It missed discard coverage on two informational development queries.
+10. `catalog7`: adds a separate whole-query intent choice, suppressing all filter and discard choices for informational/unrelated requests. This is the frozen production policy; it scored 16/16 filter spans and 16/16 discard coverage on a new holdout, with normalization limits described in the [follow-up](jev-routing-contextual-discard-2026-09-24.md).
 
 For a like-for-like development comparison below, every row uses probability threshold `0.6`, confidence ordered nonoverlapping spans (`longestFirst: false`), and exact suggestion match or first Typesense candidate. These scores are **development comparisons**, including the original now-exposed holdout; they must not be read as fresh holdout performance.
 

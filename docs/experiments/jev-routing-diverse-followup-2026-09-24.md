@@ -1,5 +1,7 @@
 # Jev filter routing: occupation-diverse follow-up
 
+> **Score correction (2026-09-24):** The 32/32 complete-configuration metric below used a reference that kept instruction words as keywords and accepted the first Typesense hit for ambiguous places. It does not mean 32 usable searches. See the [contextual-discard follow-up](jev-routing-contextual-discard-2026-09-24.md) for corrected labels, frozen holdout results, and a production-route audit.
+
 **Date:** 2026-09-24
 
 **Base:** `origin/main` at `eb40e2b2a`, isolated worktree

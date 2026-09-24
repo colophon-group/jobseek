@@ -26,6 +26,7 @@ vi.mock("@/lib/actions/company", () => ({
 
 vi.mock("@/lib/search/typeahead-runner", () => ({
   runSearchBarTypeahead: (...args: unknown[]) => mocks.suggestSearchBar(...args),
+  runSearchBarTermTypeahead: async () => [],
 }));
 
 vi.mock("@/lib/actions/search-input", () => ({

@@ -6,9 +6,13 @@ export const QUERY_INTENT_MODEL = policy.model;
 export const QUERY_INTENT_MAX_CHARS = 180;
 export const QUERY_INTENT_MAX_SPANS = 40;
 export const QUERY_INTENT_THRESHOLD = 0.6;
+const OCCUPATION_CATALOG_BY_LOCALE: Record<string, string> = Object.fromEntries(
+  ["en", "de", "fr", "it"].map((locale) => [locale,
+    policy.occupationCatalog.map((row) => row[locale as keyof typeof row] || row.en).join(" | ")]),
+);
 
 export type QueryIntentCategory =
-  | "keyword" | "location" | "occupation" | "seniority" | "technology"
+  | "keyword" | "discard" | "location" | "occupation" | "seniority" | "technology"
   | "remote" | "hybrid" | "onsite" | "employmentType";
 export type RoutedCategory = Exclude<QueryIntentCategory, "keyword">;
 export type TaxonomyCategory = Extract<RoutedCategory, "location" | "occupation" | "seniority" | "technology">;
@@ -52,6 +56,7 @@ export type QueryIntentProposal = Readonly<{
   version: typeof QUERY_INTENT_VERSION;
   query: string;
   locale: string;
+  intent: "jobSearch" | "other";
   keywords: readonly string[];
   locations: readonly QueryCandidate[];
   occupations: readonly QueryCandidate[];
@@ -63,7 +68,7 @@ export type QueryIntentProposal = Readonly<{
 }>;
 
 export function tokenizeQuery(query: string): string[][] {
-  return query.split(/[,\n\r\t/|]+|-+/).map((part) => part.trim()).filter(Boolean)
+  return query.split(/[,\n\r\t/|]+/).map((part) => part.trim()).filter(Boolean)
     .map((part) => part.split(/\s+/).filter(Boolean));
 }
 
@@ -82,33 +87,56 @@ export function spansForQuery(query: string): { segments: string[][]; spans: Que
   return { segments, spans };
 }
 
-export function buildQueryIntentRequest(query: string, locale: string) {
+export function validateQueryIntentQuery(query: string): QuerySpan[] {
   const { spans } = spansForQuery(query);
   if (query.trim().length < 2 || query.length > QUERY_INTENT_MAX_CHARS || spans.length > QUERY_INTENT_MAX_SPANS) {
     throw new RangeError("Search query exceeds Jev routing bounds");
   }
-  const names = policy.occupationCatalog.map((row) => row[locale as keyof typeof row] || row.en);
+  return spans;
+}
+
+export function buildQueryIntentRequest(query: string, locale: string) {
+  const spans = validateQueryIntentQuery(query);
+  const questions: Record<string, { type: "choice"; instructions: string; criteria: Record<string, string> }> = Object.fromEntries(spans.map((span) => [span.id, {
+    type: "choice",
+    instructions: `For span ${span.id} (${span.text}), choose its role in this exact query, following state.policy.`,
+    criteria: policy.categories,
+  }]));
+  questions.intent = {
+    type: "choice",
+    instructions: "Classify the whole query before interpreting spans. Does it ask to find job postings, or is it an informational/unrelated request?",
+    criteria: policy.intentCriteria,
+  };
   return {
     model: QUERY_INTENT_MODEL,
     state: {
       query,
       locale,
       policy: policy.policy,
-      occupationCatalog: names.join(" | "),
+      occupationCatalog: OCCUPATION_CATALOG_BY_LOCALE[locale] ?? OCCUPATION_CATALOG_BY_LOCALE.en,
       spans,
     },
-    questions: Object.fromEntries(spans.map((span) => [span.id, {
-      type: "choice",
-      instructions: `For span ${span.id} (${span.text}), choose its role in this exact query, following state.policy.`,
-      criteria: policy.categories,
-    }])),
+    questions,
   };
+}
+
+export function validateJevIntent(value: unknown): "jobSearch" | "other" {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("Invalid Jev intent");
+  const answer = value as Record<string, unknown>;
+  if (answer.type !== "choice" || !["jobSearch", "other"].includes(answer.choice as string)) {
+    throw new TypeError("Invalid Jev intent");
+  }
+  const probabilities = answer.probabilities as Record<string, unknown> | undefined;
+  if (!probabilities || ["jobSearch", "other"].some((key) => typeof probabilities[key] !== "number" ||
+    !Number.isFinite(probabilities[key]) || (probabilities[key] as number) < 0 ||
+    (probabilities[key] as number) > 1)) throw new TypeError("Invalid Jev intent probabilities");
+  return answer.choice as "jobSearch" | "other";
 }
 
 export function validateJevAnswers(value: unknown, spans: readonly QuerySpan[]): Record<string, JevChoiceAnswer> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("Invalid Jev answers");
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).length !== spans.length) throw new TypeError("Jev answer count mismatch");
+  if (Object.keys(record).length !== spans.length + ("intent" in record ? 1 : 0)) throw new TypeError("Jev answer count mismatch");
   const categories = Object.keys(policy.categories) as QueryIntentCategory[];
   const answers: Record<string, JevChoiceAnswer> = {};
   for (const span of spans) {
@@ -132,12 +160,15 @@ export function validateJevAnswers(value: unknown, spans: readonly QuerySpan[]):
   return answers;
 }
 
-export function selectedRouteSpans(query: string, answers: Readonly<Record<string, JevChoiceAnswer>>): RoutedSpan[] {
+export function selectedRouteSpans(query: string, answers: Readonly<Record<string, JevChoiceAnswer>>, intent: "jobSearch" | "other" = "jobSearch"): RoutedSpan[] {
+  if (intent === "other") return [];
   const { segments, spans } = spansForQuery(query);
   const consumed = segments.map((words) => words.map(() => false));
   const ordered = [...spans].sort((a, b) => {
     const aChoice = answers[a.id]?.choice;
     const bChoice = answers[b.id]?.choice;
+    // Discard can consume only words left after useful filter spans win.
+    if ((aChoice === "discard") !== (bChoice === "discard")) return aChoice === "discard" ? 1 : -1;
     const aConfidence = aChoice ? answers[a.id]?.probabilities[aChoice] ?? 0 : 0;
     const bConfidence = bChoice ? answers[b.id]?.probabilities[bChoice] ?? 0 : 0;
     return bConfidence - aConfidence || a.segment - b.segment || a.start - b.start;

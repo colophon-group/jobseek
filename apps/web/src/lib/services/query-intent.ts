@@ -21,12 +21,14 @@ import {
   type RoutedSpan,
   type TaxonomyCategory,
   validateJevAnswers,
+  validateJevIntent,
 } from "@/lib/search/query-intent";
 import type { EmploymentType, WorkMode } from "@/lib/search/types";
 
 const JEV_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 const JEV_TIMEOUT_MS = 2_200;
 const MAX_RESPONSE_BYTES = 128 * 1024;
+const MAX_NORMALIZATION_LOOKUPS = 8;
 
 export class QueryIntentError extends Error {
   constructor(readonly code: "disabled" | "invalid" | "unavailable", options?: ErrorOptions) {
@@ -83,18 +85,28 @@ export async function proposeQueryFilters(params: {
   }
   const { segments, spans } = spansForQuery(query);
   let answers: Record<string, JevChoiceAnswer>;
+  let intent: "jobSearch" | "other";
   try {
-    answers = validateJevAnswers((body as Record<string, unknown>).answers, spans);
+    const rawAnswers = (body as Record<string, unknown>).answers as Record<string, unknown>;
+    answers = validateJevAnswers(rawAnswers, spans);
+    intent = validateJevIntent(rawAnswers.intent);
   } catch (error) {
     throw new QueryIntentError("unavailable", { cause: error });
   }
 
-  const routed = selectedRouteSpans(query, answers);
-  // Only the nonoverlapping taxonomy spans incur Typesense lookups.
-  const fetched = await Promise.all(routed.map(async (span) => {
+  const routed = selectedRouteSpans(query, answers, intent);
+  // Only surviving taxonomy spans incur Typesense lookups. Deduplicate
+  // repeated terms and bound work for an unusually dense 14-word query.
+  const lookups = new Map<string, Promise<QueryCandidate[]>>();
+  const fetched = await Promise.all(routed.map((span) => {
     if (!["location", "occupation", "seniority", "technology"].includes(span.category)) return [];
-    try { return await suggestionsFor(span, params.locale, params.userLat, params.userLng); }
-    catch { return []; }
+    const key = `${span.category}:${span.text.toLowerCase()}`;
+    const existing = lookups.get(key);
+    if (existing) return existing;
+    if (lookups.size >= MAX_NORMALIZATION_LOOKUPS) return [];
+    const lookup = suggestionsFor(span, params.locale, params.userLat, params.userLng).catch(() => []);
+    lookups.set(key, lookup);
+    return lookup;
   }));
 
   const consumed = segments.map((words) => words.map(() => false));
@@ -118,6 +130,8 @@ export async function proposeQueryFilters(params: {
         }[span.category as TaxonomyCategory];
         if (!destination.some((item) => item.slug === chosenCandidate.slug)) destination.push(chosenCandidate);
       }
+    } else if (span.category === "discard") {
+      status = "exact";
     } else if (span.category === "employmentType") {
       const type = normalizeEmploymentType(span.text);
       if (type) {
@@ -140,6 +154,6 @@ export async function proposeQueryFilters(params: {
     const key = word.toLowerCase();
     if (!seen.has(key)) { keywords.push(word); seen.add(key); }
   }));
-  return { version: QUERY_INTENT_VERSION, query, locale: params.locale, keywords,
+  return { version: QUERY_INTENT_VERSION, query, locale: params.locale, intent, keywords,
     locations, occupations, seniorities, technologies, workMode, employmentTypes, terms };
 }

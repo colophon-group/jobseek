@@ -27,14 +27,19 @@ import { ScrollFade } from "@/components/ui/scroll-fade";
 import { useBrowserCoordinates } from "@/lib/search/browser-geolocation";
 import { SearchBarSuggestionSection } from "@/components/search/search-bar-suggestion-section";
 import { matchWorkModes, useSearchBarTypeahead } from "@/components/search/search-bar-typeahead";
+import { useSearchBarQueryIntent } from "@/components/search/use-search-bar-query-intent";
+import type { QueryCandidate, QueryIntentProposal } from "@/lib/search/query-intent";
+import { correctQueryProposal } from "@/lib/search/query-proposal-edits";
 
 type SuggestionItem =
   | { kind: "keyword"; data: { text: string } }
-  | { kind: "occupation"; data: TaxonomySuggestion }
-  | { kind: "seniority"; data: TaxonomySuggestion }
-  | { kind: "technology"; data: TaxonomySuggestion }
+  | { kind: "proposal"; data: QueryIntentProposal }
+  | { kind: "correction"; data: { proposal: QueryIntentProposal; termIndex: number; candidate: QueryCandidate | null } }
+  | { kind: "occupation"; data: TaxonomySuggestion & { sourceTerm?: string } }
+  | { kind: "seniority"; data: TaxonomySuggestion & { sourceTerm?: string } }
+  | { kind: "technology"; data: TaxonomySuggestion & { sourceTerm?: string } }
   | { kind: "workMode"; data: { value: WorkMode } }
-  | { kind: "location"; data: LocationSuggestion }
+  | { kind: "location"; data: LocationSuggestion & { sourceTerm?: string } }
   | { kind: "company"; data: CompanySuggestion }
   /**
    * Synthetic "Request <query>" entry rendered at the bottom of the
@@ -70,6 +75,7 @@ interface SearchBarProps {
   seniorities?: { id: number; slug: string; name: string }[];
   technologies?: { id: number; slug: string; name: string }[];
   workMode?: WorkMode[];
+  employmentTypes?: string[];
   languages?: string[];
   companyId?: string;
   userLat?: number;
@@ -94,6 +100,7 @@ export function SearchBar({
   seniorities: senioritiesProp,
   technologies: technologiesProp,
   workMode: workModeProp,
+  employmentTypes: employmentTypesProp,
   languages: languagesProp,
   companyId,
   userLat: serverLat,
@@ -109,6 +116,7 @@ export function SearchBar({
   const pathname = usePathname();
   const lp = useLocalePath();
   const { getPageActions } = useSearchStateStore();
+  const reactivePageActions = usePageActions();
 
   const lang = localeProp ?? (params.lang as string) ?? "en";
 
@@ -122,10 +130,16 @@ export function SearchBar({
   const [inputValue, setInputValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const activeIndexRef = useRef(-1);
+  activeIndexRef.current = activeIndex;
+  const [showProposal, setShowProposal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isKeyboardNav = useRef(false);
+  const submittingRef = useRef(false);
+  const submissionVersion = useRef(0);
+  const inputEditVersion = useRef(0);
   const listboxId = useId();
 
   const browserGeo = useBrowserCoordinates(serverLat);
@@ -148,7 +162,9 @@ export function SearchBar({
   // Work-mode is a tiny fixed-cardinality dimension matched client-side.
   // Read the active selection from the URL when not provided as a prop
   // (mirrors how `currentLocationSlugs` falls back to the `loc` param).
-  const currentWorkMode: WorkMode[] = workModeProp ?? parseWorkModeParam(searchParams.get("wm"));
+  const currentWorkMode: WorkMode[] = workModeProp ?? reactivePageActions?.getWorkMode?.() ?? parseWorkModeParam(searchParams.get("wm"));
+  const currentEmploymentTypes = employmentTypesProp ?? reactivePageActions?.getEmploymentTypes?.() ??
+    (searchParams.get("etype") ?? "").split(",").filter(Boolean);
   const selectedWorkModes = useMemo(() => new Set<WorkMode>(currentWorkMode), [currentWorkMode]);
 
   // Filter context shared across typeahead boost queries. Each suggest*
@@ -165,6 +181,7 @@ export function SearchBar({
   const closeSuggestions = useCallback(() => setIsOpen(false), []);
   const resetActiveIndex = useCallback(() => setActiveIndex(-1), []);
   const {
+    sourceQuery,
     locationResults,
     companyResults,
     occupationResults,
@@ -194,38 +211,176 @@ export function SearchBar({
     onClose: closeSuggestions,
     onResetActiveIndex: resetActiveIndex,
   });
+  const atomicSuggestionsRef = useRef({ sourceQuery, locationResults, occupationResults,
+    seniorityResults, technologyResults });
+  atomicSuggestionsRef.current = { sourceQuery, locationResults, occupationResults,
+    seniorityResults, technologyResults };
+  const isUnresolvedAtomic = useCallback((query: string) => {
+    const state = atomicSuggestionsRef.current;
+    if (state.sourceQuery.toLowerCase() !== query.toLowerCase()) return false;
+    if (matchWorkModes(query, new Set()).length) return false;
+    const normalize = (value: string) => value.toLowerCase().normalize("NFKD")
+      .replace(/[^\p{L}\p{N}]+/gu, "");
+    const desired = normalize(query);
+    const exact = [state.locationResults, state.occupationResults,
+      state.seniorityResults, state.technologyResults].flat()
+      .filter((item) => [item.name, item.slug, "matchedName" in item ? item.matchedName : undefined]
+        .some((value) => value && normalize(value) === desired));
+    return exact.length !== 1;
+  }, []);
+  const {
+    proposal,
+    pending: proposalPending,
+    onInput: onQueryInput,
+    requestNow: requestQueryIntent,
+    replaceProposal,
+    clear: clearQueryIntent,
+  } = useSearchBarQueryIntent(lang, JSON.stringify([
+    companyId, scopedToCompany, currentKeywords,
+    currentLocationSlugs,
+    [...selectedOccupationIds], [...selectedSeniorityIds], [...selectedTechnologyIds],
+    [...selectedWorkModes],
+    currentEmploymentTypes,
+  ]), () => {
+    // A late proposal inserts rows ahead of taxonomy choices. Keep the
+    // option under an in-progress keyboard selection stable.
+    if (activeIndexRef.current === -1) {
+      setShowProposal(true);
+      setIsOpen(true);
+    }
+  }, isUnresolvedAtomic);
 
   // Build flat list for keyboard navigation
   // "keyword" option first so user can search by title, then structured suggestions
   const trimmedInput = inputValue.trim();
+  const activeTerm = trimmedInput.split(/[\s,\/|]+/).filter(Boolean).at(-1) ?? trimmedInput;
+  const visibleProposal = showProposal && proposal?.query === trimmedInput ? proposal : null;
+  const ambiguousSpans = visibleProposal?.terms.filter((term) => term.status === "ambiguous") ?? [];
+  const ambiguousWords = new Set(ambiguousSpans.flatMap((term) => term.span.text.split(/\s+/).map((word) => word.toLowerCase())));
+  const corrections: SuggestionItem[] = visibleProposal
+    ? visibleProposal.terms.flatMap((term, termIndex) => {
+        if (term.status !== "ambiguous" && term.status !== "approximate") return [];
+        const normalized = term.span.text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+        const alternatives = term.status === "ambiguous"
+          ? term.alternatives.filter((item) => [item.name, item.matchedName].some((value) =>
+              value?.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "") === normalized)).slice(0, 3)
+          : term.alternatives.slice(0, 2);
+        return [
+          ...alternatives.map((candidate): SuggestionItem => ({
+            kind: "correction", data: { proposal: visibleProposal, termIndex, candidate },
+          })),
+          ...(term.status === "approximate" ? [{
+            kind: "correction" as const,
+            data: { proposal: visibleProposal, termIndex, candidate: null },
+          }] : []),
+        ];
+      })
+    : [];
+  const correctionIds = new Map<string, Set<number>>();
+  for (const item of corrections) {
+    if (item.kind !== "correction" || !item.data.candidate) continue;
+    const category = item.data.proposal.terms[item.data.termIndex]?.span.category;
+    if (!category) continue;
+    if (!correctionIds.has(category)) correctionIds.set(category, new Set());
+    correctionIds.get(category)!.add(item.data.candidate.id);
+  }
+  const displayedOccupations = occupationResults.filter((item) => !correctionIds.get("occupation")?.has(item.id));
+  const displayedSeniorities = seniorityResults.filter((item) => !correctionIds.get("seniority")?.has(item.id));
+  const displayedTechnologies = technologyResults.filter((item) => !correctionIds.get("technology")?.has(item.id));
+  const displayedLocations = locationResults.filter((item) => !correctionIds.get("location")?.has(item.id));
   // Work-mode results are computed synchronously from a tiny static
   // alias map (no server round-trip). Issue #2983.
   const workModeResults: WorkMode[] = useMemo(
-    () => matchWorkModes(trimmedInput, selectedWorkModes),
-    [trimmedInput, selectedWorkModes],
+    () => matchWorkModes(activeTerm, selectedWorkModes),
+    [activeTerm, selectedWorkModes],
   );
   // Show the "Request <query>" entry only when the user has a non-empty
   // query, no real company match has come back, and we're not scoped to
   // a single company page (where cross-company nav would be a trap).
   const showRequestItem =
-    trimmedInput.length >= 2 && companyResults.length === 0 && !scopedToCompany;
+    trimmedInput.length >= 2 && companyResults.length === 0 && !scopedToCompany &&
+    !(visibleProposal?.intent === "jobSearch" &&
+      visibleProposal.terms.some((term) => term.span.category !== "discard"));
   const allSuggestions: SuggestionItem[] = [
     ...(trimmedInput.length >= 2
       ? [{ kind: "keyword" as const, data: { text: trimmedInput } }]
       : []),
-    ...occupationResults.map((s): SuggestionItem => ({ kind: "occupation", data: s })),
-    ...seniorityResults.map((s): SuggestionItem => ({ kind: "seniority", data: s })),
-    ...technologyResults.map((s): SuggestionItem => ({ kind: "technology", data: s })),
+    ...(visibleProposal ? [{ kind: "proposal" as const, data: visibleProposal }] : []),
+    ...corrections,
+    ...displayedOccupations.map((s): SuggestionItem => ({ kind: "occupation", data: s })),
+    ...displayedSeniorities.map((s): SuggestionItem => ({ kind: "seniority", data: s })),
+    ...displayedTechnologies.map((s): SuggestionItem => ({ kind: "technology", data: s })),
     ...workModeResults.map((value): SuggestionItem => ({ kind: "workMode", data: { value } })),
-    ...locationResults.map((s): SuggestionItem => ({ kind: "location", data: s })),
+    ...displayedLocations.map((s): SuggestionItem => ({ kind: "location", data: s })),
     ...companyResults.map((s): SuggestionItem => ({ kind: "company", data: s })),
     ...(showRequestItem
       ? [{ kind: "request" as const, data: { query: trimmedInput } }]
       : []),
   ];
 
+  const submitProposal = useCallback((draft: QueryIntentProposal) => {
+    const pageActions = getPageActions();
+    const existingKw = keywordsProp ?? pageActions?.getKeywords() ?? currentKeywords;
+    const existingLocs = locationsProp ?? pageActions?.getLocations() ?? [];
+    const existingOccs = occupationsProp ?? pageActions?.getOccupations() ?? [];
+    const existingSens = senioritiesProp ?? pageActions?.getSeniorities() ?? [];
+    const existingTechs = technologiesProp ?? pageActions?.getTechnologies?.() ?? [];
+    const existingWm = workModeProp ?? pageActions?.getWorkMode?.() ?? parseWorkModeParam(searchParams.get("wm"));
+    const mergeBy = <T,>(existing: T[], added: readonly T[], key: (value: T) => string | number): T[] => {
+      const seen = new Set(existing.map(key));
+      return [...existing, ...added.filter((value) => {
+        const id = key(value);
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      })];
+    };
+    const keywords = mergeBy(existingKw, draft.keywords, (value) => value.toLowerCase());
+    const locations = mergeBy(existingLocs, draft.locations.map((value): SelectedLocation => ({
+      id: value.id, slug: value.slug, name: value.name,
+      type: (value.type ?? "city") as SelectedLocation["type"], parentName: value.parentName ?? null,
+    })), (value) => value.id);
+    const occupations = mergeBy(existingOccs, draft.occupations, (value) => value.id);
+    const seniorities = mergeBy(existingSens, draft.seniorities, (value) => value.id);
+    const technologies = mergeBy(existingTechs, draft.technologies, (value) => value.id);
+    const workMode = mergeBy(existingWm, draft.workMode, (value) => value);
+    const employmentTypes = mergeBy(
+      employmentTypesProp ?? pageActions?.getEmploymentTypes?.() ?? currentEmploymentTypes,
+      draft.employmentTypes,
+      (value) => value,
+    );
+    const extra: Record<string, string> = { qmode: "literal" };
+    if (employmentTypes.length) extra.etype = employmentTypes.join(",");
+    for (const key of ["sal", "salcur", "exp", "lang"]) {
+      const value = searchParams.get(key);
+      if (value) extra[key] = value;
+    }
+    const target = scopedToCompany ? pathname : lp("/explore");
+    router.push(buildFilteredPath(target, keywords, locations, extra,
+      occupations, seniorities, technologies, workMode));
+    setInputValue("");
+    clearResults();
+    clearQueryIntent();
+    setIsOpen(false);
+    setActiveIndex(-1);
+  }, [getPageActions, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp,
+    workModeProp, employmentTypesProp, currentEmploymentTypes, currentKeywords, searchParams, scopedToCompany, pathname, lp, router, clearResults, clearQueryIntent]);
+
   const selectItem = useCallback(
     (item: SuggestionItem) => {
+      inputEditVersion.current += 1;
+      submissionVersion.current += 1;
+      submittingRef.current = false;
+      if (item.kind === "proposal") {
+        submitProposal(item.data);
+        return;
+      }
+      if (item.kind === "correction") {
+        replaceProposal(correctQueryProposal(item.data.proposal, item.data.termIndex, item.data.candidate));
+        setActiveIndex(-1);
+        inputRef.current?.focus();
+        return;
+      }
       if (item.kind === "keyword") {
         // User selected "Search for 'X' as title keyword"
         void submitFreeTextSearch();
@@ -356,15 +511,28 @@ export function SearchBar({
         );
         router.push(href);
       }
-      setInputValue("");
+      const sourceTerm = item.kind === "workMode" ? activeTerm
+        : "sourceTerm" in item.data ? item.data.sourceTerm : sourceQuery;
+      let remaining = "";
+      if (item.kind !== "company" && sourceTerm) {
+        const lowerInput = inputValue.toLowerCase();
+        const position = lowerInput.lastIndexOf(sourceTerm.toLowerCase());
+        if (position >= 0) {
+          remaining = `${inputValue.slice(0, position)} ${inputValue.slice(position + sourceTerm.length)}`
+            .trim().replace(/\s+/g, " ");
+        }
+      }
+      setInputValue(remaining);
       clearResults();
-      setIsOpen(false);
+      onQueryInput(remaining);
+      if (remaining.length >= 2) fetchSuggestions(remaining);
+      else setIsOpen(false);
       setActiveIndex(-1);
       if (item.kind !== "company") {
         inputRef.current?.focus();
       }
     },
-    [onAddLocation, onAddOccupation, onAddSeniority, onAddTechnology, onAddWorkMode, getPageActions, router, lp, searchParams, currentKeywords, currentLocationSlugs, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp, workModeProp, clearResults],
+    [onAddLocation, onAddOccupation, onAddSeniority, onAddTechnology, onAddWorkMode, getPageActions, router, lp, searchParams, currentKeywords, currentLocationSlugs, keywordsProp, locationsProp, occupationsProp, senioritiesProp, technologiesProp, workModeProp, clearResults, submitProposal, replaceProposal, sourceQuery, activeTerm, inputValue, onQueryInput, fetchSuggestions],
   );
 
   const submitFreeTextSearch = useCallback(() => {
@@ -449,11 +617,17 @@ export function SearchBar({
       if (activeIndex >= 0 && activeIndex < allSuggestions.length) {
         selectItem(allSuggestions[activeIndex]);
       } else if (trimmedInput.length >= 2) {
-        // The title-search row is always the first option. Enter should
-        // submit it even after asynchronous taxonomy/company suggestions
-        // arrive; requiring ArrowDown first makes an ordinary search input
-        // appear unresponsive (#5985).
-        submitFreeTextSearch();
+        if (submittingRef.current) return;
+        submittingRef.current = true;
+        const submitId = ++submissionVersion.current;
+        const entered = trimmedInput;
+        const editVersion = inputEditVersion.current;
+        void requestQueryIntent(entered).then((draft) => {
+          if (submissionVersion.current !== submitId || inputEditVersion.current !== editVersion ||
+            inputRef.current?.value.trim() !== entered) return;
+          if (draft) submitProposal(draft);
+          else submitFreeTextSearch();
+        }).finally(() => { if (submissionVersion.current === submitId) submittingRef.current = false; });
       }
     } else if (e.key === "Escape") {
       setIsOpen(false);
@@ -482,7 +656,6 @@ export function SearchBar({
     isKeyboardNav.current = false;
   }, [activeIndex]);
 
-  const reactivePageActions = usePageActions();
   const placeholder = placeholderProp ?? reactivePageActions?.placeholder ?? t({
     id: "search.bar.placeholder",
     comment: "Placeholder for the main search bar",
@@ -503,16 +676,20 @@ export function SearchBar({
   let flatIdx = 0;
   const keywordIndex = flatIdx;
   flatIdx += trimmedInput.length >= 2 ? 1 : 0;
+  const proposalIndex = flatIdx;
+  flatIdx += visibleProposal ? 1 : 0;
+  const correctionStartIndex = flatIdx;
+  flatIdx += corrections.length;
   const occStartIndex = flatIdx;
-  flatIdx += occupationResults.length;
+  flatIdx += displayedOccupations.length;
   const senStartIndex = flatIdx;
-  flatIdx += seniorityResults.length;
+  flatIdx += displayedSeniorities.length;
   const techStartIndex = flatIdx;
-  flatIdx += technologyResults.length;
+  flatIdx += displayedTechnologies.length;
   const wmStartIndex = flatIdx;
   flatIdx += workModeResults.length;
   const locStartIndex = flatIdx;
-  flatIdx += locationResults.length;
+  flatIdx += displayedLocations.length;
   const companyStartIndex = flatIdx;
   flatIdx += companyResults.length;
   const requestIndex = flatIdx;
@@ -539,6 +716,12 @@ export function SearchBar({
     });
   }
 
+  function locationTypeLabel(type: string) {
+    if (type === "city") return t({ id: "location.type.city", message: "City" });
+    if (type === "country") return t({ id: "location.type.country", message: "Country" });
+    return t({ id: "location.type.region", message: "Region" });
+  }
+
   return (
     <div className={`relative ${className ?? ""}`} ref={containerRef}>
       <div className="flex items-center gap-2 rounded-lg border border-border-soft px-3 py-1.5 transition-colors focus-within:border-primary/40">
@@ -548,7 +731,12 @@ export function SearchBar({
           type="text"
           value={inputValue}
           onChange={(e) => {
+            inputEditVersion.current += 1;
+            submissionVersion.current += 1;
+            submittingRef.current = false;
             setInputValue(e.target.value);
+            setShowProposal(false);
+            onQueryInput(e.target.value);
             fetchSuggestions(e.target.value);
           }}
           onFocus={() => {
@@ -568,6 +756,9 @@ export function SearchBar({
               : undefined
           }
         />
+        {proposalPending && (
+          <Sparkles size={14} className="shrink-0 animate-pulse text-muted" aria-hidden="true" />
+        )}
       </div>
 
       {listboxVisible && (
@@ -604,8 +795,89 @@ export function SearchBar({
               <ArrowRight className="ml-auto h-3 w-3 text-muted" />
             </div>
           )}
+          {visibleProposal && (
+            <div
+              id={`${optionIdPrefix}-${proposalIndex}`}
+              role="option"
+              aria-selected={proposalIndex === activeIndex}
+              data-suggestion
+              data-testid="search-bar-query-proposal"
+              onMouseDown={(e) => { e.preventDefault(); submitProposal(visibleProposal); }}
+              onMouseEnter={() => setActiveIndex(proposalIndex)}
+              className={`flex cursor-pointer items-start gap-2 border-t border-border-soft px-3 py-2 text-sm ${
+                proposalIndex === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
+              }`}
+            >
+              <Sparkles size={14} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">{visibleProposal.intent === "other"
+                  ? t({ id: "search.bar.searchAsEntered", message: "Search these words as entered" })
+                  : t({
+                    id: "search.bar.applyFilters",
+                    comment: "Single proposed complete filter setup for a multi-term job search",
+                    message: "Search with suggested filters",
+                  })}</div>
+                <div className="line-clamp-2 text-xs text-muted">
+                  {[
+                    ...visibleProposal.occupations.map((value) => value.name),
+                    ...visibleProposal.seniorities.map((value) => value.name),
+                    ...visibleProposal.technologies.map((value) => value.name),
+                    ...visibleProposal.locations.map((value) => value.name),
+                    ...visibleProposal.workMode,
+                    ...visibleProposal.employmentTypes,
+                    ...visibleProposal.keywords.filter((word) => !ambiguousWords.has(word.toLowerCase())),
+                    ...ambiguousSpans.map((term) => term.span.text),
+                  ].join(" · ") || trimmedInput}
+                </div>
+                {visibleProposal.terms.some((term) => term.status === "ambiguous" || term.status === "approximate") && (
+                  <div className="truncate text-xs text-primary">{t({
+                    id: "search.bar.reviewSuggestedFilters",
+                    comment: "Prompt to review uncertain city or occupation matches in the proposed search filters",
+                    message: "Review uncertain matches below",
+                  })}</div>
+                )}
+              </div>
+              <ArrowRight size={12} className="mt-1 shrink-0 text-muted" aria-hidden="true" />
+            </div>
+          )}
+          {corrections.map((item, index) => {
+            if (item.kind !== "correction") return null;
+            const term = item.data.proposal.terms[item.data.termIndex];
+            const candidate = item.data.candidate;
+            const rowIndex = correctionStartIndex + index;
+            return (
+              <div
+                key={`${term.span.id}-${candidate?.id ?? "keyword"}`}
+                id={`${optionIdPrefix}-${rowIndex}`}
+                role="option"
+                aria-selected={rowIndex === activeIndex}
+                data-suggestion
+                data-testid="search-bar-query-correction"
+                onMouseDown={(e) => { e.preventDefault(); selectItem(item); }}
+                onMouseEnter={() => setActiveIndex(rowIndex)}
+                className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
+                  rowIndex === activeIndex ? "bg-primary/10" : "hover:bg-primary/5"
+                }`}
+              >
+                {candidate ? (term.span.category === "location"
+                  ? <MapPin size={14} className="shrink-0 text-muted" aria-hidden="true" />
+                  : term.span.category === "occupation"
+                    ? <Briefcase size={14} className="shrink-0 text-muted" aria-hidden="true" />
+                    : term.span.category === "seniority"
+                      ? <BarChart3 size={14} className="shrink-0 text-muted" aria-hidden="true" />
+                      : <Code2 size={14} className="shrink-0 text-muted" aria-hidden="true" />)
+                  : <Search size={14} className="shrink-0 text-muted" aria-hidden="true" />}
+                <span className="min-w-0 flex-1 truncate">
+                  {candidate ? `${candidate.name}${candidate.parentName ? `, ${candidate.parentName}` : ""}`
+                    : t({ id: "search.bar.keepAsKeywords", message: `Keep "${term.span.text}" as keywords` })}
+                </span>
+                {term.span.category === "location" && candidate?.type &&
+                  <span className="shrink-0 text-xs text-muted">{locationTypeLabel(candidate.type)}</span>}
+              </div>
+            );
+          })}
           <SearchBarSuggestionSection
-            items={occupationResults}
+            items={displayedOccupations}
             header={t({
               id: "search.bar.roles",
               comment: "Section header for occupation suggestions in search bar",
@@ -614,16 +886,18 @@ export function SearchBar({
             optionIdPrefix={optionIdPrefix}
             startIndex={occStartIndex}
             activeIndex={activeIndex}
-            hasDivider={trimmedInput.length >= 2}
+            hasDivider={trimmedInput.length >= 2 || !!visibleProposal || corrections.length > 0}
             getKey={(s) => `occ-${s.id}`}
             renderIcon={() => <Briefcase size={14} className="shrink-0 text-muted" />}
             renderLabel={(s) => <span className="min-w-0 flex-1 font-medium">{s.name}</span>}
+            renderTrailing={(s) => s.sourceTerm && s.sourceTerm.toLowerCase() !== s.name.toLowerCase()
+              ? <span className="max-w-20 truncate text-xs text-muted">{s.sourceTerm}</span> : null}
             onActiveIndex={setActiveIndex}
             onSelect={(s) => selectItem({ kind: "occupation", data: s })}
           />
 
           <SearchBarSuggestionSection
-            items={seniorityResults}
+            items={displayedSeniorities}
             header={t({
               id: "search.bar.level",
               comment: "Section header for seniority suggestions in search bar",
@@ -632,16 +906,18 @@ export function SearchBar({
             optionIdPrefix={optionIdPrefix}
             startIndex={senStartIndex}
             activeIndex={activeIndex}
-            hasDivider={occupationResults.length > 0}
+            hasDivider={displayedOccupations.length > 0}
             getKey={(s) => `sen-${s.id}`}
             renderIcon={() => <BarChart3 size={14} className="shrink-0 text-muted" />}
             renderLabel={(s) => <span className="min-w-0 flex-1 font-medium">{s.name}</span>}
+            renderTrailing={(s) => s.sourceTerm && s.sourceTerm.toLowerCase() !== s.name.toLowerCase()
+              ? <span className="max-w-20 truncate text-xs text-muted">{s.sourceTerm}</span> : null}
             onActiveIndex={setActiveIndex}
             onSelect={(s) => selectItem({ kind: "seniority", data: s })}
           />
 
           <SearchBarSuggestionSection
-            items={technologyResults}
+            items={displayedTechnologies}
             header={t({
               id: "search.bar.technologies",
               comment: "Section header for technology suggestions in search bar",
@@ -650,10 +926,12 @@ export function SearchBar({
             optionIdPrefix={optionIdPrefix}
             startIndex={techStartIndex}
             activeIndex={activeIndex}
-            hasDivider={occupationResults.length > 0 || seniorityResults.length > 0}
+            hasDivider={displayedOccupations.length > 0 || displayedSeniorities.length > 0}
             getKey={(s) => `tech-${s.id}`}
             renderIcon={() => <Code2 size={14} className="shrink-0 text-muted" />}
             renderLabel={(s) => <span className="min-w-0 flex-1 font-medium">{s.name}</span>}
+            renderTrailing={(s) => s.sourceTerm && s.sourceTerm.toLowerCase() !== s.name.toLowerCase()
+              ? <span className="max-w-20 truncate text-xs text-muted">{s.sourceTerm}</span> : null}
             onActiveIndex={setActiveIndex}
             onSelect={(s) => selectItem({ kind: "technology", data: s })}
           />
@@ -668,7 +946,7 @@ export function SearchBar({
             optionIdPrefix={optionIdPrefix}
             startIndex={wmStartIndex}
             activeIndex={activeIndex}
-            hasDivider={occupationResults.length > 0 || seniorityResults.length > 0 || technologyResults.length > 0}
+            hasDivider={displayedOccupations.length > 0 || displayedSeniorities.length > 0 || displayedTechnologies.length > 0}
             getKey={(value) => `wm-${value}`}
             getTestId={(value) => `search-bar-workmode-${value}`}
             renderIcon={() => <Home size={14} className="shrink-0 text-muted" />}
@@ -678,7 +956,7 @@ export function SearchBar({
           />
 
           <SearchBarSuggestionSection
-            items={locationResults}
+            items={displayedLocations}
             header={t({
               id: "search.bar.locations",
               comment: "Section header for location suggestions in search bar",
@@ -687,7 +965,7 @@ export function SearchBar({
             optionIdPrefix={optionIdPrefix}
             startIndex={locStartIndex}
             activeIndex={activeIndex}
-            hasDivider={occupationResults.length > 0 || seniorityResults.length > 0 || technologyResults.length > 0 || workModeResults.length > 0}
+            hasDivider={displayedOccupations.length > 0 || displayedSeniorities.length > 0 || displayedTechnologies.length > 0 || workModeResults.length > 0}
             getKey={(s) => `loc-${s.id}`}
             renderIcon={() => <MapPin size={14} className="shrink-0 text-muted" />}
             renderLabel={(s) => (
@@ -698,6 +976,8 @@ export function SearchBar({
                 )}
               </div>
             )}
+            renderTrailing={(s) => s.sourceTerm && s.sourceTerm.toLowerCase() !== s.name.toLowerCase()
+              ? <span className="max-w-20 truncate text-xs text-muted">{s.sourceTerm}</span> : null}
             onActiveIndex={setActiveIndex}
             onSelect={(s) => selectItem({ kind: "location", data: s })}
           />
@@ -712,7 +992,7 @@ export function SearchBar({
             optionIdPrefix={optionIdPrefix}
             startIndex={companyStartIndex}
             activeIndex={activeIndex}
-            hasDivider={occupationResults.length > 0 || seniorityResults.length > 0 || technologyResults.length > 0 || workModeResults.length > 0 || locationResults.length > 0}
+            hasDivider={displayedOccupations.length > 0 || displayedSeniorities.length > 0 || displayedTechnologies.length > 0 || workModeResults.length > 0 || displayedLocations.length > 0}
             getKey={(c) => `co-${c.id}`}
             renderIcon={(c) => <CompanyIcon icon={c.icon} alt="" size={16} />}
             renderLabel={(c) => <span className="min-w-0 flex-1 font-medium">{c.name}</span>}

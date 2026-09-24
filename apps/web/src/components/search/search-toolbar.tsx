@@ -162,6 +162,8 @@ export function SearchToolbar({
             occupations={occupations}
             seniorities={seniorities}
             technologies={technologies}
+            workMode={workMode}
+            employmentTypes={employmentTypes}
             languages={histogramFilters?.languages}
             companyId={histogramFilters?.companyId}
             userLat={userLat}

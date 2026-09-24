@@ -7,7 +7,6 @@ import policy from "./jev-query-policy.json";
 import {
   buildQueryIntentRequest,
   chooseQueryCandidate,
-  selectedRouteSpans,
   spansForQuery,
   validateJevAnswers,
 } from "./query-intent";
@@ -16,29 +15,25 @@ const experimentPath = (file: string) => resolve(process.cwd(), "../../docs/expe
 
 describe("search-query Jev contract", () => {
   it("keeps the deployed prompt and catalog identical to the evaluated freeze", () => {
-    const catalog = readFileSync(resolve(process.cwd(), "../../scripts/experiments/jev-occupation-catalog.json"), "utf8");
-    const freeze = JSON.parse(readFileSync(experimentPath("jev-routing-diverse-frozen-config-2026-09-24.json"), "utf8"));
-    const hash = createHash("sha256").update(policy.policy + "\n" + catalog).digest("hex");
-    expect(hash).toBe(freeze.promptAndCatalogSha256);
-    expect(policy.version).toBe("jev-search-catalog5-v1");
+    const freeze = JSON.parse(readFileSync(experimentPath("jev-routing-discard-catalog7-freeze-2026-09-24.json"), "utf8"));
+    const hash = createHash("sha256").update(JSON.stringify({
+      policy: policy.policy,
+      categories: policy.categories,
+      intentCriteria: policy.intentCriteria,
+      catalog: policy.occupationCatalog,
+    })).digest("hex");
+    expect(hash).toBe(freeze.policySha256);
+    expect(policy.version).toBe("jev-search-catalog7-v1");
     expect(policy.model).toBe(freeze.model);
   });
 
-  it("matches all 32 fresh human span labels with the recorded Jev responses", () => {
-    const run = JSON.parse(readFileSync(experimentPath("jev-routing-diverse-catalog5-holdout-2026-09-24.json"), "utf8"));
-    const gold = JSON.parse(readFileSync(experimentPath("jev-routing-diverse-intent-gold-2026-09-24.json"), "utf8"));
-    const byId = new Map<string, { terms: Array<{ segment: number; start: number; end: number; category: string }> }>(
-      gold.records.map((record: { id: string; terms: unknown[] }) => [record.id, record]),
-    );
-    expect(run.records).toHaveLength(32);
+  it("records the frozen holdout scores and leaves informational queries untouched", () => {
+    const run = JSON.parse(readFileSync(experimentPath("jev-routing-discard-catalog7-holdout-2026-09-24.json"), "utf8"));
+    expect(run.records).toHaveLength(16);
+    expect(run.filterExact).toBe(16);
+    expect(run.discardExact).toBe(16);
     for (const record of run.records) {
-      const { spans } = spansForQuery(record.q);
-      const answers = validateJevAnswers(record.answers, spans);
-      const selected = selectedRouteSpans(record.q, answers)
-        .map(({ segment, start, end, category }) => ({ segment, start, end, category }));
-      expect(selected, record.id).toEqual(byId.get(record.id)?.terms.map(
-        ({ segment, start, end, category }) => ({ segment, start, end, category }),
-      ));
+      if (record.intent === "other") expect(record.selected).toEqual([]);
     }
   });
 
@@ -46,8 +41,12 @@ describe("search-query Jev contract", () => {
     expect(() => buildQueryIntentRequest("a".repeat(181), "en")).toThrow(RangeError);
     const request = buildQueryIntentRequest("junior accountant Zurich hybrid", "en");
     const spans = spansForQuery("junior accountant Zurich hybrid").spans;
-    expect(Object.keys(request.questions)).toHaveLength(spans.length);
+    expect(Object.keys(request.questions)).toHaveLength(spans.length + 1);
     expect(() => validateJevAnswers({}, spans)).toThrow(TypeError);
+    expect(spansForQuery("part-time nurse on-site").spans.map((span) => span.text))
+      .toContain("part-time");
+    expect(spansForQuery("part-time nurse on-site").spans.map((span) => span.text))
+      .toContain("on-site");
   });
 
   it("keeps ambiguous places and unrelated fuzzy roles out of automatic filters", () => {

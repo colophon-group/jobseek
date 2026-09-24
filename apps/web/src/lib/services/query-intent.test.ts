@@ -16,7 +16,7 @@ vi.mock("./taxonomy", () => ({
 import { proposeQueryFilters } from "./query-intent";
 import { buildQueryIntentRequest } from "@/lib/search/query-intent";
 
-function mockJev(query: string, classified: Array<{ text: string; choice: string }>) {
+function mockJev(query: string, classified: Array<{ text: string; choice: string }>, intent: "jobSearch" | "other" = "jobSearch") {
   const request = buildQueryIntentRequest(query, "en");
   const categories = Object.keys(request.questions.s_0.criteria);
   const answers = Object.fromEntries(request.state.spans.map((span) => {
@@ -24,6 +24,8 @@ function mockJev(query: string, classified: Array<{ text: string; choice: string
     return [span.id, { type: "choice", choice,
       probabilities: Object.fromEntries(categories.map((category) => [category, category === choice ? 0.99 : 0.001])) }];
   }));
+  answers.intent = { type: "choice", choice: intent,
+    probabilities: { jobSearch: intent === "jobSearch" ? 1 : 0, other: intent === "other" ? 1 : 0 } };
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ model: "jev-1.13.0", answers }), { status: 200 })));
 }
 
@@ -51,7 +53,7 @@ describe("query-intent service", () => {
   });
 
   it("keeps an informational question as keywords without Typesense calls", async () => {
-    mockJev("what is a compliance officer", []);
+    mockJev("what is a compliance officer", [{ text: "compliance officer", choice: "occupation" }], "other");
     const proposal = await proposeQueryFilters({ query: "what is a compliance officer", locale: "en" });
     expect(proposal.occupations).toEqual([]);
     expect(proposal.keywords).toEqual(["what", "is", "a", "compliance", "officer"]);
@@ -69,5 +71,16 @@ describe("query-intent service", () => {
     expect(proposal.locations).toEqual([]);
     expect(proposal.keywords).toEqual(["New", "York"]);
     expect(proposal.terms).toMatchObject([{ status: "ambiguous", candidate: null }]);
+  });
+
+  it("discards Jev-labelled filler but retains an unsupported role", async () => {
+    mockJev("Find nurse jobs", [
+      { text: "Find", choice: "discard" },
+      { text: "jobs", choice: "discard" },
+    ]);
+    const proposal = await proposeQueryFilters({ query: "Find nurse jobs", locale: "en" });
+    expect(proposal.keywords).toEqual(["nurse"]);
+    expect(proposal.occupations).toEqual([]);
+    expect(suggestOccupations).not.toHaveBeenCalled();
   });
 });

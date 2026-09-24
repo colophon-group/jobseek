@@ -4,7 +4,7 @@ import { isLocale } from "@/lib/i18n";
 import { getClientIp, queryIntentBurstLimiter, queryIntentSustainedLimiter } from "@/lib/rate-limit";
 import { logExternalError } from "@/lib/safe-external-error";
 import { proposeQueryFilters, QueryIntentError } from "@/lib/services/query-intent";
-import { buildQueryIntentRequest } from "@/lib/search/query-intent";
+import { validateQueryIntentQuery } from "@/lib/search/query-intent";
 
 const PRIVATE_HEADERS = { "Cache-Control": "private, no-store" };
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (typeof query !== "string" || typeof locale !== "string" || !isLocale(locale)) {
     return fail(400, "invalid_request");
   }
-  try { buildQueryIntentRequest(query.trim(), locale); }
+  try { validateQueryIntentQuery(query.trim()); }
   catch { return fail(400, "invalid_request"); }
 
   const ip = getClientIp(request.headers);

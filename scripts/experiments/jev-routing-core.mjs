@@ -38,7 +38,7 @@ const POLICIES = {
 };
 
 // The production search-query router consumes these through the checked-in
-// generator so the evaluated catalog5 wording stays byte-for-byte identical.
+// generator so the evaluated catalog7 wording stays byte-for-byte identical.
 export const JEV_ROUTING_CATEGORIES = CATEGORIES;
 export const JEV_ROUTING_POLICY_CATALOG5 = POLICIES.catalog5;
 export const JEV_ROUTING_CATEGORIES_WITH_DISCARD = CATEGORIES_WITH_DISCARD;
@@ -47,7 +47,7 @@ export const JEV_ROUTING_POLICY_CATALOG7 = POLICIES.catalog7;
 export const JEV_ROUTING_INTENT_CRITERIA = INTENT_CRITERIA;
 
 export function tokenize(query) {
-  return query.split(/[,\n\r\t/|]+|-+/).map((part) => part.trim()).filter(Boolean)
+  return query.split(/[,\n\r\t/|]+/).map((part) => part.trim()).filter(Boolean)
     .map((part) => part.split(/\s+/).filter(Boolean));
 }
 

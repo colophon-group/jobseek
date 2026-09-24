@@ -2665,6 +2665,12 @@ msgstr "jobs"
 msgid "company.meta.title"
 msgstr "Jobs at {name}"
 
+#. js-lingui-explicit-id
+#. placeholder {0}: term.span.text
+#: src/components/search/search-bar.tsx
+msgid "search.bar.keepAsKeywords"
+msgstr "Keep \"{0}\" as keywords"
+
 #. Add keyword filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
@@ -4203,6 +4209,12 @@ msgstr "Resetting..."
 msgid "indexing.assurances.i1.title"
 msgstr "Respectful pacing."
 
+#. Prompt to review uncertain city or occupation matches in the proposed search filters
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.reviewSuggestedFilters"
+msgstr "Review uncertain matches below"
+
 #. Loading state while a saved matching request is evaluated against a watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
@@ -4445,11 +4457,22 @@ msgstr "Search results"
 msgid "search.occupationModal.searchPlaceholder"
 msgstr "Search roles..."
 
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.searchAsEntered"
+msgstr "Search these words as entered"
+
 #. Feature section 1 eyebrow text
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s1.eyebrow"
 msgstr "Search with precision"
+
+#. Single proposed complete filter setup for a multi-term job search
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.applyFilters"
+msgstr "Search with suggested filters"
 
 #. Placeholder for the main search bar
 #. js-lingui-explicit-id
