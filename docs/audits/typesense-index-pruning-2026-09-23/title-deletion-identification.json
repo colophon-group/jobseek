@@ -1,0 +1,22 @@
+[
+  {
+    "row": 680274,
+    "single_character_deletions_matching_old_hash": [
+      {
+        "position": 11,
+        "codepoint": "U+7A0B",
+        "utf8_bytes": 3
+      }
+    ]
+  },
+  {
+    "row": 4595216,
+    "single_character_deletions_matching_old_hash": [
+      {
+        "position": 2,
+        "codepoint": "U+7545",
+        "utf8_bytes": 3
+      }
+    ]
+  }
+]

@@ -61,9 +61,32 @@ def test_resume_hashes_complete_source_and_replays_uncertain_suffix(tmp_path, mo
     monkeypatch.setattr(rss_lab.urllib.request, "urlopen", respond)
     monkeypatch.setattr(rss_lab, "api", lambda *_args: {"num_documents": 2})
     result = rss_lab.import_documents({"port": 1}, source, skip_documents=1)
-    assert requests == [b'{"id":"b"}\n']
+    assert requests == [b'{"id": "b"}\n']
     assert result == {
         "documents": 2,
         "resumed_after": 1,
         "source_sha256": rss_lab.hashlib.sha256(raw).hexdigest(),
     }
+
+
+def test_import_matches_producer_unicode_transport_without_losing_integer_precision(
+    tmp_path, monkeypatch
+):
+    document = {"id": "a", "title": "工程师", "candidate_order_hi": 9223372036854775807}
+    raw = (json.dumps(document, ensure_ascii=False) + "\n").encode()
+    source = tmp_path / "source.jsonl.gz"
+    with gzip.open(source, "wb") as output:
+        output.write(raw)
+    requests = []
+
+    def respond(request, **_kwargs):
+        requests.append(request.data)
+        return io.BytesIO(b'{"success":true}')
+
+    monkeypatch.setattr(rss_lab.urllib.request, "urlopen", respond)
+    monkeypatch.setattr(rss_lab, "api", lambda *_args: {"num_documents": 1})
+    result = rss_lab.import_documents({"port": 1}, source)
+    assert requests[0].isascii()
+    assert json.loads(requests[0]) == document
+    assert requests[0] == (json.dumps(document) + "\n").encode()
+    assert result["source_sha256"] == rss_lab.hashlib.sha256(raw).hexdigest()

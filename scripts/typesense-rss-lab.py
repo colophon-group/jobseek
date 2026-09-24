@@ -182,7 +182,11 @@ def import_documents(state, path, max_documents=None, skip_documents=0):
             accepted += 1
             if accepted <= skip_documents:
                 continue
-            batch.append(line if line.endswith(b"\n") else line + b"\n")
+            # Match typesense-python's import_ serialization. Raw UTF-8 bulk
+            # imports acknowledged every row but failed full-document parity
+            # in both ARM64 and x86_64 rehearsals. Preserve the original source
+            # hash above; escaping changes transport bytes, not document values.
+            batch.append(json.dumps(json.loads(line), ensure_ascii=True).encode() + b"\n")
             if len(batch) == 5000 or accepted == max_documents:
                 send()
                 batch.clear()
