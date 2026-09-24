@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from src.processing.board import _monitor_runtime_for_board
 from src.runtime.workday_go import GoWorkdayMonitorRuntime
 from src.shared.http import mark_external_response, track_request_hosts
 from src.shared.tdm import TDMReservedError
@@ -24,12 +25,13 @@ CONFIG = {
 }
 
 
-def fake_binary(tmp_path, payload: dict, *, exit_code: int = 0):
+def fake_binary(tmp_path, payload: dict, *, exit_code: int = 0, expected_args=None):
     path = tmp_path / "workday-live-fake"
     path.write_text(
         "#!/usr/bin/env python3\n"
         "import json, sys\n"
-        f"print(json.dumps({payload!r}))\n"
+        + (f"assert sys.argv[1:] == {expected_args!r}\n" if expected_args is not None else "")
+        + f"print(json.dumps({payload!r}))\n"
         f"sys.exit({exit_code})\n"
     )
     path.chmod(0o755)
@@ -86,9 +88,55 @@ async def test_go_workday_rejects_config_expansion_before_request(tmp_path):
         tmp_path, {"urls": [], "requests": 0, "responses": 0, "transport_errors": 0, "bytes": 0}
     )
     runtime = GoWorkdayMonitorRuntime(binary)
-    with pytest.raises(ValueError, match="unchanged Elevance"):
+    with pytest.raises(ValueError, match="unchanged direct, single-site"):
         async for _ in runtime.stream(BOARD_URL, "workday", {**CONFIG, "proxy": True}, None):
             pass
+
+
+@pytest.mark.asyncio
+async def test_second_single_site_uses_its_own_identity_and_url_boundary(tmp_path):
+    board_id = "7df42688-8abb-49eb-b897-e15dcb09d2a4"
+    url = "https://freseniusglobal.wd3.myworkdayjobs.com/FK_Careers"
+    job = "https://freseniusglobal.wd3.myworkdayjobs.com/FK_Careers/job_1"
+    config = {
+        "company": "freseniusglobal",
+        "wd_instance": "wd3",
+        "site": "FK_Careers",
+        "all_sites": False,
+        "scraper_type": "workday",
+    }
+    binary = fake_binary(
+        tmp_path,
+        {"urls": [job], "requests": 1, "responses": 1, "transport_errors": 0, "bytes": 42},
+        expected_args=[
+            "--company",
+            "freseniusglobal",
+            "--instance",
+            "wd3",
+            "--site",
+            "FK_Careers",
+        ],
+    )
+    runtime = GoWorkdayMonitorRuntime(binary, board_id=board_id)
+    results = [result async for result in runtime.stream(url, "workday", config, None)]
+    assert results[0].urls == {job}
+
+    with pytest.raises(ValueError, match="unchanged direct, single-site"):
+        async for _ in runtime.stream(
+            url,
+            "workday",
+            {**config, "site": "Other_Careers"},
+            None,
+        ):
+            pass
+
+
+def test_multiple_selected_boards_are_exclusive(monkeypatch):
+    other = "7df42688-8abb-49eb-b897-e15dcb09d2a4"
+    monkeypatch.setenv("WORKDAY_GO_BOARD_ID", "bcd90676-101c-4e58-b427-98edd4e09b7d")
+    monkeypatch.setenv("WORKDAY_GO_BOARD_IDS", f" {other},")
+    assert _monitor_runtime_for_board(other, None).implementation == "go-workday"
+    assert _monitor_runtime_for_board("not-selected", None).implementation == "python"
 
 
 @pytest.mark.asyncio

@@ -29,8 +29,9 @@ x-common-env: &common-env
   WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
   # Opt-in one-cycle capture of an existing Workday schedule for Go replay.
   WORKDAY_REPLAY_CAPTURE_BOARD_ID: ${WORKDAY_REPLAY_CAPTURE_BOARD_ID:-}
-  # One-origin, exclusive Go list handoff; empty keeps Python authoritative.
+  # Exclusive Go list handoff for admitted single-site boards; empty keeps Python authoritative.
   WORKDAY_GO_BOARD_ID: ${WORKDAY_GO_BOARD_ID:-}
+  WORKDAY_GO_BOARD_IDS: ${WORKDAY_GO_BOARD_IDS:-}
   # One existing scheduled Elastic response, saved locally for exact replay.
   GREENHOUSE_ELASTIC_CAPTURE_PATH: ${GREENHOUSE_ELASTIC_CAPTURE_PATH:-}
   # Exclusive Elastic rich-monitor handoff after same-byte replay admission.

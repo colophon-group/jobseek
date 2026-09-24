@@ -1888,12 +1888,15 @@ def _monitor_runtime_for_board(board_id: str, provided: MonitorRuntime | None) -
         if board_id != ELASTIC_BOARD_ID:
             raise ValueError("Go Greenhouse routing is restricted to the selected origin")
         return GoGreenhouseMonitorRuntime()
-    if os.environ.get("WORKDAY_GO_BOARD_ID") == board_id:
-        from src.runtime.workday_go import ELEVANCE_BOARD_ID, GoWorkdayMonitorRuntime
+    workday_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("WORKDAY_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in workday_board_ids or os.environ.get("WORKDAY_GO_BOARD_ID") == board_id:
+        from src.runtime.workday_go import GoWorkdayMonitorRuntime
 
-        if board_id != ELEVANCE_BOARD_ID:
-            raise ValueError("Go Workday routing is restricted to the selected origin")
-        return GoWorkdayMonitorRuntime()
+        return GoWorkdayMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 
