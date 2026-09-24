@@ -56,18 +56,33 @@ func publicDialContext(ctx context.Context, network, address string) (net.Conn, 
 	if err != nil {
 		return nil, err
 	}
+	public, err := publicAddresses(addresses)
+	if err != nil {
+		return nil, fmt.Errorf("Greenhouse host %s: %w", host, err)
+	}
 	dialer := net.Dialer{Timeout: 30 * time.Second}
-	for _, candidate := range addresses {
-		ip := candidate.IP
-		if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() || !ip.IsGlobalUnicast() {
-			continue
-		}
+	for _, ip := range public {
 		connection, err := dialer.DialContext(ctx, network, net.JoinHostPort(ip.String(), port))
 		if err == nil {
 			return connection, nil
 		}
 	}
 	return nil, fmt.Errorf("Greenhouse host %s has no public address", host)
+}
+
+func publicAddresses(addresses []net.IPAddr) ([]net.IP, error) {
+	if len(addresses) == 0 {
+		return nil, errors.New("has no DNS addresses")
+	}
+	public := make([]net.IP, 0, len(addresses))
+	for _, candidate := range addresses {
+		ip := candidate.IP
+		if ip == nil || ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() || !ip.IsGlobalUnicast() {
+			return nil, errors.New("resolved to a non-public address")
+		}
+		public = append(public, ip)
+	}
+	return public, nil
 }
 
 // Fetch makes exactly one GET, matching the existing Greenhouse monitor's
