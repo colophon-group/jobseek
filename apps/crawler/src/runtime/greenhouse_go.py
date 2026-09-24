@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from time import monotonic
 
 import httpx
@@ -38,6 +38,31 @@ _BOOKKEEPING = {
     "_confirmed_drop_candidate",
 }
 log = structlog.get_logger()
+
+
+def inventory_digests(jobs: Sequence[DiscoveredJob]) -> tuple[str, str]:
+    """Hash the selected origin's URL set and complete rich-job fields."""
+    url_digest = hashlib.sha256("\n".join(sorted(job.url for job in jobs)).encode()).hexdigest()
+    fields_digest = hashlib.sha256()
+    for job in sorted(jobs, key=lambda item: item.url):
+        fields_digest.update(
+            json.dumps(
+                {
+                    "url": job.url,
+                    "title": job.title,
+                    "description": job.description,
+                    "locations": job.locations,
+                    "date_posted": job.date_posted,
+                    "language": job.language,
+                    "metadata": job.metadata,
+                },
+                sort_keys=True,
+                ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode()
+        )
+        fields_digest.update(b"\n")
+    return url_digest, fields_digest.hexdigest()
 
 
 class GoGreenhouseMonitorRuntime:
@@ -158,33 +183,13 @@ class GoGreenhouseMonitorRuntime:
                         metadata=raw.get("metadata"),
                     )
                 )
-            fields_digest = hashlib.sha256()
-            for job in sorted(jobs, key=lambda item: item.url):
-                fields_digest.update(
-                    json.dumps(
-                        {
-                            "url": job.url,
-                            "title": job.title,
-                            "description": job.description,
-                            "locations": job.locations,
-                            "date_posted": job.date_posted,
-                            "language": job.language,
-                            "metadata": job.metadata,
-                        },
-                        sort_keys=True,
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                    ).encode()
-                )
-                fields_digest.update(b"\n")
+            url_digest, fields_digest = inventory_digests(jobs)
             log.info(
                 "go_greenhouse.monitor_complete",
                 board_id=ELASTIC_BOARD_ID,
                 urls=len(jobs),
-                url_sha256=hashlib.sha256(
-                    "\n".join(sorted(job.url for job in jobs)).encode()
-                ).hexdigest(),
-                fields_sha256=fields_digest.hexdigest(),
+                url_sha256=url_digest,
+                fields_sha256=fields_digest,
                 requests=attempts,
                 responses=responses,
                 response_bytes=byte_count,
