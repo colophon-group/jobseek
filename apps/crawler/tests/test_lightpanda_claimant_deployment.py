@@ -822,9 +822,8 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
     ]
     assert executor["healthcheck"]["test"] == [  # type: ignore[index]
         "CMD",
-        "/app/.venv/bin/python",
-        "-m",
-        "src.lightpanda.executor_health",
+        "/usr/local/bin/lightpanda-b0-supervisor",
+        "executor-health",
     ]
     assert executor["healthcheck"]["timeout"] == "15s"  # type: ignore[index]
     assert executor["healthcheck"]["interval"] == "5s"  # type: ignore[index]
