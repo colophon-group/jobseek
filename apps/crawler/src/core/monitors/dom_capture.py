@@ -54,7 +54,7 @@ class BookingDOMCapture:
                     self.api_responses.append(response)
                 else:
                     self.api_overflow = True
-        except (AttributeError, TypeError):
+        except (AttributeError, TypeError, ValueError):
             return
 
     async def finish(self, *, page: Page, html: str, links: list[str], urls: set[str]) -> None:
