@@ -319,10 +319,13 @@ export async function resolveCompanyFilterStateDirect(
   const locale = safeLocale(localeInput);
   const input = parseFilterInput(searchParams);
   const { byDimension, parsed: base } = input;
-  // Free text needs the canonical semantic parser (work mode, taxonomy and
-  // geo-aware location inference). This direct helper resolves only explicit
-  // URL dimensions and refuses to reinterpret `q` as title keywords.
-  if (!input.valid || input.keywords.values.length > 0) {
+  // Unmarked free text needs the canonical semantic parser. A Jev proposal
+  // explicitly marks residual `q` as literal, so those words can accompany
+  // direct taxonomy slug resolution without another interpretation pass.
+  if (
+    !input.valid ||
+    (input.keywords.values.length > 0 && searchParams.get("qmode") !== "literal")
+  ) {
     return { parsed: base, complete: false };
   }
 
