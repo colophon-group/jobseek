@@ -5,11 +5,38 @@ import type { QueryIntentProposal } from "@/lib/search/query-intent";
 
 const IDLE_MS = 900;
 const CLIENT_DEADLINE_MS = 1_800;
+const ROLLOUT_STORAGE_KEY = "search-query-jev-rollout-v1";
+let fallbackBucket: number | null = null;
+
+function inJevRollout(): boolean {
+  if (process.env.NEXT_PUBLIC_SEARCH_QUERY_JEV_ENABLED !== "true") return false;
+  const configured = process.env.NEXT_PUBLIC_SEARCH_QUERY_JEV_ROLLOUT_PERCENT;
+  const percent = configured === undefined ? 100 : Number(configured);
+  if (!Number.isInteger(percent) || percent < 0 || percent > 100) return false;
+  if (percent === 100) return true;
+  if (percent === 0) return false;
+
+  let bucket = fallbackBucket;
+  try {
+    const saved = window.localStorage.getItem(ROLLOUT_STORAGE_KEY);
+    const parsed = saved === null ? NaN : Number(saved);
+    if (Number.isInteger(parsed) && parsed >= 0 && parsed < 10_000) {
+      bucket = parsed;
+    } else {
+      bucket ??= Math.floor(Math.random() * 10_000);
+      window.localStorage.setItem(ROLLOUT_STORAGE_KEY, String(bucket));
+    }
+  } catch {
+    bucket ??= Math.floor(Math.random() * 10_000);
+  }
+  fallbackBucket = bucket;
+  return bucket < percent * 100;
+}
 
 /** Paid routing only begins once there is more than an elementary term. */
 export function canRouteQuery(query: string, unresolvedAtomic = false): boolean {
   const words = query.trim().split(/\s+/).filter(Boolean);
-  return process.env.NEXT_PUBLIC_SEARCH_QUERY_JEV_ENABLED === "true" &&
+  return inJevRollout() &&
     query.length <= 180 && words.length <= 14 &&
     (words.length >= 2 || (unresolvedAtomic && words.length === 1 && query.trim().length >= 4));
 }

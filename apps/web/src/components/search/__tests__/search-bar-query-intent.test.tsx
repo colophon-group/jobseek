@@ -26,6 +26,7 @@ vi.mock("@/lib/actions/search-input", () => ({
 vi.mock("server-only", () => ({}));
 
 import { SearchBar } from "../search-bar";
+import { canRouteQuery } from "../use-search-bar-query-intent";
 
 const proposal = {
   version: "jev-search-catalog7-v1",
@@ -44,6 +45,7 @@ const proposal = {
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_SEARCH_QUERY_JEV_ENABLED", "true");
+  vi.stubEnv("NEXT_PUBLIC_SEARCH_QUERY_JEV_ROLLOUT_PERCENT", "100");
   mocks.push.mockReset();
   mocks.parse.mockReset().mockResolvedValue({ keywords: [], locations: [], occupations: [], seniorities: [], technologies: [], workMode: [] });
   mocks.typeahead.mockReset().mockResolvedValue({ locations: [], companies: [], occupations: [], seniorities: [], technologies: [] });
@@ -57,6 +59,28 @@ afterEach(() => {
 });
 
 describe("SearchBar Jev proposal lifecycle", () => {
+  it("keeps a stable browser cohort for a fractional rollout", () => {
+    vi.stubEnv("NEXT_PUBLIC_SEARCH_QUERY_JEV_ROLLOUT_PERCENT", "25");
+    window.localStorage.setItem("search-query-jev-rollout-v1", "2499");
+    expect(canRouteQuery("nurse Zurich")).toBe(true);
+    window.localStorage.setItem("search-query-jev-rollout-v1", "2500");
+    expect(canRouteQuery("nurse Zurich")).toBe(false);
+    vi.stubEnv("NEXT_PUBLIC_SEARCH_QUERY_JEV_ROLLOUT_PERCENT", "invalid");
+    expect(canRouteQuery("nurse Zurich")).toBe(false);
+  });
+
+  it("keeps the existing Enter fallback outside the Jev cohort", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SEARCH_QUERY_JEV_ROLLOUT_PERCENT", "25");
+    window.localStorage.setItem("search-query-jev-rollout-v1", "2500");
+    render(<SearchBar />);
+    const input = screen.getByRole("combobox");
+    fireEvent.change(input, { target: { value: proposal.query } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledTimes(1));
+    expect(mocks.fetch).not.toHaveBeenCalled();
+    expect(mocks.parse).toHaveBeenCalledTimes(1);
+  });
+
   it("shows one idle proposal and reuses it on Enter while preserving hard filters", async () => {
     render(<SearchBar />);
     fireEvent.change(screen.getByRole("combobox"), { target: { value: proposal.query } });
