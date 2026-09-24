@@ -3,6 +3,7 @@ package greenhouse
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -30,6 +31,19 @@ func TestParseRichInventoryAndFailClosed(t *testing.T) {
 	}
 	if _, err := Parse([]byte(`{"jobs":[{"absolute_url":"https://example.com/job","offices":null}]}`)); err == nil {
 		t.Fatal("malformed office list was accepted")
+	}
+}
+
+func TestPublicAddressesRejectMixedDNS(t *testing.T) {
+	public := net.IPAddr{IP: net.ParseIP("1.1.1.1")}
+	private := net.IPAddr{IP: net.ParseIP("10.0.0.1")}
+	if addresses, err := publicAddresses([]net.IPAddr{public}); err != nil || len(addresses) != 1 {
+		t.Fatalf("public address was rejected: %v, %v", addresses, err)
+	}
+	for _, candidates := range [][]net.IPAddr{{}, {private}, {public, private}, {private, public}} {
+		if _, err := publicAddresses(candidates); err == nil {
+			t.Fatalf("non-public DNS answer was accepted: %v", candidates)
+		}
 	}
 }
 
