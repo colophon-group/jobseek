@@ -9,18 +9,14 @@ import { SEARCH_FILTER_PARAM_KEYS } from "@/lib/search/query-params";
 import { JOB_LANGUAGES_COOKIE, LOGGED_IN_COOKIE } from "@/lib/client-cookies";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { ExploreContent } from "./explore-content";
+import { ExplorePrepaintScript } from "./explore-prepaint-script";
 
 const EXPLORE_DEFAULTS_CACHE_LIFE = {
   stale: CACHE_TTL_EXPLORE_SHELL,
   revalidate: CACHE_TTL_EXPLORE_SHELL,
   expire: CACHE_TTL_EXPLORE_SHELL * 5,
 } as const;
-const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v5";
-
-// Runs while the cached document is parsed, before its results are painted.
-// The document remains query-agnostic and cacheable; only the browser knows
-// whether its URL or viewer hint requires a different result set.
-const EXPLORE_PREPAINT_SCRIPT = `(()=>{try{const params=new URLSearchParams(location.search);const keys=${JSON.stringify([...SEARCH_FILTER_PARAM_KEYS, "lang"])};const cookies=document.cookie.split(";").map(value=>value.trim());const hasCookie=name=>cookies.some(value=>value.startsWith(name+"="));if(keys.some(key=>params.has(key))||hasCookie(${JSON.stringify(LOGGED_IN_COOKIE)})||hasCookie(${JSON.stringify(JOB_LANGUAGES_COOKIE)}))document.documentElement.setAttribute("data-explore-pending","")}catch{document.documentElement.setAttribute("data-explore-pending","")}})();`;
+const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v6";
 
 // Cached for one day. The anonymous, no-filter explore payload is rendered
 // server-side via `fetchExplorePageDefaults` and embedded as `initialData`.
@@ -83,7 +79,11 @@ async function renderExploreContent(
 
   return (
     <>
-      <script dangerouslySetInnerHTML={{ __html: EXPLORE_PREPAINT_SCRIPT }} />
+      <ExplorePrepaintScript
+        filterKeys={[...SEARCH_FILTER_PARAM_KEYS, "lang"]}
+        loggedInCookie={LOGGED_IN_COOKIE}
+        jobLanguagesCookie={JOB_LANGUAGES_COOKIE}
+      />
       <div data-explore-result-host>
         <ExploreContent locale={locale} initialData={initialData} />
       </div>
