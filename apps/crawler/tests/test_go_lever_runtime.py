@@ -43,7 +43,8 @@ def test_lever_route_is_default_off_and_explicit(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_same_bytes_produce_same_rich_job():
+@pytest.mark.parametrize("config", [CONFIG, {"scraper_type": "skip"}])
+async def test_same_bytes_produce_same_rich_job(config: dict):
     body = json.dumps(
         [
             {
@@ -82,7 +83,7 @@ async def test_same_bytes_produce_same_rich_job():
     async with httpx.AsyncClient(
         transport=httpx.MockTransport(lambda _: httpx.Response(200, text=body))
     ) as client:
-        python_jobs = await discover({"board_url": BOARD_URL, "metadata": CONFIG}, client)
+        python_jobs = await discover({"board_url": BOARD_URL, "metadata": config}, client)
     fields = (
         "url",
         "title",
@@ -126,9 +127,32 @@ async def test_selected_runtime_delivers_content_and_rejects_changed_config(tmp_
     results = [result async for result in runtime.stream(BOARD_URL, "lever", CONFIG, None)]
     assert len(results) == 1
     assert results[0].jobs_by_url["https://jobs.lever.co/acme/1"].title == "Engineer"
-    with pytest.raises(ValueError, match="unchanged rich token"):
+    with pytest.raises(ValueError, match="unchanged direct rich token"):
         async for _ in runtime.stream(BOARD_URL, "lever", {**CONFIG, "proxy": True}, None):
             pass
+
+
+@pytest.mark.asyncio
+async def test_selected_runtime_derives_direct_url_token_like_python(tmp_path: Path):
+    binary = fake_binary(
+        tmp_path,
+        {
+            "jobs": [],
+            "truncated": False,
+            "status": 200,
+            "requests": 1,
+            "responses": 1,
+            "bytes": 2,
+            "last_skip": 0,
+            "final_url": API_URL,
+        },
+    )
+    runtime = GoLeverMonitorRuntime(binary, board_id="board-a")
+    results = [
+        result
+        async for result in runtime.stream(BOARD_URL, "lever", {"scraper_type": "skip"}, None)
+    ]
+    assert results == []
 
 
 @pytest.mark.asyncio

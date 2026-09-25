@@ -15,6 +15,7 @@ import structlog
 
 from src.core.monitor import MonitorResult, _normalize_discovered
 from src.core.monitors import BoardGoneError, DiscoveredJob, all_monitor_types
+from src.core.monitors.lever import _region_from_url, _token_from_url
 from src.metrics import (
     runtime_execution_duration_seconds,
     runtime_executions_total,
@@ -41,6 +42,49 @@ _BOOKKEEPING = {
 log = structlog.get_logger()
 
 
+def direct_lever_settings(board_url: str, config: dict) -> tuple[str, str] | None:
+    """Resolve the same token and region as Python for a direct Lever board."""
+    try:
+        parsed = urlparse(board_url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname
+        not in {
+            "jobs.lever.co",
+            "jobs.eu.lever.co",
+            "api.lever.co",
+            "api.eu.lever.co",
+        }
+        or parsed.username is not None
+        or parsed.password is not None
+        or port is not None
+    ):
+        return None
+    token = config.get("token")
+    if not token:
+        if parsed.hostname not in {"jobs.lever.co", "jobs.eu.lever.co"}:
+            return None
+        token = _token_from_url(board_url)
+        if token is None or parsed.path not in {f"/{token}", f"/{token}/"}:
+            return None
+        if parsed.query or parsed.fragment:
+            return None
+    region = config.get("region") or _region_from_url(board_url) or ""
+    if (
+        not isinstance(token, str)
+        or _TOKEN.fullmatch(token) is None
+        or region not in {"", "eu"}
+        or (parsed.hostname in {"jobs.eu.lever.co", "api.eu.lever.co"}) != (region == "eu")
+        or config.get("scraper_type") != "skip"
+        or set(config) - {"token", "region"} - _BOOKKEEPING
+    ):
+        return None
+    return token, region
+
+
 class GoLeverMonitorRuntime:
     implementation = "go-lever"
 
@@ -59,25 +103,10 @@ class GoLeverMonitorRuntime:
     ) -> AsyncIterator[MonitorResult]:
         del http
         config = monitor_config or {}
-        token = config.get("token")
-        region = config.get("region") or ""
-        parsed_board = urlparse(board_url)
-        if (
-            monitor_type != "lever"
-            or parsed_board.scheme != "https"
-            or parsed_board.hostname is None
-            or parsed_board.username is not None
-            or parsed_board.password is not None
-            or pw is not None
-            or not isinstance(token, str)
-            or _TOKEN.fullmatch(token) is None
-            or region not in {"", "eu"}
-            or (parsed_board.hostname in {"jobs.eu.lever.co", "api.eu.lever.co"})
-            != (region == "eu")
-            or config.get("scraper_type") != "skip"
-            or set(config) - {"token", "region"} - _BOOKKEEPING
-        ):
-            raise ValueError("Go Lever requires an explicit unchanged rich token configuration")
+        settings = direct_lever_settings(board_url, config)
+        if monitor_type != "lever" or pw is not None or settings is None:
+            raise ValueError("Go Lever requires an unchanged direct rich token configuration")
+        token, region = settings
         api_host = "api.eu.lever.co" if region == "eu" else "api.lever.co"
         api_base = f"https://{api_host}/v0/postings/{token}?limit=100&skip="
         api_url = f"{api_base}0"

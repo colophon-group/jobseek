@@ -1934,12 +1934,13 @@ def _go_rich_percentage_selected(
     token = config.get("token")
     allowed = {"token"} | _GO_RICH_BOOKKEEPING
     if monitor_type == "lever":
+        from src.runtime.lever_go import direct_lever_settings
+
+        settings = direct_lever_settings(board_url, config)
+        if settings is None:
+            return False
+        token, _ = settings
         allowed.add("region")
-        region = config.get("region") or ""
-        if region not in {"", "eu"}:
-            return False
-        if (parsed.hostname in {"jobs.eu.lever.co", "api.eu.lever.co"}) != (region == "eu"):
-            return False
     if (
         config.get("scraper_type") != "skip"
         or not isinstance(token, str)
