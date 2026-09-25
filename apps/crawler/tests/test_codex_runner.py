@@ -762,6 +762,52 @@ def test_backed_off_issue_does_not_block_later_candidate(monkeypatch, tmp_path: 
     assert admission.issue == 102
 
 
+def test_expired_retry_yields_one_slot_to_another_issue(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    ledger = RunnerLedger(config.ledger_path)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 2_000)
+    assert ledger.acquire(
+        run_id="first",
+        issue=101,
+        active_slot=config.active_slot,
+        attempt=1,
+    )
+    ledger.finish("first", "retryable", retry_after_at=1_500)
+    governor = CompanyResolverGovernor(
+        config,
+        ledger=ledger,
+        github=FakeGitHub(issue=None, issues=[101, 102]),
+    )
+
+    admission = governor.admit_one()
+
+    assert admission is not None
+    assert admission.issue == 102
+
+
+def test_expired_retry_remains_eligible_when_alone(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    ledger = RunnerLedger(config.ledger_path)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 2_000)
+    assert ledger.acquire(
+        run_id="first",
+        issue=101,
+        active_slot=config.active_slot,
+        attempt=1,
+    )
+    ledger.finish("first", "retryable", retry_after_at=1_500)
+    governor = CompanyResolverGovernor(
+        config,
+        ledger=ledger,
+        github=FakeGitHub(issue=None, issues=[101]),
+    )
+
+    admission = governor.admit_one()
+
+    assert admission is not None
+    assert admission.issue == 101
+
+
 def test_retry_backoff_is_bounded_exponential(tmp_path: Path) -> None:
     config = RunnerConfig(
         root=tmp_path / "runner",
