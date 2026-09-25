@@ -6,6 +6,37 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-25 14:26 UTC
+
+[PR #10023](https://github.com/colophon-group/jobseek/pull/10023) merged as
+`6c993efe5` and [deploy run 36145740751](https://github.com/colophon-group/jobseek/actions/runs/36145740751)
+promoted crawler v0.13.857. The route census changed from 165 to 189 Go
+Lever boards out of 195 enabled: 20 canonical direct URL boards now derive
+their missing token as Python does, and four EU boards now derive the missing
+region as Python does. Six Lever boards retain Python routing because their
+configuration does not satisfy the strict Go guard. All 24 newly eligible
+boards had zero consecutive failures before their first natural selected Go
+cycle; live output and database readback for this cohort are still pending.
+`LEVER_GO_PERCENT=0` reverses the default.
+
+Supported B0 c1 cold rollback retired epoch 61 and restored all five retained
+schedules before deployment. The 18 old selectors were cleared under the host
+mutation lock. After deployment, the same 18 were staged with
+`/tmp/jobseek-post-workable-capture-selectors.py` at revision
+`6c993efe5780e38ed5f90730dbe881f52c485501` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`; c1 reactivated with five
+schedules at epoch 62. Workers, browser, drain, producer, executor, claimant,
+and Redis are healthy. Before another crawler deployment, cold-rollback c1
+and clear these exact selectors with the same script, revision, and URL.
+Workable list capture on natural Python schedules remains pending; do not
+force due scores or duplicate origin traffic. C2 Kandou stays dark.
+
+[Draft PR #10024](https://github.com/colophon-group/jobseek/pull/10024)
+adds default-off Go Workable detail extraction and passive capture for exact
+scheduled detail jobs and Workable Markdown/public API list fallback bodies.
+It is not deployed or selected. The full [#7966](https://github.com/colophon-group/jobseek/issues/7966)
+completion gate remains unmet while Python and Chromium own production work.
+
 ## Production checkpoint: 2026-09-25 13:41 UTC
 
 [PR #10022](https://github.com/colophon-group/jobseek/pull/10022) merged as

@@ -128,3 +128,32 @@ func checkAdvertised(urls []string, advertised int, source string) error {
 	}
 	return nil
 }
+
+// ProjectFallback replays exact bodies captured from an existing Python
+// Markdown fallback. It performs no origin request.
+func ProjectFallback(slug string, llms, jobs, public []byte) (Inventory, error) {
+	if !validSlug(slug) {
+		return Inventory{}, errors.New("Workable slug is invalid")
+	}
+	advertised, err := parseAdvertisedCount(llms)
+	if err != nil {
+		return Inventory{}, err
+	}
+	if advertised == 0 {
+		return Inventory{URLs: []string{}, VerifiedEmpty: true}, nil
+	}
+	urls := parseMarkdownURLs(slug, jobs)
+	if len(urls) == 0 && bytes.Contains(jobs, []byte("Use the search endpoint to filter results")) {
+		if len(public) == 0 {
+			return Inventory{}, errors.New("Workable public fallback body is missing")
+		}
+		urls, err = parsePublicAPIURLs(slug, public)
+		if err != nil {
+			return Inventory{}, err
+		}
+	}
+	if err := checkAdvertised(urls, advertised, "fallback"); err != nil {
+		return Inventory{}, err
+	}
+	return Inventory{URLs: urls}, nil
+}
