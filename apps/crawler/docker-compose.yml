@@ -64,7 +64,9 @@ x-common-env: &common-env
   # Default-off Go Workable list monitor; the existing detail scraper remains scheduled.
   WORKABLE_GO_BOARD_IDS: ${WORKABLE_GO_BOARD_IDS:-}
   WORKABLE_GO_PERCENT: ${WORKABLE_GO_PERCENT:-0}
+  WORKABLE_GO_DETAIL_BOARD_IDS: ${WORKABLE_GO_DETAIL_BOARD_IDS:-}
   WORKABLE_CAPTURE_SLUGS: ${WORKABLE_CAPTURE_SLUGS:-}
+  WORKABLE_DETAIL_CAPTURE_JOBS: ${WORKABLE_DETAIL_CAPTURE_JOBS:-}
   # Default-off Go Pinpoint rich monitor and natural response capture.
   PINPOINT_GO_BOARD_IDS: ${PINPOINT_GO_BOARD_IDS:-}
   PINPOINT_GO_PERCENT: ${PINPOINT_GO_PERCENT:-0}
