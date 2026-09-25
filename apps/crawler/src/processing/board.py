@@ -2052,6 +2052,20 @@ def _monitor_runtime_for_board(
         and recruitee_percentage_selected(board_id, board_url, monitor_config)
     ):
         return GoRecruiteeMonitorRuntime(board_id=board_id)
+    workable_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("WORKABLE_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.workable_go import GoWorkableMonitorRuntime
+    from src.runtime.workable_go import percentage_selected as workable_percentage_selected
+
+    if board_id in workable_board_ids or (
+        monitor_type == "workable"
+        and board_url is not None
+        and workable_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoWorkableMonitorRuntime(board_id=board_id)
     pinpoint_board_ids = {
         selected.strip()
         for selected in os.environ.get("PINPOINT_GO_BOARD_IDS", "").split(",")

@@ -61,6 +61,10 @@ x-common-env: &common-env
   RECRUITEE_GO_BOARD_IDS: ${RECRUITEE_GO_BOARD_IDS:-}
   RECRUITEE_GO_PERCENT: ${RECRUITEE_GO_PERCENT:-0}
   RECRUITEE_CAPTURE_TENANTS: ${RECRUITEE_CAPTURE_TENANTS:-}
+  # Default-off Go Workable list monitor; the existing detail scraper remains scheduled.
+  WORKABLE_GO_BOARD_IDS: ${WORKABLE_GO_BOARD_IDS:-}
+  WORKABLE_GO_PERCENT: ${WORKABLE_GO_PERCENT:-0}
+  WORKABLE_CAPTURE_SLUGS: ${WORKABLE_CAPTURE_SLUGS:-}
   # Default-off Go Pinpoint rich monitor and natural response capture.
   PINPOINT_GO_BOARD_IDS: ${PINPOINT_GO_BOARD_IDS:-}
   PINPOINT_GO_PERCENT: ${PINPOINT_GO_PERCENT:-0}
