@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitor import MonitorResult, _normalize_discovered
+from src.core.monitor import MonitorResult, postprocess_monitor_stream
 from src.core.monitors import DiscoveredJob, all_monitor_types
 from src.core.monitors.rss import _feed_config
 from src.metrics import (
@@ -220,19 +220,24 @@ class GoTeamtailorRSSMonitorRuntime:
                 response_bytes=body_bytes,
             )
             mark_reachable_response(feed_url)
-            outcome = "success"
             runtime_output_items_total.labels(
                 stage="monitor", implementation=self.implementation
             ).inc(len(jobs))
-            if truncated:
-                yield MonitorResult(
-                    urls={job.url for job in jobs},
-                    jobs_by_url={job.url: job for job in jobs},
-                    truncated=True,
-                )
-            else:
-                for offset in range(0, len(jobs), 200):
-                    yield _normalize_discovered(jobs[offset : offset + 200])
+
+            async def raw_batches() -> AsyncIterator[list[DiscoveredJob] | MonitorResult]:
+                if truncated:
+                    yield MonitorResult(
+                        urls={job.url for job in jobs},
+                        jobs_by_url={job.url: job for job in jobs},
+                        truncated=True,
+                    )
+                else:
+                    for offset in range(0, len(jobs), 200):
+                        yield jobs[offset : offset + 200]
+
+            async for result in postprocess_monitor_stream(raw_batches(), monitor_config or {}):
+                yield result
+            outcome = "success"
         except asyncio.CancelledError:
             outcome = "cancelled"
             raise
