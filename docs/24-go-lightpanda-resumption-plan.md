@@ -6,28 +6,38 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
-## Implementation checkpoint: 2026-09-25 16:15 UTC
+## Production checkpoint: 2026-09-25 18:43 UTC
 
-The bounded Go sitemap parser from the read-only pilot is now packaged for
-the crawler image behind `SITEMAP_GO_BOARD_IDS`. It accepts only an explicit
-same-origin HTTPS `urlset` and runs the same Python URL filter, allowlist, and
-transform stages before the existing board writer. It is default-off; an
-unsupported index or changed configuration fails closed. The accepted
-[production shadow](https://github.com/colophon-group/jobseek/issues/8641)
+[PR #10029](https://github.com/colophon-group/jobseek/pull/10029) merged as
+`bf1437d6c97bc3ffc50c7b36f13992640b0bd070`; [deploy run 36172829219](https://github.com/colophon-group/jobseek/actions/runs/36172829219)
+promoted crawler v0.13.861. The bounded Go sitemap parser from the read-only
+pilot is packaged in the crawler image and accepts only an explicit
+same-origin HTTPS `urlset`. The adapter runs the same Python URL filter,
+allowlist, and transform stages before the existing board writer. It is
+default-off; an unsupported index or changed configuration fails closed. The
+accepted [production shadow](https://github.com/colophon-group/jobseek/issues/8641)
 previously matched Python's URL counts and hashes for Acosta/Dee Set and
-Verity Breezy. Select Verity's exact board ID
-`c4779214-ef92-4261-98fb-ae64f264fd23` only after this crawler release is
-deployed, then observe its natural Go output and active PostgreSQL URL digest.
-Do not force the board due or send a duplicate origin request.
+Verity Breezy. Its exact board ID is
+`c4779214-ef92-4261-98fb-ae64f264fd23`.
 
-The unrelated crawler v0.13.860 deploy from `bcf2d84c4` failed before image
-change because c1 was active. Production remains on `2478244da`; c1 epoch 68
-and its 21 exact selectors remain active. Before the next crawler deploy, use
-the supported c1 cold rollback, clear all 21 selectors at exact revision
-`2478244da10230814e7a045c585f547e5d200f0e` under the host mutation lock,
-and only then deploy. Restage the desired selectors at the promoted revision
-and reactivate c1. The full [#7966](https://github.com/colophon-group/jobseek/issues/7966)
-completion goal remains open while Python and Chromium own production work.
+Before that deploy, the supported c1 cold rollback retired epoch 68 at epoch 69 and
+restored all five schedules with zero terminal drops or write fences. The old
+21 exact selectors were cleared under the host lock. After promotion, 22 exact
+selectors were staged at `bf1437d6c97bc3ffc50c7b36f13992640b0bd070`
+using `/tmp/jobseek-post-go-sitemap-selectors.py` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Supported c1 activation selected
+five schedules at epoch 70; workers, browser, drain, producer, executor,
+claimant, and Redis are healthy. Post-activation inspection found that Compose
+did not pass `SITEMAP_GO_BOARD_IDS` into workers, so Verity remains
+Python-owned despite its host selector. The follow-up v0.13.862 release wires
+that key. Before deploying it, cold-rollback c1 and clear all 22 exact
+selectors with the same script, release revision, and Kandou URL under the
+host mutation lock. After promotion, stage them again at the new exact
+revision and reactivate c1. Then observe Verity's natural Go URL digest,
+active PostgreSQL URLs, and board failure count; do not force its due time or
+send a duplicate origin request. The full
+[#7966](https://github.com/colophon-group/jobseek/issues/7966) completion
+goal remains open while Python and Chromium own production work.
 
 ## Production checkpoint: 2026-09-25 15:16 UTC
 
