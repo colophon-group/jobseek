@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "deployment": {
+    "sha": "3e9e737c4cc2f37136ec37ccb32d9990349a3bb4",
+    "readyAt": "2026-09-24T20:17:40.685Z"
+  },
+  "window": {
+    "start": "2026-09-24T21:15:00Z",
+    "end": "2026-09-25T09:15:00Z"
+  },
+  "totals": {
+    "invocations": 1233,
+    "visibleActiveCpuSeconds": 182.498,
+    "activeCpuP75Ms": 323,
+    "cpuThrottleP75Pct": 8,
+    "errorRatePct": 0,
+    "timeoutRatePct": 0,
+    "typesenseCalls": null,
+    "upstashCalls": null
+  },
+  "routes": {
+    "companyOg": {
+      "invocations": 0,
+      "activeCpuSeconds": 0
+    },
+    "companyPages": {
+      "invocations": 513,
+      "activeCpuSeconds": 124
+    },
+    "publicWatchlists": {
+      "invocations": 88,
+      "activeCpuSeconds": 12.79
+    },
+    "explore": {
+      "invocations": 193,
+      "activeCpuSeconds": 16.36
+    },
+    "other": {
+      "invocations": 439,
+      "activeCpuSeconds": 29.348
+    }
+  },
+  "cache": {
+    "companyOgR2Hits": null,
+    "companyOgR2Misses": null,
+    "pprShellHits": 210,
+    "pprShellMisses": 646
+  },
+  "traffic": {
+    "recognizedBotRequests": 4,
+    "longTailUniqueKeys": 31,
+    "sourceIncludesAllTraffic": false
+  },
+  "functionality": {
+    "home": true,
+    "explore": true,
+    "companyPage": true,
+    "companyOg": true,
+    "publicWatchlist": false,
+    "authentication": true
+  },
+  "unavailableFields": [
+    "Dashboard CPU values are rounded.",
+    "Baseline route window is outside Hobby retention and redirects to Last hour; excluded.",
+    "External Typesense/Upstash counts are rounded; exact counts unavailable.",
+    "R2 object cache hits/misses unavailable in Vercel metrics.",
+    "Natural logs retain less than one hour; they do not cover all requests in the 12-hour window.",
+    "PPR overall dynamic count and route rows disagree; preserved without inferring cause."
+  ],
+  "trafficNote": "Four bot-named user agents in retained sample, not verified identities; source is incomplete."
+}
