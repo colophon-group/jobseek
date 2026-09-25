@@ -171,7 +171,7 @@ class GoWorkableMonitorRuntime:
                         source="header",
                         policy_url=payload.get("tdm_policy"),
                     )
-                if responses:
+                if responses and status:
                     mark_external_response(resolved_url, status)
                 detail = str(payload.get("error") or f"exit code {proc.returncode}")[:300]
                 if status and status != 200:

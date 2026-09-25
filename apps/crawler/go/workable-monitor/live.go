@@ -161,6 +161,7 @@ func fetchBody(ctx context.Context, client requestDoer, result *FetchResult, met
 	if postBody != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
+	result.Status = 0
 	result.Requests++
 	response, err := client.Do(request)
 	if err != nil {

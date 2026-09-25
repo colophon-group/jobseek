@@ -137,6 +137,16 @@ func TestFetchFailureAfterFirstPageCannotReturnPartialInventory(t *testing.T) {
 	}
 }
 
+func TestTransportFailureAfterFirstPageCannotReportOldStatusOrPartialInventory(t *testing.T) {
+	client := &scriptedClient{responses: []scriptedResponse{
+		{status: 200, body: `{"results":[{"shortcode":"A"}],"nextPage":"cursor"}`},
+	}}
+	result, err := Fetch(context.Background(), client, "acme", noPause)
+	if err == nil || len(result.URLs) != 0 || result.Status != 0 || result.Requests != 5 || result.Responses != 1 {
+		t.Fatalf("transport failure leaked prior-page success: %#v, %v", result, err)
+	}
+}
+
 func TestFetchRetriesMalformedJSONAndRejectsTDM(t *testing.T) {
 	client := &scriptedClient{responses: []scriptedResponse{
 		{status: 200, body: `{"results":`},
