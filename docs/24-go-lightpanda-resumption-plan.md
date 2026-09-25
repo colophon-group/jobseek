@@ -6,6 +6,43 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-25 13:41 UTC
+
+[PR #10022](https://github.com/colophon-group/jobseek/pull/10022) merged as
+`6c8b7179b` and [deploy run 36140762256](https://github.com/colophon-group/jobseek/actions/runs/36140762256)
+promoted crawler v0.13.856. It adds a default-off Go Workable list monitor
+and passive capture of existing Python list responses. Before deployment,
+supported c1 cold rollback retired epoch 59 and restored all five retained
+schedules; the 17 exact old selectors were cleared under the host mutation
+lock. After deployment, 18 exact selectors were staged with
+`/tmp/jobseek-post-workable-capture-selectors.py` at revision
+`6c8b7179b91265336d25cee32275ea8f1bebbb9a` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. The added selector captures
+Workable responses for `pix4d,debiopharm,unit8,hack-the-box-ltd` on their
+natural Python runs. No Workable board routes to Go yet. Supported c1
+reactivation selected five schedules at epoch 60; workers, browser, drain,
+producer, executor, claimant, and Redis are healthy. C2 Kandou stays dark.
+Before any later crawler deployment, cold-rollback c1 and clear all 18
+selectors with that exact script, revision, and Kandou URL.
+
+Silverflow Personio completed its first natural selected Go monitor run at
+13:24 UTC: four URLs, two responses, zero monitor or board failures. Its
+sorted URL digest
+`2a7048973d0c0e572788718e93234a4e1a10d8c8b21ad43a76f6aff49960a1ba`
+matched all four active PostgreSQL rows after the existing writer ran. The
+earlier exact-byte EN/DE replay matched all four full rich dictionaries.
+This is a live monitor and persistence checkpoint, not a whole-lane resource
+measurement. The first Mobiliar SuccessFactors Go RSS run is still queued;
+do not force it or duplicate origin traffic.
+
+[PR #10023](https://github.com/colophon-group/jobseek/pull/10023) is open
+from the new main. It lets the Go Lever runtime derive token and EU region
+from a canonical direct board URL just as Python already does. Twenty current
+CSV boards have this strict tokenless shape. Merge it only after its gates
+pass and after preserving the B0 cold rollback / selector procedure above.
+The fleet remains largely Python-owned and does not satisfy
+[#7966](https://github.com/colophon-group/jobseek/issues/7966).
+
 ## Production checkpoint: 2026-09-25 12:48 UTC
 
 [PR #10021](https://github.com/colophon-group/jobseek/pull/10021) merged as
