@@ -6,7 +6,7 @@ import {
 
 function passingReport() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     deployment: {
       sha: "1234567890abcdef",
       readyAt: "2026-08-11T00:00:00.000Z",
@@ -28,13 +28,11 @@ function passingReport() {
     routes: {
       companyOg: { invocations: 200, activeCpuSeconds: 20 },
       companyPages: { invocations: 300, activeCpuSeconds: 58 },
-      publicWatchlists: { invocations: 150, activeCpuSeconds: 24 },
+      watchlistRoutes: { invocations: 150, activeCpuSeconds: 24 },
       explore: { invocations: 100, activeCpuSeconds: 9 },
       other: { invocations: 250, activeCpuSeconds: 19 },
     },
     cache: {
-      companyOgR2Hits: 195,
-      companyOgR2Misses: 5,
       pprShellHits: 400,
       pprShellMisses: 600,
     },
@@ -42,13 +40,25 @@ function passingReport() {
       recognizedBotRequests: 250,
       longTailUniqueKeys: 300,
       sourceIncludesAllTraffic: true,
+      source: "100% production Vercel log drain",
+      samplingRatePct: 100,
+    },
+    approvals: {
+      companyOgR2Revision: "https://github.com/colophon-group/jobseek/issues/10015#issuecomment-1",
     },
     functionality: {
       home: true,
       explore: true,
       companyPage: true,
-      companyOg: true,
-      publicWatchlist: true,
+      companyOgDirect: true,
+      companyOgLegacyRedirect: true,
+      ownedWatchlist: true,
+      sharedWatchlist: true,
+      privateWatchlistAnonymousDenied: true,
+      privateWatchlistCrossOwnerDenied: true,
+      legacyWatchlistAnonymousDenied: true,
+      legacyWatchlistCrossOwnerDenied: true,
+      legacyWatchlistOwnerRedirects: true,
       authentication: true,
     },
   };
@@ -89,12 +99,12 @@ describe("Fluid CPU regression gate", () => {
 
   it("fails when a live production functionality check fails", () => {
     const report = passingReport();
-    report.functionality.companyOg = false;
+    report.functionality.companyOgDirect = false;
 
     const result = evaluateFluidCpuReport(report);
 
     expect(result.passed).toBe(false);
-    expect(result.checks.find((check) => check.name === "Functionality: companyOg"))
+    expect(result.checks.find((check) => check.name === "Functionality: companyOgDirect"))
       .toMatchObject({ passed: false });
   });
 
@@ -110,6 +120,72 @@ describe("Fluid CPU regression gate", () => {
       .toEqual(expect.arrayContaining([
         "Recognized bot requests represented",
         "Long-tail unique keys represented",
+      ]));
+  });
+
+  it("reports unavailable exact external counts as incomplete without replacing them with zero", () => {
+    const report = passingReport();
+    const incomplete = {
+      ...report,
+      totals: { ...report.totals, typesenseCalls: null, upstashCalls: null },
+    };
+
+    const result = evaluateFluidCpuReport(incomplete);
+
+    expect(result.status).toBe("INCOMPLETE");
+    expect(result.passed).toBe(false);
+    expect(result.markdown).toContain("Typesense calls / invocation | unknown");
+    expect(result.markdown).toContain("Upstash calls / invocation | unknown");
+  });
+
+  it("requires an approval reference before the revised R2 gate can pass", () => {
+    const report = passingReport();
+    const result = evaluateFluidCpuReport({
+      ...report,
+      approvals: { companyOgR2Revision: null },
+    });
+
+    expect(result.status).toBe("INCOMPLETE");
+    expect(result.checks.find((check) => check.name === "Company OG R2 gate revision approved"))
+      .toMatchObject({ available: false, passed: false });
+  });
+
+  it("rejects an approval reference outside the repository", () => {
+    const report = passingReport();
+    expect(() => evaluateFluidCpuReport({
+      ...report,
+      approvals: { companyOgR2Revision: "https://example.com/approved" },
+    })).toThrow("approvals.companyOgR2Revision must link to a repository approval comment");
+  });
+
+  it("keeps measured CPU failure visible when other evidence is incomplete", () => {
+    const report = passingReport();
+    const result = evaluateFluidCpuReport({
+      ...report,
+      totals: {
+        ...report.totals,
+        visibleActiveCpuSeconds: 150,
+        typesenseCalls: null,
+      },
+    });
+
+    expect(result.status).toBe("FAIL (INCOMPLETE EVIDENCE)");
+    expect(result.checks.find((check) => check.name === "Visible Active CPU"))
+      .toMatchObject({ passed: false, available: true });
+  });
+
+  it("fails if private watchlist access checks or full traffic sampling fail", () => {
+    const report = passingReport();
+    report.functionality.privateWatchlistCrossOwnerDenied = false;
+    report.traffic.samplingRatePct = 10;
+
+    const result = evaluateFluidCpuReport(report);
+
+    expect(result.status).toBe("FAIL");
+    expect(result.checks.filter((check) => !check.passed).map((check) => check.name))
+      .toEqual(expect.arrayContaining([
+        "Functionality: privateWatchlistCrossOwnerDenied",
+        "Traffic source sampling",
       ]));
   });
 });
