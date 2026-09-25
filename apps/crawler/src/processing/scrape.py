@@ -70,8 +70,21 @@ def _runtime_for_scrape(
     scraper_config: dict | None,
     provided: ScrapeRuntime | None,
 ) -> ScrapeRuntime | None:
-    if provided is not None or scraper_type != "workday" or not board_id:
+    if provided is not None or not board_id:
         return provided
+    if scraper_type == "workable":
+        selected = {
+            value.strip()
+            for value in os.environ.get("WORKABLE_GO_DETAIL_BOARD_IDS", "").split(",")
+            if value.strip()
+        }
+        if board_id in selected:
+            from src.runtime.workable_go_detail import GoWorkableDetailRuntime
+
+            return GoWorkableDetailRuntime()
+        return None
+    if scraper_type != "workday":
+        return None
     selected = {
         value.strip()
         for value in os.environ.get("WORKDAY_GO_DETAIL_BOARD_IDS", "").split(",")
