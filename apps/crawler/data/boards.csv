@@ -932,6 +932,7 @@ beiersdorf,beiersdorf-central,https://www.beiersdorf.com/career/your-application
 believe,believe-careers,https://careers.smartrecruiters.com/Believe,smartrecruiters,"{""token"": ""Believe""}",smartrecruiters,
 belimo,belimo-ats,https://jobsredirect.belimo.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobsredirect.belimo.com/googlefeed.xml""}",skip,
 belk,belk-careers,https://belk.wd1.myworkdayjobs.com/jobs-stores,workday,,workday,
+bell,bell-careers,https://jobs.bce.ca/,rss,"{""preset"": ""successfactors""}",skip,
 belong,belong-careers,https://jobs.lever.co/belong,lever,"{""token"": ""belong""}",skip,
 belvedere-trading,belvedere-trading-lever,https://jobs.lever.co/belvederetrading,lever,"{""token"": ""belvederetrading""}",skip,
 belvo,belvo-ashby,https://jobs.ashbyhq.com/belvo,ashby,"{""token"": ""belvo""}",skip,
