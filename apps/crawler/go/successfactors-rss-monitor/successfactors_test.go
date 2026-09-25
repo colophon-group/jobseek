@@ -53,3 +53,17 @@ func TestParseReaderPlaceholderDescription(t *testing.T) {
 		t.Fatalf("placeholder description should be empty: %+v", jobs)
 	}
 }
+
+func TestParseReaderUsesFirstRepeatedFieldLikeElementTreeFind(t *testing.T) {
+	feed := `<rss xmlns:g="http://base.google.com/ns/1.0"><item>` +
+		`<link>https://jobs.example.com/first</link><link>https://jobs.example.com/second</link>` +
+		`<g:location>Zurich</g:location><g:location>Berlin</g:location>` +
+		`</item></rss>`
+	jobs, _, err := ParseReader(strings.NewReader(feed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 1 || jobs[0].URL != "https://jobs.example.com/first" || len(jobs[0].Locations) != 1 || jobs[0].Locations[0] != "Zurich" {
+		t.Fatalf("unexpected repeated-field precedence: %+v", jobs)
+	}
+}

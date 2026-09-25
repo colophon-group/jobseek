@@ -23,15 +23,15 @@ type Job struct {
 }
 
 type item struct {
-	Link           string `xml:"link"`
-	Title          string `xml:"title"`
-	Description    string `xml:"description"`
-	GUID           string `xml:"guid"`
-	PubDate        string `xml:"pubDate"`
-	Location       string `xml:"http://base.google.com/ns/1.0 location"`
-	ExpirationDate string `xml:"http://base.google.com/ns/1.0 expiration_date"`
-	Employer       string `xml:"http://base.google.com/ns/1.0 employer"`
-	JobFunction    string `xml:"http://base.google.com/ns/1.0 job_function"`
+	Link           []string `xml:"link"`
+	Title          []string `xml:"title"`
+	Description    []string `xml:"description"`
+	GUID           []string `xml:"guid"`
+	PubDate        []string `xml:"pubDate"`
+	Location       []string `xml:"http://base.google.com/ns/1.0 location"`
+	ExpirationDate []string `xml:"http://base.google.com/ns/1.0 expiration_date"`
+	Employer       []string `xml:"http://base.google.com/ns/1.0 employer"`
+	JobFunction    []string `xml:"http://base.google.com/ns/1.0 job_function"`
 }
 
 var (
@@ -53,14 +53,21 @@ func normalizedText(value string) string {
 	return strings.Join(strings.Fields(value), " ")
 }
 
+func first(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
 func parseItem(value item) (Job, bool) {
-	link := optional(value.Link)
+	link := optional(first(value.Link))
 	if link == nil {
 		return Job{}, false
 	}
-	title := optional(value.Title)
+	title := optional(first(value.Title))
 	var description *string
-	if raw := optional(value.Description); raw != nil {
+	if raw := optional(first(value.Description)); raw != nil {
 		description = optional(html.UnescapeString(*raw))
 	}
 	if description != nil && title != nil {
@@ -70,7 +77,7 @@ func parseItem(value item) (Job, bool) {
 			description = nil
 		}
 	}
-	location := optional(value.Location)
+	location := optional(first(value.Location))
 	stripTitleLocation := location != nil
 	if location == nil && description != nil {
 		if match := descriptionLocation.FindStringSubmatch(*description); len(match) == 2 {
@@ -98,14 +105,14 @@ func parseItem(value item) (Job, bool) {
 	}
 	metadata := map[string]any{}
 	for _, field := range []struct{ name, value string }{
-		{"id", value.GUID}, {"employer", value.Employer},
-		{"expiration_date", value.ExpirationDate},
+		{"id", first(value.GUID)}, {"employer", first(value.Employer)},
+		{"expiration_date", first(value.ExpirationDate)},
 	} {
 		if text := optional(field.value); text != nil {
 			metadata[field.name] = *text
 		}
 	}
-	if function := optional(value.JobFunction); function != nil && *function != "ATS_WEBFORM" {
+	if function := optional(first(value.JobFunction)); function != nil && *function != "ATS_WEBFORM" {
 		metadata["job_function"] = *function
 	}
 	if len(metadata) == 0 {
@@ -113,7 +120,7 @@ func parseItem(value item) (Job, bool) {
 	}
 	return Job{
 		URL: *link, Title: title, Description: description,
-		Locations: locations, DatePosted: optional(value.PubDate), Metadata: metadata,
+		Locations: locations, DatePosted: optional(first(value.PubDate)), Metadata: metadata,
 	}, true
 }
 
