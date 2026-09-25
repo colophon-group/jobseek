@@ -2050,6 +2050,20 @@ def _monitor_runtime_for_board(
         and recruitee_percentage_selected(board_id, board_url, monitor_config)
     ):
         return GoRecruiteeMonitorRuntime(board_id=board_id)
+    pinpoint_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("PINPOINT_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.pinpoint_go import GoPinpointMonitorRuntime
+    from src.runtime.pinpoint_go import percentage_selected as pinpoint_percentage_selected
+
+    if board_id in pinpoint_board_ids or (
+        monitor_type == "pinpoint"
+        and board_url is not None
+        and pinpoint_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoPinpointMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 
