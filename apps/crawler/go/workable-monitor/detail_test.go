@@ -14,6 +14,10 @@ func TestDetailEndpointsAreCanonicalAndBounded(t *testing.T) {
 	if err != nil || api != "https://apply.workable.com/api/v2/accounts/acme/jobs/ABC123" || markdown != "https://apply.workable.com/acme/jobs/view/ABC123.md" {
 		t.Fatalf("unexpected detail endpoints: %q %q %v", api, markdown, err)
 	}
+	api, markdown, err = detailEndpoints(detailSource, "custom-slug")
+	if err != nil || api != "https://apply.workable.com/api/v2/accounts/custom-slug/jobs/ABC123" || markdown != "https://apply.workable.com/custom-slug/jobs/view/ABC123.md" {
+		t.Fatalf("configured token override was lost: %q %q %v", api, markdown, err)
+	}
 	for _, source := range []string{
 		"http://apply.workable.com/acme/j/ABC123/",
 		"https://evil.example/acme/j/ABC123/",

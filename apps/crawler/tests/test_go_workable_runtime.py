@@ -6,6 +6,7 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -158,3 +159,39 @@ def test_capture_is_bounded_and_mode_0600(monkeypatch, tmp_path):
     assert path.read_bytes() == b'{"results":[]}'
     workable_capture.capture_workable_response("pix4d", 1, "https://example.com/jobs", b"bad")
     assert not (tmp_path / "jobseek-workable-pix4d-page1.json").exists()
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_fallback_captures_exact_existing_bodies(monkeypatch, tmp_path):
+    monkeypatch.setenv("WORKABLE_CAPTURE_SLUGS", "pix4d")
+    monkeypatch.setattr(workable_capture, "_CAPTURE_DIR", tmp_path)
+    monkeypatch.setattr("src.core.monitors.workable.asyncio.sleep", AsyncMock())
+    llms = b"All open roles at Pix4D: 1 current opening"
+    jobs = b"Use the search endpoint to filter results"
+    public = b'{"jobs":[{"shortcode":"A"}]}'
+    requests: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        requests.append(url)
+        if request.method == "POST":
+            return httpx.Response(429, content=b'{"error":"rate_limit"}')
+        if url.endswith("/llms.txt"):
+            return httpx.Response(200, content=llms)
+        if url.endswith("/jobs.md"):
+            return httpx.Response(200, content=jobs)
+        assert url == "https://www.workable.com/api/accounts/pix4d"
+        return httpx.Response(200, content=public)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        urls = await discover({"board_url": BOARD_URL, "metadata": CONFIG}, client)
+    assert urls == {"https://apply.workable.com/pix4d/j/A/"}
+    assert len(requests) == 7
+    for kind, body, suffix in (
+        ("llms", llms, "txt"),
+        ("jobs", jobs, "md"),
+        ("public", public, "json"),
+    ):
+        artifact = tmp_path / f"jobseek-workable-pix4d-{kind}.{suffix}"
+        assert artifact.read_bytes() == body
+        assert artifact.stat().st_mode & 0o777 == 0o600
