@@ -107,6 +107,14 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/successfactors-rss-monitor-live ./cmd/live
 
+# ── Default-off Go Personio XML/HTML rich monitor ────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-personio-build
+WORKDIR /workspace/apps/crawler/go/personio-monitor
+COPY go/personio-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/personio-monitor-live ./cmd/live
+
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
 FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 
@@ -158,6 +166,7 @@ COPY --from=go-pinpoint-build /out/pinpoint-monitor-live /usr/local/bin/pinpoint
 COPY --from=go-booking-api-build /out/booking-api-monitor-live /usr/local/bin/booking-api-monitor-live
 COPY --from=go-teamtailor-rss-build /out/teamtailor-rss-monitor-live /usr/local/bin/teamtailor-rss-monitor-live
 COPY --from=go-successfactors-rss-build /out/successfactors-rss-monitor-live /usr/local/bin/successfactors-rss-monitor-live
+COPY --from=go-personio-build /out/personio-monitor-live /usr/local/bin/personio-monitor-live
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
 FROM base AS slim
