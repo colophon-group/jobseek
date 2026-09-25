@@ -111,11 +111,12 @@ The supported path is:
    visible route CPU separate as described in #9918.
 
 The published Vercel prices at review time were [Pro $20/month](https://vercel.com/pricing),
-[Observability Plus $10/month](https://vercel.com/docs/observability/observability-plus),
-and [Drains $0.50/GB](https://vercel.com/docs/drains), plus $1.20/million
-Observability Plus events; taxes and other usage may apply. No plan change or drain is
-enabled by this runbook. A fresh 12-hour window starts after the collection
-path, deployment, and WAF state are verified.
+[Drains $0.50/GB](https://vercel.com/docs/drains), and
+[Observability Plus $1.20/million events](https://vercel.com/docs/observability/observability-plus).
+Observability Plus no longer lists a separate monthly base fee; taxes and other
+usage may apply. No plan change or drain is enabled by this runbook. A fresh
+12-hour window starts after the collection path, deployment, and WAF state
+are verified.
 
 **Approved R2 gate revision (requester, September 25, 2026):** Company OG now uses prewarmed,
 versioned PNGs served directly from the R2 custom domain. A browser request
