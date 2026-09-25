@@ -57,6 +57,10 @@ x-common-env: &common-env
   JOIN_GO_BOARD_IDS: ${JOIN_GO_BOARD_IDS:-}
   JOIN_GO_PERCENT: ${JOIN_GO_PERCENT:-0}
   JOIN_CAPTURE_SLUGS: ${JOIN_CAPTURE_SLUGS:-}
+  # Default-off Go Recruitee rich monitor and natural response capture.
+  RECRUITEE_GO_BOARD_IDS: ${RECRUITEE_GO_BOARD_IDS:-}
+  RECRUITEE_GO_PERCENT: ${RECRUITEE_GO_PERCENT:-0}
+  RECRUITEE_CAPTURE_TENANTS: ${RECRUITEE_CAPTURE_TENANTS:-}
 
 services:
   # -- Redis -------------------------------------------------------

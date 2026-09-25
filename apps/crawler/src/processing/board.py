@@ -2019,14 +2019,37 @@ def _monitor_runtime_for_board(
         for selected in os.environ.get("JOIN_GO_BOARD_IDS", "").split(",")
         if selected.strip()
     }
-    from src.runtime.join_go import GoJoinMonitorRuntime, percentage_selected
+    from src.runtime.join_go import (
+        GoJoinMonitorRuntime,
+    )
+    from src.runtime.join_go import (
+        percentage_selected as join_percentage_selected,
+    )
 
     if board_id in join_board_ids or (
         monitor_type == "join"
         and board_url is not None
-        and percentage_selected(board_id, board_url, monitor_config)
+        and join_percentage_selected(board_id, board_url, monitor_config)
     ):
         return GoJoinMonitorRuntime(board_id=board_id)
+    recruitee_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("RECRUITEE_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.recruitee_go import (
+        GoRecruiteeMonitorRuntime,
+    )
+    from src.runtime.recruitee_go import (
+        percentage_selected as recruitee_percentage_selected,
+    )
+
+    if board_id in recruitee_board_ids or (
+        monitor_type == "recruitee"
+        and board_url is not None
+        and recruitee_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoRecruiteeMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 

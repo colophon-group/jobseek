@@ -67,6 +67,14 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/join-monitor-live ./cmd/live
 
+# ── Default-off Go Recruitee rich monitor ────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-recruitee-build
+WORKDIR /workspace/apps/crawler/go/recruitee-monitor
+COPY go/recruitee-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/recruitee-monitor-live ./cmd/live
+
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
 FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 
@@ -113,6 +121,7 @@ COPY --from=go-greenhouse-build /out/greenhouse-monitor-live /usr/local/bin/gree
 COPY --from=go-ashby-build /out/ashby-monitor-live /usr/local/bin/ashby-monitor-live
 COPY --from=go-lever-build /out/lever-monitor-live /usr/local/bin/lever-monitor-live
 COPY --from=go-join-build /out/join-monitor-live /usr/local/bin/join-monitor-live
+COPY --from=go-recruitee-build /out/recruitee-monitor-live /usr/local/bin/recruitee-monitor-live
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
 FROM base AS slim
