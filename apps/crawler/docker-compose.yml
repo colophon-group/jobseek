@@ -65,6 +65,8 @@ x-common-env: &common-env
   PINPOINT_GO_BOARD_IDS: ${PINPOINT_GO_BOARD_IDS:-}
   PINPOINT_GO_PERCENT: ${PINPOINT_GO_PERCENT:-0}
   PINPOINT_CAPTURE_TENANTS: ${PINPOINT_CAPTURE_TENANTS:-}
+  # Default-off direct HTTP replacement for the selected Booking DOM monitor.
+  BOOKING_GO_BOARD_ID: ${BOOKING_GO_BOARD_ID:-}
 
 services:
   # -- Redis -------------------------------------------------------
