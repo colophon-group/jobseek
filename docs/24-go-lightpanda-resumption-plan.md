@@ -6,6 +6,30 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-25 12:00 UTC
+
+The latest crawler release is `4c620132c` (v0.13.854), deployed by
+[run 36128889906](https://github.com/colophon-group/jobseek/actions/runs/36128889906).
+Supported B0 c1 is active at epoch 56 with five retained schedules; c2
+Kandou remains dark. Temporary selectors route 1,470 of 7,865 enabled boards
+to Go monitors: 1,275 Greenhouse, 165 Lever, 21 Ashby, and nine individually
+selected boards. Fourteen natural Greenhouse/Lever batch cycles since 11:43
+completed with zero failures and exact active database URL count/digest
+readback. This checks persistence of the selected URL inventory, not every
+rich field or the whole crawler lane. The same-byte Mobiliar SuccessFactors
+RSS replay matched all 71 rich jobs before its exact Go selector was staged;
+its first natural Go cycle remains pending. A Silverflow Personio response is
+being captured passively on its next normal schedule. Do not force either
+board due or send a second request to its origin.
+
+The next code release makes the strict 165-board Lever cohort Go by default,
+while `LEVER_GO_PERCENT=0` remains the immediate route reversal. Before any
+crawler deployment, use the supported B0 c1 cold rollback, clear temporary
+host selectors under the mutation lock, and verify the host environment
+matches the release snapshot. After deployment, stage desired selectors and
+reactivate c1. Python still owns most monitors and the board writer; this
+checkpoint does not satisfy [#7966](https://github.com/colophon-group/jobseek/issues/7966).
+
 The delivery goal is a complete Go crawler using self-hosted Lightpanda for
 browser work and Go HTTP/API execution where that removes a browser need.
 Python, Playwright, and Chromium leave production after every enabled profile

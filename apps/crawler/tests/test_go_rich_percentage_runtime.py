@@ -85,3 +85,23 @@ def test_lever_eu_requires_matching_region(monkeypatch):
         ).implementation
         == "python"
     )
+
+
+def test_lever_strict_cohort_defaults_to_go_and_explicit_zero_reverses(monkeypatch):
+    board_id = "3bba23a0-5e4c-4928-9173-0d59ec0d44b8"
+    url = "https://jobs.lever.co/acme"
+    config = {"token": "acme", "scraper_type": "skip"}
+    monkeypatch.delenv("LEVER_GO_PERCENT", raising=False)
+    assert (
+        _monitor_runtime_for_board(
+            board_id, None, monitor_type="lever", board_url=url, monitor_config=config
+        ).implementation
+        == "go-lever"
+    )
+    monkeypatch.setenv("LEVER_GO_PERCENT", "0")
+    assert (
+        _monitor_runtime_for_board(
+            board_id, None, monitor_type="lever", board_url=url, monitor_config=config
+        ).implementation
+        == "python"
+    )

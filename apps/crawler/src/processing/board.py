@@ -1909,7 +1909,9 @@ def _go_rich_percentage_selected(
     """Choose a stable, strictly configured share of one rich ATS family."""
     if monitor_type not in _GO_RICH_HOSTS or board_url is None:
         return False
-    raw = os.environ.get(f"{monitor_type.upper()}_GO_PERCENT", "0")
+    raw = os.environ.get(
+        f"{monitor_type.upper()}_GO_PERCENT", "100" if monitor_type == "lever" else "0"
+    )
     if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw):
         return False
     percentage = int(raw)
