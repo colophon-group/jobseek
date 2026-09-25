@@ -345,6 +345,7 @@ async def fetch_json_page_with_retry(
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+    on_success_body: Callable[[bytes, int, str], None] | None = None,
 ) -> dict[str, Any]:
     pass
 
@@ -368,6 +369,7 @@ async def fetch_json_page_with_retry(
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+    on_success_body: Callable[[bytes, int, str], None] | None = None,
 ) -> list[Any]:
     pass
 
@@ -390,6 +392,7 @@ async def fetch_json_page_with_retry(
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+    on_success_body: Callable[[bytes, int, str], None] | None = None,
 ) -> dict[str, Any] | list[Any]:
     """Fetch a JSON pagination page with strict retry semantics.
 
@@ -477,6 +480,12 @@ async def fetch_json_page_with_retry(
                     raise ValueError(
                         f"JSON page from {url} returned {type(data).__name__}, "
                         f"expected {expect_shape.__name__}"
+                    )
+                if on_success_body is not None:
+                    on_success_body(
+                        bytes(body) if max_bytes is not None else resp.content,
+                        resp.status_code,
+                        str(resp.url),
                     )
                 if retried:
                     http_retry_attempts_total.labels(host=host, outcome="recovered").inc()

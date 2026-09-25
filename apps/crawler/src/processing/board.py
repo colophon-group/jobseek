@@ -1879,24 +1879,117 @@ class BoardMonitorResult:
         yield self.duration_seconds
 
 
-def _monitor_runtime_for_board(board_id: str, provided: MonitorRuntime | None) -> MonitorRuntime:
+_GO_RICH_BOOKKEEPING = {
+    "scraper_type",
+    "suspect_streak",
+    "recent_discovered_counts",
+    "_monitor_config_fingerprint",
+    "_confirmed_drop_candidate",
+}
+_GO_RICH_HOSTS = {
+    "greenhouse": {
+        "job-boards.greenhouse.io",
+        "job-boards.eu.greenhouse.io",
+        "boards.greenhouse.io",
+        "boards.eu.greenhouse.io",
+        "boards-api.greenhouse.io",
+    },
+    "ashby": {"jobs.ashbyhq.com", "api.ashbyhq.com"},
+    "lever": {"jobs.lever.co", "jobs.eu.lever.co", "api.lever.co", "api.eu.lever.co"},
+}
+_GO_RICH_TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+
+
+def _go_rich_percentage_selected(
+    board_id: str,
+    monitor_type: str | None,
+    board_url: str | None,
+    monitor_config: dict | None,
+) -> bool:
+    """Choose a stable, strictly configured share of one rich ATS family."""
+    if monitor_type not in _GO_RICH_HOSTS or board_url is None:
+        return False
+    raw = os.environ.get(f"{monitor_type.upper()}_GO_PERCENT", "0")
+    if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw):
+        return False
+    percentage = int(raw)
+    if percentage == 0:
+        return False
+    try:
+        parsed = urlparse(board_url)
+        port = parsed.port
+    except ValueError:
+        return False
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in _GO_RICH_HOSTS[monitor_type]
+        or parsed.username is not None
+        or parsed.password is not None
+        or port is not None
+    ):
+        return False
+    config = monitor_config or {}
+    token = config.get("token")
+    allowed = {"token"} | _GO_RICH_BOOKKEEPING
+    if monitor_type == "lever":
+        allowed.add("region")
+        region = config.get("region") or ""
+        if region not in {"", "eu"}:
+            return False
+        if (parsed.hostname in {"jobs.eu.lever.co", "api.eu.lever.co"}) != (region == "eu"):
+            return False
+    if (
+        config.get("scraper_type") != "skip"
+        or not isinstance(token, str)
+        or _GO_RICH_TOKEN_RE.fullmatch(token) is None
+        or set(config) - allowed
+    ):
+        return False
+    bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
+    return bucket < percentage * 100
+
+
+def _monitor_runtime_for_board(
+    board_id: str,
+    provided: MonitorRuntime | None,
+    *,
+    monitor_type: str | None = None,
+    board_url: str | None = None,
+    monitor_config: dict | None = None,
+) -> MonitorRuntime:
     if provided is not None:
         return provided
+    percent_selected = _go_rich_percentage_selected(
+        board_id, monitor_type, board_url, monitor_config
+    )
     ashby_board_ids = {
         selected.strip()
         for selected in os.environ.get("ASHBY_GO_BOARD_IDS", "").split(",")
         if selected.strip()
     }
-    if board_id in ashby_board_ids:
+    if board_id in ashby_board_ids or (monitor_type == "ashby" and percent_selected):
         from src.runtime.ashby_go import GoAshbyMonitorRuntime
 
         return GoAshbyMonitorRuntime(board_id=board_id)
+    lever_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("LEVER_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in lever_board_ids or (monitor_type == "lever" and percent_selected):
+        from src.runtime.lever_go import GoLeverMonitorRuntime
+
+        return GoLeverMonitorRuntime(board_id=board_id)
     greenhouse_board_ids = {
         selected.strip()
         for selected in os.environ.get("GREENHOUSE_GO_BOARD_IDS", "").split(",")
         if selected.strip()
     }
-    if board_id in greenhouse_board_ids or os.environ.get("GREENHOUSE_GO_BOARD_ID") == board_id:
+    if (
+        board_id in greenhouse_board_ids
+        or os.environ.get("GREENHOUSE_GO_BOARD_ID") == board_id
+        or (monitor_type == "greenhouse" and percent_selected)
+    ):
         from src.runtime.greenhouse_go import ELASTIC_BOARD_ID, GoGreenhouseMonitorRuntime
 
         if os.environ.get("GREENHOUSE_GO_BOARD_ID") == board_id and board_id != ELASTIC_BOARD_ID:
@@ -2034,7 +2127,13 @@ async def _process_one_board_streaming(
         # by the monitor's own MAX_JOBS cap and is discarded after the cycle.
         guard_inventory_identities: set[str] = set()
 
-        runtime = _monitor_runtime_for_board(board_id, monitor_runtime)
+        runtime = _monitor_runtime_for_board(
+            board_id,
+            monitor_runtime,
+            monitor_type=crawler_type,
+            board_url=board_url,
+            monitor_config=metadata,
+        )
         monitor_stream = runtime.stream(
             board_url,
             crawler_type,
