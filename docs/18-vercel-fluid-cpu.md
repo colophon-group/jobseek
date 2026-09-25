@@ -133,6 +133,34 @@ telemetry upgrade for now; the exact external-call and complete-window traffic
 requirements remain in force and incomplete until a supported collection path
 is operational.
 
+### Interim Hobby log archive
+
+To preserve a larger natural-traffic sample without a paid upgrade, run the
+repository collector every 20 minutes with a 45-minute lookback. Overlap
+protects against a delayed run within Hobby's one-hour retention; it does not
+recover a gap longer than retention. The collector splits queries into short
+intervals when the CLI hits its result limit, deduplicates by log ID, and writes
+private raw JSONL outside Git. It never labels the archive as all traffic.
+
+```bash
+python3 scripts/collect-vercel-runtime-logs.py \
+  --archive /absolute/private/archive capture \
+  --lookback-minutes 45 --slice-minutes 5
+
+python3 scripts/collect-vercel-runtime-logs.py \
+  --archive /absolute/private/archive summary \
+  --start 2026-09-25T15:00:00Z --end 2026-09-26T03:00:00Z
+```
+
+The summary reports unique runtime log IDs, company/locale keys, deployment
+IDs, queried-interval gaps, failed queries, and truncated slices. CLI JSON
+does not expose User-Agent, and the runtime log source omits some static
+requests. Its `recognizedBotRequests` is therefore `null` and
+`sourceIncludesAllTraffic` is always `false`. Use the archive to support
+natural-route analysis and diagnose deployment churn; do not set the gate's
+bot or all-traffic fields to passing values from this archive. Exact Typesense
+and Upstash counts are still unavailable on Hobby.
+
 ## Production deployment identity
 
 Do not start a measurement window until the deployment holding the production
