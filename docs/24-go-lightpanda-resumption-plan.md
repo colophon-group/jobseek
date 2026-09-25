@@ -6,7 +6,9 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
-## Production checkpoint: 2026-09-25 19:33 UTC
+## Production checkpoint: 2026-09-25 20:22 UTC
+
+This section supersedes the earlier pending Verity observation below.
 
 [PR #10031](https://github.com/colophon-group/jobseek/pull/10031) fixed
 Compose propagation of `SITEMAP_GO_BOARD_IDS` after the first v0.13.861
@@ -30,11 +32,18 @@ The read-only epoch-72 queue conservation audit returned `accepted/audit_ok`:
 five records, all ready, zero inflight or dead.
 
 Verity's last Python monitor completed naturally at 19:12:41 UTC, before
-activation. It has three active PostgreSQL URLs with sorted digest
-`3427540e27b9a618103f26eb9a178000e5296b1b4db0f3e0e09cc9672acda288`,
-zero board failures, and a normal next check at 20:12:41 UTC. The first
-selected Go cycle and exact persisted URL readback remain pending. Do not
-force due scores or duplicate origin traffic. Before another crawler deploy
+activation. The first selected Go sitemap monitor completed on its normal
+schedule at 20:21:21 UTC. It returned three URLs from one HTTP response
+(911 bytes), with sorted URL SHA-256
+`3427540e27b9a618103f26eb9a178000e5296b1b4db0f3e0e09cc9672acda288`.
+The existing board writer persisted exactly three active PostgreSQL rows with
+the same sorted digest; `last_success_at` advanced to 20:21:21 UTC, the next
+check to 21:21:21 UTC, and `consecutive_failures` remained zero. No due score
+or duplicate origin request was forced. The post-run epoch-72 queue audit
+again returned `accepted/audit_ok`, five ready records, and zero inflight or
+dead; all nine runtime services listed above remained healthy. This proves
+one selected Go HTTP monitor and its database effects, not fleet-wide output
+or whole-lane resource parity. Before another crawler deploy
 or selector mutation, cold-rollback c1, then clear all 22 selectors under
 `/run/lock/jobseek-crawler-mutation.lock` with the same script in `clear`
 mode, exact release revision `f4520232f1f8c0905a68586dbfe4b736b7f17e79`,
