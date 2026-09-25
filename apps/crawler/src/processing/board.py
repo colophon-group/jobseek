@@ -1965,6 +1965,17 @@ def _monitor_runtime_for_board(
 ) -> MonitorRuntime:
     if provided is not None:
         return provided
+    sitemap_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("SITEMAP_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in sitemap_board_ids:
+        from src.runtime.sitemap_go import GoSitemapMonitorRuntime, eligible
+
+        if not eligible(board_url or "", monitor_type, monitor_config):
+            raise ValueError("Go sitemap selector requires an explicit supported configuration")
+        return GoSitemapMonitorRuntime(board_id=board_id)
     percent_selected = _go_rich_percentage_selected(
         board_id, monitor_type, board_url, monitor_config
     )
