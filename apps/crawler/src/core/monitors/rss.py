@@ -41,6 +41,7 @@ from src.core.enum_normalize import normalize_job_location_type
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
+from src.core.monitors.teamtailor_capture import open_teamtailor_capture
 from src.shared.http_retry import (
     PaginationFetchError,
     fetch_text_page_with_retry,
@@ -1723,43 +1724,74 @@ async def _stream_feed_items(
                     parser = ET.XMLPullParser(events=("end",))
                     prefix = bytearray()
                     sniffed = False
+                    capture = (
+                        open_teamtailor_capture(feed_url)
+                        if preset is _PRESETS["teamtailor"]
+                        else None
+                    )
+                    try:
+                        async for chunk in response.aiter_bytes(chunk_size=_HTTP_CHUNK_BYTES):
+                            if capture is not None:
+                                try:
+                                    capture.write(chunk)
+                                except (OSError, ValueError) as exc:
+                                    capture.discard()
+                                    capture = None
+                                    log.warning(
+                                        "teamtailor_rss.capture_failed",
+                                        error_type=type(exc).__name__,
+                                    )
+                            if not sniffed:
+                                prefix.extend(chunk)
+                                if len(prefix) < _SNIFF_BYTES:
+                                    continue
+                                head = bytes(prefix[:_SNIFF_BYTES])
+                                if not _feed_head_is_xml(head, response.encoding):
+                                    raise RssFeedNotXml(
+                                        f"feed returned non-XML content: {feed_url}"
+                                    )
+                                chunk = bytes(prefix)
+                                prefix.clear()
+                                sniffed = True
 
-                    async for chunk in response.aiter_bytes(chunk_size=_HTTP_CHUNK_BYTES):
+                            for item in _feed_parser_items(
+                                parser,
+                                chunk,
+                                item_tag=preset.item_tag,
+                            ):
+                                emitted += 1
+                                yield item
+                                # The pull parser's root retains the element shell;
+                                # clear its potentially huge description children.
+                                item.clear()
+
                         if not sniffed:
-                            prefix.extend(chunk)
-                            if len(prefix) < _SNIFF_BYTES:
-                                continue
-                            head = bytes(prefix[:_SNIFF_BYTES])
-                            if not _feed_head_is_xml(head, response.encoding):
+                            if not _feed_head_is_xml(bytes(prefix), response.encoding):
                                 raise RssFeedNotXml(f"feed returned non-XML content: {feed_url}")
-                            chunk = bytes(prefix)
-                            prefix.clear()
-                            sniffed = True
+                            for item in _feed_parser_items(
+                                parser,
+                                bytes(prefix),
+                                item_tag=preset.item_tag,
+                            ):
+                                emitted += 1
+                                yield item
+                                item.clear()
 
-                        for item in _feed_parser_items(
-                            parser,
-                            chunk,
-                            item_tag=preset.item_tag,
-                        ):
-                            emitted += 1
-                            yield item
-                            # The pull parser's root retains the element shell;
-                            # clear its potentially huge description children.
-                            item.clear()
-
-                    if not sniffed:
-                        if not _feed_head_is_xml(bytes(prefix), response.encoding):
-                            raise RssFeedNotXml(f"feed returned non-XML content: {feed_url}")
-                        for item in _feed_parser_items(
-                            parser,
-                            bytes(prefix),
-                            item_tag=preset.item_tag,
-                        ):
-                            emitted += 1
-                            yield item
-                            item.clear()
-
-                    parser.close()  # validate that the streamed XML completed
+                        parser.close()  # validate that the streamed XML completed
+                        if capture is not None:
+                            try:
+                                capture.commit()
+                            except OSError as exc:
+                                log.warning(
+                                    "teamtailor_rss.capture_failed",
+                                    error_type=type(exc).__name__,
+                                )
+                            finally:
+                                capture.discard()
+                                capture = None
+                    finally:
+                        if capture is not None:
+                            capture.discard()
                     if retried:
                         http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
                     return

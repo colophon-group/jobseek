@@ -2068,6 +2068,22 @@ def _monitor_runtime_for_board(
         from src.runtime.booking_api_go import GoBookingAPIMonitorRuntime
 
         return GoBookingAPIMonitorRuntime(board_id=board_id)
+    teamtailor_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("TEAMTAILOR_RSS_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.teamtailor_rss_go import GoTeamtailorRSSMonitorRuntime
+    from src.runtime.teamtailor_rss_go import (
+        percentage_selected as teamtailor_rss_percentage_selected,
+    )
+
+    if board_id in teamtailor_board_ids or (
+        monitor_type == "rss"
+        and board_url is not None
+        and teamtailor_rss_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoTeamtailorRSSMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 
