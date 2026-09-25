@@ -18,8 +18,8 @@ const maxResponseBytes = 8 << 20
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
 
 var metaRE = regexp.MustCompile(`(?is)<meta\b[^>]*>`)
-var tdmNameRE = regexp.MustCompile(`(?i)\bname\s*=\s*["']tdm-reservation["']`)
-var tdmContentRE = regexp.MustCompile(`(?i)\bcontent\s*=\s*["']1["']`)
+var tdmNameRE = regexp.MustCompile(`(?i)\bname\s*=\s*["']?tdm-reservation(?:["']|\s|/?>)`)
+var tdmContentRE = regexp.MustCompile(`(?i)\bcontent\s*=\s*["']?1(?:["']|\s|/?>)`)
 
 var nonPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("0.0.0.0/8"),
@@ -56,7 +56,7 @@ func publicAddress(ip netip.Addr) bool {
 }
 
 func tdmMetaReserved(body []byte) bool {
-	for _, tag := range metaRE.FindAll(body[:min(len(body), 512)], -1) {
+	for _, tag := range metaRE.FindAll(body, -1) {
 		if tdmNameRE.Match(tag) && tdmContentRE.Match(tag) {
 			return true
 		}

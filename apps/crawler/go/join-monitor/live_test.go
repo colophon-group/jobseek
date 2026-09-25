@@ -79,6 +79,8 @@ func TestTDMMetadataAcceptsAttributeOrder(t *testing.T) {
 	for _, body := range []string{
 		`<meta name="tdm-reservation" content="1">`,
 		`<meta content='1' name='tdm-reservation'>`,
+		`<meta name=tdm-reservation content=1>`,
+		strings.Repeat("x", 1024) + `<meta content=1 name=tdm-reservation>`,
 	} {
 		if !tdmMetaReserved([]byte(body)) {
 			t.Fatalf("missed reservation: %s", body)
