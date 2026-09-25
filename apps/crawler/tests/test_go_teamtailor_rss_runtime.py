@@ -62,6 +62,49 @@ async def test_go_teamtailor_emits_rich_job(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_go_teamtailor_applies_streamed_url_policy(tmp_path):
+    """Go output must retain the Python monitor's provider-boundary identity policy."""
+    first = f"{BOARD_URL}/123-engineer"
+    second = f"{BOARD_URL}/456-designer"
+    rejected = "https://elsewhere.example.com/jobs/789"
+    config = {
+        **CONFIG,
+        "url_allowlist": r"^https://careers\.example\.com/jobs/[0-9]+(?:-[^/?#]+)?$",
+        "url_transform": {
+            "find": r"^https://careers\.example\.com/jobs/([0-9]+)(?:-[^/?#]+)?$",
+            "replace": r"https://careers.example.com/jobs/\1",
+        },
+    }
+    runtime = GoTeamtailorRSSMonitorRuntime(
+        fake_binary(
+            tmp_path,
+            {
+                "jobs": [
+                    {"url": first, "title": "Engineer", "metadata": {"id": "123"}},
+                    {"url": second, "title": "Designer", "metadata": {"id": "456"}},
+                    {"url": rejected, "title": "Other"},
+                ],
+                "truncated": False,
+                "requests": 1,
+                "responses": 1,
+                "bytes": 100,
+                "status": 200,
+                "final_url": FEED_URL + "?offset=0&per_page=100",
+            },
+        ),
+        board_id=BOARD_ID,
+    )
+    result = [item async for item in runtime.stream(BOARD_URL, "rss", config, None)]
+    assert len(result) == 1
+    assert result[0].urls == {
+        f"{BOARD_URL}/123",
+        f"{BOARD_URL}/456",
+    }
+    assert result[0].security_filtered_count == 1
+    assert result[0].jobs_by_url[f"{BOARD_URL}/123"].title == "Engineer"
+
+
+@pytest.mark.asyncio
 async def test_go_teamtailor_preserves_http_failure(tmp_path):
     runtime = GoTeamtailorRSSMonitorRuntime(
         fake_binary(
