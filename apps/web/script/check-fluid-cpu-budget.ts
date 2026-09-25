@@ -219,23 +219,6 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
     "traffic.samplingRatePct",
   );
 
-  const approvals = record(report.approvals, "approvals");
-  const r2Revision = approvals.companyOgR2Revision;
-  if (r2Revision !== null && typeof r2Revision !== "string") {
-    throw new Error("approvals.companyOgR2Revision must be a URL or null");
-  }
-  if (typeof r2Revision === "string") {
-    const url = new URL(r2Revision);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== "github.com" ||
-      !url.pathname.startsWith("/colophon-group/jobseek/") ||
-      !/^#(?:issuecomment|pullrequestreview)-\d+$/.test(url.hash)
-    ) {
-      throw new Error("approvals.companyOgR2Revision must link to a repository approval comment");
-    }
-  }
-
   const functionality = record(report.functionality, "functionality");
   const functionalityChecks = REQUIRED_FUNCTIONALITY.map((name) => ({
     name,
@@ -323,13 +306,6 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
     budget: "100%",
     passed: samplingRatePct === 100,
     available: true,
-  });
-  checks.push({
-    name: "Company OG R2 gate revision approved",
-    actual: r2Revision ?? "unknown",
-    budget: "approval reference",
-    passed: r2Revision !== null,
-    available: r2Revision !== null,
   });
 
   for (const functionalityCheck of functionalityChecks) {

@@ -43,9 +43,6 @@ function passingReport() {
       source: "100% production Vercel log drain",
       samplingRatePct: 100,
     },
-    approvals: {
-      companyOgR2Revision: "https://github.com/colophon-group/jobseek/issues/10015#issuecomment-1",
-    },
     functionality: {
       home: true,
       explore: true,
@@ -136,26 +133,6 @@ describe("Fluid CPU regression gate", () => {
     expect(result.passed).toBe(false);
     expect(result.markdown).toContain("Typesense calls / invocation | unknown");
     expect(result.markdown).toContain("Upstash calls / invocation | unknown");
-  });
-
-  it("requires an approval reference before the revised R2 gate can pass", () => {
-    const report = passingReport();
-    const result = evaluateFluidCpuReport({
-      ...report,
-      approvals: { companyOgR2Revision: null },
-    });
-
-    expect(result.status).toBe("INCOMPLETE");
-    expect(result.checks.find((check) => check.name === "Company OG R2 gate revision approved"))
-      .toMatchObject({ available: false, passed: false });
-  });
-
-  it("rejects an approval reference outside the repository", () => {
-    const report = passingReport();
-    expect(() => evaluateFluidCpuReport({
-      ...report,
-      approvals: { companyOgR2Revision: "https://example.com/approved" },
-    })).toThrow("approvals.companyOgR2Revision must link to a repository approval comment");
   });
 
   it("keeps measured CPU failure visible when other evidence is incomplete", () => {

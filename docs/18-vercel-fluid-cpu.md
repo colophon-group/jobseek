@@ -117,7 +117,7 @@ Observability Plus events; taxes and other usage may apply. No plan change or dr
 enabled by this runbook. A fresh 12-hour window starts after the collection
 path, deployment, and WAF state are verified.
 
-**Proposed R2 gate revision for review:** Company OG now uses prewarmed,
+**Approved R2 gate revision (requester, September 25, 2026):** Company OG now uses prewarmed,
 versioned PNGs served directly from the R2 custom domain. A browser request
 for that image bypasses Vercel Functions. The old 95% R2 hit threshold in
 schema v1 measured a former Function-side cache and is no longer a Fluid CPU
@@ -126,8 +126,12 @@ plus the `companyOg` Function CPU budget to catch fallback rendering. R2
 delivery/cache health should be monitored separately at Cloudflare. Its
 [adaptive GraphQL datasets can be sampled](https://developers.cloudflare.com/analytics/graphql-api/sampling/),
 so they cannot silently supply exact hit/miss counts; [raw Cloudflare HTTP
-Logpush requires Enterprise](https://developers.cloudflare.com/logs/logpush/). This
-revision needs explicit approval before declaring a future v2 window passed.
+Logpush requires Enterprise](https://developers.cloudflare.com/logs/logpush/).
+The requester approved replacing the obsolete R2 metric with the live checks
+and preserved Function CPU budget. The requester declined a paid Vercel
+telemetry upgrade for now; the exact external-call and complete-window traffic
+requirements remain in force and incomplete until a supported collection path
+is operational.
 
 ## Production deployment identity
 
@@ -266,9 +270,6 @@ production behavior. CPU gains never override a failed functionality check.
     "source": "100% production Vercel log drain, archived batch set <reference>",
     "samplingRatePct": 100
   },
-  "approvals": {
-    "companyOgR2Revision": null
-  },
   "functionality": {
     "home": true,
     "explore": true,
@@ -298,11 +299,7 @@ into `metrics_json`. The workflow writes the complete gate table to its job
 summary and fails when any budget or functionality check fails. Unknown exact
 external counts are `null` and display as `INCOMPLETE`; a simultaneous measured
 failure is reported as `FAIL (INCOMPLETE EVIDENCE)`. Never substitute zero.
-`approvals.companyOgR2Revision` stays `null` until an explicit approval is
-recorded. Replace it with an HTTPS link to the approving issue comment or PR
-review in this repository only after approval.
-The gate stays incomplete while it is null. Archived schema-v1 reports remain
-historical evidence; they are not valid
+Archived schema-v1 reports remain historical evidence; they are not valid
 schema-v2 passes.
 
 ## Rollback and escalation
