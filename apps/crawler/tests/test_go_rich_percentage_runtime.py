@@ -83,6 +83,16 @@ def test_lever_eu_requires_matching_region(monkeypatch):
             board_url=url,
             monitor_config={**config, "region": ""},
         ).implementation
+        == "go-lever"
+    )
+    assert (
+        _monitor_runtime_for_board(
+            board_id,
+            None,
+            monitor_type="lever",
+            board_url=url,
+            monitor_config={**config, "region": "us"},
+        ).implementation
         == "python"
     )
 
@@ -105,3 +115,33 @@ def test_lever_strict_cohort_defaults_to_go_and_explicit_zero_reverses(monkeypat
         ).implementation
         == "python"
     )
+
+
+def test_lever_direct_url_token_and_region_follow_python_resolution(monkeypatch):
+    monkeypatch.delenv("LEVER_GO_PERCENT", raising=False)
+    board_id = "3bba23a0-5e4c-4928-9173-0d59ec0d44b8"
+    for url in ("https://jobs.lever.co/acme", "https://jobs.eu.lever.co/acme/"):
+        assert (
+            _monitor_runtime_for_board(
+                board_id,
+                None,
+                monitor_type="lever",
+                board_url=url,
+                monitor_config={"scraper_type": "skip"},
+            ).implementation
+            == "go-lever"
+        )
+    for url, config in (
+        ("https://jobs.lever.co/acme/jobs", {"scraper_type": "skip"}),
+        ("https://jobs.lever.co/acme?foo=bar", {"scraper_type": "skip"}),
+        ("https://jobs.lever.co/v0", {"scraper_type": "skip"}),
+        ("https://api.lever.co/v0/postings/acme", {"scraper_type": "skip"}),
+        ("https://jobs.eu.lever.co/acme", {"region": "us", "scraper_type": "skip"}),
+        ("https://jobs.lever.co/acme", {"scraper_type": "skip", "proxy": True}),
+    ):
+        assert (
+            _monitor_runtime_for_board(
+                board_id, None, monitor_type="lever", board_url=url, monitor_config=config
+            ).implementation
+            == "python"
+        )
