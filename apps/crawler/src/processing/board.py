@@ -2021,6 +2021,8 @@ def _monitor_runtime_for_board(
     }
     from src.runtime.join_go import (
         GoJoinMonitorRuntime,
+    )
+    from src.runtime.join_go import (
         percentage_selected as join_percentage_selected,
     )
 
@@ -2037,6 +2039,8 @@ def _monitor_runtime_for_board(
     }
     from src.runtime.recruitee_go import (
         GoRecruiteeMonitorRuntime,
+    )
+    from src.runtime.recruitee_go import (
         percentage_selected as recruitee_percentage_selected,
     )
 
