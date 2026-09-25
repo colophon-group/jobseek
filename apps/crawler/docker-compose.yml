@@ -27,6 +27,8 @@ x-common-env: &common-env
   PROXY_PROVIDER: ${PROXY_PROVIDER:-none}
   WEBSHARE_PROXY_URLS: "${WEBSHARE_PROXY_URLS:-[]}"
   WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
+  # Exact, default-off Go sitemap monitor handoff.
+  SITEMAP_GO_BOARD_IDS: ${SITEMAP_GO_BOARD_IDS:-}
   # Opt-in one-cycle capture of an existing Workday schedule for Go replay.
   WORKDAY_REPLAY_CAPTURE_BOARD_ID: ${WORKDAY_REPLAY_CAPTURE_BOARD_ID:-}
   # Exclusive Go list handoff for admitted single-site boards; empty keeps Python authoritative.
