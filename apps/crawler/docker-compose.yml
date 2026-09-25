@@ -53,6 +53,10 @@ x-common-env: &common-env
   # One bounded response from each selected natural Lever schedule.
   LEVER_CAPTURE_TOKENS: ${LEVER_CAPTURE_TOKENS:-}
   LEVER_GO_PERCENT: ${LEVER_GO_PERCENT:-0}
+  # Default-off Go JOIN embedded-data monitor and stable cohort.
+  JOIN_GO_BOARD_IDS: ${JOIN_GO_BOARD_IDS:-}
+  JOIN_GO_PERCENT: ${JOIN_GO_PERCENT:-0}
+  JOIN_CAPTURE_SLUGS: ${JOIN_CAPTURE_SLUGS:-}
 
 services:
   # -- Redis -------------------------------------------------------

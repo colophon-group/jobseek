@@ -2014,6 +2014,19 @@ def _monitor_runtime_for_board(
         from src.runtime.workday_go import GoWorkdayMonitorRuntime
 
         return GoWorkdayMonitorRuntime(board_id=board_id)
+    join_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("JOIN_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.join_go import GoJoinMonitorRuntime, percentage_selected
+
+    if board_id in join_board_ids or (
+        monitor_type == "join"
+        and board_url is not None
+        and percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoJoinMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 
