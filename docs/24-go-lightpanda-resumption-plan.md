@@ -26,6 +26,9 @@ now sees Verity's exact `SITEMAP_GO_BOARD_IDS` value
 `c4779214-ef92-4261-98fb-ae64f264fd23`. Workers, browser, drain, producer,
 executor, claimant, and Redis are all healthy.
 
+The read-only epoch-72 queue conservation audit returned `accepted/audit_ok`:
+five records, all ready, zero inflight or dead.
+
 Verity's last Python monitor completed naturally at 19:12:41 UTC, before
 activation. It has three active PostgreSQL URLs with sorted digest
 `3427540e27b9a618103f26eb9a178000e5296b1b4db0f3e0e09cc9672acda288`,
