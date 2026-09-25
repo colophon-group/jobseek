@@ -2000,7 +2000,17 @@ def _monitor_runtime_for_board(
         for selected in os.environ.get("WORKDAY_GO_BOARD_IDS", "").split(",")
         if selected.strip()
     }
-    if board_id in workday_board_ids or os.environ.get("WORKDAY_GO_BOARD_ID") == board_id:
+    from src.runtime.workday_go import percentage_selected
+
+    if (
+        board_id in workday_board_ids
+        or os.environ.get("WORKDAY_GO_BOARD_ID") == board_id
+        or (
+            monitor_type == "workday"
+            and board_url is not None
+            and percentage_selected(board_id, board_url, monitor_config)
+        )
+    ):
         from src.runtime.workday_go import GoWorkdayMonitorRuntime
 
         return GoWorkdayMonitorRuntime(board_id=board_id)
