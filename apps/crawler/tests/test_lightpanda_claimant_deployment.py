@@ -1796,7 +1796,18 @@ def test_pending_receipt_recovery_settles_before_plan_and_restores_python(
     tombstone_clear = next(
         index for index, event in enumerate(events) if " clear-rollback-tombstone " in event
     )
+    final_save = max(
+        index
+        for index, event in enumerate(events)
+        if " exec -T redis redis-cli --raw SAVE" in event
+    )
+    redis_ready = next(
+        index
+        for index, event in enumerate(events)
+        if index > final_save and "-f docker-compose.yml ps -q redis" in event
+    )
     assert settle < plan < apply < sentinel_clear < tombstone_clear < base_start
+    assert final_save < redis_ready < base_start
     assert not receipt.exists()
 
 
