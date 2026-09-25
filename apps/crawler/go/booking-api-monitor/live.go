@@ -153,15 +153,20 @@ func Fetch(ctx context.Context, client requestDoer) (FetchResult, error) {
 	return result, nil
 }
 
-func FetchBooking(ctx context.Context) (FetchResult, error) {
+func newClient() *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	transport.DialContext = publicDialContext
-	transport.ForceAttemptHTTP2 = false
-	client := &http.Client{
+	// A custom DialContext disables automatic HTTP/2 setup unless forced.
+	transport.ForceAttemptHTTP2 = true
+	return &http.Client{
 		Timeout: 30 * time.Second, Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
+}
+
+func FetchBooking(ctx context.Context) (FetchResult, error) {
+	client := newClient()
 	defer client.CloseIdleConnections()
 	return Fetch(ctx, client)
 }
