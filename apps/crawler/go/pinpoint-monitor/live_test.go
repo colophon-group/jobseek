@@ -2,12 +2,39 @@ package pinpoint
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/netip"
 	"strings"
 	"testing"
 )
+
+func TestLiveClientNegotiatesHTTP2WithCustomDialer(t *testing.T) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.ProtoMajor != 2 {
+			t.Errorf("negotiated %s; want HTTP/2", request.Proto)
+		}
+		_, _ = io.WriteString(w, `{"data":[]}`)
+	}))
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+
+	client := newClient()
+	defer client.CloseIdleConnections()
+	transport := client.Transport.(*http.Transport)
+	transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
+	}
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // Local test server only.
+	result, err := Fetch(context.Background(), client, "acme")
+	if err != nil || result.Requests != 1 || result.Responses != 1 {
+		t.Fatalf("HTTP/2 fetch failed: %#v, %v", result, err)
+	}
+}
 
 type fakeClient struct {
 	status int

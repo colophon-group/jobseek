@@ -118,8 +118,8 @@ func newClient() *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	transport.DialContext = publicDialContext
-	// Keep transport request counts aligned with explicit application attempts.
-	transport.ForceAttemptHTTP2 = false
+	// A custom DialContext disables automatic HTTP/2 setup unless forced.
+	transport.ForceAttemptHTTP2 = true
 	return &http.Client{
 		Timeout:       30 * time.Second,
 		Transport:     transport,
