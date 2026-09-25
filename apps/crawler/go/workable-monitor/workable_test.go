@@ -106,6 +106,26 @@ func TestFetchRateLimitVerifiesEmpty(t *testing.T) {
 	}
 }
 
+func TestFetchMarkdownSearchInstructionsUseCountedPublicAPI(t *testing.T) {
+	responses := []scriptedResponse{}
+	for range 4 {
+		responses = append(responses, scriptedResponse{status: 429})
+	}
+	responses = append(responses,
+		scriptedResponse{status: 200, body: "All open roles at Acme: 2 current openings"},
+		scriptedResponse{status: 200, body: "Use the search endpoint to filter results"},
+		scriptedResponse{status: 200, body: `{"jobs":[{"shortcode":"B"},{"shortcode":"A"}]}`},
+	)
+	client := &scriptedClient{responses: responses}
+	result, err := Fetch(context.Background(), client, "acme", noPause)
+	if err != nil || result.Requests != 7 || len(result.URLs) != 2 {
+		t.Fatalf("public fallback failed: %#v, %v", result, err)
+	}
+	if client.requests[6].URL.String() != "https://www.workable.com/api/accounts/acme" {
+		t.Fatalf("public fallback used the wrong endpoint: %s", client.requests[6].URL)
+	}
+}
+
 func TestFetchFailureAfterFirstPageCannotReturnPartialInventory(t *testing.T) {
 	client := &scriptedClient{responses: []scriptedResponse{
 		{status: 200, body: `{"results":[{"shortcode":"A"}],"nextPage":"cursor"}`},
