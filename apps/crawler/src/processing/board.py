@@ -1898,6 +1898,7 @@ _GO_RICH_HOSTS = {
     "lever": {"jobs.lever.co", "jobs.eu.lever.co", "api.lever.co", "api.eu.lever.co"},
 }
 _GO_RICH_TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+_GO_LEVER_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
 
 
 def _go_rich_percentage_selected(
@@ -1924,7 +1925,8 @@ def _go_rich_percentage_selected(
         return False
     if (
         parsed.scheme != "https"
-        or parsed.hostname not in _GO_RICH_HOSTS[monitor_type]
+        or parsed.hostname is None
+        or (monitor_type != "lever" and parsed.hostname not in _GO_RICH_HOSTS[monitor_type])
         or parsed.username is not None
         or parsed.password is not None
         or port is not None
@@ -1940,11 +1942,12 @@ def _go_rich_percentage_selected(
         if settings is None:
             return False
         token, _ = settings
-        allowed.add("region")
+        allowed.update(("region", "company"))
+    token_pattern = _GO_LEVER_TOKEN_RE if monitor_type == "lever" else _GO_RICH_TOKEN_RE
     if (
         config.get("scraper_type") != "skip"
         or not isinstance(token, str)
-        or _GO_RICH_TOKEN_RE.fullmatch(token) is None
+        or token_pattern.fullmatch(token) is None
         or set(config) - allowed
     ):
         return False

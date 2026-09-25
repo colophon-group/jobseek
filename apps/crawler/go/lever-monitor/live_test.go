@@ -66,4 +66,8 @@ func TestTokenURLRejectsNonCanonicalInputs(t *testing.T) {
 	if err != nil || url != "https://api.eu.lever.co/v0/postings/acme?limit=100&skip=100" {
 		t.Fatalf("unexpected EU URL %s: %v", url, err)
 	}
+	dotted, err := TokenURL("aqemia.com", "", 0)
+	if err != nil || dotted != "https://api.lever.co/v0/postings/aqemia.com?limit=100&skip=0" {
+		t.Fatalf("unexpected dotted tenant URL %s: %v", dotted, err)
+	}
 }

@@ -145,3 +145,43 @@ def test_lever_direct_url_token_and_region_follow_python_resolution(monkeypatch)
             ).implementation
             == "python"
         )
+
+
+def test_lever_explicit_tokens_cover_remaining_strict_rich_boards(monkeypatch):
+    monkeypatch.delenv("LEVER_GO_PERCENT", raising=False)
+    cases = (
+        ("https://jobs.lever.co/aqemia.com", {"token": "aqemia.com"}),
+        ("https://jobs.lever.co/oaknorth.ai", {"token": "oaknorth.ai"}),
+        ("https://jobs.lever.co/tryjeeves", {"company": "tryjeeves"}),
+        ("https://www.plexus.co/careers", {"token": "plexus"}),
+        ("https://www.wmg.com/careers", {"token": "wmg"}),
+    )
+    for url, metadata in cases:
+        config = {**metadata, "scraper_type": "skip"}
+        assert (
+            _monitor_runtime_for_board(
+                "3bba23a0-5e4c-4928-9173-0d59ec0d44b8",
+                None,
+                monitor_type="lever",
+                board_url=url,
+                monitor_config=config,
+            ).implementation
+            == "go-lever"
+        )
+    for url, config in (
+        ("https://www.plexus.co/careers?variant=1", {"token": "plexus", "scraper_type": "skip"}),
+        ("https://www.plexus.co:8443/careers", {"token": "plexus", "scraper_type": "skip"}),
+        ("https://jobs.lever.co/tryjeeves", {"company": "someone-else", "scraper_type": "skip"}),
+        ("https://jobs.lever.co/aqemia.com", {"token": "../escape", "scraper_type": "skip"}),
+        ("https://www.wmg.com/careers", {"token": "wmg", "scraper_type": "json-ld"}),
+    ):
+        assert (
+            _monitor_runtime_for_board(
+                "3bba23a0-5e4c-4928-9173-0d59ec0d44b8",
+                None,
+                monitor_type="lever",
+                board_url=url,
+                monitor_config=config,
+            ).implementation
+            == "python"
+        )
