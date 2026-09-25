@@ -6,6 +6,29 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: 2026-09-25 16:15 UTC
+
+The bounded Go sitemap parser from the read-only pilot is now packaged for
+the crawler image behind `SITEMAP_GO_BOARD_IDS`. It accepts only an explicit
+same-origin HTTPS `urlset` and runs the same Python URL filter, allowlist, and
+transform stages before the existing board writer. It is default-off; an
+unsupported index or changed configuration fails closed. The accepted
+[production shadow](https://github.com/colophon-group/jobseek/issues/8641)
+previously matched Python's URL counts and hashes for Acosta/Dee Set and
+Verity Breezy. Select Verity's exact board ID
+`c4779214-ef92-4261-98fb-ae64f264fd23` only after this crawler release is
+deployed, then observe its natural Go output and active PostgreSQL URL digest.
+Do not force the board due or send a duplicate origin request.
+
+The unrelated crawler v0.13.860 deploy from `bcf2d84c4` failed before image
+change because c1 was active. Production remains on `2478244da`; c1 epoch 68
+and its 21 exact selectors remain active. Before the next crawler deploy, use
+the supported c1 cold rollback, clear all 21 selectors at exact revision
+`2478244da10230814e7a045c585f547e5d200f0e` under the host mutation lock,
+and only then deploy. Restage the desired selectors at the promoted revision
+and reactivate c1. The full [#7966](https://github.com/colophon-group/jobseek/issues/7966)
+completion goal remains open while Python and Chromium own production work.
+
 ## Production checkpoint: 2026-09-25 15:16 UTC
 
 [PR #10024](https://github.com/colophon-group/jobseek/pull/10024) merged as
@@ -321,10 +344,12 @@ reactivate c1 only after the new release passes its normal deployment gates.
 ## Current state
 
 - [#7935](https://github.com/colophon-group/jobseek/issues/7935) reset the
-  effort to bounded, independently useful pilots. The full rewrite checklist,
-  10M-board projection, zero-Chromium premise, and exact evidence chains in
-  [the older migration design](23-go-lightpanda-migration.md) are historical,
-  not current prerequisites.
+  initial effort to bounded, independently useful pilots. The 10M-board
+  projection and first-pilot gates in
+  [the older migration design](23-go-lightpanda-migration.md) are historical.
+  The owner subsequently made complete retirement of Python, Playwright, and
+  Chromium the delivery goal in [#7966](https://github.com/colophon-group/jobseek/issues/7966).
+  Its enabled-fleet and whole-lane completion criteria govern final cutover.
 - The bounded Go sitemap worker and read-only production shadow landed through
   [#8644](https://github.com/colophon-group/jobseek/pull/8644); the fleet
   benchmark landed through [#8660](https://github.com/colophon-group/jobseek/pull/8660)
