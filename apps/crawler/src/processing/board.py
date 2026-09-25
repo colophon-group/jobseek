@@ -2064,6 +2064,10 @@ def _monitor_runtime_for_board(
         and pinpoint_percentage_selected(board_id, board_url, monitor_config)
     ):
         return GoPinpointMonitorRuntime(board_id=board_id)
+    if os.environ.get("BOOKING_GO_BOARD_ID") == board_id:
+        from src.runtime.booking_api_go import GoBookingAPIMonitorRuntime
+
+        return GoBookingAPIMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 
