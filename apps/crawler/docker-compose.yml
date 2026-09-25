@@ -32,6 +32,7 @@ x-common-env: &common-env
   # Exclusive Go list handoff for admitted single-site boards; empty keeps Python authoritative.
   WORKDAY_GO_BOARD_ID: ${WORKDAY_GO_BOARD_ID:-}
   WORKDAY_GO_BOARD_IDS: ${WORKDAY_GO_BOARD_IDS:-}
+  WORKDAY_GO_PERCENT: ${WORKDAY_GO_PERCENT:-0}
   # Default-off Go detail handoff and one natural Python detail response capture.
   WORKDAY_GO_DETAIL_BOARD_IDS: ${WORKDAY_GO_DETAIL_BOARD_IDS:-}
   WORKDAY_DETAIL_CAPTURE_HOST: ${WORKDAY_DETAIL_CAPTURE_HOST:-}

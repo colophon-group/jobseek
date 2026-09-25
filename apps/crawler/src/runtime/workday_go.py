@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import re
 from collections.abc import AsyncIterator
 from time import monotonic
@@ -48,6 +49,32 @@ _BOOKKEEPING = {
     "_confirmed_drop_candidate",
 }
 log = structlog.get_logger()
+
+
+def percentage_selected(board_id: str, board_url: str, config: dict | None) -> bool:
+    """Admit a stable share of direct, single-site boards with bounded history."""
+    raw = os.environ.get("WORKDAY_GO_PERCENT", "0")
+    if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw):
+        return False
+    percentage = int(raw)
+    match = _BOARD_URL.fullmatch(board_url)
+    metadata = config or {}
+    recent = metadata.get("recent_discovered_counts")
+    if (
+        percentage == 0
+        or match is None
+        or metadata.get("company") != match.group("company")
+        or metadata.get("wd_instance") != match.group("instance")
+        or metadata.get("site") != match.group("site")
+        or metadata.get("all_sites") is not False
+        or set(metadata) - {"company", "wd_instance", "site", "all_sites"} - _BOOKKEEPING
+        or not isinstance(recent, list)
+        or len(recent) < 3
+        or not all(type(count) is int and 1 <= count <= 1800 for count in recent[-3:])
+    ):
+        return False
+    bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
+    return bucket < percentage * 100
 
 
 class GoWorkdayMonitorRuntime:
