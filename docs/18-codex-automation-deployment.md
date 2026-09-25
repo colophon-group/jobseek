@@ -167,8 +167,10 @@ Expected filesystem layout:
   data/                 # labeller data root for daily annotation outputs
 ```
 
-Install runtime tools in user-owned paths where possible: `git`, `gh`, Codex
-CLI, Python, `uv`, Node/pnpm only if the `ws` flow or tests require them. The
+Install runtime tools in user-owned paths where possible: `git`, `gh`, Python,
+`uv`, and Node/npm for the Codex CLI. The deployment script updates the Codex
+CLI in the runner's home, verifies `gpt-6-astra` with a short model request,
+and puts the verified binary first on the runner's `PATH`. The
 runner also needs the normal crawler browser/rendering stack: `libcairo2`,
 `librsvg2-bin`, Playwright system dependencies, and Chromium installed into the
 `codex-runner` browser cache. Do not grant write access to production crawler

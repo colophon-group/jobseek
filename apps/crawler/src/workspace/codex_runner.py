@@ -917,6 +917,25 @@ class RunnerLedger:
         value = row["retry_after_at"]
         return int(value) if isinstance(value, int) else None
 
+    def last_retryable_issue(self, *, active_slot: str) -> int | None:
+        """Return the most recent failed issue so another request gets a turn."""
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT issue, state
+                FROM runs
+                WHERE active_slot = ?
+                  AND issue IS NOT NULL
+                  AND state NOT IN ('claimed', 'running', 'skipped')
+                ORDER BY created_at DESC, rowid DESC
+                LIMIT 1
+                """,
+                (active_slot,),
+            ).fetchone()
+        if not row or row["state"] not in RETRY_OUTCOMES:
+            return None
+        return int(row["issue"])
+
     def ingest_trace_once(self, run_id: str, trace_path: Path, summary: UsageSummary) -> bool:
         now = int(time.time())
         try:
@@ -1884,6 +1903,8 @@ class CompanyResolverGovernor:
         from src.workspace.git import classify_issue_prs
 
         now = int(time.time())
+        last_retryable_issue = self.ledger.last_retryable_issue(active_slot=self.config.active_slot)
+        deferred_issue = None
         for issue in issues:
             retry_after = self.ledger.retry_after_for_issue(issue)
             if retry_after is not None and retry_after > now:
@@ -1898,8 +1919,11 @@ class CompanyResolverGovernor:
                 # Unknown GitHub state is unsafe for this candidate, but does
                 # not prevent us from considering a later independent issue.
                 continue
+            if issue == last_retryable_issue:
+                deferred_issue = issue
+                continue
             return issue
-        return None
+        return deferred_issue
 
     def run_once(self) -> RunResult:
         self._retry_failed_trace_exports()
