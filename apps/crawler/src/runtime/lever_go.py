@@ -65,12 +65,15 @@ class GoLeverMonitorRuntime:
         if (
             monitor_type != "lever"
             or parsed_board.scheme != "https"
-            or parsed_board.hostname not in {"jobs.lever.co", "jobs.eu.lever.co"}
+            or parsed_board.hostname is None
+            or parsed_board.username is not None
+            or parsed_board.password is not None
             or pw is not None
             or not isinstance(token, str)
             or _TOKEN.fullmatch(token) is None
             or region not in {"", "eu"}
-            or (parsed_board.hostname == "jobs.eu.lever.co") != (region == "eu")
+            or (parsed_board.hostname in {"jobs.eu.lever.co", "api.eu.lever.co"})
+            != (region == "eu")
             or config.get("scraper_type") != "skip"
             or set(config) - {"token", "region"} - _BOOKKEEPING
         ):

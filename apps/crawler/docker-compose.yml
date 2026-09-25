@@ -42,13 +42,16 @@ x-common-env: &common-env
   # Explicit-token rich cohort and bounded natural API response capture.
   GREENHOUSE_GO_BOARD_IDS: ${GREENHOUSE_GO_BOARD_IDS:-}
   GREENHOUSE_CAPTURE_TOKENS: ${GREENHOUSE_CAPTURE_TOKENS:-}
+  GREENHOUSE_GO_PERCENT: ${GREENHOUSE_GO_PERCENT:-0}
   # Exclusive rich Ashby monitor handoff and bounded natural response capture.
   ASHBY_GO_BOARD_IDS: ${ASHBY_GO_BOARD_IDS:-}
   ASHBY_CAPTURE_TOKENS: ${ASHBY_CAPTURE_TOKENS:-}
+  ASHBY_GO_PERCENT: ${ASHBY_GO_PERCENT:-0}
   # Explicit-token Go Lever rich monitor cohort; empty keeps Python authoritative.
   LEVER_GO_BOARD_IDS: ${LEVER_GO_BOARD_IDS:-}
   # One bounded response from each selected natural Lever schedule.
   LEVER_CAPTURE_TOKENS: ${LEVER_CAPTURE_TOKENS:-}
+  LEVER_GO_PERCENT: ${LEVER_GO_PERCENT:-0}
 
 services:
   # -- Redis -------------------------------------------------------
