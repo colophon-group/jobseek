@@ -6,6 +6,39 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-25 12:48 UTC
+
+[PR #10021](https://github.com/colophon-group/jobseek/pull/10021) merged as
+`e9a1421d4` and [deploy run 36134079773](https://github.com/colophon-group/jobseek/actions/runs/36134079773)
+successfully promoted crawler v0.13.855. Strict direct Lever boards now use Go
+by default; `LEVER_GO_PERCENT=0` remains the route reversal. Supported B0 c1
+was cold-rolled back at epoch 57, restoring all five retained schedules with
+no loss, then reactivated at epoch 58 after deployment. C2 Kandou stays dark.
+All workers, browser, drain, producer, executor, claimant, and Redis were
+healthy after the transition.
+
+Seventeen temporary selectors were staged under the host mutation lock using
+`/tmp/jobseek-post-lever-default-selectors.py` with exact revision `e9a1421d4`
+and Kandou rendered-DOM capture URL `/careers/310`. The route census is 1,471
+Go selections and 6,394 Python selections across 7,865 enabled boards. Before
+another crawler deployment, cold-rollback c1 and clear those exact selectors
+with the same script, full revision and Kandou URL; then stage the desired
+post-release selectors and reactivate c1. The prior 20 natural Go
+Greenhouse/Lever/Workday cycles had zero failures and exact active PostgreSQL
+URL counts and digests. Their rich fields and whole-lane resource efficiency
+were not established by that readback.
+
+Silverflow Personio's natural Python monitor captured EN and DE XML at 12:18
+UTC. Offline Go and Python replay of the exact same bytes matched all four
+ordered rich-job dictionaries, including descriptions and German
+localizations. The four active PostgreSQL URLs matched digest
+`2a7048973d0c0e572788718e93234a4e1a10d8c8b21ad43a76f6aff49960a1ba`,
+with zero board failures. Its exact Go selector is now active; the first
+natural Go cycle is due after 13:18 UTC. The first Mobiliar SuccessFactors
+Go RSS cycle remains queued. The Go Workable URL monitor stays default-off
+pending live response capture and admission; its existing detail scraper
+still runs in Python. None of these steps closes [#7966](https://github.com/colophon-group/jobseek/issues/7966).
+
 ## Production checkpoint: 2026-09-25 12:00 UTC
 
 The latest crawler release is `4c620132c` (v0.13.854), deployed by
