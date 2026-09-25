@@ -1,26 +1,32 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { cacheLife } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales, type Locale } from "@/lib/i18n";
 import { CACHE_TTL_EXPLORE_SHELL } from "@/lib/cache-ttl";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { fetchExplorePageDefaults } from "@/lib/actions/explore-page-data";
+import { SEARCH_FILTER_PARAM_KEYS } from "@/lib/search/query-params";
+import { JOB_LANGUAGES_COOKIE, LOGGED_IN_COOKIE } from "@/lib/client-cookies";
+import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { ExploreContent } from "./explore-content";
-import { ExploreStaticResults } from "./explore-static-results";
 
 const EXPLORE_DEFAULTS_CACHE_LIFE = {
   stale: CACHE_TTL_EXPLORE_SHELL,
   revalidate: CACHE_TTL_EXPLORE_SHELL,
   expire: CACHE_TTL_EXPLORE_SHELL * 5,
 } as const;
-const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v4";
+const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v5";
+
+// Runs while the cached document is parsed, before its results are painted.
+// The document remains query-agnostic and cacheable; only the browser knows
+// whether its URL or viewer hint requires a different result set.
+const EXPLORE_PREPAINT_SCRIPT = `(()=>{try{const params=new URLSearchParams(location.search);const keys=${JSON.stringify([...SEARCH_FILTER_PARAM_KEYS, "lang"])};const cookies=document.cookie.split(";").map(value=>value.trim());const hasCookie=name=>cookies.some(value=>value.startsWith(name+"="));if(keys.some(key=>params.has(key))||hasCookie(${JSON.stringify(LOGGED_IN_COOKIE)})||hasCookie(${JSON.stringify(JOB_LANGUAGES_COOKIE)}))document.documentElement.setAttribute("data-explore-pending","")}catch{document.documentElement.setAttribute("data-explore-pending","")}})();`;
 
 // Cached for one day. The anonymous, no-filter explore payload is rendered
 // server-side via `fetchExplorePageDefaults` and embedded as `initialData`.
-// `SearchPage` refreshes the default result directly from Typesense after
-// hydration, so the longer CDN lifetime removes background regenerations
-// without making the visible job inventory stale. See #2640 + #2243.
+// `SearchPage` checks for fresh inventory directly from Typesense after
+// hydration and offers it without silently reordering the visible feed.
+// See #2640 + #2243 + #10010.
 //
 // Do NOT add `searchParams` to Props or read `headers()`/`cookies()`
 // here — that would force the page out of the cached path on every
@@ -73,64 +79,16 @@ async function renderExploreContent(
   if (payloadVersion !== EXPLORE_DEFAULTS_PAYLOAD_VERSION) {
     throw new Error("Unexpected explore defaults cache version");
   }
-  const [initialData, { i18n }] = await Promise.all([
-    fetchExplorePageDefaults({ locale }),
-    loadCatalog(locale),
-  ]);
-  const heading = i18n._({
-    id: "explore.h1",
-    comment: "Hidden page H1 for /explore — screen-reader landmark",
-    message: "Explore Jobs",
-  });
-  const staticLabels = {
-    filters: i18n._({
-      id: "search.advanced.toggle",
-      comment: "Toggle button for advanced search filters panel",
-      message: "Filters",
-    }),
-    allLanguages: i18n._({
-      id: "search.languageNote.all",
-      comment: "Note showing jobs in all languages",
-      message: "Showing jobs in all languages",
-    }),
-    change: i18n._({
-      id: "search.languageNote.change",
-      comment: "Link to change language settings",
-      message: "change",
-    }),
-    companyStats: Object.fromEntries(
-      initialData.result.companies.map(({ company, activeMatches, yearMatches }) => [
-        company.id,
-        {
-          active: i18n._({
-            id: "common.stats.activeCount",
-            comment: "Locale-formatted active posting count",
-            message: "{count, plural, one {# active job} other {# active jobs}}",
-            values: { count: activeMatches },
-          }),
-          year: i18n._({
-            id: "common.stats.yearCountWithValue",
-            comment: "Locale-formatted postings seen in the last year count",
-            message: "{count, plural, one {# in the last year} other {# in the last year}}",
-            values: { count: yearMatches },
-          }),
-        },
-      ]),
-    ),
-  };
+  const initialData = await fetchExplorePageDefaults({ locale });
 
   return (
     <>
-      <ExploreStaticResults
-        locale={locale}
-        heading={heading}
-        data={initialData}
-        labels={staticLabels}
-      />
-      <div data-explore-interactive hidden>
-        <Suspense fallback={null}>
-          <ExploreContent locale={locale} initialData={initialData} />
-        </Suspense>
+      <script dangerouslySetInnerHTML={{ __html: EXPLORE_PREPAINT_SCRIPT }} />
+      <div data-explore-result-host>
+        <ExploreContent locale={locale} initialData={initialData} />
+      </div>
+      <div data-explore-pending-skeleton>
+        <ExploreSkeleton />
       </div>
     </>
   );
