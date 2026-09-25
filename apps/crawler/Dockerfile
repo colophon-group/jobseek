@@ -99,6 +99,14 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/teamtailor-rss-monitor-live ./cmd/live
 
+# ── Default-off Go SuccessFactors direct Google RSS monitor ──────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-successfactors-rss-build
+WORKDIR /workspace/apps/crawler/go/successfactors-rss-monitor
+COPY go/successfactors-rss-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/successfactors-rss-monitor-live ./cmd/live
+
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
 FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 
@@ -149,6 +157,7 @@ COPY --from=go-recruitee-build /out/recruitee-monitor-live /usr/local/bin/recrui
 COPY --from=go-pinpoint-build /out/pinpoint-monitor-live /usr/local/bin/pinpoint-monitor-live
 COPY --from=go-booking-api-build /out/booking-api-monitor-live /usr/local/bin/booking-api-monitor-live
 COPY --from=go-teamtailor-rss-build /out/teamtailor-rss-monitor-live /usr/local/bin/teamtailor-rss-monitor-live
+COPY --from=go-successfactors-rss-build /out/successfactors-rss-monitor-live /usr/local/bin/successfactors-rss-monitor-live
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
 FROM base AS slim

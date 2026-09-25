@@ -2084,6 +2084,22 @@ def _monitor_runtime_for_board(
         and teamtailor_rss_percentage_selected(board_id, board_url, monitor_config)
     ):
         return GoTeamtailorRSSMonitorRuntime(board_id=board_id)
+    successfactors_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("SUCCESSFACTORS_RSS_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.successfactors_rss_go import GoSuccessFactorsRSSMonitorRuntime
+    from src.runtime.successfactors_rss_go import (
+        percentage_selected as successfactors_rss_percentage_selected,
+    )
+
+    if board_id in successfactors_board_ids or (
+        monitor_type == "rss"
+        and board_url is not None
+        and successfactors_rss_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoSuccessFactorsRSSMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 

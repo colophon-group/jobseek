@@ -41,6 +41,7 @@ from src.core.enum_normalize import normalize_job_location_type
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
+from src.core.monitors.successfactors_capture import open_successfactors_capture
 from src.core.monitors.teamtailor_capture import open_teamtailor_capture
 from src.shared.http_retry import (
     PaginationFetchError,
@@ -1727,6 +1728,8 @@ async def _stream_feed_items(
                     capture = (
                         open_teamtailor_capture(feed_url)
                         if preset is _PRESETS["teamtailor"]
+                        else open_successfactors_capture(feed_url)
+                        if preset is _PRESETS["successfactors"]
                         else None
                     )
                     try:
@@ -1738,7 +1741,7 @@ async def _stream_feed_items(
                                     capture.discard()
                                     capture = None
                                     log.warning(
-                                        "teamtailor_rss.capture_failed",
+                                        "rss.capture_failed",
                                         error_type=type(exc).__name__,
                                     )
                             if not sniffed:
@@ -1783,7 +1786,7 @@ async def _stream_feed_items(
                                 capture.commit()
                             except OSError as exc:
                                 log.warning(
-                                    "teamtailor_rss.capture_failed",
+                                    "rss.capture_failed",
                                     error_type=type(exc).__name__,
                                 )
                             finally:
