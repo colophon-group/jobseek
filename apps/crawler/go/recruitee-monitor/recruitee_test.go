@@ -38,6 +38,7 @@ func TestParseFailsClosedOnMalformedOffers(t *testing.T) {
 		`{"offers":"not-an-array"}`,
 		`{"offers":[{"status":"published","careers_url":"https://example.com","locations":{}}]}`,
 		`{"offers":[{"status":"published","careers_url":"https://example.com","salary":"unknown"}]}`,
+		`{"offers":[{"status":"published","careers_url":"https://example.com","salary":{"min":1,"period":5}}]}`,
 		`{"offers":[]} trailing`,
 	} {
 		if _, err := Parse([]byte(body)); err == nil {

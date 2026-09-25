@@ -142,6 +142,11 @@ func parseSalary(offer map[string]any) (map[string]any, error) {
 	if salary["min"] == nil && salary["max"] == nil {
 		return nil, nil
 	}
+	if raw := salary["period"]; raw != nil {
+		if _, ok := raw.(string); !ok {
+			return nil, errors.New("Recruitee salary period must be text")
+		}
+	}
 	return map[string]any{
 		"currency": salary["currency"],
 		"min":      salary["min"],
