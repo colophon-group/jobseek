@@ -75,6 +75,10 @@ x-common-env: &common-env
   SUCCESSFACTORS_RSS_GO_BOARD_IDS: ${SUCCESSFACTORS_RSS_GO_BOARD_IDS:-}
   SUCCESSFACTORS_RSS_GO_PERCENT: ${SUCCESSFACTORS_RSS_GO_PERCENT:-0}
   SUCCESSFACTORS_RSS_CAPTURE_HOST: ${SUCCESSFACTORS_RSS_CAPTURE_HOST:-}
+  # Default-off Go Personio XML/HTML monitor and passive natural feed capture.
+  PERSONIO_GO_BOARD_IDS: ${PERSONIO_GO_BOARD_IDS:-}
+  PERSONIO_GO_PERCENT: ${PERSONIO_GO_PERCENT:-0}
+  PERSONIO_CAPTURE_SLUG: ${PERSONIO_CAPTURE_SLUG:-}
 
 services:
   # -- Redis -------------------------------------------------------

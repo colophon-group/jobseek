@@ -2100,6 +2100,20 @@ def _monitor_runtime_for_board(
         and successfactors_rss_percentage_selected(board_id, board_url, monitor_config)
     ):
         return GoSuccessFactorsRSSMonitorRuntime(board_id=board_id)
+    personio_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("PERSONIO_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.personio_go import GoPersonioMonitorRuntime
+    from src.runtime.personio_go import percentage_selected as personio_percentage_selected
+
+    if board_id in personio_board_ids or (
+        monitor_type == "personio"
+        and board_url is not None
+        and personio_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoPersonioMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 
