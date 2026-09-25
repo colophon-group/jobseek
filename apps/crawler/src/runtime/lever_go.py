@@ -31,7 +31,13 @@ from src.shared.egress import (
 from src.shared.http import mark_external_response, mark_reachable_response
 from src.shared.tdm import TDMReservedError
 
-_TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}")
+_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
+_LEVER_HOSTS = {
+    "jobs.lever.co",
+    "jobs.eu.lever.co",
+    "api.lever.co",
+    "api.eu.lever.co",
+}
 _BOOKKEEPING = {
     "scraper_type",
     "suspect_streak",
@@ -51,18 +57,13 @@ def direct_lever_settings(board_url: str, config: dict) -> tuple[str, str] | Non
         return None
     if (
         parsed.scheme != "https"
-        or parsed.hostname
-        not in {
-            "jobs.lever.co",
-            "jobs.eu.lever.co",
-            "api.lever.co",
-            "api.eu.lever.co",
-        }
+        or parsed.hostname is None
         or parsed.username is not None
         or parsed.password is not None
         or port is not None
     ):
         return None
+    direct_host = parsed.hostname in _LEVER_HOSTS
     token = config.get("token")
     if not token:
         if parsed.hostname not in {"jobs.lever.co", "jobs.eu.lever.co"}:
@@ -72,14 +73,18 @@ def direct_lever_settings(board_url: str, config: dict) -> tuple[str, str] | Non
             return None
         if parsed.query or parsed.fragment:
             return None
+    elif not direct_host and (parsed.query or parsed.fragment):
+        return None
     region = config.get("region") or _region_from_url(board_url) or ""
+    eu_host = parsed.hostname in {"jobs.eu.lever.co", "api.eu.lever.co"}
     if (
         not isinstance(token, str)
         or _TOKEN.fullmatch(token) is None
         or region not in {"", "eu"}
-        or (parsed.hostname in {"jobs.eu.lever.co", "api.eu.lever.co"}) != (region == "eu")
+        or (direct_host and eu_host != (region == "eu"))
+        or ("company" in config and config["company"] != token)
         or config.get("scraper_type") != "skip"
-        or set(config) - {"token", "region"} - _BOOKKEEPING
+        or set(config) - {"token", "region", "company"} - _BOOKKEEPING
     ):
         return None
     return token, region

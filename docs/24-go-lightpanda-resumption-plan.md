@@ -6,6 +6,43 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-25 15:16 UTC
+
+[PR #10024](https://github.com/colophon-group/jobseek/pull/10024) merged as
+`c09c1d519` and [deploy run 36148928512](https://github.com/colophon-group/jobseek/actions/runs/36148928512)
+promoted crawler v0.13.858. The Go Workable detail scraper is installed but
+defaults off. A naturally scheduled KI Insurance Python detail response was
+captured without another origin request. Its 5,010 exact bytes, SHA-256
+`0b7b1f982990b630b5b1f9ef51c28437b520761af8e849b5610ae6ac86b0f0fd`,
+produced identical Python and Go values for all seven populated detail fields.
+The Python scrape succeeded. KI Insurance has 18 active jobs, zero board
+failures, and no browser requirement.
+
+The supported c1 rollback retired epoch 65, restored all five schedules,
+and confirmed zero dropped tasks and write fences. Twenty exact selectors
+were cleared under the mutation lock; 21 were staged at exact release
+`c09c1d5191f779280e088c6b6131a1c66426835f` with
+`/tmp/jobseek-post-workable-go-detail-pilot-selectors.py` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. C1 reactivated at epoch 66 with
+all five schedules; services are healthy. The added Workable Go detail selector
+targets only KI Insurance board `aef95fd2-55ea-43cd-9aa6-9bd541c2bc4e`.
+Its natural Go scrape and persisted content readback are pending. The list
+capture selector still targets four Python Workable boards; natural scheduled
+responses are next due around 15:40–15:57 UTC. No due scores or extra origin
+requests were forced. Personio 5% selects Silverflow and newly eligible
+Eraneos Germany (five stable 21-job runs); Eraneos Go output is pending.
+Before any further deploy or selector mutation, cold-rollback c1 and clear
+those exact 21 selectors with that script, revision, and Kandou URL.
+
+The next strict Lever code slice resolves five of the six remaining Python
+boards: two explicit dotted tokens, two explicit tokens on canonical company
+career URLs, and one unused `company` metadata value matching its derived
+token. The sixth, Volta Medical, retains a JSON-LD detail scraper and remains
+Python-owned. Live output and database effects for the five new routes remain
+to be observed after deployment; this change cannot establish the full
+[#7966](https://github.com/colophon-group/jobseek/issues/7966) gate while
+Python and Chromium still own production work.
+
 ## Production checkpoint: 2026-09-25 14:26 UTC
 
 [PR #10023](https://github.com/colophon-group/jobseek/pull/10023) merged as

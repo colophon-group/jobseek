@@ -18,7 +18,7 @@ const (
 	userAgent    = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
 )
 
-var tokenRE = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+var tokenRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`)
 
 func TokenURL(token, region string, skip int) (string, error) {
 	if !tokenRE.MatchString(token) || (region != "" && region != "eu") || skip < 0 || skip > MaxJobs {
