@@ -173,7 +173,7 @@ export function SearchToolbar({
           />
         </Suspense>
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
+      <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 md:grid-cols-[minmax(0,1fr)_auto]">
         <AdvancedSearchPanel
             locale={locale}
             userLat={userLat}
@@ -203,7 +203,7 @@ export function SearchToolbar({
             onExperienceChange={onExperienceChange}
             histogramFilters={histogramFilters}
         />
-        <div className="col-start-2 row-start-1 flex shrink-0 items-center justify-end gap-2">
+        <div className="col-start-1 row-start-2 flex flex-wrap items-center justify-start gap-1 md:col-start-2 md:row-start-1 md:justify-end md:gap-2">
           {(hasFilters || companyScope) && !hasUnresolvedExplicitSlugs && (
             <SaveSearchButton
               keywords={keywords}

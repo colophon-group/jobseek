@@ -33,7 +33,9 @@ log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 _ELASTIC_URL = "https://job-boards.greenhouse.io/elastic"
-_ELASTIC_CAPTURE_MAX_BYTES = 64 << 20
+_CAPTURE_MAX_BYTES = 64 << 20
+_CAPTURE_DIR = Path("/tmp")
+_CAPTURE_TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}")
 
 _PAGE_PATTERNS = [
     re.compile(r"boards-api\.greenhouse\.io/v1/boards/([\w-]+)"),
@@ -147,7 +149,7 @@ def _api_url(token: str) -> str:
     return f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
 
 
-def _capture_scheduled_elastic_response(
+def _capture_scheduled_greenhouse_response(
     board_url: str, token: str, response: httpx.Response
 ) -> None:
     """Save one existing scheduled response for exact Go/Python replay.
@@ -155,10 +157,22 @@ def _capture_scheduled_elastic_response(
     This is default-off, performs no request, and never changes the monitor
     result. The operator retrieves the mode-0600 file before container reuse.
     """
-    path = os.environ.get("GREENHOUSE_ELASTIC_CAPTURE_PATH")
-    if not path or board_url != _ELASTIC_URL or token != "elastic":
+    path = None
+    selected = {
+        item.strip()
+        for item in os.environ.get("GREENHOUSE_CAPTURE_TOKENS", "").split(",")
+        if item.strip()
+    }
+    if len(selected) > 4:
+        log.warning("greenhouse.capture_skipped", reason="too_many_tokens")
         return
-    if not os.path.isabs(path) or len(response.content) > _ELASTIC_CAPTURE_MAX_BYTES:
+    if token in selected and _CAPTURE_TOKEN.fullmatch(token):
+        path = str(_CAPTURE_DIR / f"jobseek-greenhouse-{token}.body")
+    elif board_url == _ELASTIC_URL and token == "elastic":
+        path = os.environ.get("GREENHOUSE_ELASTIC_CAPTURE_PATH")
+    if not path:
+        return
+    if not os.path.isabs(path) or len(response.content) > _CAPTURE_MAX_BYTES:
         log.warning("greenhouse.capture_skipped", reason="path_or_size")
         return
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
@@ -265,7 +279,7 @@ async def discover(
 
     url = _api_url(token)
     response = await client.get(url, params={"content": "true"})
-    _capture_scheduled_elastic_response(board["board_url"], token, response)
+    _capture_scheduled_greenhouse_response(board["board_url"], token, response)
     if response.status_code == 404:
         # Greenhouse returns 404 when the board token has been deleted
         # upstream — i.e. the company removed the board. Surface this

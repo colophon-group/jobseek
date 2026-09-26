@@ -1879,21 +1879,272 @@ class BoardMonitorResult:
         yield self.duration_seconds
 
 
-def _monitor_runtime_for_board(board_id: str, provided: MonitorRuntime | None) -> MonitorRuntime:
+_GO_RICH_BOOKKEEPING = {
+    "scraper_type",
+    "suspect_streak",
+    "recent_discovered_counts",
+    "_monitor_config_fingerprint",
+    "_confirmed_drop_candidate",
+}
+_GO_RICH_HOSTS = {
+    "greenhouse": {
+        "job-boards.greenhouse.io",
+        "job-boards.eu.greenhouse.io",
+        "boards.greenhouse.io",
+        "boards.eu.greenhouse.io",
+        "boards-api.greenhouse.io",
+    },
+    "ashby": {"jobs.ashbyhq.com", "api.ashbyhq.com"},
+    "lever": {"jobs.lever.co", "jobs.eu.lever.co", "api.lever.co", "api.eu.lever.co"},
+}
+_GO_RICH_TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+_GO_LEVER_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
+
+
+def _go_rich_percentage_selected(
+    board_id: str,
+    monitor_type: str | None,
+    board_url: str | None,
+    monitor_config: dict | None,
+) -> bool:
+    """Choose a stable, strictly configured share of one rich ATS family."""
+    if monitor_type not in _GO_RICH_HOSTS or board_url is None:
+        return False
+    raw = os.environ.get(
+        f"{monitor_type.upper()}_GO_PERCENT", "100" if monitor_type == "lever" else "0"
+    )
+    if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw):
+        return False
+    percentage = int(raw)
+    if percentage == 0:
+        return False
+    try:
+        parsed = urlparse(board_url)
+        port = parsed.port
+    except ValueError:
+        return False
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname is None
+        or (monitor_type != "lever" and parsed.hostname not in _GO_RICH_HOSTS[monitor_type])
+        or parsed.username is not None
+        or parsed.password is not None
+        or port is not None
+    ):
+        return False
+    config = monitor_config or {}
+    token = config.get("token")
+    allowed = {"token"} | _GO_RICH_BOOKKEEPING
+    if monitor_type == "lever":
+        from src.runtime.lever_go import direct_lever_settings
+
+        settings = direct_lever_settings(board_url, config)
+        if settings is None:
+            return False
+        token, _ = settings
+        allowed.update(("region", "company"))
+    token_pattern = _GO_LEVER_TOKEN_RE if monitor_type == "lever" else _GO_RICH_TOKEN_RE
+    if (
+        config.get("scraper_type") != "skip"
+        or not isinstance(token, str)
+        or token_pattern.fullmatch(token) is None
+        or set(config) - allowed
+    ):
+        return False
+    bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
+    return bucket < percentage * 100
+
+
+def _monitor_runtime_for_board(
+    board_id: str,
+    provided: MonitorRuntime | None,
+    *,
+    monitor_type: str | None = None,
+    board_url: str | None = None,
+    monitor_config: dict | None = None,
+) -> MonitorRuntime:
     if provided is not None:
         return provided
-    if os.environ.get("GREENHOUSE_GO_BOARD_ID") == board_id:
+    sitemap_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("SITEMAP_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in sitemap_board_ids:
+        from src.runtime.sitemap_go import GoSitemapMonitorRuntime, eligible
+
+        if not eligible(board_url or "", monitor_type, monitor_config):
+            raise ValueError("Go sitemap selector requires an explicit supported configuration")
+        return GoSitemapMonitorRuntime(board_id=board_id)
+    percent_selected = _go_rich_percentage_selected(
+        board_id, monitor_type, board_url, monitor_config
+    )
+    ashby_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("ASHBY_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in ashby_board_ids or (monitor_type == "ashby" and percent_selected):
+        from src.runtime.ashby_go import GoAshbyMonitorRuntime
+
+        return GoAshbyMonitorRuntime(board_id=board_id)
+    lever_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("LEVER_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in lever_board_ids or (monitor_type == "lever" and percent_selected):
+        from src.runtime.lever_go import GoLeverMonitorRuntime
+
+        return GoLeverMonitorRuntime(board_id=board_id)
+    greenhouse_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("GREENHOUSE_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if (
+        board_id in greenhouse_board_ids
+        or os.environ.get("GREENHOUSE_GO_BOARD_ID") == board_id
+        or (monitor_type == "greenhouse" and percent_selected)
+    ):
         from src.runtime.greenhouse_go import ELASTIC_BOARD_ID, GoGreenhouseMonitorRuntime
 
-        if board_id != ELASTIC_BOARD_ID:
+        if os.environ.get("GREENHOUSE_GO_BOARD_ID") == board_id and board_id != ELASTIC_BOARD_ID:
             raise ValueError("Go Greenhouse routing is restricted to the selected origin")
-        return GoGreenhouseMonitorRuntime()
-    if os.environ.get("WORKDAY_GO_BOARD_ID") == board_id:
-        from src.runtime.workday_go import ELEVANCE_BOARD_ID, GoWorkdayMonitorRuntime
+        return GoGreenhouseMonitorRuntime(board_id=board_id)
+    workday_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("WORKDAY_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.workday_go import percentage_selected
 
-        if board_id != ELEVANCE_BOARD_ID:
-            raise ValueError("Go Workday routing is restricted to the selected origin")
-        return GoWorkdayMonitorRuntime()
+    if (
+        board_id in workday_board_ids
+        or os.environ.get("WORKDAY_GO_BOARD_ID") == board_id
+        or (
+            monitor_type == "workday"
+            and board_url is not None
+            and percentage_selected(board_id, board_url, monitor_config)
+        )
+    ):
+        from src.runtime.workday_go import GoWorkdayMonitorRuntime
+
+        return GoWorkdayMonitorRuntime(board_id=board_id)
+    join_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("JOIN_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.join_go import (
+        GoJoinMonitorRuntime,
+    )
+    from src.runtime.join_go import (
+        percentage_selected as join_percentage_selected,
+    )
+
+    if board_id in join_board_ids or (
+        monitor_type == "join"
+        and board_url is not None
+        and join_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoJoinMonitorRuntime(board_id=board_id)
+    recruitee_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("RECRUITEE_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.recruitee_go import (
+        GoRecruiteeMonitorRuntime,
+    )
+    from src.runtime.recruitee_go import (
+        percentage_selected as recruitee_percentage_selected,
+    )
+
+    if board_id in recruitee_board_ids or (
+        monitor_type == "recruitee"
+        and board_url is not None
+        and recruitee_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoRecruiteeMonitorRuntime(board_id=board_id)
+    workable_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("WORKABLE_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.workable_go import GoWorkableMonitorRuntime
+    from src.runtime.workable_go import percentage_selected as workable_percentage_selected
+
+    if board_id in workable_board_ids or (
+        monitor_type == "workable"
+        and board_url is not None
+        and workable_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoWorkableMonitorRuntime(board_id=board_id)
+    pinpoint_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("PINPOINT_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.pinpoint_go import GoPinpointMonitorRuntime
+    from src.runtime.pinpoint_go import percentage_selected as pinpoint_percentage_selected
+
+    if board_id in pinpoint_board_ids or (
+        monitor_type == "pinpoint"
+        and board_url is not None
+        and pinpoint_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoPinpointMonitorRuntime(board_id=board_id)
+    if os.environ.get("BOOKING_GO_BOARD_ID") == board_id:
+        from src.runtime.booking_api_go import GoBookingAPIMonitorRuntime
+
+        return GoBookingAPIMonitorRuntime(board_id=board_id)
+    teamtailor_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("TEAMTAILOR_RSS_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.teamtailor_rss_go import GoTeamtailorRSSMonitorRuntime
+    from src.runtime.teamtailor_rss_go import (
+        percentage_selected as teamtailor_rss_percentage_selected,
+    )
+
+    if board_id in teamtailor_board_ids or (
+        monitor_type == "rss"
+        and board_url is not None
+        and teamtailor_rss_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoTeamtailorRSSMonitorRuntime(board_id=board_id)
+    successfactors_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("SUCCESSFACTORS_RSS_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.successfactors_rss_go import GoSuccessFactorsRSSMonitorRuntime
+    from src.runtime.successfactors_rss_go import (
+        percentage_selected as successfactors_rss_percentage_selected,
+    )
+
+    if board_id in successfactors_board_ids or (
+        monitor_type == "rss"
+        and board_url is not None
+        and successfactors_rss_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoSuccessFactorsRSSMonitorRuntime(board_id=board_id)
+    personio_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("PERSONIO_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    from src.runtime.personio_go import GoPersonioMonitorRuntime
+    from src.runtime.personio_go import percentage_selected as personio_percentage_selected
+
+    if board_id in personio_board_ids or (
+        monitor_type == "personio"
+        and board_url is not None
+        and personio_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoPersonioMonitorRuntime(board_id=board_id)
     return PythonMonitorRuntime(_batch.monitor_one_stream)
 
 
@@ -2017,7 +2268,13 @@ async def _process_one_board_streaming(
         # by the monitor's own MAX_JOBS cap and is discarded after the cycle.
         guard_inventory_identities: set[str] = set()
 
-        runtime = _monitor_runtime_for_board(board_id, monitor_runtime)
+        runtime = _monitor_runtime_for_board(
+            board_id,
+            monitor_runtime,
+            monitor_type=crawler_type,
+            board_url=board_url,
+            monitor_config=metadata,
+        )
         monitor_stream = runtime.stream(
             board_url,
             crawler_type,

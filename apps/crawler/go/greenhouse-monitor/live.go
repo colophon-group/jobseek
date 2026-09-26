@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -17,6 +18,15 @@ const (
 	userAgent    = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
 	accept       = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 )
+
+var tokenRE = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+
+func TokenURL(token string) (string, error) {
+	if !tokenRE.MatchString(token) {
+		return "", errors.New("Greenhouse token is not a canonical board token")
+	}
+	return "https://boards-api.greenhouse.io/v1/boards/" + token + "/jobs?content=true", nil
+}
 
 type FetchResult struct {
 	Inventory
@@ -124,4 +134,12 @@ func Fetch(ctx context.Context, client *http.Client, endpoint string) (FetchResu
 
 func FetchElastic(ctx context.Context) (FetchResult, error) {
 	return Fetch(ctx, newClient(), ElasticURL)
+}
+
+func FetchToken(ctx context.Context, token string) (FetchResult, error) {
+	endpoint, err := TokenURL(token)
+	if err != nil {
+		return FetchResult{}, err
+	}
+	return Fetch(ctx, newClient(), endpoint)
 }

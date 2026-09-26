@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -12,13 +13,16 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "unexpected argument")
+	var token string
+	flag.StringVar(&token, "token", "elastic", "configured Greenhouse board token")
+	flag.Parse()
+	if flag.NArg() != 0 {
+		fmt.Fprintln(os.Stderr, "unexpected positional argument")
 		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	result, err := greenhouse.FetchElastic(ctx)
+	result, err := greenhouse.FetchToken(ctx, token)
 	if err != nil {
 		result.Error = err.Error()
 	}

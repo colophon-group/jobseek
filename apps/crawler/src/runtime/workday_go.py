@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
+import re
 from collections.abc import AsyncIterator
 from time import monotonic
 from urllib.parse import urlparse
@@ -34,9 +36,11 @@ from src.shared.http import (
 from src.shared.tdm import TDMReservedError
 
 ELEVANCE_BOARD_ID = "bcd90676-101c-4e58-b427-98edd4e09b7d"
-_BOARD_URL = "https://elevancehealth.wd1.myworkdayjobs.com/en-US/ANT"
-_LIST_URL = "https://elevancehealth.wd1.myworkdayjobs.com/wday/cxs/elevancehealth/ANT/jobs"
-_JOB_PREFIX = "https://elevancehealth.wd1.myworkdayjobs.com/ANT/"
+_BOARD_URL = re.compile(
+    r"^https://(?P<company>[A-Za-z0-9_-]+)\."
+    r"(?P<instance>wd[0-9]+)\.myworkdayjobs\.com/"
+    r"(?:[a-z]{2}-[A-Z]{2}/)?(?P<site>[A-Za-z0-9][A-Za-z0-9_-]{0,127})/?$"
+)
 _BOOKKEEPING = {
     "scraper_type",
     "suspect_streak",
@@ -47,11 +51,43 @@ _BOOKKEEPING = {
 log = structlog.get_logger()
 
 
+def percentage_selected(board_id: str, board_url: str, config: dict | None) -> bool:
+    """Admit a stable share of direct, single-site boards with bounded history."""
+    raw = os.environ.get("WORKDAY_GO_PERCENT", "0")
+    if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw):
+        return False
+    percentage = int(raw)
+    match = _BOARD_URL.fullmatch(board_url)
+    metadata = config or {}
+    recent = metadata.get("recent_discovered_counts")
+    if (
+        percentage == 0
+        or match is None
+        or metadata.get("company") != match.group("company")
+        or metadata.get("wd_instance") != match.group("instance")
+        or metadata.get("site") != match.group("site")
+        or metadata.get("all_sites") is not False
+        or set(metadata) - {"company", "wd_instance", "site", "all_sites"} - _BOOKKEEPING
+        or not isinstance(recent, list)
+        or len(recent) < 3
+        or not all(type(count) is int and 1 <= count <= 1800 for count in recent[-3:])
+    ):
+        return False
+    bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
+    return bucket < percentage * 100
+
+
 class GoWorkdayMonitorRuntime:
     implementation = "go-workday"
 
-    def __init__(self, binary: str = "/usr/local/bin/workday-monitor-live") -> None:
+    def __init__(
+        self,
+        binary: str = "/usr/local/bin/workday-monitor-live",
+        *,
+        board_id: str = ELEVANCE_BOARD_ID,
+    ) -> None:
         self.binary = binary
+        self.board_id = board_id
 
     async def stream(
         self,
@@ -64,19 +100,25 @@ class GoWorkdayMonitorRuntime:
     ) -> AsyncIterator[MonitorResult]:
         del http  # Go owns every list HTTP request for this exclusive origin.
         config = monitor_config or {}
+        match = _BOARD_URL.fullmatch(board_url)
         if (
             monitor_type != "workday"
-            or board_url != _BOARD_URL
+            or match is None
             or pw is not None
-            or config.get("company") != "elevancehealth"
-            or config.get("wd_instance") != "wd1"
-            or config.get("site") != "ANT"
+            or config.get("company") != match.group("company")
+            or config.get("wd_instance") != match.group("instance")
+            or config.get("site") != match.group("site")
             or config.get("all_sites") is not False
             or set(config) - {"company", "wd_instance", "site", "all_sites"} - _BOOKKEEPING
         ):
-            raise ValueError(
-                "Go Workday pilot requires the unchanged Elevance one-site configuration"
-            )
+            raise ValueError("Go Workday requires an unchanged direct, single-site configuration")
+
+        company = match.group("company")
+        instance = match.group("instance")
+        site = match.group("site")
+        hostname = f"{company}.{instance}.myworkdayjobs.com"
+        list_url = f"https://{hostname}/wday/cxs/{company}/{site}/jobs"
+        job_prefix = f"https://{hostname}/{site}/"
 
         started = monotonic()
         outcome = "error"
@@ -85,11 +127,11 @@ class GoWorkdayMonitorRuntime:
             proc = await asyncio.create_subprocess_exec(
                 self.binary,
                 "--company",
-                "elevancehealth",
+                company,
                 "--instance",
-                "wd1",
+                instance,
                 "--site",
-                "ANT",
+                site,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -121,25 +163,25 @@ class GoWorkdayMonitorRuntime:
             if proc.returncode != 0 or payload.get("error"):
                 if payload.get("error") == "tdm-reservation=1":
                     raise TDMReservedError(
-                        _LIST_URL, source="header", policy_url=payload.get("tdm_policy")
+                        list_url, source="header", policy_url=payload.get("tdm_policy")
                     )
                 status = payload.get("status", 0)
                 if isinstance(status, int) and status > 0:
-                    mark_external_response(_LIST_URL, status)
+                    mark_external_response(list_url, status)
                 if status in (303, 429):
                     mark_provider_incident(
-                        _LIST_URL, incident=WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT
+                        list_url, incident=WORKDAY_LIST_TRANSIENT_STATUS_INCIDENT
                     )
                 elif status == 0 and payload.get("error_kind") == "transport":
-                    mark_transient_response_failure(_LIST_URL, reason="go_workday_list_failure")
+                    mark_transient_response_failure(list_url, reason="go_workday_list_failure")
                 detail = payload.get("error") or stderr.decode(errors="replace")[:300]
                 raise RuntimeError(f"Go Workday list failed: {detail}")
 
             urls = payload.get("urls", [])
             if not isinstance(urls, list) or any(
                 not isinstance(url, str)
-                or not url.startswith(_JOB_PREFIX)
-                or urlparse(url).hostname != "elevancehealth.wd1.myworkdayjobs.com"
+                or not url.startswith(job_prefix)
+                or urlparse(url).hostname != hostname
                 for url in urls
             ):
                 raise ValueError("Go Workday returned a URL outside the selected origin")
@@ -147,7 +189,7 @@ class GoWorkdayMonitorRuntime:
                 raise ValueError("Go Workday returned a duplicate or unsupported inventory")
             log.info(
                 "go_workday.monitor_complete",
-                board_id=ELEVANCE_BOARD_ID,
+                board_id=self.board_id,
                 urls=len(urls),
                 url_sha256=hashlib.sha256("\n".join(sorted(urls)).encode()).hexdigest(),
                 requests=attempts,
@@ -155,7 +197,7 @@ class GoWorkdayMonitorRuntime:
                 transport_errors=transport_errors,
                 response_bytes=byte_count,
             )
-            mark_reachable_response(_LIST_URL)
+            mark_reachable_response(list_url)
             outcome = "success"
             runtime_output_items_total.labels(
                 stage="monitor", implementation=self.implementation
