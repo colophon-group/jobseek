@@ -18,6 +18,121 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/go-r2-drain .
 
+# ── Default-off Go Typesense posting exporter ────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-typesense-exporter-build
+WORKDIR /workspace/apps/crawler/go/typesense-exporter
+COPY go/typesense-exporter/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/go-typesense-exporter .
+
+# ── Default-off Go sitemap URL monitor ───────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-sitemap-build
+WORKDIR /workspace/apps/crawler/go/sitemap-monitor
+COPY go/sitemap-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/sitemap-monitor-live ./cmd/live
+
+# ── Default-off, single-origin Go Workday list monitor ──────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-workday-build
+WORKDIR /workspace/apps/crawler/go/workday-monitor
+COPY go/workday-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/workday-monitor-live ./cmd/live \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/workday-detail-live ./cmd/detail-live
+
+# ── Default-off, single-origin Go Greenhouse rich monitor ───────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-greenhouse-build
+WORKDIR /workspace/apps/crawler/go/greenhouse-monitor
+COPY go/greenhouse-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/greenhouse-monitor-live ./cmd/live
+
+# ── Default-off Go Ashby rich monitor ────────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-ashby-build
+WORKDIR /workspace/apps/crawler/go/ashby-monitor
+COPY go/ashby-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/ashby-monitor-live ./cmd/live
+# ── Default-off Go Lever rich monitor ────────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-lever-build
+WORKDIR /workspace/apps/crawler/go/lever-monitor
+COPY go/lever-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/lever-monitor-live ./cmd/live
+
+# ── Default-off Go JOIN embedded-data monitor ────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-join-build
+WORKDIR /workspace/apps/crawler/go/join-monitor
+COPY go/join-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/join-monitor-live ./cmd/live
+
+# ── Default-off Go Recruitee rich monitor ────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-recruitee-build
+WORKDIR /workspace/apps/crawler/go/recruitee-monitor
+COPY go/recruitee-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/recruitee-monitor-live ./cmd/live
+
+# ── Default-off Go Workable list monitor ─────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-workable-build
+WORKDIR /workspace/apps/crawler/go/workable-monitor
+COPY go/workable-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/workable-monitor-live ./cmd/live \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/workable-detail-live ./cmd/detail-live
+
+# ── Default-off Go Pinpoint rich monitor ─────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-pinpoint-build
+WORKDIR /workspace/apps/crawler/go/pinpoint-monitor
+COPY go/pinpoint-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/pinpoint-monitor-live ./cmd/live
+
+# ── Default-off Go Booking page-one API monitor ──────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-booking-api-build
+WORKDIR /workspace/apps/crawler/go/booking-api-monitor
+COPY go/booking-api-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/booking-api-monitor-live ./cmd/live
+
+# ── Default-off Go Teamtailor rich RSS monitor ───────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-teamtailor-rss-build
+WORKDIR /workspace/apps/crawler/go/teamtailor-rss-monitor
+COPY go/teamtailor-rss-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/teamtailor-rss-monitor-live ./cmd/live
+
+# ── Default-off Go SuccessFactors direct Google RSS monitor ──────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-successfactors-rss-build
+WORKDIR /workspace/apps/crawler/go/successfactors-rss-monitor
+COPY go/successfactors-rss-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/successfactors-rss-monitor-live ./cmd/live
+
+# ── Default-off Go Personio XML/HTML rich monitor ────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-personio-build
+WORKDIR /workspace/apps/crawler/go/personio-monitor
+COPY go/personio-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/personio-monitor-live ./cmd/live
+
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
 FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 
@@ -55,6 +170,24 @@ RUN uv build --wheel --out-dir /tmp/jobseek-wheel \
 
 COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor /usr/local/bin/lightpanda-b0-supervisor
 COPY --from=go-r2-drain-build /out/go-r2-drain /usr/local/bin/go-r2-drain
+COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bin/go-typesense-exporter
+COPY --from=go-sitemap-build /out/sitemap-monitor-live /usr/local/bin/sitemap-monitor-live
+COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint
+RUN chmod 0755 /usr/local/bin/exporter-entrypoint
+COPY --from=go-workday-build /out/workday-monitor-live /usr/local/bin/workday-monitor-live
+COPY --from=go-workday-build /out/workday-detail-live /usr/local/bin/workday-detail-live
+COPY --from=go-greenhouse-build /out/greenhouse-monitor-live /usr/local/bin/greenhouse-monitor-live
+COPY --from=go-ashby-build /out/ashby-monitor-live /usr/local/bin/ashby-monitor-live
+COPY --from=go-lever-build /out/lever-monitor-live /usr/local/bin/lever-monitor-live
+COPY --from=go-join-build /out/join-monitor-live /usr/local/bin/join-monitor-live
+COPY --from=go-recruitee-build /out/recruitee-monitor-live /usr/local/bin/recruitee-monitor-live
+COPY --from=go-workable-build /out/workable-monitor-live /usr/local/bin/workable-monitor-live
+COPY --from=go-workable-build /out/workable-detail-live /usr/local/bin/workable-detail-live
+COPY --from=go-pinpoint-build /out/pinpoint-monitor-live /usr/local/bin/pinpoint-monitor-live
+COPY --from=go-booking-api-build /out/booking-api-monitor-live /usr/local/bin/booking-api-monitor-live
+COPY --from=go-teamtailor-rss-build /out/teamtailor-rss-monitor-live /usr/local/bin/teamtailor-rss-monitor-live
+COPY --from=go-successfactors-rss-build /out/successfactors-rss-monitor-live /usr/local/bin/successfactors-rss-monitor-live
+COPY --from=go-personio-build /out/personio-monitor-live /usr/local/bin/personio-monitor-live
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
 FROM base AS slim

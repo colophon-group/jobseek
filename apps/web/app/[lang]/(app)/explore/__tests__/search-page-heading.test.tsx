@@ -141,7 +141,10 @@ const tryListTopCompaniesDirectMock = vi.mocked(tryListTopCompaniesDirect);
 
 beforeEach(() => {
   snapshotMocks.snapshot = null;
-  snapshotMocks.save.mockClear();
+  snapshotMocks.save.mockReset();
+  document.documentElement.removeAttribute("data-explore-pending");
+  tryListTopCompaniesDirectMock.mockReset();
+  tryListTopCompaniesDirectMock.mockResolvedValue(null);
   // jsdom/happy-dom may not set up window.history.replaceState identically
   // across versions; stub to a no-op so the component's URL syncs do not
   // throw in the test environment.
@@ -223,6 +226,207 @@ describe("SearchPage — mount direct refresh ownership (#8259)", () => {
     await act(async () => {
       await Promise.resolve();
     });
+    expect(tryListTopCompaniesDirectMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the visible companies stable until the visitor accepts fresher results", async () => {
+    const original = {
+      company: { id: "original", name: "Original", slug: "original", icon: null },
+      activeMatches: 1,
+      yearMatches: 2,
+      postings: [],
+    };
+    const fresh = {
+      company: { id: "fresh", name: "Fresh", slug: "fresh", icon: null },
+      activeMatches: 3,
+      yearMatches: 4,
+      postings: [],
+    };
+    tryListTopCompaniesDirectMock.mockResolvedValueOnce({
+      companies: [fresh],
+      totalCompanies: 20,
+      nextOffset: 1,
+    });
+
+    render(
+      <SearchPage
+        initialCompanies={[original]}
+        initialTotalCompanies={20}
+        initialKeywords={[]}
+        initialLocations={[]}
+        initialOccupations={[]}
+        initialSeniorities={[]}
+        initialTechnologies={[]}
+        initialEmploymentTypes={[]}
+        initialWorkMode={[]}
+        locale="en"
+        displayCurrency="EUR"
+        jobLanguages={[]}
+        languages={[]}
+      />,
+    );
+
+    const latest = await screen.findByRole("button", { name: "Show latest results" });
+    expect(screen.getByTestId("visible-company-ids").textContent).toBe("original");
+    expect(screen.queryByRole("button", { name: "Load more results" })).toBeNull();
+    fireEvent.click(latest);
+    expect(screen.getByTestId("visible-company-ids").textContent).toBe("fresh");
+    expect(screen.queryByRole("button", { name: "Show latest results" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Load more results" })).toBeTruthy();
+  });
+
+  it("pauses pagination while checking whether the cached first page is current", async () => {
+    let resolveRefresh!: (value: null) => void;
+    tryListTopCompaniesDirectMock.mockImplementationOnce(() =>
+      new Promise((resolve) => { resolveRefresh = resolve; }),
+    );
+    render(
+      <SearchPage
+        initialCompanies={[{
+          company: { id: "original", name: "Original", slug: "original", icon: null },
+          activeMatches: 1,
+          yearMatches: 2,
+          postings: [],
+        }]}
+        initialTotalCompanies={20}
+        initialKeywords={[]}
+        initialLocations={[]}
+        initialOccupations={[]}
+        initialSeniorities={[]}
+        initialTechnologies={[]}
+        initialEmploymentTypes={[]}
+        initialWorkMode={[]}
+        locale="en"
+        displayCurrency="EUR"
+        jobLanguages={[]}
+        languages={[]}
+      />,
+    );
+
+    await waitFor(() => expect(tryListTopCompaniesDirectMock).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("button", { name: "Load more results" })).toBeNull();
+    expect(runListTopCompaniesMock).not.toHaveBeenCalled();
+    await act(async () => { resolveRefresh(null); });
+    expect(screen.getByRole("button", { name: "Load more results" })).toBeTruthy();
+  });
+
+  it("does not paginate old cards while a filter search is in flight", async () => {
+    let resolveSearch!: (value: Awaited<ReturnType<typeof runListTopCompanies>>) => void;
+    runListTopCompaniesMock.mockImplementationOnce(() =>
+      new Promise((resolve) => { resolveSearch = resolve; }),
+    );
+    render(
+      <SearchPage
+        initialCompanies={[{
+          company: { id: "original", name: "Original", slug: "original", icon: null },
+          activeMatches: 1,
+          yearMatches: 2,
+          postings: [],
+        }]}
+        initialTotalCompanies={20}
+        initialKeywords={[]}
+        initialLocations={[]}
+        initialOccupations={[]}
+        initialSeniorities={[]}
+        initialTechnologies={[]}
+        initialEmploymentTypes={[]}
+        initialWorkMode={[]}
+        locale="en"
+        displayCurrency="EUR"
+        jobLanguages={[]}
+        languages={[]}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Load more results" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "toggle remote" }));
+    expect(runListTopCompaniesMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Load more results" })).toBeNull();
+    await act(async () => {
+      resolveSearch({
+        companies: [{
+          company: { id: "remote", name: "Remote", slug: "remote", icon: null },
+          activeMatches: 1,
+          yearMatches: 1,
+          postings: [],
+        }],
+        totalCompanies: 1,
+        nextOffset: null,
+      });
+    });
+    expect(screen.getByTestId("visible-company-ids").textContent).toBe("remote");
+    expect(runListTopCompaniesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers a fresh first page again after returning to a restored feed", async () => {
+    const original = {
+      company: { id: "original", name: "Original", slug: "original", icon: null },
+      activeMatches: 1,
+      yearMatches: 2,
+      postings: [],
+    };
+    const fresh = {
+      company: { id: "fresh", name: "Fresh", slug: "fresh", icon: null },
+      activeMatches: 3,
+      yearMatches: 4,
+      postings: [],
+    };
+    snapshotMocks.save.mockImplementation((snapshot) => {
+      snapshotMocks.snapshot = snapshot;
+    });
+    tryListTopCompaniesDirectMock.mockResolvedValue({
+      companies: [fresh],
+      totalCompanies: 1,
+      nextOffset: null,
+    });
+    const props = {
+      initialCompanies: [original],
+      initialTotalCompanies: 1,
+      initialKeywords: [],
+      initialLocations: [],
+      initialOccupations: [],
+      initialSeniorities: [],
+      initialTechnologies: [],
+      initialEmploymentTypes: [],
+      initialWorkMode: [],
+      locale: "en",
+      displayCurrency: "EUR",
+      jobLanguages: [],
+      languages: [],
+    };
+
+    const first = render(<SearchPage {...props} />);
+    await screen.findByRole("button", { name: "Show latest results" });
+    first.unmount();
+    expect(snapshotMocks.snapshot?.companies[0]?.company.id).toBe("original");
+
+    render(<SearchPage {...props} />);
+    await screen.findByRole("button", { name: "Show latest results" });
+    expect(screen.getByTestId("visible-company-ids").textContent).toBe("original");
+    expect(tryListTopCompaniesDirectMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not refresh queryless defaults while browser-specific data is pending", async () => {
+    document.documentElement.setAttribute("data-explore-pending", "");
+    render(
+      <SearchPage
+        initialCompanies={[]}
+        initialTotalCompanies={0}
+        initialKeywords={[]}
+        initialLocations={[]}
+        initialOccupations={[]}
+        initialSeniorities={[]}
+        initialTechnologies={[]}
+        initialEmploymentTypes={[]}
+        initialWorkMode={[]}
+        locale="en"
+        displayCurrency="EUR"
+        jobLanguages={[]}
+        languages={[]}
+      />,
+    );
+
+    await act(async () => { await Promise.resolve(); });
     expect(tryListTopCompaniesDirectMock).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,1091 @@
+{
+  "description": "Editorial search-query labels, including contextual discard spans, frozen before catalog6 holdout evaluation",
+  "count": 32,
+  "tune": 16,
+  "holdout": 16,
+  "records": [
+    {
+      "id": "t01",
+      "split": "tune",
+      "group": "verbose",
+      "q": "Find an on site compliance officer role in Munich",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "on site",
+          "segment": 0,
+          "start": 2,
+          "end": 4,
+          "category": "onsite"
+        },
+        {
+          "text": "compliance officer",
+          "segment": 0,
+          "start": 4,
+          "end": 6,
+          "category": "occupation"
+        },
+        {
+          "text": "Munich",
+          "segment": 0,
+          "start": 8,
+          "end": 9,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "Find an",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "role in",
+          "segment": 0,
+          "start": 6,
+          "end": 8
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "t02",
+      "split": "tune",
+      "group": "verbose",
+      "q": "Looking for legal counsel positions in Vienna",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "legal counsel",
+          "segment": 0,
+          "start": 2,
+          "end": 4,
+          "category": "occupation"
+        },
+        {
+          "text": "Vienna",
+          "segment": 0,
+          "start": 6,
+          "end": 7,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "Looking for",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "positions in",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "t03",
+      "split": "tune",
+      "group": "verbose",
+      "q": "please find me remote Python work",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "remote"
+        },
+        {
+          "text": "Python",
+          "segment": 0,
+          "start": 4,
+          "end": 5,
+          "category": "technology"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "please find me",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "work",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "t04",
+      "split": "tune",
+      "group": "terse",
+      "q": "junior accountant Zurich hybrid",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "junior",
+          "segment": 0,
+          "start": 0,
+          "end": 1,
+          "category": "seniority"
+        },
+        {
+          "text": "accountant",
+          "segment": 0,
+          "start": 1,
+          "end": 2,
+          "category": "occupation"
+        },
+        {
+          "text": "Zurich",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "location"
+        },
+        {
+          "text": "hybrid",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "hybrid"
+        }
+      ],
+      "discardSpans": [],
+      "keywords": []
+    },
+    {
+      "id": "t05",
+      "split": "tune",
+      "group": "unsupported",
+      "q": "nurse Berlin part time",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "Berlin",
+          "segment": 0,
+          "start": 1,
+          "end": 2,
+          "category": "location"
+        },
+        {
+          "text": "part time",
+          "segment": 0,
+          "start": 2,
+          "end": 4,
+          "category": "employmentType"
+        }
+      ],
+      "discardSpans": [],
+      "keywords": [
+        "nurse"
+      ]
+    },
+    {
+      "id": "t06",
+      "split": "tune",
+      "group": "informational",
+      "q": "what is a compliance officer",
+      "locale": "en",
+      "terms": [],
+      "discardSpans": [],
+      "keywords": [
+        "what",
+        "is",
+        "a",
+        "compliance",
+        "officer"
+      ]
+    },
+    {
+      "id": "t07",
+      "split": "tune",
+      "group": "terse",
+      "q": "senior pharmacist Berlin remote",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "senior",
+          "segment": 0,
+          "start": 0,
+          "end": 1,
+          "category": "seniority"
+        },
+        {
+          "text": "pharmacist",
+          "segment": 0,
+          "start": 1,
+          "end": 2,
+          "category": "occupation"
+        },
+        {
+          "text": "Berlin",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "location"
+        },
+        {
+          "text": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "remote"
+        }
+      ],
+      "discardSpans": [],
+      "keywords": []
+    },
+    {
+      "id": "t08",
+      "split": "tune",
+      "group": "unsupported",
+      "q": "delivery driver jobs near Paris",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "Paris",
+          "segment": 0,
+          "start": 4,
+          "end": 5,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "jobs near",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keywords": [
+        "delivery",
+        "driver"
+      ]
+    },
+    {
+      "id": "t09",
+      "split": "tune",
+      "group": "unsupported",
+      "q": "part time cashier jobs",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "part time",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "employmentType"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "jobs",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "keywords": [
+        "cashier"
+      ]
+    },
+    {
+      "id": "t10",
+      "split": "tune",
+      "group": "verbose",
+      "q": "sales manager jobs near Paris",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "sales manager",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "occupation"
+        },
+        {
+          "text": "Paris",
+          "segment": 0,
+          "start": 4,
+          "end": 5,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "jobs near",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "t11",
+      "split": "tune",
+      "group": "meaningful",
+      "q": "remote product manager no startup",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "remote",
+          "segment": 0,
+          "start": 0,
+          "end": 1,
+          "category": "remote"
+        },
+        {
+          "text": "product manager",
+          "segment": 0,
+          "start": 1,
+          "end": 3,
+          "category": "occupation"
+        }
+      ],
+      "discardSpans": [],
+      "keywords": [
+        "no",
+        "startup"
+      ]
+    },
+    {
+      "id": "t12",
+      "split": "tune",
+      "group": "ambiguous",
+      "q": "Find an accountant in New York",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "accountant",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "occupation"
+        },
+        {
+          "text": "New York",
+          "segment": 0,
+          "start": 4,
+          "end": 6,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "Find an",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "in",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "t13",
+      "split": "tune",
+      "group": "informational",
+      "q": "Which skills does a recruiter need",
+      "locale": "en",
+      "terms": [],
+      "discardSpans": [],
+      "keywords": [
+        "Which",
+        "skills",
+        "does",
+        "a",
+        "recruiter",
+        "need"
+      ]
+    },
+    {
+      "id": "t14",
+      "split": "tune",
+      "group": "terse",
+      "q": "hr manager Basel contract",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "hr manager",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "occupation"
+        },
+        {
+          "text": "Basel",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "location"
+        },
+        {
+          "text": "contract",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "employmentType"
+        }
+      ],
+      "discardSpans": [],
+      "keywords": []
+    },
+    {
+      "id": "t15",
+      "split": "tune",
+      "group": "verbose",
+      "q": "software engineer jobs with Rust in Amsterdam",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "software engineer",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "occupation"
+        },
+        {
+          "text": "Rust",
+          "segment": 0,
+          "start": 4,
+          "end": 5,
+          "category": "technology"
+        },
+        {
+          "text": "Amsterdam",
+          "segment": 0,
+          "start": 6,
+          "end": 7,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "jobs with",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "in",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "t16",
+      "split": "tune",
+      "group": "verbose",
+      "q": "I want warehouse associate work in London",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "warehouse associate",
+          "segment": 0,
+          "start": 2,
+          "end": 4,
+          "category": "occupation"
+        },
+        {
+          "text": "London",
+          "segment": 0,
+          "start": 6,
+          "end": 7,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "I want",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "work in",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h01",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "Show me entry level warehouse associate jobs in Basel",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "entry level",
+          "segment": 0,
+          "start": 2,
+          "end": 4,
+          "category": "seniority"
+        },
+        {
+          "text": "warehouse associate",
+          "segment": 0,
+          "start": 4,
+          "end": 6,
+          "category": "occupation"
+        },
+        {
+          "text": "Basel",
+          "segment": 0,
+          "start": 8,
+          "end": 9,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "Show me",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "jobs in",
+          "segment": 0,
+          "start": 6,
+          "end": 8
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h02",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "I want a contract recruiter in London",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "contract",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "employmentType"
+        },
+        {
+          "text": "recruiter",
+          "segment": 0,
+          "start": 4,
+          "end": 5,
+          "category": "occupation"
+        },
+        {
+          "text": "London",
+          "segment": 0,
+          "start": 6,
+          "end": 7,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "I want a",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "in",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h03",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "Marketing manager hybrid roles around Amsterdam",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "Marketing manager",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "occupation"
+        },
+        {
+          "text": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "hybrid"
+        },
+        {
+          "text": "Amsterdam",
+          "segment": 0,
+          "start": 5,
+          "end": 6,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "roles around",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h04",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "Find software engineer jobs using React in Berlin",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "software engineer",
+          "segment": 0,
+          "start": 1,
+          "end": 3,
+          "category": "occupation"
+        },
+        {
+          "text": "React",
+          "segment": 0,
+          "start": 5,
+          "end": 6,
+          "category": "technology"
+        },
+        {
+          "text": "Berlin",
+          "segment": 0,
+          "start": 7,
+          "end": 8,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "Find",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "jobs using",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "in",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h05",
+      "split": "holdout",
+      "group": "informational",
+      "q": "What does a pharmacist do",
+      "locale": "en",
+      "terms": [],
+      "discardSpans": [],
+      "keywords": [
+        "What",
+        "does",
+        "a",
+        "pharmacist",
+        "do"
+      ]
+    },
+    {
+      "id": "h06",
+      "split": "holdout",
+      "group": "unsupported",
+      "q": "nurse Zurich remote",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "Zurich",
+          "segment": 0,
+          "start": 1,
+          "end": 2,
+          "category": "location"
+        },
+        {
+          "text": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "remote"
+        }
+      ],
+      "discardSpans": [],
+      "keywords": [
+        "nurse"
+      ]
+    },
+    {
+      "id": "h07",
+      "split": "holdout",
+      "group": "typo",
+      "q": "sr acctnt munich",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "sr",
+          "segment": 0,
+          "start": 0,
+          "end": 1,
+          "category": "seniority"
+        },
+        {
+          "text": "acctnt",
+          "segment": 0,
+          "start": 1,
+          "end": 2,
+          "category": "occupation"
+        },
+        {
+          "text": "munich",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [],
+      "keywords": []
+    },
+    {
+      "id": "h08",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "Customer success manager roles in Dublin please",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "Customer success manager",
+          "segment": 0,
+          "start": 0,
+          "end": 3,
+          "category": "occupation"
+        },
+        {
+          "text": "Dublin",
+          "segment": 0,
+          "start": 5,
+          "end": 6,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "roles in",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "please",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h09",
+      "split": "holdout",
+      "group": "ambiguous",
+      "q": "consultant positions in New York",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "consultant",
+          "segment": 0,
+          "start": 0,
+          "end": 1,
+          "category": "occupation"
+        },
+        {
+          "text": "New York",
+          "segment": 0,
+          "start": 3,
+          "end": 5,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "positions in",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h10",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "Get me temporary auditor work from home",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "temporary",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "employmentType"
+        },
+        {
+          "text": "auditor",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "occupation"
+        },
+        {
+          "text": "work from home",
+          "segment": 0,
+          "start": 4,
+          "end": 7,
+          "category": "remote"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "Get me",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h11",
+      "split": "holdout",
+      "group": "multilingual",
+      "q": "data analyst jobs Zürich",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "data analyst",
+          "segment": 0,
+          "start": 0,
+          "end": 2,
+          "category": "occupation"
+        },
+        {
+          "text": "Zürich",
+          "segment": 0,
+          "start": 3,
+          "end": 4,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "jobs",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h12",
+      "split": "holdout",
+      "group": "meaningful",
+      "q": "jobs at Google for legal counsel",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "legal counsel",
+          "segment": 0,
+          "start": 4,
+          "end": 6,
+          "category": "occupation"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "jobs at",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "for",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "keywords": [
+        "Google"
+      ]
+    },
+    {
+      "id": "h13",
+      "split": "holdout",
+      "group": "typo",
+      "q": "Find me pharmacst in Bern",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "pharmacst",
+          "segment": 0,
+          "start": 2,
+          "end": 3,
+          "category": "occupation"
+        },
+        {
+          "text": "Bern",
+          "segment": 0,
+          "start": 4,
+          "end": 5,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "Find me",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "in",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "keywords": []
+    },
+    {
+      "id": "h14",
+      "split": "holdout",
+      "group": "informational",
+      "q": "salary for accountant in Zurich",
+      "locale": "en",
+      "terms": [],
+      "discardSpans": [],
+      "keywords": [
+        "salary",
+        "for",
+        "accountant",
+        "in",
+        "Zurich"
+      ]
+    },
+    {
+      "id": "h15",
+      "split": "holdout",
+      "group": "unsupported",
+      "q": "remote logistics coordinator jobs Berlin",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "remote",
+          "segment": 0,
+          "start": 0,
+          "end": 1,
+          "category": "remote"
+        },
+        {
+          "text": "Berlin",
+          "segment": 0,
+          "start": 4,
+          "end": 5,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "jobs",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "keywords": [
+        "logistics",
+        "coordinator"
+      ]
+    },
+    {
+      "id": "h16",
+      "split": "holdout",
+      "group": "multilingual",
+      "q": "cherche un poste de comptable à Genève",
+      "locale": "fr",
+      "terms": [
+        {
+          "text": "comptable",
+          "segment": 0,
+          "start": 4,
+          "end": 5,
+          "category": "occupation"
+        },
+        {
+          "text": "Genève",
+          "segment": 0,
+          "start": 6,
+          "end": 7,
+          "category": "location"
+        }
+      ],
+      "discardSpans": [
+        {
+          "text": "cherche un poste de",
+          "segment": 0,
+          "start": 0,
+          "end": 4
+        },
+        {
+          "text": "à",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        }
+      ],
+      "keywords": []
+    }
+  ]
+}

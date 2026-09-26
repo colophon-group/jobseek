@@ -28,7 +28,7 @@ import { parseOfflineSearchFilters } from "@/lib/search/offline-filters";
 import { resolveJobLanguages } from "@/lib/job-languages";
 import { useLatest, useLatestState } from "@/lib/use-latest";
 import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
-import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
+import type { SearchResponse, SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
 import type { ExploreRepositoryCompany } from "@/lib/explore-repository-fallback";
 import {
   useSearchStateStore,
@@ -38,6 +38,23 @@ import {
 import { buildSearchWatchlistDraft } from "@/lib/search/watchlist-draft";
 
 const PAGE_SIZE = 10;
+
+function visibleFeedKey(companies: SearchResultCompany[]): string {
+  return JSON.stringify(companies.map(({ company, activeMatches, yearMatches, postings }) => [
+    company.id,
+    company.name,
+    company.icon,
+    activeMatches,
+    yearMatches,
+    postings.map((posting) => [
+      posting.id,
+      posting.title,
+      posting.isActive,
+      posting.firstSeenAt,
+      posting.locations,
+    ]),
+  ]));
+}
 
 type TaxonomyItem = { id: number; slug: string; name: string };
 type UnresolvedExplicitSlugs = NonNullable<
@@ -253,6 +270,9 @@ export function SearchPage({
   const [companies, setCompanies, companiesRef] = useLatestState<SearchResultCompany[]>(
     shouldRestore ? cached.companies : initialCompanies,
   );
+  const [pendingDefaultRefresh, setPendingDefaultRefresh] = useState<SearchResponse | null>(null);
+  const [isCheckingDefaultRefresh, setIsCheckingDefaultRefresh] = useState(false);
+  const defaultRefreshInFlightRef = useRef(false);
   const [totalCompanies, setTotalCompanies, totalCompaniesRef] = useLatestState(
     shouldRestore ? cached.totalCompanies : initialTotalCompanies,
   );
@@ -264,6 +284,11 @@ export function SearchPage({
     shouldRestore ? cached.nextOffset : initialNextOffset,
   );
   const [isSearching, setIsSearching] = useState(false);
+  const searchInFlightRef = useRef(false);
+  const setSearchPending = useCallback((pending: boolean) => {
+    searchInFlightRef.current = pending;
+    setIsSearching(pending);
+  }, []);
   const searchCounterRef = useRef(0);
   const externalNavigationCounterRef = useRef(0);
   const initialDirectRefreshKeyRef = useRef<string | null>(null);
@@ -367,6 +392,7 @@ export function SearchPage({
 
     // External navigation: parse URL params and update state
     const q = searchParams.get("q") ?? undefined;
+    const qmode = searchParams.get("qmode") === "literal" ? "literal" as const : undefined;
     const loc = searchParams.get("loc") ?? undefined;
     const occ = searchParams.get("occ") ?? undefined;
     const sen = searchParams.get("sen") ?? undefined;
@@ -399,8 +425,8 @@ export function SearchPage({
     setExperienceMin(newExpMin);
     setExperienceMax(newExpMax);
 
-    setIsSearching(true);
-    fetchExploreFilterPageData({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+    setSearchPending(true);
+    fetchExploreFilterPageData({ q, qmode, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
       .then(({ parsed, degraded }) => {
         if (externalNavigationCounterRef.current !== navigationId) return;
         setKeywords(parsed.keywords);
@@ -423,7 +449,7 @@ export function SearchPage({
           setIsTruncated(false);
           setIsDegraded(true);
           setRepositoryFallbackCompanies([]);
-          setIsSearching(false);
+          setSearchPending(false);
           return;
         }
         runSearch();
@@ -433,7 +459,7 @@ export function SearchPage({
         // The browser URL already moved. Keeping the previous companies here
         // would put stale/broader results beneath the new filter state. Parse
         // everything that is safe offline and show explicit unavailability.
-        const parsed = parseOfflineSearchFilters({ q, loc, occ, sen, tech, wm, etype });
+        const parsed = parseOfflineSearchFilters({ q, qmode, loc, occ, sen, tech, wm, etype });
         setKeywords(parsed.keywords);
         setLocations([]);
         setOccupations([]);
@@ -450,7 +476,7 @@ export function SearchPage({
         setIsTruncated(false);
         setIsDegraded(true);
         setRepositoryFallbackCompanies([]);
-        setIsSearching(false);
+        setSearchPending(false);
       });
   }, [searchParams, locale, userLat, userLng]);
 
@@ -597,6 +623,8 @@ export function SearchPage({
       getOccupations: () => occupationsRef.current,
       getSeniorities: () => senioritiesRef.current,
       getTechnologies: () => technologiesRef.current,
+      getWorkMode: () => workModeRef.current,
+      getEmploymentTypes: () => employmentTypesRef.current,
       addEmploymentType: (type: string) => {
         if (employmentTypesRef.current.includes(type)) return;
         const updated = [...employmentTypesRef.current, type];
@@ -699,6 +727,7 @@ export function SearchPage({
   const updateUrlRef = useRef(() => {});
   updateUrlRef.current = () => {
     const extra: Record<string, string> = {};
+    if (new URLSearchParams(window.location.search).get("qmode") === "literal") extra.qmode = "literal";
     if (showPostingIdRef.current) extra.show = showPostingIdRef.current;
     if (salaryMinRef.current || salaryMaxRef.current) {
       extra.sal = `${salaryMinRef.current ?? ""}-${salaryMaxRef.current ?? ""}`;
@@ -797,6 +826,7 @@ export function SearchPage({
   /** Run a search using current ref state. */
   const runSearchRef = useRef(() => {});
   runSearchRef.current = () => {
+    setPendingDefaultRefresh(null);
     if (hasUnresolvedExplicitSlugs(unresolvedExplicitSlugsRef.current)) {
       searchCounterRef.current += 1;
       setCompanies([]);
@@ -804,7 +834,7 @@ export function SearchPage({
       setTotalPostings(undefined);
       setIsTruncated(false);
       setIsDegraded(true);
-      setIsSearching(false);
+      setSearchPending(false);
       return;
     }
     const kws = keywordsRef.current;
@@ -819,7 +849,7 @@ export function SearchPage({
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
     const id = ++searchCounterRef.current;
-    setIsSearching(true);
+    setSearchPending(true);
     (async () => {
       try {
         const result =
@@ -885,7 +915,7 @@ export function SearchPage({
         setIsDegraded(true);
         setRepositoryFallbackCompanies([]);
       } finally {
-        if (searchCounterRef.current === id) setIsSearching(false);
+        if (searchCounterRef.current === id) setSearchPending(false);
       }
     })();
   };
@@ -897,7 +927,10 @@ export function SearchPage({
   // current results and the refresh cannot add Fluid CPU.
   const directRefreshLanguagesKey = languages.join(",");
   useEffect(() => {
-    if (initialDirectRefreshAttempted || shouldRestore || hasFilters) return;
+    if (
+      initialDirectRefreshAttempted || hasFilters ||
+      document.documentElement.hasAttribute("data-explore-pending")
+    ) return;
 
     const refreshKey = [
       locale,
@@ -909,6 +942,8 @@ export function SearchPage({
     initialDirectRefreshKeyRef.current = refreshKey;
 
     const id = ++searchCounterRef.current;
+    defaultRefreshInFlightRef.current = true;
+    setIsCheckingDefaultRefresh(true);
     void tryListTopCompaniesDirect(
       {
         locationIds: undefined,
@@ -929,7 +964,13 @@ export function SearchPage({
       isLoggedInRef.current,
     ).then((result) => {
       if (!result || searchCounterRef.current !== id) return;
-      setCompanies(result.companies);
+      if (visibleFeedKey(result.companies) !== visibleFeedKey(companiesRef.current.slice(0, PAGE_SIZE))) {
+        setPendingDefaultRefresh(result);
+        return;
+      }
+      // A restored snapshot may include additional pages. Its existing
+      // pagination cursor must stay paired with those displayed companies.
+      if (shouldRestore) return;
       serverOffsetRef.current = result.nextOffset ?? result.companies.length;
       setNextOffset(result.nextOffset);
       setTotalCompanies(result.totalCompanies);
@@ -937,10 +978,16 @@ export function SearchPage({
       setIsTruncated(result.truncated ?? false);
       setIsDegraded(false);
       setRepositoryFallbackCompanies([]);
+    }).finally(() => {
+      if (searchCounterRef.current !== id) return;
+      defaultRefreshInFlightRef.current = false;
+      setIsCheckingDefaultRefresh(false);
     });
 
     return () => {
       if (searchCounterRef.current === id) searchCounterRef.current += 1;
+      defaultRefreshInFlightRef.current = false;
+      setIsCheckingDefaultRefresh(false);
     };
   }, [
     directRefreshLanguagesKey,
@@ -951,6 +998,20 @@ export function SearchPage({
     userLat,
     userLng,
   ]);
+
+  function showLatestResults() {
+    if (!pendingDefaultRefresh) return;
+    const result = pendingDefaultRefresh;
+    setPendingDefaultRefresh(null);
+    setCompanies(result.companies);
+    serverOffsetRef.current = result.nextOffset ?? result.companies.length;
+    setNextOffset(result.nextOffset);
+    setTotalCompanies(result.totalCompanies);
+    setTotalPostings(result.totalPostings);
+    setIsTruncated(result.truncated ?? false);
+    setIsDegraded(false);
+    setRepositoryFallbackCompanies([]);
+  }
 
   const handleRemoveKeyword = useCallback(
     (keyword: string) => {
@@ -1120,6 +1181,9 @@ export function SearchPage({
   }, [displayCurrency]);
 
   async function handleLoadMore() {
+    // Until the visitor chooses the fresh first page, a second page from the
+    // live index cannot safely be appended to the cached first page.
+    if (pendingDefaultRefresh || defaultRefreshInFlightRef.current || searchInFlightRef.current) return;
     const offset = serverOffsetRef.current;
     const searchId = searchCounterRef.current;
     const kws = keywordsRef.current;
@@ -1296,6 +1360,18 @@ export function SearchPage({
         }
       />
 
+      {pendingDefaultRefresh && !hasFilters && !isSearching && (
+        <button
+          type="button"
+          onClick={showLatestResults}
+          className="w-full rounded-md border border-primary bg-primary/5 px-4 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+        >
+          <Trans id="explore.results.showLatest" comment="Action shown when fresher Explore results are available without interrupting the current feed">
+            Show latest results
+          </Trans>
+        </button>
+      )}
+
       {companies.length === 0 && isSearching ? (
         <SkeletonCards count={3} />
       ) : repositoryFallbackCompanies.length > 0 ? (
@@ -1325,7 +1401,7 @@ export function SearchPage({
             experienceMin={experienceMin}
             experienceMax={experienceMax}
             languages={languages}
-            hasMore={hasMore}
+            hasMore={hasMore && pendingDefaultRefresh === null && !isCheckingDefaultRefresh && !isSearching}
             truncated={isTruncated}
             load={handleLoadMore}
             onShowPosting={handleOpenPosting}

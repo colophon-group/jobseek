@@ -6,7 +6,7 @@ Website: {{ website }}
 
 ## Goal
 
-Find and select a brand-correct full logo and a minified square icon for
+Find and select a brand-correct primary logo and an asset for compact UI for
 the company. This runs in parallel with metadata enrichment and board
 configuration.
 
@@ -32,8 +32,10 @@ Look at the **JPEG previews** (`candidate-*.jpg`) in the artifacts to verify
 brand correctness. **Do NOT read the PNG files** — some PNG variants cause
 API errors. Always use the `.jpg` thumbnails for visual inspection.
 
-The auto-ranking scores are hints, not reliable decisions — you must
-visually confirm the selected assets are correct.
+The auto-ranking scores and candidate roles are hints, not reliable decisions.
+Visually confirm the selected artwork and compare source dimensions and format.
+The JPEG files are previews only; `ws` saves the original selected image for
+upload. A favicon at 16×16 or 32×32 pixels is usually too small for our UI.
 
 Select by candidate index:
 
@@ -57,9 +59,22 @@ ws set {{ slug }} --logo-url "<direct-image-url>" --icon-url "<direct-image-url>
 
 ## Guidelines
 
-- **Logo** = full primary logo (the one used in headers, press kits)
-- **Icon** = minified square version (favicon, app icon, social media avatar)
+- **Logo** = primary logo artwork (the one used in headers or press kits).
+- **Icon** = artwork that remains recognizable in compact UI. "Compact" refers
+  to where we display it, **not** to the source image's pixel dimensions or
+  file size. The upload pipeline creates an optimized 128-pixel WebP icon from
+  a raster source; give it the best available source.
+- If the icon and full logo show **the same artwork**, select the higher-quality
+  original for **both** fields, even if discovery labels a low-resolution
+  favicon as `icon`. The same candidate index or direct URL may be used twice.
+  Prefer a vector SVG or a larger raster image over a 16/32/48-pixel favicon.
+- If the compact mark is visually different from the full logo (for example,
+  a symbol without the wordmark), use that distinct mark, but find its
+  highest-quality official source. Do not replace it with the full logo merely
+  because the full logo has more pixels.
+- For raster sources, aim for at least 128 pixels on the relevant axis when
+  available. Inspect both artwork and dimensions; file byte size alone is not
+  a quality measure.
 - Prefer transparent-background assets (PNG/SVG over JPEG)
 - Use direct image file URLs, not HTML pages containing images
-- If only one format exists (e.g., company only has a wordmark),
-  use it for both logo and icon
+- If only one suitable artwork exists, use it for both logo and icon.

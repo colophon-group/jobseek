@@ -156,7 +156,7 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
         "--json",
         "--dangerously-bypass-approvals-and-sandbox",
     )
-    assert config.codex_model == "gpt-5.6-sol"
+    assert config.codex_model == "gpt-6-astra"
     assert config.codex_reasoning_effort == "high"
     assert config.trace_export_enabled
     assert config.trace_cleanup_enabled
@@ -178,7 +178,7 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
         "--json",
         "--dangerously-bypass-approvals-and-sandbox",
         "--model",
-        "gpt-5.6-sol",
+        "gpt-6-astra",
         "--config",
         "model_reasoning_effort=high",
         "do the task",
@@ -560,14 +560,14 @@ def test_terminal_run_without_trace_is_accounted_for(tmp_path: Path) -> None:
 def test_project_agents_pin_role_specific_model_policy() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     expected = {
-        "jobseek-company-enricher.toml": ("gpt-5.6-terra", "medium"),
-        "jobseek-logo-selector.toml": ("gpt-5.6-luna", "medium"),
-        "jobseek-board-researcher.toml": ("gpt-5.6-terra", "high"),
-        "jobseek-config-tester.toml": ("gpt-5.6-terra", "high"),
-        "jobseek-error-review-researcher.toml": ("gpt-5.6-terra", "high"),
-        "jobseek-labeller-normalizer.toml": ("gpt-5.6-luna", "low"),
-        "jobseek-labeller-splitter.toml": ("gpt-5.6-luna", "medium"),
-        "jobseek-labeller-extractor.toml": ("gpt-5.6-terra", "high"),
+        "jobseek-company-enricher.toml": ("gpt-6-sol", "medium"),
+        "jobseek-logo-selector.toml": ("gpt-6-luna", "medium"),
+        "jobseek-board-researcher.toml": ("gpt-6-sol", "high"),
+        "jobseek-config-tester.toml": ("gpt-6-sol", "high"),
+        "jobseek-error-review-researcher.toml": ("gpt-6-sol", "high"),
+        "jobseek-labeller-normalizer.toml": ("gpt-6-luna", "low"),
+        "jobseek-labeller-splitter.toml": ("gpt-6-luna", "medium"),
+        "jobseek-labeller-extractor.toml": ("gpt-6-sol", "high"),
     }
 
     for filename, (model, effort) in expected.items():
@@ -760,6 +760,52 @@ def test_backed_off_issue_does_not_block_later_candidate(monkeypatch, tmp_path: 
 
     assert admission is not None
     assert admission.issue == 102
+
+
+def test_expired_retry_yields_one_slot_to_another_issue(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    ledger = RunnerLedger(config.ledger_path)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 2_000)
+    assert ledger.acquire(
+        run_id="first",
+        issue=101,
+        active_slot=config.active_slot,
+        attempt=1,
+    )
+    ledger.finish("first", "retryable", retry_after_at=1_500)
+    governor = CompanyResolverGovernor(
+        config,
+        ledger=ledger,
+        github=FakeGitHub(issue=None, issues=[101, 102]),
+    )
+
+    admission = governor.admit_one()
+
+    assert admission is not None
+    assert admission.issue == 102
+
+
+def test_expired_retry_remains_eligible_when_alone(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    ledger = RunnerLedger(config.ledger_path)
+    monkeypatch.setattr("src.workspace.codex_runner.time.time", lambda: 2_000)
+    assert ledger.acquire(
+        run_id="first",
+        issue=101,
+        active_slot=config.active_slot,
+        attempt=1,
+    )
+    ledger.finish("first", "retryable", retry_after_at=1_500)
+    governor = CompanyResolverGovernor(
+        config,
+        ledger=ledger,
+        github=FakeGitHub(issue=None, issues=[101]),
+    )
+
+    admission = governor.admit_one()
+
+    assert admission is not None
+    assert admission.issue == 101
 
 
 def test_retry_backoff_is_bounded_exponential(tmp_path: Path) -> None:

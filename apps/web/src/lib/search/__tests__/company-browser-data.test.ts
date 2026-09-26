@@ -252,6 +252,38 @@ describe("loadCompanyBrowserData", () => {
     expect(result.data).toMatchObject({ userLat: 47.37, userLng: 8.54 });
   });
 
+  it("keeps Jev residual keywords literal on company pages", async () => {
+    const parsed: ParsedSearchFilters = {
+      ...emptyParsed,
+      keywords: ["security", "officer"],
+      locations: [{
+        id: 10, slug: "zurich", name: "Zurich", type: "city", parentName: "Switzerland",
+      }],
+    };
+    mocks.resolveFilters.mockResolvedValue({ parsed, complete: true });
+
+    const result = await loadCompanyBrowserData({
+      initialData: makeData(),
+      searchParams: new URLSearchParams("q=security%2Cofficer&loc=zurich&qmode=literal"),
+      locale: "en",
+      displayCurrency: "EUR",
+      jobLanguages: [],
+      rates: [],
+      isLoggedIn: false,
+    });
+
+    expect(mocks.semanticFilters).not.toHaveBeenCalled();
+    expect(mocks.resolveFilters).toHaveBeenCalledWith(
+      new URLSearchParams("q=security%2Cofficer&loc=zurich&qmode=literal"), "en",
+    );
+    expect(mocks.directPostings.mock.calls[0]?.[0]).toMatchObject({
+      keywords: ["security", "officer"],
+      locationIds: [10],
+    });
+    expect(result.data.parsed.locations).toHaveLength(1);
+    expect(result.data.parsed.keywords).toEqual(["security", "officer"]);
+  });
+
   it("fails closed when direct posting search is degraded", async () => {
     mocks.semanticFilters.mockResolvedValue({
       parsed: { ...emptyParsed, keywords: ["python"] },

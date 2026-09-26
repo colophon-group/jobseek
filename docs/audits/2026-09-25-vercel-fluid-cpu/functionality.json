@@ -1,0 +1,78 @@
+{
+  "home": {
+    "status": 200,
+    "url": "https://jseek.co/en",
+    "title": "Track the companies you want to work at \u2014 Job Seek | Job Seek",
+    "cache": null,
+    "documentLanguage": "en"
+  },
+  "company": {
+    "status": 200,
+    "url": "https://jseek.co/en/company/aircall",
+    "title": "Jobs at Aircall | Job Seek",
+    "cache": null,
+    "documentLanguage": "en"
+  },
+  "companyOg": {
+    "status": 200,
+    "url": "https://jobseek-assets.colophon-group.org/og/company/3e40c77940a9f29e/en/aircall.png?v=a279b4891909afd8",
+    "contentType": "image/png",
+    "pngSignature": true,
+    "dimensions": [
+      1200,
+      630
+    ]
+  },
+  "signIn": {
+    "status": 200,
+    "url": "https://jseek.co/en/sign-in",
+    "title": "Job Seek",
+    "cache": null,
+    "documentLanguage": "en"
+  },
+  "scanner": {
+    "status": 403,
+    "url": "https://jseek.co/en/company/.env",
+    "title": null,
+    "cache": null,
+    "documentLanguage": null
+  },
+  "observedAt": "2026-09-25T09:32:22.839730+00:00",
+  "browser": {
+    "company": {
+      "factsVisible": true,
+      "initialActiveJobs": 77,
+      "engineerActiveJobs": 30,
+      "filterInteraction": true
+    },
+    "explore": {
+      "initialResults": true,
+      "engineerFilterApplied": true,
+      "filteredCompany": "Renesas Electronics",
+      "filteredActiveJobs": 564
+    },
+    "authenticatedSession": {
+      "accountSettingsLoaded": true,
+      "connectedAccountControlsVisible": true,
+      "preferencesChanged": false
+    }
+  },
+  "watchlistAttempt": {
+    "status": 200,
+    "url": "https://jseek.co/en/watchlists/451e96bf-d71c-464a-bfb9-2843422cca15",
+    "title": "Job Seek",
+    "cache": null,
+    "documentLanguage": "en",
+    "result": "Redirected in browser to watchlist list; did not establish a public page."
+  },
+  "publicWatchlist": {
+    "status": 200,
+    "url": "https://jseek.co/en/watchlists/f1074107-95f5-49ad-986e-86edbe46a668",
+    "title": "Job Seek",
+    "publicTitleInDocument": false,
+    "anonymousRequest": true,
+    "observedAt": "2026-09-25T09:37:40.160783+00:00",
+    "browserResult": "Owned-only UUID route redirected to private overview; canonical legacy public path returned Watchlist not found as intentionally implemented since #8795.",
+    "passed": false
+  }
+}

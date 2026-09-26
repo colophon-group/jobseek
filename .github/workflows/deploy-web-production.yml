@@ -9,6 +9,11 @@ on:
         description: Optional exact main revision to deploy
         required: false
         type: string
+      rebuild:
+        description: Rebuild current main after a production environment change
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,6 +52,7 @@ jobs:
         id: paths
         env:
           REQUESTED_SHA: ${{ inputs.revision }}
+          FORCE_REBUILD: ${{ inputs.rebuild }}
         run: |
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           current_sha="$current_main"
@@ -73,6 +79,10 @@ jobs:
             "$production_sha" "$current_sha")"
           deploy="$(jq -r '.deploy' <<<"$result")"
           relevant="$(jq -r '.relevant | join(", ")' <<<"$result")"
+          if [[ "$FORCE_REBUILD" == "true" ]]; then
+            deploy=true
+            echo "Rebuilding exact main after production environment change"
+          fi
           {
             echo "deploy=$deploy"
             echo "current_sha=$current_sha"

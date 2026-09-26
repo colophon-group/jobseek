@@ -281,6 +281,9 @@ async def _fetch_xml_jobs(
         response = await client.get(url, follow_redirects=True)
         if response.status_code != 200:
             return None
+        from src.core.monitors.personio_capture import capture_personio_response
+
+        capture_personio_response(slug, domain, lang, response.content)
         root = ET.fromstring(response.text)
     except Exception:
         return None

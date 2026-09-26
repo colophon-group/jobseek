@@ -182,7 +182,7 @@ export function AdvancedSearchPanel({
       </button>
 
       {expanded && (
-        <div className="col-span-full row-start-2 flex w-full flex-wrap items-center gap-2">
+        <div className="col-span-full row-start-3 flex w-full flex-wrap items-center gap-2 md:row-start-2">
           <button
             onClick={() => setLocationModalOpen(true)}
             onMouseEnter={handleLocationHover}

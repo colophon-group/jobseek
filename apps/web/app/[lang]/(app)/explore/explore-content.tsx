@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ExploreData } from "@/lib/actions/explore-page-data";
 import {
   hasLoggedInHint,
+  hasCookieNamed,
+  JOB_LANGUAGES_COOKIE,
   readAnonJobLanguagesPreference,
 } from "@/lib/client-cookies";
 import { logExternalError } from "@/lib/safe-external-error";
@@ -18,17 +20,15 @@ import { SearchPage } from "./search-page";
 type ExploreContentProps = {
   locale: string;
   /**
-   * Server-prerendered ``ExploreData`` for the unauthenticated, no-filter
-   * homepage case (#2640). Anonymous visitors with no filter searchParams
-   * use this directly — no Vercel function invocation. When ``initialData``
-   * The cached route always supplies this query-agnostic shell. Preference-
-   * and filter-bearing views replace it from browser-direct Typesense reads.
+   * Server-prerendered ``ExploreData`` for the anonymous, unfiltered page
+   * (#2640). Those visitors use it without a Vercel function invocation.
+   * Preference- and filter-bearing views replace this query-agnostic shell
+   * from browser-direct Typesense reads.
    */
   initialData: ExploreData;
 };
 
 export function ExploreContent({ locale, initialData }: ExploreContentProps) {
-  const rootRef = useRef<HTMLDivElement>(null);
   const fetchIdRef = useRef(0);
   const loadKeyRef = useRef<string | null>(null);
   const viewerKeyRef = useRef<string | null>(null);
@@ -43,7 +43,22 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     data: ExploreData;
     unavailable: boolean;
     directAttempted: boolean;
-  } | null>(null);
+  } | null>({ data: initialData, unavailable: false, directAttempted: false });
+
+  // The parser-time guard covers hard reloads. This layout effect covers SPA
+  // navigation into Explore before React can paint the cached default feed.
+  useLayoutEffect(() => {
+    if (initializationCompleteRef.current) return;
+    const searchParams = new URLSearchParams(window.location.search);
+    if (
+      hasLoggedInHint() ||
+      hasCookieNamed(document.cookie, JOB_LANGUAGES_COOKIE) ||
+      hasSearchFilterParams(searchParams) ||
+      searchParams.has("lang")
+    ) {
+      document.documentElement.setAttribute("data-explore-pending", "");
+    }
+  }, [browserSearchKey]);
 
   // Re-initialize only when the query-agnostic shell does not reflect the
   // browser URL or viewer preferences. Authenticated preferences come from
@@ -110,9 +125,9 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     }
 
     // Unmount SearchPage before the browser load: its state is initialized
-    // from props, and a filtered URL must never flash or retain the broader
-    // queryless shell while its scoped request is pending.
+    // from props, and a filtered URL must never retain the broader shell.
     initializationCompleteRef.current = false;
+    document.documentElement.setAttribute("data-explore-pending", "");
     setView(null);
     void loadExploreBrowserData({
       initialData,
@@ -151,30 +166,21 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     rates,
   ]);
 
-  // Keep the cached server snapshot visible until the correct interactive
-  // view has committed. Filtered and preference-bearing URLs start with a
-  // query-agnostic shell, so revealing this subtree while `view` is null
-  // would briefly replace useful server results with a skeleton (or stale
-  // unfiltered controls). Waiting for `view` also preserves the secretless
-  // repository fallback when browser-side Typesense is unavailable.
-  useEffect(() => {
-    if (!view) return;
-    const interactive = rootRef.current?.closest<HTMLElement>(
-      "[data-explore-interactive]",
-    );
-    const staticSnapshot = interactive?.previousElementSibling;
-    if (
-      staticSnapshot instanceof HTMLElement &&
-      staticSnapshot.hasAttribute("data-explore-static-results")
-    ) {
-      staticSnapshot.setAttribute("hidden", "");
+  // Reveal the single result tree only after the URL/viewer-specific data has
+  // committed. Keep the skeleton visible across the whole direct read.
+  useLayoutEffect(() => {
+    if (view && initializationCompleteRef.current) {
+      document.documentElement.removeAttribute("data-explore-pending");
     }
-    interactive?.removeAttribute("hidden");
   }, [view]);
+
+  useEffect(() => () => {
+    document.documentElement.removeAttribute("data-explore-pending");
+  }, []);
 
   if (!view) {
     return (
-      <div ref={rootRef} data-explore-content-root>
+      <div data-explore-content-root>
         <ExploreSkeleton />
       </div>
     );
@@ -199,7 +205,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   } = data;
 
   return (
-    <div ref={rootRef} data-explore-content-root>
+    <div data-explore-content-root>
       <SearchPage
         initialCompanies={result.companies}
         initialTotalCompanies={result.totalCompanies}
