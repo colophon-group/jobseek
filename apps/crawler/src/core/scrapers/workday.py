@@ -10,9 +10,13 @@ fetches details on the daily scrape schedule.
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
+import json
+import os
 import random
 import re
+from urllib.parse import urlsplit
 
 import httpx
 import structlog
@@ -26,6 +30,8 @@ log = structlog.get_logger()
 _DETAIL_HEADERS = {"Accept": "application/json"}
 _DETAIL_RETRY_ATTEMPTS = 3
 _DETAIL_RETRY_BASE_DELAY = 0.5
+_DETAIL_CAPTURE_FILE = "/tmp/jobseek-workday-detail-replay.json"
+_DETAIL_CAPTURE_MAX_BYTES = 2 << 20
 
 
 class WorkdayDetailPayloadError(Exception):
@@ -83,6 +89,38 @@ def _parse_job_url(url: str) -> tuple[str, str, str, str] | None:
 def _detail_url(company: str, wd_instance: str, site: str, path: str) -> str:
     """Build the Workday detail API URL."""
     return f"https://{company}.{wd_instance}.myworkdayjobs.com/wday/cxs/{company}/{site}{path}"
+
+
+def _capture_natural_detail_response(url: str, api_url: str, response: httpx.Response) -> None:
+    """Retain one selected natural response for same-byte Go/Python comparison."""
+    selected_host = os.environ.get("WORKDAY_DETAIL_CAPTURE_HOST", "")
+    if not selected_host or urlsplit(url).hostname != selected_host:
+        return
+    body = response.content
+    if len(body) > _DETAIL_CAPTURE_MAX_BYTES:
+        log.warning("workday.detail_capture_limit", host=selected_host, bytes=len(body))
+        return
+    record = {
+        "source_url": url,
+        "api_url": api_url,
+        "status": response.status_code,
+        "content_type": response.headers.get("content-type", ""),
+        "body_sha256": hashlib.sha256(body).hexdigest(),
+        "body_base64": base64.b64encode(body).decode("ascii"),
+    }
+    try:
+        fd = os.open(_DETAIL_CAPTURE_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        return
+    except OSError as exc:
+        log.warning("workday.detail_capture_open_failed", host=selected_host, error=str(exc))
+        return
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as target:
+            json.dump(record, target, separators=(",", ":"))
+        log.info("workday.detail_capture_complete", host=selected_host, bytes=len(body))
+    except OSError as exc:
+        log.warning("workday.detail_capture_write_failed", host=selected_host, error=str(exc))
 
 
 # Workday location format: "{COUNTRY}-{STATE}-{CITY}-{BUILDING} ~ {ADDRESS} ~ ..."
@@ -329,6 +367,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         # shared browser-oriented Accept header, leaving an API response open
         # to HTML content negotiation during degraded edge behavior (#5230).
         resp = await http.get(api_url, headers=_DETAIL_HEADERS)
+        _capture_natural_detail_response(url, api_url, resp)
 
         # Workday soft-fails (posting removed between list + detail fetches):
         #   - 404 is the documented "not found" case.

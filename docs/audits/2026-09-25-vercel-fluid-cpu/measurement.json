@@ -1,0 +1,258 @@
+{
+  "collectedAt": "2026-09-25T09:26:39.316059+00:00",
+  "window": {
+    "start": "2026-09-24T21:15:00Z",
+    "end": "2026-09-25T09:15:00Z",
+    "startEpochMs": 1790284500000,
+    "endEpochMs": 1790327700000
+  },
+  "deployment": {
+    "id": "dpl_8uQxcstjhqTq2QtJu3YqcbUt1V6Z",
+    "url": "jobseek-hdwbndguo-viktor-shcherbakovs-projects.vercel.app",
+    "readyState": "READY",
+    "createdAt": 1790281038704,
+    "ready": 1790281060685,
+    "buildingAt": 1790281040234,
+    "sha": "3e9e737c4cc2f37136ec37ccb32d9990349a3bb4"
+  },
+  "promotionVerifiedAt": "2026-09-24T20:19:20.785819Z",
+  "mainAtStart": "b506166411d3834e4a72f8d483600c2a89ea260c",
+  "latestWebRelevantMainSha": "3e9e737c4cc2f37136ec37ccb32d9990349a3bb4",
+  "billing": {
+    "baseline": {
+      "windowStart": "2026-09-23T04:05:00Z",
+      "windowEnd": "2026-09-23T16:05:00Z",
+      "functionsSeconds": 235,
+      "middlewareSeconds": 61,
+      "totalSeconds": 296
+    },
+    "after": {
+      "functionsSeconds": 234,
+      "middlewareSeconds": 26,
+      "totalSeconds": 260,
+      "project": "jobseek-web"
+    }
+  },
+  "routes": [
+    {
+      "route": "/fr/company/[slug]",
+      "invocations": 140,
+      "activeCpuSeconds": 36
+    },
+    {
+      "route": "/en/company/[slug]",
+      "invocations": 165,
+      "activeCpuSeconds": 35
+    },
+    {
+      "route": "/de/company/[slug]",
+      "invocations": 111,
+      "activeCpuSeconds": 29
+    },
+    {
+      "route": "/it/company/[slug]",
+      "invocations": 97,
+      "activeCpuSeconds": 24
+    },
+    {
+      "route": "/en/explore",
+      "invocations": 191,
+      "activeCpuSeconds": 15
+    },
+    {
+      "route": "/en/watchlists/[watchlistId]",
+      "invocations": 67,
+      "activeCpuSeconds": 11
+    },
+    {
+      "route": "/api/typesense-key",
+      "invocations": 90,
+      "activeCpuSeconds": 8
+    },
+    {
+      "route": "/mcp",
+      "invocations": 195,
+      "activeCpuSeconds": 7
+    },
+    {
+      "route": "/api/v1/search",
+      "invocations": 33,
+      "activeCpuSeconds": 3.3
+    },
+    {
+      "route": "/[lang]/[userSlug]/[watchlistSlug]",
+      "invocations": 21,
+      "activeCpuSeconds": 1.79
+    },
+    {
+      "route": "/og/blog/[lang]/[slug]",
+      "invocations": 3,
+      "activeCpuSeconds": 1.28
+    },
+    {
+      "route": "/en/sign-up",
+      "invocations": 4,
+      "activeCpuSeconds": 1.15
+    },
+    {
+      "route": "/en/sign-in",
+      "invocations": 14,
+      "activeCpuSeconds": 1.15
+    },
+    {
+      "route": "/api/auth/[...all]",
+      "invocations": 4,
+      "activeCpuSeconds": 1.07
+    },
+    {
+      "route": "/it/explore",
+      "invocations": 1,
+      "activeCpuSeconds": 0.93
+    },
+    {
+      "route": "/it/settings",
+      "invocations": 2,
+      "activeCpuSeconds": 0.93
+    },
+    {
+      "route": "/api/search/query-intent",
+      "invocations": 10,
+      "activeCpuSeconds": 0.87
+    },
+    {
+      "route": "/en/watchlists",
+      "invocations": 6,
+      "activeCpuSeconds": 0.78
+    },
+    {
+      "route": "/en/settings",
+      "invocations": 13,
+      "activeCpuSeconds": 0.718
+    },
+    {
+      "route": "/sitemap.xml",
+      "invocations": 8,
+      "activeCpuSeconds": 0.71
+    },
+    {
+      "route": "/it/watchlists",
+      "invocations": 2,
+      "activeCpuSeconds": 0.61
+    },
+    {
+      "route": "/api/v1/companies",
+      "invocations": 20,
+      "activeCpuSeconds": 0.47
+    },
+    {
+      "route": "/fr/explore",
+      "invocations": 1,
+      "activeCpuSeconds": 0.43
+    },
+    {
+      "route": "/it/my-jobs",
+      "invocations": 3,
+      "activeCpuSeconds": 0.31
+    },
+    {
+      "route": "/en",
+      "invocations": 2,
+      "activeCpuSeconds": 0.28
+    },
+    {
+      "route": "/en/my-jobs",
+      "invocations": 2,
+      "activeCpuSeconds": 0.27
+    },
+    {
+      "route": "/en/settings.segments/_tree.segment",
+      "invocations": 3,
+      "activeCpuSeconds": 0.27
+    },
+    {
+      "route": "/it/settings/billing",
+      "invocations": 2,
+      "activeCpuSeconds": 0.18
+    },
+    {
+      "route": "/_middleware",
+      "invocations": 0,
+      "activeCpuSeconds": 0
+    },
+    {
+      "route": "/api/v1/taxonomies",
+      "invocations": 6,
+      "activeCpuSeconds": 0
+    },
+    {
+      "route": "/api/v1/resolve",
+      "invocations": 17,
+      "activeCpuSeconds": 0
+    }
+  ],
+  "routeGroups": {
+    "companyOg": {
+      "invocations": 0,
+      "activeCpuSeconds": 0
+    },
+    "companyPages": {
+      "invocations": 513,
+      "activeCpuSeconds": 124
+    },
+    "publicWatchlists": {
+      "invocations": 88,
+      "activeCpuSeconds": 12.79
+    },
+    "explore": {
+      "invocations": 193,
+      "activeCpuSeconds": 16.36
+    },
+    "other": {
+      "invocations": 439,
+      "activeCpuSeconds": 29.348
+    }
+  },
+  "visibleRouteCpuSeconds": 182.498,
+  "routeInvocations": 1233,
+  "activeCpuP75Ms": 323,
+  "cpuThrottleP75Pct": 8,
+  "errorRatePct": 0,
+  "timeoutRatePct": 0,
+  "externalCallsDisplayed": {
+    "typesense": "2.8K",
+    "upstash": "1.6K",
+    "assets": 421,
+    "jseek.co": 128,
+    "vercelDataCache": 22,
+    "jev": 10,
+    "googleOauth": 2
+  },
+  "ppr": {
+    "hits": 210,
+    "stale": 32,
+    "misses": 646,
+    "dynamicInvocationsOverall": 455,
+    "companyRouteDynamicInvocationsDisplayed": 0,
+    "companyShellHitRatePct": 23.5
+  },
+  "limitations": [
+    "Dashboard CPU values are rounded.",
+    "Baseline route window is outside Hobby retention and redirects to Last hour; excluded.",
+    "External Typesense/Upstash counts are rounded; exact counts unavailable.",
+    "R2 object cache hits/misses unavailable in Vercel metrics.",
+    "Natural logs retain less than one hour; they do not cover all requests in the 12-hour window.",
+    "PPR overall dynamic count and route rows disagree; preserved without inferring cause."
+  ],
+  "waf": {
+    "active": {
+      "version": 7,
+      "updatedAt": "2026-08-30T18:27:57.013Z",
+      "firewallEnabled": true
+    },
+    "draft": {
+      "version": 8,
+      "updatedAt": "2026-08-31T19:13:57.584Z",
+      "firewallEnabled": true
+    }
+  }
+}

@@ -31,8 +31,10 @@ from src.exporter import (
     _get_cursor,
     _is_downstream_unavailable,
     _is_typesense_acknowledgement_parse_failure,
+    _require_python_typesense_owner,
     _save_cursor,
     _save_cursors_atomic,
+    _TypesenseOwnershipTransferred,
     _update_metrics,
     _update_typesense_health,
     _upsert_to_supabase,
@@ -57,6 +59,7 @@ def _make_pool() -> AsyncMock:
     that ``async with pool.acquire() as conn`` works without awaiting first.
     """
     pool = AsyncMock()
+    pool.fetchrow.return_value = None
     conn = AsyncMock()
     # acquire() -> async context manager (not a coroutine)
     ctx = MagicMock()
@@ -120,6 +123,17 @@ class TestCursorPersistence:
 
         cursor = await _get_cursor(pool, "job_posting")
         assert cursor == (stored_ts, _ZERO_UUID)
+
+    async def test_typesense_owner_defaults_to_python(self):
+        pool = _make_pool()
+        await _require_python_typesense_owner(pool)
+        pool.fetchrow.assert_awaited_once()
+
+    async def test_typesense_owner_rejects_go(self):
+        pool = _make_pool()
+        pool.fetchrow.return_value = {"value": "go"}
+        with pytest.raises(_TypesenseOwnershipTransferred):
+            await _require_python_typesense_owner(pool)
 
     async def test_save_calls_upsert(self):
         pool = _make_pool()
@@ -1630,6 +1644,32 @@ class TestExportChangedBoards:
 
 
 class TestRunExporter:
+    async def test_go_owner_stops_python_before_any_typesense_write(self):
+        local = _make_pool()
+        local.fetchrow.return_value = {"value": "go"}
+        maps = TaxonomyMaps()
+        maps._last_refresh = 10**20
+        with (
+            patch("src.exporter.settings") as mock_settings,
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch("src.exporter._get_cursor", new=AsyncMock(return_value=(_EPOCH, _ZERO_UUID))),
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch("src.exporter._export_postings_typesense", new=AsyncMock()) as export,
+            patch("src.exporter._save_cursor", new=AsyncMock()) as save,
+        ):
+            mock_settings.export_interval = 0.001
+            mock_settings.export_downstream_backoff_base_seconds = 5.0
+            mock_settings.export_downstream_backoff_max_seconds = 300.0
+            await run_exporter(
+                local,
+                None,
+                asyncio.Event(),
+                cursor_fence_factory=_noop_cursor_fence,
+                cutoff_factory=_fixed_cdc_cutoff,
+            )
+        export.assert_not_awaited()
+        save.assert_not_awaited()
+
     async def test_requires_at_least_one_downstream(self):
         with (
             patch("src.exporter._typesense_enabled", return_value=False),
@@ -2116,6 +2156,12 @@ class TestBuildTypesenseDocsAncestors:
         assert set(docs[0]["occupation_ids"]) == {100, 200}
         # occupation_id (singular) should be the leaf
         assert docs[0]["occupation_id"] == 100
+
+    def test_occupation_ancestors_have_stable_order(self):
+        maps = _make_taxonomy_maps()
+        maps.occupation_ancestors[100] = [200, 100]
+        docs = _build_typesense_docs([_make_posting_record(occupation_id=100)], maps)
+        assert docs[0]["occupation_ids"] == [100, 200]
 
     def test_no_occupation_when_none(self):
         """No occupation_ids field when occupation_id is None."""

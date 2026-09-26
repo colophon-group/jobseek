@@ -27,8 +27,66 @@ x-common-env: &common-env
   PROXY_PROVIDER: ${PROXY_PROVIDER:-none}
   WEBSHARE_PROXY_URLS: "${WEBSHARE_PROXY_URLS:-[]}"
   WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
+  # Exact, default-off Go sitemap monitor handoff.
+  SITEMAP_GO_BOARD_IDS: ${SITEMAP_GO_BOARD_IDS:-}
   # Opt-in one-cycle capture of an existing Workday schedule for Go replay.
   WORKDAY_REPLAY_CAPTURE_BOARD_ID: ${WORKDAY_REPLAY_CAPTURE_BOARD_ID:-}
+  # Exclusive Go list handoff for admitted single-site boards; empty keeps Python authoritative.
+  WORKDAY_GO_BOARD_ID: ${WORKDAY_GO_BOARD_ID:-}
+  WORKDAY_GO_BOARD_IDS: ${WORKDAY_GO_BOARD_IDS:-}
+  WORKDAY_GO_PERCENT: ${WORKDAY_GO_PERCENT:-0}
+  # Default-off Go detail handoff and one natural Python detail response capture.
+  WORKDAY_GO_DETAIL_BOARD_IDS: ${WORKDAY_GO_DETAIL_BOARD_IDS:-}
+  WORKDAY_DETAIL_CAPTURE_HOST: ${WORKDAY_DETAIL_CAPTURE_HOST:-}
+  # One existing scheduled Elastic response, saved locally for exact replay.
+  GREENHOUSE_ELASTIC_CAPTURE_PATH: ${GREENHOUSE_ELASTIC_CAPTURE_PATH:-}
+  # Exclusive Elastic rich-monitor handoff after same-byte replay admission.
+  GREENHOUSE_GO_BOARD_ID: ${GREENHOUSE_GO_BOARD_ID:-}
+  # Explicit-token rich cohort and bounded natural API response capture.
+  GREENHOUSE_GO_BOARD_IDS: ${GREENHOUSE_GO_BOARD_IDS:-}
+  GREENHOUSE_CAPTURE_TOKENS: ${GREENHOUSE_CAPTURE_TOKENS:-}
+  GREENHOUSE_GO_PERCENT: ${GREENHOUSE_GO_PERCENT:-0}
+  # Exclusive rich Ashby monitor handoff and bounded natural response capture.
+  ASHBY_GO_BOARD_IDS: ${ASHBY_GO_BOARD_IDS:-}
+  ASHBY_CAPTURE_TOKENS: ${ASHBY_CAPTURE_TOKENS:-}
+  ASHBY_GO_PERCENT: ${ASHBY_GO_PERCENT:-0}
+  # Strict explicit-token Lever boards use Go; set LEVER_GO_PERCENT=0 to reverse.
+  LEVER_GO_BOARD_IDS: ${LEVER_GO_BOARD_IDS:-}
+  # One bounded response from each selected natural Lever schedule.
+  LEVER_CAPTURE_TOKENS: ${LEVER_CAPTURE_TOKENS:-}
+  LEVER_GO_PERCENT: ${LEVER_GO_PERCENT:-100}
+  # Default-off Go JOIN embedded-data monitor and stable cohort.
+  JOIN_GO_BOARD_IDS: ${JOIN_GO_BOARD_IDS:-}
+  JOIN_GO_PERCENT: ${JOIN_GO_PERCENT:-0}
+  JOIN_CAPTURE_SLUGS: ${JOIN_CAPTURE_SLUGS:-}
+  # Default-off Go Recruitee rich monitor and natural response capture.
+  RECRUITEE_GO_BOARD_IDS: ${RECRUITEE_GO_BOARD_IDS:-}
+  RECRUITEE_GO_PERCENT: ${RECRUITEE_GO_PERCENT:-0}
+  RECRUITEE_CAPTURE_TENANTS: ${RECRUITEE_CAPTURE_TENANTS:-}
+  # Default-off Go Workable list monitor; the existing detail scraper remains scheduled.
+  WORKABLE_GO_BOARD_IDS: ${WORKABLE_GO_BOARD_IDS:-}
+  WORKABLE_GO_PERCENT: ${WORKABLE_GO_PERCENT:-0}
+  WORKABLE_GO_DETAIL_BOARD_IDS: ${WORKABLE_GO_DETAIL_BOARD_IDS:-}
+  WORKABLE_CAPTURE_SLUGS: ${WORKABLE_CAPTURE_SLUGS:-}
+  WORKABLE_DETAIL_CAPTURE_JOBS: ${WORKABLE_DETAIL_CAPTURE_JOBS:-}
+  # Default-off Go Pinpoint rich monitor and natural response capture.
+  PINPOINT_GO_BOARD_IDS: ${PINPOINT_GO_BOARD_IDS:-}
+  PINPOINT_GO_PERCENT: ${PINPOINT_GO_PERCENT:-0}
+  PINPOINT_CAPTURE_TENANTS: ${PINPOINT_CAPTURE_TENANTS:-}
+  # Default-off direct HTTP replacement for the selected Booking DOM monitor.
+  BOOKING_GO_BOARD_ID: ${BOOKING_GO_BOARD_ID:-}
+  # Default-off Go Teamtailor RSS monitor and stable rich cohort.
+  TEAMTAILOR_RSS_GO_BOARD_IDS: ${TEAMTAILOR_RSS_GO_BOARD_IDS:-}
+  TEAMTAILOR_RSS_GO_PERCENT: ${TEAMTAILOR_RSS_GO_PERCENT:-0}
+  TEAMTAILOR_RSS_CAPTURE_HOST: ${TEAMTAILOR_RSS_CAPTURE_HOST:-}
+  # Default-off Go SuccessFactors direct Google RSS monitor.
+  SUCCESSFACTORS_RSS_GO_BOARD_IDS: ${SUCCESSFACTORS_RSS_GO_BOARD_IDS:-}
+  SUCCESSFACTORS_RSS_GO_PERCENT: ${SUCCESSFACTORS_RSS_GO_PERCENT:-0}
+  SUCCESSFACTORS_RSS_CAPTURE_HOST: ${SUCCESSFACTORS_RSS_CAPTURE_HOST:-}
+  # Default-off Go Personio XML/HTML monitor and passive natural feed capture.
+  PERSONIO_GO_BOARD_IDS: ${PERSONIO_GO_BOARD_IDS:-}
+  PERSONIO_GO_PERCENT: ${PERSONIO_GO_PERCENT:-0}
+  PERSONIO_CAPTURE_SLUG: ${PERSONIO_CAPTURE_SLUG:-}
 
 services:
   # -- Redis -------------------------------------------------------
@@ -149,7 +207,7 @@ services:
     restart: unless-stopped
     network_mode: host
     stop_grace_period: 30s  # uniform with workers — gives Postgres pool time to drain
-    command: uv run --no-sync crawler export
+    command: ["/usr/local/bin/exporter-entrypoint"]
     environment:
       <<: *common-env
       METRICS_PORT: "9093"
@@ -209,6 +267,11 @@ services:
       CRAWLER_DB_ROLE: browser-1
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "6"
+      # One selected scheduled Kandou detail render; no additional source request.
+      KANDOU_JSONLD_CAPTURE_URL: ${KANDOU_JSONLD_CAPTURE_URL:-}
+      # One normal scheduled Booking visit can record its main response and
+      # final DOM for an offline HTTP-vs-browser migration decision.
+      BOOKING_DOM_REPLAY_CAPTURE: ${BOOKING_DOM_REPLAY_CAPTURE:-}
       # Bound the lifetime of each long-lived Playwright Node driver. Recycle
       # only between claims; in-flight browser tasks are never interrupted.
       BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"

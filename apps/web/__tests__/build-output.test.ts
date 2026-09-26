@@ -391,8 +391,8 @@ describe("build-output classifier (slow lane, #2885)", () => {
       const htmlPath = join(distDir!, "server", "app", locale, "explore.html");
       expect(existsSync(htmlPath), `missing prerendered Explore HTML at ${htmlPath}`).toBe(true);
       const visibleHtml = inspectVisibleExploreHtml(readFileSync(htmlPath, "utf8"));
-      expect(visibleHtml.staticTextContent).toContain(EXPLORE_HEADINGS[locale]);
-      expect(visibleHtml.staticResultsCount).toBeGreaterThan(0);
+      expect(visibleHtml.resultTextContent).toContain(EXPLORE_HEADINGS[locale]);
+      expect(visibleHtml.resultHostCount).toBeGreaterThan(0);
       expect(visibleHtml.companyResultCount).toBeGreaterThan(0);
     });
   }

@@ -822,9 +822,8 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
     ]
     assert executor["healthcheck"]["test"] == [  # type: ignore[index]
         "CMD",
-        "/app/.venv/bin/python",
-        "-m",
-        "src.lightpanda.executor_health",
+        "/usr/local/bin/lightpanda-b0-supervisor",
+        "executor-health",
     ]
     assert executor["healthcheck"]["timeout"] == "15s"  # type: ignore[index]
     assert executor["healthcheck"]["interval"] == "5s"  # type: ignore[index]
@@ -1797,7 +1796,18 @@ def test_pending_receipt_recovery_settles_before_plan_and_restores_python(
     tombstone_clear = next(
         index for index, event in enumerate(events) if " clear-rollback-tombstone " in event
     )
+    final_save = max(
+        index
+        for index, event in enumerate(events)
+        if " exec -T redis redis-cli --raw SAVE" in event
+    )
+    redis_ready = next(
+        index
+        for index, event in enumerate(events)
+        if index > final_save and "-f docker-compose.yml ps -q redis" in event
+    )
     assert settle < plan < apply < sentinel_clear < tombstone_clear < base_start
+    assert final_save < redis_ready < base_start
     assert not receipt.exists()
 
 

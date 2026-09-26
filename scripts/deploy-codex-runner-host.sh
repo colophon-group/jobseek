@@ -16,6 +16,8 @@ START_TIMERS="${JOBSEEK_CODEX_START_TIMERS:-0}"
 CONFIG_DIR="${JOBSEEK_CODEX_CONFIG_DIR:-/etc/jobseek-codex}"
 GOVERNOR_ENV_FILE="${CONFIG_DIR}/governor.env"
 LABELLER_ENV_FILE="${CONFIG_DIR}/labeller.env"
+CODEX_NPM_PREFIX="/home/codex-runner/.local/share/jobseek-codex-cli"
+CODEX_BIN="${CODEX_NPM_PREFIX}/bin/codex"
 
 LOCK_FILE="${ROOT_DIR}/state/codex-runner.lock"
 
@@ -186,6 +188,39 @@ ensure_document_extraction_runtime() {
   command -v tesseract >/dev/null 2>&1 || fail "tesseract executable is unavailable"
   tesseract --list-langs 2>/dev/null | grep -qx eng ||
     fail "Tesseract English language data is unavailable"
+}
+
+ensure_codex_cli() {
+  command -v npm >/dev/null 2>&1 || fail "npm is required to install the Codex CLI"
+  install -d -o codex-runner -g codex-runner -m 0750 \
+    /home/codex-runner/.local \
+    /home/codex-runner/.local/bin \
+    /home/codex-runner/.local/share \
+    "${CODEX_NPM_PREFIX}"
+
+  log "updating the Codex CLI for gpt-6-astra"
+  as_runner timeout 180s npm install --global --prefix "${CODEX_NPM_PREFIX}" @openai/codex@latest
+  as_runner "${CODEX_BIN}" --version
+
+  # Verify the server accepts the model before a resolver run can claim an
+  # issue. Keep this probe outside the repository and leave no session files.
+  local smoke_output=""
+  if ! smoke_output="$(as_runner timeout 120s "${CODEX_BIN}" exec \
+      --json --ephemeral --ignore-user-config --ignore-rules \
+      --skip-git-repo-check -C /tmp \
+      -m gpt-6-astra -c model_reasoning_effort=low \
+      'Reply exactly OK.' 2>&1)"; then
+    fail "Codex CLI model smoke failed; check runner authentication and model compatibility"
+  fi
+  if ! python3 -c \
+    'import json, sys; lines = (json.loads(line) for line in sys.stdin if line.startswith("{")); raise SystemExit(0 if any(line.get("type") == "turn.completed" for line in lines) else 1)' \
+    <<<"${smoke_output}"; then
+    fail "Codex CLI model smoke did not complete a turn"
+  fi
+
+  as_runner ln -sfnT "${CODEX_BIN}" /home/codex-runner/.local/bin/codex
+  as_runner env PATH="/home/codex-runner/.local/bin:/usr/local/bin:/usr/bin:/bin" \
+    codex --version
 }
 
 require_runtime_config() {
@@ -444,6 +479,7 @@ main() {
   ensure_document_extraction_runtime
   update_repo
   sync_crawler_runtime
+  ensure_codex_cli
   install_maintenance_contract
   install_units
   verify_entrypoints

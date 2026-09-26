@@ -7,7 +7,10 @@ Returns full job data. Supports pagination via skip/limit. Rate limit: 2 req/sec
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import os
 import re
+from contextlib import suppress
 from pathlib import Path
 from typing import cast
 
@@ -54,6 +57,55 @@ _IGNORE_TOKENS = frozenset({"v0", "api", "js", "css", "assets"})
 # ``shared/http.py``) which was flipping responses to HTML and failing
 # ``response.json()`` with a bare ``JSONDecodeError``. Force JSON.
 _API_HEADERS = {"Accept": "application/json"}
+_CAPTURE_DIR = Path("/tmp")
+_CAPTURE_TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}")
+_CAPTURE_MAX_BYTES = 16 << 20
+
+
+def _capture_scheduled_response(token: str, skip: int, body: bytes, status: int, url: str) -> None:
+    """Retain bounded bytes from the existing scheduled page, without another request."""
+    selected = {
+        item.strip()
+        for item in os.environ.get("LEVER_CAPTURE_TOKENS", "").split(",")
+        if item.strip()
+    }
+    if (
+        token not in selected
+        or len(selected) > 4
+        or _CAPTURE_TOKEN.fullmatch(token) is None
+        or skip not in {0, 100, 200, 300}
+        or len(body) > _CAPTURE_MAX_BYTES
+    ):
+        return
+    path = _CAPTURE_DIR / f"jobseek-lever-{token}-{skip}.body"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    created = False
+    try:
+        fd = os.open(path, flags, 0o600)
+        created = True
+        with os.fdopen(fd, "wb") as output:
+            output.write(body)
+            output.flush()
+            os.fsync(output.fileno())
+    except FileExistsError:
+        return
+    except OSError as exc:
+        if created:
+            with suppress(OSError):
+                path.unlink(missing_ok=True)
+        log.warning("lever.capture_failed", error_type=type(exc).__name__)
+    else:
+        log.info(
+            "lever.response_captured",
+            token=token,
+            skip=skip,
+            status=status,
+            final_url=url,
+            bytes=len(body),
+            sha256=hashlib.sha256(body).hexdigest(),
+        )
 
 
 def _build_description(posting: dict) -> str | None:
@@ -246,6 +298,7 @@ async def _get_page_with_retry(
     retries: int = _RETRY_ATTEMPTS,
     base_delay: float = _RETRY_BASE_DELAY,
     skip: int = 0,
+    capture_token: str | None = None,
 ) -> list[dict]:
     """GET a Lever list-API page with bounded retries (#2749)."""
     # Kept for the existing first-page 404 mapping in ``discover``.
@@ -262,6 +315,13 @@ async def _get_page_with_retry(
             base_delay=base_delay,
             log_event="lever.list_backoff",
             sleep=asyncio.sleep,
+            on_success_body=(
+                lambda body, status, final_url: (
+                    _capture_scheduled_response(capture_token, skip, body, status, final_url)
+                    if capture_token is not None and os.environ.get("LEVER_CAPTURE_TOKENS")
+                    else None
+                )
+            ),
         ),
     )
 
@@ -297,7 +357,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     while True:
         try:
             batch = await _get_page_with_retry(
-                client, url, {"limit": BATCH_SIZE, "skip": skip}, skip=skip
+                client,
+                url,
+                {"limit": BATCH_SIZE, "skip": skip},
+                skip=skip,
+                capture_token=token,
             )
         except PaginationFetchError as exc:
             # First-page 404 is the "board removed" signal — re-raise as

@@ -18,6 +18,15 @@ const (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "executor-health" {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := checkExecutorHealth(ctx); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "Lightpanda B0 executor is not ready:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) >= 2 && os.Args[1] == "producer" {
 		configured, err := producerConfigFromEnvironment()
 		if err == nil && len(os.Args) == 3 && os.Args[2] == "--healthcheck" {

@@ -300,9 +300,7 @@ msgid "myJobs.heatmap.tooltip"
 msgstr "{count, plural, =0 {No applications on {date}} one {# application on {date}} other {# applications on {date}}}"
 
 #. Locale-formatted active posting count
-#. Locale-formatted active posting count
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/posting-count-labels.tsx
 msgid "common.stats.activeCount"
 msgstr "{count, plural, one {# active job} other {# active jobs}}"
@@ -314,9 +312,7 @@ msgid "watchlists.jobList.evaluatedCount"
 msgstr "{count, plural, one {# evaluated} other {# evaluated}}"
 
 #. Locale-formatted postings seen in the last year count
-#. Locale-formatted postings seen in the last year count
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/posting-count-labels.tsx
 msgid "common.stats.yearCountWithValue"
 msgstr "{count, plural, one {# in the last year} other {# in the last year}}"
@@ -922,9 +918,7 @@ msgid "myJobs.interview.deleteCancel"
 msgstr "Cancel"
 
 #. Link to change language settings
-#. Link to change language settings
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.change"
 msgstr "change"
@@ -1031,6 +1025,7 @@ msgstr "Choose which languages you want to see job postings in."
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx
 #: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.city"
 msgstr "City"
 
@@ -1528,6 +1523,7 @@ msgstr "Couldn't update the interview. Try again."
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx
 #: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.country"
 msgstr "Country"
 
@@ -1972,9 +1968,7 @@ msgstr "Explore companies"
 
 #. Hidden page H1 for /explore — screen-reader landmark
 #. Hidden page H1 for /explore — screen-reader landmark
-#. Hidden page H1 for /explore — screen-reader landmark
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: app/[lang]/(app)/explore/search-page.tsx
 #: src/components/search/explore-skeleton.tsx
 msgid "explore.h1"
@@ -2109,9 +2103,7 @@ msgid "watchlists.view.filters"
 msgstr "Filters"
 
 #. Toggle button for advanced search filters panel
-#. Toggle button for advanced search filters panel
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/advanced-search-panel.tsx
 msgid "search.advanced.toggle"
 msgstr "Filters"
@@ -3938,6 +3930,7 @@ msgstr "Redistribute your changes, as long as you include the MIT notice."
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx
 #: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.region"
 msgstr "Region"
 
@@ -4610,6 +4603,12 @@ msgstr "Share"
 msgid "watchlists.pending.cloneTitle"
 msgstr "Shared watchlist copy"
 
+#. Action shown when fresher Explore results are available without interrupting the current feed
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/search-page.tsx
+msgid "explore.results.showLatest"
+msgstr "Show latest results"
+
 #. Collapse location pill list
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx
@@ -4641,9 +4640,7 @@ msgid "search.languageNote.withMore"
 msgstr "Showing jobs in {shownNames} and {remaining} more"
 
 #. Note showing jobs in all languages
-#. Note showing jobs in all languages
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.all"
 msgstr "Showing jobs in all languages"

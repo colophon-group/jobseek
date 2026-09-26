@@ -203,7 +203,8 @@ page.tsx (cached server component)
 
 client page
   → renders initialData in raw HTML
-  → conditionally calls a personalized Server Action for auth/filter hints
+  → hides queryless results before paint for auth/filter hints
+  → loads viewer-specific results from browser-direct search
   → handles subsequent interaction through browser search/actions
 ```
 

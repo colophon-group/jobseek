@@ -251,6 +251,44 @@ describe("resolveCompanyFilterStateDirect", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("accepts literal Jev keywords without a taxonomy lookup", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+
+    const result = await resolveCompanyFilterStateDirect(
+      new URLSearchParams("q=security%2Cofficer&qmode=literal"),
+      "en",
+    );
+
+    expect(result.complete).toBe(true);
+    expect(result.parsed.keywords).toEqual(["security", "officer"]);
+    expect(mocks.getConfig).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps literal keywords while resolving explicit Jev locations", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      results: [{ hits: [{ document: {
+        location_id: 10,
+        slug: "zurich",
+        type: "city",
+        parent_name: "Switzerland",
+        name_en: "Zurich",
+      } }] }],
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await resolveCompanyFilterStateDirect(
+      new URLSearchParams("q=security%2Cofficer&loc=zurich&qmode=literal"),
+      "en",
+    );
+
+    expect(result.complete).toBe(true);
+    expect(result.parsed.keywords).toEqual(["security", "officer"]);
+    expect(result.parsed.locations).toMatchObject([{ slug: "zurich" }]);
+    expect(result.parsed.unresolvedExplicitSlugs).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("invalidates a rejected scoped key", async () => {
     vi.stubGlobal(
       "fetch",
