@@ -10,6 +10,30 @@ const serverAppRoot = path.join(appRoot, ".next", "server", "app");
 const maxChunkGzipKb = Number(process.env.BUNDLE_MAX_CHUNK_GZIP_KB ?? "325");
 const maxTotalGzipKb = Number(process.env.BUNDLE_MAX_TOTAL_GZIP_KB ?? "1400");
 
+// Check the compiled route lifetime, not just page.tsx: a shorter cache in a
+// shared layout can silently lower every company's intended daily lifetime.
+const prerender = JSON.parse(fs.readFileSync(
+  path.join(appRoot, ".next", "prerender-manifest.json"), "utf8",
+)) as {
+  routes: Record<string, { initialRevalidateSeconds?: number | false }>;
+  dynamicRoutes: Record<string, { fallbackRevalidate?: number | false }>;
+};
+for (const locale of ["en", "de", "fr", "it"]) {
+  const seededRoutes = Object.entries(prerender.routes)
+    .filter(([route]) => route.startsWith(`/${locale}/company/`));
+  const fallback = prerender.dynamicRoutes[`/${locale}/company/[slug]`];
+  const lifetimes = [
+    ...seededRoutes.map(([, value]) => value.initialRevalidateSeconds),
+    fallback?.fallbackRevalidate,
+  ];
+  if (seededRoutes.length === 0 || lifetimes.some((ttl) =>
+    ttl !== false && (typeof ttl !== "number" || ttl < 86400)
+  )) {
+    throw new Error(`Company shell budget failed for ${locale}: ${JSON.stringify(lifetimes)}`);
+  }
+}
+console.log("Company prerender and fallback lifetimes are at least one day in all locales.");
+
 type ChunkSize = {
   file: string;
   rawBytes: number;

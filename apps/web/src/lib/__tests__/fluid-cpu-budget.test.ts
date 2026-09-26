@@ -151,6 +151,19 @@ describe("Fluid CPU regression gate", () => {
       .toMatchObject({ passed: false, available: true });
   });
 
+  it("keeps unverified request-source sampling incomplete", () => {
+    const report = passingReport();
+    const result = evaluateFluidCpuReport({
+      ...report,
+      traffic: { ...report.traffic, samplingRatePct: null },
+    });
+
+    expect(result.status).toBe("INCOMPLETE");
+    expect(result.passed).toBe(false);
+    expect(result.checks.find((check) => check.name === "Traffic source sampling"))
+      .toMatchObject({ actual: "unknown", available: false, passed: false });
+  });
+
   it("fails if private watchlist access checks or full traffic sampling fail", () => {
     const report = passingReport();
     report.functionality.privateWatchlistCrossOwnerDenied = false;

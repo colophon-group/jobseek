@@ -1,0 +1,316 @@
+{
+  "collectedAt": "2026-09-26T12:32:33.681059+00:00",
+  "window": {
+    "start": "2026-09-26T00:20:00Z",
+    "end": "2026-09-26T12:20:00Z"
+  },
+  "deployment": {
+    "id": "dpl_4V7ivfskfQ8vqZFwStsXmy7jawYv",
+    "sha": "c0066936b6a9f334c447ff5aa2ec1aff436c95ef",
+    "readyAt": "2026-09-25T16:17:10.481Z",
+    "promotionVerifiedAt": "2026-09-25T16:18:34.6665605Z",
+    "ownedWorkflow": 36159311384
+  },
+  "mainAtStart": "36d3c27e2ae5cde41110b0a4c0672f754f597daa",
+  "latestWebRelevantMainSha": "c0066936b6a9f334c447ff5aa2ec1aff436c95ef",
+  "billing": {
+    "baseline": {
+      "start": "2026-09-23T04:05:00Z",
+      "end": "2026-09-23T16:05:00Z",
+      "functionsSeconds": 235,
+      "middlewareSeconds": 61,
+      "totalSeconds": 296
+    },
+    "after": {
+      "functionsSeconds": 316,
+      "middlewareSeconds": 26,
+      "totalSeconds": 342,
+      "project": "jobseek-web"
+    }
+  },
+  "routes": [
+    {
+      "route": "/api/v1/search",
+      "invocations": 766,
+      "activeCpuSeconds": 55.0
+    },
+    {
+      "route": "/en/company/[slug]",
+      "invocations": 233,
+      "activeCpuSeconds": 39.0
+    },
+    {
+      "route": "/fr/company/[slug]",
+      "invocations": 188,
+      "activeCpuSeconds": 38.0
+    },
+    {
+      "route": "/de/company/[slug]",
+      "invocations": 154,
+      "activeCpuSeconds": 30.0
+    },
+    {
+      "route": "/it/company/[slug]",
+      "invocations": 123,
+      "activeCpuSeconds": 26.0
+    },
+    {
+      "route": "/.well-known/workflow/v1/step",
+      "invocations": 18,
+      "activeCpuSeconds": 14.0
+    },
+    {
+      "route": "/en/watchlists/[watchlistId]",
+      "invocations": 76,
+      "activeCpuSeconds": 9.0
+    },
+    {
+      "route": "/api/typesense-key",
+      "invocations": 102,
+      "activeCpuSeconds": 9.0
+    },
+    {
+      "route": "/en/explore",
+      "invocations": 80,
+      "activeCpuSeconds": 7.0
+    },
+    {
+      "route": "/api/web/watchlists/[id]/ai-filter/decisions",
+      "invocations": 76,
+      "activeCpuSeconds": 3.59
+    },
+    {
+      "route": "/api/v1/resolve",
+      "invocations": 58,
+      "activeCpuSeconds": 3.14
+    },
+    {
+      "route": "/mcp",
+      "invocations": 50,
+      "activeCpuSeconds": 2.39
+    },
+    {
+      "route": "/.well-known/workflow/v1/flow",
+      "invocations": 22,
+      "activeCpuSeconds": 2.29
+    },
+    {
+      "route": "/sitemap.xml",
+      "invocations": 16,
+      "activeCpuSeconds": 0.87
+    },
+    {
+      "route": "/en",
+      "invocations": 5,
+      "activeCpuSeconds": 0.8
+    },
+    {
+      "route": "/[lang]/[userSlug]/[watchlistSlug]",
+      "invocations": 4,
+      "activeCpuSeconds": 0.67
+    },
+    {
+      "route": "/api/web/watchlists/[id]/ai-filter/reconcile",
+      "invocations": 4,
+      "activeCpuSeconds": 0.625
+    },
+    {
+      "route": "/fr/blog/how-we-index-job-postings",
+      "invocations": 1,
+      "activeCpuSeconds": 0.6
+    },
+    {
+      "route": "/fr/explore",
+      "invocations": 2,
+      "activeCpuSeconds": 0.6
+    },
+    {
+      "route": "/de/watchlists",
+      "invocations": 2,
+      "activeCpuSeconds": 0.6
+    },
+    {
+      "route": "/it/settings",
+      "invocations": 2,
+      "activeCpuSeconds": 0.53
+    },
+    {
+      "route": "/api/auth/[...all]",
+      "invocations": 2,
+      "activeCpuSeconds": 0.45
+    },
+    {
+      "route": "/api/v1/job",
+      "invocations": 18,
+      "activeCpuSeconds": 0.45
+    },
+    {
+      "route": "/api/web/watchlists/counts",
+      "invocations": 1,
+      "activeCpuSeconds": 0.38
+    },
+    {
+      "route": "/en/my-jobs",
+      "invocations": 2,
+      "activeCpuSeconds": 0.33
+    },
+    {
+      "route": "/en/settings",
+      "invocations": 2,
+      "activeCpuSeconds": 0.28
+    },
+    {
+      "route": "/fr",
+      "invocations": 1,
+      "activeCpuSeconds": 0.26
+    },
+    {
+      "route": "/fr/watchlists",
+      "invocations": 2,
+      "activeCpuSeconds": 0.25
+    },
+    {
+      "route": "/it/watchlists",
+      "invocations": 4,
+      "activeCpuSeconds": 0.21
+    },
+    {
+      "route": "/en/sign-up",
+      "invocations": 1,
+      "activeCpuSeconds": 0.19
+    },
+    {
+      "route": "/it/my-jobs",
+      "invocations": 2,
+      "activeCpuSeconds": 0.16
+    },
+    {
+      "route": "/api/v1/companies",
+      "invocations": 3,
+      "activeCpuSeconds": 0.16
+    },
+    {
+      "route": "/api/search/query-intent",
+      "invocations": 1,
+      "activeCpuSeconds": 0.15
+    },
+    {
+      "route": "/de/explore",
+      "invocations": 1,
+      "activeCpuSeconds": 0.117
+    },
+    {
+      "route": "/en/watchlists",
+      "invocations": 2,
+      "activeCpuSeconds": 0.1
+    },
+    {
+      "route": "/api/v1/taxonomies",
+      "invocations": 2,
+      "activeCpuSeconds": 0.09
+    },
+    {
+      "route": "/en/sign-in",
+      "invocations": 3,
+      "activeCpuSeconds": 0.09
+    },
+    {
+      "route": "/fr/settings",
+      "invocations": 2,
+      "activeCpuSeconds": 0.08
+    },
+    {
+      "route": "/de/settings",
+      "invocations": 2,
+      "activeCpuSeconds": 0.063
+    },
+    {
+      "route": "/_middleware",
+      "invocations": 0,
+      "activeCpuSeconds": 0.0
+    },
+    {
+      "route": "/fr/my-jobs",
+      "invocations": 2,
+      "activeCpuSeconds": 0.0
+    },
+    {
+      "route": "/de/my-jobs",
+      "invocations": 2,
+      "activeCpuSeconds": 0.0
+    }
+  ],
+  "routeGroups": {
+    "companyOg": {
+      "invocations": 0,
+      "activeCpuSeconds": 0
+    },
+    "companyPages": {
+      "invocations": 698,
+      "activeCpuSeconds": 133.0
+    },
+    "watchlistRoutes": {
+      "invocations": 80,
+      "activeCpuSeconds": 9.67
+    },
+    "explore": {
+      "invocations": 83,
+      "activeCpuSeconds": 7.717
+    },
+    "other": {
+      "invocations": 1176,
+      "activeCpuSeconds": 97.128
+    }
+  },
+  "visibleRouteCpuSeconds": 247.515,
+  "routeInvocations": 2037,
+  "activeCpuP75Ms": 264,
+  "cpuThrottleP75Pct": 8.5,
+  "errorRatePct": 0,
+  "timeoutRatePct": 0,
+  "coldStartPct": 6.3,
+  "externalCallsDisplayed": {
+    "typesense": "12K",
+    "upstash": "3K",
+    "assets": "1.3K",
+    "typesafe": 155,
+    "workflow": 120,
+    "queue": 80,
+    "jseek": 15,
+    "googleOauth": 1
+  },
+  "ppr": {
+    "hits": 166,
+    "stale": 66,
+    "misses": 475,
+    "dynamicInvocationsOverall": 487,
+    "companyRouteDynamicInvocationsDisplayed": 0,
+    "companyShellHitRatePct": 33.6
+  },
+  "waf": {
+    "active": {
+      "version": 7,
+      "updatedAt": "2026-08-30T18:27:57.013Z"
+    },
+    "draft": {
+      "version": 8,
+      "updatedAt": "2026-08-31T19:13:57.584Z",
+      "published": false
+    }
+  },
+  "limitations": [
+    "Dashboard CPU values are rounded; all 42 route rows captured on page 1 of 1.",
+    "Billed Functions CPU and visible route CPU do not reconcile; neither is substituted for the other.",
+    "Baseline route data expired from Hobby retention.",
+    "External Typesense and Upstash counts are rounded, exact counts unknown.",
+    "Retained natural logs cover less than one hour and cannot establish all-traffic coverage.",
+    "PPR overall dynamic count differs from its zero route breakdown."
+  ],
+  "sources": {
+    "billingBaseline": "https://vercel.com/viktor-shcherbakovs-projects/~/usage/vercel-functions-fluid-cpu-duration?view=Type&from=1790136300000&to=1790179500000",
+    "billingAfter": "https://vercel.com/viktor-shcherbakovs-projects/~/usage/vercel-functions-fluid-cpu-duration?view=Type&from=1790382000000&to=1790425200000",
+    "functions": "https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/observability/vercel-functions?pageSize=50&from=1790382000&to=1790425200",
+    "ppr": "https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/observability/ppr?pageSize=50&from=1790382000&to=1790425200",
+    "external": "https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/observability/external-apis?pageSize=50&from=1790382000&to=1790425200"
+  }
+}

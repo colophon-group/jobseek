@@ -133,7 +133,7 @@ export function useSalaryDisplay() {
 }
 
 /**
- * Returns the hours-cached currency-rate table embedded by the shared server
+ * Returns the daily currency-rate display snapshot embedded by the shared server
  * layout and supplied through `SalaryDisplayProvider`.
  *
  * Consumers (search page, company page, salary modal) historically each

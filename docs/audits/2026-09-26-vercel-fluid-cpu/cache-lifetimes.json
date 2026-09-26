@@ -1,0 +1,68 @@
+{
+  "before": {
+    "/de/company/0x": {
+      "initialRevalidateSeconds": 3600,
+      "initialExpireSeconds": 86400,
+      "renderingMode": "PARTIALLY_STATIC"
+    },
+    "/en/company/0x": {
+      "initialRevalidateSeconds": 3600,
+      "initialExpireSeconds": 86400,
+      "renderingMode": "PARTIALLY_STATIC"
+    },
+    "/fr/company/0x": {
+      "initialRevalidateSeconds": 3600,
+      "initialExpireSeconds": 86400,
+      "renderingMode": "PARTIALLY_STATIC"
+    },
+    "/it/company/0x": {
+      "initialRevalidateSeconds": 3600,
+      "initialExpireSeconds": 86400,
+      "renderingMode": "PARTIALLY_STATIC"
+    }
+  },
+  "after": {
+    "/de/company/0x": {
+      "initialRevalidateSeconds": 86400,
+      "initialExpireSeconds": 604800,
+      "renderingMode": "PARTIALLY_STATIC"
+    },
+    "/en/company/0x": {
+      "initialRevalidateSeconds": 86400,
+      "initialExpireSeconds": 604800,
+      "renderingMode": "PARTIALLY_STATIC"
+    },
+    "/fr/company/0x": {
+      "initialRevalidateSeconds": 86400,
+      "initialExpireSeconds": 604800,
+      "renderingMode": "PARTIALLY_STATIC"
+    },
+    "/it/company/0x": {
+      "initialRevalidateSeconds": 86400,
+      "initialExpireSeconds": 604800,
+      "renderingMode": "PARTIALLY_STATIC"
+    }
+  },
+  "afterFallbacks": {
+    "/de/company/[slug]": {
+      "fallbackRevalidate": 86400,
+      "fallbackExpire": 604800
+    },
+    "/en/company/[slug]": {
+      "fallbackRevalidate": 86400,
+      "fallbackExpire": 604800
+    },
+    "/fr/company/[slug]": {
+      "fallbackRevalidate": 86400,
+      "fallbackExpire": 604800
+    },
+    "/it/company/[slug]": {
+      "fallbackRevalidate": 86400,
+      "fallbackExpire": 604800
+    },
+    "/[lang]/company/[slug]": {
+      "fallbackRevalidate": null,
+      "fallbackExpire": null
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "home": {
+    "status": 200,
+    "cache": "HIT",
+    "bytes": 123194
+  },
+  "companyPage": {
+    "status": 200,
+    "cache": "PRERENDER",
+    "bytes": 279493
+  },
+  "companyOgDirect": {
+    "status": 200,
+    "pngSignature": true,
+    "dimensions": [
+      1200,
+      630
+    ],
+    "url": "https://jobseek-assets.colophon-group.org/og/company/3e40c77940a9f29e/en/aircall.png?v=c28de8a015244952"
+  },
+  "signIn": {
+    "status": 200,
+    "cache": "HIT",
+    "bytes": 171674
+  },
+  "scanner": {
+    "status": 403,
+    "cache": null,
+    "bytes": 59
+  },
+  "legacyAnonymousDenied": {
+    "status": 404,
+    "cache": null,
+    "bytes": 1498
+  },
+  "companyOgLegacyRedirect": {
+    "status": 308,
+    "cache": null,
+    "bytes": 15,
+    "location": "https://jobseek-assets.colophon-group.org/og/company/3e40c77940a9f29e/en/aircall.png?v=49bb35cdb71935e6",
+    "targetStatus": 200,
+    "targetPng": true
+  },
+  "observedAt": "2026-09-26T12:37:15.441120+00:00",
+  "browserChecks": {
+    "authenticatedOwner": {
+      "ownedTitleAndResults": true,
+      "legacyRedirectToOwnedUuid": true,
+      "legacyStatusCodes": [
+        307
+      ]
+    },
+    "sharedAnonymous": {
+      "explicitShareFlagVerifiedByReadOnlyDatabaseQuery": true,
+      "titleVisible": true,
+      "activeJobs": 126,
+      "resultsVisible": true,
+      "loggedOutUi": true
+    },
+    "privateAnonymousDenied": {
+      "finalPath": "/en/watchlists",
+      "noPrivateContent": true
+    },
+    "privateCrossOwnerDenied": {
+      "finalPath": "/en/watchlists",
+      "noPrivateContent": true
+    },
+    "legacyCrossOwnerDenied": {
+      "notFoundDocument": true
+    },
+    "explore": {
+      "resultsVisible": true
+    },
+    "company": {
+      "factsVisible": true,
+      "resultsVisible": true
+    },
+    "authentication": {
+      "signInHttpStatus": 200,
+      "existingSessionUsable": true
+    }
+  }
+}

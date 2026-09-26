@@ -134,6 +134,10 @@ telemetry upgrade for now; the exact external-call and complete-window traffic
 requirements remain in force and incomplete until a supported collection path
 is operational.
 
+Use `traffic.samplingRatePct: null` when the source's sampling contract is
+unverified. Successfully paging retained dashboard requests does not establish
+100% sampling or complete-window coverage; neither unknown becomes zero.
+
 ### Interim Hobby log archive
 
 To preserve a larger natural-traffic sample without a paid upgrade, run the
