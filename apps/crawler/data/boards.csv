@@ -4059,6 +4059,7 @@ kpmg,kpmg-cz-almacareer,https://kpmg.jobs.cz/,almacareer,{},skip,
 kpmg,kpmg-de,https://jobs.kpmg.de,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.kpmg.de/googlefeed.xml""}",skip,
 kpmg,kpmg-es,https://carreras.kpmg.es/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://carreras.kpmg.es/googlefeed.xml""}",skip,
 kpmg,kpmg-fr,https://emplois.kpmg.fr/recherche-d'offres,dom,"{""render"": false, ""url_filter"": ""/emploi/"", ""pagination"": {""param_name"": ""p"", ""max_pages"": 10000}}",json-ld,
+kpmg,kpmg-inventory-careers,https://ejgk.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_3,oracle_hcm,"{""host"": ""ejgk.fa.em2.oraclecloud.com"", ""site"": ""CX_3"", ""page_shortfall_tolerance"": 1, ""total_count_tolerance"": 1}",oracle_hcm,"{""enrich"": [""description""]}"
 kpmg,kpmg-it,https://careers.kpmg.it/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.kpmg.it/googlefeed.xml""}",skip,
 kpmg,kpmg-lu,https://careers.kpmg.lu,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.kpmg.lu/googlefeed.xml""}",skip,
 kpmg,kpmg-me,https://slccareers.kpmg.com,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://slccareers.kpmg.com/googlefeed.xml""}",skip,

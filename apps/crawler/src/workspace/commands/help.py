@@ -4719,6 +4719,10 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      Allowed difference between Oracle's advertised total and
                      the final accessible rows. Use only for a verified tenant
                      whose TotalJobsCount consistently overstates its tail.
+    page_shortfall_tolerance
+                     Allowed missing rows on an intermediate 200-row page.
+                     Use only for a verified tenant whose stable page union is
+                     complete despite Oracle returning a short page.
     duplicate_row_tolerance
                      Allowed duplicate IDs inside individual response pages.
                      Use only for a verified tenant whose TotalJobsCount counts
