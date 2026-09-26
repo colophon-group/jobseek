@@ -16,7 +16,8 @@ describe("anonymous app navigation Server Action contract (#2640)", () => {
     expect(appLayout).toContain(
       'import { getCurrencyRates } from "@/lib/services/search";',
     );
-    expect(appLayout).toContain("const currencyRates = await getCurrencyRates();");
+    expect(appLayout).toContain("return getCurrencyRates();");
+    expect(appLayout).toContain("const currencyRates = await getDisplayCurrencySnapshot();");
     expect(appLayout).toContain("initialCurrencyRates={currencyRates}");
     expect(bootstrapProvider).toContain("initialCurrencyRates: CurrencyRate[];");
     expect(bootstrapProvider).toContain("initialRates={initialCurrencyRates}");

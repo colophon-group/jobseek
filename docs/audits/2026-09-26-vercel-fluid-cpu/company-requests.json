@@ -1,0 +1,1648 @@
+{
+  "sampleStart": "2026-09-26T11:25:05.043Z",
+  "sampleEnd": "2026-09-26T12:19:54.888Z",
+  "totalRetainedRequests": 656,
+  "companyRequests": [
+    {
+      "timestamp": "2026-09-26T12:19:00.956Z",
+      "requestPath": "/en/company/ibm",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:18:45.561Z",
+      "requestPath": "/fr/company/sanford-health",
+      "requestMethod": "POST",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:18:36.557Z",
+      "requestPath": "/en/company/securitas-ag",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "curl",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:17:37.460Z",
+      "requestPath": "/en/company/lifepoint-health",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:16:13.881Z",
+      "requestPath": "/en/company/norwegian-refugee-council",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:14:50.454Z",
+      "requestPath": "/en/company/novartis",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:13:26.145Z",
+      "requestPath": "/en/company/preply",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:12:02.512Z",
+      "requestPath": "/en/company/saviynt",
+      "requestMethod": "POST",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:10:39.319Z",
+      "requestPath": "/en/company/sentara-health",
+      "requestMethod": "POST",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "cold"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:09:15.861Z",
+      "requestPath": "/en/company/singapore-public-service",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:07:51.438Z",
+      "requestPath": "/en/company/turner-and-townsend",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:06:28.083Z",
+      "requestPath": "/en/company/unops",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:05:26.133Z",
+      "requestPath": "/it/company/quantexa",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:05:04.250Z",
+      "requestPath": "/en/company/wsp",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T12:02:16.855Z",
+      "requestPath": "/fr/company/exl",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:59:46.000Z",
+      "requestPath": "/de/company/panasonic",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:59:30.251Z",
+      "requestPath": "/fr/company/autozone",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:58:06.567Z",
+      "requestPath": "/fr/company/cracker-barrel",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:56:43.297Z",
+      "requestPath": "/fr/company/hitachi",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:55:19.602Z",
+      "requestPath": "/fr/company/hsbc",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:53:56.296Z",
+      "requestPath": "/fr/company/jabil",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "cold"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:52:32.410Z",
+      "requestPath": "/fr/company/kaiser-permanente",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:51:39.794Z",
+      "requestPath": "/en/company/abbott",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:51:09.201Z",
+      "requestPath": "/fr/company/l3harris-technologies",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:49:45.716Z",
+      "requestPath": "/fr/company/learning-care-group",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:48:21.696Z",
+      "requestPath": "/fr/company/nachhilfeunterricht",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:48:13.970Z",
+      "requestPath": "/de/company/aclu-national-office",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:46:58.395Z",
+      "requestPath": "/fr/company/msd",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:45:35.104Z",
+      "requestPath": "/fr/company/university-of-arkansas-system",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:44:11.373Z",
+      "requestPath": "/it/company/ceva-logistics",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:42:47.820Z",
+      "requestPath": "/it/company/maersk",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:41:24.621Z",
+      "requestPath": "/it/company/rewe-group",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:40:00.818Z",
+      "requestPath": "/it/company/rolls-royce",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:38:37.504Z",
+      "requestPath": "/it/company/kuehne-nagel",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:38:10.016Z",
+      "requestPath": "/it/company/lockheed-martin",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:38:01.942Z",
+      "requestPath": "/fr/company/jetbrains",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:37:52.938Z",
+      "requestPath": "/en/company/manomano",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:37:13.929Z",
+      "requestPath": "/it/company/spacex",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:36:37.133Z",
+      "requestPath": "/it/company/air-liquide",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:36:27.985Z",
+      "requestPath": "/en/company/manomano",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:36:20.950Z",
+      "requestPath": "/it/company/lockheed-martin",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:35:58.166Z",
+      "requestPath": "/fr/company/unity",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:35:50.160Z",
+      "requestPath": "/en/company/wiz-inc",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:34:58.125Z",
+      "requestPath": "/en/company/manomano",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:34:48.982Z",
+      "requestPath": "/fr/company/jetbrains",
+      "requestMethod": "POST",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:34:39.174Z",
+      "requestPath": "/it/company/lockheed-martin",
+      "requestMethod": "POST",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:34:32.103Z",
+      "requestPath": "/it/company/air-liquide",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:34:26.567Z",
+      "requestPath": "/fr/company/trinity-health",
+      "requestMethod": "POST",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:32:05.230Z",
+      "requestPath": "/fr/company/thomson-reuters",
+      "requestMethod": "POST",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:31:39.173Z",
+      "requestPath": "/en/company/eliot-community-human-services",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:30:56.544Z",
+      "requestPath": "/it/company/china-state-construction",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:30:15.731Z",
+      "requestPath": "/en/company/goldman-sachs",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:29:28.077Z",
+      "requestPath": "/it/company/panera-bread",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:29:26.869Z",
+      "requestPath": "/en/company/nhs",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-26T11:26:12.967Z",
+      "requestPath": "/en/company/huawei",
+      "requestMethod": "GET",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "statusCode": 200,
+      "userAgentFamily": "other",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    }
+  ],
+  "sourceIncludesAllTraffic": false
+}

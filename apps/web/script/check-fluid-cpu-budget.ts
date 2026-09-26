@@ -214,7 +214,7 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
     "traffic.sourceIncludesAllTraffic",
   );
   const trafficSource = requiredString(traffic.source, "traffic.source");
-  const samplingRatePct = finiteNumber(
+  const samplingRatePct = measuredNumber(
     traffic.samplingRatePct,
     "traffic.samplingRatePct",
   );
@@ -302,10 +302,10 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
   });
   checks.push({
     name: "Traffic source sampling",
-    actual: `${format(samplingRatePct)}%`,
+    actual: samplingRatePct === null ? "unknown" : `${format(samplingRatePct)}%`,
     budget: "100%",
     passed: samplingRatePct === 100,
-    available: true,
+    available: samplingRatePct !== null,
   });
 
   for (const functionalityCheck of functionalityChecks) {
