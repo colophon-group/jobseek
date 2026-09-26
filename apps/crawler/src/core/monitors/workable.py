@@ -14,6 +14,7 @@ scrape schedule.
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 
 import httpx
@@ -24,6 +25,10 @@ from src.core.monitors import (
     slug_guess_allowed,
 )
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
+from src.core.monitors.workable_capture import (
+    capture_workable_fallback,
+    capture_workable_response,
+)
 from src.shared.http_retry import (
     PaginationFetchError,
     fetch_json_page_with_retry,
@@ -130,6 +135,11 @@ async def _public_api_inventory(
         max_bytes=_PUBLIC_API_MAX_BYTES,
         log_event="workable.public_api_backoff",
         sleep=asyncio.sleep,
+        on_success_body=(
+            lambda body, _status, url: capture_workable_fallback(slug, "public", url, body)
+        )
+        if os.environ.get("WORKABLE_CAPTURE_SLUGS")
+        else None,
     )
     urls = _parse_public_api_job_urls(slug, data)
     rows = data["jobs"]
@@ -167,6 +177,11 @@ async def _markdown_inventory(
         require_nonempty=True,
         log_event="workable.markdown_index_backoff",
         sleep=asyncio.sleep,
+        on_success_body=(
+            lambda body, _status, url: capture_workable_fallback(slug, "llms", url, body)
+        )
+        if os.environ.get("WORKABLE_CAPTURE_SLUGS")
+        else None,
     )
     assert llms is not None
     advertised = _parse_markdown_count(llms)
@@ -183,6 +198,11 @@ async def _markdown_inventory(
         require_nonempty=True,
         log_event="workable.markdown_jobs_backoff",
         sleep=asyncio.sleep,
+        on_success_body=(
+            lambda body, _status, url: capture_workable_fallback(slug, "jobs", url, body)
+        )
+        if os.environ.get("WORKABLE_CAPTURE_SLUGS")
+        else None,
     )
     assert jobs_markdown is not None
     urls = _parse_markdown_job_urls(slug, jobs_markdown)
@@ -211,6 +231,7 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], boo
     urls: set[str] = set()
     truncated = False
     body: dict = {"query": "", "location": [], "department": [], "worktype": []}
+    page = 0
 
     while True:
         try:
@@ -224,6 +245,13 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], boo
                 base_delay=_RETRY_BASE_DELAY,
                 log_event="workable.list_backoff",
                 sleep=asyncio.sleep,
+                on_success_body=(
+                    lambda data, _status, url, capture_page=page: capture_workable_response(
+                        slug, capture_page, url, data
+                    )
+                )
+                if os.environ.get("WORKABLE_CAPTURE_SLUGS")
+                else None,
             )
         except PaginationFetchError as exc:
             if exc.last_status != 429 or urls:
@@ -243,6 +271,7 @@ async def _api_list(slug: str, client: httpx.AsyncClient) -> tuple[set[str], boo
             break
 
         body["token"] = next_page
+        page += 1
 
         if len(urls) >= MAX_JOBS:
             log.warning("workable.truncated", slug=slug, total=len(urls), cap=MAX_JOBS)

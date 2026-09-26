@@ -1,0 +1,12 @@
+{
+  "verbose-04:software engineering": "software-engineer",
+  "verbose-08:cybersecurity engineering": "security-engineer",
+  "mistakes-05:pyhton": "python",
+  "mistakes-06:develper": "software-engineer",
+  "mistakes-07:kubernets": "kubernetes",
+  "mistakes-08:zurcih": "zurich",
+  "mistakes-09:berln": "berlin",
+  "multiword-02:New York": "new-york-new-york-united-states",
+  "multilingual-01:Softwareentwickler": "software-engineer",
+  "multilingual-04:Data Engineer": "data-engineer"
+}

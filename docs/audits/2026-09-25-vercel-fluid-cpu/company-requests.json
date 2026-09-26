@@ -1,0 +1,1218 @@
+{
+  "sampleStart": "2026-09-25T08:19:29.763Z",
+  "sampleEnd": "2026-09-25T09:14:47.269Z",
+  "allUniqueRequests": 93,
+  "companyRequests": [
+    {
+      "timestamp": "2026-09-25T09:12:50.144Z",
+      "requestPath": "/en/company/securitas-ag",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "curl",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T09:11:51.794Z",
+      "requestPath": "/en/company/securitas-ag",
+      "requestMethod": "GET",
+      "cache": "STALE",
+      "cacheReason": "stale_time",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "curl",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T09:11:33.627Z",
+      "requestPath": "/de/company/danaher",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T09:10:11.073Z",
+      "requestPath": "/it/company/l3harris-technologies",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T09:05:08.792Z",
+      "requestPath": "/en/company/neura-robotics",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T09:04:50.844Z",
+      "requestPath": "/en/company/monzo",
+      "requestMethod": "POST",
+      "cache": "BYPASS",
+      "cacheReason": "prerender_bypass",
+      "pprState": "",
+      "statusCode": 200,
+      "agentFamily": "Firefox",
+      "events": [
+        {
+          "source": "serverless-middleware",
+          "route": "/_middleware",
+          "pathType": "middleware",
+          "httpStatus": 200,
+          "functionStartType": "cold"
+        },
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T09:04:46.932Z",
+      "requestPath": "/en/company/monzo",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Firefox",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T09:02:38.917Z",
+      "requestPath": "/en/company/neura-robotics",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T09:01:17.329Z",
+      "requestPath": "/en/company/cobblestone-energy-dubai-uae",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:55:57.930Z",
+      "requestPath": "/en/company/neura-robotics",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "cold"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:53:21.751Z",
+      "requestPath": "/de/company/stellantis",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:51:53.854Z",
+      "requestPath": "/fr/company/huggingface",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:50:50.745Z",
+      "requestPath": "/en/company/booking-com",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:48:49.012Z",
+      "requestPath": "/it/company/datadome",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:47:49.187Z",
+      "requestPath": "/it/company/dollar-tree",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:47:42.804Z",
+      "requestPath": "/en/company/axis-bank",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:44:57.927Z",
+      "requestPath": "/it/company/[slug]",
+      "requestMethod": "GET",
+      "cache": "BYPASS",
+      "cacheReason": "prerender_bypass",
+      "pprState": "",
+      "statusCode": 200,
+      "agentFamily": "Applebot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:43:03.304Z",
+      "requestPath": "/en/company/city-of-zurich",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:38:31.011Z",
+      "requestPath": "/it/company/dollar-tree",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:38:20.772Z",
+      "requestPath": "/en/company/axis-bank",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:36:29.786Z",
+      "requestPath": "/en/company/axis-bank",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:35:39.181Z",
+      "requestPath": "/fr/company/enterprise-mobility",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:32:47.029Z",
+      "requestPath": "/it/company/kroger",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:32:38.022Z",
+      "requestPath": "/de/company/salesforce",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:32:29.795Z",
+      "requestPath": "/fr/company/imc",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:32:20.821Z",
+      "requestPath": "/fr/company/lonza",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:32:12.039Z",
+      "requestPath": "/it/company/agility-robotics",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:32:03.796Z",
+      "requestPath": "/it/company/intuit",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:31:55.806Z",
+      "requestPath": "/en/company/spendesk",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:58.870Z",
+      "requestPath": "/fr/company/lonza",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:49.753Z",
+      "requestPath": "/it/company/kroger",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:42.046Z",
+      "requestPath": "/en/company/booking-com",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:32.921Z",
+      "requestPath": "/en/company/booksy",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:27.741Z",
+      "requestPath": "/en/company/united-nations-secretariat",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:23.814Z",
+      "requestPath": "/fr/company/prosidian",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:16.012Z",
+      "requestPath": "/fr/company/huggingface",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:11.058Z",
+      "requestPath": "/en/company/booking-com",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:30:01.762Z",
+      "requestPath": "/en/company/spendesk",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:29:54.020Z",
+      "requestPath": "/en/company/booksy",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:29:43.765Z",
+      "requestPath": "/it/company/kroger",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:29:38.769Z",
+      "requestPath": "/de/company/salesforce",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:27:17.954Z",
+      "requestPath": "/it/company/luxoft",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "cold"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:27:08.990Z",
+      "requestPath": "/it/company/ping-an-insurance",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:26:59.928Z",
+      "requestPath": "/fr/company/astrazeneca",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:26:51.758Z",
+      "requestPath": "/fr/company/allied-universal",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:26:45.760Z",
+      "requestPath": "/en/company/cisco",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:22:06.796Z",
+      "requestPath": "/it/company/ping-an-insurance",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:21:57.773Z",
+      "requestPath": "/fr/company/astrazeneca",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:21:49.831Z",
+      "requestPath": "/fr/company/allied-universal",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:21:40.769Z",
+      "requestPath": "/en/company/astrazeneca",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:21:32.951Z",
+      "requestPath": "/it/company/glovo",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:21:24.786Z",
+      "requestPath": "/en/company/backbase",
+      "requestMethod": "GET",
+      "cache": "REVALIDATED",
+      "cacheReason": "delete_tag",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "serverless",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "background_func",
+          "httpStatus": 200,
+          "functionStartType": "hot"
+        },
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-09-25T08:21:16.829Z",
+      "requestPath": "/de/company/stellantis",
+      "requestMethod": "GET",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static",
+      "statusCode": 200,
+      "agentFamily": "Chrome",
+      "events": [
+        {
+          "source": "static",
+          "route": "/[lang]/company/[slug]",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "functionStartType": null
+        }
+      ]
+    }
+  ],
+  "longTailCompanyKeysExcludingCurlAndPlaceholders": 31
+}

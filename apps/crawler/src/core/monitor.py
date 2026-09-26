@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from dataclasses import replace as dataclass_replace
 from pathlib import Path
@@ -912,8 +913,6 @@ async def monitor_one_stream(
     """Async generator yielding MonitorResult per batch."""
     stream_fn = get_stream_fn(monitor_type)
     config = monitor_config or {}
-    collision = _url_transform_collision_config(config)
-
     if stream_fn is None:
         yield await monitor_one(board_url, monitor_type, monitor_config, http, pw=pw)
         return
@@ -921,24 +920,33 @@ async def monitor_one_stream(
     board = {"board_url": board_url, "metadata": config}
     from src.shared.http import client_for
 
-    buffered: MonitorResult | None = None
     async with client_for(http, config) as client:
-        async for batch in stream_fn(board, client, pw=pw):
-            result = _normalize_discovered(
-                batch,
-                reject_conflicting_duplicate_urls=collision is not None,
+        async for result in postprocess_monitor_stream(stream_fn(board, client, pw=pw), config):
+            yield result
+
+
+async def postprocess_monitor_stream(
+    batches: AsyncIterator[list[DiscoveredJob] | MonitorResult],
+    config: dict,
+) -> AsyncIterator[MonitorResult]:
+    """Apply the shared streamed monitor filters and URL identity policy."""
+    collision = _url_transform_collision_config(config)
+    buffered: MonitorResult | None = None
+    async for batch in batches:
+        result = _normalize_discovered(
+            batch,
+            reject_conflicting_duplicate_urls=collision is not None,
+        )
+        result = _apply_url_filter(result, config)
+        result = _apply_job_filter(result, config)
+        result = _apply_url_allowlist(result, config)
+        if collision is not None:
+            buffered = _merge_collision_stream_result(
+                buffered,
+                result,
+                collision,
             )
-            result = _apply_url_filter(result, config)
-            result = _apply_job_filter(result, config)
-            result = _apply_url_allowlist(result, config)
-            if collision is not None:
-                buffered = _merge_collision_stream_result(
-                    buffered,
-                    result,
-                    collision,
-                )
-            else:
-                result = _apply_url_transform(result, config)
-                yield result
+        else:
+            yield _apply_url_transform(result, config)
     if buffered is not None:
         yield _apply_url_transform(buffered, config)

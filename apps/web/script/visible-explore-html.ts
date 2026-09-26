@@ -1,8 +1,8 @@
 import { parse, type DefaultTreeAdapterTypes } from "parse5";
 
 export interface VisibleExploreHtmlInspection {
-  staticTextContent: string;
-  staticResultsCount: number;
+  resultTextContent: string;
+  resultHostCount: number;
   companyResultCount: number;
   repositoryFallbackCount: number;
   postingResultCount: number;
@@ -40,11 +40,11 @@ function findBody(node: HtmlNode): HtmlElement | undefined {
 function visitVisibleNode(
   node: HtmlNode,
   inspection: VisibleExploreHtmlInspection,
-  insideStaticResults: boolean,
+  insideResultHost: boolean,
 ): void {
   if (isTextNode(node)) {
-    if (insideStaticResults) {
-      inspection.staticTextContent += node.value;
+    if (insideResultHost) {
+      inspection.resultTextContent += node.value;
     }
     return;
   }
@@ -52,7 +52,7 @@ function visitVisibleNode(
   if (!isElement(node)) {
     if ("childNodes" in node) {
       for (const child of node.childNodes) {
-        visitVisibleNode(child, inspection, insideStaticResults);
+        visitVisibleNode(child, inspection, insideResultHost);
       }
     }
     return;
@@ -70,16 +70,16 @@ function visitVisibleNode(
     return;
   }
 
-  const isStaticResultsRoot = node.attrs.some(
-    (attribute) => attribute.name === "data-explore-static-results",
+  const isResultHost = node.attrs.some(
+    (attribute) => attribute.name === "data-explore-result-host",
   );
-  const isInsideStaticResults = insideStaticResults || isStaticResultsRoot;
+  const isInsideResultHost = insideResultHost || isResultHost;
 
-  if (isStaticResultsRoot) {
-    inspection.staticResultsCount += 1;
+  if (isResultHost) {
+    inspection.resultHostCount += 1;
   }
 
-  if (isInsideStaticResults) {
+  if (isInsideResultHost) {
     for (const attribute of node.attrs) {
       switch (attribute.name) {
         case "data-search-result-company":
@@ -96,7 +96,7 @@ function visitVisibleNode(
   }
 
   for (const child of node.childNodes) {
-    visitVisibleNode(child, inspection, isInsideStaticResults);
+    visitVisibleNode(child, inspection, isInsideResultHost);
   }
 }
 
@@ -108,8 +108,8 @@ function visitVisibleNode(
  */
 export function inspectVisibleExploreHtml(html: string): VisibleExploreHtmlInspection {
   const inspection: VisibleExploreHtmlInspection = {
-    staticTextContent: "",
-    staticResultsCount: 0,
+    resultTextContent: "",
+    resultHostCount: 0,
     companyResultCount: 0,
     repositoryFallbackCount: 0,
     postingResultCount: 0,

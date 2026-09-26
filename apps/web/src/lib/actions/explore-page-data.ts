@@ -89,6 +89,7 @@ function filterParseKey(params: SearchFilterParams): string {
   return JSON.stringify([
     params.locale,
     params.q,
+    params.qmode,
     params.loc,
     params.occ,
     params.sen,
@@ -155,6 +156,7 @@ export async function fetchExplorePageData(params: {
   const { searchParams, locale } = params;
 
   const q = firstOf(searchParams.q);
+  const qmode = firstOf(searchParams.qmode) === "literal" ? "literal" as const : undefined;
   const loc = firstOf(searchParams.loc);
   const occ = firstOf(searchParams.occ);
   const sen = firstOf(searchParams.sen);
@@ -178,9 +180,9 @@ export async function fetchExplorePageData(params: {
   const session = await getSession();
   const [filterResolution, prefs, anonJobLangs] = await Promise.all([
     typesenseConfigured
-      ? fetchExploreFilterPageData({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+      ? fetchExploreFilterPageData({ q, qmode, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
       : Promise.resolve({
-          parsed: parseOfflineSearchFilters({ q, loc, occ, sen, tech, wm, etype }),
+          parsed: parseOfflineSearchFilters({ q, qmode, loc, occ, sen, tech, wm, etype }),
           degraded: true,
         }),
     session ? getPreferences() : Promise.resolve(null),

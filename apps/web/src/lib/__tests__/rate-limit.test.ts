@@ -102,6 +102,8 @@ describe("rate-limit configuration", () => {
       { prefix: "rl:shared-watchlist-clone:hour:v1", tokens: 30, window: "3600 s" },
       { prefix: "rl:watchlist-activity:minute:v1", tokens: 12, window: "60 s" },
       { prefix: "rl:ai-filter-demand:minute:v1", tokens: 12, window: "60 s" },
+      { prefix: "rl:query-intent:minute:v1", tokens: 12, window: "60 s" },
+      { prefix: "rl:query-intent:hour:v1", tokens: 120, window: "3600 s" },
     ]);
   });
 });

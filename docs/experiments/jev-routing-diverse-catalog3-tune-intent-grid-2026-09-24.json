@@ -1,0 +1,513 @@
+{
+  "variant": "catalog3",
+  "split": "tune",
+  "top": [
+    {
+      "config": {
+        "threshold": 0.3,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 31,
+      "spanPrecision": 0.984375,
+      "spanRecall": 0.984375,
+      "spanF1": 0.984375,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 31,
+      "spanPrecision": 0.984375,
+      "spanRecall": 0.984375,
+      "spanF1": 0.984375,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 4
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 30,
+      "spanPrecision": 0.9841269841269841,
+      "spanRecall": 0.96875,
+      "spanF1": 0.9763779527559054,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 4
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.75,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 29,
+      "spanPrecision": 0.9838709677419355,
+      "spanRecall": 0.953125,
+      "spanF1": 0.9682539682539683,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.9,
+        "longestFirst": false
+      },
+      "count": 32,
+      "exact": 28,
+      "spanPrecision": 0.9836065573770492,
+      "spanRecall": 0.9375,
+      "spanF1": 0.96,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 2
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.9,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 28,
+      "spanPrecision": 0.9836065573770492,
+      "spanRecall": 0.9375,
+      "spanF1": 0.96,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 2
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 3
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.75,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 25,
+      "spanPrecision": 0.8333333333333334,
+      "spanRecall": 0.78125,
+      "spanF1": 0.8064516129032259,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 2
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 0
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 4
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 24,
+      "spanPrecision": 0.7796610169491526,
+      "spanRecall": 0.71875,
+      "spanF1": 0.7479674796747967,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 0
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 2
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 23,
+      "spanPrecision": 0.7413793103448276,
+      "spanRecall": 0.671875,
+      "spanF1": 0.7049180327868853,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 0
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 1
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "longestFirst": true
+      },
+      "count": 32,
+      "exact": 23,
+      "spanPrecision": 0.7413793103448276,
+      "spanRecall": 0.671875,
+      "spanF1": 0.7049180327868853,
+      "groups": {
+        "atomic": {
+          "count": 4,
+          "exact": 4
+        },
+        "terse": {
+          "count": 4,
+          "exact": 3
+        },
+        "verbose": {
+          "count": 4,
+          "exact": 0
+        },
+        "mistakes": {
+          "count": 4,
+          "exact": 3
+        },
+        "multiword": {
+          "count": 4,
+          "exact": 4
+        },
+        "employment": {
+          "count": 4,
+          "exact": 1
+        },
+        "unrelated": {
+          "count": 4,
+          "exact": 4
+        },
+        "multilingual": {
+          "count": 4,
+          "exact": 4
+        }
+      }
+    }
+  ],
+  "bestMismatches": [
+    {
+      "id": "diverse-verbose-03",
+      "group": "verbose",
+      "q": "Can you find operations manager roles near Geneva with hybrid work",
+      "expected": [
+        {
+          "text": "operations manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "Geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ],
+      "selected": [
+        {
+          "text": "operations manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "Geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "hybrid work",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 9,
+          "end": 11
+        }
+      ],
+      "tp": 2,
+      "fp": 1,
+      "fn": 1,
+      "exact": false
+    }
+  ]
+}

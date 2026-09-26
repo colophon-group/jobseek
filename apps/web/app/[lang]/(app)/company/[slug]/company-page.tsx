@@ -222,6 +222,7 @@ export function CompanyPage({
   /** Sync URL to current filter state. */
   function updateUrl() {
     const extra: Record<string, string> = {};
+    if (new URLSearchParams(window.location.search).get("qmode") === "literal") extra.qmode = "literal";
     if (showPostingIdRef.current) extra.show = showPostingIdRef.current;
     if (salaryMinRef.current || salaryMaxRef.current) {
       extra.sal = `${salaryMinRef.current ?? ""}-${salaryMaxRef.current ?? ""}`;
@@ -390,6 +391,8 @@ export function CompanyPage({
       getOccupations: () => occupationsRef.current,
       getSeniorities: () => senioritiesRef.current,
       getTechnologies: () => technologiesRef.current,
+      getWorkMode: () => workModeRef.current,
+      getEmploymentTypes: () => employmentTypesRef.current,
       addEmploymentType: (type: string) => {
         if (employmentTypesRef.current.includes(type)) return;
         const updated = [...employmentTypesRef.current, type];

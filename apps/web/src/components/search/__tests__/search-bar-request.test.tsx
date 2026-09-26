@@ -39,6 +39,7 @@ vi.mock("@/lib/actions/company", async () => {
 
 vi.mock("@/lib/search/typeahead-runner", () => ({
   runSearchBarTypeahead: (...args: unknown[]) => suggestSearchBarMock(...args),
+  runSearchBarTermTypeahead: async () => [],
 }));
 
 // `parseSearchFilters` is a server action — only used on the keyword

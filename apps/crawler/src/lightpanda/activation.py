@@ -32,7 +32,7 @@ from src.lightpanda_queue import MAX_RECORDS, LightpandaB0Queue, RouteIdentity, 
 from src.redis_queue import close_redis, get_redis
 from src.runtime.config import BoardRuntimeConfig
 
-_COHORT_NAMES = ("c1", "c3")
+_COHORT_NAMES = ("c1", "c2", "c3")
 _PRODUCER_AUTHORITY_DIRECTORY = Path("/run/jobseek-lightpanda-producer")
 _PRODUCER_ACTIVATION_MARKER = ".activation-v1"
 _PRODUCER_AUTHORITY_UID = 10001
@@ -808,7 +808,7 @@ async def build_rollback_plan(
     if settings.lightpanda_b0_producer_mode != "off":
         raise ActivationError("B0 producer must be off for rollback planning")
     if cohort not in _COHORT_NAMES:
-        raise ActivationError("cohort must be exactly c1 or c3")
+        raise ActivationError("cohort must be exactly c1, c2, or c3")
     if receipt_state not in {"active", "pending"}:
         raise ActivationError("rollback receipt state must be active or pending")
     if _SHA256.fullmatch(source_receipt_sha256) is None:

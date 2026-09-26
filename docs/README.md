@@ -107,6 +107,8 @@ Status tags:
 - [22 - PostgreSQL Connection Budget](22-postgresql-connections.md) `[runbook]` -
   exact service and deploy-overlap pool ceilings, ownership metrics, reserves,
   idle-transaction controls, and seven-day production acceptance.
+- [Company Icon Source Quality Audit (2026-09-25)](logo-quality-audit-2026-09-25.md)
+  `[runbook]` - fleet scan, verified icon repairs, and resolver prevention.
 - [Didi Reactivation Runbook](runbook-didi-reactivate-2026-05-10.md)
   `[runbook]` - historical Didi reactivation notes.
 

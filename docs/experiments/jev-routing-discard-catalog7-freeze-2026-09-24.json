@@ -1,0 +1,14 @@
+{
+  "variant": "catalog7",
+  "model": "jev-1.13.0",
+  "version": "jev-search-catalog7-v1",
+  "threshold": 0.6,
+  "selection": "confidence ordered nonoverlapping filters before discard",
+  "normalization": "exact or clear fuzzy Typesense candidate; ambiguous remains unresolved",
+  "datasetCommit": "847505f89",
+  "development": "16 contextual discard tune cases plus exposed 64 original diverse cases",
+  "holdout": "16 frozen contextual discard cases",
+  "tuneFilterExact": "16/16",
+  "tuneDiscardExact": "16/16",
+  "policySha256": "baa986ea9d9cbb0f1dea9a239f55e4d8f28aac29cd55058c991494bd81e78381"
+}

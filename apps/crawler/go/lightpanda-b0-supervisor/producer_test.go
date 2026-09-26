@@ -250,6 +250,7 @@ func TestProducerReturnsOnlyLiteralLegacyForOutsideCohort(t *testing.T) {
 
 func TestProducerOwnsExactSortedCohortManifest(t *testing.T) {
 	for cohort, want := range map[string][]string{
+		"c2": {"browser-use-careers", "kandou-ai-careers"},
 		"c3": {"browser-use-careers", "eclypsium-careers", "kandou-ai-careers"},
 		"c4": {"browser-use-careers", "eclypsium-careers", "kandou-ai-careers", "poke-and-wiggle-careers"},
 	} {
@@ -484,6 +485,10 @@ func TestProducerConfigKeepsFourOriginFixtureOutOfProduction(t *testing.T) {
 	t.Setenv("LIGHTPANDA_B0_QUEUE_NAMESPACE", "production-b0")
 	if _, err := producerConfigFromEnvironment(); err != nil {
 		t.Fatalf("three-origin production cohort was rejected: %v", err)
+	}
+	t.Setenv("LIGHTPANDA_B0_PRODUCER_COHORT", "c2")
+	if _, err := producerConfigFromEnvironment(); err != nil {
+		t.Fatalf("two-origin production cohort was rejected: %v", err)
 	}
 }
 

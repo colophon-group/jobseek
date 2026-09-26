@@ -1,0 +1,839 @@
+{
+  "timestamp": "2026-09-24T01:08:49.957Z",
+  "dataset": "docs/experiments/jev-routing-discard-gold-2026-09-24.json",
+  "labelRole": "current-system-baseline-not-human-gold",
+  "baseCommit": "eb40e2b2a",
+  "note": "Existing parseSearchFilters through temporary local Next.js route; route removed after collection",
+  "count": 32,
+  "records": [
+    {
+      "id": "t01",
+      "split": "tune",
+      "group": "verbose",
+      "query": "Find an on site compliance officer role in Munich",
+      "locale": "en",
+      "parserMs": 452,
+      "wallMs": 979,
+      "answer": {
+        "keywords": [
+          "Find",
+          "an",
+          "compliance",
+          "role",
+          "in"
+        ],
+        "locations": [
+          "officer",
+          "munich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t02",
+      "split": "tune",
+      "group": "verbose",
+      "query": "Looking for legal counsel positions in Vienna",
+      "locale": "en",
+      "parserMs": 225,
+      "wallMs": 247,
+      "answer": {
+        "keywords": [
+          "Looking",
+          "for",
+          "positions",
+          "in"
+        ],
+        "locations": [
+          "vienna-austria"
+        ],
+        "occupations": [
+          "legal-counsel"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t03",
+      "split": "tune",
+      "group": "verbose",
+      "query": "please find me remote Python work",
+      "locale": "en",
+      "parserMs": 197,
+      "wallMs": 211,
+      "answer": {
+        "keywords": [
+          "please",
+          "find",
+          "me",
+          "work"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t04",
+      "split": "tune",
+      "group": "terse",
+      "query": "junior accountant Zurich hybrid",
+      "locale": "en",
+      "parserMs": 106,
+      "wallMs": 115,
+      "answer": {
+        "keywords": [],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t05",
+      "split": "tune",
+      "group": "unsupported",
+      "query": "nurse Berlin part time",
+      "locale": "en",
+      "parserMs": 99,
+      "wallMs": 106,
+      "answer": {
+        "keywords": [
+          "nurse",
+          "part",
+          "time"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t06",
+      "split": "tune",
+      "group": "informational",
+      "query": "what is a compliance officer",
+      "locale": "en",
+      "parserMs": 94,
+      "wallMs": 101,
+      "answer": {
+        "keywords": [
+          "what",
+          "is",
+          "a",
+          "compliance"
+        ],
+        "locations": [
+          "officer"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t07",
+      "split": "tune",
+      "group": "terse",
+      "query": "senior pharmacist Berlin remote",
+      "locale": "en",
+      "parserMs": 95,
+      "wallMs": 103,
+      "answer": {
+        "keywords": [],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t08",
+      "split": "tune",
+      "group": "unsupported",
+      "query": "delivery driver jobs near Paris",
+      "locale": "en",
+      "parserMs": 113,
+      "wallMs": 121,
+      "answer": {
+        "keywords": [
+          "delivery",
+          "driver",
+          "jobs",
+          "near"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t09",
+      "split": "tune",
+      "group": "unsupported",
+      "query": "part time cashier jobs",
+      "locale": "en",
+      "parserMs": 73,
+      "wallMs": 80,
+      "answer": {
+        "keywords": [
+          "part",
+          "time",
+          "cashier",
+          "jobs"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t10",
+      "split": "tune",
+      "group": "verbose",
+      "query": "sales manager jobs near Paris",
+      "locale": "en",
+      "parserMs": 90,
+      "wallMs": 99,
+      "answer": {
+        "keywords": [
+          "sales",
+          "manager",
+          "jobs",
+          "near"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t11",
+      "split": "tune",
+      "group": "meaningful",
+      "query": "remote product manager no startup",
+      "locale": "en",
+      "parserMs": 87,
+      "wallMs": 97,
+      "answer": {
+        "keywords": [
+          "product",
+          "manager",
+          "no",
+          "startup"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t12",
+      "split": "tune",
+      "group": "ambiguous",
+      "query": "Find an accountant in New York",
+      "locale": "en",
+      "parserMs": 123,
+      "wallMs": 136,
+      "answer": {
+        "keywords": [
+          "Find",
+          "an",
+          "in",
+          "New",
+          "York"
+        ],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t13",
+      "split": "tune",
+      "group": "informational",
+      "query": "Which skills does a recruiter need",
+      "locale": "en",
+      "parserMs": 166,
+      "wallMs": 183,
+      "answer": {
+        "keywords": [
+          "Which",
+          "skills",
+          "does",
+          "a",
+          "need"
+        ],
+        "locations": [],
+        "occupations": [
+          "recruiter"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t14",
+      "split": "tune",
+      "group": "terse",
+      "query": "hr manager Basel contract",
+      "locale": "en",
+      "parserMs": 88,
+      "wallMs": 102,
+      "answer": {
+        "keywords": [
+          "hr",
+          "manager",
+          "contract"
+        ],
+        "locations": [
+          "basel"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t15",
+      "split": "tune",
+      "group": "verbose",
+      "query": "software engineer jobs with Rust in Amsterdam",
+      "locale": "en",
+      "parserMs": 132,
+      "wallMs": 140,
+      "answer": {
+        "keywords": [
+          "jobs",
+          "with",
+          "Rust",
+          "in"
+        ],
+        "locations": [
+          "amsterdam-north-holland-the-netherlands"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "t16",
+      "split": "tune",
+      "group": "verbose",
+      "query": "I want warehouse associate work in London",
+      "locale": "en",
+      "parserMs": 105,
+      "wallMs": 114,
+      "answer": {
+        "keywords": [
+          "I",
+          "want",
+          "work",
+          "in"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "warehouse-associate"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h01",
+      "split": "holdout",
+      "group": "verbose",
+      "query": "Show me entry level warehouse associate jobs in Basel",
+      "locale": "en",
+      "parserMs": 178,
+      "wallMs": 192,
+      "answer": {
+        "keywords": [
+          "Show",
+          "me",
+          "entry",
+          "level",
+          "jobs",
+          "in"
+        ],
+        "locations": [
+          "basel"
+        ],
+        "occupations": [
+          "warehouse-associate"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h02",
+      "split": "holdout",
+      "group": "verbose",
+      "query": "I want a contract recruiter in London",
+      "locale": "en",
+      "parserMs": 223,
+      "wallMs": 235,
+      "answer": {
+        "keywords": [
+          "I",
+          "want",
+          "a",
+          "contract",
+          "in"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "recruiter"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h03",
+      "split": "holdout",
+      "group": "verbose",
+      "query": "Marketing manager hybrid roles around Amsterdam",
+      "locale": "en",
+      "parserMs": 270,
+      "wallMs": 280,
+      "answer": {
+        "keywords": [
+          "roles",
+          "around"
+        ],
+        "locations": [
+          "amsterdam-north-holland-the-netherlands"
+        ],
+        "occupations": [
+          "marketing-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h04",
+      "split": "holdout",
+      "group": "verbose",
+      "query": "Find software engineer jobs using React in Berlin",
+      "locale": "en",
+      "parserMs": 97,
+      "wallMs": 110,
+      "answer": {
+        "keywords": [
+          "Find",
+          "jobs",
+          "using",
+          "in"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "react"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h05",
+      "split": "holdout",
+      "group": "informational",
+      "query": "What does a pharmacist do",
+      "locale": "en",
+      "parserMs": 66,
+      "wallMs": 77,
+      "answer": {
+        "keywords": [
+          "What",
+          "does",
+          "a",
+          "do"
+        ],
+        "locations": [],
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h06",
+      "split": "holdout",
+      "group": "unsupported",
+      "query": "nurse Zurich remote",
+      "locale": "en",
+      "parserMs": 39,
+      "wallMs": 48,
+      "answer": {
+        "keywords": [
+          "nurse"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h07",
+      "split": "holdout",
+      "group": "typo",
+      "query": "sr acctnt munich",
+      "locale": "en",
+      "parserMs": 50,
+      "wallMs": 68,
+      "answer": {
+        "keywords": [
+          "acctnt"
+        ],
+        "locations": [
+          "munich"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h08",
+      "split": "holdout",
+      "group": "verbose",
+      "query": "Customer success manager roles in Dublin please",
+      "locale": "en",
+      "parserMs": 80,
+      "wallMs": 92,
+      "answer": {
+        "keywords": [
+          "roles",
+          "in",
+          "please"
+        ],
+        "locations": [
+          "dublin-leinster-ireland"
+        ],
+        "occupations": [
+          "customer-success-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h09",
+      "split": "holdout",
+      "group": "ambiguous",
+      "query": "consultant positions in New York",
+      "locale": "en",
+      "parserMs": 66,
+      "wallMs": 78,
+      "answer": {
+        "keywords": [
+          "positions",
+          "in",
+          "New",
+          "York"
+        ],
+        "locations": [],
+        "occupations": [
+          "consultant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h10",
+      "split": "holdout",
+      "group": "verbose",
+      "query": "Get me temporary auditor work from home",
+      "locale": "en",
+      "parserMs": 93,
+      "wallMs": 100,
+      "answer": {
+        "keywords": [
+          "Get",
+          "me",
+          "temporary"
+        ],
+        "locations": [],
+        "occupations": [
+          "auditor"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h11",
+      "split": "holdout",
+      "group": "multilingual",
+      "query": "data analyst jobs Zürich",
+      "locale": "en",
+      "parserMs": 57,
+      "wallMs": 64,
+      "answer": {
+        "keywords": [
+          "jobs"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "data-analyst"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h12",
+      "split": "holdout",
+      "group": "meaningful",
+      "query": "jobs at Google for legal counsel",
+      "locale": "en",
+      "parserMs": 65,
+      "wallMs": 73,
+      "answer": {
+        "keywords": [
+          "jobs",
+          "at",
+          "Google",
+          "for"
+        ],
+        "locations": [],
+        "occupations": [
+          "legal-counsel"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h13",
+      "split": "holdout",
+      "group": "typo",
+      "query": "Find me pharmacst in Bern",
+      "locale": "en",
+      "parserMs": 50,
+      "wallMs": 56,
+      "answer": {
+        "keywords": [
+          "Find",
+          "me",
+          "pharmacst",
+          "in"
+        ],
+        "locations": [
+          "bern"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h14",
+      "split": "holdout",
+      "group": "informational",
+      "query": "salary for accountant in Zurich",
+      "locale": "en",
+      "parserMs": 53,
+      "wallMs": 60,
+      "answer": {
+        "keywords": [
+          "salary",
+          "for",
+          "in"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h15",
+      "split": "holdout",
+      "group": "unsupported",
+      "query": "remote logistics coordinator jobs Berlin",
+      "locale": "en",
+      "parserMs": 59,
+      "wallMs": 68,
+      "answer": {
+        "keywords": [
+          "logistics",
+          "coordinator",
+          "jobs"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      }
+    },
+    {
+      "id": "h16",
+      "split": "holdout",
+      "group": "multilingual",
+      "query": "cherche un poste de comptable à Genève",
+      "locale": "fr",
+      "parserMs": 93,
+      "wallMs": 99,
+      "answer": {
+        "keywords": [
+          "cherche",
+          "un",
+          "poste",
+          "de",
+          "à"
+        ],
+        "locations": [
+          "canton-of-geneva-switzerland"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      }
+    }
+  ]
+}

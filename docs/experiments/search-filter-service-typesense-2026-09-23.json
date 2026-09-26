@@ -1,0 +1,1026 @@
+{
+  "timestamp": "2026-09-23T21:34:11.647Z",
+  "repetitions": 12,
+  "summaries": {
+    "short": {
+      "first": {
+        "fixture": "short",
+        "phase": "first",
+        "round": 0,
+        "parserMs": 476,
+        "clientMs": 3339,
+        "valid": true,
+        "missing": [],
+        "filters": {
+          "locations": [],
+          "occupations": [],
+          "seniorities": [],
+          "technologies": [],
+          "workMode": [
+            "remote"
+          ]
+        }
+      },
+      "repeats": 12,
+      "parserMedianMs": 12,
+      "parserP95Ms": 15,
+      "clientMedianMs": 26,
+      "clientP95Ms": 53,
+      "allValid": true
+    },
+    "typical": {
+      "first": {
+        "fixture": "typical",
+        "phase": "first",
+        "round": 0,
+        "parserMs": 264,
+        "clientMs": 283,
+        "valid": true,
+        "missing": [],
+        "filters": {
+          "locations": [
+            "zurich"
+          ],
+          "occupations": [
+            "software-engineer"
+          ],
+          "seniorities": [
+            "senior"
+          ],
+          "technologies": [
+            "python"
+          ],
+          "workMode": [
+            "remote"
+          ]
+        }
+      },
+      "repeats": 12,
+      "parserMedianMs": 30,
+      "parserP95Ms": 37,
+      "clientMedianMs": 39,
+      "clientP95Ms": 55,
+      "allValid": true
+    },
+    "long": {
+      "first": {
+        "fixture": "long",
+        "phase": "first",
+        "round": 0,
+        "parserMs": 273,
+        "clientMs": 288,
+        "valid": true,
+        "missing": [],
+        "filters": {
+          "locations": [
+            "berlin"
+          ],
+          "occupations": [
+            "backend-developer"
+          ],
+          "seniorities": [
+            "staff"
+          ],
+          "technologies": [
+            "rust",
+            "kubernetes"
+          ],
+          "workMode": [
+            "hybrid"
+          ]
+        }
+      },
+      "repeats": 12,
+      "parserMedianMs": 42,
+      "parserP95Ms": 80,
+      "clientMedianMs": 53,
+      "clientP95Ms": 100,
+      "allValid": true
+    }
+  },
+  "observations": [
+    {
+      "fixture": "short",
+      "phase": "first",
+      "round": 0,
+      "parserMs": 476,
+      "clientMs": 3339,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "first",
+      "round": 0,
+      "parserMs": 264,
+      "clientMs": 283,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "first",
+      "round": 0,
+      "parserMs": 273,
+      "clientMs": 288,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 1,
+      "parserMs": 37,
+      "clientMs": 49,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 1,
+      "parserMs": 80,
+      "clientMs": 100,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 1,
+      "parserMs": 15,
+      "clientMs": 32,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 2,
+      "parserMs": 66,
+      "clientMs": 80,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 2,
+      "parserMs": 13,
+      "clientMs": 52,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 2,
+      "parserMs": 37,
+      "clientMs": 55,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 3,
+      "parserMs": 15,
+      "clientMs": 36,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 3,
+      "parserMs": 37,
+      "clientMs": 53,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 3,
+      "parserMs": 68,
+      "clientMs": 81,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 4,
+      "parserMs": 35,
+      "clientMs": 51,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 4,
+      "parserMs": 47,
+      "clientMs": 83,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 4,
+      "parserMs": 11,
+      "clientMs": 26,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 5,
+      "parserMs": 47,
+      "clientMs": 61,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 5,
+      "parserMs": 12,
+      "clientMs": 24,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 5,
+      "parserMs": 32,
+      "clientMs": 44,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 6,
+      "parserMs": 15,
+      "clientMs": 27,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 6,
+      "parserMs": 36,
+      "clientMs": 49,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 6,
+      "parserMs": 44,
+      "clientMs": 80,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 7,
+      "parserMs": 30,
+      "clientMs": 39,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 7,
+      "parserMs": 36,
+      "clientMs": 52,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 7,
+      "parserMs": 15,
+      "clientMs": 44,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 8,
+      "parserMs": 40,
+      "clientMs": 52,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 8,
+      "parserMs": 8,
+      "clientMs": 22,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 8,
+      "parserMs": 27,
+      "clientMs": 36,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 9,
+      "parserMs": 10,
+      "clientMs": 21,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 9,
+      "parserMs": 24,
+      "clientMs": 33,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 9,
+      "parserMs": 35,
+      "clientMs": 44,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 10,
+      "parserMs": 26,
+      "clientMs": 36,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 10,
+      "parserMs": 39,
+      "clientMs": 48,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 10,
+      "parserMs": 12,
+      "clientMs": 53,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 11,
+      "parserMs": 42,
+      "clientMs": 53,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 11,
+      "parserMs": 9,
+      "clientMs": 26,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 11,
+      "parserMs": 28,
+      "clientMs": 37,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "short",
+      "phase": "repeat",
+      "round": 12,
+      "parserMs": 9,
+      "clientMs": 17,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "typical",
+      "phase": "repeat",
+      "round": 12,
+      "parserMs": 26,
+      "clientMs": 33,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [
+          "remote"
+        ]
+      }
+    },
+    {
+      "fixture": "long",
+      "phase": "repeat",
+      "round": 12,
+      "parserMs": 40,
+      "clientMs": 50,
+      "valid": true,
+      "missing": [],
+      "filters": {
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [
+          "rust",
+          "kubernetes"
+        ],
+        "workMode": [
+          "hybrid"
+        ]
+      }
+    }
+  ]
+}

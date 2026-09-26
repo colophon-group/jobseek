@@ -1,0 +1,1519 @@
+{
+  "count": 64,
+  "labelledSpans": 135,
+  "records": [
+    {
+      "id": "diverse-atomic-01",
+      "group": "atomic",
+      "split": "tune",
+      "q": "accountant",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-02",
+      "group": "atomic",
+      "split": "tune",
+      "q": "pharmacist",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-03",
+      "group": "atomic",
+      "split": "tune",
+      "q": "customer success manager",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "customer success manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-04",
+      "group": "atomic",
+      "split": "tune",
+      "q": "warehouse associate",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "warehouse associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-05",
+      "group": "atomic",
+      "split": "holdout",
+      "q": "compliance officer",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-06",
+      "group": "atomic",
+      "split": "holdout",
+      "q": "mechanical engineer",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "mechanical engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-07",
+      "group": "atomic",
+      "split": "holdout",
+      "q": "recruiter",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-08",
+      "group": "atomic",
+      "split": "holdout",
+      "q": "supply chain manager",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "supply chain manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-01",
+      "group": "terse",
+      "split": "tune",
+      "q": "sr accountant basel",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "sr",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "basel",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-02",
+      "group": "terse",
+      "split": "tune",
+      "q": "hr manager remote",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "hr manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-03",
+      "group": "terse",
+      "split": "tune",
+      "q": "salesforce sales engineer",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "salesforce",
+          "category": "technology",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "sales engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-04",
+      "group": "terse",
+      "split": "tune",
+      "q": "contract ux researcher paris",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "ux researcher",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-05",
+      "group": "terse",
+      "split": "holdout",
+      "q": "jr auditor zurich",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "jr",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "auditor",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-06",
+      "group": "terse",
+      "split": "holdout",
+      "q": "sales manager hybrid london",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "sales manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-07",
+      "group": "terse",
+      "split": "holdout",
+      "q": "excel data analyst remote",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "excel",
+          "category": "technology",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "data analyst",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-08",
+      "group": "terse",
+      "split": "holdout",
+      "q": "recruiter part time zurich",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-01",
+      "group": "verbose",
+      "split": "tune",
+      "q": "I'm looking for a remote executive assistant role in Berlin",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 5,
+          "end": 7
+        },
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-02",
+      "group": "verbose",
+      "split": "tune",
+      "q": "Please show senior marketing manager jobs in Paris",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "senior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "marketing manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-03",
+      "group": "verbose",
+      "split": "tune",
+      "q": "Can you find operations manager roles near Geneva with hybrid work",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "operations manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "Geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-04",
+      "group": "verbose",
+      "split": "tune",
+      "q": "Seeking a support engineer position in London",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "support engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "London",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-05",
+      "group": "verbose",
+      "split": "holdout",
+      "q": "I need a junior accountant job in Zurich preferably hybrid",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "junior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "Zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-06",
+      "group": "verbose",
+      "split": "holdout",
+      "q": "Find an on site compliance officer role in Munich",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "on site",
+          "category": "onsite",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-07",
+      "group": "verbose",
+      "split": "holdout",
+      "q": "Looking for legal counsel positions in Vienna",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "legal counsel",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "Vienna",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-08",
+      "group": "verbose",
+      "split": "holdout",
+      "q": "Any contract construction manager jobs around Hamburg",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "construction manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "Hamburg",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-01",
+      "group": "mistakes",
+      "split": "tune",
+      "q": "recruter remote berlin",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "recruter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-02",
+      "group": "mistakes",
+      "split": "tune",
+      "q": "pharmacst geneva",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "pharmacst",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-03",
+      "group": "mistakes",
+      "split": "tune",
+      "q": "senor marketng manager paris",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "senor",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "marketng manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-04",
+      "group": "mistakes",
+      "split": "tune",
+      "q": "warehose associate zurich",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "warehose associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-05",
+      "group": "mistakes",
+      "split": "holdout",
+      "q": "accuntant hybrid basel",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "accuntant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "basel",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-06",
+      "group": "mistakes",
+      "split": "holdout",
+      "q": "compliace officer london",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "compliace officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-07",
+      "group": "mistakes",
+      "split": "holdout",
+      "q": "mechanicl engineer geneva",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "mechanicl engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-08",
+      "group": "mistakes",
+      "split": "holdout",
+      "q": "saless manager remote berlin",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "saless manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-01",
+      "group": "multiword",
+      "split": "tune",
+      "q": "customer success manager San Francisco",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "customer success manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "San Francisco",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-02",
+      "group": "multiword",
+      "split": "tune",
+      "q": "executive assistant New York",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "New York",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-03",
+      "group": "multiword",
+      "split": "tune",
+      "q": "supply chain manager Paris",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "supply chain manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-04",
+      "group": "multiword",
+      "split": "tune",
+      "q": "data center technician Los Angeles",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "data center technician",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "Los Angeles",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-05",
+      "group": "multiword",
+      "split": "holdout",
+      "q": "quality manager New York City",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "quality manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "New York City",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-06",
+      "group": "multiword",
+      "split": "holdout",
+      "q": "legal counsel United Kingdom",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "legal counsel",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "United Kingdom",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-07",
+      "group": "multiword",
+      "split": "holdout",
+      "q": "account executive San Diego",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "account executive",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "San Diego",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-08",
+      "group": "multiword",
+      "split": "holdout",
+      "q": "construction manager Los Angeles",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "construction manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Los Angeles",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-01",
+      "group": "employment",
+      "split": "tune",
+      "q": "part time cashier",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-02",
+      "group": "employment",
+      "split": "tune",
+      "q": "contract accountant remote",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-03",
+      "group": "employment",
+      "split": "tune",
+      "q": "volunteer hr manager berlin",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "volunteer",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "hr manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-04",
+      "group": "employment",
+      "split": "tune",
+      "q": "temporary warehouse associate london",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "temporary",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "warehouse associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-05",
+      "group": "employment",
+      "split": "holdout",
+      "q": "full time pharmacist in Zurich",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "full time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-06",
+      "group": "employment",
+      "split": "holdout",
+      "q": "contract recruiter hybrid Paris",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-07",
+      "group": "employment",
+      "split": "holdout",
+      "q": "remote executive assistant London",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "London",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-08",
+      "group": "employment",
+      "split": "holdout",
+      "q": "temporary medical representative Geneva",
+      "locale": "en",
+      "terms": [
+        {
+          "text": "temporary",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "medical representative",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "Geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-01",
+      "group": "unrelated",
+      "split": "tune",
+      "q": "sales report template",
+      "locale": "en",
+      "terms": []
+    },
+    {
+      "id": "diverse-unrelated-02",
+      "group": "unrelated",
+      "split": "tune",
+      "q": "accountant joke",
+      "locale": "en",
+      "terms": []
+    },
+    {
+      "id": "diverse-unrelated-03",
+      "group": "unrelated",
+      "split": "tune",
+      "q": "how to become a pharmacist",
+      "locale": "en",
+      "terms": []
+    },
+    {
+      "id": "diverse-unrelated-04",
+      "group": "unrelated",
+      "split": "tune",
+      "q": "manager training course",
+      "locale": "en",
+      "terms": []
+    },
+    {
+      "id": "diverse-unrelated-05",
+      "group": "unrelated",
+      "split": "holdout",
+      "q": "legal advice for tenants",
+      "locale": "en",
+      "terms": []
+    },
+    {
+      "id": "diverse-unrelated-06",
+      "group": "unrelated",
+      "split": "holdout",
+      "q": "warehouse shelving ideas",
+      "locale": "en",
+      "terms": []
+    },
+    {
+      "id": "diverse-unrelated-07",
+      "group": "unrelated",
+      "split": "holdout",
+      "q": "what is a compliance officer",
+      "locale": "en",
+      "terms": []
+    },
+    {
+      "id": "diverse-unrelated-08",
+      "group": "unrelated",
+      "split": "holdout",
+      "q": "Paris museum tickets",
+      "locale": "en",
+      "terms": []
+    },
+    {
+      "id": "diverse-multilingual-01",
+      "group": "multilingual",
+      "split": "tune",
+      "q": "Buchhalter Berlin hybrid",
+      "locale": "de",
+      "terms": [
+        {
+          "text": "Buchhalter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-02",
+      "group": "multilingual",
+      "split": "tune",
+      "q": "Responsable marketing Paris télétravail",
+      "locale": "fr",
+      "terms": [
+        {
+          "text": "Responsable marketing",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "télétravail",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-03",
+      "group": "multilingual",
+      "split": "tune",
+      "q": "Contabile Milano remoto",
+      "locale": "it",
+      "terms": [
+        {
+          "text": "Contabile",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "Milano",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "remoto",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-04",
+      "group": "multilingual",
+      "split": "tune",
+      "q": "Vertriebsleiter München",
+      "locale": "de",
+      "terms": [
+        {
+          "text": "Vertriebsleiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "München",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-05",
+      "group": "multilingual",
+      "split": "holdout",
+      "q": "Apotheker München Teilzeit",
+      "locale": "de",
+      "terms": [
+        {
+          "text": "Apotheker",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "München",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "Teilzeit",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-06",
+      "group": "multilingual",
+      "split": "holdout",
+      "q": "Conseiller juridique junior à Lyon",
+      "locale": "fr",
+      "terms": [
+        {
+          "text": "Conseiller juridique",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "junior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Lyon",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-07",
+      "group": "multilingual",
+      "split": "holdout",
+      "q": "Responsabile vendite ibrido Roma",
+      "locale": "it",
+      "terms": [
+        {
+          "text": "Responsabile vendite",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "ibrido",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Roma",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-08",
+      "group": "multilingual",
+      "split": "holdout",
+      "q": "Lagermitarbeiter in Hamburg remote",
+      "locale": "de",
+      "terms": [
+        {
+          "text": "Lagermitarbeiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "Hamburg",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ]
+    }
+  ]
+}
