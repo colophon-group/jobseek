@@ -55,7 +55,7 @@ A daily cached **display-rate snapshot** around that read changes all four compi
 
 The new compiled-artifact guard rejects the old build with `[3600,3600]` and passes the patched build. This proves the cache-policy correction, **not billed CPU savings** or attribution of all 133 company seconds to that defect.
 
-Validation: full baseline and patched builds; bundle/cache guard; 72 salary/filter/bootstrap tests and nine CPU-gate tests. New production deployment requires another clean 12-hour window.
+Validation: full baseline and patched builds; bundle/cache guard; 72 salary/filter/bootstrap tests, nine CPU-gate tests, and three navigation contract tests. New production deployment requires another clean 12-hour window.
 
 ## Live functionality and evidence
 
