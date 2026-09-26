@@ -10,9 +10,7 @@ from src.shared.constants import DATA_DIR
 
 def _boards() -> dict[str, dict[str, object]]:
     with (DATA_DIR / "boards.csv").open(newline="") as handle:
-        rows = [
-            row for row in csv.DictReader(handle) if row["company_slug"] == "poly-developments"
-        ]
+        rows = [row for row in csv.DictReader(handle) if row["company_slug"] == "poly-developments"]
     return {
         row["board_slug"]: {
             "url": row["board_url"],
