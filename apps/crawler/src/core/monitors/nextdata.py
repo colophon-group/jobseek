@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from html import unescape
 from pathlib import Path
@@ -1322,13 +1323,18 @@ async def _fetch_html(
         except Exception:
             log.warning("nextdata.render_failed", url=url, exc_info=True)
             return None
-    return await fetch_page_text(
+    text = await fetch_page_text(
         url,
         client,
         max_chars=MAX_HTML_CHARS,
         board_gone_statuses=board_gone_statuses,
         request_headers=request_headers,
     )
+    if text is not None and os.environ.get("JOIN_CAPTURE_SLUGS"):
+        from src.core.monitors.join_capture import capture_join_text
+
+        capture_join_text(url, text)
+    return text
 
 
 async def _fetch_embedded_page_with_retry(

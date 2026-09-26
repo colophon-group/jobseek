@@ -16,6 +16,7 @@ import type {
   ExperienceBucket,
 } from "./types";
 import { normalizePostingTitle } from "@/lib/posting-title";
+import { groupedPageRequest, readGroupedPage } from "./typesense-grouped-page";
 import { logExternalError } from "@/lib/safe-external-error";
 import {
   resolveTypesenseCompany,
@@ -65,6 +66,7 @@ interface RawSearchResponse<T> {
   grouped_hits?: GroupedHit<T>[];
   facet_counts?: FacetCount[];
   search_time_ms?: number;
+  search_cutoff?: boolean;
 }
 
 export interface BrowserSimilarCompany {
@@ -290,18 +292,14 @@ export class TypesenseBrowserProvider implements SearchProvider {
         sort_by: "_text_match:desc,first_seen_at:desc",
         group_by: "company_id",
         group_limit: 10,
-        per_page: limit,
-        page: Math.floor(offset / limit) + 1,
+        ...groupedPageRequest(offset, limit),
         typo_tokens_threshold: 1,
         drop_tokens_threshold: 1,
-        facet_by: "company_id",
-        facet_strategy: "exhaustive",
-        max_facet_values: 1,
       });
 
-      const totalCompanies = result.facet_counts?.[0]?.stats?.total_values ?? 0;
-      const groupedHits = (result.grouped_hits ?? []) as GroupedHit<JobPostingDoc>[];
-      const companyIds = groupedHits.map((g) => g.hits[0].document.company_id);
+      const { groups: groupedHits, ...page } = readGroupedPage(result, offset, limit);
+      const companyIds = groupedHits.map((g) => g.hits[0]?.document.company_id)
+        .filter((id): id is string => Boolean(id));
       const [yearMap, companyMap] = await Promise.all([
         fetchYearCounts(cfg, companyIds, filterStr, keywords.join(" ")),
         fetchCompaniesById(cfg, companyIds),
@@ -329,10 +327,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
 
       return {
         companies,
-        totalCompanies,
-        ...(Number.isSafeInteger(result.found_docs)
-          ? { totalPostings: result.found_docs }
-          : {}),
+        ...page,
       };
     } catch (err) {
       logExternalError("error", { service: "typesense", operation: "browser_search_jobs" }, err);

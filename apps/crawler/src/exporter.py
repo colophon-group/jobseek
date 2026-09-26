@@ -84,6 +84,12 @@ log = structlog.get_logger()
 _EPOCH = datetime.min.replace(tzinfo=UTC)
 _MAX_CDC_CUTOFF = datetime.max.replace(tzinfo=UTC)
 _ZERO_UUID = uuid.UUID(int=0)
+_TYPESENSE_OWNER_KEY = "export_owner:typesense:job_posting"
+
+
+class _TypesenseOwnershipTransferred(RuntimeError):
+    """The durable Typesense cursor owner is Go; Python must stop exporting."""
+
 
 # Sentinel stamped on Typesense `experience_max` for rows the extractor
 # treated as open-ended ("N+ years" → Postgres `experience_max IS NULL`).
@@ -218,6 +224,22 @@ async def _get_cursor(pool: asyncpg.Pool, table: str) -> Cursor:
         # Backward compat: old cursor stored just a timestamp
         return datetime.fromisoformat(val), _ZERO_UUID
     return _EPOCH, _ZERO_UUID
+
+
+async def _require_python_typesense_owner(pool: asyncpg.Pool) -> None:
+    """Fail closed when the Go exporter has the exclusive posting cursor.
+
+    Missing state is the legacy Python owner. The cutover writes the explicit
+    ``go`` value while holding the shared exporter/repair advisory fence.
+    Check inside that fence before every Typesense tick so a stale Python
+    process cannot push documents after ownership transfers.
+    """
+    row = await pool.fetchrow(
+        "SELECT value FROM exporter_state WHERE key = $1", _TYPESENSE_OWNER_KEY
+    )
+    owner = row["value"] if row else "python"
+    if owner != "python":
+        raise _TypesenseOwnershipTransferred(f"Typesense posting owner is {owner!r}")
 
 
 async def _save_cursor(pool: asyncpg.Pool, table: str, cursor: Cursor) -> None:
@@ -526,7 +548,7 @@ def _build_typesense_docs(
         # Expand occupation_id to include ancestors for hierarchy-free filtering
         occ_ids: list[int] | None = None
         if occ_id is not None:
-            occ_ids = maps.occupation_ancestors.get(occ_id, [occ_id])
+            occ_ids = sorted(maps.occupation_ancestors.get(occ_id, [occ_id]))
 
         sen_id = row["seniority_id"]
         sen_name = maps.seniority_names.get(sen_id) if sen_id else None
@@ -1711,6 +1733,8 @@ async def run_exporter(
             # timestamp before this statement snapshot, commit afterwards,
             # and be skipped permanently when this tick advances the cursor.
             async with cursor_fence_factory(local_pool):
+                if ts_enabled:
+                    await _require_python_typesense_owner(local_pool)
                 if ts_enabled and maps is not None and supa_enabled:
                     assert supa_pool is not None
                     assert posting_cursor is not None
@@ -1812,6 +1836,9 @@ async def run_exporter(
                 exported=exported,
                 duration_s=round(duration, 2),
             )
+        except _TypesenseOwnershipTransferred:
+            log.warning("exporter.typesense_ownership_transferred")
+            return
         except Exception:
             log.exception("exporter.tick_error")
 

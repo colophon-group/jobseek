@@ -36,6 +36,7 @@ vi.mock("@/lib/actions/company", async () => {
 
 vi.mock("@/lib/search/typeahead-runner", () => ({
   runSearchBarTypeahead: (...args: unknown[]) => suggestSearchBarMock(...args),
+  runSearchBarTermTypeahead: async () => [],
 }));
 
 vi.mock("@/lib/actions/search-input", () => ({
@@ -108,6 +109,13 @@ async function changeQuery(value: string) {
 }
 
 describe("SearchBar structured suggestion sections (#3082)", () => {
+  it("asks the fast typeahead for the active term in a multiword query", async () => {
+    suggestSearchBarMock.mockResolvedValue(emptyTypeaheadResults());
+    render(<SearchBar />);
+    await changeQuery("nurse Zurich");
+    expect(suggestSearchBarMock).toHaveBeenCalledWith(expect.objectContaining({ query: "Zurich" }));
+  });
+
   it("renders all structured sections through the shared option row", async () => {
     suggestCompaniesMock.mockResolvedValue([
       { id: "co_acme", name: "Acme", slug: "acme", icon: null },

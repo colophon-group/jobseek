@@ -83,6 +83,7 @@ jobs:
           scripts/vercel-web-deploy-paths.test.mjs
           scripts/vercel-server-action-key.test.mjs
           scripts/vercel-smoke-response.test.mjs
+          scripts/vercel-company-cache.test.mjs
           scripts/vercel-production-sha.test.mjs
           scripts/vercel-promotion-identity.test.mjs
 
@@ -429,6 +430,70 @@ jobs:
           wait_for_redis
           LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
             "$integration_binary" -test.run '^TestRealRedisPersistenceVerify$' -test.count=1
+
+  test-go-r2-drain:
+    name: Test Go R2 drain
+    needs: changes
+    if: needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/crawler/go/r2-drain
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: crawler
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crawler -d crawler"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/r2-drain/go.mod
+          cache-dependency-path: apps/crawler/go/r2-drain/go.sum
+      - name: Test real PostgreSQL transitions and R2 request contract
+        env:
+          TEST_DATABASE_URL: postgres://crawler:crawler@127.0.0.1:5432/crawler?sslmode=disable
+        run: |
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
+  test-go-typesense-exporter:
+    name: Test Go Typesense exporter
+    needs: changes
+    if: needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/crawler/go/typesense-exporter
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/typesense-exporter/go.mod
+          cache-dependency-path: apps/crawler/go/typesense-exporter/go.sum
+      - name: Test projection, cursor, and import acknowledgements
+        run: |
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
 
   crawler-image:
     name: Build Crawler Browser Image
@@ -1601,6 +1666,8 @@ jobs:
       - changes
       - test-go-http-pilot
       - test-go-b0-supervisor
+      - test-go-r2-drain
+      - test-go-typesense-exporter
       - crawler-image
       - lint-web
       - i18n-coverage
@@ -1662,6 +1729,7 @@ jobs:
           requireSuccess("data-validation");
           requireSuccess("test-go-http-pilot", goHttpPilot);
           requireSuccess("test-go-b0-supervisor", crawlerCode);
+          requireSuccess("test-go-typesense-exporter", crawlerCode);
           requireSuccess("dependency-review", eventName === "pull_request" && code);
           requireSuccess("crawler-image", eventName === "pull_request" && isPr && crawlerCode);
 

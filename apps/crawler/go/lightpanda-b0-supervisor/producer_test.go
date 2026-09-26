@@ -249,24 +249,29 @@ func TestProducerReturnsOnlyLiteralLegacyForOutsideCohort(t *testing.T) {
 }
 
 func TestProducerOwnsExactSortedCohortManifest(t *testing.T) {
-	producer := validProducer(t, &fakeProducerQueue{}, "browser-use-careers")
-	producer.cohortName = "c4"
-	producer.cohort = producerCohorts["c4"]
-	request := producerRequest{
-		Version: producerProtocol, Operation: "manifest", Cohort: "c4",
-		Config: map[string]string{}, OperatorTransfer: true,
-	}
-	slugs, err := producer.manifest(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{"browser-use-careers", "eclypsium-careers", "kandou-ai-careers", "poke-and-wiggle-careers"}
-	if !slices.Equal(slugs, want) {
-		t.Fatalf("Go cohort manifest drifted: got %v, want %v", slugs, want)
-	}
-	request.OperatorTransfer = false
-	if _, err := producer.manifest(request); err == nil {
-		t.Fatal("ordinary runtime caller obtained the operator manifest")
+	for cohort, want := range map[string][]string{
+		"c2": {"browser-use-careers", "kandou-ai-careers"},
+		"c3": {"browser-use-careers", "eclypsium-careers", "kandou-ai-careers"},
+		"c4": {"browser-use-careers", "eclypsium-careers", "kandou-ai-careers", "poke-and-wiggle-careers"},
+	} {
+		producer := validProducer(t, &fakeProducerQueue{}, "browser-use-careers")
+		producer.cohortName = cohort
+		producer.cohort = producerCohorts[cohort]
+		request := producerRequest{
+			Version: producerProtocol, Operation: "manifest", Cohort: cohort,
+			Config: map[string]string{}, OperatorTransfer: true,
+		}
+		slugs, err := producer.manifest(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Equal(slugs, want) {
+			t.Fatalf("Go %s cohort manifest drifted: got %v, want %v", cohort, slugs, want)
+		}
+		request.OperatorTransfer = false
+		if _, err := producer.manifest(request); err == nil {
+			t.Fatal("ordinary runtime caller obtained the operator manifest")
+		}
 	}
 }
 
@@ -453,6 +458,37 @@ func TestProducerConfigNeverGrantsMutationToItsOwnUID(t *testing.T) {
 	configured, err := producerConfigFromEnvironment()
 	if err != nil || configured.ClientUID != uint32(os.Geteuid()+1) {
 		t.Fatalf("distinct mutation UID was rejected: %#v %v", configured, err)
+	}
+}
+
+func TestProducerConfigKeepsFourOriginFixtureOutOfProduction(t *testing.T) {
+	for name, value := range map[string]string{
+		"LIGHTPANDA_B0_PRODUCER_MODE":       "enabled",
+		"LIGHTPANDA_B0_PRODUCER_COHORT":     "c4",
+		"LIGHTPANDA_B0_PRODUCER_SOCKET":     producerSocketPath,
+		"LIGHTPANDA_B0_QUEUE_NAMESPACE":     "production-b0",
+		"LIGHTPANDA_B0_SHARD_ID":            "lightpanda-b0",
+		"LIGHTPANDA_B0_ROUTING_EPOCH":       "7",
+		"REDIS_URL":                         "redis://localhost:6379/0",
+		"LIGHTPANDA_B0_PRODUCER_CLIENT_UID": strconv.Itoa(os.Geteuid() + 1),
+	} {
+		t.Setenv(name, value)
+	}
+	if _, err := producerConfigFromEnvironment(); err == nil {
+		t.Fatal("four-origin fixture cohort was allowed in production namespace")
+	}
+	t.Setenv("LIGHTPANDA_B0_QUEUE_NAMESPACE", "admission-b0")
+	if _, err := producerConfigFromEnvironment(); err != nil {
+		t.Fatalf("four-origin admission fixture was rejected: %v", err)
+	}
+	t.Setenv("LIGHTPANDA_B0_PRODUCER_COHORT", "c3")
+	t.Setenv("LIGHTPANDA_B0_QUEUE_NAMESPACE", "production-b0")
+	if _, err := producerConfigFromEnvironment(); err != nil {
+		t.Fatalf("three-origin production cohort was rejected: %v", err)
+	}
+	t.Setenv("LIGHTPANDA_B0_PRODUCER_COHORT", "c2")
+	if _, err := producerConfigFromEnvironment(); err != nil {
+		t.Fatalf("two-origin production cohort was rejected: %v", err)
 	}
 }
 

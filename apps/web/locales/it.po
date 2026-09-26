@@ -300,9 +300,7 @@ msgid "myJobs.heatmap.tooltip"
 msgstr "{count, plural, =0 {Nessuna candidatura il {date}} one {# candidatura il {date}} other {# candidature il {date}}}"
 
 #. Locale-formatted active posting count
-#. Locale-formatted active posting count
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/posting-count-labels.tsx
 msgid "common.stats.activeCount"
 msgstr "{count, plural, one {# offerta attiva} other {# offerte attive}}"
@@ -314,9 +312,7 @@ msgid "watchlists.jobList.evaluatedCount"
 msgstr "{count, plural, one {# valutata} other {# valutate}}"
 
 #. Locale-formatted postings seen in the last year count
-#. Locale-formatted postings seen in the last year count
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/posting-count-labels.tsx
 msgid "common.stats.yearCountWithValue"
 msgstr "{count, plural, one {# nell'ultimo anno} other {# nell'ultimo anno}}"
@@ -922,9 +918,7 @@ msgid "myJobs.interview.deleteCancel"
 msgstr "Annulla"
 
 #. Link to change language settings
-#. Link to change language settings
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.change"
 msgstr "modifica"
@@ -1031,6 +1025,7 @@ msgstr "Scegli in quali lingue vuoi vedere le offerte di lavoro."
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx
 #: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.city"
 msgstr "Città"
 
@@ -1528,6 +1523,7 @@ msgstr "Impossibile aggiornare il colloquio. Riprova."
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx
 #: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.country"
 msgstr "Paese"
 
@@ -1972,9 +1968,7 @@ msgstr "Scopri le aziende"
 
 #. Hidden page H1 for /explore — screen-reader landmark
 #. Hidden page H1 for /explore — screen-reader landmark
-#. Hidden page H1 for /explore — screen-reader landmark
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: app/[lang]/(app)/explore/search-page.tsx
 #: src/components/search/explore-skeleton.tsx
 msgid "explore.h1"
@@ -2109,9 +2103,7 @@ msgid "watchlists.view.filters"
 msgstr "Filtri"
 
 #. Toggle button for advanced search filters panel
-#. Toggle button for advanced search filters panel
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/advanced-search-panel.tsx
 msgid "search.advanced.toggle"
 msgstr "Filtri"
@@ -2664,6 +2656,12 @@ msgstr "offerte"
 #: app/[lang]/(app)/company/[slug]/page.tsx
 msgid "company.meta.title"
 msgstr "Lavori presso {name}"
+
+#. js-lingui-explicit-id
+#. placeholder {0}: term.span.text
+#: src/components/search/search-bar.tsx
+msgid "search.bar.keepAsKeywords"
+msgstr "Mantieni \"{0}\" come parole chiave"
 
 #. Add keyword filter
 #. js-lingui-explicit-id
@@ -3932,6 +3930,7 @@ msgstr "Ridistribuire le proprie modifiche, a condizione di includere l'avviso M
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx
 #: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.region"
 msgstr "Regione"
 
@@ -4203,6 +4202,12 @@ msgstr "Reimpostazione…"
 msgid "indexing.assurances.i1.title"
 msgstr "Ritmo rispettoso."
 
+#. Prompt to review uncertain city or occupation matches in the proposed search filters
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.reviewSuggestedFilters"
+msgstr "Controlla le corrispondenze incerte qui sotto"
+
 #. Loading state while a saved matching request is evaluated against a watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
@@ -4445,11 +4450,22 @@ msgstr "Risultati della ricerca"
 msgid "search.occupationModal.searchPlaceholder"
 msgstr "Cerca ruoli..."
 
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.searchAsEntered"
+msgstr "Cerca queste parole così come sono"
+
 #. Feature section 1 eyebrow text
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s1.eyebrow"
 msgstr "Cerca con precisione"
+
+#. Single proposed complete filter setup for a multi-term job search
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.applyFilters"
+msgstr "Cerca con i filtri suggeriti"
 
 #. Placeholder for the main search bar
 #. js-lingui-explicit-id
@@ -4587,6 +4603,12 @@ msgstr "Condividi"
 msgid "watchlists.pending.cloneTitle"
 msgstr "Copia della watchlist condivisa"
 
+#. Action shown when fresher Explore results are available without interrupting the current feed
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/explore/search-page.tsx
+msgid "explore.results.showLatest"
+msgstr "Mostra i risultati più recenti"
+
 #. Collapse location pill list
 #. js-lingui-explicit-id
 #: src/components/search/filter-bar.tsx
@@ -4618,9 +4640,7 @@ msgid "search.languageNote.withMore"
 msgstr "Offerte in {shownNames} e {remaining} altre"
 
 #. Note showing jobs in all languages
-#. Note showing jobs in all languages
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/page.tsx
 #: src/components/search/language-note.tsx
 msgid "search.languageNote.all"
 msgstr "Offerte in tutte le lingue"

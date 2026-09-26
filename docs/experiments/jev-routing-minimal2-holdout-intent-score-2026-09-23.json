@@ -1,0 +1,496 @@
+{
+  "variant": "minimal2",
+  "split": "holdout",
+  "config": {
+    "threshold": 0.6,
+    "longestFirst": true
+  },
+  "count": 28,
+  "exact": 17,
+  "spanPrecision": 0.7884615384615384,
+  "spanRecall": 0.8541666666666666,
+  "spanF1": 0.8200000000000001,
+  "groups": {
+    "atomic": {
+      "count": 4,
+      "exact": 3
+    },
+    "terse": {
+      "count": 4,
+      "exact": 1
+    },
+    "verbose": {
+      "count": 4,
+      "exact": 2
+    },
+    "mistakes": {
+      "count": 4,
+      "exact": 3
+    },
+    "multiword": {
+      "count": 4,
+      "exact": 1
+    },
+    "unrelated": {
+      "count": 4,
+      "exact": 4
+    },
+    "multilingual": {
+      "count": 4,
+      "exact": 3
+    }
+  },
+  "mismatches": [
+    {
+      "id": "atomic-12",
+      "group": "atomic",
+      "q": "backend developer",
+      "expected": [
+        {
+          "text": "backend developer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "selected": [
+        {
+          "text": "developer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "exact": false
+    },
+    {
+      "id": "terse-09",
+      "group": "terse",
+      "q": "nurse geneva",
+      "expected": [
+        {
+          "text": "geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "selected": [
+        {
+          "text": "nurse",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "exact": false
+    },
+    {
+      "id": "terse-10",
+      "group": "terse",
+      "q": "fullstack typescript",
+      "expected": [
+        {
+          "text": "fullstack",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "typescript",
+          "category": "technology",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "selected": [
+        {
+          "text": "typescript",
+          "category": "technology",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "exact": false
+    },
+    {
+      "id": "terse-11",
+      "group": "terse",
+      "q": "devops aws",
+      "expected": [
+        {
+          "text": "devops",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "aws",
+          "category": "technology",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "selected": [
+        {
+          "text": "devops",
+          "category": "technology",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "aws",
+          "category": "technology",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 1,
+      "exact": false
+    },
+    {
+      "id": "verbose-09",
+      "group": "verbose",
+      "q": "I need an onsite recruiter position in Munich as soon as possible",
+      "expected": [
+        {
+          "text": "onsite",
+          "category": "onsite",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        }
+      ],
+      "selected": [
+        {
+          "text": "onsite recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        }
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 2,
+      "exact": false
+    },
+    {
+      "id": "verbose-12",
+      "group": "verbose",
+      "q": "Find jobs for somebody who knows Python SQL and AWS",
+      "expected": [
+        {
+          "text": "Python",
+          "category": "technology",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        },
+        {
+          "text": "SQL",
+          "category": "technology",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "AWS",
+          "category": "technology",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ],
+      "selected": [
+        {
+          "text": "Python",
+          "category": "technology",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        },
+        {
+          "text": "SQL",
+          "category": "technology",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "and AWS",
+          "category": "technology",
+          "segment": 0,
+          "start": 8,
+          "end": 10
+        }
+      ],
+      "tp": 2,
+      "fp": 1,
+      "fn": 1,
+      "exact": false
+    },
+    {
+      "id": "mistakes-09",
+      "group": "mistakes",
+      "q": "berln frontend dev",
+      "expected": [
+        {
+          "text": "berln",
+          "category": "location",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "frontend dev",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        }
+      ],
+      "selected": [
+        {
+          "text": "berln",
+          "category": "location",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "frontend",
+          "category": "technology",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "dev",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "tp": 1,
+      "fp": 2,
+      "fn": 1,
+      "exact": false
+    },
+    {
+      "id": "multiword-09",
+      "group": "multiword",
+      "q": "United Kingdom nurse",
+      "expected": [
+        {
+          "text": "United Kingdom",
+          "category": "location",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "selected": [
+        {
+          "text": "United Kingdom",
+          "category": "location",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "nurse",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "exact": false
+    },
+    {
+      "id": "multiword-10",
+      "group": "multiword",
+      "q": "European Union policy analyst",
+      "expected": [
+        {
+          "text": "European Union",
+          "category": "location",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "selected": [
+        {
+          "text": "European Union",
+          "category": "location",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "policy analyst",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "exact": false
+    },
+    {
+      "id": "multiword-11",
+      "group": "multiword",
+      "q": "New York City finance analyst",
+      "expected": [
+        {
+          "text": "New York City",
+          "category": "location",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "selected": [
+        {
+          "text": "New York City",
+          "category": "location",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "finance analyst",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "exact": false
+    },
+    {
+      "id": "multilingual-09",
+      "group": "multilingual",
+      "q": "sviluppatore backend remoto Milano",
+      "expected": [
+        {
+          "text": "sviluppatore",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "remoto",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Milano",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "selected": [
+        {
+          "text": "sviluppatore",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "backend",
+          "category": "technology",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "remoto",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Milano",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "tp": 3,
+      "fp": 1,
+      "fn": 0,
+      "exact": false
+    }
+  ]
+}

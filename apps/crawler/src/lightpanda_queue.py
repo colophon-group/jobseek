@@ -767,8 +767,8 @@ class LightpandaB0Queue:
     ) -> TransitionResult:
         """Atomically return a cold, fully guarded namespace to legacy queues."""
 
-        if cohort not in {"c1", "c4"}:
-            raise ValueError("rollback cohort must be exactly c1 or c4")
+        if cohort not in {"c1", "c2", "c3", "c4"}:
+            raise ValueError("rollback cohort must be exactly c1, c2, c3, or c4")
         if not _SHA256_RE.fullmatch(rollback_plan_digest):
             raise ValueError("rollback_plan_digest must be lowercase SHA-256")
         if not _SHA256_RE.fullmatch(source_receipt_sha256):
@@ -794,8 +794,8 @@ class LightpandaB0Queue:
     ) -> TransitionResult:
         """Exact-compare and delete the durable Redis rollback commit proof."""
 
-        if cohort not in {"c1", "c4"}:
-            raise ValueError("rollback cohort must be exactly c1 or c4")
+        if cohort not in {"c1", "c2", "c3", "c4"}:
+            raise ValueError("rollback cohort must be exactly c1, c2, c3, or c4")
         if not _SHA256_RE.fullmatch(rollback_plan_digest):
             raise ValueError("rollback_plan_digest must be lowercase SHA-256")
         if not _SHA256_RE.fullmatch(source_receipt_sha256):

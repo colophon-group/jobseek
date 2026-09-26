@@ -1,0 +1,5547 @@
+{
+  "timestamp": "2026-09-23T22:42:36.885Z",
+  "labelRole": "current-system-baseline-not-human-gold",
+  "source": "apps/web/src/lib/services/search-input.ts via local Next.js runtime",
+  "baseCommit": "eb40e2b2a",
+  "fixtureCount": 64,
+  "stableCount": 64,
+  "sanityPassedCount": 64,
+  "records": [
+    {
+      "id": "diverse-atomic-01",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "accountant",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 854,
+          "clientMs": 8473,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 27,
+          "clientMs": 132,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-02",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "pharmacist",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 92,
+            "slug": "pharmacist",
+            "name": "Pharmacist"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 569,
+          "clientMs": 1072,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "pharmacist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 8,
+          "clientMs": 39,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "pharmacist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-03",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "customer success manager",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 25,
+            "slug": "customer-success-manager",
+            "name": "Customer Success Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "customer-success-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 325,
+          "clientMs": 356,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "customer-success-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 28,
+          "clientMs": 89,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "customer-success-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-04",
+      "group": "atomic",
+      "split": "tune",
+      "locale": "en",
+      "q": "warehouse associate",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 103,
+            "slug": "warehouse-associate",
+            "name": "Warehouse Associate"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "warehouse-associate"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 287,
+          "clientMs": 307,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "warehouse-associate"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 22,
+          "clientMs": 110,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "warehouse-associate"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-05",
+      "group": "atomic",
+      "split": "holdout",
+      "locale": "en",
+      "q": "compliance officer",
+      "gold": {
+        "keywords": [
+          "compliance"
+        ],
+        "locations": [
+          {
+            "id": 2154481,
+            "slug": "officer",
+            "name": "Officer",
+            "type": "city",
+            "parentName": "Victoria"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "compliance"
+        ],
+        "locations": [
+          "officer"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 211,
+          "clientMs": 250,
+          "shape": {
+            "keywords": [
+              "compliance"
+            ],
+            "locations": [
+              "officer"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 40,
+          "clientMs": 67,
+          "shape": {
+            "keywords": [
+              "compliance"
+            ],
+            "locations": [
+              "officer"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-06",
+      "group": "atomic",
+      "split": "holdout",
+      "locale": "en",
+      "q": "mechanical engineer",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 95,
+            "slug": "mechanical-engineer",
+            "name": "Mechanical Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "mechanical-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 351,
+          "clientMs": 420,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "mechanical-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 18,
+          "clientMs": 47,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "mechanical-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-07",
+      "group": "atomic",
+      "split": "holdout",
+      "locale": "en",
+      "q": "recruiter",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 30,
+            "slug": "recruiter",
+            "name": "Recruiter"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "recruiter"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 160,
+          "clientMs": 215,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "recruiter"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 8,
+          "clientMs": 42,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "recruiter"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-atomic-08",
+      "group": "atomic",
+      "split": "holdout",
+      "locale": "en",
+      "q": "supply chain manager",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 97,
+            "slug": "supply-chain-manager",
+            "name": "Supply Chain Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "supply-chain-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 571,
+          "clientMs": 616,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "supply-chain-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 35,
+          "clientMs": 97,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "supply-chain-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-01",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "sr accountant basel",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2661604,
+            "slug": "basel",
+            "name": "Basel",
+            "type": "city",
+            "parentName": "Canton of Basel-City"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "basel"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 277,
+          "clientMs": 312,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "basel"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 23,
+          "clientMs": 42,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "basel"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-02",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "hr manager remote",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 29,
+            "slug": "hr-manager",
+            "name": "HR Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "hr-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 246,
+          "clientMs": 271,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "hr-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 53,
+          "clientMs": 72,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "hr-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-03",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "salesforce sales engineer",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 24,
+            "slug": "sales-engineer",
+            "name": "Sales Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 124,
+            "slug": "salesforce",
+            "name": "Salesforce"
+          }
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "sales-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "salesforce"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 189,
+          "clientMs": 225,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "sales-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "salesforce"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 32,
+          "clientMs": 47,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "sales-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "salesforce"
+            ],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-04",
+      "group": "terse",
+      "split": "tune",
+      "locale": "en",
+      "q": "contract ux researcher paris",
+      "gold": {
+        "keywords": [
+          "contract"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 14,
+            "slug": "ux-researcher",
+            "name": "UX Researcher"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "contract"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "ux-researcher"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 474,
+          "clientMs": 596,
+          "shape": {
+            "keywords": [
+              "contract"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "ux-researcher"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 58,
+          "clientMs": 86,
+          "shape": {
+            "keywords": [
+              "contract"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "ux-researcher"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-05",
+      "group": "terse",
+      "split": "holdout",
+      "locale": "en",
+      "q": "jr auditor zurich",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 90,
+            "slug": "auditor",
+            "name": "Auditor"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 2,
+            "slug": "entry",
+            "name": "Entry Level"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "auditor"
+        ],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 200,
+          "clientMs": 218,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "auditor"
+            ],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 21,
+          "clientMs": 79,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "auditor"
+            ],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-06",
+      "group": "terse",
+      "split": "holdout",
+      "locale": "en",
+      "q": "sales manager hybrid london",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 105,
+            "slug": "sales-manager",
+            "name": "Sales Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "sales-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 234,
+          "clientMs": 270,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "sales-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 75,
+          "clientMs": 114,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "sales-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-07",
+      "group": "terse",
+      "split": "holdout",
+      "locale": "en",
+      "q": "excel data analyst remote",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 9,
+            "slug": "data-analyst",
+            "name": "Data Analyst"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [
+          {
+            "id": 133,
+            "slug": "excel",
+            "name": "Excel"
+          }
+        ],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "data-analyst"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "excel"
+        ],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 474,
+          "clientMs": 526,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "data-analyst"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "excel"
+            ],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 61,
+          "clientMs": 114,
+          "shape": {
+            "keywords": [],
+            "locations": [],
+            "occupations": [
+              "data-analyst"
+            ],
+            "seniorities": [],
+            "technologies": [
+              "excel"
+            ],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-terse-08",
+      "group": "terse",
+      "split": "holdout",
+      "locale": "en",
+      "q": "recruiter part time zurich",
+      "gold": {
+        "keywords": [
+          "part",
+          "time"
+        ],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 30,
+            "slug": "recruiter",
+            "name": "Recruiter"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "part",
+          "time"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "recruiter"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 273,
+          "clientMs": 308,
+          "shape": {
+            "keywords": [
+              "part",
+              "time"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "recruiter"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 45,
+          "clientMs": 95,
+          "shape": {
+            "keywords": [
+              "part",
+              "time"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "recruiter"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-01",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "I'm looking for a remote executive assistant role in Berlin",
+      "gold": {
+        "keywords": [
+          "I'm",
+          "looking",
+          "for",
+          "a",
+          "assistant",
+          "role",
+          "in"
+        ],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 9,
+            "slug": "executive",
+            "name": "Executive"
+          }
+        ],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "I'm",
+          "looking",
+          "for",
+          "a",
+          "assistant",
+          "role",
+          "in"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "executive"
+        ],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 1148,
+          "clientMs": 1172,
+          "shape": {
+            "keywords": [
+              "I'm",
+              "looking",
+              "for",
+              "a",
+              "assistant",
+              "role",
+              "in"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "executive"
+            ],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 90,
+          "clientMs": 194,
+          "shape": {
+            "keywords": [
+              "I'm",
+              "looking",
+              "for",
+              "a",
+              "assistant",
+              "role",
+              "in"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "executive"
+            ],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-02",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Please show senior marketing manager jobs in Paris",
+      "gold": {
+        "keywords": [
+          "Please",
+          "show",
+          "jobs",
+          "in"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 27,
+            "slug": "marketing-manager",
+            "name": "Marketing Manager"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Please",
+          "show",
+          "jobs",
+          "in"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "marketing-manager"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 622,
+          "clientMs": 651,
+          "shape": {
+            "keywords": [
+              "Please",
+              "show",
+              "jobs",
+              "in"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "marketing-manager"
+            ],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 146,
+          "clientMs": 212,
+          "shape": {
+            "keywords": [
+              "Please",
+              "show",
+              "jobs",
+              "in"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "marketing-manager"
+            ],
+            "seniorities": [
+              "senior"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-03",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Can you find operations manager roles near Geneva with hybrid work",
+      "gold": {
+        "keywords": [
+          "you",
+          "find",
+          "roles",
+          "near",
+          "with",
+          "work"
+        ],
+        "locations": [
+          {
+            "id": 749795,
+            "slug": "can",
+            "name": "Çan",
+            "type": "city",
+            "parentName": "Canakkale"
+          },
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 34,
+            "slug": "operations-manager",
+            "name": "Operations Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "you",
+          "find",
+          "roles",
+          "near",
+          "with",
+          "work"
+        ],
+        "locations": [
+          "can",
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [
+          "operations-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 535,
+          "clientMs": 554,
+          "shape": {
+            "keywords": [
+              "you",
+              "find",
+              "roles",
+              "near",
+              "with",
+              "work"
+            ],
+            "locations": [
+              "can",
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [
+              "operations-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 186,
+          "clientMs": 205,
+          "shape": {
+            "keywords": [
+              "you",
+              "find",
+              "roles",
+              "near",
+              "with",
+              "work"
+            ],
+            "locations": [
+              "can",
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [
+              "operations-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-04",
+      "group": "verbose",
+      "split": "tune",
+      "locale": "en",
+      "q": "Seeking a support engineer position in London",
+      "gold": {
+        "keywords": [
+          "Seeking",
+          "a",
+          "position",
+          "in"
+        ],
+        "locations": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 26,
+            "slug": "support-engineer",
+            "name": "Support Engineer"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Seeking",
+          "a",
+          "position",
+          "in"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "support-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 613,
+          "clientMs": 660,
+          "shape": {
+            "keywords": [
+              "Seeking",
+              "a",
+              "position",
+              "in"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "support-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 68,
+          "clientMs": 85,
+          "shape": {
+            "keywords": [
+              "Seeking",
+              "a",
+              "position",
+              "in"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "support-engineer"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-05",
+      "group": "verbose",
+      "split": "holdout",
+      "locale": "en",
+      "q": "I need a junior accountant job in Zurich preferably hybrid",
+      "gold": {
+        "keywords": [
+          "I",
+          "need",
+          "a",
+          "job",
+          "in",
+          "preferably"
+        ],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 2,
+            "slug": "entry",
+            "name": "Entry Level"
+          }
+        ],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "I",
+          "need",
+          "a",
+          "job",
+          "in",
+          "preferably"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 1168,
+          "clientMs": 1284,
+          "shape": {
+            "keywords": [
+              "I",
+              "need",
+              "a",
+              "job",
+              "in",
+              "preferably"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 657,
+          "clientMs": 731,
+          "shape": {
+            "keywords": [
+              "I",
+              "need",
+              "a",
+              "job",
+              "in",
+              "preferably"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-06",
+      "group": "verbose",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Find an on site compliance officer role in Munich",
+      "gold": {
+        "keywords": [
+          "Find",
+          "an",
+          "compliance",
+          "role",
+          "in",
+          "Munich"
+        ],
+        "locations": [
+          {
+            "id": 2154481,
+            "slug": "officer",
+            "name": "Officer",
+            "type": "city",
+            "parentName": "Victoria"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Find",
+          "an",
+          "compliance",
+          "role",
+          "in",
+          "Munich"
+        ],
+        "locations": [
+          "officer"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 968,
+          "clientMs": 996,
+          "shape": {
+            "keywords": [
+              "Find",
+              "an",
+              "compliance",
+              "role",
+              "in",
+              "Munich"
+            ],
+            "locations": [
+              "officer"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "onsite"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 1994,
+          "clientMs": 2118,
+          "shape": {
+            "keywords": [
+              "Find",
+              "an",
+              "compliance",
+              "role",
+              "in",
+              "Munich"
+            ],
+            "locations": [
+              "officer"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "onsite"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-07",
+      "group": "verbose",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Looking for legal counsel positions in Vienna",
+      "gold": {
+        "keywords": [
+          "Looking",
+          "for",
+          "legal",
+          "counsel",
+          "positions",
+          "in",
+          "Vienna"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Looking",
+          "for",
+          "legal",
+          "counsel",
+          "positions",
+          "in",
+          "Vienna"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 1433,
+          "clientMs": 1611,
+          "shape": {
+            "keywords": [
+              "Looking",
+              "for",
+              "legal",
+              "counsel",
+              "positions",
+              "in",
+              "Vienna"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 584,
+          "clientMs": 681,
+          "shape": {
+            "keywords": [
+              "Looking",
+              "for",
+              "legal",
+              "counsel",
+              "positions",
+              "in",
+              "Vienna"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-verbose-08",
+      "group": "verbose",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Any contract construction manager jobs around Hamburg",
+      "gold": {
+        "keywords": [
+          "Any",
+          "contract",
+          "construction",
+          "manager",
+          "jobs",
+          "around",
+          "Hamburg"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Any",
+          "contract",
+          "construction",
+          "manager",
+          "jobs",
+          "around",
+          "Hamburg"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 346,
+          "clientMs": 407,
+          "shape": {
+            "keywords": [
+              "Any",
+              "contract",
+              "construction",
+              "manager",
+              "jobs",
+              "around",
+              "Hamburg"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 920,
+          "clientMs": 954,
+          "shape": {
+            "keywords": [
+              "Any",
+              "contract",
+              "construction",
+              "manager",
+              "jobs",
+              "around",
+              "Hamburg"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-01",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "recruter remote berlin",
+      "gold": {
+        "keywords": [
+          "recruter"
+        ],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "recruter"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 152,
+          "clientMs": 179,
+          "shape": {
+            "keywords": [
+              "recruter"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 50,
+          "clientMs": 89,
+          "shape": {
+            "keywords": [
+              "recruter"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-02",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "pharmacst geneva",
+      "gold": {
+        "keywords": [
+          "pharmacst"
+        ],
+        "locations": [
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "pharmacst"
+        ],
+        "locations": [
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 108,
+          "clientMs": 159,
+          "shape": {
+            "keywords": [
+              "pharmacst"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 16,
+          "clientMs": 38,
+          "shape": {
+            "keywords": [
+              "pharmacst"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-03",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "senor marketng manager paris",
+      "gold": {
+        "keywords": [
+          "senor",
+          "marketng",
+          "manager"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "senor",
+          "marketng",
+          "manager"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 317,
+          "clientMs": 333,
+          "shape": {
+            "keywords": [
+              "senor",
+              "marketng",
+              "manager"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 60,
+          "clientMs": 81,
+          "shape": {
+            "keywords": [
+              "senor",
+              "marketng",
+              "manager"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-04",
+      "group": "mistakes",
+      "split": "tune",
+      "locale": "en",
+      "q": "warehose associate zurich",
+      "gold": {
+        "keywords": [
+          "warehose",
+          "associate"
+        ],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "warehose",
+          "associate"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 233,
+          "clientMs": 256,
+          "shape": {
+            "keywords": [
+              "warehose",
+              "associate"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 35,
+          "clientMs": 78,
+          "shape": {
+            "keywords": [
+              "warehose",
+              "associate"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-05",
+      "group": "mistakes",
+      "split": "holdout",
+      "locale": "en",
+      "q": "accuntant hybrid basel",
+      "gold": {
+        "keywords": [
+          "accuntant"
+        ],
+        "locations": [
+          {
+            "id": 2661604,
+            "slug": "basel",
+            "name": "Basel",
+            "type": "city",
+            "parentName": "Canton of Basel-City"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "accuntant"
+        ],
+        "locations": [
+          "basel"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 184,
+          "clientMs": 203,
+          "shape": {
+            "keywords": [
+              "accuntant"
+            ],
+            "locations": [
+              "basel"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 50,
+          "clientMs": 82,
+          "shape": {
+            "keywords": [
+              "accuntant"
+            ],
+            "locations": [
+              "basel"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-06",
+      "group": "mistakes",
+      "split": "holdout",
+      "locale": "en",
+      "q": "compliace officer london",
+      "gold": {
+        "keywords": [
+          "compliace"
+        ],
+        "locations": [
+          {
+            "id": 2154481,
+            "slug": "officer",
+            "name": "Officer",
+            "type": "city",
+            "parentName": "Victoria"
+          },
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "compliace"
+        ],
+        "locations": [
+          "officer",
+          "london-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 196,
+          "clientMs": 225,
+          "shape": {
+            "keywords": [
+              "compliace"
+            ],
+            "locations": [
+              "officer",
+              "london-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 164,
+          "clientMs": 206,
+          "shape": {
+            "keywords": [
+              "compliace"
+            ],
+            "locations": [
+              "officer",
+              "london-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-07",
+      "group": "mistakes",
+      "split": "holdout",
+      "locale": "en",
+      "q": "mechanicl engineer geneva",
+      "gold": {
+        "keywords": [
+          "mechanicl",
+          "engineer"
+        ],
+        "locations": [
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "mechanicl",
+          "engineer"
+        ],
+        "locations": [
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 232,
+          "clientMs": 251,
+          "shape": {
+            "keywords": [
+              "mechanicl",
+              "engineer"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 29,
+          "clientMs": 61,
+          "shape": {
+            "keywords": [
+              "mechanicl",
+              "engineer"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-mistakes-08",
+      "group": "mistakes",
+      "split": "holdout",
+      "locale": "en",
+      "q": "saless manager remote berlin",
+      "gold": {
+        "keywords": [
+          "saless",
+          "manager"
+        ],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "saless",
+          "manager"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 164,
+          "clientMs": 185,
+          "shape": {
+            "keywords": [
+              "saless",
+              "manager"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 31,
+          "clientMs": 48,
+          "shape": {
+            "keywords": [
+              "saless",
+              "manager"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-01",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "customer success manager San Francisco",
+      "gold": {
+        "keywords": [
+          "Francisco"
+        ],
+        "locations": [
+          {
+            "id": 2451778,
+            "slug": "san",
+            "name": "San",
+            "type": "city",
+            "parentName": "Ségou"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 25,
+            "slug": "customer-success-manager",
+            "name": "Customer Success Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Francisco"
+        ],
+        "locations": [
+          "san"
+        ],
+        "occupations": [
+          "customer-success-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 414,
+          "clientMs": 443,
+          "shape": {
+            "keywords": [
+              "Francisco"
+            ],
+            "locations": [
+              "san"
+            ],
+            "occupations": [
+              "customer-success-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 45,
+          "clientMs": 73,
+          "shape": {
+            "keywords": [
+              "Francisco"
+            ],
+            "locations": [
+              "san"
+            ],
+            "occupations": [
+              "customer-success-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-02",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "executive assistant New York",
+      "gold": {
+        "keywords": [
+          "assistant",
+          "New"
+        ],
+        "locations": [
+          {
+            "id": 2633352,
+            "slug": "york-england-united-kingdom",
+            "name": "York",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 9,
+            "slug": "executive",
+            "name": "Executive"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "assistant",
+          "New"
+        ],
+        "locations": [
+          "york-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "executive"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 209,
+          "clientMs": 299,
+          "shape": {
+            "keywords": [
+              "assistant",
+              "New"
+            ],
+            "locations": [
+              "york-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "executive"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 94,
+          "clientMs": 113,
+          "shape": {
+            "keywords": [
+              "assistant",
+              "New"
+            ],
+            "locations": [
+              "york-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "executive"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-03",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "supply chain manager Paris",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 97,
+            "slug": "supply-chain-manager",
+            "name": "Supply Chain Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "supply-chain-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 130,
+          "clientMs": 321,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "supply-chain-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 28,
+          "clientMs": 143,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "supply-chain-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-04",
+      "group": "multiword",
+      "split": "tune",
+      "locale": "en",
+      "q": "data center technician Los Angeles",
+      "gold": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 86,
+            "slug": "data-center-technician",
+            "name": "Data Center Technician"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          "data-center-technician"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 357,
+          "clientMs": 370,
+          "shape": {
+            "keywords": [
+              "Los",
+              "Angeles"
+            ],
+            "locations": [],
+            "occupations": [
+              "data-center-technician"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 47,
+          "clientMs": 87,
+          "shape": {
+            "keywords": [
+              "Los",
+              "Angeles"
+            ],
+            "locations": [],
+            "occupations": [
+              "data-center-technician"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-05",
+      "group": "multiword",
+      "split": "holdout",
+      "locale": "en",
+      "q": "quality manager New York City",
+      "gold": {
+        "keywords": [
+          "New",
+          "City"
+        ],
+        "locations": [
+          {
+            "id": 2633352,
+            "slug": "york-england-united-kingdom",
+            "name": "York",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 107,
+            "slug": "quality-manager",
+            "name": "Quality Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "New",
+          "City"
+        ],
+        "locations": [
+          "york-england-united-kingdom"
+        ],
+        "occupations": [
+          "quality-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 257,
+          "clientMs": 277,
+          "shape": {
+            "keywords": [
+              "New",
+              "City"
+            ],
+            "locations": [
+              "york-england-united-kingdom"
+            ],
+            "occupations": [
+              "quality-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 35,
+          "clientMs": 60,
+          "shape": {
+            "keywords": [
+              "New",
+              "City"
+            ],
+            "locations": [
+              "york-england-united-kingdom"
+            ],
+            "occupations": [
+              "quality-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-06",
+      "group": "multiword",
+      "split": "holdout",
+      "locale": "en",
+      "q": "legal counsel United Kingdom",
+      "gold": {
+        "keywords": [
+          "United",
+          "Kingdom"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 32,
+            "slug": "legal-counsel",
+            "name": "Legal Counsel"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "United",
+          "Kingdom"
+        ],
+        "locations": [],
+        "occupations": [
+          "legal-counsel"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 309,
+          "clientMs": 323,
+          "shape": {
+            "keywords": [
+              "United",
+              "Kingdom"
+            ],
+            "locations": [],
+            "occupations": [
+              "legal-counsel"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 53,
+          "clientMs": 93,
+          "shape": {
+            "keywords": [
+              "United",
+              "Kingdom"
+            ],
+            "locations": [],
+            "occupations": [
+              "legal-counsel"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-07",
+      "group": "multiword",
+      "split": "holdout",
+      "locale": "en",
+      "q": "account executive San Diego",
+      "gold": {
+        "keywords": [
+          "account",
+          "Diego"
+        ],
+        "locations": [
+          {
+            "id": 2451778,
+            "slug": "san",
+            "name": "San",
+            "type": "city",
+            "parentName": "Ségou"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 9,
+            "slug": "executive",
+            "name": "Executive"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "account",
+          "Diego"
+        ],
+        "locations": [
+          "san"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "executive"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 236,
+          "clientMs": 270,
+          "shape": {
+            "keywords": [
+              "account",
+              "Diego"
+            ],
+            "locations": [
+              "san"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "executive"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 53,
+          "clientMs": 76,
+          "shape": {
+            "keywords": [
+              "account",
+              "Diego"
+            ],
+            "locations": [
+              "san"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "executive"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multiword-08",
+      "group": "multiword",
+      "split": "holdout",
+      "locale": "en",
+      "q": "construction manager Los Angeles",
+      "gold": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 93,
+            "slug": "construction-manager",
+            "name": "Construction Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          "construction-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 210,
+          "clientMs": 234,
+          "shape": {
+            "keywords": [
+              "Los",
+              "Angeles"
+            ],
+            "locations": [],
+            "occupations": [
+              "construction-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 29,
+          "clientMs": 65,
+          "shape": {
+            "keywords": [
+              "Los",
+              "Angeles"
+            ],
+            "locations": [],
+            "occupations": [
+              "construction-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-01",
+      "group": "employment",
+      "split": "tune",
+      "locale": "en",
+      "q": "part time cashier",
+      "gold": {
+        "keywords": [
+          "part",
+          "time",
+          "cashier"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "part",
+          "time",
+          "cashier"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 190,
+          "clientMs": 230,
+          "shape": {
+            "keywords": [
+              "part",
+              "time",
+              "cashier"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 34,
+          "clientMs": 69,
+          "shape": {
+            "keywords": [
+              "part",
+              "time",
+              "cashier"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-02",
+      "group": "employment",
+      "split": "tune",
+      "locale": "en",
+      "q": "contract accountant remote",
+      "gold": {
+        "keywords": [
+          "contract"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "contract"
+        ],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 106,
+          "clientMs": 137,
+          "shape": {
+            "keywords": [
+              "contract"
+            ],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 28,
+          "clientMs": 48,
+          "shape": {
+            "keywords": [
+              "contract"
+            ],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-03",
+      "group": "employment",
+      "split": "tune",
+      "locale": "en",
+      "q": "volunteer hr manager berlin",
+      "gold": {
+        "keywords": [
+          "volunteer"
+        ],
+        "locations": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 29,
+            "slug": "hr-manager",
+            "name": "HR Manager"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "volunteer"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "hr-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 139,
+          "clientMs": 218,
+          "shape": {
+            "keywords": [
+              "volunteer"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [
+              "hr-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 30,
+          "clientMs": 82,
+          "shape": {
+            "keywords": [
+              "volunteer"
+            ],
+            "locations": [
+              "berlin"
+            ],
+            "occupations": [
+              "hr-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-04",
+      "group": "employment",
+      "split": "tune",
+      "locale": "en",
+      "q": "temporary warehouse associate london",
+      "gold": {
+        "keywords": [
+          "temporary"
+        ],
+        "locations": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 103,
+            "slug": "warehouse-associate",
+            "name": "Warehouse Associate"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "temporary"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "warehouse-associate"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 137,
+          "clientMs": 153,
+          "shape": {
+            "keywords": [
+              "temporary"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "warehouse-associate"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 32,
+          "clientMs": 48,
+          "shape": {
+            "keywords": [
+              "temporary"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [
+              "warehouse-associate"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-05",
+      "group": "employment",
+      "split": "holdout",
+      "locale": "en",
+      "q": "full time pharmacist in Zurich",
+      "gold": {
+        "keywords": [
+          "full",
+          "time",
+          "in"
+        ],
+        "locations": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 92,
+            "slug": "pharmacist",
+            "name": "Pharmacist"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "full",
+          "time",
+          "in"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 203,
+          "clientMs": 228,
+          "shape": {
+            "keywords": [
+              "full",
+              "time",
+              "in"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "pharmacist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 53,
+          "clientMs": 92,
+          "shape": {
+            "keywords": [
+              "full",
+              "time",
+              "in"
+            ],
+            "locations": [
+              "zurich"
+            ],
+            "occupations": [
+              "pharmacist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-06",
+      "group": "employment",
+      "split": "holdout",
+      "locale": "en",
+      "q": "contract recruiter hybrid Paris",
+      "gold": {
+        "keywords": [
+          "contract"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 30,
+            "slug": "recruiter",
+            "name": "Recruiter"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "contract"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "recruiter"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 189,
+          "clientMs": 246,
+          "shape": {
+            "keywords": [
+              "contract"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "recruiter"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 124,
+          "clientMs": 152,
+          "shape": {
+            "keywords": [
+              "contract"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "recruiter"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-07",
+      "group": "employment",
+      "split": "holdout",
+      "locale": "en",
+      "q": "remote executive assistant London",
+      "gold": {
+        "keywords": [
+          "assistant"
+        ],
+        "locations": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [
+          {
+            "id": 9,
+            "slug": "executive",
+            "name": "Executive"
+          }
+        ],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "assistant"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "executive"
+        ],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 192,
+          "clientMs": 213,
+          "shape": {
+            "keywords": [
+              "assistant"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "executive"
+            ],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 30,
+          "clientMs": 44,
+          "shape": {
+            "keywords": [
+              "assistant"
+            ],
+            "locations": [
+              "london-england-united-kingdom"
+            ],
+            "occupations": [],
+            "seniorities": [
+              "executive"
+            ],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-employment-08",
+      "group": "employment",
+      "split": "holdout",
+      "locale": "en",
+      "q": "temporary medical representative Geneva",
+      "gold": {
+        "keywords": [
+          "temporary"
+        ],
+        "locations": [
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 104,
+            "slug": "medical-representative",
+            "name": "Medical Representative"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "temporary"
+        ],
+        "locations": [
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [
+          "medical-representative"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 511,
+          "clientMs": 536,
+          "shape": {
+            "keywords": [
+              "temporary"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [
+              "medical-representative"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 28,
+          "clientMs": 47,
+          "shape": {
+            "keywords": [
+              "temporary"
+            ],
+            "locations": [
+              "geneva-canton-of-geneva-switzerland"
+            ],
+            "occupations": [
+              "medical-representative"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-01",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "sales report template",
+      "gold": {
+        "keywords": [
+          "sales",
+          "report",
+          "template"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "sales",
+          "report",
+          "template"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 542,
+          "clientMs": 1158,
+          "shape": {
+            "keywords": [
+              "sales",
+              "report",
+              "template"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 30,
+          "clientMs": 54,
+          "shape": {
+            "keywords": [
+              "sales",
+              "report",
+              "template"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-02",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "accountant joke",
+      "gold": {
+        "keywords": [
+          "joke"
+        ],
+        "locations": [],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "joke"
+        ],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 102,
+          "clientMs": 138,
+          "shape": {
+            "keywords": [
+              "joke"
+            ],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 42,
+          "clientMs": 79,
+          "shape": {
+            "keywords": [
+              "joke"
+            ],
+            "locations": [],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-03",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "how to become a pharmacist",
+      "gold": {
+        "keywords": [
+          "how",
+          "become",
+          "a"
+        ],
+        "locations": [
+          {
+            "id": 2354340,
+            "slug": "to",
+            "name": "Tô",
+            "type": "city",
+            "parentName": "Centre-Ouest Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 92,
+            "slug": "pharmacist",
+            "name": "Pharmacist"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "how",
+          "become",
+          "a"
+        ],
+        "locations": [
+          "to"
+        ],
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 345,
+          "clientMs": 364,
+          "shape": {
+            "keywords": [
+              "how",
+              "become",
+              "a"
+            ],
+            "locations": [
+              "to"
+            ],
+            "occupations": [
+              "pharmacist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 63,
+          "clientMs": 113,
+          "shape": {
+            "keywords": [
+              "how",
+              "become",
+              "a"
+            ],
+            "locations": [
+              "to"
+            ],
+            "occupations": [
+              "pharmacist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-04",
+      "group": "unrelated",
+      "split": "tune",
+      "locale": "en",
+      "q": "manager training course",
+      "gold": {
+        "keywords": [
+          "manager",
+          "training",
+          "course"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "manager",
+          "training",
+          "course"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 334,
+          "clientMs": 393,
+          "shape": {
+            "keywords": [
+              "manager",
+              "training",
+              "course"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 36,
+          "clientMs": 124,
+          "shape": {
+            "keywords": [
+              "manager",
+              "training",
+              "course"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-05",
+      "group": "unrelated",
+      "split": "holdout",
+      "locale": "en",
+      "q": "legal advice for tenants",
+      "gold": {
+        "keywords": [
+          "legal",
+          "advice",
+          "for",
+          "tenants"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "legal",
+          "advice",
+          "for",
+          "tenants"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 751,
+          "clientMs": 842,
+          "shape": {
+            "keywords": [
+              "legal",
+              "advice",
+              "for",
+              "tenants"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 39,
+          "clientMs": 85,
+          "shape": {
+            "keywords": [
+              "legal",
+              "advice",
+              "for",
+              "tenants"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-06",
+      "group": "unrelated",
+      "split": "holdout",
+      "locale": "en",
+      "q": "warehouse shelving ideas",
+      "gold": {
+        "keywords": [
+          "warehouse",
+          "shelving",
+          "ideas"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "warehouse",
+          "shelving",
+          "ideas"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 348,
+          "clientMs": 381,
+          "shape": {
+            "keywords": [
+              "warehouse",
+              "shelving",
+              "ideas"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 25,
+          "clientMs": 56,
+          "shape": {
+            "keywords": [
+              "warehouse",
+              "shelving",
+              "ideas"
+            ],
+            "locations": [],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-07",
+      "group": "unrelated",
+      "split": "holdout",
+      "locale": "en",
+      "q": "what is a compliance officer",
+      "gold": {
+        "keywords": [
+          "what",
+          "is",
+          "a",
+          "compliance"
+        ],
+        "locations": [
+          {
+            "id": 2154481,
+            "slug": "officer",
+            "name": "Officer",
+            "type": "city",
+            "parentName": "Victoria"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "what",
+          "is",
+          "a",
+          "compliance"
+        ],
+        "locations": [
+          "officer"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 960,
+          "clientMs": 1270,
+          "shape": {
+            "keywords": [
+              "what",
+              "is",
+              "a",
+              "compliance"
+            ],
+            "locations": [
+              "officer"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 113,
+          "clientMs": 172,
+          "shape": {
+            "keywords": [
+              "what",
+              "is",
+              "a",
+              "compliance"
+            ],
+            "locations": [
+              "officer"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-unrelated-08",
+      "group": "unrelated",
+      "split": "holdout",
+      "locale": "en",
+      "q": "Paris museum tickets",
+      "gold": {
+        "keywords": [
+          "museum",
+          "tickets"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "museum",
+          "tickets"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 533,
+          "clientMs": 550,
+          "shape": {
+            "keywords": [
+              "museum",
+              "tickets"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 82,
+          "clientMs": 143,
+          "shape": {
+            "keywords": [
+              "museum",
+              "tickets"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-01",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "de",
+      "q": "Buchhalter Berlin hybrid",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2950157,
+            "slug": "state-of-berlin-germany",
+            "name": "Berlin",
+            "type": "region",
+            "parentName": "Germany"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Buchhalter"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "state-of-berlin-germany"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 720,
+          "clientMs": 758,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "state-of-berlin-germany"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 27,
+          "clientMs": 81,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "state-of-berlin-germany"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "hybrid"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-02",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "fr",
+      "q": "Responsable marketing Paris télétravail",
+      "gold": {
+        "keywords": [
+          "télétravail"
+        ],
+        "locations": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 27,
+            "slug": "marketing-manager",
+            "name": "Responsable marketing"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "télétravail"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "marketing-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 506,
+          "clientMs": 573,
+          "shape": {
+            "keywords": [
+              "télétravail"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "marketing-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 39,
+          "clientMs": 92,
+          "shape": {
+            "keywords": [
+              "télétravail"
+            ],
+            "locations": [
+              "paris-ile-de-france-region-france"
+            ],
+            "occupations": [
+              "marketing-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-03",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "it",
+      "q": "Contabile Milano remoto",
+      "gold": {
+        "keywords": [
+          "remoto"
+        ],
+        "locations": [
+          {
+            "id": 3173435,
+            "slug": "milan",
+            "name": "Milano",
+            "type": "city",
+            "parentName": "Lombardy"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Contabile"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "remoto"
+        ],
+        "locations": [
+          "milan"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 355,
+          "clientMs": 396,
+          "shape": {
+            "keywords": [
+              "remoto"
+            ],
+            "locations": [
+              "milan"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 20,
+          "clientMs": 38,
+          "shape": {
+            "keywords": [
+              "remoto"
+            ],
+            "locations": [
+              "milan"
+            ],
+            "occupations": [
+              "accountant"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-04",
+      "group": "multilingual",
+      "split": "tune",
+      "locale": "de",
+      "q": "Vertriebsleiter München",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          {
+            "id": 2867714,
+            "slug": "munich",
+            "name": "München",
+            "type": "city",
+            "parentName": "Bavaria"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 105,
+            "slug": "sales-manager",
+            "name": "Vertriebsleiter"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "munich"
+        ],
+        "occupations": [
+          "sales-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 470,
+          "clientMs": 494,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "munich"
+            ],
+            "occupations": [
+              "sales-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 16,
+          "clientMs": 41,
+          "shape": {
+            "keywords": [],
+            "locations": [
+              "munich"
+            ],
+            "occupations": [
+              "sales-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-05",
+      "group": "multilingual",
+      "split": "holdout",
+      "locale": "de",
+      "q": "Apotheker München Teilzeit",
+      "gold": {
+        "keywords": [
+          "Teilzeit"
+        ],
+        "locations": [
+          {
+            "id": 2867714,
+            "slug": "munich",
+            "name": "München",
+            "type": "city",
+            "parentName": "Bavaria"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 92,
+            "slug": "pharmacist",
+            "name": "Apotheker"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "Teilzeit"
+        ],
+        "locations": [
+          "munich"
+        ],
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 412,
+          "clientMs": 448,
+          "shape": {
+            "keywords": [
+              "Teilzeit"
+            ],
+            "locations": [
+              "munich"
+            ],
+            "occupations": [
+              "pharmacist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 56,
+          "clientMs": 93,
+          "shape": {
+            "keywords": [
+              "Teilzeit"
+            ],
+            "locations": [
+              "munich"
+            ],
+            "occupations": [
+              "pharmacist"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-06",
+      "group": "multilingual",
+      "split": "holdout",
+      "locale": "fr",
+      "q": "Conseiller juridique junior à Lyon",
+      "gold": {
+        "keywords": [
+          "à"
+        ],
+        "locations": [
+          {
+            "id": 2996944,
+            "slug": "lyon",
+            "name": "Lyon",
+            "type": "city",
+            "parentName": "Rhône-Alpes"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 32,
+            "slug": "legal-counsel",
+            "name": "Conseiller juridique"
+          }
+        ],
+        "seniorities": [
+          {
+            "id": 2,
+            "slug": "entry",
+            "name": "Débutant"
+          }
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "à"
+        ],
+        "locations": [
+          "lyon"
+        ],
+        "occupations": [
+          "legal-counsel"
+        ],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 449,
+          "clientMs": 483,
+          "shape": {
+            "keywords": [
+              "à"
+            ],
+            "locations": [
+              "lyon"
+            ],
+            "occupations": [
+              "legal-counsel"
+            ],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 107,
+          "clientMs": 173,
+          "shape": {
+            "keywords": [
+              "à"
+            ],
+            "locations": [
+              "lyon"
+            ],
+            "occupations": [
+              "legal-counsel"
+            ],
+            "seniorities": [
+              "entry"
+            ],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-07",
+      "group": "multilingual",
+      "split": "holdout",
+      "locale": "it",
+      "q": "Responsabile vendite ibrido Roma",
+      "gold": {
+        "keywords": [
+          "ibrido"
+        ],
+        "locations": [
+          {
+            "id": 3169070,
+            "slug": "rome-lazio-italy",
+            "name": "Roma",
+            "type": "city",
+            "parentName": "Lazio"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 105,
+            "slug": "sales-manager",
+            "name": "Responsabile vendite"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "ibrido"
+        ],
+        "locations": [
+          "rome-lazio-italy"
+        ],
+        "occupations": [
+          "sales-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 474,
+          "clientMs": 505,
+          "shape": {
+            "keywords": [
+              "ibrido"
+            ],
+            "locations": [
+              "rome-lazio-italy"
+            ],
+            "occupations": [
+              "sales-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 62,
+          "clientMs": 124,
+          "shape": {
+            "keywords": [
+              "ibrido"
+            ],
+            "locations": [
+              "rome-lazio-italy"
+            ],
+            "occupations": [
+              "sales-manager"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [],
+            "employmentTypes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "diverse-multilingual-08",
+      "group": "multilingual",
+      "split": "holdout",
+      "locale": "de",
+      "q": "Lagermitarbeiter in Hamburg remote",
+      "gold": {
+        "keywords": [
+          "in"
+        ],
+        "locations": [
+          {
+            "id": 2911297,
+            "slug": "hamburg-germany",
+            "name": "Hamburg",
+            "type": "region",
+            "parentName": "Germany"
+          }
+        ],
+        "occupations": [
+          {
+            "id": 103,
+            "slug": "warehouse-associate",
+            "name": "Lagermitarbeiter"
+          }
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "goldShape": {
+        "keywords": [
+          "in"
+        ],
+        "locations": [
+          "hamburg-germany"
+        ],
+        "occupations": [
+          "warehouse-associate"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "stable": true,
+      "sanityPassed": true,
+      "attempts": [
+        {
+          "parserMs": 568,
+          "clientMs": 597,
+          "shape": {
+            "keywords": [
+              "in"
+            ],
+            "locations": [
+              "hamburg-germany"
+            ],
+            "occupations": [
+              "warehouse-associate"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        },
+        {
+          "parserMs": 122,
+          "clientMs": 184,
+          "shape": {
+            "keywords": [
+              "in"
+            ],
+            "locations": [
+              "hamburg-germany"
+            ],
+            "occupations": [
+              "warehouse-associate"
+            ],
+            "seniorities": [],
+            "technologies": [],
+            "workMode": [
+              "remote"
+            ],
+            "employmentTypes": []
+          }
+        }
+      ]
+    }
+  ]
+}

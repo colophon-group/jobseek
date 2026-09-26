@@ -113,8 +113,8 @@ The filtered-search failure above was traced to an invalid/revoked browser-key
 parent in the main checkout's env file. A child minted from that parent is
 rejected with HTTP 403. The **same browser search provider and queries**, using
 a public scoped child issued by production's `/api/typesense-key`, succeed:
-Aircall 77 unfiltered / 30 engineer results; HelloFresh 189 / 89; each first
-page returns 20 valid rows. No production secret was extracted or changed.
+Aircall 77 active / 189 in the last year unfiltered, and 30 active / 89 in
+the last year for engineer; each first page returns 20 valid rows. No production secret was extracted or changed.
 This resolves the local credential diagnosis; deployed preview verification
 still needs to exercise the complete UI and actual preview key issuance.
 
@@ -142,3 +142,55 @@ The analyzer package imports `NextConfig` in its declarations but declares no
 Next peer. With two workspace Next versions, its hoisted type import selected
 the shim's 16.3.4 and failed the web build. A version-scoped pnpm package
 extension declares the missing peer, so the web analyzer resolves 16.3.6.
+
+## Vercel preview verification
+
+PR [#9925](https://github.com/colophon-group/jobseek/pull/9925) merged as
+`8c91480ef3f7bd8a11e06f768cd938d6f78eaf41` after all exact-head CI checks
+passed. Preview `dpl_J3fa1pxQwfgQ68bGK7pxKfuNXBiz` verified actual company
+filtering (Aircall 77 active / 189 yearly → engineer 30 / 89, with 20 rows),
+filtered Explore navigation, and a true 404 for an unknown company.
+
+Preview had lacked both the scoped-key parent and browser-direct feature flag.
+Their existing environment entries now include Preview while preserving their
+values and Production targets; a rebuild verified the complete browser flow
+([#9928](https://github.com/colophon-group/jobseek/issues/9928)).
+
+The included [sanitized Vercel traces](2026-09-23-vercel-fluid-cpu/vercel-cache-traces.json)
+show production's Aircall HIT invoking a Function, streaming a dynamic PPR
+response, and fetching external data. The fixed preview's cached Aircall HIT
+has only static PPR retrieval and streaming. A second preview trace for French
+HelloFresh confirms the same absence of Function and dynamic-resume spans.
+Trace durations are wall time; these observations establish avoided work, not
+a measured percentage of billed CPU savings.
+
+The full production gate remains pending a clean post-deployment 12-hour
+window. A user-authorized follow-up is scheduled for 10:00 Europe/Zurich on
+September 24, continuing fixes until the gate passes. Issues #9916, #9917, and
+#9918 remain open for that measured result and billing reconciliation.
+
+## Production build-path follow-up (#9930)
+
+The first owned Production deployment of #9925,
+`dpl_AcQ4rDpX8KURhVCrbojWH9Q2FVwc` / `8c91480ef3f7bd8a11e06f768cd938d6f78eaf41`,
+**still resumed Functions** on cached English Aircall and French HelloFresh
+requests. Both traces contain `Invoke Function`, dynamic PPR streaming, and
+external requests. Production search, the existing authenticated session, and
+the unchanged 1200×630 company PNG worked. This is why preview measurements
+cannot substitute for deployed verification.
+
+The owned workflow used CLI 59.3.0 (`@vercel/next` 4.21.7). Inspection of that
+published package shows its Next adapter is enabled only when
+`NEXT_ENABLE_ADAPTER === "1"`; the workflow did not set that flag. CLI 59.25.4
+(`@vercel/next` 12.0.5) instead enables the adapter unless the flag is `"0"`.
+Both builds already logged Next 16.3.6, Partial Prefetching, and the company
+seed, so the application flag itself was not missing.
+
+The follow-up updates the owned CLI pin and explicitly enables its adapter. A
+staged-deployment guard now requires a cache HIT and complete static PPR trace
+with no Function or dynamic-PPR spans for two unseeded company/locale paths
+before promotion. It validates the exact deployment ID, bounds warming and
+trace retries, and fails closed on missing traces or errors. The existing
+HTML, scanner, stable-action-key, migration-ledger, and alias/SHA guards remain.
+The version change is a build-path hypothesis until that live staged guard
+and post-promotion verification pass.

@@ -1,0 +1,48 @@
+{
+  "variant": "catalog5",
+  "split": "holdout",
+  "config": {
+    "threshold": 0.6,
+    "longestFirst": false
+  },
+  "count": 32,
+  "exact": 32,
+  "spanPrecision": 1,
+  "spanRecall": 1,
+  "spanF1": 1,
+  "groups": {
+    "atomic": {
+      "count": 4,
+      "exact": 4
+    },
+    "terse": {
+      "count": 4,
+      "exact": 4
+    },
+    "verbose": {
+      "count": 4,
+      "exact": 4
+    },
+    "mistakes": {
+      "count": 4,
+      "exact": 4
+    },
+    "multiword": {
+      "count": 4,
+      "exact": 4
+    },
+    "employment": {
+      "count": 4,
+      "exact": 4
+    },
+    "unrelated": {
+      "count": 4,
+      "exact": 4
+    },
+    "multilingual": {
+      "count": 4,
+      "exact": 4
+    }
+  },
+  "mismatches": []
+}

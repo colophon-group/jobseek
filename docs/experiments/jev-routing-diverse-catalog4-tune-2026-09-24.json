@@ -1,0 +1,6953 @@
+{
+  "timestamp": "2026-09-23T22:48:26.813Z",
+  "model": "jev-1.13.0",
+  "variant": "catalog4",
+  "split": "tune",
+  "count": 32,
+  "records": [
+    {
+      "id": "diverse-atomic-01",
+      "group": "atomic",
+      "split": "tune",
+      "q": "accountant",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 1,
+          "probabilities": {
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "hybrid": 0,
+            "occupation": 1,
+            "keyword": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1141,
+        "output_tokens": 90
+      },
+      "jevLatencyMs": 1155,
+      "questionCount": 1,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant",
+            "matchedName": "Junior Accountant"
+          }
+        ]
+      },
+      "candidateLatencyMs": 164,
+      "requestCount": 1
+    },
+    {
+      "id": "diverse-atomic-02",
+      "group": "atomic",
+      "split": "tune",
+      "q": "pharmacist",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.99,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.99,
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "keyword": 0.01,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1144,
+        "output_tokens": 90
+      },
+      "jevLatencyMs": 364,
+      "questionCount": 1,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 92,
+            "slug": "pharmacist",
+            "name": "Pharmacist",
+            "matchedName": "Staff Pharmacist"
+          }
+        ]
+      },
+      "candidateLatencyMs": 97,
+      "requestCount": 1
+    },
+    {
+      "id": "diverse-atomic-03",
+      "group": "atomic",
+      "split": "tune",
+      "q": "customer success manager",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "customer-success-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.96,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.03,
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "keyword": 0.97,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.92,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.07,
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "keyword": 0.93,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 1,
+            "employmentType": 0,
+            "remote": 0,
+            "location": 0,
+            "keyword": 0,
+            "seniority": 0,
+            "technology": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.01,
+            "employmentType": 0,
+            "remote": 0,
+            "location": 0,
+            "keyword": 0.99,
+            "seniority": 0,
+            "technology": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.95,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.04,
+            "employmentType": 0,
+            "remote": 0,
+            "location": 0,
+            "keyword": 0.96,
+            "seniority": 0,
+            "technology": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.96,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.03,
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "keyword": 0.96,
+            "seniority": 0.01,
+            "employmentType": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2555,
+        "output_tokens": 525
+      },
+      "jevLatencyMs": 338,
+      "questionCount": 6,
+      "candidates": {
+        "s_2": [
+          {
+            "id": 25,
+            "slug": "customer-success-manager",
+            "name": "Customer Success Manager",
+            "matchedName": "Client Success Manager"
+          }
+        ]
+      },
+      "candidateLatencyMs": 16,
+      "requestCount": 1
+    },
+    {
+      "id": "diverse-atomic-04",
+      "group": "atomic",
+      "split": "tune",
+      "q": "warehouse associate",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "warehouse-associate"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.94,
+          "probabilities": {
+            "keyword": 0.95,
+            "hybrid": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "occupation": 0.05,
+            "technology": 0,
+            "remote": 0,
+            "location": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 1,
+          "probabilities": {
+            "keyword": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "occupation": 1,
+            "technology": 0,
+            "remote": 0,
+            "location": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.92,
+          "probabilities": {
+            "keyword": 0.9400000000000001,
+            "hybrid": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "occupation": 0.06,
+            "technology": 0,
+            "remote": 0,
+            "location": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1702,
+        "output_tokens": 264
+      },
+      "jevLatencyMs": 356,
+      "questionCount": 3,
+      "candidates": {
+        "s_1": [
+          {
+            "id": 103,
+            "slug": "warehouse-associate",
+            "name": "Warehouse Associate",
+            "matchedName": "Delivery Station Associate"
+          }
+        ]
+      },
+      "candidateLatencyMs": 15,
+      "requestCount": 1
+    },
+    {
+      "id": "diverse-terse-01",
+      "group": "terse",
+      "split": "tune",
+      "q": "sr accountant basel",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "basel"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "seniority",
+          "confidence": 0.77,
+          "probabilities": {
+            "onsite": 0,
+            "location": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.2,
+            "seniority": 0.8,
+            "employmentType": 0,
+            "technology": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.79,
+          "probabilities": {
+            "onsite": 0,
+            "location": 0,
+            "occupation": 0.81,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.16,
+            "seniority": 0.02,
+            "employmentType": 0,
+            "technology": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.85,
+          "probabilities": {
+            "onsite": 0,
+            "location": 0.03,
+            "occupation": 0.1,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.87,
+            "seniority": 0,
+            "employmentType": 0,
+            "technology": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.81,
+          "probabilities": {
+            "onsite": 0,
+            "location": 0,
+            "occupation": 0.84,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.16,
+            "seniority": 0,
+            "employmentType": 0,
+            "technology": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.7,
+          "probabilities": {
+            "onsite": 0,
+            "location": 0.14,
+            "occupation": 0.12,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.74,
+            "seniority": 0,
+            "employmentType": 0,
+            "technology": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.99,
+          "probabilities": {
+            "onsite": 0,
+            "location": 0.99,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.01,
+            "seniority": 0,
+            "employmentType": 0,
+            "technology": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2570,
+        "output_tokens": 527
+      },
+      "jevLatencyMs": 323,
+      "questionCount": 6,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior",
+            "matchedName": "Sr"
+          }
+        ],
+        "s_1": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant",
+            "matchedName": "Junior Accountant"
+          }
+        ],
+        "s_3": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant",
+            "matchedName": "Junior Accountant"
+          }
+        ],
+        "s_5": [
+          {
+            "id": 2661604,
+            "slug": "basel",
+            "name": "Basel",
+            "type": "city",
+            "parentName": "Canton of Basel-City"
+          },
+          {
+            "id": 2661602,
+            "slug": "canton-of-basel-city-switzerland",
+            "name": "Canton of Basel-City",
+            "type": "region",
+            "parentName": "Switzerland"
+          },
+          {
+            "id": 2661603,
+            "slug": "basel-landschaft-switzerland",
+            "name": "Basel-Landschaft",
+            "type": "region",
+            "parentName": "Switzerland"
+          }
+        ]
+      },
+      "candidateLatencyMs": 16,
+      "requestCount": 4
+    },
+    {
+      "id": "diverse-terse-02",
+      "group": "terse",
+      "split": "tune",
+      "q": "hr manager remote",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "hr-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.92,
+          "probabilities": {
+            "keyword": 0.93,
+            "hybrid": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "occupation": 0.07,
+            "technology": 0,
+            "remote": 0,
+            "location": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.99,
+          "probabilities": {
+            "keyword": 0.01,
+            "hybrid": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "occupation": 0.99,
+            "technology": 0,
+            "remote": 0,
+            "location": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.71,
+          "probabilities": {
+            "keyword": 0.75,
+            "hybrid": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "occupation": 0.2,
+            "technology": 0,
+            "remote": 0.05,
+            "location": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.95,
+          "probabilities": {
+            "onsite": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "keyword": 0.95,
+            "seniority": 0.01,
+            "occupation": 0.04,
+            "technology": 0,
+            "remote": 0,
+            "location": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.85,
+          "probabilities": {
+            "onsite": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "keyword": 0.87,
+            "seniority": 0,
+            "occupation": 0.01,
+            "technology": 0,
+            "remote": 0.12,
+            "location": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "remote",
+          "confidence": 1,
+          "probabilities": {
+            "keyword": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "occupation": 0,
+            "technology": 0,
+            "remote": 1,
+            "location": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2555,
+        "output_tokens": 525
+      },
+      "jevLatencyMs": 368,
+      "questionCount": 6,
+      "candidates": {
+        "s_1": [
+          {
+            "id": 29,
+            "slug": "hr-manager",
+            "name": "HR Manager",
+            "matchedName": "HR Associate Partner"
+          }
+        ]
+      },
+      "candidateLatencyMs": 33,
+      "requestCount": 1
+    },
+    {
+      "id": "diverse-terse-03",
+      "group": "terse",
+      "split": "tune",
+      "q": "salesforce sales engineer",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "sales-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "salesforce"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "technology",
+          "confidence": 0.93,
+          "probabilities": {
+            "remote": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0.94,
+            "occupation": 0,
+            "hybrid": 0,
+            "keyword": 0.06,
+            "location": 0,
+            "employmentType": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.81,
+          "probabilities": {
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.84,
+            "technology": 0.15,
+            "occupation": 0.01,
+            "onsite": 0,
+            "hybrid": 0,
+            "location": 0,
+            "employmentType": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.36,
+          "probabilities": {
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.44,
+            "technology": 0.25,
+            "occupation": 0.31,
+            "onsite": 0,
+            "hybrid": 0,
+            "location": 0,
+            "employmentType": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.95,
+          "probabilities": {
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.96,
+            "technology": 0,
+            "occupation": 0.04,
+            "onsite": 0,
+            "hybrid": 0,
+            "location": 0,
+            "employmentType": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.96,
+          "probabilities": {
+            "remote": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "occupation": 0.97,
+            "keyword": 0.03,
+            "technology": 0,
+            "location": 0,
+            "employmentType": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.96,
+          "probabilities": {
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.96,
+            "technology": 0,
+            "occupation": 0.04,
+            "hybrid": 0,
+            "onsite": 0,
+            "location": 0,
+            "employmentType": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2566,
+        "output_tokens": 525
+      },
+      "jevLatencyMs": 473,
+      "questionCount": 6,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 124,
+            "slug": "salesforce",
+            "name": "Salesforce"
+          }
+        ],
+        "s_4": [
+          {
+            "id": 24,
+            "slug": "sales-engineer",
+            "name": "Sales Engineer",
+            "matchedName": "Solutions Engineer"
+          },
+          {
+            "id": 85,
+            "slug": "ai-engineer",
+            "name": "AI Engineer",
+            "matchedName": "AI Sales Specialist"
+          }
+        ]
+      },
+      "candidateLatencyMs": 20,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-terse-04",
+      "group": "terse",
+      "split": "tune",
+      "q": "contract ux researcher paris",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "contract"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "ux-researcher"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "employmentType",
+          "confidence": 1,
+          "probabilities": {
+            "occupation": 0,
+            "onsite": 0,
+            "employmentType": 1,
+            "location": 0,
+            "keyword": 0,
+            "seniority": 0,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "occupation": 0.02,
+            "onsite": 0,
+            "employmentType": 0.1,
+            "location": 0,
+            "seniority": 0,
+            "keyword": 0.88,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.48,
+          "probabilities": {
+            "occupation": 0.39,
+            "onsite": 0,
+            "employmentType": 0.06,
+            "location": 0,
+            "seniority": 0,
+            "keyword": 0.55,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.86,
+          "probabilities": {
+            "occupation": 0.11,
+            "onsite": 0,
+            "employmentType": 0,
+            "location": 0,
+            "seniority": 0,
+            "keyword": 0.89,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.98,
+          "probabilities": {
+            "occupation": 0.98,
+            "onsite": 0,
+            "employmentType": 0,
+            "location": 0,
+            "keyword": 0.02,
+            "seniority": 0,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.69,
+          "probabilities": {
+            "occupation": 0.16,
+            "onsite": 0,
+            "employmentType": 0,
+            "location": 0.11,
+            "seniority": 0,
+            "keyword": 0.73,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.9,
+          "probabilities": {
+            "occupation": 0.08,
+            "onsite": 0,
+            "employmentType": 0,
+            "location": 0,
+            "keyword": 0.92,
+            "seniority": 0,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.89,
+          "probabilities": {
+            "occupation": 0.02,
+            "onsite": 0,
+            "employmentType": 0,
+            "location": 0.07,
+            "seniority": 0,
+            "keyword": 0.91,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.99,
+          "probabilities": {
+            "occupation": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "location": 0.99,
+            "keyword": 0.01,
+            "seniority": 0,
+            "technology": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3418,
+        "output_tokens": 789
+      },
+      "jevLatencyMs": 346,
+      "questionCount": 9,
+      "candidates": {
+        "s_4": [
+          {
+            "id": 14,
+            "slug": "ux-researcher",
+            "name": "UX Researcher",
+            "matchedName": "User Researcher"
+          }
+        ],
+        "s_8": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 4717560,
+            "slug": "paris-texas-united-states",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Texas"
+          },
+          {
+            "id": 12808673,
+            "slug": "paris-13e-arrondissement",
+            "name": "Paris 13e Arrondissement",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 8504417,
+            "slug": "la-defense",
+            "name": "La Defense",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 3577934,
+            "slug": "charlotte-parish-saint-vincent-and-the-grenadines",
+            "name": "Charlotte Parish",
+            "type": "region",
+            "parentName": "Saint Vincent and the Grenadines"
+          },
+          {
+            "id": 3488997,
+            "slug": "portland-parish-jamaica",
+            "name": "Portland Parish",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3490145,
+            "slug": "hanover-parish-jamaica",
+            "name": "Hanover Parish",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3576023,
+            "slug": "saint-john-parish-antigua-and-barbuda",
+            "name": "Saint John Parish",
+            "type": "region",
+            "parentName": "Antigua and Barbuda"
+          }
+        ]
+      },
+      "candidateLatencyMs": 169,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-verbose-01",
+      "group": "verbose",
+      "split": "tune",
+      "q": "I'm looking for a remote executive assistant role in Berlin",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "I'm",
+          "looking",
+          "for",
+          "a",
+          "assistant",
+          "role",
+          "in"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "executive"
+        ],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 1
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 1
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "hybrid": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "keyword": 1
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "keyword": 1
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 1
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "seniority": 0,
+            "keyword": 1,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 1
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "keyword": 1
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.68,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "location": 0,
+            "onsite": 0,
+            "occupation": 0,
+            "remote": 0.28,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 0.72
+          }
+        },
+        "s_9": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "keyword": 1,
+            "onsite": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_10": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.58,
+          "probabilities": {
+            "keyword": 0.63,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0.37,
+            "hybrid": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_11": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "occupation": 0.09,
+            "onsite": 0,
+            "remote": 0.02,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 0.89
+          }
+        },
+        "s_12": {
+          "type": "choice",
+          "choice": "remote",
+          "confidence": 0.98,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "keyword": 0.02,
+            "onsite": 0,
+            "occupation": 0,
+            "remote": 0.98,
+            "hybrid": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_13": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.86,
+          "probabilities": {
+            "keyword": 0.88,
+            "seniority": 0,
+            "location": 0,
+            "onsite": 0,
+            "occupation": 0.03,
+            "remote": 0.09,
+            "hybrid": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_14": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.48,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "keyword": 0.42,
+            "onsite": 0,
+            "occupation": 0.55,
+            "remote": 0.03,
+            "hybrid": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_15": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.76,
+          "probabilities": {
+            "hybrid": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "occupation": 0.2,
+            "onsite": 0,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "keyword": 0.8
+          }
+        },
+        "s_16": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.97,
+          "probabilities": {
+            "hybrid": 0,
+            "seniority": 0,
+            "keyword": 0.02,
+            "onsite": 0,
+            "occupation": 0.98,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_17": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.62,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.67,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "keyword": 0.33
+          }
+        },
+        "s_18": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.82,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 0.15,
+            "onsite": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 0.85
+          }
+        },
+        "s_19": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.89,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "keyword": 0.91,
+            "onsite": 0,
+            "occupation": 0.09,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_20": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "occupation": 0.03,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 0.97
+          }
+        },
+        "s_21": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "location": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "occupation": 0.01,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 0.99
+          }
+        },
+        "s_22": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.99,
+          "probabilities": {
+            "keyword": 1,
+            "seniority": 0,
+            "hybrid": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_23": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.76,
+          "probabilities": {
+            "keyword": 0.79,
+            "seniority": 0,
+            "hybrid": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0,
+            "location": 0.21,
+            "technology": 0,
+            "employmentType": 0
+          }
+        },
+        "s_24": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "location": 0.01,
+            "onsite": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 0.99
+          }
+        },
+        "s_25": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.79,
+          "probabilities": {
+            "location": 0.81,
+            "seniority": 0,
+            "employmentType": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "keyword": 0.19
+          }
+        },
+        "s_26": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.98,
+          "probabilities": {
+            "location": 0.98,
+            "seniority": 0,
+            "keyword": 0.02,
+            "onsite": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "employmentType": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 8582,
+        "output_tokens": 2369
+      },
+      "jevLatencyMs": 532,
+      "questionCount": 27,
+      "candidates": {
+        "s_14": [
+          {
+            "id": 36164,
+            "slug": "geospatial-analyst",
+            "name": "Geospatial Analyst",
+            "matchedName": "Remote Sensing Analyst"
+          }
+        ],
+        "s_16": [
+          {
+            "id": 35,
+            "slug": "executive-assistant",
+            "name": "Executive Assistant",
+            "matchedName": "Personal Assistant"
+          }
+        ],
+        "s_17": [
+          {
+            "id": 35,
+            "slug": "executive-assistant",
+            "name": "Executive Assistant",
+            "matchedName": "Personal Assistant"
+          }
+        ],
+        "s_25": [],
+        "s_26": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2950157,
+            "slug": "state-of-berlin-germany",
+            "name": "State of Berlin",
+            "type": "region",
+            "parentName": "Germany"
+          },
+          {
+            "id": 5264381,
+            "slug": "new-berlin",
+            "name": "New Berlin",
+            "type": "city",
+            "parentName": "Wisconsin"
+          },
+          {
+            "id": 2950096,
+            "slug": "bernau-bei-berlin",
+            "name": "Bernau bei Berlin",
+            "type": "city",
+            "parentName": "Brandenburg"
+          },
+          {
+            "id": 2885657,
+            "slug": "kopenick-state-of-berlin-germany-2885657",
+            "name": "Köpenick",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 6545310,
+            "slug": "mitte",
+            "name": "Mitte",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2924573,
+            "slug": "friedrichshain",
+            "name": "Friedrichshain",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2864695,
+            "slug": "neukolln",
+            "name": "Neukölln",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ]
+      },
+      "candidateLatencyMs": 42,
+      "requestCount": 5
+    },
+    {
+      "id": "diverse-verbose-02",
+      "group": "verbose",
+      "split": "tune",
+      "q": "Please show senior marketing manager jobs in Paris",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "Please",
+          "show",
+          "jobs",
+          "in"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "marketing-manager"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 1,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 1,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.8,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.83,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0.17,
+            "occupation": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "onsite": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 1,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.68,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.72,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0.28,
+            "occupation": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "onsite": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.89,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0.01,
+            "occupation": 0.1
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "seniority",
+          "confidence": 0.92,
+          "probabilities": {
+            "onsite": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.07,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0.93,
+            "occupation": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.89,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.91,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0.03,
+            "occupation": 0.06
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.81,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.16,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0.01,
+            "occupation": 0.83
+          }
+        },
+        "s_9": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.71,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.75,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0.25
+          }
+        },
+        "s_10": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.92,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.07,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0.93
+          }
+        },
+        "s_11": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.45,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.53,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0.47
+          }
+        },
+        "s_12": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.82,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.85,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0.15
+          }
+        },
+        "s_13": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.96,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.97,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0.03
+          }
+        },
+        "s_14": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.98,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0.02
+          }
+        },
+        "s_15": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 1,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        },
+        "s_16": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.99,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 1,
+            "location": 0,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        },
+        "s_17": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.61,
+          "probabilities": {
+            "onsite": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.66,
+            "location": 0.34,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        },
+        "s_18": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.99,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.99,
+            "location": 0.01,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        },
+        "s_19": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.78,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.2,
+            "location": 0.8,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        },
+        "s_20": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.99,
+          "probabilities": {
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.01,
+            "location": 0.99,
+            "technology": 0,
+            "seniority": 0,
+            "occupation": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 6848,
+        "output_tokens": 1843
+      },
+      "jevLatencyMs": 446,
+      "questionCount": 21,
+      "candidates": {
+        "s_6": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "s_8": [
+          {
+            "id": 91,
+            "slug": "tax-advisor",
+            "name": "Tax Advisor",
+            "matchedName": "Tax Manager"
+          },
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant",
+            "matchedName": "Senior Accountant"
+          },
+          {
+            "id": 36156,
+            "slug": "applied-scientist",
+            "name": "Applied Scientist",
+            "matchedName": "Senior Applied Scientist"
+          }
+        ],
+        "s_10": [
+          {
+            "id": 27,
+            "slug": "marketing-manager",
+            "name": "Marketing Manager",
+            "matchedName": "Digital Marketing Manager"
+          },
+          {
+            "id": 28,
+            "slug": "content-strategist",
+            "name": "Content Strategist",
+            "matchedName": "Content Marketing Manager"
+          }
+        ],
+        "s_19": [],
+        "s_20": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 4717560,
+            "slug": "paris-texas-united-states",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Texas"
+          },
+          {
+            "id": 12808673,
+            "slug": "paris-13e-arrondissement",
+            "name": "Paris 13e Arrondissement",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 8504417,
+            "slug": "la-defense",
+            "name": "La Defense",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 3577934,
+            "slug": "charlotte-parish-saint-vincent-and-the-grenadines",
+            "name": "Charlotte Parish",
+            "type": "region",
+            "parentName": "Saint Vincent and the Grenadines"
+          },
+          {
+            "id": 3488997,
+            "slug": "portland-parish-jamaica",
+            "name": "Portland Parish",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3490145,
+            "slug": "hanover-parish-jamaica",
+            "name": "Hanover Parish",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3576023,
+            "slug": "saint-john-parish-antigua-and-barbuda",
+            "name": "Saint John Parish",
+            "type": "region",
+            "parentName": "Antigua and Barbuda"
+          }
+        ]
+      },
+      "candidateLatencyMs": 27,
+      "requestCount": 5
+    },
+    {
+      "id": "diverse-verbose-03",
+      "group": "verbose",
+      "split": "tune",
+      "q": "Can you find operations manager roles near Geneva with hybrid work",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "you",
+          "find",
+          "roles",
+          "near",
+          "with",
+          "work"
+        ],
+        "locations": [
+          "can",
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [
+          "operations-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "keyword": 1,
+            "location": 0,
+            "occupation": 0,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "keyword": 1,
+            "location": 0,
+            "occupation": 0,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.94,
+          "probabilities": {
+            "keyword": 0.95,
+            "technology": 0,
+            "location": 0,
+            "occupation": 0.05,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.99,
+          "probabilities": {
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.9,
+          "probabilities": {
+            "keyword": 0.91,
+            "technology": 0,
+            "location": 0,
+            "occupation": 0.09,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.69,
+          "probabilities": {
+            "keyword": 0.27,
+            "technology": 0,
+            "occupation": 0.73,
+            "hybrid": 0,
+            "remote": 0,
+            "location": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_9": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.79,
+          "probabilities": {
+            "keyword": 0.8200000000000001,
+            "hybrid": 0,
+            "occupation": 0.18,
+            "location": 0,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_10": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.97,
+          "probabilities": {
+            "keyword": 0.02,
+            "hybrid": 0,
+            "occupation": 0.98,
+            "location": 0,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_11": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.71,
+          "probabilities": {
+            "technology": 0,
+            "keyword": 0.25,
+            "location": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "occupation": 0.75,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_12": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.88,
+          "probabilities": {
+            "keyword": 0.9,
+            "hybrid": 0,
+            "occupation": 0.1,
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_13": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "hybrid": 0,
+            "keyword": 0.95,
+            "location": 0,
+            "occupation": 0.05,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_14": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.95,
+          "probabilities": {
+            "keyword": 0.96,
+            "hybrid": 0,
+            "occupation": 0.04,
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_15": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.99,
+          "probabilities": {
+            "technology": 0,
+            "keyword": 0.99,
+            "occupation": 0.01,
+            "location": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_16": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "hybrid": 0,
+            "keyword": 0.99,
+            "occupation": 0,
+            "location": 0.01,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_17": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.67,
+          "probabilities": {
+            "technology": 0,
+            "hybrid": 0,
+            "occupation": 0,
+            "location": 0.29,
+            "remote": 0,
+            "keyword": 0.71,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_18": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "technology": 0,
+            "hybrid": 0,
+            "location": 0.06,
+            "keyword": 0.94,
+            "remote": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_19": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.8,
+          "probabilities": {
+            "keyword": 0.18,
+            "technology": 0,
+            "occupation": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "location": 0.82,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_20": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "hybrid": 0,
+            "technology": 0,
+            "location": 0.06,
+            "keyword": 0.9400000000000001,
+            "remote": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_21": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.95,
+          "probabilities": {
+            "keyword": 0.04,
+            "technology": 0,
+            "location": 0.96,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_22": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.88,
+          "probabilities": {
+            "keyword": 0.9,
+            "hybrid": 0,
+            "location": 0.1,
+            "occupation": 0,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_23": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.85,
+          "probabilities": {
+            "technology": 0,
+            "hybrid": 0.08,
+            "occupation": 0,
+            "location": 0.05,
+            "remote": 0,
+            "keyword": 0.87,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_24": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "technology": 0,
+            "hybrid": 0.03,
+            "occupation": 0,
+            "keyword": 0.97,
+            "remote": 0,
+            "location": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_25": {
+          "type": "choice",
+          "choice": "hybrid",
+          "confidence": 0.54,
+          "probabilities": {
+            "keyword": 0.4,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0.6,
+            "remote": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_26": {
+          "type": "choice",
+          "choice": "hybrid",
+          "confidence": 0.67,
+          "probabilities": {
+            "hybrid": 0.71,
+            "keyword": 0.29,
+            "location": 0,
+            "occupation": 0,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_27": {
+          "type": "choice",
+          "choice": "hybrid",
+          "confidence": 0.97,
+          "probabilities": {
+            "keyword": 0.03,
+            "hybrid": 0.97,
+            "occupation": 0,
+            "location": 0,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_28": {
+          "type": "choice",
+          "choice": "hybrid",
+          "confidence": 0.74,
+          "probabilities": {
+            "keyword": 0.22,
+            "hybrid": 0.78,
+            "occupation": 0,
+            "location": 0,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_29": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.9,
+          "probabilities": {
+            "technology": 0,
+            "hybrid": 0.08,
+            "occupation": 0,
+            "location": 0,
+            "remote": 0,
+            "keyword": 0.92,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 9440,
+        "output_tokens": 2641
+      },
+      "jevLatencyMs": 396,
+      "questionCount": 30,
+      "candidates": {
+        "s_8": [
+          {
+            "id": 34,
+            "slug": "operations-manager",
+            "name": "Operations Manager",
+            "matchedName": "Business Operations Manager"
+          },
+          {
+            "id": 29,
+            "slug": "hr-manager",
+            "name": "HR Manager",
+            "matchedName": "People Operations Manager"
+          },
+          {
+            "id": 98,
+            "slug": "facilities-manager",
+            "name": "Facilities Manager",
+            "matchedName": "Facilities Operations"
+          },
+          {
+            "id": 87,
+            "slug": "data-center-manager",
+            "name": "Data Center Manager",
+            "matchedName": "Data Center Production Operations Engineer"
+          }
+        ],
+        "s_10": [
+          {
+            "id": 34,
+            "slug": "operations-manager",
+            "name": "Operations Manager",
+            "matchedName": "Business Operations Manager"
+          },
+          {
+            "id": 29,
+            "slug": "hr-manager",
+            "name": "HR Manager",
+            "matchedName": "People Operations Manager"
+          },
+          {
+            "id": 98,
+            "slug": "facilities-manager",
+            "name": "Facilities Manager",
+            "matchedName": "Facilities Operations"
+          },
+          {
+            "id": 87,
+            "slug": "data-center-manager",
+            "name": "Data Center Manager",
+            "matchedName": "Data Center Production Operations Engineer"
+          }
+        ],
+        "s_11": [
+          {
+            "id": 34,
+            "slug": "operations-manager",
+            "name": "Operations Manager",
+            "matchedName": "Business Operations Manager"
+          },
+          {
+            "id": 29,
+            "slug": "hr-manager",
+            "name": "HR Manager",
+            "matchedName": "People Operations Manager"
+          },
+          {
+            "id": 98,
+            "slug": "facilities-manager",
+            "name": "Facilities Manager",
+            "matchedName": "Facilities Operations"
+          },
+          {
+            "id": 87,
+            "slug": "data-center-manager",
+            "name": "Data Center Manager",
+            "matchedName": "Data Center Production Operations Engineer"
+          }
+        ],
+        "s_19": [],
+        "s_21": [
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          },
+          {
+            "id": 4893591,
+            "slug": "geneva-illinois-united-states",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Illinois"
+          },
+          {
+            "id": 2660645,
+            "slug": "canton-of-geneva-switzerland",
+            "name": "Canton of Geneva",
+            "type": "region",
+            "parentName": "Switzerland"
+          }
+        ]
+      },
+      "candidateLatencyMs": 37,
+      "requestCount": 5
+    },
+    {
+      "id": "diverse-verbose-04",
+      "group": "verbose",
+      "split": "tune",
+      "q": "Seeking a support engineer position in London",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "Seeking",
+          "a",
+          "position",
+          "in"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "support-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 1,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 1,
+            "remote": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.98,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.02
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 1,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.98,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.02
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.73,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 0.23,
+            "remote": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.77
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.86,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.88,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.12
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.99,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.01,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.99
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.48,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.45,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.55
+          }
+        },
+        "s_9": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.9400000000000001,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.06
+          }
+        },
+        "s_10": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.98,
+            "remote": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.02
+          }
+        },
+        "s_11": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.99,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.01
+          }
+        },
+        "s_12": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 1,
+            "remote": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        },
+        "s_13": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 1,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        },
+        "s_14": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.65,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 0.69,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0.31,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        },
+        "s_15": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.99,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        },
+        "s_16": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.79,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 0.18,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0.82,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        },
+        "s_17": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.99,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 0.01,
+            "remote": 0,
+            "technology": 0,
+            "location": 0.99,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 6002,
+        "output_tokens": 1577
+      },
+      "jevLatencyMs": 335,
+      "questionCount": 18,
+      "candidates": {
+        "s_5": [
+          {
+            "id": 26,
+            "slug": "support-engineer",
+            "name": "Support Engineer",
+            "matchedName": "Customer Support Engineer"
+          }
+        ],
+        "s_7": [
+          {
+            "id": 26,
+            "slug": "support-engineer",
+            "name": "Support Engineer",
+            "matchedName": "Customer Support Engineer"
+          }
+        ],
+        "s_8": [
+          {
+            "id": 26,
+            "slug": "support-engineer",
+            "name": "Support Engineer",
+            "matchedName": "Customer Support Engineer"
+          }
+        ],
+        "s_16": [],
+        "s_17": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          },
+          {
+            "id": 6058560,
+            "slug": "london-ontario-canada",
+            "name": "London",
+            "type": "city",
+            "parentName": "Ontario"
+          },
+          {
+            "id": 1006984,
+            "slug": "east-london",
+            "name": "East London",
+            "type": "city",
+            "parentName": "Eastern Cape"
+          },
+          {
+            "id": 4839416,
+            "slug": "new-london",
+            "name": "New London",
+            "type": "city",
+            "parentName": "Connecticut"
+          },
+          {
+            "id": 2656295,
+            "slug": "barnet",
+            "name": "Barnet",
+            "type": "city",
+            "parentName": "England"
+          },
+          {
+            "id": 2646517,
+            "slug": "hounslow",
+            "name": "Hounslow",
+            "type": "city",
+            "parentName": "England"
+          },
+          {
+            "id": 2654789,
+            "slug": "brent-england-united-kingdom",
+            "name": "Brent",
+            "type": "city",
+            "parentName": "England"
+          },
+          {
+            "id": 2655775,
+            "slug": "bexley-england-united-kingdom",
+            "name": "Bexley",
+            "type": "city",
+            "parentName": "England"
+          }
+        ]
+      },
+      "candidateLatencyMs": 32,
+      "requestCount": 5
+    },
+    {
+      "id": "diverse-mistakes-01",
+      "group": "mistakes",
+      "split": "tune",
+      "q": "recruter remote berlin",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "recruter"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.99,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0.99,
+            "location": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.01
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.75,
+          "probabilities": {
+            "occupation": 0.14,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "employmentType": 0,
+            "remote": 0.07,
+            "hybrid": 0,
+            "keyword": 0.79
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.9,
+          "probabilities": {
+            "occupation": 0.08,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0.01,
+            "hybrid": 0,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 0.91
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "remote",
+          "confidence": 0.99,
+          "probabilities": {
+            "occupation": 0,
+            "seniority": 0,
+            "location": 0,
+            "technology": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0.99,
+            "employmentType": 0,
+            "keyword": 0.01
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.78,
+          "probabilities": {
+            "occupation": 0,
+            "seniority": 0,
+            "location": 0.1,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0.09,
+            "hybrid": 0,
+            "keyword": 0.81
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.98,
+          "probabilities": {
+            "occupation": 0,
+            "seniority": 0,
+            "location": 0.98,
+            "technology": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 0.02
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2571,
+        "output_tokens": 525
+      },
+      "jevLatencyMs": 337,
+      "questionCount": 6,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 30,
+            "slug": "recruiter",
+            "name": "Recruiter",
+            "matchedName": "Technical Recruiter"
+          }
+        ],
+        "s_5": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2950157,
+            "slug": "state-of-berlin-germany",
+            "name": "State of Berlin",
+            "type": "region",
+            "parentName": "Germany"
+          },
+          {
+            "id": 5264381,
+            "slug": "new-berlin",
+            "name": "New Berlin",
+            "type": "city",
+            "parentName": "Wisconsin"
+          },
+          {
+            "id": 2950096,
+            "slug": "bernau-bei-berlin",
+            "name": "Bernau bei Berlin",
+            "type": "city",
+            "parentName": "Brandenburg"
+          },
+          {
+            "id": 2885657,
+            "slug": "kopenick-state-of-berlin-germany-2885657",
+            "name": "Köpenick",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 6545310,
+            "slug": "mitte",
+            "name": "Mitte",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2924573,
+            "slug": "friedrichshain",
+            "name": "Friedrichshain",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2864695,
+            "slug": "neukolln",
+            "name": "Neukölln",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ]
+      },
+      "candidateLatencyMs": 40,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-mistakes-02",
+      "group": "mistakes",
+      "split": "tune",
+      "q": "pharmacst geneva",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "pharmacst"
+        ],
+        "locations": [
+          "geneva-canton-of-geneva-switzerland"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.89,
+          "probabilities": {
+            "keyword": 0.1,
+            "onsite": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 0.9,
+            "employmentType": 0,
+            "remote": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.67,
+          "probabilities": {
+            "keyword": 0.71,
+            "remote": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "location": 0.14,
+            "occupation": 0.15,
+            "employmentType": 0,
+            "onsite": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.94,
+          "probabilities": {
+            "keyword": 0.06,
+            "onsite": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "seniority": 0,
+            "location": 0.94,
+            "occupation": 0,
+            "employmentType": 0,
+            "remote": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1722,
+        "output_tokens": 264
+      },
+      "jevLatencyMs": 324,
+      "questionCount": 3,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 92,
+            "slug": "pharmacist",
+            "name": "Pharmacist",
+            "matchedName": "Staff Pharmacist"
+          }
+        ],
+        "s_2": [
+          {
+            "id": 2660646,
+            "slug": "geneva-canton-of-geneva-switzerland",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Canton of Geneva"
+          },
+          {
+            "id": 4893591,
+            "slug": "geneva-illinois-united-states",
+            "name": "Geneva",
+            "type": "city",
+            "parentName": "Illinois"
+          },
+          {
+            "id": 2660645,
+            "slug": "canton-of-geneva-switzerland",
+            "name": "Canton of Geneva",
+            "type": "region",
+            "parentName": "Switzerland"
+          }
+        ]
+      },
+      "candidateLatencyMs": 22,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-mistakes-03",
+      "group": "mistakes",
+      "split": "tune",
+      "q": "senor marketng manager paris",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "senor",
+          "marketng",
+          "manager"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "seniority",
+          "confidence": 0.51,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.02,
+            "location": 0,
+            "keyword": 0.41,
+            "seniority": 0.5700000000000001,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.85,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.13,
+            "location": 0,
+            "keyword": 0.87,
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.83,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.85,
+            "location": 0,
+            "keyword": 0.15,
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.74,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.22,
+            "location": 0,
+            "keyword": 0.78,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.91,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.92,
+            "location": 0,
+            "keyword": 0.08,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.71,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.2,
+            "keyword": 0.75,
+            "location": 0.05,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.83,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.14,
+            "location": 0,
+            "keyword": 0.86,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.72,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.02,
+            "keyword": 0.75,
+            "location": 0.23,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.98,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0,
+            "keyword": 0.02,
+            "location": 0.98,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3439,
+        "output_tokens": 788
+      },
+      "jevLatencyMs": 547,
+      "questionCount": 9,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 4,
+            "slug": "senior",
+            "name": "Senior"
+          }
+        ],
+        "s_2": [
+          {
+            "id": 91,
+            "slug": "tax-advisor",
+            "name": "Tax Advisor",
+            "matchedName": "Tax Manager"
+          },
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant",
+            "matchedName": "Senior Accountant"
+          },
+          {
+            "id": 36156,
+            "slug": "applied-scientist",
+            "name": "Applied Scientist",
+            "matchedName": "Senior Applied Scientist"
+          }
+        ],
+        "s_4": [
+          {
+            "id": 27,
+            "slug": "marketing-manager",
+            "name": "Marketing Manager",
+            "matchedName": "Digital Marketing Manager"
+          },
+          {
+            "id": 28,
+            "slug": "content-strategist",
+            "name": "Content Strategist",
+            "matchedName": "Content Marketing Manager"
+          }
+        ],
+        "s_8": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 4717560,
+            "slug": "paris-texas-united-states",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Texas"
+          },
+          {
+            "id": 12808673,
+            "slug": "paris-13e-arrondissement",
+            "name": "Paris 13e Arrondissement",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 8504417,
+            "slug": "la-defense",
+            "name": "La Defense",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 3577934,
+            "slug": "charlotte-parish-saint-vincent-and-the-grenadines",
+            "name": "Charlotte Parish",
+            "type": "region",
+            "parentName": "Saint Vincent and the Grenadines"
+          },
+          {
+            "id": 3488997,
+            "slug": "portland-parish-jamaica",
+            "name": "Portland Parish",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3490145,
+            "slug": "hanover-parish-jamaica",
+            "name": "Hanover Parish",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3576023,
+            "slug": "saint-john-parish-antigua-and-barbuda",
+            "name": "Saint John Parish",
+            "type": "region",
+            "parentName": "Antigua and Barbuda"
+          }
+        ]
+      },
+      "candidateLatencyMs": 35,
+      "requestCount": 4
+    },
+    {
+      "id": "diverse-mistakes-04",
+      "group": "mistakes",
+      "split": "tune",
+      "q": "warehose associate zurich",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "warehose",
+          "associate"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.64,
+          "probabilities": {
+            "onsite": 0,
+            "seniority": 0,
+            "location": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "occupation": 0.31,
+            "remote": 0,
+            "keyword": 0.6900000000000001,
+            "technology": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.95,
+          "probabilities": {
+            "onsite": 0,
+            "seniority": 0,
+            "location": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "occupation": 0.95,
+            "remote": 0,
+            "keyword": 0.05,
+            "technology": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.65,
+          "probabilities": {
+            "technology": 0,
+            "location": 0.06,
+            "seniority": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "occupation": 0.24,
+            "remote": 0,
+            "keyword": 0.7,
+            "onsite": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "technology": 0,
+            "location": 0,
+            "seniority": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "occupation": 0.11,
+            "remote": 0,
+            "keyword": 0.89,
+            "onsite": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "onsite": 0,
+            "seniority": 0,
+            "location": 0.09,
+            "hybrid": 0,
+            "employmentType": 0,
+            "occupation": 0.02,
+            "remote": 0,
+            "keyword": 0.89,
+            "technology": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.96,
+          "probabilities": {
+            "technology": 0,
+            "seniority": 0,
+            "location": 0.97,
+            "hybrid": 0,
+            "employmentType": 0,
+            "occupation": 0,
+            "remote": 0,
+            "keyword": 0.03,
+            "onsite": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2569,
+        "output_tokens": 525
+      },
+      "jevLatencyMs": 453,
+      "questionCount": 6,
+      "candidates": {
+        "s_1": [
+          {
+            "id": 103,
+            "slug": "warehouse-associate",
+            "name": "Warehouse Associate",
+            "matchedName": "Delivery Station Associate"
+          }
+        ],
+        "s_5": [
+          {
+            "id": 2657896,
+            "slug": "zurich",
+            "name": "Zurich",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          },
+          {
+            "id": 2657895,
+            "slug": "canton-of-zurich-switzerland",
+            "name": "Canton of Zurich",
+            "type": "region",
+            "parentName": "Switzerland"
+          },
+          {
+            "id": 4899170,
+            "slug": "lake-zurich",
+            "name": "Lake Zurich",
+            "type": "city",
+            "parentName": "Illinois"
+          },
+          {
+            "id": 2658656,
+            "slug": "zurich-kreis-11-seebach",
+            "name": "Zürich (Kreis 11) / Seebach",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          },
+          {
+            "id": 2660306,
+            "slug": "zurich-kreis-10-hongg",
+            "name": "Zürich (Kreis 10) / Höngg",
+            "type": "city",
+            "parentName": "Canton of Zurich"
+          }
+        ]
+      },
+      "candidateLatencyMs": 20,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-multiword-01",
+      "group": "multiword",
+      "split": "tune",
+      "q": "customer success manager San Francisco",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "Francisco"
+        ],
+        "locations": [
+          "san"
+        ],
+        "occupations": [
+          "customer-success-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.95,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 0.96,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.04
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.9,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.92,
+            "remote": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.08
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 1
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 0.98,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.02
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.95,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.96,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.04
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.96,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.96,
+            "onsite": 0,
+            "location": 0.01,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.03
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.91,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.93,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.07
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.95,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.96,
+            "remote": 0,
+            "technology": 0,
+            "location": 0.03,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.01
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.84,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.86,
+            "remote": 0,
+            "technology": 0,
+            "location": 0.12,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.02
+          }
+        },
+        "s_9": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.81,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 0.84,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0.16,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        },
+        "s_10": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.99,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.01,
+            "onsite": 0,
+            "location": 0.99,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        },
+        "s_11": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.6,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.65,
+            "onsite": 0,
+            "location": 0.35,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 4267,
+        "output_tokens": 1049
+      },
+      "jevLatencyMs": 352,
+      "questionCount": 12,
+      "candidates": {
+        "s_2": [
+          {
+            "id": 25,
+            "slug": "customer-success-manager",
+            "name": "Customer Success Manager",
+            "matchedName": "Client Success Manager"
+          }
+        ],
+        "s_10": [
+          {
+            "id": 5391959,
+            "slug": "san-francisco-california-united-states",
+            "name": "San Francisco",
+            "type": "city",
+            "parentName": "California"
+          },
+          {
+            "id": 3621911,
+            "slug": "san-francisco-heredia-province-costa-rica",
+            "name": "San Francisco",
+            "type": "city",
+            "parentName": "Heredia Province"
+          },
+          {
+            "id": 1690019,
+            "slug": "san-francisco-caraga-philippines",
+            "name": "San Francisco",
+            "type": "city",
+            "parentName": "Caraga"
+          },
+          {
+            "id": 3837675,
+            "slug": "san-francisco-cordoba-argentina",
+            "name": "San Francisco",
+            "type": "city",
+            "parentName": "Cordoba"
+          },
+          {
+            "id": 3583747,
+            "slug": "san-francisco-morazan-el-salvador",
+            "name": "San Francisco",
+            "type": "city",
+            "parentName": "Morazán"
+          },
+          {
+            "id": 1689973,
+            "slug": "san-francisco-central-luzon-philippines",
+            "name": "San Francisco",
+            "type": "city",
+            "parentName": "Central Luzon"
+          },
+          {
+            "id": 5397765,
+            "slug": "south-san-francisco",
+            "name": "South San Francisco",
+            "type": "city",
+            "parentName": "California"
+          },
+          {
+            "id": 3986984,
+            "slug": "san-francisco-del-rincon",
+            "name": "San Francisco del Rincón",
+            "type": "city",
+            "parentName": "Guanajuato"
+          }
+        ]
+      },
+      "candidateLatencyMs": 26,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-multiword-02",
+      "group": "multiword",
+      "split": "tune",
+      "q": "executive assistant New York",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "assistant",
+          "New"
+        ],
+        "locations": [
+          "york-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "executive"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.9,
+          "probabilities": {
+            "technology": 0,
+            "keyword": 0.92,
+            "remote": 0,
+            "location": 0,
+            "hybrid": 0,
+            "occupation": 0.08,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 1,
+          "probabilities": {
+            "technology": 0,
+            "keyword": 0,
+            "remote": 0,
+            "location": 0,
+            "hybrid": 0,
+            "occupation": 1,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.88,
+          "probabilities": {
+            "technology": 0,
+            "keyword": 0.9,
+            "remote": 0,
+            "location": 0.01,
+            "hybrid": 0,
+            "occupation": 0.09,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "keyword": 0.89,
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "hybrid": 0,
+            "occupation": 0.11,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.96,
+          "probabilities": {
+            "keyword": 0.97,
+            "technology": 0,
+            "remote": 0,
+            "location": 0.02,
+            "hybrid": 0,
+            "occupation": 0.01,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.73,
+          "probabilities": {
+            "keyword": 0.77,
+            "technology": 0,
+            "remote": 0,
+            "location": 0.19,
+            "hybrid": 0,
+            "occupation": 0.04,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.84,
+          "probabilities": {
+            "keyword": 0.86,
+            "technology": 0,
+            "remote": 0,
+            "location": 0.14,
+            "hybrid": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.99,
+          "probabilities": {
+            "keyword": 0,
+            "technology": 0,
+            "remote": 0,
+            "location": 1,
+            "hybrid": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.78,
+          "probabilities": {
+            "technology": 0,
+            "keyword": 0.8,
+            "remote": 0,
+            "location": 0.2,
+            "hybrid": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3422,
+        "output_tokens": 786
+      },
+      "jevLatencyMs": 297,
+      "questionCount": 9,
+      "candidates": {
+        "s_1": [
+          {
+            "id": 35,
+            "slug": "executive-assistant",
+            "name": "Executive Assistant",
+            "matchedName": "Personal Assistant"
+          }
+        ],
+        "s_7": [
+          {
+            "id": 5128638,
+            "slug": "new-york-united-states",
+            "name": "New York",
+            "type": "region",
+            "parentName": "United States"
+          },
+          {
+            "id": 5128581,
+            "slug": "new-york-new-york-united-states",
+            "name": "New York",
+            "type": "city",
+            "parentName": "New York"
+          },
+          {
+            "id": 5106292,
+            "slug": "west-new-york",
+            "name": "West New York",
+            "type": "city",
+            "parentName": "New Jersey"
+          },
+          {
+            "id": 1642911,
+            "slug": "jakarta",
+            "name": "Jakarta",
+            "type": "city",
+            "parentName": "Jakarta Special Capital Region"
+          }
+        ]
+      },
+      "candidateLatencyMs": 41,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-multiword-03",
+      "group": "multiword",
+      "split": "tune",
+      "q": "supply chain manager Paris",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "supply-chain-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "keyword": 0.97,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 0.03,
+            "employmentType": 0,
+            "onsite": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.9,
+          "probabilities": {
+            "keyword": 0.91,
+            "remote": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 0.09,
+            "employmentType": 0,
+            "onsite": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 1,
+          "probabilities": {
+            "keyword": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 1,
+            "employmentType": 0,
+            "onsite": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.99,
+          "probabilities": {
+            "keyword": 0.99,
+            "onsite": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 0.01,
+            "employmentType": 0,
+            "remote": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.94,
+          "probabilities": {
+            "keyword": 0.95,
+            "remote": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 0.05,
+            "employmentType": 0,
+            "onsite": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "keyword": 0.89,
+            "remote": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "location": 0.05,
+            "occupation": 0.06,
+            "employmentType": 0,
+            "onsite": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "keyword": 0.94,
+            "onsite": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "location": 0,
+            "occupation": 0.06,
+            "employmentType": 0,
+            "remote": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.81,
+          "probabilities": {
+            "keyword": 0.84,
+            "remote": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "location": 0.14,
+            "occupation": 0.02,
+            "employmentType": 0,
+            "onsite": 0
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.99,
+          "probabilities": {
+            "keyword": 0,
+            "onsite": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "location": 1,
+            "occupation": 0,
+            "employmentType": 0,
+            "remote": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3415,
+        "output_tokens": 786
+      },
+      "jevLatencyMs": 392,
+      "questionCount": 9,
+      "candidates": {
+        "s_2": [
+          {
+            "id": 97,
+            "slug": "supply-chain-manager",
+            "name": "Supply Chain Manager",
+            "matchedName": "Supply Chain Analyst"
+          }
+        ],
+        "s_8": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 4717560,
+            "slug": "paris-texas-united-states",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Texas"
+          },
+          {
+            "id": 12808673,
+            "slug": "paris-13e-arrondissement",
+            "name": "Paris 13e Arrondissement",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 8504417,
+            "slug": "la-defense",
+            "name": "La Defense",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 3577934,
+            "slug": "charlotte-parish-saint-vincent-and-the-grenadines",
+            "name": "Charlotte Parish",
+            "type": "region",
+            "parentName": "Saint Vincent and the Grenadines"
+          },
+          {
+            "id": 3488997,
+            "slug": "portland-parish-jamaica",
+            "name": "Portland Parish",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3490145,
+            "slug": "hanover-parish-jamaica",
+            "name": "Hanover Parish",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3576023,
+            "slug": "saint-john-parish-antigua-and-barbuda",
+            "name": "Saint John Parish",
+            "type": "region",
+            "parentName": "Antigua and Barbuda"
+          }
+        ]
+      },
+      "candidateLatencyMs": 21,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-multiword-04",
+      "group": "multiword",
+      "split": "tune",
+      "q": "data center technician Los Angeles",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          "data-center-technician"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "keyword": 0.97,
+            "technology": 0,
+            "location": 0,
+            "occupation": 0.03,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.78,
+          "probabilities": {
+            "technology": 0,
+            "hybrid": 0,
+            "location": 0,
+            "keyword": 0.81,
+            "remote": 0,
+            "occupation": 0.19,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 1,
+          "probabilities": {
+            "hybrid": 0,
+            "keyword": 0,
+            "occupation": 1,
+            "technology": 0,
+            "remote": 0,
+            "location": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "technology": 0,
+            "hybrid": 0,
+            "location": 0,
+            "keyword": 0.98,
+            "remote": 0,
+            "occupation": 0.02,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "keyword": 0.95,
+            "technology": 0,
+            "location": 0,
+            "occupation": 0.05,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.96,
+          "probabilities": {
+            "hybrid": 0,
+            "keyword": 0.97,
+            "occupation": 0.02,
+            "technology": 0,
+            "remote": 0,
+            "location": 0.01,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.85,
+          "probabilities": {
+            "keyword": 0.87,
+            "hybrid": 0,
+            "location": 0,
+            "occupation": 0.13,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "hybrid": 0,
+            "keyword": 0.98,
+            "occupation": 0.01,
+            "location": 0.01,
+            "remote": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.84,
+          "probabilities": {
+            "hybrid": 0,
+            "keyword": 0.86,
+            "location": 0.1,
+            "technology": 0,
+            "remote": 0,
+            "occupation": 0.04,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_9": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "keyword": 0.88,
+            "technology": 0,
+            "location": 0.12,
+            "occupation": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_10": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.99,
+          "probabilities": {
+            "technology": 0,
+            "keyword": 0.01,
+            "occupation": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "location": 0.99,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        },
+        "s_11": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.46,
+          "probabilities": {
+            "technology": 0,
+            "keyword": 0.47,
+            "occupation": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "location": 0.53,
+            "onsite": 0,
+            "employmentType": 0,
+            "seniority": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 4273,
+        "output_tokens": 1049
+      },
+      "jevLatencyMs": 378,
+      "questionCount": 12,
+      "candidates": {
+        "s_2": [
+          {
+            "id": 86,
+            "slug": "data-center-technician",
+            "name": "Data Center Technician",
+            "matchedName": "Data Center Facilities Technician"
+          }
+        ],
+        "s_10": [
+          {
+            "id": 5368361,
+            "slug": "los-angeles-california-united-states",
+            "name": "Los Angeles",
+            "type": "city",
+            "parentName": "California"
+          },
+          {
+            "id": 3882428,
+            "slug": "los-angeles-biobio-chile",
+            "name": "Los Ángeles",
+            "type": "city",
+            "parentName": "Biobío"
+          },
+          {
+            "id": 11550023,
+            "slug": "los-angeles-madrid-spain",
+            "name": "Los Angeles",
+            "type": "city",
+            "parentName": "Madrid"
+          },
+          {
+            "id": 5344994,
+            "slug": "east-los-angeles",
+            "name": "East Los Angeles",
+            "type": "city",
+            "parentName": "California"
+          }
+        ],
+        "s_11": [
+          {
+            "id": 5368361,
+            "slug": "los-angeles-california-united-states",
+            "name": "Los Angeles",
+            "type": "city",
+            "parentName": "California"
+          },
+          {
+            "id": 1730737,
+            "slug": "angeles-city",
+            "name": "Angeles City",
+            "type": "city",
+            "parentName": "Central Luzon"
+          },
+          {
+            "id": 5807212,
+            "slug": "port-angeles",
+            "name": "Port Angeles",
+            "type": "city",
+            "parentName": "Washington"
+          },
+          {
+            "id": 5344994,
+            "slug": "east-los-angeles",
+            "name": "East Los Angeles",
+            "type": "city",
+            "parentName": "California"
+          },
+          {
+            "id": 3882428,
+            "slug": "los-angeles-biobio-chile",
+            "name": "Los Ángeles",
+            "type": "city",
+            "parentName": "Biobío"
+          },
+          {
+            "id": 11550023,
+            "slug": "los-angeles-madrid-spain",
+            "name": "Los Angeles",
+            "type": "city",
+            "parentName": "Madrid"
+          }
+        ]
+      },
+      "candidateLatencyMs": 75,
+      "requestCount": 3
+    },
+    {
+      "id": "diverse-employment-01",
+      "group": "employment",
+      "split": "tune",
+      "q": "part time cashier",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "part",
+          "time",
+          "cashier"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.71,
+          "probabilities": {
+            "occupation": 0,
+            "keyword": 0.74,
+            "onsite": 0,
+            "seniority": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "location": 0,
+            "remote": 0,
+            "employmentType": 0.26
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "employmentType",
+          "confidence": 0.97,
+          "probabilities": {
+            "occupation": 0,
+            "keyword": 0.02,
+            "employmentType": 0.98,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.64,
+          "probabilities": {
+            "occupation": 0.22,
+            "keyword": 0.6900000000000001,
+            "hybrid": 0,
+            "seniority": 0,
+            "employmentType": 0.09,
+            "technology": 0,
+            "location": 0,
+            "remote": 0,
+            "onsite": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.87,
+          "probabilities": {
+            "occupation": 0,
+            "keyword": 0.89,
+            "hybrid": 0,
+            "seniority": 0,
+            "employmentType": 0.11,
+            "technology": 0,
+            "location": 0,
+            "remote": 0,
+            "onsite": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "occupation": 0.05,
+            "keyword": 0.95,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "technology": 0,
+            "location": 0,
+            "remote": 0,
+            "hybrid": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.57,
+          "probabilities": {
+            "occupation": 0.37,
+            "keyword": 0.63,
+            "onsite": 0,
+            "seniority": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "location": 0,
+            "remote": 0,
+            "employmentType": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2557,
+        "output_tokens": 528
+      },
+      "jevLatencyMs": 313,
+      "questionCount": 6,
+      "candidates": {},
+      "candidateLatencyMs": 0,
+      "requestCount": 0
+    },
+    {
+      "id": "diverse-employment-02",
+      "group": "employment",
+      "split": "tune",
+      "q": "contract accountant remote",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "contract"
+        ],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "employmentType",
+          "confidence": 0.89,
+          "probabilities": {
+            "occupation": 0,
+            "seniority": 0,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0.91,
+            "onsite": 0,
+            "hybrid": 0,
+            "keyword": 0.09
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.63,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0.67,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0.04,
+            "onsite": 0,
+            "hybrid": 0,
+            "keyword": 0.28
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.88,
+          "probabilities": {
+            "occupation": 0.07,
+            "seniority": 0,
+            "remote": 0.01,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0.02,
+            "onsite": 0,
+            "hybrid": 0,
+            "keyword": 0.9
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.76,
+          "probabilities": {
+            "occupation": 0.79,
+            "seniority": 0,
+            "remote": 0,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "keyword": 0.21
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.81,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0.09,
+            "remote": 0.07,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0.01,
+            "onsite": 0,
+            "hybrid": 0,
+            "keyword": 0.83
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "remote",
+          "confidence": 0.99,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "remote": 1,
+            "location": 0,
+            "technology": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "keyword": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2563,
+        "output_tokens": 528
+      },
+      "jevLatencyMs": 385,
+      "questionCount": 6,
+      "candidates": {
+        "s_1": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant",
+            "matchedName": "Junior Accountant"
+          }
+        ],
+        "s_3": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Accountant",
+            "matchedName": "Junior Accountant"
+          }
+        ]
+      },
+      "candidateLatencyMs": 90,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-employment-03",
+      "group": "employment",
+      "split": "tune",
+      "q": "volunteer hr manager berlin",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "volunteer"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "hr-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "employmentType",
+          "confidence": 0.97,
+          "probabilities": {
+            "occupation": 0,
+            "onsite": 0,
+            "technology": 0,
+            "employmentType": 0.97,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.03,
+            "seniority": 0,
+            "location": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.91,
+          "probabilities": {
+            "occupation": 0.03,
+            "onsite": 0,
+            "technology": 0,
+            "employmentType": 0.05,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.92,
+            "seniority": 0,
+            "location": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.45,
+          "probabilities": {
+            "occupation": 0.43,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0.05,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.52,
+            "technology": 0,
+            "location": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.84,
+          "probabilities": {
+            "occupation": 0.13,
+            "onsite": 0,
+            "technology": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.87,
+            "seniority": 0,
+            "location": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.96,
+          "probabilities": {
+            "occupation": 0.97,
+            "onsite": 0,
+            "technology": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.03,
+            "seniority": 0,
+            "location": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.72,
+          "probabilities": {
+            "occupation": 0.15,
+            "onsite": 0,
+            "technology": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.76,
+            "seniority": 0,
+            "location": 0.09
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.92,
+          "probabilities": {
+            "occupation": 0.04,
+            "onsite": 0,
+            "technology": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.93,
+            "seniority": 0.03,
+            "location": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.86,
+          "probabilities": {
+            "occupation": 0.01,
+            "onsite": 0,
+            "technology": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.89,
+            "seniority": 0,
+            "location": 0.1
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.96,
+          "probabilities": {
+            "occupation": 0,
+            "onsite": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.04,
+            "technology": 0,
+            "location": 0.96
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3424,
+        "output_tokens": 789
+      },
+      "jevLatencyMs": 350,
+      "questionCount": 9,
+      "candidates": {
+        "s_4": [
+          {
+            "id": 29,
+            "slug": "hr-manager",
+            "name": "HR Manager",
+            "matchedName": "HR Associate Partner"
+          }
+        ],
+        "s_8": [
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2950157,
+            "slug": "state-of-berlin-germany",
+            "name": "State of Berlin",
+            "type": "region",
+            "parentName": "Germany"
+          },
+          {
+            "id": 5264381,
+            "slug": "new-berlin",
+            "name": "New Berlin",
+            "type": "city",
+            "parentName": "Wisconsin"
+          },
+          {
+            "id": 2950096,
+            "slug": "bernau-bei-berlin",
+            "name": "Bernau bei Berlin",
+            "type": "city",
+            "parentName": "Brandenburg"
+          },
+          {
+            "id": 2885657,
+            "slug": "kopenick-state-of-berlin-germany-2885657",
+            "name": "Köpenick",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 6545310,
+            "slug": "mitte",
+            "name": "Mitte",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2924573,
+            "slug": "friedrichshain",
+            "name": "Friedrichshain",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2864695,
+            "slug": "neukolln",
+            "name": "Neukölln",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ]
+      },
+      "candidateLatencyMs": 21,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-employment-04",
+      "group": "employment",
+      "split": "tune",
+      "q": "temporary warehouse associate london",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "temporary"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "warehouse-associate"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "employmentType",
+          "confidence": 0.98,
+          "probabilities": {
+            "employmentType": 0.98,
+            "technology": 0,
+            "keyword": 0.02,
+            "occupation": 0,
+            "location": 0,
+            "remote": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "hybrid": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.88,
+          "probabilities": {
+            "employmentType": 0.05,
+            "keyword": 0.91,
+            "technology": 0,
+            "occupation": 0.04,
+            "location": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.45,
+          "probabilities": {
+            "employmentType": 0.04,
+            "technology": 0,
+            "keyword": 0.52,
+            "occupation": 0.44,
+            "location": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.84,
+          "probabilities": {
+            "employmentType": 0,
+            "occupation": 0.13,
+            "technology": 0,
+            "keyword": 0.87,
+            "location": 0,
+            "remote": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "hybrid": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.96,
+          "probabilities": {
+            "employmentType": 0,
+            "technology": 0,
+            "occupation": 0.97,
+            "keyword": 0.03,
+            "location": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.72,
+          "probabilities": {
+            "employmentType": 0,
+            "technology": 0,
+            "occupation": 0.16,
+            "keyword": 0.75,
+            "location": 0.09,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.83,
+          "probabilities": {
+            "employmentType": 0,
+            "occupation": 0.14,
+            "technology": 0,
+            "keyword": 0.86,
+            "location": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.84,
+          "probabilities": {
+            "employmentType": 0,
+            "keyword": 0.87,
+            "occupation": 0.02,
+            "technology": 0,
+            "location": 0.11,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.96,
+          "probabilities": {
+            "employmentType": 0,
+            "keyword": 0.03,
+            "occupation": 0,
+            "technology": 0,
+            "location": 0.97,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3410,
+        "output_tokens": 789
+      },
+      "jevLatencyMs": 408,
+      "questionCount": 9,
+      "candidates": {
+        "s_4": [
+          {
+            "id": 103,
+            "slug": "warehouse-associate",
+            "name": "Warehouse Associate",
+            "matchedName": "Delivery Station Associate"
+          }
+        ],
+        "s_8": [
+          {
+            "id": 2643743,
+            "slug": "london-england-united-kingdom",
+            "name": "London",
+            "type": "city",
+            "parentName": "England"
+          },
+          {
+            "id": 6058560,
+            "slug": "london-ontario-canada",
+            "name": "London",
+            "type": "city",
+            "parentName": "Ontario"
+          },
+          {
+            "id": 1006984,
+            "slug": "east-london",
+            "name": "East London",
+            "type": "city",
+            "parentName": "Eastern Cape"
+          },
+          {
+            "id": 4839416,
+            "slug": "new-london",
+            "name": "New London",
+            "type": "city",
+            "parentName": "Connecticut"
+          },
+          {
+            "id": 2656295,
+            "slug": "barnet",
+            "name": "Barnet",
+            "type": "city",
+            "parentName": "England"
+          },
+          {
+            "id": 2646517,
+            "slug": "hounslow",
+            "name": "Hounslow",
+            "type": "city",
+            "parentName": "England"
+          },
+          {
+            "id": 2654789,
+            "slug": "brent-england-united-kingdom",
+            "name": "Brent",
+            "type": "city",
+            "parentName": "England"
+          },
+          {
+            "id": 2655775,
+            "slug": "bexley-england-united-kingdom",
+            "name": "Bexley",
+            "type": "city",
+            "parentName": "England"
+          }
+        ]
+      },
+      "candidateLatencyMs": 48,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-unrelated-01",
+      "group": "unrelated",
+      "split": "tune",
+      "q": "sales report template",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "sales",
+          "report",
+          "template"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "keyword": 0.98,
+            "remote": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0.02
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.99,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 0.99,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.01
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 1,
+            "remote": 0,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2555,
+        "output_tokens": 525
+      },
+      "jevLatencyMs": 364,
+      "questionCount": 6,
+      "candidates": {},
+      "candidateLatencyMs": 0,
+      "requestCount": 0
+    },
+    {
+      "id": "diverse-unrelated-02",
+      "group": "unrelated",
+      "split": "tune",
+      "q": "accountant joke",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "joke"
+        ],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "remote": 0,
+            "keyword": 0.99,
+            "onsite": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0.01
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "keyword": 1,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "seniority": 0,
+            "keyword": 1,
+            "remote": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "onsite": 0,
+            "occupation": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1714,
+        "output_tokens": 264
+      },
+      "jevLatencyMs": 373,
+      "questionCount": 3,
+      "candidates": {},
+      "candidateLatencyMs": 0,
+      "requestCount": 0
+    },
+    {
+      "id": "diverse-unrelated-03",
+      "group": "unrelated",
+      "split": "tune",
+      "q": "how to become a pharmacist",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "how",
+          "become",
+          "a"
+        ],
+        "locations": [
+          "to"
+        ],
+        "occupations": [
+          "pharmacist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 1
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "occupation": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 1
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "occupation": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 1
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 1
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "location": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 1
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "occupation": 0,
+            "seniority": 0,
+            "location": 0,
+            "technology": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 1
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "location": 0,
+            "technology": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 1
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "occupation": 0,
+            "seniority": 0,
+            "location": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 1
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "occupation": 0.06,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.94
+          }
+        },
+        "s_9": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "location": 0,
+            "technology": 0,
+            "onsite": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 1
+          }
+        },
+        "s_10": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.89,
+          "probabilities": {
+            "occupation": 0.1,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.9
+          }
+        },
+        "s_11": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.91,
+          "probabilities": {
+            "occupation": 0.08,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 0,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 0.92
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 4277,
+        "output_tokens": 1049
+      },
+      "jevLatencyMs": 387,
+      "questionCount": 12,
+      "candidates": {},
+      "candidateLatencyMs": 0,
+      "requestCount": 0
+    },
+    {
+      "id": "diverse-unrelated-04",
+      "group": "unrelated",
+      "split": "tune",
+      "q": "manager training course",
+      "locale": "en",
+      "goldShape": {
+        "keywords": [
+          "manager",
+          "training",
+          "course"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.89,
+          "probabilities": {
+            "employmentType": 0,
+            "technology": 0,
+            "occupation": 0.07,
+            "keyword": 0.92,
+            "location": 0,
+            "remote": 0,
+            "seniority": 0.01,
+            "onsite": 0,
+            "hybrid": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.97,
+          "probabilities": {
+            "employmentType": 0,
+            "keyword": 0.98,
+            "technology": 0,
+            "occupation": 0.02,
+            "location": 0,
+            "remote": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "hybrid": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.98,
+          "probabilities": {
+            "employmentType": 0,
+            "technology": 0,
+            "keyword": 0.99,
+            "occupation": 0.01,
+            "location": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "keyword": 1,
+            "technology": 0,
+            "occupation": 0,
+            "location": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "remote": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "technology": 0,
+            "keyword": 1,
+            "occupation": 0,
+            "location": 0,
+            "remote": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "hybrid": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 1,
+          "probabilities": {
+            "employmentType": 0,
+            "occupation": 0,
+            "technology": 0,
+            "keyword": 1,
+            "location": 0,
+            "remote": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "hybrid": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2555,
+        "output_tokens": 525
+      },
+      "jevLatencyMs": 740,
+      "questionCount": 6,
+      "candidates": {},
+      "candidateLatencyMs": 0,
+      "requestCount": 0
+    },
+    {
+      "id": "diverse-multilingual-01",
+      "group": "multilingual",
+      "split": "tune",
+      "q": "Buchhalter Berlin hybrid",
+      "locale": "de",
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "state-of-berlin-germany"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.99,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 1,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.73,
+          "probabilities": {
+            "occupation": 0.12,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0.11,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "keyword": 0.77
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.89,
+          "probabilities": {
+            "occupation": 0.05,
+            "seniority": 0,
+            "location": 0,
+            "technology": 0,
+            "onsite": 0,
+            "hybrid": 0.04,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 0.91
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.92,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0.93,
+            "hybrid": 0,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 0.07
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.83,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0.08,
+            "hybrid": 0.07,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 0.85
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "hybrid",
+          "confidence": 1,
+          "probabilities": {
+            "seniority": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "technology": 0,
+            "location": 0,
+            "hybrid": 1,
+            "remote": 0,
+            "employmentType": 0,
+            "keyword": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2741,
+        "output_tokens": 527
+      },
+      "jevLatencyMs": 484,
+      "questionCount": 6,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Buchhalter"
+          }
+        ],
+        "s_3": [
+          {
+            "id": 2950157,
+            "slug": "state-of-berlin-germany",
+            "name": "Berlin",
+            "type": "region",
+            "parentName": "Germany"
+          },
+          {
+            "id": 2950159,
+            "slug": "berlin",
+            "name": "Berlin",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 5264381,
+            "slug": "new-berlin",
+            "name": "New Berlin",
+            "type": "city",
+            "parentName": "Wisconsin"
+          },
+          {
+            "id": 2905904,
+            "slug": "hermsdorf",
+            "name": "Berlin-Hermsdorf",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2885656,
+            "slug": "kopenick-state-of-berlin-germany-2885656",
+            "name": "Berlin-Köpenick",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2920789,
+            "slug": "gesundbrunnen",
+            "name": "Berlin-Gesundbrunnen",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2823708,
+            "slug": "tegel",
+            "name": "Berlin-Tegel",
+            "type": "city",
+            "parentName": "State of Berlin"
+          },
+          {
+            "id": 2878044,
+            "slug": "lichtenrade",
+            "name": "Berlin-Lichtenrade",
+            "type": "city",
+            "parentName": "State of Berlin"
+          }
+        ]
+      },
+      "candidateLatencyMs": 86,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-multilingual-02",
+      "group": "multilingual",
+      "split": "tune",
+      "q": "Responsable marketing Paris télétravail",
+      "locale": "fr",
+      "goldShape": {
+        "keywords": [
+          "télétravail"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "marketing-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.92,
+          "probabilities": {
+            "remote": 0,
+            "keyword": 0.9400000000000001,
+            "seniority": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "occupation": 0.06,
+            "onsite": 0,
+            "location": 0,
+            "employmentType": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 1,
+          "probabilities": {
+            "remote": 0,
+            "onsite": 0,
+            "occupation": 1,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "employmentType": 0,
+            "keyword": 0,
+            "seniority": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.73,
+          "probabilities": {
+            "remote": 0,
+            "keyword": 0.76,
+            "seniority": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "occupation": 0.17,
+            "location": 0.07
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.88,
+          "probabilities": {
+            "remote": 0,
+            "keyword": 0.9,
+            "employmentType": 0,
+            "location": 0,
+            "hybrid": 0,
+            "technology": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "occupation": 0.1
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.89,
+          "probabilities": {
+            "remote": 0,
+            "onsite": 0,
+            "occupation": 0.01,
+            "technology": 0,
+            "hybrid": 0,
+            "location": 0.09,
+            "employmentType": 0,
+            "keyword": 0.9,
+            "seniority": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.93,
+          "probabilities": {
+            "remote": 0.04,
+            "keyword": 0.94,
+            "occupation": 0.01,
+            "location": 0.01,
+            "hybrid": 0,
+            "employmentType": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0
+          }
+        },
+        "s_6": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.98,
+          "probabilities": {
+            "remote": 0,
+            "keyword": 0.02,
+            "seniority": 0,
+            "technology": 0,
+            "hybrid": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "location": 0.98,
+            "employmentType": 0
+          }
+        },
+        "s_7": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.75,
+          "probabilities": {
+            "remote": 0.08,
+            "onsite": 0,
+            "seniority": 0,
+            "location": 0.14,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0,
+            "keyword": 0.78,
+            "employmentType": 0
+          }
+        },
+        "s_8": {
+          "type": "choice",
+          "choice": "remote",
+          "confidence": 1,
+          "probabilities": {
+            "remote": 1,
+            "keyword": 0,
+            "occupation": 0,
+            "location": 0,
+            "hybrid": 0,
+            "employmentType": 0,
+            "seniority": 0,
+            "onsite": 0,
+            "technology": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 3630,
+        "output_tokens": 786
+      },
+      "jevLatencyMs": 447,
+      "questionCount": 9,
+      "candidates": {
+        "s_1": [
+          {
+            "id": 27,
+            "slug": "marketing-manager",
+            "name": "Responsable marketing",
+            "matchedName": "Digital Marketing Manager"
+          }
+        ],
+        "s_6": [
+          {
+            "id": 2988507,
+            "slug": "paris-ile-de-france-region-france",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 4717560,
+            "slug": "paris-texas-united-states",
+            "name": "Paris",
+            "type": "city",
+            "parentName": "Texas"
+          },
+          {
+            "id": 12808673,
+            "slug": "paris-13e-arrondissement",
+            "name": "Paris 13e Arrondissement",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 8504417,
+            "slug": "la-defense",
+            "name": "La Défense",
+            "type": "city",
+            "parentName": "Île-de-France Region"
+          },
+          {
+            "id": 3577934,
+            "slug": "charlotte-parish-saint-vincent-and-the-grenadines",
+            "name": "Charlotte",
+            "type": "region",
+            "parentName": "Saint Vincent and the Grenadines"
+          },
+          {
+            "id": 3488997,
+            "slug": "portland-parish-jamaica",
+            "name": "Portland",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3490145,
+            "slug": "hanover-parish-jamaica",
+            "name": "Paroisse de Hanover",
+            "type": "region",
+            "parentName": "Jamaica"
+          },
+          {
+            "id": 3576023,
+            "slug": "saint-john-parish-antigua-and-barbuda",
+            "name": "Saint-John",
+            "type": "region",
+            "parentName": "Antigua and Barbuda"
+          }
+        ]
+      },
+      "candidateLatencyMs": 18,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-multilingual-03",
+      "group": "multilingual",
+      "split": "tune",
+      "q": "Contabile Milano remoto",
+      "locale": "it",
+      "goldShape": {
+        "keywords": [
+          "remoto"
+        ],
+        "locations": [
+          "milan"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.99,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 1,
+            "location": 0,
+            "keyword": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.76,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.13,
+            "location": 0.08,
+            "keyword": 0.79,
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.9,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0.07,
+            "location": 0.01,
+            "keyword": 0.91,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 0.01
+          }
+        },
+        "s_3": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.94,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0,
+            "location": 0.95,
+            "keyword": 0.05,
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0,
+            "hybrid": 0,
+            "onsite": 0
+          }
+        },
+        "s_4": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.88,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0,
+            "keyword": 0.89,
+            "location": 0.08,
+            "seniority": 0,
+            "employmentType": 0,
+            "remote": 0.03,
+            "hybrid": 0,
+            "onsite": 0
+          }
+        },
+        "s_5": {
+          "type": "choice",
+          "choice": "remote",
+          "confidence": 1,
+          "probabilities": {
+            "technology": 0,
+            "occupation": 0,
+            "location": 0,
+            "keyword": 0,
+            "seniority": 0,
+            "employmentType": 0,
+            "onsite": 0,
+            "hybrid": 0,
+            "remote": 1
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 2754,
+        "output_tokens": 525
+      },
+      "jevLatencyMs": 370,
+      "questionCount": 6,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 96,
+            "slug": "accountant",
+            "name": "Contabile"
+          }
+        ],
+        "s_3": [
+          {
+            "id": 3173435,
+            "slug": "milan",
+            "name": "Milano",
+            "type": "city",
+            "parentName": "Lombardy"
+          },
+          {
+            "id": 790367,
+            "slug": "gornji-milanovac",
+            "name": "Gornji Milanovac",
+            "type": "city",
+            "parentName": "Central Serbia"
+          },
+          {
+            "id": 764749,
+            "slug": "milanowek",
+            "name": "Milanówek",
+            "type": "city",
+            "parentName": "Mazovia"
+          }
+        ]
+      },
+      "candidateLatencyMs": 36,
+      "requestCount": 2
+    },
+    {
+      "id": "diverse-multilingual-04",
+      "group": "multilingual",
+      "split": "tune",
+      "q": "Vertriebsleiter München",
+      "locale": "de",
+      "goldShape": {
+        "keywords": [],
+        "locations": [
+          "munich"
+        ],
+        "occupations": [
+          "sales-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "answers": {
+        "s_0": {
+          "type": "choice",
+          "choice": "occupation",
+          "confidence": 0.99,
+          "probabilities": {
+            "remote": 0,
+            "onsite": 0,
+            "occupation": 0.99,
+            "location": 0,
+            "hybrid": 0,
+            "seniority": 0,
+            "keyword": 0.01,
+            "employmentType": 0,
+            "technology": 0
+          }
+        },
+        "s_1": {
+          "type": "choice",
+          "choice": "keyword",
+          "confidence": 0.75,
+          "probabilities": {
+            "remote": 0,
+            "keyword": 0.79,
+            "seniority": 0,
+            "location": 0.09,
+            "hybrid": 0,
+            "occupation": 0.12,
+            "technology": 0,
+            "employmentType": 0,
+            "onsite": 0
+          }
+        },
+        "s_2": {
+          "type": "choice",
+          "choice": "location",
+          "confidence": 0.98,
+          "probabilities": {
+            "remote": 0,
+            "keyword": 0.02,
+            "seniority": 0,
+            "location": 0.98,
+            "hybrid": 0,
+            "technology": 0,
+            "occupation": 0,
+            "onsite": 0,
+            "employmentType": 0
+          }
+        }
+      },
+      "usage": {
+        "input_tokens": 1894,
+        "output_tokens": 264
+      },
+      "jevLatencyMs": 335,
+      "questionCount": 3,
+      "candidates": {
+        "s_0": [
+          {
+            "id": 105,
+            "slug": "sales-manager",
+            "name": "Vertriebsleiter"
+          }
+        ],
+        "s_2": [
+          {
+            "id": 2867714,
+            "slug": "munich",
+            "name": "München",
+            "type": "city",
+            "parentName": "Bavaria"
+          },
+          {
+            "id": 2922582,
+            "slug": "garching",
+            "name": "Garching bei München",
+            "type": "city",
+            "parentName": "Bavaria"
+          },
+          {
+            "id": 2913192,
+            "slug": "haar",
+            "name": "Haar bei München",
+            "type": "city",
+            "parentName": "Bavaria"
+          }
+        ]
+      },
+      "candidateLatencyMs": 34,
+      "requestCount": 2
+    }
+  ]
+}

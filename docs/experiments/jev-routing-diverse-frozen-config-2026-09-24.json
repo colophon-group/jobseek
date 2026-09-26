@@ -1,0 +1,11 @@
+{
+  "variant": "catalog5",
+  "model": "jev-1.13.0",
+  "threshold": 0.6,
+  "longestFirst": false,
+  "normalization": "exact match else first Typesense suggestion",
+  "developmentIds": "original 84 plus diverse tune 32",
+  "holdoutIds": "diverse holdout 32",
+  "holdoutFixtureCommit": "44a286bf9",
+  "promptAndCatalogSha256": "495c92e488cd7f6b93b5129a98c5f4376553d56884268d97c4b34f157a64f6bc"
+}

@@ -138,7 +138,10 @@ export async function loadCompanyBrowserData(params: {
   let userLat = params.initialData.userLat;
   let userLng = params.initialData.userLng;
   const rawQuery = params.searchParams.get("q")?.trim();
-  if (rawQuery) {
+  // A Jev proposal already split the query into literal keywords and explicit
+  // taxonomy slugs. Sending those keywords through the legacy semantic parser
+  // can turn an unrelated word (for example, "officer") into a location.
+  if (rawQuery && params.searchParams.get("qmode") !== "literal") {
     try {
       const semantic = await resolveCompanySemanticFilters({
         q: rawQuery,

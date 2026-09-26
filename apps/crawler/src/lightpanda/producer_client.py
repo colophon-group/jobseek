@@ -199,7 +199,7 @@ def _decode(payload: bytes) -> ProducerResult:
     elif outcome == "manifest":
         valid = (
             reason == "manifest"
-            and value["cohort"] in {"c1", "c4"}
+            and value["cohort"] in {"c1", "c2", "c3", "c4"}
             and value["board_slugs"] == sorted(set(value["board_slugs"]))
             and bool(value["board_slugs"])
             and not value["activated"]
@@ -279,7 +279,7 @@ def _enabled() -> bool:
 
 
 async def request_manifest(cohort: str) -> ProducerResult:
-    if not _enabled() or cohort not in {"c1", "c4"}:
+    if not _enabled() or cohort not in {"c1", "c2", "c3", "c4"}:
         raise ProducerClientError("Go producer mode or cohort is invalid")
     return await _exchange(
         {

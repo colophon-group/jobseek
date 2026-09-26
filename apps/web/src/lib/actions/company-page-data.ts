@@ -69,6 +69,7 @@ export async function fetchCompanyPageData(params: {
   if (!company) return null;
 
   const q = firstOf(searchParams.q);
+  const qmode = firstOf(searchParams.qmode) === "literal" ? "literal" as const : undefined;
   const loc = firstOf(searchParams.loc);
   const occ = firstOf(searchParams.occ);
   const sen = firstOf(searchParams.sen);
@@ -86,7 +87,7 @@ export async function fetchCompanyPageData(params: {
   // mirror it into a cookie (issue #2850 + `anon-preferences.ts`).
   const session = await getSession();
   const [parsed, prefs, anonJobLangs] = await Promise.all([
-    parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }),
+    parseSearchFilters({ q, qmode, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }),
     session ? getPreferences() : Promise.resolve(null),
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);

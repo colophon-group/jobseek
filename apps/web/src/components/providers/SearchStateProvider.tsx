@@ -31,6 +31,9 @@ export interface SearchStateSnapshot {
   companies: SearchResultCompany[];
   totalCompanies: number;
   totalPostings?: number;
+  nextOffset?: number | null;
+  serverOffset?: number;
+  truncated?: boolean;
   degraded?: boolean;
   showPostingId: string | null;
   scrollY: number;
@@ -205,6 +208,8 @@ export interface SearchPageActions {
   getOccupations: () => { id: number; slug: string; name: string }[];
   getSeniorities: () => { id: number; slug: string; name: string }[];
   getTechnologies?: () => { id: number; slug: string; name: string }[];
+  getWorkMode?: () => WorkMode[];
+  getEmploymentTypes?: () => string[];
   /** Custom placeholder for the header SearchBar (e.g. "Search at Google...") */
   placeholder?: string;
   /** Stable accessible name for the header SearchBar's current scope. */

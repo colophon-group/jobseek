@@ -24,6 +24,7 @@ from src.core.jsonld import contains_job_posting as contains_job_posting
 from src.core.jsonld import parse_html as parse_html
 from src.core.jsonld import parse_rendered_html as parse_rendered_html
 from src.core.scrapers import register
+from src.core.scrapers.jsonld_capture import start_kandou_jsonld_capture
 from src.shared.api_sniff import clean_headers
 from src.shared.http import (
     is_avature_job_detail_url,
@@ -394,6 +395,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
 
     html = ""
     content = JobContent()
+    capture = start_kandou_jsonld_capture(url, config)
     for attempt in range(1, _CONTENT_ATTEMPTS + 1):
         try:
             html = await load_html()
@@ -405,6 +407,8 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
                 raise
             return recovered
         content = parse_rendered_html(url, config, html)
+        if capture is not None:
+            capture.record(attempt, html, title_found=bool(content.title))
         if content.title:
             break
         iframe_url = _icims_iframe_url(url, html)
@@ -426,6 +430,9 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
         if attempt < _CONTENT_ATTEMPTS:
             log.warning("jsonld.content_retry", url=url, attempt=attempt)
             await asyncio.sleep(_CONTENT_RETRY_DELAY)
+
+    if capture is not None:
+        capture.finish()
 
     description_selector = config.get("description_selector")
     if description_selector is not None:

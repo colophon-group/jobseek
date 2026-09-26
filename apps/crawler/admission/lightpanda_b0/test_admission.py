@@ -138,6 +138,11 @@ def test_renderer_private_key_has_required_mode(tmp_path: Path) -> None:
 def test_compose_counts_real_producer_inside_equal_lane() -> None:
     compose = (HERE / "compose.yml").read_text()
     services = yaml.safe_load(compose)["services"]
+    assert services["executor"]["healthcheck"]["test"] == [
+        "CMD",
+        "/usr/local/bin/lightpanda-b0-supervisor",
+        "executor-health",
+    ]
     assert services["executor"]["healthcheck"]["timeout"] == "3s"
     assert services["executor"]["healthcheck"]["interval"] == "5s"
     assert services["executor"]["cpus"] == 1.0

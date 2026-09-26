@@ -1,0 +1,116 @@
+{
+  "variant": "minimal2",
+  "split": "holdout",
+  "config": {
+    "threshold": 0.6,
+    "longestFirst": true
+  },
+  "count": 32,
+  "exact": 30,
+  "spanPrecision": 0.971830985915493,
+  "spanRecall": 0.971830985915493,
+  "spanF1": 0.971830985915493,
+  "groups": {
+    "atomic": {
+      "count": 4,
+      "exact": 4
+    },
+    "terse": {
+      "count": 4,
+      "exact": 4
+    },
+    "verbose": {
+      "count": 4,
+      "exact": 3
+    },
+    "mistakes": {
+      "count": 4,
+      "exact": 4
+    },
+    "multiword": {
+      "count": 4,
+      "exact": 4
+    },
+    "employment": {
+      "count": 4,
+      "exact": 4
+    },
+    "unrelated": {
+      "count": 4,
+      "exact": 3
+    },
+    "multilingual": {
+      "count": 4,
+      "exact": 4
+    }
+  },
+  "mismatches": [
+    {
+      "id": "diverse-verbose-06",
+      "group": "verbose",
+      "q": "Find an on site compliance officer role in Munich",
+      "expected": [
+        {
+          "text": "on site",
+          "category": "onsite",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        }
+      ],
+      "selected": [
+        {
+          "text": "site compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 6
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        }
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 2,
+      "exact": false
+    },
+    {
+      "id": "diverse-unrelated-07",
+      "group": "unrelated",
+      "q": "what is a compliance officer",
+      "expected": [],
+      "selected": [
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "exact": false
+    }
+  ]
+}

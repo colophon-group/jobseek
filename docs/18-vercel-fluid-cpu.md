@@ -15,7 +15,7 @@ external-call, error, and functionality gates.
 | CPU throttle P75 | 7.6% |
 | Company OG | 120s / 271 invocations |
 | Company pages | 91s |
-| Public watchlists | 39s |
+| Watchlist routes (historically public) | 39s |
 | Explore | 10s |
 | Typesense calls | 5,900 |
 | Upstash calls | 2,900 |
@@ -65,14 +65,102 @@ replacement window must start no earlier than `2026-08-28T09:38:06Z`.
 3. In Vercel Observability, select Production and the exact absolute start/end
    timestamps. Do not use a moving “Past 12 hours” window while transcribing.
 4. Record overall invocations, visible Active CPU, CPU P75, throttle P75,
-   errors, timeouts, Typesense calls, and Upstash calls.
+   errors, timeouts, and **exact** Typesense and Upstash call counts. Rounded
+   labels such as `2.8K` are not counts for this gate.
 5. Record invocations and Active CPU for these exhaustive route groups:
-   `companyOg`, `companyPages`, `publicWatchlists`, `explore`, and `other`.
+   `companyOg`, `companyPages`, `watchlistRoutes`, `explore`, and `other`.
+   `watchlistRoutes` includes both `/[lang]/watchlists/[watchlistId]` and the
+   owner-only legacy `/{lang}/{userSlug}/{watchlistSlug}` route.
    The sum must reconcile to overall visible CPU within 0.5 seconds.
-6. Record company-OG R2 hits/misses and PPR shell hits/misses.
+6. Record PPR shell hits/misses. Verify that the company page points to a
+   complete, directly served R2 PNG and that the old OG URL redirects there.
 7. Confirm the window includes recognized bots and at least 20 distinct
-   long-tail route keys. Synthetic repeated requests do not satisfy this gate.
+   long-tail route keys from a 100% production request source. Synthetic
+   repeated requests do not satisfy this gate.
 8. Run the live checks below from production, then evaluate the JSON report.
+
+### Complete-window evidence path
+
+The September 25 Hobby run had only 93 retained requests from under one hour
+of a 12-hour window. [Hobby runtime logs retain one hour](https://vercel.com/docs/logs/runtime),
+and the runtime Logs view does not include every static request. Polling that view cannot establish
+`sourceIncludesAllTraffic=true`. Vercel Log Drains support all relevant log
+sources and 100% sampling, but [require Pro](https://vercel.com/docs/drains).
+The supported path is:
+
+1. With owner approval for the paid plan, upgrade the project team to Pro and
+   configure a production-only [Log Drain](https://vercel.com/docs/drains/reference/logs)
+   for `lambda`, `static`, `edge`, `redirect`, `firewall`, and `external`
+   sources. Leave sampling rules absent (100%).
+   Store raw drain batches outside Vercel with durable timestamps, log IDs,
+   deployment IDs, and delivery/ingestion error monitoring. Check for gaps and
+   deduplicate by log ID. Retain the raw window with the report. Do not mark
+   coverage complete until delivery is verified across the entire absolute
+   window and every requested source.
+2. Enable [Observability Plus](https://vercel.com/docs/observability/observability-plus)
+   and inspect the metric schema before querying
+   exact production Typesense and Upstash outbound-request sums over the same
+   absolute window. Confirm hostname and environment filters, event delay,
+   and that the two sums are integers. If a query is unavailable or rounded,
+   retain `null`. The Vercel CLI returned 402 without this add-on on September
+   25. Querying an unsupported API or copying a rounded dashboard label does
+   not make an exact count.
+3. Read Functions route and PPR totals from the exact absolute window before
+   their retention expires. Preserve screenshots or exports showing the
+   Production filter and both timestamps. Keep billed Functions CPU and
+   visible route CPU separate as described in #9918.
+
+The published Vercel prices at review time were [Pro $20/month](https://vercel.com/pricing),
+[Drains $0.50/GB](https://vercel.com/docs/drains), and
+[Observability Plus $1.20/million events](https://vercel.com/docs/observability/observability-plus).
+Observability Plus no longer lists a separate monthly base fee; taxes and other
+usage may apply. No plan change or drain is enabled by this runbook. A fresh
+12-hour window starts after the collection path, deployment, and WAF state
+are verified.
+
+**Approved R2 gate revision (requester, September 25, 2026):** Company OG now uses prewarmed,
+versioned PNGs served directly from the R2 custom domain. A browser request
+for that image bypasses Vercel Functions. The old 95% R2 hit threshold in
+schema v1 measured a former Function-side cache and is no longer a Fluid CPU
+gate. Schema v2 removes that threshold and retains the live direct-PNG check
+plus the `companyOg` Function CPU budget to catch fallback rendering. R2
+delivery/cache health should be monitored separately at Cloudflare. Its
+[adaptive GraphQL datasets can be sampled](https://developers.cloudflare.com/analytics/graphql-api/sampling/),
+so they cannot silently supply exact hit/miss counts; [raw Cloudflare HTTP
+Logpush requires Enterprise](https://developers.cloudflare.com/logs/logpush/).
+The requester approved replacing the obsolete R2 metric with the live checks
+and preserved Function CPU budget. The requester declined a paid Vercel
+telemetry upgrade for now; the exact external-call and complete-window traffic
+requirements remain in force and incomplete until a supported collection path
+is operational.
+
+### Interim Hobby log archive
+
+To preserve a larger natural-traffic sample without a paid upgrade, run the
+repository collector every 20 minutes with a 45-minute lookback. Overlap
+protects against a delayed run within Hobby's one-hour retention; it does not
+recover a gap longer than retention. The collector splits queries into short
+intervals when the CLI hits its result limit, deduplicates by log ID, and writes
+private raw JSONL outside Git. It never labels the archive as all traffic.
+
+```bash
+python3 scripts/collect-vercel-runtime-logs.py \
+  --archive /absolute/private/archive capture \
+  --lookback-minutes 45 --slice-minutes 5
+
+python3 scripts/collect-vercel-runtime-logs.py \
+  --archive /absolute/private/archive summary \
+  --start 2026-09-25T15:00:00Z --end 2026-09-26T03:00:00Z
+```
+
+The summary reports unique runtime log IDs, company/locale keys, deployment
+IDs, queried-interval gaps, failed queries, and truncated slices. CLI JSON
+does not expose User-Agent, and the runtime log source omits some static
+requests. Its `recognizedBotRequests` is therefore `null` and
+`sourceIncludesAllTraffic` is always `false`. Use the archive to support
+natural-route analysis and diagnose deployment churn; do not set the gate's
+bot or all-traffic fields to passing values from this archive. Exact Typesense
+and Upstash counts are still unavailable on Hobby.
 
 ## Production deployment identity
 
@@ -153,8 +241,18 @@ All checks are mandatory:
 - Home page returns a successful localized document.
 - Explore renders initial results and filter interaction still works.
 - A known company page renders its company data and postings.
-- That company page's `og:image` returns a valid PNG.
-- A known public watchlist renders, while scanner-shaped paths return non-200.
+- That company page's `og:image` resolves to the versioned R2 URL and returns
+  a valid PNG; the former Vercel OG URL redirects to it.
+- An owner opens an owned UUID watchlist and sees the actual watchlist title
+  and results, not merely a 200 streaming shell.
+- An anonymous viewer opens an explicitly shared, unlisted UUID link and sees
+  its actual title and results. The owner must enable sharing first.
+- Anonymous and signed-in cross-owner visitors cannot view a private UUID
+  watchlist; verify the rendered denied state after streaming completes.
+- The former `/{lang}/{userSlug}/{watchlistSlug}` route returns the same
+  privacy-safe 404 to anonymous and cross-owner visitors, while its owner gets
+  a 307 redirect to the owned UUID detail. Do not restore public access.
+- Scanner-shaped paths return non-200.
 - Sign-in loads and an existing authenticated session remains usable.
 
 Set the corresponding `functionality` fields to `true` only after observing the
@@ -164,7 +262,7 @@ production behavior. CPU gains never override a failed functionality check.
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "deployment": {
     "sha": "0123456789abcdef",
     "readyAt": "2026-08-11T13:00:00.000Z"
@@ -186,27 +284,34 @@ production behavior. CPU gains never override a failed functionality check.
   "routes": {
     "companyOg": { "invocations": 200, "activeCpuSeconds": 20 },
     "companyPages": { "invocations": 300, "activeCpuSeconds": 58 },
-    "publicWatchlists": { "invocations": 150, "activeCpuSeconds": 24 },
+    "watchlistRoutes": { "invocations": 150, "activeCpuSeconds": 24 },
     "explore": { "invocations": 100, "activeCpuSeconds": 9 },
     "other": { "invocations": 250, "activeCpuSeconds": 19 }
   },
   "cache": {
-    "companyOgR2Hits": 195,
-    "companyOgR2Misses": 5,
     "pprShellHits": 400,
     "pprShellMisses": 600
   },
   "traffic": {
     "recognizedBotRequests": 250,
     "longTailUniqueKeys": 300,
-    "sourceIncludesAllTraffic": true
+    "sourceIncludesAllTraffic": true,
+    "source": "100% production Vercel log drain, archived batch set <reference>",
+    "samplingRatePct": 100
   },
   "functionality": {
     "home": true,
     "explore": true,
     "companyPage": true,
-    "companyOg": true,
-    "publicWatchlist": true,
+    "companyOgDirect": true,
+    "companyOgLegacyRedirect": true,
+    "ownedWatchlist": true,
+    "sharedWatchlist": true,
+    "privateWatchlistAnonymousDenied": true,
+    "privateWatchlistCrossOwnerDenied": true,
+    "legacyWatchlistAnonymousDenied": true,
+    "legacyWatchlistCrossOwnerDenied": true,
+    "legacyWatchlistOwnerRedirects": true,
     "authentication": true
   }
 }
@@ -220,7 +325,11 @@ pnpm --filter @jobseek/web cpu:gate -- --input /absolute/path/report.json
 
 Or dispatch the `Fluid CPU regression gate` workflow and paste the same JSON
 into `metrics_json`. The workflow writes the complete gate table to its job
-summary and fails when any budget or functionality check fails.
+summary and fails when any budget or functionality check fails. Unknown exact
+external counts are `null` and display as `INCOMPLETE`; a simultaneous measured
+failure is reported as `FAIL (INCOMPLETE EVIDENCE)`. Never substitute zero.
+Archived schema-v1 reports remain historical evidence; they are not valid
+schema-v2 passes.
 
 ## Rollback and escalation
 

@@ -89,6 +89,18 @@ describe("getSemanticSearchQueryComplexity", () => {
 // =====================================================================
 
 describe("parseSearchFilters — workMode tokenization (#2983)", () => {
+  it("preserves routed residual keywords without rerunning taxonomy heuristics", async () => {
+    const result = await parseSearchFilters({
+      q: "remote, engineer,Remote", qmode: "literal", wm: "hybrid", locale: "en",
+    });
+    expect(result.keywords).toEqual(["remote", "engineer"]);
+    expect(result.workMode).toEqual(["hybrid"]);
+    expect(mocks.suggestLocations).not.toHaveBeenCalled();
+    expect(mocks.suggestOccupations).not.toHaveBeenCalled();
+    expect(mocks.suggestSeniorities).not.toHaveBeenCalled();
+    expect(mocks.suggestTechnologies).not.toHaveBeenCalled();
+  });
+
   it("returns empty workMode when q is empty and no `wm` param", async () => {
     const r = await parseSearchFilters({ locale: "en" });
     expect(r.workMode).toEqual([]);

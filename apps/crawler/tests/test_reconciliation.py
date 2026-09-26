@@ -9,6 +9,7 @@ import sys
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -394,7 +395,7 @@ async def test_fresh_full_repair_audits_all_partitions_from_midcycle_state(
     ) -> PartitionResult:
         assert target == "typesense"
         examined.append(partition)
-        return PartitionResult(
+        result = PartitionResult(
             target="typesense",
             partition=partition,
             local_rows=0,
@@ -411,6 +412,9 @@ async def test_fresh_full_repair_audits_all_partitions_from_midcycle_state(
             unresolved=0,
             duration_seconds=0,
         )
+        if partition == 190 and examined.count(partition) == 1:
+            return replace(result, detected=1, unresolved=1)
+        return result
 
     async def advance(
         _pool: object,
@@ -450,7 +454,9 @@ async def test_fresh_full_repair_audits_all_partitions_from_midcycle_state(
         target_scope="typesense",
     )
 
-    assert examined == list(range(PARTITION_COUNT))
+    expected = list(range(PARTITION_COUNT))
+    expected.insert(191, 190)
+    assert examined == expected
     assert summary.partitions_completed == PARTITION_COUNT
     assert durable_state["next_partition"] == 0
 
@@ -1704,7 +1710,7 @@ async def test_later_unresolved_partition_uses_its_own_failed_ledger_result(
         unresolved=2,
         duration_seconds=0.2,
     )
-    reconcile = AsyncMock(side_effect=[first, second])
+    reconcile = AsyncMock(side_effect=[first, second, second, second])
     advance = AsyncMock(return_value=False)
     record_failure = AsyncMock()
     finish_run = AsyncMock()
@@ -1736,6 +1742,7 @@ async def test_later_unresolved_partition_uses_its_own_failed_ledger_result(
 
     advance.assert_awaited_once()
     assert advance.await_args.args[1] is first
+    assert reconcile.await_count == 4
     record_failure.assert_awaited_once_with(
         local_pool,
         "typesense",

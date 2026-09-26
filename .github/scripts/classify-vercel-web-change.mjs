@@ -8,6 +8,7 @@ const EXACT_WEB_INPUTS = new Set([
   ".github/scripts/verify-vercel-scanner-response.mjs",
   ".github/scripts/verify-vercel-server-action-key.mjs",
   ".github/scripts/verify-vercel-promotion.mjs",
+  ".github/scripts/verify-vercel-company-cache.mjs",
   ".github/workflows/deploy-web-production.yml",
   "package.json",
   "pnpm-lock.yaml",

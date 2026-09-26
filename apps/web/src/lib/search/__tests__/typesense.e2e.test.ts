@@ -668,6 +668,33 @@ describe("scoped search key expiry", () => {
 // =====================================================================
 
 describe("search()", () => {
+  it("paginates the exact 27.1 grouped order with lookahead and explicit exhaustion", async () => {
+    if (skipIfUnavailable()) return;
+    const baseline = await adminClient.collections(JOB_POSTING_COLLECTION).documents().search({
+      q: "Engineer", query_by: "title", filter_by: "is_active:true && has_content:!=false",
+      sort_by: "_text_match:desc,first_seen_at:desc", group_by: "company_id", group_limit: 10,
+      facet_by: "company_id", facet_strategy: "exhaustive", max_facet_values: 1,
+      per_page: 250, typo_tokens_threshold: 1, drop_tokens_threshold: 1,
+    });
+    const expected = baseline.grouped_hits!.map((g) => String(g.group_key[0]));
+    expect(expected.length).toBeGreaterThan(2);
+    const actual: string[] = [];
+    let offset: number | null = 0;
+    for (let page = 0; page < 10 && offset !== null; page++) {
+      const result = await provider.search({ keywords: ["Engineer"], languages: [], locale: "en", offset, limit: 2 });
+      expect(result.degraded).not.toBe(true);
+      expect(result.totalCompanies).toBe(baseline.found);
+      expect(result.totalPostings).toBe(baseline.found_docs);
+      actual.push(...result.companies.map((c) => c.company.id));
+      expect(result.nextOffset).toBe(actual.length < expected.length ? offset + 2 : null);
+      offset = result.nextOffset!;
+    }
+    expect(offset).toBeNull();
+    expect(actual).toEqual(expected);
+    const nonAligned = await provider.search({ keywords: ["Engineer"], languages: [], locale: "en", offset: 1, limit: 2 });
+    expect(nonAligned.companies.map((c) => c.company.id)).toEqual(expected.slice(1, 3));
+  });
+
   it("single keyword returns companies with matching postings", async () => {
     if (skipIfUnavailable()) return;
 
@@ -1178,6 +1205,63 @@ describe("getExperienceHistogram()", () => {
 // =====================================================================
 // Sentinel value tests
 // =====================================================================
+
+describe("fractional experience filters", () => {
+  it("preserves precise and legacy overlap, sentinels, and other filters", async () => {
+    if (skipIfUnavailable()) return;
+
+    const template = JOB_POSTINGS[0];
+    if (!template) throw new Error("experience fixture template is missing");
+    const fixtures = [
+      { id: "legacy2", experience_min: 2, experience_max: 2 },
+      { id: "legacy3", experience_min: 3, experience_max: 3 },
+      { id: "legacy6", experience_min: 6, experience_max: 6 },
+      { id: "legacy7", experience_min: 7, experience_max: 7 },
+      { id: "months", experience_min: 0, experience_max: 0, experience_min_years: 0.7, experience_max_years: 0.7 },
+      { id: "onehalf", experience_min: 2, experience_max: 2, experience_min_years: 1.5, experience_max_years: 1.5 },
+      { id: "sixhalf", experience_min: 7, experience_max: 7, experience_min_years: 6.5, experience_max_years: 6.5 },
+      { id: "unknown", experience_min: -1, experience_max: -1, experience_min_years: -1, experience_max_years: -1 },
+      { id: "unknown_elsewhere", experience_min: -1, experience_max: -1, location_ids: [LOC_NYC] },
+      { id: "inactive", experience_min: 3, experience_max: 3, is_active: false },
+    ];
+    const cases = [
+      { bounds: { experienceMin: 2.5, experienceMax: 6.5 }, ids: ["legacy3", "legacy6", "sixhalf", "unknown"] },
+      { bounds: { experienceMin: 2.5 }, ids: ["legacy3", "legacy6", "legacy7", "sixhalf", "unknown"] },
+      { bounds: { experienceMax: 6.5 }, ids: ["legacy2", "legacy3", "legacy6", "months", "onehalf", "sixhalf", "unknown"] },
+      { bounds: { experienceMin: 0.7, experienceMax: 1.5 }, ids: ["months", "onehalf", "unknown"] },
+    ];
+    const idPrefix = "fractional_experience_";
+    try {
+      for (const fixture of fixtures) {
+        await adminClient.collections(JOB_POSTING_COLLECTION).documents().create({
+          ...template,
+          // Legacy-only documents must genuinely omit the precise fields.
+          experience_min_years: undefined,
+          experience_max_years: undefined,
+          ...fixture,
+          id: idPrefix + fixture.id,
+          title: "Fractionalexperiencefixture Engineer",
+        });
+      }
+      for (const { bounds, ids } of cases) {
+        const result = await provider.search({
+          ...DEFAULT_FILTERS,
+          ...bounds,
+          keywords: ["Fractionalexperiencefixture"],
+          locationIds: [LOC_BERLIN],
+          offset: 0,
+          limit: 20,
+        });
+        const actual = result.companies.flatMap((c) => c.postings.map((p) => p.id)).sort();
+        expect(actual, JSON.stringify(bounds)).toEqual(ids.map((id) => idPrefix + id).sort());
+      }
+    } finally {
+      for (const fixture of fixtures) {
+        await adminClient.collections(JOB_POSTING_COLLECTION).documents(idPrefix + fixture.id).delete().catch(() => {});
+      }
+    }
+  });
+});
 
 describe("sentinel values", () => {
   it("experience filter includes jobs with sentinel -1 (no experience requirement)", async () => {

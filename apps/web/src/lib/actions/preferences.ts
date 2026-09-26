@@ -45,11 +45,11 @@ function sanitizeJobLanguages(input: string[]): string[] {
  * After `updatePreferences` mutates `jobLanguages`, every cached layer
  * across these routes needs to be invalidated — otherwise the user
  * navigates back to a stale prerender that predates the cookie write
- * (#2916). Stays in sync with the read sites enumerated in PR #2914.
+ * (#2916). Company and Explore shells use anonymous defaults; their browser
+ * loaders apply viewer preferences without invalidating shared server output.
  */
 const JOB_LANGUAGE_DEPENDENT_PATHS = [
   "/[lang]/(app)/[userSlug]/[watchlistSlug]",
-  "/[lang]/(app)/company/[slug]",
 ] as const;
 
 /**
@@ -61,10 +61,10 @@ const JOB_LANGUAGE_DEPENDENT_PATHS = [
  * the per-region cache entry for the route and forces a fresh server
  * render on the next request. The caller (a client component in
  * /settings) ALSO calls `router.refresh()` to flush its client-side router
- * cache across back-nav (#2916). Explore is intentionally absent here: its
- * one-day shell is query-agnostic and the browser loader consumes bootstrap
- * preferences / the anonymous cookie after hydration, so evicting that global
- * shell would only add regeneration and ISR writes.
+ * cache across back-nav (#2916). Company and Explore are intentionally absent:
+ * their browser loaders consume bootstrap preferences / the anonymous cookie
+ * after hydration. A viewer preference must not evict every company and locale
+ * from the shared page cache (#10013).
  *
  * Failures are swallowed because a successful preference write is the
  * load-bearing operation; a revalidation hiccup must not 500 the form
@@ -140,8 +140,8 @@ export async function updatePreferences(
     if (data.jobLanguages !== undefined) {
       await writeAnonJobLanguagesCookie(data.jobLanguages);
       // Cookie write happened — flush the remaining server-rendered pages
-      // whose output depends on the cookie. Explore applies it browser-side
-      // and must retain its shared query-agnostic shell.
+      // whose output depends on the cookie. Company and Explore apply it
+      // browser-side and must retain their shared shells.
       invalidateJobLanguageDependentPages();
     }
     return null;
