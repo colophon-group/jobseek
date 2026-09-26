@@ -27,6 +27,8 @@ x-common-env: &common-env
   PROXY_PROVIDER: ${PROXY_PROVIDER:-none}
   WEBSHARE_PROXY_URLS: "${WEBSHARE_PROXY_URLS:-[]}"
   WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
+  # Exact, default-off Go sitemap monitor handoff.
+  SITEMAP_GO_BOARD_IDS: ${SITEMAP_GO_BOARD_IDS:-}
   # Opt-in one-cycle capture of an existing Workday schedule for Go replay.
   WORKDAY_REPLAY_CAPTURE_BOARD_ID: ${WORKDAY_REPLAY_CAPTURE_BOARD_ID:-}
   # Exclusive Go list handoff for admitted single-site boards; empty keeps Python authoritative.
@@ -64,7 +66,9 @@ x-common-env: &common-env
   # Default-off Go Workable list monitor; the existing detail scraper remains scheduled.
   WORKABLE_GO_BOARD_IDS: ${WORKABLE_GO_BOARD_IDS:-}
   WORKABLE_GO_PERCENT: ${WORKABLE_GO_PERCENT:-0}
+  WORKABLE_GO_DETAIL_BOARD_IDS: ${WORKABLE_GO_DETAIL_BOARD_IDS:-}
   WORKABLE_CAPTURE_SLUGS: ${WORKABLE_CAPTURE_SLUGS:-}
+  WORKABLE_DETAIL_CAPTURE_JOBS: ${WORKABLE_DETAIL_CAPTURE_JOBS:-}
   # Default-off Go Pinpoint rich monitor and natural response capture.
   PINPOINT_GO_BOARD_IDS: ${PINPOINT_GO_BOARD_IDS:-}
   PINPOINT_GO_PERCENT: ${PINPOINT_GO_PERCENT:-0}

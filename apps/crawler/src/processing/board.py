@@ -1898,6 +1898,7 @@ _GO_RICH_HOSTS = {
     "lever": {"jobs.lever.co", "jobs.eu.lever.co", "api.lever.co", "api.eu.lever.co"},
 }
 _GO_RICH_TOKEN_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+_GO_LEVER_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
 
 
 def _go_rich_percentage_selected(
@@ -1924,7 +1925,8 @@ def _go_rich_percentage_selected(
         return False
     if (
         parsed.scheme != "https"
-        or parsed.hostname not in _GO_RICH_HOSTS[monitor_type]
+        or parsed.hostname is None
+        or (monitor_type != "lever" and parsed.hostname not in _GO_RICH_HOSTS[monitor_type])
         or parsed.username is not None
         or parsed.password is not None
         or port is not None
@@ -1940,11 +1942,12 @@ def _go_rich_percentage_selected(
         if settings is None:
             return False
         token, _ = settings
-        allowed.add("region")
+        allowed.update(("region", "company"))
+    token_pattern = _GO_LEVER_TOKEN_RE if monitor_type == "lever" else _GO_RICH_TOKEN_RE
     if (
         config.get("scraper_type") != "skip"
         or not isinstance(token, str)
-        or _GO_RICH_TOKEN_RE.fullmatch(token) is None
+        or token_pattern.fullmatch(token) is None
         or set(config) - allowed
     ):
         return False
@@ -1962,6 +1965,17 @@ def _monitor_runtime_for_board(
 ) -> MonitorRuntime:
     if provided is not None:
         return provided
+    sitemap_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("SITEMAP_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in sitemap_board_ids:
+        from src.runtime.sitemap_go import GoSitemapMonitorRuntime, eligible
+
+        if not eligible(board_url or "", monitor_type, monitor_config):
+            raise ValueError("Go sitemap selector requires an explicit supported configuration")
+        return GoSitemapMonitorRuntime(board_id=board_id)
     percent_selected = _go_rich_percentage_selected(
         board_id, monitor_type, board_url, monitor_config
     )

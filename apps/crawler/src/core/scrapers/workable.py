@@ -19,6 +19,7 @@ import structlog
 
 from src.core.enum_normalize import normalize_job_location_type
 from src.core.scrapers import JobContent, register
+from src.core.scrapers.workable_detail_capture import capture_workable_detail
 
 log = structlog.get_logger()
 
@@ -253,6 +254,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         markdown_url = _markdown_detail_url(slug, shortcode)
         markdown_resp = await http.get(markdown_url, follow_redirects=False)
         if markdown_resp.status_code == 200:
+            capture_workable_detail(slug, shortcode, "markdown", markdown_resp.content)
             log.warning(
                 "workable_scraper.rate_limited_markdown_fallback",
                 url=url,
@@ -272,6 +274,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         )
         return JobContent()
 
+    capture_workable_detail(slug, shortcode, "api", resp.content)
     return _parse_detail(resp.json())
 
 

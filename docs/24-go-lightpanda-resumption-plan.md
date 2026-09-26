@@ -6,6 +6,159 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-25 20:22 UTC
+
+This section supersedes the earlier pending Verity observation below.
+
+[PR #10031](https://github.com/colophon-group/jobseek/pull/10031) fixed
+Compose propagation of `SITEMAP_GO_BOARD_IDS` after the first v0.13.861
+release left the selector absent inside workers. It merged as
+`f4520232f1f8c0905a68586dbfe4b736b7f17e79`; [deploy run 36178705066](https://github.com/colophon-group/jobseek/actions/runs/36178705066)
+successfully promoted v0.13.862. The ARM64 B0 fixture completed successfully;
+this selector wiring does not change the Go sitemap parser.
+
+Before deployment, the supported c1 rollback retired routing epoch 70 at 71,
+restored all five schedules, and reported zero terminal drops and write
+fences. The 22 exact selectors were cleared under the host mutation lock with
+`/tmp/jobseek-post-go-sitemap-selectors.py`, the old full release revision,
+and Kandou detail URL `https://kandou.bamboohr.com/careers/310`. After
+promotion, the same 22 were staged against the exact new release snapshot and
+c1 was reactivated at routing epoch 72 with five selected schedules. Worker1
+now sees Verity's exact `SITEMAP_GO_BOARD_IDS` value
+`c4779214-ef92-4261-98fb-ae64f264fd23`. Workers, browser, drain, producer,
+executor, claimant, and Redis are all healthy.
+
+The read-only epoch-72 queue conservation audit returned `accepted/audit_ok`:
+five records, all ready, zero inflight or dead.
+
+Verity's last Python monitor completed naturally at 19:12:41 UTC, before
+activation. The first selected Go sitemap monitor completed on its normal
+schedule at 20:21:21 UTC. It returned three URLs from one HTTP response
+(911 bytes), with sorted URL SHA-256
+`3427540e27b9a618103f26eb9a178000e5296b1b4db0f3e0e09cc9672acda288`.
+The existing board writer persisted exactly three active PostgreSQL rows with
+the same sorted digest; `last_success_at` advanced to 20:21:21 UTC, the next
+check to 21:21:21 UTC, and `consecutive_failures` remained zero. No due score
+or duplicate origin request was forced. The post-run epoch-72 queue audit
+again returned `accepted/audit_ok`, five ready records, and zero inflight or
+dead; all nine runtime services listed above remained healthy. This proves
+one selected Go HTTP monitor and its database effects, not fleet-wide output
+or whole-lane resource parity. Before another crawler deploy
+or selector mutation, cold-rollback c1, then clear all 22 selectors under
+`/run/lock/jobseek-crawler-mutation.lock` with the same script in `clear`
+mode, exact release revision `f4520232f1f8c0905a68586dbfe4b736b7f17e79`,
+and the Kandou URL above. Never manually edit `.env`.
+
+The full [#7966](https://github.com/colophon-group/jobseek/issues/7966)
+remains open. Complete and prove every enabled monitor, detail scraper, and
+browser profile in Go HTTP/API or Go + Lightpanda; move scheduling, extraction,
+enrichment, persistence, drain, export, maintenance, and sync from Python;
+remove production Playwright and Chromium after profile parity; measure
+same-actual-workload whole-lane CPU, peak and retained RAM, correct output
+density, and attributable cost; and exercise final quiesced cutover and cold
+reversal without queue loss, stale writes, or duplicate origin traffic.
+
+## Production checkpoint: 2026-09-25 18:43 UTC
+
+[PR #10029](https://github.com/colophon-group/jobseek/pull/10029) merged as
+`bf1437d6c97bc3ffc50c7b36f13992640b0bd070`; [deploy run 36172829219](https://github.com/colophon-group/jobseek/actions/runs/36172829219)
+promoted crawler v0.13.861. The bounded Go sitemap parser from the read-only
+pilot is packaged in the crawler image and accepts only an explicit
+same-origin HTTPS `urlset`. The adapter runs the same Python URL filter,
+allowlist, and transform stages before the existing board writer. It is
+default-off; an unsupported index or changed configuration fails closed. The
+accepted [production shadow](https://github.com/colophon-group/jobseek/issues/8641)
+previously matched Python's URL counts and hashes for Acosta/Dee Set and
+Verity Breezy. Its exact board ID is
+`c4779214-ef92-4261-98fb-ae64f264fd23`.
+
+Before that deploy, the supported c1 cold rollback retired epoch 68 at epoch 69 and
+restored all five schedules with zero terminal drops or write fences. The old
+21 exact selectors were cleared under the host lock. After promotion, 22 exact
+selectors were staged at `bf1437d6c97bc3ffc50c7b36f13992640b0bd070`
+using `/tmp/jobseek-post-go-sitemap-selectors.py` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Supported c1 activation selected
+five schedules at epoch 70; workers, browser, drain, producer, executor,
+claimant, and Redis are healthy. Post-activation inspection found that Compose
+did not pass `SITEMAP_GO_BOARD_IDS` into workers, so Verity remains
+Python-owned despite its host selector. The follow-up v0.13.862 release wires
+that key. Before deploying it, cold-rollback c1 and clear all 22 exact
+selectors with the same script, release revision, and Kandou URL under the
+host mutation lock. After promotion, stage them again at the new exact
+revision and reactivate c1. Then observe Verity's natural Go URL digest,
+active PostgreSQL URLs, and board failure count; do not force its due time or
+send a duplicate origin request. The full
+[#7966](https://github.com/colophon-group/jobseek/issues/7966) completion
+goal remains open while Python and Chromium own production work.
+
+## Production checkpoint: 2026-09-25 15:16 UTC
+
+[PR #10024](https://github.com/colophon-group/jobseek/pull/10024) merged as
+`c09c1d519` and [deploy run 36148928512](https://github.com/colophon-group/jobseek/actions/runs/36148928512)
+promoted crawler v0.13.858. The Go Workable detail scraper is installed but
+defaults off. A naturally scheduled KI Insurance Python detail response was
+captured without another origin request. Its 5,010 exact bytes, SHA-256
+`0b7b1f982990b630b5b1f9ef51c28437b520761af8e849b5610ae6ac86b0f0fd`,
+produced identical Python and Go values for all seven populated detail fields.
+The Python scrape succeeded. KI Insurance has 18 active jobs, zero board
+failures, and no browser requirement.
+
+The supported c1 rollback retired epoch 65, restored all five schedules,
+and confirmed zero dropped tasks and write fences. Twenty exact selectors
+were cleared under the mutation lock; 21 were staged at exact release
+`c09c1d5191f779280e088c6b6131a1c66426835f` with
+`/tmp/jobseek-post-workable-go-detail-pilot-selectors.py` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. C1 reactivated at epoch 66 with
+all five schedules; services are healthy. The added Workable Go detail selector
+targets only KI Insurance board `aef95fd2-55ea-43cd-9aa6-9bd541c2bc4e`.
+Its natural Go scrape and persisted content readback are pending. The list
+capture selector still targets four Python Workable boards; natural scheduled
+responses are next due around 15:40–15:57 UTC. No due scores or extra origin
+requests were forced. Personio 5% selects Silverflow and newly eligible
+Eraneos Germany (five stable 21-job runs); Eraneos Go output is pending.
+Before any further deploy or selector mutation, cold-rollback c1 and clear
+those exact 21 selectors with that script, revision, and Kandou URL.
+
+The next strict Lever code slice resolves five of the six remaining Python
+boards: two explicit dotted tokens, two explicit tokens on canonical company
+career URLs, and one unused `company` metadata value matching its derived
+token. The sixth, Volta Medical, retains a JSON-LD detail scraper and remains
+Python-owned. Live output and database effects for the five new routes remain
+to be observed after deployment; this change cannot establish the full
+[#7966](https://github.com/colophon-group/jobseek/issues/7966) gate while
+Python and Chromium still own production work.
+
+## Production checkpoint: 2026-09-25 14:26 UTC
+
+[PR #10023](https://github.com/colophon-group/jobseek/pull/10023) merged as
+`6c993efe5` and [deploy run 36145740751](https://github.com/colophon-group/jobseek/actions/runs/36145740751)
+promoted crawler v0.13.857. The route census changed from 165 to 189 Go
+Lever boards out of 195 enabled: 20 canonical direct URL boards now derive
+their missing token as Python does, and four EU boards now derive the missing
+region as Python does. Six Lever boards retain Python routing because their
+configuration does not satisfy the strict Go guard. All 24 newly eligible
+boards had zero consecutive failures before their first natural selected Go
+cycle; live output and database readback for this cohort are still pending.
+`LEVER_GO_PERCENT=0` reverses the default.
+
+Supported B0 c1 cold rollback retired epoch 61 and restored all five retained
+schedules before deployment. The 18 old selectors were cleared under the host
+mutation lock. After deployment, the same 18 were staged with
+`/tmp/jobseek-post-workable-capture-selectors.py` at revision
+`6c993efe5780e38ed5f90730dbe881f52c485501` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`; c1 reactivated with five
+schedules at epoch 62. Workers, browser, drain, producer, executor, claimant,
+and Redis are healthy. Before another crawler deployment, cold-rollback c1
+and clear these exact selectors with the same script, revision, and URL.
+Workable list capture on natural Python schedules remains pending; do not
+force due scores or duplicate origin traffic. C2 Kandou stays dark.
+
+[Draft PR #10024](https://github.com/colophon-group/jobseek/pull/10024)
+adds default-off Go Workable detail extraction and passive capture for exact
+scheduled detail jobs and Workable Markdown/public API list fallback bodies.
+It is not deployed or selected. The full [#7966](https://github.com/colophon-group/jobseek/issues/7966)
+completion gate remains unmet while Python and Chromium own production work.
+
 ## Production checkpoint: 2026-09-25 13:41 UTC
 
 [PR #10022](https://github.com/colophon-group/jobseek/pull/10022) merged as
@@ -253,10 +406,12 @@ reactivate c1 only after the new release passes its normal deployment gates.
 ## Current state
 
 - [#7935](https://github.com/colophon-group/jobseek/issues/7935) reset the
-  effort to bounded, independently useful pilots. The full rewrite checklist,
-  10M-board projection, zero-Chromium premise, and exact evidence chains in
-  [the older migration design](23-go-lightpanda-migration.md) are historical,
-  not current prerequisites.
+  initial effort to bounded, independently useful pilots. The 10M-board
+  projection and first-pilot gates in
+  [the older migration design](23-go-lightpanda-migration.md) are historical.
+  The owner subsequently made complete retirement of Python, Playwright, and
+  Chromium the delivery goal in [#7966](https://github.com/colophon-group/jobseek/issues/7966).
+  Its enabled-fleet and whole-lane completion criteria govern final cutover.
 - The bounded Go sitemap worker and read-only production shadow landed through
   [#8644](https://github.com/colophon-group/jobseek/pull/8644); the fleet
   benchmark landed through [#8660](https://github.com/colophon-group/jobseek/pull/8660)

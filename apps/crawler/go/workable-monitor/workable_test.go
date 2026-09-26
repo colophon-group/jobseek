@@ -39,6 +39,19 @@ func (client *scriptedClient) Do(request *http.Request) (*http.Response, error) 
 
 func noPause(context.Context, time.Duration) error { return nil }
 
+func TestProjectFallbackUsesExactCapturedBodies(t *testing.T) {
+	llms := []byte("All open roles at Pix4D: 1 current opening")
+	jobs := []byte("Use the search endpoint to filter results")
+	public := []byte(`{"jobs":[{"shortcode":"A"}]}`)
+	result, err := ProjectFallback("pix4d", llms, jobs, public)
+	if err != nil || len(result.URLs) != 1 || result.URLs[0] != "https://apply.workable.com/pix4d/j/A/" {
+		t.Fatalf("unexpected captured fallback projection: %#v %v", result, err)
+	}
+	if _, err := ProjectFallback("pix4d", llms, jobs, nil); err == nil {
+		t.Fatal("missing captured public API body was accepted")
+	}
+}
+
 func TestFetchPaginatesAndDeduplicates(t *testing.T) {
 	client := &scriptedClient{responses: []scriptedResponse{
 		{status: 200, body: `{"results":[{"shortcode":"AAA"},{"shortcode":"BBB"}],"nextPage":"cursor"}`},

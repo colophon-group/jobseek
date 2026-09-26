@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       metrics_json:
-        description: "JSON report copied from the clean post-deploy Vercel observation window"
+        description: "Schema-v2 JSON report from the clean post-deploy Vercel observation window"
         required: true
         type: string
 

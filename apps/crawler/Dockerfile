@@ -26,6 +26,14 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/go-typesense-exporter .
 
+# ── Default-off Go sitemap URL monitor ───────────────────────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-sitemap-build
+WORKDIR /workspace/apps/crawler/go/sitemap-monitor
+COPY go/sitemap-monitor/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/sitemap-monitor-live ./cmd/live
+
 # ── Default-off, single-origin Go Workday list monitor ──────────────
 FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-workday-build
 WORKDIR /workspace/apps/crawler/go/workday-monitor
@@ -81,7 +89,9 @@ WORKDIR /workspace/apps/crawler/go/workable-monitor
 COPY go/workable-monitor/ ./
 RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
-       -o /out/workable-monitor-live ./cmd/live
+       -o /out/workable-monitor-live ./cmd/live \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/workable-detail-live ./cmd/detail-live
 
 # ── Default-off Go Pinpoint rich monitor ─────────────────────────────
 FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-pinpoint-build
@@ -161,6 +171,7 @@ RUN uv build --wheel --out-dir /tmp/jobseek-wheel \
 COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor /usr/local/bin/lightpanda-b0-supervisor
 COPY --from=go-r2-drain-build /out/go-r2-drain /usr/local/bin/go-r2-drain
 COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bin/go-typesense-exporter
+COPY --from=go-sitemap-build /out/sitemap-monitor-live /usr/local/bin/sitemap-monitor-live
 COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint
 RUN chmod 0755 /usr/local/bin/exporter-entrypoint
 COPY --from=go-workday-build /out/workday-monitor-live /usr/local/bin/workday-monitor-live
@@ -171,6 +182,7 @@ COPY --from=go-lever-build /out/lever-monitor-live /usr/local/bin/lever-monitor-
 COPY --from=go-join-build /out/join-monitor-live /usr/local/bin/join-monitor-live
 COPY --from=go-recruitee-build /out/recruitee-monitor-live /usr/local/bin/recruitee-monitor-live
 COPY --from=go-workable-build /out/workable-monitor-live /usr/local/bin/workable-monitor-live
+COPY --from=go-workable-build /out/workable-detail-live /usr/local/bin/workable-detail-live
 COPY --from=go-pinpoint-build /out/pinpoint-monitor-live /usr/local/bin/pinpoint-monitor-live
 COPY --from=go-booking-api-build /out/booking-api-monitor-live /usr/local/bin/booking-api-monitor-live
 COPY --from=go-teamtailor-rss-build /out/teamtailor-rss-monitor-live /usr/local/bin/teamtailor-rss-monitor-live
