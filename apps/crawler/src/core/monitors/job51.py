@@ -34,9 +34,7 @@ _API_ORIGIN = "https://coapi.51job.com"
 # the browser protocol, not a Jobseek account or private tenant credential.
 _PUBLIC_SIGNING_KEY = "tuD&#mheJQBlgy&Sm300l8xK^X4NzFYBcrN8@YLCret$fv1AZbtujg*KN^$YnUkh"
 _SIGNING_KEY_INDEX = 1
-_BOARD_PATH_RE = re.compile(
-    r"/(?:[A-Za-z0-9_-]{1,64}job_list|[A-Za-z0-9_-]{1,64}/job)\.html"
-)
+_BOARD_PATH_RE = re.compile(r"/(?:[A-Za-z0-9_-]{1,64}job_list|[A-Za-z0-9_-]{1,64}/job)\.html")
 _CTMID_RE = re.compile(r"\bctmid\s*:\s*['\"]?(\d{1,12})")
 _JOB_ID_RE = re.compile(r"^[0-9]{1,20}$")
 _DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
