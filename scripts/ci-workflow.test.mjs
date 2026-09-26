@@ -304,6 +304,7 @@ function runCrawlerDeployReconciler({
   files = ["apps/crawler/src/core/monitor.py"],
   holds = [],
   prs = null,
+  statuses = [],
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "crawler-deploy-reconcile-"));
   const log = join(dir, "gh.log");
@@ -325,6 +326,10 @@ if [[ "$1 $2" == "pr view" ]]; then
   exit 0
 fi
 if [[ "$1" == "api" && "$*" == *"/statuses/"* ]]; then
+  exit 0
+fi
+if [[ "$1" == "api" && "$*" == *"/commits/"* && "$*" == *"/status"* ]]; then
+  printf '{"statuses":%s}\n' "$MOCK_STATUSES"
   exit 0
 fi
 if [[ "$1" == "api" ]]; then
@@ -361,6 +366,7 @@ exit 1
         MOCK_PRS: JSON.stringify(mockPrs),
         MOCK_FILES: files.join("\n"),
         MOCK_HOLDS: JSON.stringify(holds),
+        MOCK_STATUSES: JSON.stringify(statuses),
       },
       encoding: "utf8",
     },
@@ -1352,6 +1358,7 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     /actions\/checkout@[0-9a-f]+[^\n]*\n        with:\n          fetch-depth: 0\n          persist-credentials: false/,
   );
   assert.match(crawlerImageJob, /name: Verify exact PR merge provenance/);
+  assert.match(crawlerImageJob, /id: merge-provenance/);
   assert.match(crawlerImageJob, /TESTED_BUILD_SHA: \$\{\{ github\.sha \}\}/);
   assert.match(
     crawlerImageJob,
@@ -1362,10 +1369,12 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
   );
   assert.match(crawlerImageJob, /git rev-list --parents -n 1 HEAD/);
-  assert.match(crawlerImageJob, /test "\$parent_one" = "\$BASE_SHA"/);
+  assert.match(crawlerImageJob, /git merge-base --is-ancestor "\$BASE_SHA" "\$parent_one"/);
+  assert.match(crawlerImageJob, /git merge-base --is-ancestor "\$parent_one" origin\/main/);
   assert.match(crawlerImageJob, /test "\$parent_two" = "\$PR_HEAD_SHA"/);
   assert.match(crawlerImageJob, /git rev-parse HEAD\^1/);
   assert.match(crawlerImageJob, /git rev-parse HEAD\^2/);
+  assert.match(crawlerImageJob, /echo "base_sha=\$parent_one" >> "\$GITHUB_OUTPUT"/);
 
   const buildxIndex = crawlerImageJob.indexOf("docker/setup-buildx-action@");
   const slimGuardIndex = crawlerImageJob.indexOf("name: Guard exact slim image build context");
@@ -1400,7 +1409,8 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     assert.match(guard, /test -z "\$\(git status --porcelain=v1 --untracked-files=all\)"/);
     assert.match(guard, /git rev-list --parents -n 1 HEAD/);
     assert.match(guard, /test "\$commit" = "\$TESTED_BUILD_SHA"/);
-    assert.match(guard, /test "\$parent_one" = "\$BASE_SHA"/);
+    assert.match(guard, /git merge-base --is-ancestor "\$BASE_SHA" "\$parent_one"/);
+    assert.match(guard, /git merge-base --is-ancestor "\$parent_one" origin\/main/);
     assert.match(guard, /test "\$parent_two" = "\$PR_HEAD_SHA"/);
     assert.match(guard, /git rev-parse HEAD\^1/);
     assert.match(guard, /git rev-parse HEAD\^2/);
@@ -1421,8 +1431,12 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
     2,
   );
   assert.equal(
-    (crawlerImageJob.match(/com\.colophon-group\.jobseek\.base=/g) ?? []).length,
+    (crawlerImageJob.match(/com\.colophon-group\.jobseek\.base=\$\{\{ steps\.merge-provenance\.outputs\.base_sha \}\}/g) ?? []).length,
     2,
+  );
+  assert.match(
+    crawlerImageJob,
+    /name: Exercise real sampler and container shutdown lifecycle[\s\S]*BASE_SHA: \$\{\{ steps\.merge-provenance\.outputs\.base_sha \}\}/,
   );
 
   assert.match(crawlerImageJob, /crawler-sampler-container-smoke\.py --self-test/);
@@ -3188,9 +3202,15 @@ test("crawler deploy gate permits a ready runtime change when holds are clear", 
 
 test("draft and hold transitions replace a prior ready success with failure", () => {
   const ready = runCrawlerDeployReconciler();
-  const draft = runCrawlerDeployReconciler({ isDraft: true });
+  const priorReady = [{
+    context: "Crawler Deploy Gate",
+    state: "success",
+    description: "No crawler deployment hold applies",
+  }];
+  const draft = runCrawlerDeployReconciler({ isDraft: true, statuses: priorReady });
   const readyDuringHold = runCrawlerDeployReconciler({
     holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+    statuses: priorReady,
   });
 
   assert.equal(ready.status, 0, ready.stderr);
@@ -3200,6 +3220,20 @@ test("draft and hold transitions replace a prior ready success with failure", ()
   assert.doesNotMatch(draft.calls, /pulls\/123\/files/);
   assert.equal(readyDuringHold.status, 0, readyDuringHold.stderr);
   assert.match(readyDuringHold.calls, /statuses\/a{40}.*-f state=failure/);
+});
+
+test("crawler gate does not repost an unchanged status", () => {
+  const result = runCrawlerDeployReconciler({
+    statuses: [{
+      context: "Crawler Deploy Gate",
+      state: "success",
+      description: "No crawler deployment hold applies",
+    }],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /gate unchanged/);
+  assert.doesNotMatch(result.calls, /\/statuses\//);
 });
 
 test("a stale queued evaluator converges every PR to the current hold state", () => {

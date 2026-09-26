@@ -98,7 +98,12 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.match(workflow, /current_main=.*commits\/main/);
   assert.match(workflow, /REQUESTED_SHA: \$\{\{ inputs\.revision \}\}/);
   assert.match(workflow, /Requested revision \$REQUESTED_SHA is stale/);
-  assert.match(workflow, /vercel@59\.3\.0 promote/);
+  assert.match(workflow, /vercel@59\.25\.4 promote/);
+  assert.ok(
+    workflow.indexOf("verify-vercel-company-cache.mjs") <
+      workflow.indexOf("- name: Promote only if this SHA is still main"),
+  );
+  assert.match(workflow, /verify-vercel-company-cache\.mjs/);
   assert.match(workflow, /id: promote/);
   assert.match(workflow, /promoted=true/);
   assert.match(workflow, /REQUIRE_EXACT_PROMOTION/);
@@ -118,7 +123,7 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   );
   const curlLines = workflow
     .split("\n")
-    .filter((line) => line.includes("vercel@59.3.0") && line.includes("curl"));
+    .filter((line) => line.includes("vercel@59.25.4") && line.includes("curl"));
   assert.equal(curlLines.length, 2);
   for (const line of curlLines) {
     assert.doesNotMatch(line, /--token/);
@@ -178,7 +183,7 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.match(workflow, /environment: Production/);
   assert.match(
     workflow,
-    /vercel@59\.3\.0 pull[\s\S]{0,400}verify-vercel-server-action-key\.mjs[\s\S]{0,400}vercel@59\.3\.0 build/,
+    /vercel@59\.25\.4 pull[\s\S]{0,400}verify-vercel-server-action-key\.mjs[\s\S]{0,400}vercel@59\.25\.4 build/,
   );
   assert.doesNotMatch(workflow, /environment:\n\s+name: Production\n\s+url:/);
   assert.doesNotMatch(workflow, /pull_request:/);

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, inject, it } from "vitest";
 import { inspectVisibleExploreHtml } from "../script/visible-explore-html";
+import { companyPrerenderSeed } from "../script/company-prerender-seed";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -366,14 +367,32 @@ describe("build-output classifier (slow lane, #2885)", () => {
     ).not.toBe(false);
   });
 
+  it("builds one company per locale and retains on-demand company fallbacks", () => {
+    expect(distDir).toBeTruthy();
+    const manifest = readJson(join(distDir!, "prerender-manifest.json")) as {
+      routes: Record<string, unknown>;
+      dynamicRoutes: Record<string, unknown>;
+    };
+    const seed = companyPrerenderSeed(process.cwd());
+    const concreteCompanies = Object.keys(manifest.routes).filter((route) =>
+      /^\/(en|de|fr|it)\/company\/[^/]+$/.test(route),
+    );
+    expect(concreteCompanies.sort()).toEqual(
+      REPRESENTATIVE_LOCALES.map((locale) => `/${locale}/company/${seed}`).sort(),
+    );
+    for (const locale of REPRESENTATIVE_LOCALES) {
+      expect(Object.hasOwn(manifest.dynamicRoutes, `/${locale}/company/[slug]`)).toBe(true);
+    }
+  });
+
   for (const locale of REPRESENTATIVE_LOCALES) {
     it(`/${locale}/explore embeds localized meaningful result HTML`, () => {
       expect(distDir, "production build dist directory is unavailable").toBeTruthy();
       const htmlPath = join(distDir!, "server", "app", locale, "explore.html");
       expect(existsSync(htmlPath), `missing prerendered Explore HTML at ${htmlPath}`).toBe(true);
       const visibleHtml = inspectVisibleExploreHtml(readFileSync(htmlPath, "utf8"));
-      expect(visibleHtml.staticTextContent).toContain(EXPLORE_HEADINGS[locale]);
-      expect(visibleHtml.staticResultsCount).toBeGreaterThan(0);
+      expect(visibleHtml.resultTextContent).toContain(EXPLORE_HEADINGS[locale]);
+      expect(visibleHtml.resultHostCount).toBeGreaterThan(0);
       expect(visibleHtml.companyResultCount).toBeGreaterThan(0);
     });
   }

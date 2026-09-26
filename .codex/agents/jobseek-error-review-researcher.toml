@@ -1,6 +1,6 @@
 name = "jobseek-error-review-researcher"
 description = "Analyze one bounded, read-only evidence set for Jobseek's daily crawler error review."
-model = "gpt-5.6-terra"
+model = "gpt-6-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """

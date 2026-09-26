@@ -46,14 +46,11 @@ type mutationAuthorityQueue struct {
 	mu              sync.Mutex
 	bootstrap       bool
 	initializeCalls int
-	persistCalls    int
-	persistErr      error
 	activateCalls   int
 	fullPreflights  int
 	flushOnActivate bool
 	sentinel        *producerActivationSentinel
 	phaseAtActivate producerSentinelPhase
-	phaseAtPersist  producerSentinelPhase
 }
 
 func (q *mutationAuthorityQueue) preflight(_ context.Context, full bool, _ producerOwnerIdentity) (bool, error) {
@@ -71,16 +68,6 @@ func (q *mutationAuthorityQueue) initializeProducer(context.Context, producerOwn
 	q.initializeCalls++
 	q.bootstrap = false
 	return nil
-}
-
-func (q *mutationAuthorityQueue) persistProducer(context.Context) error {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.persistCalls++
-	if q.sentinel != nil {
-		q.phaseAtPersist, _ = q.sentinel.state()
-	}
-	return q.persistErr
 }
 
 func (q *mutationAuthorityQueue) lifetimeOccupancy(context.Context) (int64, error) { return 0, nil }
@@ -128,7 +115,6 @@ func (q *serializedProducerQueue) initializeProducer(context.Context, producerOw
 	return nil
 }
 
-func (q *serializedProducerQueue) persistProducer(context.Context) error            { return nil }
 func (q *serializedProducerQueue) lifetimeOccupancy(context.Context) (int64, error) { return 0, nil }
 
 func (q *serializedProducerQueue) inspect(_ context.Context, _ string) (*storedTask, error) {
@@ -178,7 +164,6 @@ func (q *fakeProducerQueue) initializeProducer(context.Context, producerOwnerIde
 	return nil
 }
 
-func (q *fakeProducerQueue) persistProducer(context.Context) error { return nil }
 func (q *fakeProducerQueue) lifetimeOccupancy(context.Context) (int64, error) {
 	return q.occupancy, nil
 }
@@ -264,24 +249,29 @@ func TestProducerReturnsOnlyLiteralLegacyForOutsideCohort(t *testing.T) {
 }
 
 func TestProducerOwnsExactSortedCohortManifest(t *testing.T) {
-	producer := validProducer(t, &fakeProducerQueue{}, "browser-use-careers")
-	producer.cohortName = "c4"
-	producer.cohort = producerCohorts["c4"]
-	request := producerRequest{
-		Version: producerProtocol, Operation: "manifest", Cohort: "c4",
-		Config: map[string]string{}, OperatorTransfer: true,
-	}
-	slugs, err := producer.manifest(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{"browser-use-careers", "eclypsium-careers", "kandou-ai-careers", "poke-and-wiggle-careers"}
-	if !slices.Equal(slugs, want) {
-		t.Fatalf("Go cohort manifest drifted: got %v, want %v", slugs, want)
-	}
-	request.OperatorTransfer = false
-	if _, err := producer.manifest(request); err == nil {
-		t.Fatal("ordinary runtime caller obtained the operator manifest")
+	for cohort, want := range map[string][]string{
+		"c2": {"browser-use-careers", "kandou-ai-careers"},
+		"c3": {"browser-use-careers", "eclypsium-careers", "kandou-ai-careers"},
+		"c4": {"browser-use-careers", "eclypsium-careers", "kandou-ai-careers", "poke-and-wiggle-careers"},
+	} {
+		producer := validProducer(t, &fakeProducerQueue{}, "browser-use-careers")
+		producer.cohortName = cohort
+		producer.cohort = producerCohorts[cohort]
+		request := producerRequest{
+			Version: producerProtocol, Operation: "manifest", Cohort: cohort,
+			Config: map[string]string{}, OperatorTransfer: true,
+		}
+		slugs, err := producer.manifest(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Equal(slugs, want) {
+			t.Fatalf("Go %s cohort manifest drifted: got %v, want %v", cohort, slugs, want)
+		}
+		request.OperatorTransfer = false
+		if _, err := producer.manifest(request); err == nil {
+			t.Fatal("ordinary runtime caller obtained the operator manifest")
+		}
 	}
 }
 
@@ -348,30 +338,10 @@ func TestProducerInitializesOnlyTheExactFreshAuthorityPair(t *testing.T) {
 		t.Fatalf("fresh pair did not receive its post-bootstrap full audit: %d/%d/%d", initialized, activated, full)
 	}
 	if phase != producerSentinelActive {
-		t.Fatalf("task activation preceded durable active phase: %s", phase)
-	}
-	if queue.persistCalls != 1 || queue.phaseAtPersist != producerSentinelPreparing {
-		t.Fatalf("Redis persistence did not occur between P and A: calls=%d phase=%s", queue.persistCalls, queue.phaseAtPersist)
+		t.Fatalf("task activation preceded active sentinel phase: %s", phase)
 	}
 	if active, err := sentinel.isActive(); err != nil || !active {
 		t.Fatalf("fresh pair did not persist its marker: %v %v", active, err)
-	}
-}
-
-func TestProducerPersistenceFailureLeavesPreparingAndDoesNotMutateTask(t *testing.T) {
-	queue := &mutationAuthorityQueue{bootstrap: true, persistErr: queueAuthority("redis", "persist_producer")}
-	producer, sentinel := producerWithMutationAuthority(t, queue, false)
-	request := validProducerRequest()
-	request.Operation, request.OperatorTransfer = "enqueue", false
-	if _, _, err := producer.enqueue(context.Background(), request); err == nil {
-		t.Fatal("failed synchronous Redis SAVE was accepted")
-	}
-	state, err := sentinel.state()
-	if err != nil || state != producerSentinelPreparing {
-		t.Fatalf("failed Redis SAVE did not leave retryable P: state=%s err=%v", state, err)
-	}
-	if queue.initializeCalls != 1 || queue.persistCalls != 1 || queue.activateCalls != 0 || queue.phaseAtPersist != producerSentinelPreparing {
-		t.Fatalf("task mutation crossed failed SAVE: init=%d save=%d activate=%d phase=%s", queue.initializeCalls, queue.persistCalls, queue.activateCalls, queue.phaseAtPersist)
 	}
 }
 
@@ -488,6 +458,37 @@ func TestProducerConfigNeverGrantsMutationToItsOwnUID(t *testing.T) {
 	configured, err := producerConfigFromEnvironment()
 	if err != nil || configured.ClientUID != uint32(os.Geteuid()+1) {
 		t.Fatalf("distinct mutation UID was rejected: %#v %v", configured, err)
+	}
+}
+
+func TestProducerConfigKeepsFourOriginFixtureOutOfProduction(t *testing.T) {
+	for name, value := range map[string]string{
+		"LIGHTPANDA_B0_PRODUCER_MODE":       "enabled",
+		"LIGHTPANDA_B0_PRODUCER_COHORT":     "c4",
+		"LIGHTPANDA_B0_PRODUCER_SOCKET":     producerSocketPath,
+		"LIGHTPANDA_B0_QUEUE_NAMESPACE":     "production-b0",
+		"LIGHTPANDA_B0_SHARD_ID":            "lightpanda-b0",
+		"LIGHTPANDA_B0_ROUTING_EPOCH":       "7",
+		"REDIS_URL":                         "redis://localhost:6379/0",
+		"LIGHTPANDA_B0_PRODUCER_CLIENT_UID": strconv.Itoa(os.Geteuid() + 1),
+	} {
+		t.Setenv(name, value)
+	}
+	if _, err := producerConfigFromEnvironment(); err == nil {
+		t.Fatal("four-origin fixture cohort was allowed in production namespace")
+	}
+	t.Setenv("LIGHTPANDA_B0_QUEUE_NAMESPACE", "admission-b0")
+	if _, err := producerConfigFromEnvironment(); err != nil {
+		t.Fatalf("four-origin admission fixture was rejected: %v", err)
+	}
+	t.Setenv("LIGHTPANDA_B0_PRODUCER_COHORT", "c3")
+	t.Setenv("LIGHTPANDA_B0_QUEUE_NAMESPACE", "production-b0")
+	if _, err := producerConfigFromEnvironment(); err != nil {
+		t.Fatalf("three-origin production cohort was rejected: %v", err)
+	}
+	t.Setenv("LIGHTPANDA_B0_PRODUCER_COHORT", "c2")
+	if _, err := producerConfigFromEnvironment(); err != nil {
+		t.Fatalf("two-origin production cohort was rejected: %v", err)
 	}
 }
 

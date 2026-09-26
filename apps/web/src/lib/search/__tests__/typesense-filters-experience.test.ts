@@ -79,6 +79,27 @@ describe("buildFilterString — experience range (#3217)", () => {
     expect(buildFilterString({})).toBe("");
   });
 
+  it("keeps decimal precision while using valid integer fallback bounds", () => {
+    expect(buildFilterString({ experienceMin: 2.5, experienceMax: 6.5 })).toBe(
+      "((experience_min_years:<=6.5 && experience_max_years:>=2.5) || experience_min_years:=-1 || (experience_min:<=6 && experience_max:>=3) || experience_min:=-1)",
+    );
+    expect(buildFilterString({ experienceMin: 0.7, experienceMax: 1.5 })).toBe(
+      "((experience_min_years:<=1.5 && experience_max_years:>=0.7) || experience_min_years:=-1 || (experience_min:<=1 && experience_max:>=1) || experience_min:=-1)",
+    );
+  });
+
+  it("rounds a decimal minimum up for the legacy integer maximum", () => {
+    expect(buildFilterString({ experienceMin: 2.5 })).toBe(
+      "(experience_max_years:>=2.5 || experience_min_years:=-1 || experience_max:>=3 || experience_min:=-1)",
+    );
+  });
+
+  it("rounds a decimal maximum down for the legacy integer minimum", () => {
+    expect(buildFilterString({ experienceMax: 6.5 })).toBe(
+      "(experience_min_years:<=6.5 || experience_min_years:=-1 || experience_min:<=6 || experience_min:=-1)",
+    );
+  });
+
   it("composes safely with other filters under && join", () => {
     // The outer parens around the OR are what keeps Typesense's
     // tighter-than-OR `&&` from broadening the sentinel branch when

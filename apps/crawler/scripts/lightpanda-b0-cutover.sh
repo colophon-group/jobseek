@@ -9,7 +9,7 @@ RECEIPT="$DEPLOY_DIR/.lightpanda-b0-active-v1"
 LOCK=/run/lock/jobseek-crawler-mutation.lock
 
 usage() {
-  echo "usage: $0 activate|rollback|recover-pending c1|c4" >&2
+  echo "usage: $0 activate|rollback|recover-pending c1|c2|c3" >&2
   exit 2
 }
 
@@ -31,7 +31,7 @@ validate_fixed_b0_identity() {
 OPERATION=$1
 COHORT=$2
 [[ "$OPERATION" == activate || "$OPERATION" == rollback || "$OPERATION" == recover-pending ]] || usage
-[[ "$COHORT" == c1 || "$COHORT" == c4 ]] || usage
+[[ "$COHORT" == c1 || "$COHORT" == c2 || "$COHORT" == c3 ]] || usage
 [[ "$(id -un)" == deploy ]] || {
   echo "ERROR: B0 cutover must run as the deploy user" >&2
   exit 1
@@ -667,15 +667,19 @@ check_producer_activation_sentinel_absent() {
 }
 
 persist_redis_rdb() {
-  local reply
-  reply="$(bounded 120s "${compose_base[@]}" exec -T redis redis-cli --raw SAVE)" || {
+  local reply attempt
+  for attempt in $(seq 1 40); do
+    reply=""
+    if reply="$(bounded 120s "${compose_base[@]}" exec -T redis redis-cli --raw SAVE)"; then
+      [[ "$reply" == OK ]] && return 0
+    fi
+    if [[ "$reply" == *"Background save already in progress"* && "$attempt" -lt 40 ]]; then
+      sleep 2
+      continue
+    fi
     echo "ERROR: synchronous Redis RDB persistence failed" >&2
     return 1
-  }
-  [[ "$reply" == OK ]] || {
-    echo "ERROR: synchronous Redis RDB persistence returned an invalid reply" >&2
-    return 1
-  }
+  done
 }
 
 RECEIPT_STATE=""
@@ -734,7 +738,15 @@ if [[ "$OPERATION" == activate ]]; then
   # audit, and owner/route mutation is synchronously present in Redis' RDB.
   # A failed or lost SAVE reply therefore contains the lane and retries only
   # through recover-pending; no mutation service is enabled on uncertainty.
+  # Redis SAVE blocks the server longer than the producer's authority probe.
+  # Stop that read-only service while Redis persists the completed transfer.
+  bounded 30s "${compose_enabled[@]}" stop --timeout 15 lightpanda-producer
   persist_redis_rdb
+  # SAVE can temporarily fail Redis' short Docker health probe after its reply.
+  # Wait for a fresh healthy probe before Compose evaluates dependencies.
+  wait_healthy base redis
+  bounded 30s "${compose_enabled[@]}" up -d --no-deps --force-recreate lightpanda-producer
+  wait_healthy enabled lightpanda-producer
   bounded 90s "${compose_enabled[@]}" up -d --force-recreate \
     worker-1 worker-2 worker-3 browser-1 drain lightpanda-executor lightpanda-claimant
   wait_healthy enabled worker-1 worker-2 worker-3 browser-1 drain lightpanda-producer lightpanda-executor lightpanda-claimant
@@ -872,6 +884,7 @@ bounded 90s "${compose_enabled[@]}" run --rm --no-deps \
   --rollback-plan-digest "$rollback_plan_digest" \
   --source-receipt-sha256 "$source_receipt_sha256" --allow-absent
 persist_redis_rdb
+wait_healthy base redis
 
 # Python may restart only after R (not the retired source E) is re-attested as
 # the exact database high-water. A stale Go transaction at E is ordered before

@@ -1,0 +1,16 @@
+diff --git a/apps/web/app/[lang]/(app)/company/[slug]/page.tsx b/apps/web/app/[lang]/(app)/company/[slug]/page.tsx
+index 32f61ccc5..f1b6b2f48 100644
+--- a/apps/web/app/[lang]/(app)/company/[slug]/page.tsx
++++ b/apps/web/app/[lang]/(app)/company/[slug]/page.tsx
+@@ -21,0 +22,5 @@ type Props = {
++// Local audit experiment: intentionally just one known company.
++export function generateStaticParams() {
++  return [{ slug: "aircall" }];
++}
++
+diff --git a/apps/web/next.config.ts b/apps/web/next.config.ts
+index 779d742ff..03cc8339c 100644
+--- a/apps/web/next.config.ts
++++ b/apps/web/next.config.ts
+@@ -68,0 +69 @@ export const nextConfig: NextConfig = {
++  partialPrefetching: true,

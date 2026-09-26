@@ -1,0 +1,1635 @@
+{
+  "started_at": "2026-08-26T16:30:10.490951673Z",
+  "restart_count": 0,
+  "limit_bytes": 6442450944,
+  "samples": [
+    {
+      "at": 1790194952.3558176,
+      "rss_kib": 4169632,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6028787712,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4258795520,
+      "file_bytes": 1706434560
+    },
+    {
+      "at": 1790194953.3570616,
+      "rss_kib": 4159864,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6018813952,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4248780800,
+      "file_bytes": 1706442752
+    },
+    {
+      "at": 1790194954.3581471,
+      "rss_kib": 4223912,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6084636672,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4314767360,
+      "file_bytes": 1706442752
+    },
+    {
+      "at": 1790194955.3592155,
+      "rss_kib": 4172892,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6032777216,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4262297600,
+      "file_bytes": 1706770432
+    },
+    {
+      "at": 1790194956.3603315,
+      "rss_kib": 4169640,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6029197312,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4258791424,
+      "file_bytes": 1706782720
+    },
+    {
+      "at": 1790194957.3613226,
+      "rss_kib": 4178876,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6038818816,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4268249088,
+      "file_bytes": 1706782720
+    },
+    {
+      "at": 1790194958.3622348,
+      "rss_kib": 4231500,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6092693504,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4322504704,
+      "file_bytes": 1706782720
+    },
+    {
+      "at": 1790194959.363217,
+      "rss_kib": 4219760,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6080815104,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4310151168,
+      "file_bytes": 1706971136
+    },
+    {
+      "at": 1790194960.3641117,
+      "rss_kib": 4180744,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6040723456,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4270206976,
+      "file_bytes": 1706971136
+    },
+    {
+      "at": 1790194961.3650734,
+      "rss_kib": 4171516,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6031376384,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4260761600,
+      "file_bytes": 1706983424
+    },
+    {
+      "at": 1790194962.3659022,
+      "rss_kib": 4204872,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6065741824,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4295233536,
+      "file_bytes": 1707020288
+    },
+    {
+      "at": 1790194963.3667743,
+      "rss_kib": 4196048,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6056755200,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4285935616,
+      "file_bytes": 1707024384
+    },
+    {
+      "at": 1790194964.367679,
+      "rss_kib": 4203368,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6064160768,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4293705728,
+      "file_bytes": 1707024384
+    },
+    {
+      "at": 1790194965.3685987,
+      "rss_kib": 4179876,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6039973888,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4269330432,
+      "file_bytes": 1707126784
+    },
+    {
+      "at": 1790194966.369919,
+      "rss_kib": 4161452,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6021369856,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4250546176,
+      "file_bytes": 1707130880
+    },
+    {
+      "at": 1790194967.3716094,
+      "rss_kib": 4186428,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6046879744,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4276043776,
+      "file_bytes": 1707134976
+    },
+    {
+      "at": 1790194968.372362,
+      "rss_kib": 4159680,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6019567616,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4248645632,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194969.3733783,
+      "rss_kib": 4164716,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6024470528,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4253749248,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194970.3746018,
+      "rss_kib": 4168120,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6028128256,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4257234944,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194971.3757033,
+      "rss_kib": 4194948,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6055546880,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4284747776,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194972.376747,
+      "rss_kib": 4183580,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6043820032,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4273102848,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194973.3778791,
+      "rss_kib": 4166488,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6026493952,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4255662080,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194974.3790693,
+      "rss_kib": 4169428,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6029377536,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4258574336,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194975.3799384,
+      "rss_kib": 4153012,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6012485632,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4241764352,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194976.3809211,
+      "rss_kib": 4153820,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6013513728,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4242591744,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194977.3823917,
+      "rss_kib": 4183084,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6043418624,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4272611328,
+      "file_bytes": 1707155456
+    },
+    {
+      "at": 1790194978.3836129,
+      "rss_kib": 4165320,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6025277440,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4254412800,
+      "file_bytes": 1707323392
+    },
+    {
+      "at": 1790194979.3843946,
+      "rss_kib": 4180372,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6040920064,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4269858816,
+      "file_bytes": 1707327488
+    },
+    {
+      "at": 1790194980.3853629,
+      "rss_kib": 4160244,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6020198400,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4249169920,
+      "file_bytes": 1707339776
+    },
+    {
+      "at": 1790194981.386334,
+      "rss_kib": 4160404,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6020694016,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4249333760,
+      "file_bytes": 1707569152
+    },
+    {
+      "at": 1790194982.3873205,
+      "rss_kib": 4151892,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6011756544,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4240617472,
+      "file_bytes": 1707593728
+    },
+    {
+      "at": 1790194983.388527,
+      "rss_kib": 4156420,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6016413696,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4245254144,
+      "file_bytes": 1707593728
+    },
+    {
+      "at": 1790194984.3894534,
+      "rss_kib": 4173764,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6034345984,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4263014400,
+      "file_bytes": 1707593728
+    },
+    {
+      "at": 1790194985.390413,
+      "rss_kib": 4157716,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6017941504,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4246581248,
+      "file_bytes": 1707593728
+    },
+    {
+      "at": 1790194986.391378,
+      "rss_kib": 4162256,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6022393856,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4251185152,
+      "file_bytes": 1707597824
+    },
+    {
+      "at": 1790194987.3925452,
+      "rss_kib": 4203204,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6064693248,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4293386240,
+      "file_bytes": 1707773952
+    },
+    {
+      "at": 1790194988.3935273,
+      "rss_kib": 4170180,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6030876672,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4259344384,
+      "file_bytes": 1707773952
+    },
+    {
+      "at": 1790194989.3944168,
+      "rss_kib": 4195944,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6057209856,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4285726720,
+      "file_bytes": 1707806720
+    },
+    {
+      "at": 1790194990.3954222,
+      "rss_kib": 4172736,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6033575936,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4261961728,
+      "file_bytes": 1707810816
+    },
+    {
+      "at": 1790194991.3967216,
+      "rss_kib": 4202432,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6064455680,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4292837376,
+      "file_bytes": 1707819008
+    },
+    {
+      "at": 1790194992.3977742,
+      "rss_kib": 4174180,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6034968576,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4263440384,
+      "file_bytes": 1707819008
+    },
+    {
+      "at": 1790194993.399311,
+      "rss_kib": 4163904,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6024466432,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4253089792,
+      "file_bytes": 1707855872
+    },
+    {
+      "at": 1790194994.4007292,
+      "rss_kib": 4179680,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6040846336,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4269137920,
+      "file_bytes": 1707864064
+    },
+    {
+      "at": 1790194995.401864,
+      "rss_kib": 4160312,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6020907008,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4249239552,
+      "file_bytes": 1707864064
+    },
+    {
+      "at": 1790194996.4028563,
+      "rss_kib": 4182724,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6044110848,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4272279552,
+      "file_bytes": 1707876352
+    },
+    {
+      "at": 1790194997.404142,
+      "rss_kib": 4166784,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6027616256,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4255866880,
+      "file_bytes": 1708077056
+    },
+    {
+      "at": 1790194998.4053621,
+      "rss_kib": 4169876,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6030761984,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4259033088,
+      "file_bytes": 1708077056
+    },
+    {
+      "at": 1790194999.4061928,
+      "rss_kib": 4171420,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6032334848,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4260614144,
+      "file_bytes": 1708077056
+    },
+    {
+      "at": 1790195000.407184,
+      "rss_kib": 4174512,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6035558400,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4263780352,
+      "file_bytes": 1708130304
+    },
+    {
+      "at": 1790195001.4084928,
+      "rss_kib": 4176836,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6037839872,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4266160128,
+      "file_bytes": 1708134400
+    },
+    {
+      "at": 1790195002.4094696,
+      "rss_kib": 4160348,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6021419008,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4249276416,
+      "file_bytes": 1708142592
+    },
+    {
+      "at": 1790195003.4102173,
+      "rss_kib": 4155292,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6016061440,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4244172800,
+      "file_bytes": 1708146688
+    },
+    {
+      "at": 1790195004.4111142,
+      "rss_kib": 4153976,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6014537728,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4242829312,
+      "file_bytes": 1708175360
+    },
+    {
+      "at": 1790195005.4120212,
+      "rss_kib": 4149372,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6010060800,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4238036992,
+      "file_bytes": 1708183552
+    },
+    {
+      "at": 1790195006.4128845,
+      "rss_kib": 4150980,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6011453440,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4239683584,
+      "file_bytes": 1708183552
+    },
+    {
+      "at": 1790195007.4139013,
+      "rss_kib": 4152528,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6013132800,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4241268736,
+      "file_bytes": 1708212224
+    },
+    {
+      "at": 1790195008.4155324,
+      "rss_kib": 4153300,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6013845504,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4242059264,
+      "file_bytes": 1708240896
+    },
+    {
+      "at": 1790195009.417071,
+      "rss_kib": 4153300,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6013849600,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4242059264,
+      "file_bytes": 1708240896
+    },
+    {
+      "at": 1790195010.4180846,
+      "rss_kib": 4153300,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6013849600,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4242059264,
+      "file_bytes": 1708244992
+    },
+    {
+      "at": 1790195011.4189138,
+      "rss_kib": 4153300,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6013890560,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4242059264,
+      "file_bytes": 1708244992
+    },
+    {
+      "at": 1790195012.4197307,
+      "rss_kib": 4139268,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5999558656,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4227690496,
+      "file_bytes": 1708318720
+    },
+    {
+      "at": 1790195013.4206364,
+      "rss_kib": 4129764,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5989834752,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4217958400,
+      "file_bytes": 1708326912
+    },
+    {
+      "at": 1790195014.421612,
+      "rss_kib": 4129792,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5989941248,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4217987072,
+      "file_bytes": 1708404736
+    },
+    {
+      "at": 1790195015.422447,
+      "rss_kib": 4129796,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5989974016,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4217987072,
+      "file_bytes": 1708404736
+    },
+    {
+      "at": 1790195016.4237304,
+      "rss_kib": 4129816,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5989998592,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4218011648,
+      "file_bytes": 1708437504
+    },
+    {
+      "at": 1790195017.4250422,
+      "rss_kib": 4129820,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5990002688,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4218011648,
+      "file_bytes": 1708437504
+    },
+    {
+      "at": 1790195018.426004,
+      "rss_kib": 4129828,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5990531072,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4218015744,
+      "file_bytes": 1708437504
+    },
+    {
+      "at": 1790195019.426875,
+      "rss_kib": 4130132,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5990559744,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4218335232,
+      "file_bytes": 1708560384
+    },
+    {
+      "at": 1790195020.4277234,
+      "rss_kib": 4130132,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5990707200,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4218335232,
+      "file_bytes": 1708560384
+    },
+    {
+      "at": 1790195021.428518,
+      "rss_kib": 4130152,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5990506496,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4218335232,
+      "file_bytes": 1708560384
+    },
+    {
+      "at": 1790195022.4295852,
+      "rss_kib": 4128196,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5988536320,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4216352768,
+      "file_bytes": 1708621824
+    },
+    {
+      "at": 1790195023.430763,
+      "rss_kib": 4127448,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987778560,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215586816,
+      "file_bytes": 1708642304
+    },
+    {
+      "at": 1790195024.4318767,
+      "rss_kib": 4127464,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987799040,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215603200,
+      "file_bytes": 1708646400
+    },
+    {
+      "at": 1790195025.4330142,
+      "rss_kib": 4127472,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5988065280,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215603200,
+      "file_bytes": 1708646400
+    },
+    {
+      "at": 1790195026.4344437,
+      "rss_kib": 4127480,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987835904,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215619584,
+      "file_bytes": 1708670976
+    },
+    {
+      "at": 1790195027.4358244,
+      "rss_kib": 4127488,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987876864,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215619584,
+      "file_bytes": 1708670976
+    },
+    {
+      "at": 1790195028.4368384,
+      "rss_kib": 4127488,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987876864,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215627776,
+      "file_bytes": 1708699648
+    },
+    {
+      "at": 1790195029.4377825,
+      "rss_kib": 4127488,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987876864,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215627776,
+      "file_bytes": 1708699648
+    },
+    {
+      "at": 1790195030.438869,
+      "rss_kib": 4127500,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5988392960,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215640064,
+      "file_bytes": 1708707840
+    },
+    {
+      "at": 1790195031.4400365,
+      "rss_kib": 4127500,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987897344,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215640064,
+      "file_bytes": 1708707840
+    },
+    {
+      "at": 1790195032.441741,
+      "rss_kib": 4127404,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5988302848,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215541760,
+      "file_bytes": 1708793856
+    },
+    {
+      "at": 1790195033.4434247,
+      "rss_kib": 4127176,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5988171776,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215541760,
+      "file_bytes": 1708793856
+    },
+    {
+      "at": 1790195034.4444237,
+      "rss_kib": 4127196,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987938304,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215541760,
+      "file_bytes": 1708793856
+    },
+    {
+      "at": 1790195035.445613,
+      "rss_kib": 4127196,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987680256,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215328768,
+      "file_bytes": 1708802048
+    },
+    {
+      "at": 1790195036.4469402,
+      "rss_kib": 4127196,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987680256,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215328768,
+      "file_bytes": 1708802048
+    },
+    {
+      "at": 1790195037.4493012,
+      "rss_kib": 4127208,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987700736,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215341056,
+      "file_bytes": 1708806144
+    },
+    {
+      "at": 1790195038.4508314,
+      "rss_kib": 4127216,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987708928,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215341056,
+      "file_bytes": 1708806144
+    },
+    {
+      "at": 1790195039.452227,
+      "rss_kib": 4127240,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987770368,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215349248,
+      "file_bytes": 1708810240
+    },
+    {
+      "at": 1790195040.453588,
+      "rss_kib": 4127256,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5988061184,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215349248,
+      "file_bytes": 1708810240
+    },
+    {
+      "at": 1790195041.4547727,
+      "rss_kib": 4127280,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987844096,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215390208,
+      "file_bytes": 1708875776
+    },
+    {
+      "at": 1790195042.455703,
+      "rss_kib": 4127116,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987676160,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215390208,
+      "file_bytes": 1708875776
+    },
+    {
+      "at": 1790195043.4566317,
+      "rss_kib": 4127208,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987962880,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215246848,
+      "file_bytes": 1708879872
+    },
+    {
+      "at": 1790195044.4574292,
+      "rss_kib": 4127216,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987794944,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215246848,
+      "file_bytes": 1708879872
+    },
+    {
+      "at": 1790195045.458561,
+      "rss_kib": 4127232,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987823616,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215349248,
+      "file_bytes": 1708896256
+    },
+    {
+      "at": 1790195046.459707,
+      "rss_kib": 4127276,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5988368384,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215349248,
+      "file_bytes": 1708896256
+    },
+    {
+      "at": 1790195047.4612632,
+      "rss_kib": 4127276,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5988134912,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215410688,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195048.4626217,
+      "rss_kib": 4127276,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987889152,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215410688,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195049.463645,
+      "rss_kib": 4127276,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987889152,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215410688,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195050.4647484,
+      "rss_kib": 4127276,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987889152,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215410688,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195051.4655366,
+      "rss_kib": 4127276,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987889152,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215410688,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195052.466642,
+      "rss_kib": 4127276,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987889152,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215410688,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195053.4677322,
+      "rss_kib": 4126960,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987569664,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215087104,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195054.468875,
+      "rss_kib": 4126936,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987803136,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215087104,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195055.4702313,
+      "rss_kib": 4126912,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987516416,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215062528,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195056.4715345,
+      "rss_kib": 4126912,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5987782656,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4215062528,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195057.4733121,
+      "rss_kib": 4133540,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 5994397696,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4221894656,
+      "file_bytes": 1708929024
+    },
+    {
+      "at": 1790195058.4747903,
+      "rss_kib": 4176600,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6039138304,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4266188800,
+      "file_bytes": 1709240320
+    },
+    {
+      "at": 1790195059.475632,
+      "rss_kib": 4157112,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6019198976,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4245962752,
+      "file_bytes": 1709473792
+    },
+    {
+      "at": 1790195060.4764326,
+      "rss_kib": 4167972,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6189002752,
+      "events": "low 0\nhigh 0\nmax 1405477\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4257079296,
+      "file_bytes": 1864450048
+    },
+    {
+      "at": 1790195061.4772356,
+      "rss_kib": 4175688,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6429237248,
+      "events": "low 0\nhigh 0\nmax 1405614\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4264984576,
+      "file_bytes": 2093449216
+    },
+    {
+      "at": 1790195062.478114,
+      "rss_kib": 4181660,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6442188800,
+      "events": "low 0\nhigh 0\nmax 1406244\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4271099904,
+      "file_bytes": 2099695616
+    },
+    {
+      "at": 1790195063.4790692,
+      "rss_kib": 4187604,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6107115520,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4277186560,
+      "file_bytes": 1764081664
+    },
+    {
+      "at": 1790195064.480094,
+      "rss_kib": 4182104,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6101585920,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4271554560,
+      "file_bytes": 1764257792
+    },
+    {
+      "at": 1790195065.4811826,
+      "rss_kib": 4184240,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6103793664,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4273741824,
+      "file_bytes": 1764257792
+    },
+    {
+      "at": 1790195066.4825249,
+      "rss_kib": 4178660,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6098231296,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4268027904,
+      "file_bytes": 1764298752
+    },
+    {
+      "at": 1790195067.4835613,
+      "rss_kib": 4185344,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6104989696,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4274872320,
+      "file_bytes": 1764298752
+    },
+    {
+      "at": 1790195068.4844704,
+      "rss_kib": 4171636,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6090969088,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4260835328,
+      "file_bytes": 1764298752
+    },
+    {
+      "at": 1790195069.4853,
+      "rss_kib": 4177060,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6096494592,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4266389504,
+      "file_bytes": 1764298752
+    },
+    {
+      "at": 1790195070.486319,
+      "rss_kib": 4177348,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6096756736,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4266684416,
+      "file_bytes": 1764298752
+    },
+    {
+      "at": 1790195071.4873831,
+      "rss_kib": 4169296,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6088478720,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4258439168,
+      "file_bytes": 1764298752
+    },
+    {
+      "at": 1790195072.4882264,
+      "rss_kib": 4169840,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6089129984,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4258996224,
+      "file_bytes": 1764298752
+    },
+    {
+      "at": 1790195073.4891942,
+      "rss_kib": 4182504,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6102089728,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4272099328,
+      "file_bytes": 1764302848
+    },
+    {
+      "at": 1790195074.4902089,
+      "rss_kib": 4211396,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6131810304,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4301791232,
+      "file_bytes": 1764302848
+    },
+    {
+      "at": 1790195075.491542,
+      "rss_kib": 4232488,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6153969664,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4324208640,
+      "file_bytes": 1764302848
+    },
+    {
+      "at": 1790195076.49341,
+      "rss_kib": 4192308,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6112133120,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4282003456,
+      "file_bytes": 1764302848
+    },
+    {
+      "at": 1790195077.4944074,
+      "rss_kib": 4231156,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6152290304,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4322009088,
+      "file_bytes": 1764302848
+    },
+    {
+      "at": 1790195078.4983718,
+      "rss_kib": 4202244,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6122450944,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4292177920,
+      "file_bytes": 1764302848
+    },
+    {
+      "at": 1790195079.4991295,
+      "rss_kib": 4263500,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6185259008,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4354969600,
+      "file_bytes": 1764311040
+    },
+    {
+      "at": 1790195080.5000172,
+      "rss_kib": 4195504,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6115532800,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4285353984,
+      "file_bytes": 1764327424
+    },
+    {
+      "at": 1790195081.5008936,
+      "rss_kib": 4206132,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6126972928,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4296220672,
+      "file_bytes": 1764794368
+    },
+    {
+      "at": 1790195082.502112,
+      "rss_kib": 4228352,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6149812224,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4319289344,
+      "file_bytes": 1764794368
+    },
+    {
+      "at": 1790195083.5033476,
+      "rss_kib": 4200368,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6121263104,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4290363392,
+      "file_bytes": 1764794368
+    },
+    {
+      "at": 1790195084.5044155,
+      "rss_kib": 4200660,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6121238528,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4290633728,
+      "file_bytes": 1764794368
+    },
+    {
+      "at": 1790195085.5053053,
+      "rss_kib": 4209972,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6130794496,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4300263424,
+      "file_bytes": 1764794368
+    },
+    {
+      "at": 1790195086.5079808,
+      "rss_kib": 4222984,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6144229376,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4313636864,
+      "file_bytes": 1764794368
+    },
+    {
+      "at": 1790195087.508829,
+      "rss_kib": 4281408,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6204129280,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4373315584,
+      "file_bytes": 1764859904
+    },
+    {
+      "at": 1790195088.5097592,
+      "rss_kib": 4204960,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6125641728,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4294959104,
+      "file_bytes": 1764859904
+    },
+    {
+      "at": 1790195089.5106118,
+      "rss_kib": 4198596,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6119161856,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4288479232,
+      "file_bytes": 1764859904
+    },
+    {
+      "at": 1790195090.511449,
+      "rss_kib": 4223912,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6145380352,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4314439680,
+      "file_bytes": 1765023744
+    },
+    {
+      "at": 1790195091.512755,
+      "rss_kib": 4192916,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6113816576,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4282851328,
+      "file_bytes": 1765240832
+    },
+    {
+      "at": 1790195092.5145023,
+      "rss_kib": 4176568,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6096855040,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4265885696,
+      "file_bytes": 1765240832
+    },
+    {
+      "at": 1790195093.51623,
+      "rss_kib": 4161324,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6081810432,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4250275840,
+      "file_bytes": 1765724160
+    },
+    {
+      "at": 1790195094.5174155,
+      "rss_kib": 4159420,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6080081920,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4248326144,
+      "file_bytes": 1765724160
+    },
+    {
+      "at": 1790195095.5182624,
+      "rss_kib": 4196832,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6118461440,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4286668800,
+      "file_bytes": 1765863424
+    },
+    {
+      "at": 1790195096.5191875,
+      "rss_kib": 4187680,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6109163520,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4277305344,
+      "file_bytes": 1765896192
+    },
+    {
+      "at": 1790195097.5201976,
+      "rss_kib": 4220248,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6142615552,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4311085056,
+      "file_bytes": 1765904384
+    },
+    {
+      "at": 1790195098.5217667,
+      "rss_kib": 4159128,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6079676416,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4248027136,
+      "file_bytes": 1765916672
+    },
+    {
+      "at": 1790195099.5237134,
+      "rss_kib": 4165020,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6085799936,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4254060544,
+      "file_bytes": 1765953536
+    },
+    {
+      "at": 1790195100.5250134,
+      "rss_kib": 4198368,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6120194048,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4288237568,
+      "file_bytes": 1765953536
+    },
+    {
+      "at": 1790195101.5260262,
+      "rss_kib": 4185368,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6106972160,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4274937856,
+      "file_bytes": 1766227968
+    },
+    {
+      "at": 1790195102.527227,
+      "rss_kib": 4240648,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6164070400,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4331909120,
+      "file_bytes": 1766232064
+    },
+    {
+      "at": 1790195103.5282304,
+      "rss_kib": 4237940,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6161301504,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4328972288,
+      "file_bytes": 1766301696
+    },
+    {
+      "at": 1790195104.5294318,
+      "rss_kib": 4179128,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6100922368,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4268646400,
+      "file_bytes": 1766301696
+    },
+    {
+      "at": 1790195105.5303621,
+      "rss_kib": 4203956,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6126141440,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4293931008,
+      "file_bytes": 1766301696
+    },
+    {
+      "at": 1790195106.533362,
+      "rss_kib": 4259772,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6183788544,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4351086592,
+      "file_bytes": 1766301696
+    },
+    {
+      "at": 1790195107.5348186,
+      "rss_kib": 4226628,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6149840896,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4317503488,
+      "file_bytes": 1766301696
+    },
+    {
+      "at": 1790195108.5363245,
+      "rss_kib": 4247060,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6170468352,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4338151424,
+      "file_bytes": 1766301696
+    },
+    {
+      "at": 1790195109.537263,
+      "rss_kib": 4182228,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6103740416,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4271681536,
+      "file_bytes": 1766301696
+    },
+    {
+      "at": 1790195110.5386026,
+      "rss_kib": 4242096,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6165880832,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4333654016,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195111.5400302,
+      "rss_kib": 4203032,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6125555712,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4293017600,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195112.5411186,
+      "rss_kib": 4195344,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6117699584,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4285190144,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195113.5426247,
+      "rss_kib": 4179412,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6101450752,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4268847104,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195114.5443306,
+      "rss_kib": 4149204,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6070349824,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4237864960,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195115.5460927,
+      "rss_kib": 4154724,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6076051456,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4243517440,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195116.5474515,
+      "rss_kib": 4164444,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6086230016,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4253470720,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195117.5485218,
+      "rss_kib": 4209288,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6132240384,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4299792384,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195118.5496778,
+      "rss_kib": 4191372,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6113628160,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4281085952,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195119.5509474,
+      "rss_kib": 4203620,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6126596096,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4294135808,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195120.5519938,
+      "rss_kib": 4198220,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6120722432,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4288102400,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195121.553034,
+      "rss_kib": 4158928,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6080307200,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4247822336,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195122.554539,
+      "rss_kib": 4168632,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6090268672,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4257759232,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195123.556047,
+      "rss_kib": 4226476,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6149623808,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4317270016,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195124.5571115,
+      "rss_kib": 4188352,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6110580736,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4277997568,
+      "file_bytes": 1766727680
+    },
+    {
+      "at": 1790195125.5583003,
+      "rss_kib": 4185208,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6107521024,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4274806784,
+      "file_bytes": 1766805504
+    },
+    {
+      "at": 1790195126.5600138,
+      "rss_kib": 4207340,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6130454528,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4297834496,
+      "file_bytes": 1766809600
+    },
+    {
+      "at": 1790195127.5612473,
+      "rss_kib": 4192812,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6115479552,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4282814464,
+      "file_bytes": 1766809600
+    },
+    {
+      "at": 1790195128.562184,
+      "rss_kib": 4158068,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6079762432,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4246941696,
+      "file_bytes": 1766809600
+    },
+    {
+      "at": 1790195129.563121,
+      "rss_kib": 4186724,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6109052928,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4276285440,
+      "file_bytes": 1766809600
+    },
+    {
+      "at": 1790195130.5641093,
+      "rss_kib": 4167820,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6089494528,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4256927744,
+      "file_bytes": 1766809600
+    },
+    {
+      "at": 1790195131.5658004,
+      "rss_kib": 4179160,
+      "hwm_kib": 5600268,
+      "cgroup_bytes": 6101422080,
+      "events": "low 0\nhigh 0\nmax 1406418\noom 0\noom_kill 0\noom_group_kill 0\n",
+      "anon_bytes": 4268748800,
+      "file_bytes": 1766821888
+    }
+  ],
+  "after_concurrent": {
+    "kernel": "Linux 6.8.0-138-generic x86_64 GNU/Linux",
+    "restart_count": 0,
+    "oom_killed": false,
+    "rss_kib": 4137980,
+    "cgroup_bytes": 5571702784,
+    "events": "low 0\nhigh 0\nmax 1407677\noom 0\noom_kill 0\noom_group_kill 0\n"
+  }
+}

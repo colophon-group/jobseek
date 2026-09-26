@@ -1,0 +1,3246 @@
+{
+  "timestamp": "2026-09-24T01:07:00.329Z",
+  "variant": "catalog7",
+  "dataset": "docs/experiments/jev-routing-diverse-intent-gold-2026-09-24.json",
+  "count": 64,
+  "filterExact": 63,
+  "discardExact": 0,
+  "discardLabelled": 0,
+  "records": [
+    {
+      "id": "diverse-atomic-01",
+      "split": "tune",
+      "group": "atomic",
+      "q": "accountant",
+      "locale": "en",
+      "latencyMs": 964,
+      "intent": "jobSearch",
+      "inputTokens": 1388,
+      "selected": [
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-atomic-02",
+      "split": "tune",
+      "group": "atomic",
+      "q": "pharmacist",
+      "locale": "en",
+      "latencyMs": 318,
+      "intent": "jobSearch",
+      "inputTokens": 1391,
+      "selected": [
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-atomic-03",
+      "split": "tune",
+      "group": "atomic",
+      "q": "customer success manager",
+      "locale": "en",
+      "latencyMs": 287,
+      "intent": "jobSearch",
+      "inputTokens": 3117,
+      "selected": [
+        {
+          "text": "customer success manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "customer success manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-atomic-04",
+      "split": "tune",
+      "group": "atomic",
+      "q": "warehouse associate",
+      "locale": "en",
+      "latencyMs": 312,
+      "intent": "jobSearch",
+      "inputTokens": 2075,
+      "selected": [
+        {
+          "text": "warehouse associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "warehouse associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-atomic-05",
+      "split": "holdout",
+      "group": "atomic",
+      "q": "compliance officer",
+      "locale": "en",
+      "latencyMs": 279,
+      "intent": "jobSearch",
+      "inputTokens": 2087,
+      "selected": [
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-atomic-06",
+      "split": "holdout",
+      "group": "atomic",
+      "q": "mechanical engineer",
+      "locale": "en",
+      "latencyMs": 288,
+      "intent": "jobSearch",
+      "inputTokens": 2089,
+      "selected": [
+        {
+          "text": "mechanical engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "mechanical engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-atomic-07",
+      "split": "holdout",
+      "group": "atomic",
+      "q": "recruiter",
+      "locale": "en",
+      "latencyMs": 284,
+      "intent": "jobSearch",
+      "inputTokens": 1391,
+      "selected": [
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-atomic-08",
+      "split": "holdout",
+      "group": "atomic",
+      "q": "supply chain manager",
+      "locale": "en",
+      "latencyMs": 289,
+      "intent": "jobSearch",
+      "inputTokens": 3124,
+      "selected": [
+        {
+          "text": "supply chain manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "supply chain manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-terse-01",
+      "split": "tune",
+      "group": "terse",
+      "q": "sr accountant basel",
+      "locale": "en",
+      "latencyMs": 304,
+      "intent": "jobSearch",
+      "inputTokens": 3132,
+      "selected": [
+        {
+          "text": "sr",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "basel",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "sr",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "basel",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-terse-02",
+      "split": "tune",
+      "group": "terse",
+      "q": "hr manager remote",
+      "locale": "en",
+      "latencyMs": 302,
+      "intent": "jobSearch",
+      "inputTokens": 3117,
+      "selected": [
+        {
+          "text": "hr manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "hr manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-terse-03",
+      "split": "tune",
+      "group": "terse",
+      "q": "salesforce sales engineer",
+      "locale": "en",
+      "latencyMs": 278,
+      "intent": "jobSearch",
+      "inputTokens": 3128,
+      "selected": [
+        {
+          "text": "sales engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "salesforce",
+          "category": "technology",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "sales engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": false,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-terse-04",
+      "split": "tune",
+      "group": "terse",
+      "q": "contract ux researcher paris",
+      "locale": "en",
+      "latencyMs": 373,
+      "intent": "jobSearch",
+      "inputTokens": 4169,
+      "selected": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "ux researcher",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "ux researcher",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-terse-05",
+      "split": "holdout",
+      "group": "terse",
+      "q": "jr auditor zurich",
+      "locale": "en",
+      "latencyMs": 284,
+      "intent": "jobSearch",
+      "inputTokens": 3128,
+      "selected": [
+        {
+          "text": "jr",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "auditor",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "jr",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "auditor",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-terse-06",
+      "split": "holdout",
+      "group": "terse",
+      "q": "sales manager hybrid london",
+      "locale": "en",
+      "latencyMs": 296,
+      "intent": "jobSearch",
+      "inputTokens": 4169,
+      "selected": [
+        {
+          "text": "sales manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "sales manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-terse-07",
+      "split": "holdout",
+      "group": "terse",
+      "q": "excel data analyst remote",
+      "locale": "en",
+      "latencyMs": 316,
+      "intent": "jobSearch",
+      "inputTokens": 4163,
+      "selected": [
+        {
+          "text": "excel",
+          "category": "technology",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "data analyst",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "excel",
+          "category": "technology",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "data analyst",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-terse-08",
+      "split": "holdout",
+      "group": "terse",
+      "q": "recruiter part time zurich",
+      "locale": "en",
+      "latencyMs": 282,
+      "intent": "jobSearch",
+      "inputTokens": 4187,
+      "selected": [
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-verbose-01",
+      "split": "tune",
+      "group": "verbose",
+      "q": "I'm looking for a remote executive assistant role in Berlin",
+      "locale": "en",
+      "latencyMs": 333,
+      "intent": "jobSearch",
+      "inputTokens": 10467,
+      "selected": [
+        {
+          "text": "I'm",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "looking",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "for",
+          "category": "discard",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "a",
+          "category": "discard",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 5,
+          "end": 7
+        },
+        {
+          "text": "role",
+          "category": "discard",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        },
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 5,
+          "end": 7
+        },
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-verbose-02",
+      "split": "tune",
+      "group": "verbose",
+      "q": "Please show senior marketing manager jobs in Paris",
+      "locale": "en",
+      "latencyMs": 328,
+      "intent": "jobSearch",
+      "inputTokens": 8355,
+      "selected": [
+        {
+          "text": "Please",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "show",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "senior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "marketing manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "jobs",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "senior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "marketing manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-verbose-03",
+      "split": "tune",
+      "group": "verbose",
+      "q": "Can you find operations manager roles near Geneva with hybrid work",
+      "locale": "en",
+      "latencyMs": 312,
+      "intent": "jobSearch",
+      "inputTokens": 11514,
+      "selected": [
+        {
+          "text": "Can",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "you",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "find",
+          "category": "discard",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "operations manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "roles",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        },
+        {
+          "text": "near",
+          "category": "discard",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        },
+        {
+          "text": "Geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "with",
+          "category": "discard",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        },
+        {
+          "text": "work",
+          "category": "discard",
+          "segment": 0,
+          "start": 10,
+          "end": 11
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "operations manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        },
+        {
+          "text": "Geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-verbose-04",
+      "split": "tune",
+      "group": "verbose",
+      "q": "Seeking a support engineer position in London",
+      "locale": "en",
+      "latencyMs": 337,
+      "intent": "jobSearch",
+      "inputTokens": 7320,
+      "selected": [
+        {
+          "text": "Seeking",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "a",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "support engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "position",
+          "category": "discard",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        },
+        {
+          "text": "London",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "support engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "London",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-verbose-05",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "I need a junior accountant job in Zurich preferably hybrid",
+      "locale": "en",
+      "latencyMs": 317,
+      "intent": "jobSearch",
+      "inputTokens": 10490,
+      "selected": [
+        {
+          "text": "I need",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "a",
+          "category": "discard",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "junior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "job",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        },
+        {
+          "text": "Zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "preferably",
+          "category": "discard",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "junior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "Zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 9,
+          "end": 10
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-verbose-06",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "Find an on site compliance officer role in Munich",
+      "locale": "en",
+      "latencyMs": 362,
+      "intent": "jobSearch",
+      "inputTokens": 9417,
+      "selected": [
+        {
+          "text": "Find",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "an",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "on site",
+          "category": "onsite",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        },
+        {
+          "text": "role",
+          "category": "discard",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 7,
+          "end": 8
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "on site",
+          "category": "onsite",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "compliance officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 4,
+          "end": 6
+        },
+        {
+          "text": "Munich",
+          "category": "location",
+          "segment": 0,
+          "start": 8,
+          "end": 9
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-verbose-07",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "Looking for legal counsel positions in Vienna",
+      "locale": "en",
+      "latencyMs": 296,
+      "intent": "jobSearch",
+      "inputTokens": 7317,
+      "selected": [
+        {
+          "text": "Looking",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "for",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "legal counsel",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "positions",
+          "category": "discard",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        },
+        {
+          "text": "Vienna",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "legal counsel",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "Vienna",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-verbose-08",
+      "split": "holdout",
+      "group": "verbose",
+      "q": "Any contract construction manager jobs around Hamburg",
+      "locale": "en",
+      "latencyMs": 392,
+      "intent": "jobSearch",
+      "inputTokens": 7303,
+      "selected": [
+        {
+          "text": "Any",
+          "category": "discard",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "construction manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "jobs",
+          "category": "discard",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        },
+        {
+          "text": "around",
+          "category": "discard",
+          "segment": 0,
+          "start": 5,
+          "end": 6
+        },
+        {
+          "text": "Hamburg",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "construction manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        },
+        {
+          "text": "Hamburg",
+          "category": "location",
+          "segment": 0,
+          "start": 6,
+          "end": 7
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-mistakes-01",
+      "split": "tune",
+      "group": "mistakes",
+      "q": "recruter remote berlin",
+      "locale": "en",
+      "latencyMs": 377,
+      "intent": "jobSearch",
+      "inputTokens": 3133,
+      "selected": [
+        {
+          "text": "recruter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "recruter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-mistakes-02",
+      "split": "tune",
+      "group": "mistakes",
+      "q": "pharmacst geneva",
+      "locale": "en",
+      "latencyMs": 278,
+      "intent": "jobSearch",
+      "inputTokens": 2095,
+      "selected": [
+        {
+          "text": "pharmacst",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "pharmacst",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-mistakes-03",
+      "split": "tune",
+      "group": "mistakes",
+      "q": "senor marketng manager paris",
+      "locale": "en",
+      "latencyMs": 278,
+      "intent": "jobSearch",
+      "inputTokens": 4190,
+      "selected": [
+        {
+          "text": "senor",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "marketng manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "senor",
+          "category": "seniority",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "marketng manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-mistakes-04",
+      "split": "tune",
+      "group": "mistakes",
+      "q": "warehose associate zurich",
+      "locale": "en",
+      "latencyMs": 602,
+      "intent": "jobSearch",
+      "inputTokens": 3131,
+      "selected": [
+        {
+          "text": "warehose associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "warehose associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-mistakes-05",
+      "split": "holdout",
+      "group": "mistakes",
+      "q": "accuntant hybrid basel",
+      "locale": "en",
+      "latencyMs": 319,
+      "intent": "jobSearch",
+      "inputTokens": 3146,
+      "selected": [
+        {
+          "text": "accuntant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "basel",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "accuntant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "basel",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-mistakes-06",
+      "split": "holdout",
+      "group": "mistakes",
+      "q": "compliace officer london",
+      "locale": "en",
+      "latencyMs": 313,
+      "intent": "jobSearch",
+      "inputTokens": 3137,
+      "selected": [
+        {
+          "text": "compliace officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "compliace officer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-mistakes-07",
+      "split": "holdout",
+      "group": "mistakes",
+      "q": "mechanicl engineer geneva",
+      "locale": "en",
+      "latencyMs": 269,
+      "intent": "jobSearch",
+      "inputTokens": 3146,
+      "selected": [
+        {
+          "text": "mechanicl engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "mechanicl engineer",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-mistakes-08",
+      "split": "holdout",
+      "group": "mistakes",
+      "q": "saless manager remote berlin",
+      "locale": "en",
+      "latencyMs": 330,
+      "intent": "jobSearch",
+      "inputTokens": 4168,
+      "selected": [
+        {
+          "text": "saless manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "saless manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multiword-01",
+      "split": "tune",
+      "group": "multiword",
+      "q": "customer success manager San Francisco",
+      "locale": "en",
+      "latencyMs": 373,
+      "intent": "jobSearch",
+      "inputTokens": 5207,
+      "selected": [
+        {
+          "text": "customer success manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "San Francisco",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "customer success manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "San Francisco",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multiword-02",
+      "split": "tune",
+      "group": "multiword",
+      "q": "executive assistant New York",
+      "locale": "en",
+      "latencyMs": 300,
+      "intent": "jobSearch",
+      "inputTokens": 4173,
+      "selected": [
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "New York",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "New York",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multiword-03",
+      "split": "tune",
+      "group": "multiword",
+      "q": "supply chain manager Paris",
+      "locale": "en",
+      "latencyMs": 394,
+      "intent": "jobSearch",
+      "inputTokens": 4166,
+      "selected": [
+        {
+          "text": "supply chain manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "supply chain manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multiword-04",
+      "split": "tune",
+      "group": "multiword",
+      "q": "data center technician Los Angeles",
+      "locale": "en",
+      "latencyMs": 308,
+      "intent": "jobSearch",
+      "inputTokens": 5213,
+      "selected": [
+        {
+          "text": "data center technician",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "Los Angeles",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "data center technician",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 3
+        },
+        {
+          "text": "Los Angeles",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 5
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multiword-05",
+      "split": "holdout",
+      "group": "multiword",
+      "q": "quality manager New York City",
+      "locale": "en",
+      "latencyMs": 294,
+      "intent": "jobSearch",
+      "inputTokens": 5205,
+      "selected": [
+        {
+          "text": "quality manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "New York City",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "quality manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "New York City",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 5
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multiword-06",
+      "split": "holdout",
+      "group": "multiword",
+      "q": "legal counsel United Kingdom",
+      "locale": "en",
+      "latencyMs": 296,
+      "intent": "jobSearch",
+      "inputTokens": 4173,
+      "selected": [
+        {
+          "text": "legal counsel",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "United Kingdom",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "legal counsel",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "United Kingdom",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multiword-07",
+      "split": "holdout",
+      "group": "multiword",
+      "q": "account executive San Diego",
+      "locale": "en",
+      "latencyMs": 287,
+      "intent": "jobSearch",
+      "inputTokens": 4173,
+      "selected": [
+        {
+          "text": "account executive",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "San Diego",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "account executive",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "San Diego",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multiword-08",
+      "split": "holdout",
+      "group": "multiword",
+      "q": "construction manager Los Angeles",
+      "locale": "en",
+      "latencyMs": 309,
+      "intent": "jobSearch",
+      "inputTokens": 4161,
+      "selected": [
+        {
+          "text": "construction manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Los Angeles",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "construction manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Los Angeles",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-employment-01",
+      "split": "tune",
+      "group": "employment",
+      "q": "part time cashier",
+      "locale": "en",
+      "latencyMs": 443,
+      "intent": "jobSearch",
+      "inputTokens": 3119,
+      "selected": [
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "part time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-employment-02",
+      "split": "tune",
+      "group": "employment",
+      "q": "contract accountant remote",
+      "locale": "en",
+      "latencyMs": 296,
+      "intent": "jobSearch",
+      "inputTokens": 3125,
+      "selected": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "accountant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-employment-03",
+      "split": "tune",
+      "group": "employment",
+      "q": "volunteer hr manager berlin",
+      "locale": "en",
+      "latencyMs": 330,
+      "intent": "jobSearch",
+      "inputTokens": 4175,
+      "selected": [
+        {
+          "text": "volunteer",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "hr manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "volunteer",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "hr manager",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-employment-04",
+      "split": "tune",
+      "group": "employment",
+      "q": "temporary warehouse associate london",
+      "locale": "en",
+      "latencyMs": 298,
+      "intent": "jobSearch",
+      "inputTokens": 4161,
+      "selected": [
+        {
+          "text": "temporary",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "warehouse associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "temporary",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "warehouse associate",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "london",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-employment-05",
+      "split": "holdout",
+      "group": "employment",
+      "q": "full time pharmacist in Zurich",
+      "locale": "en",
+      "latencyMs": 334,
+      "intent": "jobSearch",
+      "inputTokens": 5227,
+      "selected": [
+        {
+          "text": "full time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "Zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "full time",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "pharmacist",
+          "category": "occupation",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Zurich",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-employment-06",
+      "split": "holdout",
+      "group": "employment",
+      "q": "contract recruiter hybrid Paris",
+      "locale": "en",
+      "latencyMs": 318,
+      "intent": "jobSearch",
+      "inputTokens": 4185,
+      "selected": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "contract",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "recruiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-employment-07",
+      "split": "holdout",
+      "group": "employment",
+      "q": "remote executive assistant London",
+      "locale": "en",
+      "latencyMs": 423,
+      "intent": "jobSearch",
+      "inputTokens": 4171,
+      "selected": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "London",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "executive assistant",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "London",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-employment-08",
+      "split": "holdout",
+      "group": "employment",
+      "q": "temporary medical representative Geneva",
+      "locale": "en",
+      "latencyMs": 331,
+      "intent": "jobSearch",
+      "inputTokens": 4173,
+      "selected": [
+        {
+          "text": "temporary",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "medical representative",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "Geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "temporary",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "medical representative",
+          "category": "occupation",
+          "segment": 0,
+          "start": 1,
+          "end": 3
+        },
+        {
+          "text": "Geneva",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-unrelated-01",
+      "split": "tune",
+      "group": "unrelated",
+      "q": "sales report template",
+      "locale": "en",
+      "latencyMs": 445,
+      "intent": "other",
+      "inputTokens": 3117,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-unrelated-02",
+      "split": "tune",
+      "group": "unrelated",
+      "q": "accountant joke",
+      "locale": "en",
+      "latencyMs": 292,
+      "intent": "other",
+      "inputTokens": 2087,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-unrelated-03",
+      "split": "tune",
+      "group": "unrelated",
+      "q": "how to become a pharmacist",
+      "locale": "en",
+      "latencyMs": 285,
+      "intent": "other",
+      "inputTokens": 5217,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-unrelated-04",
+      "split": "tune",
+      "group": "unrelated",
+      "q": "manager training course",
+      "locale": "en",
+      "latencyMs": 287,
+      "intent": "other",
+      "inputTokens": 3117,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-unrelated-05",
+      "split": "holdout",
+      "group": "unrelated",
+      "q": "legal advice for tenants",
+      "locale": "en",
+      "latencyMs": 288,
+      "intent": "other",
+      "inputTokens": 4167,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-unrelated-06",
+      "split": "holdout",
+      "group": "unrelated",
+      "q": "warehouse shelving ideas",
+      "locale": "en",
+      "latencyMs": 425,
+      "intent": "other",
+      "inputTokens": 3130,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-unrelated-07",
+      "split": "holdout",
+      "group": "unrelated",
+      "q": "what is a compliance officer",
+      "locale": "en",
+      "latencyMs": 348,
+      "intent": "other",
+      "inputTokens": 5215,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-unrelated-08",
+      "split": "holdout",
+      "group": "unrelated",
+      "q": "Paris museum tickets",
+      "locale": "en",
+      "latencyMs": 296,
+      "intent": "other",
+      "inputTokens": 3117,
+      "selected": [],
+      "goldFilters": [],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multilingual-01",
+      "split": "tune",
+      "group": "multilingual",
+      "q": "Buchhalter Berlin hybrid",
+      "locale": "de",
+      "latencyMs": 273,
+      "intent": "jobSearch",
+      "inputTokens": 3303,
+      "selected": [
+        {
+          "text": "Buchhalter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Buchhalter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "Berlin",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "hybrid",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multilingual-02",
+      "split": "tune",
+      "group": "multilingual",
+      "q": "Responsable marketing Paris télétravail",
+      "locale": "fr",
+      "latencyMs": 304,
+      "intent": "jobSearch",
+      "inputTokens": 4381,
+      "selected": [
+        {
+          "text": "Responsable marketing",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "télétravail",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Responsable marketing",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "Paris",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "télétravail",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multilingual-03",
+      "split": "tune",
+      "group": "multilingual",
+      "q": "Contabile Milano remoto",
+      "locale": "it",
+      "latencyMs": 267,
+      "intent": "jobSearch",
+      "inputTokens": 3316,
+      "selected": [
+        {
+          "text": "Contabile",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "Milano",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "remoto",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Contabile",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "Milano",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "remoto",
+          "category": "remote",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multilingual-04",
+      "split": "tune",
+      "group": "multilingual",
+      "q": "Vertriebsleiter München",
+      "locale": "de",
+      "latencyMs": 281,
+      "intent": "jobSearch",
+      "inputTokens": 2267,
+      "selected": [
+        {
+          "text": "Vertriebsleiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "München",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Vertriebsleiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "München",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multilingual-05",
+      "split": "holdout",
+      "group": "multilingual",
+      "q": "Apotheker München Teilzeit",
+      "locale": "de",
+      "latencyMs": 311,
+      "intent": "jobSearch",
+      "inputTokens": 3328,
+      "selected": [
+        {
+          "text": "Apotheker",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "München",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "Teilzeit",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Apotheker",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "München",
+          "category": "location",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "Teilzeit",
+          "category": "employmentType",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multilingual-06",
+      "split": "holdout",
+      "group": "multilingual",
+      "q": "Conseiller juridique junior à Lyon",
+      "locale": "fr",
+      "latencyMs": 332,
+      "intent": "jobSearch",
+      "inputTokens": 5412,
+      "selected": [
+        {
+          "text": "Conseiller juridique",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "junior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "à",
+          "category": "discard",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        },
+        {
+          "text": "Lyon",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Conseiller juridique",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "junior",
+          "category": "seniority",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Lyon",
+          "category": "location",
+          "segment": 0,
+          "start": 4,
+          "end": 5
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multilingual-07",
+      "split": "holdout",
+      "group": "multilingual",
+      "q": "Responsabile vendite ibrido Roma",
+      "locale": "it",
+      "latencyMs": 298,
+      "intent": "jobSearch",
+      "inputTokens": 4388,
+      "selected": [
+        {
+          "text": "Responsabile vendite",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "ibrido",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Roma",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Responsabile vendite",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 2
+        },
+        {
+          "text": "ibrido",
+          "category": "hybrid",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "Roma",
+          "category": "location",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    },
+    {
+      "id": "diverse-multilingual-08",
+      "split": "holdout",
+      "group": "multilingual",
+      "q": "Lagermitarbeiter in Hamburg remote",
+      "locale": "de",
+      "latencyMs": 320,
+      "intent": "jobSearch",
+      "inputTokens": 4359,
+      "selected": [
+        {
+          "text": "Lagermitarbeiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "in",
+          "category": "discard",
+          "segment": 0,
+          "start": 1,
+          "end": 2
+        },
+        {
+          "text": "Hamburg",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldFilters": [
+        {
+          "text": "Lagermitarbeiter",
+          "category": "occupation",
+          "segment": 0,
+          "start": 0,
+          "end": 1
+        },
+        {
+          "text": "Hamburg",
+          "category": "location",
+          "segment": 0,
+          "start": 2,
+          "end": 3
+        },
+        {
+          "text": "remote",
+          "category": "remote",
+          "segment": 0,
+          "start": 3,
+          "end": 4
+        }
+      ],
+      "goldDiscard": [],
+      "filterExact": true,
+      "discardExact": null
+    }
+  ]
+}

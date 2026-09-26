@@ -313,6 +313,19 @@ def mark_reachable_response(url: str) -> None:
         tracker.note_response(host, 200)
 
 
+def mark_external_response(url: str, status_code: int) -> None:
+    """Track the final response of an origin request made by a Go runtime.
+
+    The selected Workday list phase runs outside the httpx transport, but its
+    final status must still feed the existing host/provider circuit decision.
+    """
+    tracker = _request_host_tracker.get()
+    host = urlparse(url).hostname
+    if tracker is not None and host:
+        tracker.note_request(host, url)
+        tracker.note_response(host, status_code)
+
+
 def mark_provider_incident(url: str, *, incident: str) -> None:
     """Attach a verified provider incident to the current task outcome."""
 

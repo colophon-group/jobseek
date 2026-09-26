@@ -822,17 +822,15 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
     ]
     assert executor["healthcheck"]["test"] == [  # type: ignore[index]
         "CMD",
-        "/app/.venv/bin/python",
-        "-m",
-        "src.lightpanda.executor",
-        "--healthcheck",
+        "/usr/local/bin/lightpanda-b0-supervisor",
+        "executor-health",
     ]
-    assert executor["healthcheck"]["timeout"] == "3s"  # type: ignore[index]
+    assert executor["healthcheck"]["timeout"] == "15s"  # type: ignore[index]
     assert executor["healthcheck"]["interval"] == "5s"  # type: ignore[index]
     assert executor["healthcheck"]["retries"] == 3  # type: ignore[index]
-    # Three attempts span 19 seconds from the first invocation, exceeding the
-    # executor's 15-second commit bound while keeping its DB pool at one.
-    assert 2 * 5 + 3 * 3 > 15
+    # Three attempts can span beyond the executor's 15-second commit bound
+    # while keeping its DB pool at one.
+    assert 2 * 5 + 3 * 15 > 15
     assert executor["environment"] == {  # type: ignore[index]
         "CRAWLER_DB_POOL_MAX": "1",
         "CRAWLER_DB_POOL_MIN": "1",
@@ -1023,10 +1021,23 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
     arm_restart = wrapper.index("arm_and_verify_active_restart_policies", active_receipt)
     assert pending_restart_check < active_receipt < arm_restart
     assert wrapper.index("activation_failure_containment_armed=0", active_receipt) > active_receipt
-    activation_save = wrapper.index("persist_redis_rdb", wrapper.index("--apply --expect-digest"))
+    activation_apply = wrapper.index("--apply --expect-digest")
+    producer_stop = wrapper.index(
+        '"${compose_enabled[@]}" stop --timeout 15 lightpanda-producer', activation_apply
+    )
+    activation_save = wrapper.index("persist_redis_rdb", producer_stop)
+    producer_restart = wrapper.index(
+        '"${compose_enabled[@]}" up -d --no-deps --force-recreate lightpanda-producer',
+        activation_save,
+    )
     enabled_start = wrapper.index('"${compose_enabled[@]}" up -d --force-recreate', activation_save)
     assert (
-        wrapper.index("--apply --expect-digest") < activation_save < enabled_start < active_receipt
+        activation_apply
+        < producer_stop
+        < activation_save
+        < producer_restart
+        < enabled_start
+        < active_receipt
     )
     assert "trap contain_activation_failure EXIT" in wrapper
     rollback_attestation = wrapper.index('attest_receipt "$RECEIPT_STATE"')
@@ -1067,6 +1078,7 @@ def test_b0_cutover_is_host_locked_digest_gated_and_deploy_fail_closed() -> None
         (False, 41, "OK", 41),
         (True, 0, "OK", 124),
         (False, 0, "LOST", 1),
+        (False, 0, "BUSY_THEN_LOST", 1),
     ],
 )
 def test_deploy_generated_fresh_env_reaches_activation_plan(
@@ -1105,6 +1117,8 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
             f"TEST_PLAN_TIMEOUT={int(plan_timeout)}",
             f"TEST_APPLY_STATUS={apply_status}",
             f"TEST_SAVE_REPLY={save_reply}",
+            f'TEST_SAVE_COUNTER="{tmp_path / "save-counter"}"',
+            "sleep() { :; }",
             f"sha256sum() {{ cat >/dev/null; printf '{'d' * 64}  -\\n'; }}",
             "timeout() {",
             '  original="$*"; shift 4',
@@ -1130,8 +1144,15 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
             '    *\\ plan\\ --operation\\ activate\\ *) printf \'{"digest": "%s"}\\n\' '
             '"$TEST_PLAN_DIGEST"; return 0 ;;',
             '    *\\ lightpanda-b0-activation\\ activate\\ *) return "$TEST_APPLY_STATUS" ;;',
-            "    *\\ exec\\ -T\\ redis\\ redis-cli\\ --raw\\ SAVE) "
-            "printf '%s\\n' \"$TEST_SAVE_REPLY\"; return 0 ;;",
+            "    *\\ exec\\ -T\\ redis\\ redis-cli\\ --raw\\ SAVE) ",
+            '      if [[ "$TEST_SAVE_REPLY" == BUSY_THEN_LOST ]]; then',
+            '        count=0; [[ ! -f "$TEST_SAVE_COUNTER" ]] || count="$(<"$TEST_SAVE_COUNTER")"',
+            '        count=$((count + 1)); printf "%s\\n" "$count" >"$TEST_SAVE_COUNTER"',
+            '        if [[ "$count" == 1 ]]; then '
+            'printf "ERR Background save already in progress\\n"; return 0; fi',
+            '        printf "LOST\\n"; return 0',
+            "      fi",
+            "      printf '%s\\n' \"$TEST_SAVE_REPLY\"; return 0 ;;",
             "    *) return 0 ;;",
             "  esac",
             "}",
@@ -1191,11 +1212,17 @@ def test_deploy_generated_fresh_env_reaches_activation_plan(
     assert set(f"{key}={value}" for key, value in receipt_identity.items()).issubset(
         set(receipt.read_text(encoding="utf-8").splitlines())
     )
-    assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
     if apply_status == 0:
         save = next(index for index, event in enumerate(events) if " redis-cli --raw SAVE" in event)
         assert apply < save
+        if save_reply == "BUSY_THEN_LOST":
+            assert sum(" redis-cli --raw SAVE" in event for event in events) == 2
+        assert not any(
+            " up -d --no-deps --force-recreate lightpanda-producer" in event
+            for event in events[save + 1 :]
+        )
         assert not any(" up -d --force-recreate worker-1 worker-2" in event for event in events)
+    assert "state=pending" in receipt.read_text(encoding="utf-8").splitlines()
 
 
 def _write_activation_receipt(
@@ -1769,7 +1796,18 @@ def test_pending_receipt_recovery_settles_before_plan_and_restores_python(
     tombstone_clear = next(
         index for index, event in enumerate(events) if " clear-rollback-tombstone " in event
     )
+    final_save = max(
+        index
+        for index, event in enumerate(events)
+        if " exec -T redis redis-cli --raw SAVE" in event
+    )
+    redis_ready = next(
+        index
+        for index, event in enumerate(events)
+        if index > final_save and "-f docker-compose.yml ps -q redis" in event
+    )
     assert settle < plan < apply < sentinel_clear < tombstone_clear < base_start
+    assert final_save < redis_ready < base_start
     assert not receipt.exists()
 
 

@@ -7,7 +7,10 @@ No authentication required.
 
 from __future__ import annotations
 
+import hashlib
+import os
 import re
+from contextlib import suppress
 from pathlib import Path
 
 import httpx
@@ -27,6 +30,51 @@ from src.shared.truncation import truncated_rich_result
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
+_CAPTURE_DIR = Path("/tmp")
+_CAPTURE_MAX_BYTES = 64 << 20
+_CAPTURE_TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}")
+
+
+def _capture_scheduled_response(token: str, response: httpx.Response) -> None:
+    """Retain selected natural API bytes without issuing another request."""
+    selected = {
+        item.strip()
+        for item in os.environ.get("ASHBY_CAPTURE_TOKENS", "").split(",")
+        if item.strip()
+    }
+    if not selected or token not in selected or _CAPTURE_TOKEN.fullmatch(token) is None:
+        return
+    if len(selected) > 4 or len(response.content) > _CAPTURE_MAX_BYTES:
+        log.warning("ashby.capture_skipped", reason="selection_or_size")
+        return
+    path = _CAPTURE_DIR / f"jobseek-ashby-{token}.body"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    created = False
+    try:
+        fd = os.open(path, flags, 0o600)
+        created = True
+        with os.fdopen(fd, "wb") as output:
+            output.write(response.content)
+            output.flush()
+            os.fsync(output.fileno())
+    except FileExistsError:
+        return
+    except OSError as exc:
+        if created:
+            with suppress(OSError):
+                path.unlink(missing_ok=True)
+        log.warning("ashby.capture_failed", error_type=type(exc).__name__)
+    else:
+        log.info(
+            "ashby.response_captured",
+            token=token,
+            status=response.status_code,
+            bytes=len(response.content),
+            sha256=hashlib.sha256(response.content).hexdigest(),
+        )
+
 
 _PAGE_PATTERNS = [
     re.compile(r"api\.ashbyhq\.com/posting-api/job-board/([\w-]+)"),
@@ -224,6 +272,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     url = _api_url(token)
     params = {"includeCompensation": "true"}
     response = await client.get(url, params=params)
+    _capture_scheduled_response(token, response)
     if response.status_code == 404:
         # Ashby returns 404 when the board token has been removed
         # upstream. Surface as a provider-gone confirmation signal.

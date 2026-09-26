@@ -26,11 +26,15 @@ repository data must not mask a live provider failure or a legitimate
 zero-result search.
 
 Filter-bearing document requests are normalized by `proxy.ts` to the same
-queryless cached shell. The address bar keeps the original query. After
-hydration, `ExploreContent` reads `window.location.search`, requests the
-personalized/filtered result directly through the scoped browser Typesense key,
-and replaces the anonymous defaults. Explicit taxonomy slugs resolve in the
-same browser `multi_search`; semantic free text alone uses the narrow canonical
+queryless cached shell. The address bar keeps the original query. The cached
+HTML renders the full interactive `SearchPage` tree. A parser-time script
+checks URL filters and viewer-hint cookies before painting: it hides the
+queryless results and shows a skeleton until the browser-specific result has
+committed. The same guard runs before paint on SPA navigation. This avoids
+showing unrelated top companies or switching between two card layouts.
+`ExploreContent` requests personalized/filtered results directly through the
+scoped browser Typesense key. Explicit taxonomy slugs resolve in the same
+browser `multi_search`; semantic free text alone uses the narrow canonical
 parser action because it needs request geolocation.
 
 Do not add request-bound `searchParams`, `headers()`, or `cookies()` reads to
@@ -47,7 +51,7 @@ For an anonymous, unfiltered navigation:
 | `/:lang/explore` document | CDN / Cache Component | Anonymous defaults are cached by locale |
 | Currency-rate table | Embedded in app layout | Hourly server cache; no browser request |
 | App bootstrap | Client provider | Skipped when `logged_in` hint is absent |
-| Default inventory refresh | Browser-direct Typesense | No Vercel Server Action fallback |
+| Default inventory check | Browser-direct Typesense | No Vercel Server Action fallback; changed results are offered through a button |
 | JS, CSS, fonts, logos | Static/image CDN | Normal asset caching applies |
 | Analytics | Vercel telemetry | Post-load, not application data |
 
@@ -58,16 +62,18 @@ the production build.
 Filtered URLs and job-language-hinted viewers initialize through browser-direct
 Typesense after hydration. Signed-in preferences reuse `fetchAppBootstrap()`
 from the shared app layout; Explore does not issue a second page-data action.
-The anonymous result shell remains visible in raw HTML while JavaScript loads;
-the client shows the busy skeleton only while replacing stale defaults with
-filtered data. A failed scoped read keeps the URL-derived filters and an
+The queryless result tree remains in raw HTML for crawlers and anonymous,
+unfiltered visitors. Filtered and viewer-hinted browsers see the skeleton from
+first paint. A failed scoped read keeps the URL-derived filters and an
 explicit unavailable state—it never restores the broader queryless snapshot.
+On the unfiltered page, a fresher direct result is offered with “Show latest
+results” so cards do not silently reorder during reading.
 
 ## Interactive requests
 
 | Operation | Preferred path | Server Action fallback / mutation |
 |-----------|----------------|-----------------------------------|
-| Default inventory refresh | Browser-direct Typesense | None |
+| Default inventory check | Browser-direct Typesense | None |
 | Filter-bearing initial mount | Browser-direct Typesense; narrow semantic parser for free text | None for result data |
 | Search/filter change | Browser-direct Typesense runner | Search Server Action when direct access is unavailable or request exceeds the public bound |
 | Load more companies/postings | Browser-direct where supported | Bounded read action |

@@ -1,0 +1,44 @@
+[
+  {
+    "variant": "baseline",
+    "path": "/en/company/aircall",
+    "first_cpu_ms": 1447.735,
+    "warm_requests": 5,
+    "warm_cpu_median_ms": 46.88
+  },
+  {
+    "variant": "baseline",
+    "path": "/fr/company/hellofresh",
+    "first_cpu_ms": 239.689,
+    "warm_requests": 5,
+    "warm_cpu_median_ms": 64.96
+  },
+  {
+    "variant": "prefetch",
+    "path": "/en/company/aircall",
+    "first_cpu_ms": 923.105,
+    "warm_requests": 5,
+    "warm_cpu_median_ms": 53.436
+  },
+  {
+    "variant": "prefetch",
+    "path": "/fr/company/hellofresh",
+    "first_cpu_ms": 73.928,
+    "warm_requests": 5,
+    "warm_cpu_median_ms": 34.645
+  },
+  {
+    "variant": "seeded",
+    "path": "/en/company/aircall",
+    "first_cpu_ms": 508.837,
+    "warm_requests": 5,
+    "warm_cpu_median_ms": 7.701
+  },
+  {
+    "variant": "seeded",
+    "path": "/fr/company/hellofresh",
+    "first_cpu_ms": 944.908,
+    "warm_requests": 5,
+    "warm_cpu_median_ms": 7.343
+  }
+]

@@ -35,6 +35,9 @@ const (
 
 var producerCohorts = map[string]map[string]struct{}{
 	"c1": set("browser-use-careers"),
+	"c2": set("browser-use-careers", "kandou-ai-careers"),
+	"c3": set("browser-use-careers", "eclypsium-careers", "kandou-ai-careers"),
+	// c4 is retained for the frozen four-origin admission fixture, not production cutover.
 	"c4": set("browser-use-careers", "eclypsium-careers", "kandou-ai-careers", "poke-and-wiggle-careers"),
 }
 
@@ -79,7 +82,9 @@ func producerConfigFromEnvironment() (producerConfig, error) {
 		DefaultDelay: env("THROTTLE_DELAY_DEFAULT", "2.0"),
 		ClientUID:    uint32(clientUID),
 	}
-	if _, ok := producerCohorts[result.Cohort]; !ok || !safeID.MatchString(result.Namespace) || result.Socket != producerSocketPath || result.ClientUID == uint32(os.Geteuid()) {
+	if _, ok := producerCohorts[result.Cohort]; !ok || !safeID.MatchString(result.Namespace) ||
+		(result.Cohort == "c4" && result.Namespace != "admission-b0") ||
+		result.Socket != producerSocketPath || result.ClientUID == uint32(os.Geteuid()) {
 		return producerConfig{}, errors.New("invalid fixed B0 producer identity")
 	}
 	if err := result.Route.validate(); err != nil {
@@ -151,7 +156,6 @@ type producerResponse struct {
 type producerQueue interface {
 	preflight(context.Context, bool, producerOwnerIdentity) (bool, error)
 	initializeProducer(context.Context, producerOwnerIdentity) error
-	persistProducer(context.Context) error
 	lifetimeOccupancy(context.Context) (int64, error)
 	inspect(context.Context, string) (*storedTask, error)
 	activateLegacy(context.Context, *queueTask, int64, string, string, bool, bool, producerOwnerIdentity) (transition, error)
@@ -204,7 +208,7 @@ type producerOwnerIdentity struct {
 }
 
 func (owner producerOwnerIdentity) validate() error {
-	if !safeID.MatchString(owner.Namespace) || !contains(set("c1", "c4"), owner.Cohort) ||
+	if !safeID.MatchString(owner.Namespace) || !contains(set("c1", "c2", "c3", "c4"), owner.Cohort) ||
 		owner.Route.validate() != nil || owner.Route.EngineOwner != engineOwner ||
 		len(owner.BoardSlugs) == 0 || len(owner.BoardSlugs) > 16 || !sort.StringsAreSorted(owner.BoardSlugs) {
 		return errors.New("invalid producer owner identity")
@@ -563,9 +567,6 @@ func (p *b0Producer) acquireMutationAuthority(ctx context.Context) (func(), erro
 				succeeded = true
 				return release, nil
 			}
-			if err := p.queue.persistProducer(ctx); err != nil {
-				return nil, producerQueueAuthority(err)
-			}
 			if err := p.sentinel.publishActive(); err != nil {
 				return nil, authorityLost("corruption")
 			}
@@ -578,10 +579,10 @@ func (p *b0Producer) acquireMutationAuthority(ctx context.Context) (func(), erro
 			return nil, authorityLost("corruption")
 		}
 	}
+	// The pending cutover receipt contains this lane until the wrapper saves
+	// the owner and all transferred tasks to Redis before starting claimants.
+	// A synchronous SAVE here cannot fit the producer request deadline.
 	if err := p.queue.initializeProducer(ctx, p.owner); err != nil {
-		return nil, producerQueueAuthority(err)
-	}
-	if err := p.queue.persistProducer(ctx); err != nil {
 		return nil, producerQueueAuthority(err)
 	}
 	if p.sentinel != nil {

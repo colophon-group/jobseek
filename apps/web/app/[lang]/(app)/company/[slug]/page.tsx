@@ -19,6 +19,15 @@ type Props = {
   params: Promise<{ lang: string; slug: string }>;
 };
 
+export function generateStaticParams() {
+  // next.config derives one seed from the canonical CSV at build time. A
+  // nonempty leaf seed lets Partial Prefetching upgrade unlisted slugs after
+  // their first visit, without building every company in every locale.
+  const slug = process.env.COMPANY_PRERENDER_SLUG;
+  if (!slug) throw new Error("Missing build-time company prerender seed");
+  return [{ slug }];
+}
+
 /**
  * Keep the dynamic route's metadata and body on one cache-stable data
  * snapshot. Next.js currently has a Cache Components/PPR resume defect when

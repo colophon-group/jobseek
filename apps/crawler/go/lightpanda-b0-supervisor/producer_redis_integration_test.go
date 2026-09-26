@@ -756,16 +756,13 @@ func TestRealRedisPersistenceSeed(t *testing.T) {
 	if err := queue.initializeProducer(ctx, owner); err != nil {
 		t.Fatal(err)
 	}
-	if err := queue.persistProducer(ctx); err != nil {
-		t.Fatalf("owner persistence failed: %v", err)
-	}
 	result, err := queue.activateLegacy(
 		ctx, &task, 123000, integrationLegacyConfig(task), "", true, false, owner,
 	)
 	if err != nil || result.Reason != "activated" || result.SecondaryValue != 1 {
 		t.Fatalf("persistent activation failed: %#v %v", result, err)
 	}
-	if err := queue.persistProducer(ctx); err != nil {
+	if err := client.Save(ctx).Err(); err != nil {
 		t.Fatalf("record persistence failed: %v", err)
 	}
 }

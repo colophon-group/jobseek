@@ -1,0 +1,38 @@
+{
+  "captured_at": "2026-09-23T16:26:26Z",
+  "purpose": "Gated full active-only signed-int64 UUID ordering production trial",
+  "preflight": "docs/evidence/candidate-order-active-prod-2026-09-23-retry-preflight.json",
+  "key_version": "uuid-int64-active-v1",
+  "typesense_version": "27.1",
+  "server_type": "Hetzner CX33",
+  "container_memory_limit_bytes": 6442450944,
+  "active_ids_exported_and_stamped": 2344524,
+  "active_ids_gzip_sha256": "93943f5d18a20041c61d10b2c37e2d079a23ffa7732594f68ee60147b3736116",
+  "schema_alter": "succeeded",
+  "checkpoints": [
+    {"stamped": 50000, "allocated_bytes": 3319899568, "anonymous_bytes": 3840114688, "representative_stable_query_p95_ms": 111, "sampled_values_correct": true},
+    {"stamped": 250000, "allocated_bytes": 3348726368, "anonymous_bytes": 3861618688, "representative_stable_query_p95_ms": 108, "sampled_values_correct": true},
+    {"stamped": 500000, "allocated_bytes": 3399265488, "anonymous_bytes": 3902021632, "representative_stable_query_p95_ms": 115, "sampled_values_correct": true},
+    {"stamped": 1000000, "allocated_bytes": 3466255968, "anonymous_bytes": 3969191936, "representative_stable_query_p95_ms": 116, "sampled_values_correct": true},
+    {"stamped": 1500000, "allocated_bytes": 3539220392, "anonymous_bytes": 4067811328, "representative_stable_query_p95_ms": 149, "sampled_values_correct": true},
+    {"stamped": 2000000, "allocated_bytes": 3611206776, "anonymous_bytes": 4098662400, "representative_stable_query_p95_ms": 119, "sampled_values_correct": true},
+    {"stamped": 2344524, "allocated_bytes": 3673054576, "anonymous_bytes": 4207251456, "representative_stable_query_p95_ms": 123, "sampled_values_correct": true}
+  ],
+  "full_active_after_45s_idle": {
+    "documents": 5528729,
+    "active_documents": 2344585,
+    "allocated_bytes": 3673606240,
+    "anonymous_bytes": 4206690304,
+    "resident_bytes": 4137279488,
+    "slab_unreclaimable_bytes": 2441128,
+    "host_available_bytes": 3130331136,
+    "effective_headroom_bytes": 1947504640,
+    "representative_stable_query_p95_ms": 107,
+    "representative_query_samples": 20,
+    "oom_events": 0,
+    "container_restarts": 0
+  },
+  "decision": "observed production memory and query gates passed; keep fields and stamped values",
+  "readiness_receipt_issued": false,
+  "remaining_work": "Deploy the producer for new and relisted postings, run a fresh full 256-partition reconciliation with zero unresolved rows, then issue the readiness receipt and verify required web reads. Sixty-one active postings appeared after the export and before the final count."
+}

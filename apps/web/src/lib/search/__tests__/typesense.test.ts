@@ -31,6 +31,7 @@ import { clearTypesenseBrowserConfig } from "../typesense-browser-key";
 import { resolveTypesenseCompany } from "../typesense-company";
 import { POSTING_BASE_FILTER } from "../typesense-filters";
 import { TypesenseSearchProvider } from "../typesense";
+import { getAiSearchEligibility } from "@/lib/ai-filter/search-eligibility";
 
 const NOW = Math.floor(Date.UTC(2026, 5, 19) / 1000);
 const DAY = 86_400;
@@ -951,5 +952,88 @@ describe("resolveTypesenseCompany", () => {
     blank.company_slug = "";
 
     expect(resolveTypesenseCompany("company-a", [blank])).toBeNull();
+  });
+});
+
+
+describe.each(["server", "browser"] as const)("%s grouped keyword pages", (transport) => {
+  const params = { keywords: ["engineer"], languages: ["en"], locale: "en", offset: 3, limit: 3 };
+
+  function setup(raw: Record<string, unknown>) {
+    const respond = (collection: string, query: Record<string, unknown>) => {
+      if (collection === "company") return { found: 0, hits: [] };
+      if (query.group_by === "company_id") return raw;
+      return { found: 30, facet_counts: [{ field_name: "company_id", counts: [
+        { value: "a", count: 12 }, { value: "b", count: 10 }, { value: "c", count: 8 },
+      ] }] };
+    };
+    mocks.search.mockImplementation(async (collection, query) => respond(collection, query));
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input), "https://jobseek.test");
+      if (url.pathname === "/api/typesense-key") return Response.json({
+        host: "typesense.test", port: 443, protocol: "https", apiKey: "scoped",
+        expiresAt: Date.now() + 600_000,
+      });
+      const collection = url.pathname.split("/")[2];
+      const query = Object.fromEntries(url.searchParams);
+      mocks.browserCalls.push({ collection, params: query });
+      return Response.json(respond(collection, query));
+    }));
+    return transport === "server" ? new TypesenseSearchProvider() : new TypesenseBrowserProvider();
+  }
+
+  function response(found = 9, ids = ["a", "b", "c", "lookahead"]) {
+    return { found, found_docs: 37, ...groupedPostingsFor(ids) };
+  }
+
+  it.each([9, 1, 999])("uses found=%i only for display, and preserves exact posting counts", async (found) => {
+    const result = await setup(response(found)).search(params);
+    expect(result.totalCompanies).toBe(found);
+    expect(result.totalPostings).toBe(37);
+    expect(result.nextOffset).toBe(6);
+    expect(result.companies.map((c) => c.company.id)).toEqual(["a", "b", "c"]);
+    expect(result.companies.map((c) => c.yearMatches)).toEqual([12, 10, 8]);
+    const calls = transport === "server" ? mocks.calls : mocks.browserCalls;
+    const grouped = calls.find((call) => call.params.group_by === "company_id")!.params;
+    expect(String(grouped.offset)).toBe("3");
+    expect(String(grouped.limit)).toBe("4");
+    for (const key of ["facet_by", "facet_strategy", "max_facet_values", "page", "per_page"]) {
+      expect(grouped).not.toHaveProperty(key);
+    }
+    const year = calls.find((call) => call.params.facet_by === "company_id")!.params;
+    expect(year.facet_strategy).toBe("exhaustive");
+    expect(String(year.filter_by)).not.toContain("is_active");
+    expect(String(year.filter_by)).not.toContain("lookahead");
+  });
+
+  it.each([[[]], [["a"]], [["a", "b", "c"]]])("stops on a final page despite an overestimated total: %j", async (ids) => {
+    const result = await setup(response(999, ids)).search(params);
+    expect(result.nextOffset).toBeNull();
+  });
+
+  it("advances by raw groups even when company enrichment drops a row", async () => {
+    const raw = response();
+    raw.grouped_hits[1].hits = [blankCompanyPostingHit("b", "Engineer")];
+    const result = await setup(raw).search(params);
+    expect(result.companies.map((c) => c.company.id)).toEqual(["a", "c"]);
+    expect(result.nextOffset).toBe(6);
+  });
+
+  it.each([undefined, -1, 1.5, "9"])("degrades malformed group counts: %s", async (found) => {
+    const result = await setup({ ...response(), found }).search(params);
+    expect(result).toEqual({ companies: [], totalCompanies: 0, degraded: true });
+  });
+
+  it.each([[9999, "eligible"], [10000, "eligible"], [10001, "too_broad"]] as const)(
+    "keeps the exact narrowing boundary at %i postings", async (foundDocs, expected) => {
+      const result = await setup({ ...response(1), found_docs: foundDocs }).search(params);
+      expect(result.totalPostings).toBe(foundDocs);
+      expect(getAiSearchEligibility({ isSubscribed: true, hasSearchFilters: true, candidateCount: result.totalPostings }).status).toBe(expected);
+    },
+  );
+
+  it("does not present cutoff results as a complete page", async () => {
+    const result = await setup({ ...response(), search_cutoff: true }).search(params);
+    expect(result.degraded).toBe(true);
   });
 });

@@ -1,0 +1,40 @@
+{
+  "captured_at": "2026-09-23T14:14:50Z",
+  "purpose": "Predeclared safety gates for active-only signed-int64 UUID ordering",
+  "typesense_version": "27.1",
+  "server_type": "Hetzner CX33",
+  "container_memory_limit_bytes": 6442450944,
+  "backup": {
+    "fresh_encrypted_backup_completed_at": "2026-09-23T14:13:39Z",
+    "local_consistent_snapshot_path": "/jobseek-snapshots/candidate-order-active-pre-20260923",
+    "local_consistent_snapshot_success": true
+  },
+  "baseline": {
+    "documents": 5517962,
+    "active_documents": 2337398,
+    "eligible_documents": 2293004,
+    "allocated_bytes": 3317704120,
+    "resident_bytes": 3765956608,
+    "anonymous_bytes": 3839926272,
+    "slab_unreclaimable_bytes": 2427704,
+    "host_available_bytes": 3507494912,
+    "effective_headroom_bytes": 667107328,
+    "representative_query_found": 1115,
+    "representative_query_p95_ms_after_warmup": 112,
+    "representative_query_samples": 20,
+    "container_restarts": 0,
+    "oom_events": 0
+  },
+  "stop_thresholds": {
+    "maximum_anonymous_plus_unreclaimable_slab_bytes": 4831838208,
+    "maximum_resident_bytes": 5368709120,
+    "minimum_host_available_bytes": 1610612736,
+    "maximum_representative_query_p95_ms": 224,
+    "container_restarts_allowed": 0,
+    "oom_events_allowed": 0,
+    "minimum_collection_document_count_ratio": 0.99
+  },
+  "checkpoints": [50000, 250000, 1000000, 2000000, "full_active_set"],
+  "decision_rule": "At 50k enforce observed gates. From 250k onward, project full-active-set anonymous memory from the incremental slope since the prior checkpoint and stop before the next batch if the projected value exceeds 4.5 GiB. Also stop on any observed gate breach. Keep the readiness receipt unset and clear stamped values plus drop fields after an early stop.",
+  "memory_method": "The prior all-document trial's effective headroom stayed below 1 GiB after every trial value and schema field was removed. Cgroup memory.stat then showed 3.82 GiB anonymous memory and 2.50 GiB file cache, including 1.77 GiB active file cache; the query p95 recovered to 96 ms with zero OOM/restarts. This trial records cache-sensitive effective headroom but gates on anonymous memory, resident bytes, host MemAvailable, latency, and OOM/restarts."
+}

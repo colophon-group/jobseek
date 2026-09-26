@@ -5,7 +5,47 @@ import type { CompanySuggestion } from "@/lib/actions/company";
 import type { LocationSuggestion } from "@/lib/actions/locations";
 import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
 import type { WorkMode } from "@/lib/search/types";
-import { runSearchBarTypeahead } from "@/lib/search/typeahead-runner";
+import type { SearchBarTermResult, SearchBarTypeaheadResults } from "@/lib/search/typeahead-contract";
+import { runSearchBarTermTypeahead, runSearchBarTypeahead } from "@/lib/search/typeahead-runner";
+
+type TermSuggestion<T> = T & { sourceTerm?: string };
+
+/** Earlier terms plus one adjacent phrase, capped at four taxonomy probes. */
+export function priorTermQueries(query: string): string[] {
+  const words = query.trim().split(/[\s,\/|]+/).filter(Boolean);
+  // In a long sentence the three words before the cursor are often
+  // connective text or fragments of a larger title. The active term stays
+  // fast; Jev handles the full sentence after its longer idle period.
+  if (words.length > 7) return [];
+  const earlier = words.slice(0, -1).filter((word) => word.length >= 2 && word.length <= 80);
+  const singles = earlier.slice(-3);
+  const terms = [...singles];
+  if (singles.length === 2 || (singles.length === 3 && singles[2] === singles[2].toLowerCase())) {
+    const pair = `${singles[singles.length - 2]} ${singles[singles.length - 1]}`;
+    if (query.toLowerCase().includes(pair.toLowerCase())) terms.push(pair);
+  }
+  return [...new Set(terms)].slice(0, 4);
+}
+
+function distinctById<T extends { id: number }>(items: T[]): T[] {
+  const seen = new Set<number>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function exactTermCandidate<T extends { name: string; slug: string; matchedName?: string }>(
+  term: string, candidates: T[],
+): T[] {
+  const normalized = term.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "");
+  const exact = candidates.filter((item) => [item.name, item.slug, item.matchedName]
+    .some((name) => name?.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "") === normalized));
+  // Ambiguous place/alias names remain a choice rather than silently taking
+  // the highest-ranked hit; the dropdown still lets the user pick explicitly.
+  return exact.slice(0, 2);
+}
 
 /**
  * Work-mode autocomplete entries - fixed three values, matched
@@ -45,11 +85,12 @@ export function matchWorkModes(query: string, alreadySelected: ReadonlySet<WorkM
 }
 
 type TypeaheadResults = {
-  locationResults: LocationSuggestion[];
+  sourceQuery: string;
+  locationResults: TermSuggestion<LocationSuggestion>[];
   companyResults: CompanySuggestion[];
-  occupationResults: TaxonomySuggestion[];
-  seniorityResults: TaxonomySuggestion[];
-  technologyResults: TaxonomySuggestion[];
+  occupationResults: TermSuggestion<TaxonomySuggestion>[];
+  seniorityResults: TermSuggestion<TaxonomySuggestion>[];
+  technologyResults: TermSuggestion<TaxonomySuggestion>[];
 };
 
 type TypeaheadFilters = {
@@ -108,15 +149,17 @@ export function useSearchBarTypeahead({
   clearResults: () => void;
   fetchSuggestions: (query: string) => void;
 } {
-  const [locationResults, setLocationResults] = useState<LocationSuggestion[]>([]);
+  const [locationResults, setLocationResults] = useState<TermSuggestion<LocationSuggestion>[]>([]);
   const [companyResults, setCompanyResults] = useState<CompanySuggestion[]>([]);
-  const [occupationResults, setOccupationResults] = useState<TaxonomySuggestion[]>([]);
-  const [seniorityResults, setSeniorityResults] = useState<TaxonomySuggestion[]>([]);
-  const [technologyResults, setTechnologyResults] = useState<TaxonomySuggestion[]>([]);
+  const [occupationResults, setOccupationResults] = useState<TermSuggestion<TaxonomySuggestion>[]>([]);
+  const [seniorityResults, setSeniorityResults] = useState<TermSuggestion<TaxonomySuggestion>[]>([]);
+  const [technologyResults, setTechnologyResults] = useState<TermSuggestion<TaxonomySuggestion>[]>([]);
+  const [sourceQuery, setSourceQuery] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestGenerationRef = useRef(0);
 
   const clearResultState = useCallback(() => {
+    setSourceQuery("");
     setLocationResults([]);
     setCompanyResults([]);
     setOccupationResults([]);
@@ -150,7 +193,12 @@ export function useSearchBarTypeahead({
         return;
       }
 
-      const hasWorkModeMatches = matchWorkModes(query, selectedWorkModes).length > 0;
+      // Show fast matches for the term the user is editing. Whole-query
+      // routing is a separate, slower request after a longer idle pause.
+      const termQuery = query.trim().split(/[\s,\/|]+/).filter(Boolean).at(-1) ?? query.trim();
+      const priorTerms = priorTermQueries(query);
+
+      const hasWorkModeMatches = matchWorkModes(termQuery, selectedWorkModes).length > 0;
       if (hasWorkModeMatches) {
         onOpen();
       }
@@ -181,35 +229,84 @@ export function useSearchBarTypeahead({
         debounceRef.current = null;
         onResetActiveIndex();
 
-        void runSearchBarTypeahead({
-          query,
+        const common = {
           locale: lang,
           userLat,
           userLng,
-          includeCompanies: !scopedToCompany,
           locationFilters: filtersExcluding("locationIds"),
           occupationFilters: filtersExcluding("occupationIds"),
           seniorityFilters: filtersExcluding("seniorityIds"),
           technologyFilters: filtersExcluding("technologyIds"),
-        })
-          .then((results) => {
+        };
+        const activeRequest: Promise<SearchBarTypeaheadResults | null> =
+          priorTerms.length > 0 && hasWorkModeMatches
+            ? Promise.resolve(null)
+            : runSearchBarTypeahead({
+                query: termQuery,
+                includeCompanies: !scopedToCompany,
+                ...common,
+              }).catch(() => null);
+        // Older terms are useful once the user pauses on the active term.
+        // Delay their batch by another 200 ms to avoid a taxonomy batch
+        // on each moderately paced keystroke of a longer sentence.
+        const priorRequest: Promise<SearchBarTermResult[]> = priorTerms.length
+          ? new Promise((resolve) => setTimeout(() => {
+              if (requestGenerationRef.current !== generation) { resolve([]); return; }
+              void runSearchBarTermTypeahead({ terms: priorTerms, ...common })
+                .then(resolve, () => resolve([]));
+            }, 200))
+          : Promise.resolve([]);
+        const apply = (results: SearchBarTypeaheadResults | null, prior: SearchBarTermResult[]) => {
             if (requestGenerationRef.current !== generation) return;
-
-            const locations = selectedLocationIds
-              ? results.locations.filter((item) => !selectedLocationIds.has(item.id))
-              : results.locations.filter((item) => !selectedLocationSlugs.has(item.slug));
-            const occupations = results.occupations.filter(
+            if (!results && prior.length === 0) {
+              clearResultState();
+              if (hasWorkModeMatches) onOpen();
+              else onClose();
+              return;
+            }
+            // When the active word already names a taxonomy item exactly,
+            // suppress loose alias/prefix hits from other dimensions. For
+            // example, "designer" should not advertise Staff merely because
+            // a Staff alias contains the word designer.
+            const activeCategories: Array<Array<{ name: string; slug: string; matchedName?: string }>> = results ? [results.locations, results.occupations,
+              results.seniorities, results.technologies] : [];
+            const hasActiveExact = priorTerms.length > 0 && activeCategories.some((items) =>
+              exactTermCandidate(termQuery, items).length > 0);
+            const active = <T extends { name: string; slug: string; matchedName?: string }>(items: T[] | undefined): T[] =>
+              hasActiveExact ? exactTermCandidate(termQuery, items ?? []) : (items ?? []);
+            const coveredByPhrase = new Set(prior.filter((entry) => entry.term.includes(" ") &&
+              [entry.locations, entry.occupations, entry.seniorities, entry.technologies]
+                .some((items) => exactTermCandidate(entry.term, items as Array<{ name: string; slug: string; matchedName?: string }>).length > 0))
+              .flatMap((entry) => entry.term.toLowerCase().split(/\s+/)));
+            const usefulPrior = prior.filter((entry) => entry.term.includes(" ") ||
+              !coveredByPhrase.has(entry.term.toLowerCase()));
+            const locations = distinctById([
+              ...usefulPrior.flatMap((entry) => exactTermCandidate(entry.term, entry.locations).map((item) => ({ ...item, sourceTerm: entry.term }))),
+              ...active(results?.locations).map((item) => ({ ...item, sourceTerm: termQuery })),
+            ]).filter((item) => selectedLocationIds
+              ? !selectedLocationIds.has(item.id) : !selectedLocationSlugs.has(item.slug));
+            const occupations = distinctById([
+              ...usefulPrior.flatMap((entry) => exactTermCandidate(entry.term, entry.occupations).map((item) => ({ ...item, sourceTerm: entry.term }))),
+              ...active(results?.occupations).map((item) => ({ ...item, sourceTerm: termQuery })),
+            ]).filter(
               (item) => !selectedOccupationIds.has(item.id),
             );
-            const seniorities = results.seniorities.filter(
+            const seniorities = distinctById([
+              ...usefulPrior.flatMap((entry) => exactTermCandidate(entry.term, entry.seniorities).map((item) => ({ ...item, sourceTerm: entry.term }))),
+              ...active(results?.seniorities).map((item) => ({ ...item, sourceTerm: termQuery })),
+            ]).filter(
               (item) => !selectedSeniorityIds.has(item.id),
             );
-            const technologies = results.technologies.filter(
+            const technologies = distinctById([
+              ...usefulPrior.flatMap((entry) => exactTermCandidate(entry.term, entry.technologies).map((item) => ({ ...item, sourceTerm: entry.term }))),
+              ...active(results?.technologies).map((item) => ({ ...item, sourceTerm: termQuery })),
+            ]).filter(
               (item) => !selectedTechnologyIds.has(item.id),
             );
 
             setLocationResults(locations);
-            setCompanyResults(scopedToCompany ? [] : results.companies);
+            setSourceQuery(termQuery);
+            setCompanyResults(scopedToCompany || hasActiveExact ? [] : (results?.companies ?? []));
             setOccupationResults(occupations);
             setSeniorityResults(seniorities);
             setTechnologyResults(technologies);
@@ -226,17 +323,11 @@ export function useSearchBarTypeahead({
             } else {
               onClose();
             }
-          })
-          .catch(() => {
-            if (requestGenerationRef.current !== generation) return;
-            // Explicit failure policy: retain prior results while a current
-            // query is loading, then clear them if every direct/server
-            // fallback path for that generation fails. Client-only work-mode
-            // matches remain visible because they need no network response.
-            clearResultState();
-            if (hasWorkModeMatches) onOpen();
-            else onClose();
-          });
+        };
+        if (priorTerms.length > 0) {
+          void activeRequest.then((results) => { if (results) apply(results, []); });
+        }
+        void Promise.all([activeRequest, priorRequest]).then(([results, prior]) => apply(results, prior));
       }, 200);
     },
     [
@@ -267,6 +358,7 @@ export function useSearchBarTypeahead({
 
   return {
     locationResults,
+    sourceQuery,
     companyResults,
     occupationResults,
     seniorityResults,

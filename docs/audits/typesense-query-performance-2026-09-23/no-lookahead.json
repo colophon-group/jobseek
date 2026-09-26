@@ -1,0 +1,358 @@
+{
+  "captured_at": "2026-09-23T20:25:55.801647+00:00",
+  "complete": true,
+  "concurrency": 1,
+  "repeats": 15,
+  "warmups": 2,
+  "debug": {
+    "state": 1,
+    "version": "27.1"
+  },
+  "documents_before": 5552787,
+  "memory_before": {
+    "system_memory_total_bytes": "8127721472",
+    "system_memory_total_swap_bytes": "0",
+    "system_memory_used_bytes": "5083934720",
+    "system_memory_used_swap_bytes": "0",
+    "typesense_memory_active_bytes": "4163022848",
+    "typesense_memory_allocated_bytes": "3699222752",
+    "typesense_memory_fragmentation_ratio": "0.11",
+    "typesense_memory_mapped_bytes": "4333006848",
+    "typesense_memory_metadata_bytes": "90394928",
+    "typesense_memory_resident_bytes": "4163022848",
+    "typesense_memory_retained_bytes": "6508220416"
+  },
+  "note": "Resident metric is not RSS; no claim of steady-memory savings. Live CDC may change paired results.",
+  "cases": {
+    "remote_english": {
+      "parameters": {
+        "before": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false && location_types:=[remote] && locales:=[en]",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10,
+          "facet_by": "company_id",
+          "facet_strategy": "exhaustive",
+          "max_facet_values": 1
+        },
+        "after": {
+          "q": "software engineer",
+          "query_by": "title",
+          "filter_by": "is_active:true && has_content:!=false && location_types:=[remote] && locales:=[en]",
+          "sort_by": "_text_match:desc,first_seen_at:desc",
+          "group_by": "company_id",
+          "group_limit": 10,
+          "offset": 0,
+          "typo_tokens_threshold": 1,
+          "drop_tokens_threshold": 1,
+          "use_cache": "false",
+          "limit": 10
+        }
+      },
+      "mismatches": [],
+      "before": {
+        "median_ms": 906,
+        "p95_ms": 1167,
+        "observations": [
+          {
+            "server_ms": 1032,
+            "wall_ms": 1199.078,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 885,
+            "wall_ms": 1014.729,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 822,
+            "wall_ms": 1026.278,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 929,
+            "wall_ms": 1058.657,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 906,
+            "wall_ms": 1033.711,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 871,
+            "wall_ms": 997.474,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 922,
+            "wall_ms": 1049.962,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 945,
+            "wall_ms": 1078.094,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 857,
+            "wall_ms": 986.18,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 866,
+            "wall_ms": 1011.684,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 873,
+            "wall_ms": 1010.565,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 897,
+            "wall_ms": 1122.867,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 971,
+            "wall_ms": 1118.968,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1167,
+            "wall_ms": 1310.681,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 913,
+            "wall_ms": 1044.586,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      },
+      "after": {
+        "median_ms": 912,
+        "p95_ms": 1172,
+        "observations": [
+          {
+            "server_ms": 999,
+            "wall_ms": 1142.89,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 873,
+            "wall_ms": 1002.885,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 912,
+            "wall_ms": 1045.733,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1037,
+            "wall_ms": 1210.441,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 930,
+            "wall_ms": 1127.07,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1056,
+            "wall_ms": 1226.177,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 868,
+            "wall_ms": 1171.563,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1060,
+            "wall_ms": 1225.45,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 828,
+            "wall_ms": 957.63,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 906,
+            "wall_ms": 1059.105,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 894,
+            "wall_ms": 1067.401,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 968,
+            "wall_ms": 1151.518,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 883,
+            "wall_ms": 1023.988,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 1172,
+            "wall_ms": 1307.246,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          },
+          {
+            "server_ms": 893,
+            "wall_ms": 1029.591,
+            "projection_sha256": "8e73d83d675e615203607872776897ad51163e28cbd3cb445a615c7e0c0b1e0a",
+            "found": 466,
+            "found_docs": 2516,
+            "returned_groups": 10,
+            "has_more": true
+          }
+        ]
+      }
+    }
+  },
+  "memory_after": {
+    "system_memory_total_bytes": "8127721472",
+    "system_memory_total_swap_bytes": "0",
+    "system_memory_used_bytes": "5127806976",
+    "system_memory_used_swap_bytes": "0",
+    "typesense_memory_active_bytes": "4155953152",
+    "typesense_memory_allocated_bytes": "3693169936",
+    "typesense_memory_fragmentation_ratio": "0.11",
+    "typesense_memory_mapped_bytes": "4353929216",
+    "typesense_memory_metadata_bytes": "90394928",
+    "typesense_memory_resident_bytes": "4155953152",
+    "typesense_memory_retained_bytes": "6487298048"
+  },
+  "documents_after": 5552939
+}

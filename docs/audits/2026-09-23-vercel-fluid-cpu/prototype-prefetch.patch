@@ -1,0 +1,6 @@
+diff --git a/apps/web/next.config.ts b/apps/web/next.config.ts
+index 779d742ff..03cc8339c 100644
+--- a/apps/web/next.config.ts
++++ b/apps/web/next.config.ts
+@@ -68,0 +69 @@ export const nextConfig: NextConfig = {
++  partialPrefetching: true,

@@ -1,0 +1,1737 @@
+{
+  "variant": "natural",
+  "split": "tune",
+  "top": [
+    {
+      "config": {
+        "threshold": 0.3,
+        "literalWorkMode": true,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 26,
+      "filtersExact": 26,
+      "keywordsExact": 26,
+      "fieldExact": {
+        "keywords": 26,
+        "locations": 49,
+        "occupations": 38,
+        "seniorities": 52,
+        "technologies": 50,
+        "workMode": 52,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 1
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 1
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 2
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 3
+        }
+      },
+      "filterPrecision": 0.9285714285714286,
+      "filterRecall": 0.5842696629213483,
+      "filterF1": 0.7172413793103448
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "literalWorkMode": true,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 26,
+      "filtersExact": 26,
+      "keywordsExact": 26,
+      "fieldExact": {
+        "keywords": 26,
+        "locations": 49,
+        "occupations": 38,
+        "seniorities": 52,
+        "technologies": 50,
+        "workMode": 52,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 1
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 1
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 2
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 3
+        }
+      },
+      "filterPrecision": 0.9285714285714286,
+      "filterRecall": 0.5842696629213483,
+      "filterF1": 0.7172413793103448
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "literalWorkMode": true,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 26,
+      "filtersExact": 26,
+      "keywordsExact": 26,
+      "fieldExact": {
+        "keywords": 26,
+        "locations": 49,
+        "occupations": 38,
+        "seniorities": 52,
+        "technologies": 50,
+        "workMode": 52,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 1
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 1
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 2
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 3
+        }
+      },
+      "filterPrecision": 0.9285714285714286,
+      "filterRecall": 0.5842696629213483,
+      "filterF1": 0.7172413793103448
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "literalWorkMode": true,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 26,
+      "filtersExact": 26,
+      "keywordsExact": 26,
+      "fieldExact": {
+        "keywords": 26,
+        "locations": 49,
+        "occupations": 38,
+        "seniorities": 52,
+        "technologies": 50,
+        "workMode": 52,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 1
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 1
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 2
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 3
+        }
+      },
+      "filterPrecision": 0.9285714285714286,
+      "filterRecall": 0.5842696629213483,
+      "filterF1": 0.7172413793103448
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "literalWorkMode": false,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 24,
+      "filtersExact": 25,
+      "keywordsExact": 25,
+      "fieldExact": {
+        "keywords": 25,
+        "locations": 49,
+        "occupations": 38,
+        "seniorities": 52,
+        "technologies": 50,
+        "workMode": 48,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 1
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 0
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 2
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 2
+        }
+      },
+      "filterPrecision": 0.8548387096774194,
+      "filterRecall": 0.5955056179775281,
+      "filterF1": 0.7019867549668873
+    },
+    {
+      "config": {
+        "threshold": 0.45,
+        "literalWorkMode": false,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 24,
+      "filtersExact": 25,
+      "keywordsExact": 25,
+      "fieldExact": {
+        "keywords": 25,
+        "locations": 49,
+        "occupations": 38,
+        "seniorities": 52,
+        "technologies": 50,
+        "workMode": 48,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 1
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 0
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 2
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 2
+        }
+      },
+      "filterPrecision": 0.8548387096774194,
+      "filterRecall": 0.5955056179775281,
+      "filterF1": 0.7019867549668873
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "literalWorkMode": false,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 23,
+      "filtersExact": 24,
+      "keywordsExact": 24,
+      "fieldExact": {
+        "keywords": 24,
+        "locations": 44,
+        "occupations": 37,
+        "seniorities": 52,
+        "technologies": 49,
+        "workMode": 47,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 0
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 0
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 1
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 3
+        }
+      },
+      "filterPrecision": 0.86,
+      "filterRecall": 0.48314606741573035,
+      "filterF1": 0.6187050359712231
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "literalWorkMode": true,
+        "longestFirst": false
+      },
+      "count": 56,
+      "exact": 23,
+      "filtersExact": 23,
+      "keywordsExact": 23,
+      "fieldExact": {
+        "keywords": 23,
+        "locations": 44,
+        "occupations": 37,
+        "seniorities": 52,
+        "technologies": 49,
+        "workMode": 49,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 0
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 0
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 1
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 3
+        }
+      },
+      "filterPrecision": 0.9318181818181818,
+      "filterRecall": 0.4606741573033708,
+      "filterF1": 0.6165413533834587
+    },
+    {
+      "config": {
+        "threshold": 0.6,
+        "literalWorkMode": true,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 23,
+      "filtersExact": 23,
+      "keywordsExact": 23,
+      "fieldExact": {
+        "keywords": 23,
+        "locations": 44,
+        "occupations": 37,
+        "seniorities": 52,
+        "technologies": 49,
+        "workMode": 49,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 0
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 6
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 0
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 1
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 3
+        }
+      },
+      "filterPrecision": 0.9318181818181818,
+      "filterRecall": 0.4606741573033708,
+      "filterF1": 0.6165413533834587
+    },
+    {
+      "config": {
+        "threshold": 0.3,
+        "literalWorkMode": false,
+        "longestFirst": true
+      },
+      "count": 56,
+      "exact": 22,
+      "filtersExact": 25,
+      "keywordsExact": 23,
+      "fieldExact": {
+        "keywords": 23,
+        "locations": 49,
+        "occupations": 38,
+        "seniorities": 52,
+        "technologies": 49,
+        "workMode": 48,
+        "employmentTypes": 56
+      },
+      "groups": {
+        "atomic": {
+          "count": 8,
+          "exact": 7
+        },
+        "terse": {
+          "count": 8,
+          "exact": 0
+        },
+        "verbose": {
+          "count": 8,
+          "exact": 5
+        },
+        "mistakes": {
+          "count": 8,
+          "exact": 0
+        },
+        "multiword": {
+          "count": 8,
+          "exact": 2
+        },
+        "unrelated": {
+          "count": 8,
+          "exact": 6
+        },
+        "multilingual": {
+          "count": 8,
+          "exact": 2
+        }
+      },
+      "filterPrecision": 0.8524590163934426,
+      "filterRecall": 0.5842696629213483,
+      "filterF1": 0.6933333333333332
+    }
+  ],
+  "bestMismatches": [
+    {
+      "id": "atomic-06",
+      "q": "staff",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "staff"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "terse-01",
+      "q": "sr swe zurich",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "swe"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "zurich",
+          "category": "location",
+          "slug": "zurich",
+          "probability": 0.63
+        },
+        {
+          "text": "sr",
+          "category": "seniority",
+          "slug": "senior",
+          "probability": 0.53
+        }
+      ]
+    },
+    {
+      "id": "terse-02",
+      "q": "wfh py dev",
+      "gold": {
+        "keywords": [
+          "py"
+        ],
+        "locations": [],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "py",
+          "dev"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "wfh",
+          "category": "remote",
+          "slug": "remote",
+          "probability": 0.63
+        }
+      ]
+    },
+    {
+      "id": "terse-03",
+      "q": "jr data analyst",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "data-analyst"
+        ],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "data",
+          "analyst"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "entry"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "jr",
+          "category": "seniority",
+          "slug": "entry",
+          "probability": 0.7
+        }
+      ]
+    },
+    {
+      "id": "terse-04",
+      "q": "react dev berlin",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "react"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "react",
+          "dev"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "berlin",
+          "category": "location",
+          "slug": "berlin",
+          "probability": 0.52
+        }
+      ]
+    },
+    {
+      "id": "terse-05",
+      "q": "go backend remote",
+      "gold": {
+        "keywords": [
+          "backend"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "golang"
+        ],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "go",
+          "backend"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "slug": "remote",
+          "probability": 0.51
+        }
+      ]
+    },
+    {
+      "id": "terse-06",
+      "q": "sde 2 london",
+      "gold": {
+        "keywords": [
+          "2"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "sde",
+          "2"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "london",
+          "category": "location",
+          "slug": "london-england-united-kingdom",
+          "probability": 0.58
+        }
+      ]
+    },
+    {
+      "id": "terse-08",
+      "q": "pm hybrid",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "product-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "pm",
+          "hybrid"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "verbose-02",
+      "q": "I want a hybrid product designer position around Berlin",
+      "gold": {
+        "keywords": [
+          "I",
+          "want",
+          "a",
+          "position",
+          "around"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "hybrid"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "I",
+          "want",
+          "a",
+          "hybrid",
+          "product",
+          "designer",
+          "position",
+          "around"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Berlin",
+          "category": "location",
+          "slug": "berlin",
+          "probability": 0.79
+        }
+      ]
+    },
+    {
+      "id": "verbose-06",
+      "q": "I'm interested in staff backend developer roles working from home",
+      "gold": {
+        "keywords": [
+          "I'm",
+          "interested",
+          "in",
+          "roles",
+          "working",
+          "from",
+          "home"
+        ],
+        "locations": [],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "I'm",
+          "interested",
+          "in",
+          "backend",
+          "developer",
+          "roles",
+          "working",
+          "from",
+          "home"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [
+          "staff"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "staff",
+          "category": "seniority",
+          "slug": "staff",
+          "probability": 0.7
+        }
+      ]
+    },
+    {
+      "id": "mistakes-01",
+      "q": "remtoe python dev zurich",
+      "gold": {
+        "keywords": [
+          "remtoe"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "remtoe",
+          "dev"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "zurich",
+          "category": "location",
+          "slug": "zurich",
+          "probability": 0.66
+        },
+        {
+          "text": "python",
+          "category": "technology",
+          "slug": "python",
+          "probability": 0.51
+        }
+      ]
+    },
+    {
+      "id": "mistakes-02",
+      "q": "hybird data analyst berlin",
+      "gold": {
+        "keywords": [
+          "hybird"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [
+          "data-analyst"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "hybird",
+          "data",
+          "analyst"
+        ],
+        "locations": [
+          "berlin"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "berlin",
+          "category": "location",
+          "slug": "berlin",
+          "probability": 0.64
+        }
+      ]
+    },
+    {
+      "id": "mistakes-03",
+      "q": "senor java engineer",
+      "gold": {
+        "keywords": [
+          "senor",
+          "engineer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "java"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "senor",
+          "java",
+          "engineer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "mistakes-04",
+      "q": "junor accountant paris",
+      "gold": {
+        "keywords": [
+          "junor"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "junor",
+          "accountant"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "paris",
+          "category": "location",
+          "slug": "paris-ile-de-france-region-france",
+          "probability": 0.58
+        }
+      ]
+    },
+    {
+      "id": "mistakes-06",
+      "q": "react develper london",
+      "gold": {
+        "keywords": [
+          "develper"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [
+          "react"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "react",
+          "develper"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "london",
+          "category": "location",
+          "slug": "london-england-united-kingdom",
+          "probability": 0.6
+        }
+      ]
+    },
+    {
+      "id": "mistakes-07",
+      "q": "kubernets platform engineer",
+      "gold": {
+        "keywords": [
+          "kubernets"
+        ],
+        "locations": [],
+        "occupations": [
+          "platform-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "kubernets",
+          "platform",
+          "engineer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "mistakes-08",
+      "q": "zurcih software engineer",
+      "gold": {
+        "keywords": [
+          "zurcih"
+        ],
+        "locations": [],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "zurcih",
+          "software",
+          "engineer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "multiword-01",
+      "q": "San Francisco software engineer",
+      "gold": {
+        "keywords": [
+          "Francisco"
+        ],
+        "locations": [
+          "san"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [],
+        "locations": [
+          "san-francisco-california-united-states"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "San Francisco",
+          "category": "location",
+          "slug": "san-francisco-california-united-states",
+          "probability": 0.67
+        },
+        {
+          "text": "software engineer",
+          "category": "occupation",
+          "slug": "software-engineer",
+          "probability": 0.66
+        }
+      ]
+    },
+    {
+      "id": "multiword-02",
+      "q": "New York data scientist",
+      "gold": {
+        "keywords": [
+          "New"
+        ],
+        "locations": [
+          "york-england-united-kingdom"
+        ],
+        "occupations": [
+          "data-scientist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [],
+        "locations": [
+          "new-york-united-states"
+        ],
+        "occupations": [
+          "data-scientist"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "data scientist",
+          "category": "occupation",
+          "slug": "data-scientist",
+          "probability": 0.78
+        },
+        {
+          "text": "New York",
+          "category": "location",
+          "slug": "new-york-united-states",
+          "probability": 0.77
+        }
+      ]
+    },
+    {
+      "id": "multiword-03",
+      "q": "Los Angeles designer",
+      "gold": {
+        "keywords": [
+          "Los",
+          "Angeles"
+        ],
+        "locations": [],
+        "occupations": [
+          "designer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "Los",
+          "Angeles",
+          "designer"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "multiword-05",
+      "q": "in office senior accountant",
+      "gold": {
+        "keywords": [],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [
+          "onsite"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "in",
+          "office"
+        ],
+        "locations": [],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "senior accountant",
+          "category": "occupation",
+          "slug": "accountant",
+          "probability": 0.6
+        }
+      ]
+    },
+    {
+      "id": "multiword-06",
+      "q": "backend developer Zurich",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [
+          "backend-developer"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "backend",
+          "developer"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Zurich",
+          "category": "location",
+          "slug": "zurich",
+          "probability": 0.53
+        }
+      ]
+    },
+    {
+      "id": "multiword-08",
+      "q": "product manager London",
+      "gold": {
+        "keywords": [],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [
+          "product-manager"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "product",
+          "manager"
+        ],
+        "locations": [
+          "london-england-united-kingdom"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "London",
+          "category": "location",
+          "slug": "london-england-united-kingdom",
+          "probability": 0.53
+        }
+      ]
+    },
+    {
+      "id": "unrelated-02",
+      "q": "weather tomorrow Zurich",
+      "gold": {
+        "keywords": [
+          "weather",
+          "tomorrow"
+        ],
+        "locations": [
+          "zurich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "weather",
+          "tomorrow",
+          "Zurich"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "unrelated-08",
+      "q": "remote control batteries",
+      "gold": {
+        "keywords": [
+          "control",
+          "batteries"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "remote",
+          "control",
+          "batteries"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "multilingual-01",
+      "q": "Softwareentwickler München remote",
+      "gold": {
+        "keywords": [
+          "Softwareentwickler"
+        ],
+        "locations": [
+          "munich"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "Softwareentwickler",
+          "München"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [
+          "remote"
+        ],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "remote",
+          "category": "remote",
+          "slug": "remote",
+          "probability": 0.66
+        }
+      ]
+    },
+    {
+      "id": "multilingual-02",
+      "q": "Senior Java Entwickler Berlin",
+      "gold": {
+        "keywords": [
+          "Entwickler"
+        ],
+        "locations": [
+          "state-of-berlin-germany"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [
+          "java"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "Senior",
+          "Java",
+          "Entwickler"
+        ],
+        "locations": [
+          "state-of-berlin-germany"
+        ],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Berlin",
+          "category": "location",
+          "slug": "state-of-berlin-germany",
+          "probability": 0.66
+        }
+      ]
+    },
+    {
+      "id": "multilingual-03",
+      "q": "Teilzeit Buchhalter Zürich",
+      "gold": {
+        "keywords": [
+          "Teilzeit"
+        ],
+        "locations": [
+          "canton-of-zurich-switzerland"
+        ],
+        "occupations": [
+          "accountant"
+        ],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "Teilzeit",
+          "Buchhalter",
+          "Zürich"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "multilingual-05",
+      "q": "développeur Python à Paris en télétravail",
+      "gold": {
+        "keywords": [
+          "à",
+          "en",
+          "télétravail"
+        ],
+        "locations": [
+          "paris-ile-de-france-region-france"
+        ],
+        "occupations": [
+          "software-engineer"
+        ],
+        "seniorities": [],
+        "technologies": [
+          "python"
+        ],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "développeur",
+          "Python",
+          "à",
+          "Paris",
+          "en",
+          "télétravail"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": []
+    },
+    {
+      "id": "multilingual-08",
+      "q": "ingénieur logiciel senior à Montréal",
+      "gold": {
+        "keywords": [
+          "ingénieur",
+          "logiciel",
+          "senior",
+          "à",
+          "Montréal"
+        ],
+        "locations": [],
+        "occupations": [],
+        "seniorities": [],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "prediction": {
+        "keywords": [
+          "ingénieur",
+          "logiciel",
+          "à"
+        ],
+        "locations": [
+          "montreal"
+        ],
+        "occupations": [],
+        "seniorities": [
+          "senior"
+        ],
+        "technologies": [],
+        "workMode": [],
+        "employmentTypes": []
+      },
+      "selectedSpans": [
+        {
+          "text": "Montréal",
+          "category": "location",
+          "slug": "montreal",
+          "probability": 0.69
+        },
+        {
+          "text": "senior",
+          "category": "seniority",
+          "slug": "senior",
+          "probability": 0.54
+        }
+      ]
+    }
+  ]
+}

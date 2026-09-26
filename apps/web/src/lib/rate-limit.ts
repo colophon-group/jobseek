@@ -102,3 +102,16 @@ export const aiFilterDemandLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(12, "60 s"),
   prefix: "rl:ai-filter-demand:minute:v1",
 });
+
+/** Public search-box Jev routing; each accepted request can incur model spend. */
+export const queryIntentBurstLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(12, "60 s"),
+  prefix: "rl:query-intent:minute:v1",
+});
+
+export const queryIntentSustainedLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(120, "3600 s"),
+  prefix: "rl:query-intent:hour:v1",
+});

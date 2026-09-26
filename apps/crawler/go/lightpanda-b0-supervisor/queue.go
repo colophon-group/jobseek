@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"net/url"
 	"os"
 	"regexp"
@@ -30,7 +32,7 @@ const (
 	producerOwnerKey         = "lightpanda-b0:producer-owner"
 	legacyGuardKey           = "lightpanda-b0:legacy-guard"
 	producerOwnerV1          = "jobseek.lightpanda.producer-owner/v1"
-	expectedLuaSHA256        = "829f38be159aa38957171e662989e4d7b89cbe5eb5c9c3e23c4554d158f1a12e"
+	expectedLuaSHA256        = "5cf344b6b20f5ca1650a876d85226d1ac82308cda911602e659735cbcee39d3b"
 )
 
 var (
@@ -40,6 +42,7 @@ var (
 	safeDecimal  = regexp.MustCompile(`^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$`)
 	hex256       = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	hex160       = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	scriptLine   = regexp.MustCompile(`@user_script:([0-9]+):`)
 )
 
 type routeIdentity struct {
@@ -240,7 +243,38 @@ func queueRedisFailure(err error, operation string) error {
 	if errors.Is(err, context.Canceled) {
 		return context.Canceled
 	}
+	if operation == "activate_legacy" {
+		log.Printf("Lightpanda B0 Redis activation failed: %s", queueRedisDiagnostic(err))
+	}
 	return queueAuthority("redis", operation)
+}
+
+// Keep server error text out of logs: Redis script errors can include command
+// arguments. The error family and script line are enough to locate the failing
+// command without exposing a posting URL or legacy scrape config.
+func queueRedisDiagnostic(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "deadline"
+	}
+	var networkError net.Error
+	if errors.As(err, &networkError) && networkError.Timeout() {
+		return "network_timeout"
+	}
+	var serverError redis.Error
+	if errors.As(err, &serverError) {
+		family := "server_error"
+		for _, candidate := range []string{"OOM", "WRONGTYPE", "BUSY", "NOSCRIPT", "READONLY", "CROSSSLOT", "ERR"} {
+			if strings.HasPrefix(serverError.Error(), candidate+" ") {
+				family = candidate
+				break
+			}
+		}
+		if match := scriptLine.FindStringSubmatch(serverError.Error()); match != nil {
+			return family + "/script_line=" + match[1]
+		}
+		return family
+	}
+	return "transport_error"
 }
 
 type b0Queue struct {
@@ -545,20 +579,6 @@ func (q *b0Queue) initializeProducer(ctx context.Context, owner producerOwnerIde
 	)
 	if err != nil || !result.accepted() {
 		return transitionError("initialize_producer", result, err)
-	}
-	return nil
-}
-
-func (q *b0Queue) persistProducer(ctx context.Context) error {
-	if ctx == nil {
-		return queueAuthority("corruption", "persist_producer")
-	}
-	status, err := q.client.Save(ctx).Result()
-	if err != nil {
-		return queueRedisFailure(err, "persist_producer")
-	}
-	if status != "OK" {
-		return queueAuthority("corruption", "persist_producer")
 	}
 	return nil
 }

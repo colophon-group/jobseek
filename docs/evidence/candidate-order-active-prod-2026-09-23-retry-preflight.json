@@ -1,0 +1,40 @@
+{
+  "captured_at": "2026-09-23T15:51:37Z",
+  "purpose": "Predeclared gates for a second active-only production trial after full-size clone evidence",
+  "typesense_version": "27.1",
+  "server_type": "Hetzner CX33",
+  "container_memory_limit_bytes": 6442450944,
+  "previous_trial": "docs/evidence/candidate-order-active-prod-2026-09-23-result.json",
+  "full_size_clone": "docs/evidence/candidate-order-active-clone-2026-09-23-result.json",
+  "backup": {
+    "existing_encrypted_backup_completed_at": "2026-09-23T14:13:39Z",
+    "fresh_application_consistent_snapshot_path": "/jobseek-snapshots/candidate-order-active-retry-pre-20260923",
+    "fresh_application_consistent_snapshot_success": true
+  },
+  "baseline_after_snapshot": {
+    "documents": 5527155,
+    "allocated_bytes": 3312583448,
+    "resident_bytes": 3762528256,
+    "anonymous_bytes": 3822071808,
+    "slab_unreclaimable_bytes": 2427200,
+    "host_available_bytes": 3566616576,
+    "effective_headroom_bytes": 453693440,
+    "container_restarts": 0,
+    "oom_events": 0,
+    "candidate_order_fields_absent": true,
+    "representative_query_p95_ms_after_warmup": 100,
+    "representative_query_samples": 20
+  },
+  "stop_thresholds": {
+    "maximum_anonymous_plus_unreclaimable_slab_bytes": 4831838208,
+    "maximum_resident_bytes": 5368709120,
+    "minimum_host_available_bytes": 1610612736,
+    "maximum_representative_query_p95_ms": 224,
+    "container_restarts_allowed": 0,
+    "oom_events_allowed": 0,
+    "minimum_collection_document_count_ratio": 0.99
+  },
+  "checkpoints": [50000, 250000, 500000, 1000000, 1500000, 2000000, "full_active_set"],
+  "decision_rule": "Measure observed gates after each checkpoint and an idle interval before the next batch. Stop and clear stamped values plus drop schema fields if any observed gate is breached. A short-run linear extrapolation alone is not a stop condition, because the full-size local clone showed a much lower settled slope than the first production trial. Do not issue a readiness receipt until the complete active set is stamped and reconciled in a fresh 256-partition cycle.",
+  "cache_note": "The fresh snapshot warmed cgroup file cache and reduced effective headroom while anonymous and resident memory stayed stable. Effective headroom is recorded but not gated, as in the previous preflight. Cgroup OOM events, anonymous memory, resident memory, host availability, and query latency are gated."
+}

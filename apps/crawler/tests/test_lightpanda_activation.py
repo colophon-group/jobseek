@@ -107,12 +107,20 @@ def _legacy_config(task: LightpandaB0Task) -> dict[str, str]:
     }
 
 
-async def _initialize_producer(queue: LightpandaB0Queue, route: RouteIdentity) -> None:
+async def _initialize_producer(
+    queue: LightpandaB0Queue, route: RouteIdentity, *, cohort: str = "c1"
+) -> None:
     raw = await queue._invoke(
         "initialize_producer",
         route=route,
-        producer_cohort="c1",
-        producer_board_slugs=("browser-use-careers",),
+        producer_cohort=cohort,
+        producer_board_slugs=(
+            {
+                "c1": ("browser-use-careers",),
+                "c2": ("browser-use-careers", "kandou-ai-careers"),
+                "c3": ("browser-use-careers", "eclypsium-careers", "kandou-ai-careers"),
+            }[cohort]
+        ),
     )
     initialized = queue._decode_transition("initialize_producer", raw, route=route)
     assert initialized.accepted
@@ -237,6 +245,7 @@ async def _activate_legacy(
     previous_payload_sha256: str = "",
     operator_transfer: bool = True,
     first_time: bool = False,
+    cohort: str = "c1",
 ) -> TransitionResult:
     raw = await queue._invoke(
         "activate_legacy",
@@ -246,8 +255,14 @@ async def _activate_legacy(
         legacy_config=queue_module._canonical_legacy_config(legacy_config, task),
         operator_transfer=operator_transfer,
         first_time=first_time,
-        producer_cohort="c1",
-        producer_board_slugs=("browser-use-careers",),
+        producer_cohort=cohort,
+        producer_board_slugs=(
+            {
+                "c1": ("browser-use-careers",),
+                "c2": ("browser-use-careers", "kandou-ai-careers"),
+                "c3": ("browser-use-careers", "eclypsium-careers", "kandou-ai-careers"),
+            }[cohort]
+        ),
     )
     return queue._decode_transition("activate_legacy", raw, task=task)
 
@@ -607,17 +622,22 @@ async def test_missing_legacy_guard_blocks_go_claim_without_mutation(redis: Any)
     assert await redis.zcard(queue._keys.inflight) == 0
 
 
-async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis: Any) -> None:
+@pytest.mark.parametrize("cohort", ["c1", "c2", "c3"])
+async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(
+    redis: Any, cohort: str
+) -> None:
     ready = _task(ready_at_ms=123_000)
     terminal = _task(
         ready_at_ms=456_000,
         task_id="00000000-0000-4000-8000-000000000002",
     )
     queue = LightpandaB0Queue(redis, namespace="production-b0")
-    await _initialize_producer(queue, ready.route)
+    await _initialize_producer(queue, ready.route, cohort=cohort)
     for task in (ready, terminal):
         await _seed_legacy_ready(redis, task)
-        assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
+        assert (
+            await _activate_legacy(queue, task, legacy_config=_legacy_config(task), cohort=cohort)
+        ).accepted
     await redis.set(f"delay:{ready.domain}", "0")
     claimed = await queue.claim_next(ready.route, lease_ttl_ms=30_000)
     assert claimed.lease is not None and claimed.lease.task.task_id == ready.task_id
@@ -626,7 +646,7 @@ async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis:
 
     rolled_back = await queue.rollback_legacy(
         ready.route,
-        cohort="c1",
+        cohort=cohort,
         rollback_plan_digest=ROLLBACK_DIGEST,
         source_receipt_sha256=SOURCE_RECEIPT_SHA256,
         plan={
@@ -644,7 +664,7 @@ async def test_cold_rollback_atomically_restores_ready_and_drops_terminal(redis:
         "shard_id": "lightpanda-b0",
         "routing_epoch": "7",
         "engine_owner": "go",
-        "cohort": "c1",
+        "cohort": cohort,
         "rollback_plan_digest": ROLLBACK_DIGEST,
         "source_receipt_sha256": SOURCE_RECEIPT_SHA256,
     }

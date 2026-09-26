@@ -9,6 +9,11 @@ on:
         description: Optional exact main revision to deploy
         required: false
         type: string
+      rebuild:
+        description: Rebuild current main after a production environment change
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,6 +52,7 @@ jobs:
         id: paths
         env:
           REQUESTED_SHA: ${{ inputs.revision }}
+          FORCE_REBUILD: ${{ inputs.rebuild }}
         run: |
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           current_sha="$current_main"
@@ -61,7 +67,7 @@ jobs:
             fi
             current_sha="$REQUESTED_SHA"
           fi
-          production="$(pnpm dlx vercel@59.3.0 api \
+          production="$(pnpm dlx vercel@59.25.4 api \
             "/v13/deployments/$PRODUCTION_ALIAS?teamId=$VERCEL_ORG_ID" \
             --raw --token="$VERCEL_TOKEN")"
           production_sha="$(jq -r '.gitSource.sha // .meta.githubCommitSha // ""' <<<"$production")"
@@ -73,6 +79,10 @@ jobs:
             "$production_sha" "$current_sha")"
           deploy="$(jq -r '.deploy' <<<"$result")"
           relevant="$(jq -r '.relevant | join(", ")' <<<"$result")"
+          if [[ "$FORCE_REBUILD" == "true" ]]; then
+            deploy=true
+            echo "Rebuilding exact main after production environment change"
+          fi
           {
             echo "deploy=$deploy"
             echo "current_sha=$current_sha"
@@ -100,7 +110,7 @@ jobs:
       - name: Pull production project settings
         if: steps.paths.outputs.deploy == 'true'
         run: >-
-          pnpm dlx vercel@59.3.0 pull
+          pnpm dlx vercel@59.25.4 pull
           --yes
           --environment=production
           --token="$VERCEL_TOKEN"
@@ -114,9 +124,11 @@ jobs:
       - name: Build the production artifact
         if: steps.paths.outputs.deploy == 'true'
         env:
+          # Match hosted builds: the legacy builder kept fallback PPR resumes.
+          NEXT_ENABLE_ADAPTER: "1"
           NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
         run: >-
-          pnpm dlx vercel@59.3.0 build
+          pnpm dlx vercel@59.25.4 build
           --prod
           --token="$VERCEL_TOKEN"
 
@@ -127,7 +139,7 @@ jobs:
           COMMIT_SHA: ${{ steps.paths.outputs.current_sha }}
           COMMIT_REF: main
         run: |
-          deployment="$(pnpm dlx vercel@59.3.0 deploy \
+          deployment="$(pnpm dlx vercel@59.25.4 deploy \
             --prebuilt --prod --skip-domain --archive=tgz --format=json \
             --token="$VERCEL_TOKEN" \
             --meta githubCommitSha="$COMMIT_SHA" \
@@ -147,7 +159,7 @@ jobs:
         env:
           DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
         run: |
-          pnpm dlx vercel@59.3.0 inspect "$DEPLOYMENT_URL" \
+          pnpm dlx vercel@59.25.4 inspect "$DEPLOYMENT_URL" \
             --wait --timeout=5m --token="$VERCEL_TOKEN"
           umask 077
           smoke_body="$(mktemp "$RUNNER_TEMP/vercel-smoke-body.XXXXXX")"
@@ -158,7 +170,7 @@ jobs:
             /en/company/securitas-ag \
             /en/sign-in; do
             : > "$smoke_body"
-            status="$(pnpm dlx vercel@59.3.0 curl "$path" \
+            status="$(pnpm dlx vercel@59.25.4 curl "$path" \
               --deployment="$DEPLOYMENT_URL" \
               -- --silent --show-error --output "$smoke_body" --write-out '%{http_code}')"
             echo "Smoke $path -> HTTP $status"
@@ -173,7 +185,7 @@ jobs:
           scanner_headers="$(mktemp "$RUNNER_TEMP/vercel-scanner-headers.XXXXXX")"
           chmod 600 "$scanner_headers"
           trap 'rm -f -- "$scanner_headers"' EXIT
-          scanner_status="$(pnpm dlx vercel@59.3.0 curl /wp-admin/setup-config.php \
+          scanner_status="$(pnpm dlx vercel@59.25.4 curl /wp-admin/setup-config.php \
             --deployment="$DEPLOYMENT_URL" \
             -- --location --silent --show-error \
             --dump-header "$scanner_headers" \
@@ -186,6 +198,13 @@ jobs:
           fi
           rm -f -- "$scanner_headers"
           trap - EXIT
+
+      - name: Require cached company pages to avoid Functions
+        if: steps.paths.outputs.deploy == 'true'
+        env:
+          DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+          EXPECTED_DEPLOYMENT_ID: ${{ steps.stage.outputs.id }}
+        run: node .github/scripts/verify-vercel-company-cache.mjs
 
       - name: Require the staged revision is still main
         if: steps.paths.outputs.deploy == 'true'
@@ -223,7 +242,7 @@ jobs:
             fi
             exit 0
           fi
-          pnpm dlx vercel@59.3.0 promote "$DEPLOYMENT_URL" \
+          pnpm dlx vercel@59.25.4 promote "$DEPLOYMENT_URL" \
             --yes --timeout=3m --token="$VERCEL_TOKEN"
           echo "promoted=true" >> "$GITHUB_OUTPUT"
 

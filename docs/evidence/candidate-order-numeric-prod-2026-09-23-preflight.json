@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-09-23T13:35:00Z",
+  "purpose": "Predeclared stop gates for the signed-int64 UUID-order rollout",
+  "typesense_version": "27.1",
+  "server_type": "Hetzner CX33",
+  "container_memory_limit_bytes": 6442450944,
+  "baseline": {
+    "documents": 5516318,
+    "allocated_bytes": 3312957680,
+    "resident_bytes": 3761790976,
+    "effective_working_set_bytes": 4789727232,
+    "effective_headroom_bytes": 1652723712,
+    "representative_query_found": 1113,
+    "representative_query_p95_ms": 107,
+    "representative_query_samples": 20,
+    "container_restarts": 0,
+    "oom_events": 0
+  },
+  "backup": {
+    "fresh_encrypted_backup_completed_at": "2026-09-23T13:34:21Z",
+    "local_consistent_snapshot_required_before_schema_change": true
+  },
+  "stop_thresholds": {
+    "minimum_effective_headroom_bytes": 1073741824,
+    "maximum_representative_query_p95_ms": 214,
+    "container_restarts_allowed": 0,
+    "oom_events_allowed": 0,
+    "minimum_collection_document_count_ratio": 0.99
+  },
+  "checkpoints": [50000, 250000, 1000000, 2500000, 4000000, "full"],
+  "decision_rule": "At 50k, enforce the observed hard gates. At 250k and later, project full-rollout headroom using the incremental memory slope since the previous checkpoint, so fixed first-batch allocation is not multiplied 110 times. Stop before the next batch if observed or projected full-rollout effective headroom falls below 1 GiB, if query p95 exceeds twice baseline, or on any OOM/restart. Clear stamped values and drop fields after an early stop.",
+  "readiness_receipt": "unset during rollout and until a fresh full reconciliation succeeds"
+}

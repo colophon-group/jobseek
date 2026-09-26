@@ -187,7 +187,7 @@ Do not spawn subagents by default. They are useful only for large independent
 evidence sets and consume additional tokens; the main agent remains
 responsible for classification, dedupe, redaction, and GitHub writes.
 When the user explicitly requests parallel analysis, use the read-only
-`jobseek-error-review-researcher` custom agent (GPT-5.6 Terra, high reasoning)
+`jobseek-error-review-researcher` custom agent (GPT-6 Sol, high reasoning)
 for each bounded evidence set.
 
 ## Implementation Verification

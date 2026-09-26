@@ -160,8 +160,8 @@ async function smokeExploreRawHtml(route: string, heading: string) {
   }
   const visibleHtml = inspectVisibleExploreHtml(await response.text());
   if (
-    !visibleHtml.staticTextContent.includes(heading) ||
-    visibleHtml.staticResultsCount === 0 ||
+    !visibleHtml.resultTextContent.includes(heading) ||
+    visibleHtml.resultHostCount === 0 ||
     visibleHtml.companyResultCount === 0
   ) {
     throw new Error(
@@ -177,6 +177,77 @@ async function smokeExploreRawHtml(route: string, heading: string) {
     );
   }
   console.log(`smoke ok ${route} raw localized results`);
+}
+
+async function smokeExploreBeforeHydration(browser: Browser) {
+  for (const [route, cookie, shouldMask] of [
+    ["/en/explore", false, false],
+    ["/en/explore?q=python", false, true],
+    ["/en/explore", true, true],
+  ] as const) {
+    const context = await browser.newContext();
+    try {
+      if (cookie) {
+        await context.addCookies([{
+          name: "JSEEK_JOB_LANGUAGES",
+          value: JSON.stringify(["*"]),
+          url: baseUrl,
+        }]);
+      }
+      // Keep React from hydrating so this asserts the actual first-paint
+      // contract of the cached document, including its parser-time guard.
+      await context.route("**/_next/static/**/*.js", (request) => request.abort());
+      const page = await context.newPage();
+      const response = await page.goto(`${baseUrl}${route}`, { waitUntil: "domcontentloaded" });
+      if (response?.status() !== 200) {
+        throw new Error(`${route} returned HTTP ${response?.status() ?? "no response"}`);
+      }
+      const state = await page.evaluate(() => {
+        const host = document.querySelector<HTMLElement>("[data-explore-result-host]");
+        const skeleton = document.querySelector<HTMLElement>("[data-explore-pending-skeleton]");
+        return {
+          pending: document.documentElement.hasAttribute("data-explore-pending"),
+          resultVisible: host ? getComputedStyle(host).display !== "none" : false,
+          skeletonVisible: skeleton ? getComputedStyle(skeleton).display !== "none" : false,
+        };
+      });
+      if (
+        state.pending !== shouldMask ||
+        state.resultVisible === shouldMask ||
+        state.skeletonVisible !== shouldMask
+      ) {
+        throw new Error(`${route} first-paint guard failed: ${JSON.stringify(state)}`);
+      }
+      console.log(`smoke ok ${route}${cookie ? " with language cookie" : ""} first paint`);
+    } finally {
+      await context.close();
+    }
+  }
+}
+
+async function smokeCompanyRouteUpgrade() {
+  if (!hasServerTypesenseConfiguration()) return;
+  // Neither fixture is the registry's single build-time seed. Checking two
+  // locales also exercises the parent params while the company leaf upgrades.
+  for (const route of ["/en/company/aircall", "/fr/company/hellofresh"]) {
+    let cached = false;
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await fetch(`${baseUrl}${route}`, {
+        headers: { accept: "text/html" },
+      });
+      const html = await response.text();
+      if (response.status !== 200 || !html.includes("<h1")) {
+        throw new Error(`${route} failed to render a company document`);
+      }
+      cached = response.headers.get("x-nextjs-cache") === "HIT" &&
+        !response.headers.has("x-nextjs-postponed") &&
+        /s-maxage=\d+/.test(response.headers.get("cache-control") ?? "");
+      if (cached) break;
+      await delay(500);
+    }
+    if (!cached) throw new Error(`${route} kept resuming after repeated visits`);
+    console.log(`smoke ok ${route} upgraded to complete cached HTML`);
+  }
 }
 
 async function smokeNavigationServerActions(
@@ -204,21 +275,17 @@ async function smokeNavigationServerActions(
     await page.waitForTimeout(500);
     if (new URL(route, baseUrl).pathname.endsWith("/explore")) {
       const exploreState = await page.evaluate(() => {
-        const staticSnapshot = document.querySelector<HTMLElement>(
-          "[data-explore-static-results]",
-        );
-        const interactive = document.querySelector<HTMLElement>(
-          "[data-explore-interactive]",
+        const resultHost = document.querySelector<HTMLElement>(
+          "[data-explore-result-host]",
         );
         return {
-          staticHidden: staticSnapshot?.hidden ?? false,
-          interactiveHidden: interactive?.hidden ?? true,
-          interactiveCompanies:
-            interactive?.querySelectorAll("[data-search-result-company]").length ?? 0,
+          pending: document.documentElement.hasAttribute("data-explore-pending"),
+          visibleResultHost: resultHost ? getComputedStyle(resultHost).display !== "none" : false,
+          companies: resultHost?.querySelectorAll("[data-search-result-company]").length ?? 0,
           searchUnavailable:
-            interactive?.querySelector("[data-search-unavailable]") !== null,
+            resultHost?.querySelector("[data-search-unavailable]") !== null,
           unhiddenHeadings: Array.from(document.querySelectorAll("h1")).filter(
-            (heading) => !heading.closest("[hidden]"),
+            (heading) => heading.getClientRects().length > 0,
           ).length,
         };
       });
@@ -228,14 +295,14 @@ async function smokeNavigationServerActions(
         exploreFilterParams.some((param) => routeParams.has(param)) &&
         exploreState.searchUnavailable;
       if (
-        !exploreState.staticHidden ||
-        exploreState.interactiveHidden ||
-        (exploreState.interactiveCompanies === 0 && !filteredServiceUnavailable) ||
+        exploreState.pending ||
+        !exploreState.visibleResultHost ||
+        (exploreState.companies === 0 && !filteredServiceUnavailable) ||
         exploreState.unhiddenHeadings !== 1
       ) {
         console.error("smoke explore hydration state", exploreState);
         throw new Error(
-          `${route} did not swap its static snapshot for one accessible hydrated result tree`,
+          `${route} did not show one accessible hydrated result tree`,
         );
       }
     }
@@ -285,7 +352,7 @@ async function smokeSpaExploreNavigation(browser: Browser) {
     await page.waitForTimeout(500);
 
     const interactiveCompanies = await page.locator(
-      "[data-explore-interactive]:not([hidden]) [data-search-result-company]",
+      "[data-explore-result-host] [data-search-result-company]",
     ).count();
     if (interactiveCompanies === 0 || navigationActions.length !== 0) {
       throw new Error(
@@ -388,6 +455,7 @@ async function main() {
   let browser: Browser | undefined;
   try {
     await waitForServer();
+    await smokeCompanyRouteUpgrade();
     browser = await chromium.launch();
     for (const route of discoveryNotFoundRoutes) {
       await smokeDiscoveryRoute(route, 404);
@@ -402,6 +470,7 @@ async function main() {
     for (const [route, heading] of localizedExploreRoutes) {
       await smokeExploreRawHtml(route, heading);
     }
+    await smokeExploreBeforeHydration(browser);
     for (const [route, expectedActions] of navigationActionRoutes) {
       await smokeNavigationServerActions(browser, route, expectedActions);
     }

@@ -119,7 +119,7 @@ services:
         condition: service_healthy
       socket-init:
         condition: service_completed_successfully
-    healthcheck: {test: [CMD, /app/.venv/bin/python, -m, src.lightpanda.executor, --healthcheck], interval: 5s, timeout: 3s, retries: 3, start_period: 10s}
+    healthcheck: {test: [CMD, /usr/local/bin/lightpanda-b0-supervisor, executor-health], interval: 5s, timeout: 3s, retries: 3, start_period: 10s}
     mem_limit: 384m
     memswap_limit: 384m
     cpus: 1.0

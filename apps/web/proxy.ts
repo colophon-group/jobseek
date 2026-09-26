@@ -6,11 +6,6 @@ import { defaultLocale, locales, isLocale } from "@/lib/i18n";
 import { isPlausiblePublicWatchlistPath } from "@/lib/public-watchlist-path";
 import { isReservedUsername } from "@/lib/username";
 import { logExternalError } from "@/lib/safe-external-error";
-import { auth } from "@/lib/auth";
-import {
-  hasPublicCompanyRoute,
-  hasWatchlistRouteForViewer,
-} from "@/lib/services/public-resource-status";
 import { staticMissingResourceDocument } from "@/lib/missing-resource-recovery";
 import {
   getClientIp,
@@ -149,6 +144,9 @@ function hasSessionCookie(request: NextRequest): boolean {
 
 async function authenticatedUserId(request: NextRequest): Promise<string | null> {
   if (!hasSessionCookie(request)) return null;
+  // Most proxy requests are public read guards or redirects. Load the auth
+  // dependency graph only when a presented session needs verification.
+  const { auth } = await import("@/lib/auth");
   const session = await auth.api.getSession({ headers: request.headers });
   return session?.user?.id ?? null;
 }
@@ -191,6 +189,9 @@ async function resolveLocalizedResourceRequest(
   if (companyMatch) {
     const [, lang, slug] = companyMatch;
     try {
+      const { hasPublicCompanyRoute } = await import(
+        "@/lib/services/public-resource-status"
+      );
       return (await hasPublicCompanyRoute(slug))
         ? NextResponse.next()
         : await missingResourceResponse(request, "company", lang, slug);
@@ -217,13 +218,17 @@ async function resolveLocalizedResourceRequest(
 
     try {
       const viewerUserId = await authenticatedUserId(request);
-      const routeExists = viewerUserId
-        ? await hasWatchlistRouteForViewer(
-            userSlug,
-            watchlistSlug,
-            viewerUserId,
-          )
-        : false;
+      let routeExists = false;
+      if (viewerUserId) {
+        const { hasWatchlistRouteForViewer } = await import(
+          "@/lib/services/public-resource-status"
+        );
+        routeExists = await hasWatchlistRouteForViewer(
+          userSlug,
+          watchlistSlug,
+          viewerUserId,
+        );
+      }
       return routeExists
         ? NextResponse.next()
         : await missingResourceResponse(request, "watchlist", lang);

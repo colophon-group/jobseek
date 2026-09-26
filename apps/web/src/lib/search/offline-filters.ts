@@ -40,6 +40,7 @@ function splitExplicitSlugs(raw: string | undefined): string[] {
  */
 export function parseOfflineSearchFilters(params: {
   q?: string;
+  qmode?: "literal";
   loc?: string;
   occ?: string;
   sen?: string;
@@ -69,7 +70,7 @@ export function parseOfflineSearchFilters(params: {
 
   return {
     ...EMPTY_PARSED_FILTERS,
-    keywords: query ? [query] : [],
+    keywords: query ? (params.qmode === "literal" ? splitExplicitSlugs(query) : [query]) : [],
     workMode: parseWorkModeParam(params.wm),
     employmentTypes: parseEmploymentTypeParam(
       migratedLegacyFilters.employmentType,

@@ -68,7 +68,10 @@ export interface SearchResultCompany {
 
 export interface SearchResponse {
   companies: SearchResultCompany[];
+  /** Display total: grouped Typesense searches estimate this on v29+. */
   totalCompanies: number;
+  /** Raw group offset; null means exhausted. Absent on count-based readers. */
+  nextOffset?: number | null;
   /** Exact number of active postings matching the current search, when known. */
   totalPostings?: number;
   truncated?: boolean;

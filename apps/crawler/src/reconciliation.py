@@ -35,6 +35,12 @@ from src.exporter import (
     _upsert_to_supabase,
     _upsert_to_typesense,
 )
+from src.typesense_candidate_order import (
+    CANDIDATE_ORDER_HI_FIELD,
+    CANDIDATE_ORDER_KEY_FIELD,
+    CANDIDATE_ORDER_LO_FIELD,
+    build_candidate_order_readiness_receipt,
+)
 
 log = structlog.get_logger()
 
@@ -45,6 +51,7 @@ PARTITION_COUNT = 256
 DEFAULT_MAX_PARTITIONS = 16
 REPAIR_BATCH_SIZE = 500
 _TYPESENSE_SOURCE_CHANGE_REPAIR_ATTEMPTS = 2
+_TYPESENSE_PARTITION_REPAIR_ATTEMPTS = 3
 TYPESENSE_EXPORT_BATCH_SIZE = 1_000
 TYPESENSE_DELETE_CONCURRENCY = 20
 RECONCILIATION_LOCK_ID = 0x5245434F4E434C  # positive bigint, ASCII-ish ``RECONCL``
@@ -142,6 +149,9 @@ TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "experience_max_years",
     "locales",
     "first_seen_at",
+    CANDIDATE_ORDER_KEY_FIELD,
+    CANDIDATE_ORDER_HI_FIELD,
+    CANDIDATE_ORDER_LO_FIELD,
     "source_url",
 )
 _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS = frozenset(("locales", "occupation_ids"))
@@ -1090,6 +1100,50 @@ async def _finish_run(
     )
 
 
+async def issue_candidate_order_readiness_receipt(
+    local_pool: asyncpg.Pool,
+    summary: RunSummary,
+    *,
+    benchmark_sha256: str,
+) -> str:
+    """Issue activation evidence only from the just-completed durable proof."""
+
+    if (
+        summary.mode != "repair"
+        or summary.target_scope != "typesense"
+        or summary.partitions_completed != PARTITION_COUNT
+        or summary.unresolved != 0
+    ):
+        raise ReconciliationError(
+            "Candidate order readiness requires a fresh full Typesense repair proof"
+        )
+    row = await local_pool.fetchrow(
+        "SELECT completed_at, status, mode, target_scope, partitions_completed, "
+        "checked_local, unresolved FROM cross_store_reconciliation_run WHERE run_id = $1",
+        summary.run_id,
+    )
+    if row is None:
+        raise ReconciliationError("Candidate order reconciliation run is not durable")
+    if (
+        row["status"] != "success"
+        or row["mode"] != "repair"
+        or row["target_scope"] != "typesense"
+        or row["partitions_completed"] != PARTITION_COUNT
+        or row["checked_local"] != summary.checked_local
+        or row["unresolved"] != 0
+        or row["completed_at"] is None
+    ):
+        raise ReconciliationError("Candidate order reconciliation ledger does not prove readiness")
+    return build_candidate_order_readiness_receipt(
+        reconciliation_run_id=summary.run_id,
+        completed_at=row["completed_at"],
+        authoritative_count=row["checked_local"],
+        partitions=row["partitions_completed"],
+        unresolved=row["unresolved"],
+        benchmark_sha256=benchmark_sha256,
+    )
+
+
 async def _ensure_cycle(
     local_pool: asyncpg.Pool,
     target: ReconciliationTarget,
@@ -1355,20 +1409,40 @@ async def run_reconciliation(
                             # never reuse a prior partition's successful result.
                             last_result = None
                             last_result_recorded = False
-                            if target == "typesense":
-                                # Refresh long-running reconciliation proofs on
-                                # the same cadence as ordinary CDC so a stale
-                                # taxonomy cache cannot rewrite current names.
-                                maps = await _get_taxonomy_maps(local_pool)
-                            result = await reconcile_partition(
-                                local_pool,
-                                supa_pool,
-                                target=target,
-                                partition=partition,
-                                repair=repair,
-                                typesense=typesense,
-                                maps=maps,
+                            attempts = (
+                                _TYPESENSE_PARTITION_REPAIR_ATTEMPTS
+                                if repair and target == "typesense"
+                                else 1
                             )
+                            for attempt in range(1, attempts + 1):
+                                if target == "typesense":
+                                    # Refresh long-running proofs and retries
+                                    # so taxonomy changes cannot be rewritten
+                                    # from a stale map.
+                                    maps = await _get_taxonomy_maps(local_pool)
+                                result = await reconcile_partition(
+                                    local_pool,
+                                    supa_pool,
+                                    target=target,
+                                    partition=partition,
+                                    repair=repair,
+                                    typesense=typesense,
+                                    maps=maps,
+                                )
+                                if result.unresolved == 0 or attempt == attempts:
+                                    break
+                                # An exporter/source write can race the scan or
+                                # both bounded candidate rereads. Re-scan the
+                                # entire partition before failing the proof;
+                                # never persist a partial checkpoint.
+                                log.info(
+                                    "reconciliation.partition_retry",
+                                    target=target,
+                                    partition=f"{partition:02x}",
+                                    attempt=attempt,
+                                    attempts=attempts,
+                                    unresolved=result.unresolved,
+                                )
                             last_result = result
                             if repair and result.unresolved:
                                 raise ReconciliationError(

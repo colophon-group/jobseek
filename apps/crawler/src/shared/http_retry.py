@@ -345,6 +345,7 @@ async def fetch_json_page_with_retry(
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+    on_success_body: Callable[[bytes, int, str], None] | None = None,
 ) -> dict[str, Any]:
     pass
 
@@ -368,6 +369,7 @@ async def fetch_json_page_with_retry(
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+    on_success_body: Callable[[bytes, int, str], None] | None = None,
 ) -> list[Any]:
     pass
 
@@ -390,6 +392,7 @@ async def fetch_json_page_with_retry(
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+    on_success_body: Callable[[bytes, int, str], None] | None = None,
 ) -> dict[str, Any] | list[Any]:
     """Fetch a JSON pagination page with strict retry semantics.
 
@@ -478,6 +481,12 @@ async def fetch_json_page_with_retry(
                         f"JSON page from {url} returned {type(data).__name__}, "
                         f"expected {expect_shape.__name__}"
                     )
+                if on_success_body is not None:
+                    on_success_body(
+                        bytes(body) if max_bytes is not None else resp.content,
+                        resp.status_code,
+                        str(resp.url),
+                    )
                 if retried:
                     http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
                 return data
@@ -541,6 +550,7 @@ async def fetch_text_page_with_retry(
     response_headers: dict[str, str] | None = None,
     log_event: str = "http_retry.text_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+    on_success_body: Callable[[bytes, int, str], None] | None = None,
 ) -> str | None:
     """Fetch a text page with explicit retry and terminal-status semantics.
 
@@ -582,6 +592,7 @@ async def fetch_text_page_with_retry(
     for attempt in range(retries):
         try:
             text: str | None = None
+            raw_body: bytes | None = None
             if max_bytes is not None:
                 if public_headers:
                     if method != "GET":
@@ -623,7 +634,8 @@ async def fetch_text_page_with_retry(
                                 body.extend(chunk[:remaining])
                             if len(body) > max_bytes:
                                 raise ResponseBodyTooLargeError(url, max_bytes)
-                        text = bytes(body).decode(resp.encoding or "utf-8", errors="replace")
+                        raw_body = bytes(body)
+                        text = raw_body.decode(resp.encoding or "utf-8", errors="replace")
                         _tdm_check(resp, body_excerpt=text)
                 finally:
                     await resp.aclose()
@@ -654,6 +666,12 @@ async def fetch_text_page_with_retry(
                     text = resp.text
                     _tdm_check(resp, body_excerpt=text)
                 if not require_nonempty or text:
+                    if on_success_body is not None:
+                        on_success_body(
+                            raw_body if raw_body is not None else resp.content,
+                            resp.status_code,
+                            str(resp.url),
+                        )
                     if response_headers is not None:
                         response_headers.clear()
                         response_headers.update(resp.headers)

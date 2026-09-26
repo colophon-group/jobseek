@@ -31,8 +31,10 @@ from src.exporter import (
     _get_cursor,
     _is_downstream_unavailable,
     _is_typesense_acknowledgement_parse_failure,
+    _require_python_typesense_owner,
     _save_cursor,
     _save_cursors_atomic,
+    _TypesenseOwnershipTransferred,
     _update_metrics,
     _update_typesense_health,
     _upsert_to_supabase,
@@ -42,6 +44,7 @@ from src.exporter import (
     run_exporter,
 )
 from src.metrics import export_errors_total
+from src.typesense_candidate_order import candidate_order_key, candidate_order_words
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,6 +59,7 @@ def _make_pool() -> AsyncMock:
     that ``async with pool.acquire() as conn`` works without awaiting first.
     """
     pool = AsyncMock()
+    pool.fetchrow.return_value = None
     conn = AsyncMock()
     # acquire() -> async context manager (not a coroutine)
     ctx = MagicMock()
@@ -119,6 +123,17 @@ class TestCursorPersistence:
 
         cursor = await _get_cursor(pool, "job_posting")
         assert cursor == (stored_ts, _ZERO_UUID)
+
+    async def test_typesense_owner_defaults_to_python(self):
+        pool = _make_pool()
+        await _require_python_typesense_owner(pool)
+        pool.fetchrow.assert_awaited_once()
+
+    async def test_typesense_owner_rejects_go(self):
+        pool = _make_pool()
+        pool.fetchrow.return_value = {"value": "go"}
+        with pytest.raises(_TypesenseOwnershipTransferred):
+            await _require_python_typesense_owner(pool)
 
     async def test_save_calls_upsert(self):
         pool = _make_pool()
@@ -1629,6 +1644,32 @@ class TestExportChangedBoards:
 
 
 class TestRunExporter:
+    async def test_go_owner_stops_python_before_any_typesense_write(self):
+        local = _make_pool()
+        local.fetchrow.return_value = {"value": "go"}
+        maps = TaxonomyMaps()
+        maps._last_refresh = 10**20
+        with (
+            patch("src.exporter.settings") as mock_settings,
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch("src.exporter._get_cursor", new=AsyncMock(return_value=(_EPOCH, _ZERO_UUID))),
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch("src.exporter._export_postings_typesense", new=AsyncMock()) as export,
+            patch("src.exporter._save_cursor", new=AsyncMock()) as save,
+        ):
+            mock_settings.export_interval = 0.001
+            mock_settings.export_downstream_backoff_base_seconds = 5.0
+            mock_settings.export_downstream_backoff_max_seconds = 300.0
+            await run_exporter(
+                local,
+                None,
+                asyncio.Event(),
+                cursor_fence_factory=_noop_cursor_fence,
+                cutoff_factory=_fixed_cdc_cutoff,
+            )
+        export.assert_not_awaited()
+        save.assert_not_awaited()
+
     async def test_requires_at_least_one_downstream(self):
         with (
             patch("src.exporter._typesense_enabled", return_value=False),
@@ -1979,6 +2020,7 @@ def _make_taxonomy_maps() -> TaxonomyMaps:
 
 def _make_posting_record(
     *,
+    is_active: bool = True,
     location_ids: list[int] | None = None,
     occupation_id: int | None = None,
     titles: list[str] | None = None,
@@ -2001,7 +2043,7 @@ def _make_posting_record(
         "id": posting_id,
         "company_id": company_id,
         "titles": ["Test Job"] if titles is None else titles,
-        "is_active": True,
+        "is_active": is_active,
         "location_ids": location_ids,
         "location_types": ["onsite"] * len(location_ids or []),
         "occupation_id": occupation_id,
@@ -2062,11 +2104,24 @@ class TestBuildTypesenseDocsAncestors:
         docs = _build_typesense_docs([row], maps)
         assert len(docs) == 1
         assert docs[0]["reconciliation_bucket"] == uuid.UUID(docs[0]["id"]).hex[:2]
+        assert docs[0]["candidate_order_key"] == candidate_order_key(row["id"])
+        assert (
+            docs[0]["candidate_order_hi"],
+            docs[0]["candidate_order_lo"],
+        ) == candidate_order_words(row["id"])
         loc_ids = set(docs[0]["location_ids"])
         assert docs[0]["location_direct_ids"] == [10]
         assert 10 in loc_ids  # leaf (city)
         assert 20 in loc_ids  # region ancestor
         assert 30 in loc_ids  # country ancestor
+
+    def test_inactive_posting_does_not_consume_candidate_sort_index(self):
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(is_active=False)
+        doc = _build_typesense_docs([row], maps)[0]
+        assert doc["candidate_order_key"] is None
+        assert doc["candidate_order_hi"] is None
+        assert doc["candidate_order_lo"] is None
 
     def test_location_names_only_for_leaf_ids(self):
         """location_names should only contain names for leaf IDs, not ancestors."""
@@ -2101,6 +2156,12 @@ class TestBuildTypesenseDocsAncestors:
         assert set(docs[0]["occupation_ids"]) == {100, 200}
         # occupation_id (singular) should be the leaf
         assert docs[0]["occupation_id"] == 100
+
+    def test_occupation_ancestors_have_stable_order(self):
+        maps = _make_taxonomy_maps()
+        maps.occupation_ancestors[100] = [200, 100]
+        docs = _build_typesense_docs([_make_posting_record(occupation_id=100)], maps)
+        assert docs[0]["occupation_ids"] == [100, 200]
 
     def test_no_occupation_when_none(self):
         """No occupation_ids field when occupation_id is None."""

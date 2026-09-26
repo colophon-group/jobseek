@@ -111,6 +111,7 @@ async function flushEffects(): Promise<void> {
 }
 
 beforeEach(() => {
+  document.documentElement.removeAttribute("data-explore-pending");
   mocks.loadBrowserData.mockReset();
   mocks.searchPageProps.mockReset();
   mocks.session.isLoggedIn = false;
@@ -134,7 +135,7 @@ afterEach(() => {
 });
 
 describe("ExploreContent browser initialization", () => {
-  it("keeps the static snapshot visible until filtered browser data commits", async () => {
+  it("keeps the cached feed masked until filtered browser data commits", async () => {
     setBrowserSearch("loc=zurich");
     let resolve!: (value: unknown) => void;
     mocks.loadBrowserData.mockReturnValueOnce(
@@ -143,24 +144,18 @@ describe("ExploreContent browser initialization", () => {
       }),
     );
     const initialData = makeInitialData();
-    const view = render(
-      <>
-        <section data-explore-static-results data-testid="static-results" />
-        <div data-explore-interactive hidden data-testid="interactive-results">
-          <ExploreContent locale="en" initialData={initialData} />
-        </div>
-      </>,
-    );
+    const view = render(<ExploreContent locale="en" initialData={initialData} />);
 
     await waitFor(() => expect(mocks.loadBrowserData).toHaveBeenCalledOnce());
-    expect(view.getByTestId("static-results").hasAttribute("hidden")).toBe(false);
-    expect(view.getByTestId("interactive-results").hasAttribute("hidden")).toBe(true);
+    expect(document.documentElement.hasAttribute("data-explore-pending")).toBe(true);
+    expect(view.queryByTestId("search-page")).toBeNull();
+    expect(view.queryByTestId("explore-skeleton")).not.toBeNull();
 
     resolve({ data: initialData, unavailable: false, directAttempted: true });
     await waitFor(() =>
-      expect(view.getByTestId("static-results").hasAttribute("hidden")).toBe(true),
+      expect(document.documentElement.hasAttribute("data-explore-pending")).toBe(false),
     );
-    expect(view.getByTestId("interactive-results").hasAttribute("hidden")).toBe(false);
+    expect(view.queryByTestId("search-page")).not.toBeNull();
   });
 
   it("uses the prerendered shell without a mount read for an anonymous default visit", async () => {

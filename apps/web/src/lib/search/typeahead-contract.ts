@@ -26,3 +26,16 @@ export interface SearchBarTypeaheadResults {
   seniorities: TaxonomySuggestion[];
   technologies: TaxonomySuggestion[];
 }
+
+export interface SearchBarTermTypeaheadParams extends Omit<SearchBarTypeaheadParams, "query" | "includeCompanies"> {
+  /** At most four bounded terms or phrases from one input. */
+  terms: string[];
+}
+
+export interface SearchBarTermResult {
+  term: string;
+  locations: LocationSuggestion[];
+  occupations: TaxonomySuggestion[];
+  seniorities: TaxonomySuggestion[];
+  technologies: TaxonomySuggestion[];
+}

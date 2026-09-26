@@ -1,12 +1,12 @@
 # Typesense Deployment State
 
-Current production deployment as of July 2026. The earlier docs in this directory (00-05) describe the migration plan and benchmarks; this document describes what was actually deployed.
+Production architecture, originally captured in July 2026. The earlier docs in this directory (00-05) describe the migration plan and benchmarks. For the current host memory policy, see [`16-hetzner-maintenance.md`](16-hetzner-maintenance.md).
 
 ## Infrastructure
 
 ### Typesense Machine
 
-- **Hetzner CX22**: 4 GB RAM, 2 vCPU, dedicated IPv4
+- **Hetzner CX33**: 8 GB RAM, 4 vCPU, dedicated IPv4; managed Typesense container has a 6 GiB hard memory limit
 - **OS**: Ubuntu (Docker host)
 - **Container**: Typesense 27.1 pinned by manifest digest in the host installer,
   `--network host`, data at
@@ -41,7 +41,7 @@ The Vercel-hosted web app has no stable IPs, so it cannot be firewalled into the
   delivered through systemd `LoadCredential`; neither the unit nor process
   arguments contain the token.
 - **Cache bypass rule**: configured in Cloudflare dashboard -- without it, Cloudflare may cache GET search responses and return stale results (Typesense does not set `Cache-Control` headers by default)
-- **Rate-limit rule** (zone `colophon-group.org`, phase `http_ratelimit`): per-IP, 200 requests / 10 s on `(http.host eq "typesense.colophon-group.org")`, action `block` for 10 s. Required because the search key is exposed to browsers (see "Web App Integration") and the origin is a single 4 GB / 2 vCPU box.
+- **Rate-limit rule** (zone `colophon-group.org`, phase `http_ratelimit`): per-IP, 200 requests / 10 s on `(http.host eq "typesense.colophon-group.org")`, action `block` for 10 s. Required because the search key is exposed to browsers (see "Web App Integration") and the origin is a single Typesense host.
 - **CORS**: Typesense container emits `Access-Control-Allow-Origin: *` directly -- no Cloudflare Transform Rule needed. Verified via `curl -X OPTIONS -H 'Origin: https://jseek.co' https://typesense.colophon-group.org/health`.
 - **Latency overhead**: ~10-30 ms per request (acceptable -- Typesense queries take <10 ms)
 
@@ -181,29 +181,57 @@ Both are idempotent. On every run, the setup logic:
 
 ### Stable candidate-order rollout
 
-Frozen precise-matching feeds will use a total newest-first order after the
-separately gated producer rollout:
-`first_seen_at DESC, candidate ID ASC`. Typesense's implicit `id` cannot be
-configured for string sorting, so each `job_posting` document carries
-`candidate_order_key`: a 22-character, fixed-width, ASCII-lexicographic base-64
-encoding of the UUID's unsigned 128-bit value (`uuid-b64lex-v1`). It preserves
-canonical lowercase UUID order while being 39% shorter than a copied 36-byte
-UUID. The field is `index: true, sort: true` and optional only for the in-place
-transition. The activation change must update the steady exporter, full
-backfill, reconciliation repairs, and local development backfill to emit it.
+Frozen precise-matching feeds use `first_seen_at DESC, candidate ID ASC` after
+the separately gated producer rollout. Typesense's implicit `id` cannot be
+configured for string sorting. Each posting therefore carries signed int64
+`candidate_order_hi` and `candidate_order_lo` fields, derived by subtracting
+2^63 from the unsigned high and low UUID halves (`uuid-int64-active-v1`). Sorting
+by timestamp, high half, then low half exactly preserves canonical UUID order.
+The 22-character `candidate_order_key` remains stored but unindexed for exact
+per-hit validation in JavaScript, whose JSON numbers cannot represent arbitrary
+int64 values. The exporter and local development backfill emit all three values
+for active postings and explicit nulls for inactive postings. A delist removes
+the sortable values; a relist restores them on the normal upsert. Required
+candidate reads filter to active postings. All three fields are optional during
+the in-place transition, and a complete reconciliation checks both active and
+inactive payloads before activation.
 
-Do not infer memory safety from the compact representation. A sortable string
-still has an in-memory sort structure. Activation therefore has two independent
-prerequisites: a reviewed production-shaped memory/headroom benchmark and a
-durable complete reconciliation proof.
+The earlier sortable-string design was stopped after a 50,000-document
+production update showed concerning memory growth. Evidence is in
+`docs/evidence/candidate-order-prod-2026-09-23-result.json`. A local Typesense
+27.1 comparison of 100,000 synthetic documents found approximately 103 bytes
+per document of incremental allocated memory for the numeric pair versus 998
+bytes for the sortable string, relative to a no-key control. An initial numeric
+50,000-document production trial was rolled back when effective cgroup
+headroom briefly fell below its predeclared 1 GiB gate, even though allocator
+and resident growth were small. The active-only producer avoids indexing the
+roughly 58% of stored postings that are inactive. Its separate 250,000-document
+production trial still projected 4.70 GiB anonymous memory at full active
+coverage, above the predeclared 4.5 GiB gate on the 6 GiB container. That trial
+was stopped and rolled back; see
+`docs/evidence/candidate-order-active-prod-2026-09-23-result.json`. A
+full-size snapshot clone then measured approximately 157 bytes of settled
+allocated memory per active posting. A second production trial stamped all
+2,344,524 active IDs from its export and measured approximately 154 bytes of
+allocated-memory growth and 164 bytes of anonymous-memory growth per posting.
+After an idle interval, anonymous memory was 3.92 GiB on the 6 GiB container,
+the representative stable-sort query was 107 ms at p95, and there were no OOM
+events or restarts. See
+`docs/evidence/candidate-order-active-clone-2026-09-23-result.json` and
+`docs/evidence/candidate-order-active-prod-2026-09-23-retry-result.json`.
+The original short-run slope did not predict the settled full-index cost.
+Activation still requires review of the production benchmark and a fresh
+durable complete reconciliation after deploying the producer.
 
 For the benchmark, use Typesense 27.1 on the same instance class and memory
-limit as production, with the production document count and field cardinality.
+limit as production (currently CX33 with a 6 GiB container limit; verify the
+live host before the run), with the live production document count and field
+cardinality.
 Record, at minimum, the Typesense version, instance memory limit, document
-count, baseline resident memory, resident and peak memory with
-`candidate_order_key`, remaining headroom, the headroom threshold chosen before
-the run, representative two-key sort p95 latency, measurement time, and key
-version. The human reviewer must approve the resulting headroom before rollout.
+count, baseline resident memory, resident and peak memory with both numeric
+sort fields, remaining headroom, the headroom threshold chosen before the run,
+representative three-key sort p95 latency, measurement time, and key version.
+The human reviewer must approve the resulting headroom before rollout.
 Keep that small JSON artifact with the release evidence and compute its
 lowercase SHA-256; the reconciliation receipt binds this digest. A unit estimate
 or a smaller synthetic collection is not an activation benchmark.
@@ -212,9 +240,11 @@ Activation is deliberately fail-closed. Keep
 `TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT` unset while rolling out the producer:
 
 1. Deploy the crawler schema/exporter change so `setup-typesense` patches the
-   optional sortable field before new document writes.
-2. Run `uv run --no-sync crawler backfill-typesense` to stamp the field onto
-   every authoritative posting.
+   optional numeric sort fields before new document writes.
+2. Export the active posting IDs through the bounded rollout tool and stamp
+   all three fields onto that set. The full crawler backfill also works but
+   rewrites inactive documents needlessly. Keep the ID export for a precise
+   rollback, and check memory and query latency at predeclared checkpoints.
 3. After the benchmark is reviewed, run the proof and pass its artifact digest:
 
    ```bash
@@ -223,8 +253,8 @@ Activation is deliberately fail-closed. Keep
      --candidate-order-benchmark-sha256 <reviewed-artifact-sha256>
    ```
 
-   `candidate_order_key` is part of the reconciliation payload fingerprint, so
-   a missing or mismatched value is payload drift. Only a successful, fresh,
+   All three fields are part of the reconciliation payload fingerprint, so a
+   missing or mismatched value is payload drift. Only a successful, fresh,
    full 256-partition repair with zero unresolved rows emits a receipt. The
    receipt binds the key/schema versions, durable run UUID and completion time,
    authoritative checked count, partition count, unresolved count, and reviewed
@@ -234,17 +264,18 @@ Activation is deliberately fail-closed. Keep
    `TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT` and deploy the web reader. A legacy
    boolean such as `1`, a partial receipt, or a wrong key version is rejected.
 
-Only callers that explicitly set `requireStableOrder: true` use the second sort
-key. This is the AF-2 extraction contract. Existing notifications and ordinary
+Only callers that explicitly set `requireStableOrder: true` use the two UUID
+sort fields. This is the AF-2 extraction contract. Existing notifications and ordinary
 interactive watchlist reads remain on their legacy order even when a valid
 receipt exists, so producer rollout cannot change them. Immediately before and
 after every required candidate read, the reader runs the exact eligible
-filter/window with `candidate_order_key(missing_values: first):asc` and requests
-one hit. It fails if that hit lacks a valid paired key, including when the
+filter/window with each numeric field separately sorted missing-first and
+requests one hit per field. It fails if either hit lacks a valid paired key,
+including when the
 requested page has a deep offset or a rollout race removes the key during the
 read. The candidate read itself also specifies `missing_values: first` on its
-stable secondary sort. Required reads reject a malformed, non-canonical, or
-mismatched key on every returned hit; the optional schema field therefore
+stable secondary and tertiary sorts. Required reads reject a malformed,
+non-canonical, or mismatched key on every returned hit; the optional fields therefore
 cannot silently corrupt a frozen prefix.
 If later reconciliation finds drift or memory headroom changes materially,
 remove the receipt before investigating. Required callers then fail closed.

@@ -1,0 +1,22 @@
+{
+  "captured_at": "2026-09-23T12:31:02.522516+00:00",
+  "initial_preflight_raw_cgroup_headroom_gate": "not met during read-only export; do not report it as passing",
+  "key_update_stop_thresholds": {
+    "container_restarts_allowed": 0,
+    "minimum_effective_headroom_bytes": 1073741824,
+    "oom_events_allowed": 0,
+    "representative_query_p95_ms": 192
+  },
+  "observation": {
+    "cgroup_memory_current_bytes": 6183497728,
+    "cgroup_memory_limit_bytes": 6442450944,
+    "container_restarts": 0,
+    "effective_headroom_bytes": 1582034944,
+    "effective_working_set_bytes": 4860416000,
+    "inactive_file_bytes": 1323081728,
+    "oom_events": 0,
+    "oom_kill_events": 0
+  },
+  "phase": "after schema alter and read-only ID export; before any candidate-order document update",
+  "reason": "Linux cgroup memory.current includes reclaimable Typesense file cache. Docker working-set usage excludes inactive_file and better represents OOM risk while checking oom counters and query latency separately."
+}

@@ -1,0 +1,660 @@
+{
+  "version": "jev-search-catalog7-v1",
+  "model": "jev-1.13.0",
+  "policy": "Route a JOB SEARCH query into filters for all career families, using the occupation catalog in state. Answer the intent question for the WHOLE QUERY first. If intent is other, every span must be keyword: no filters and no discard. For a job search, choose the SHORTEST complete text span for each independent filter. Single words and common abbreviations/typos can be filters: seniority (senior, staff, junior, sr, jr), work mode (remote, wfh, hybrid, onsite and translations), named technologies/tools, or a known place. Employment type is limited to full-time, part-time, contract, temporary, and volunteer. An occupation is a complete one- to three-word job title in the catalog OR a clear alias, abbreviation, translation, or typo of one, across software, healthcare, finance, legal, sales, operations, administration, and other fields. Keep a complete role title together, including a specialty such as backend, product, or sales; these job specialties are not technologies by themselves. But a named technology/tool, seniority, work mode, employment type, or place NEXT TO a role is a SEPARATE filter and must not be swallowed by the occupation. If a title is unsupported, retain it as keyword; never map it to a different occupation with one shared word. In job searches, label filler words and instruction phrases as discard so they do not become title keywords. Do not discard meaningful unsupported job titles, specialties, skills, or company names. All unchosen overlapping spans are keyword.",
+  "categories": {
+    "keyword": "Retain this meaningful unmatched term in job-title keyword search, including unsupported occupations and domain terms.",
+    "location": "A location to resolve against the job location taxonomy.",
+    "occupation": "A job occupation or title to resolve against the occupation taxonomy.",
+    "seniority": "A career level to resolve against the seniority taxonomy.",
+    "technology": "A named technology or tool to resolve against the technology taxonomy.",
+    "remote": "The remote or work-from-home work mode.",
+    "hybrid": "The hybrid work mode.",
+    "onsite": "The on-site or in-office work mode.",
+    "employmentType": "An employment type such as contract or part-time.",
+    "discard": "Discard filler or instructions that should not constrain job results, such as 'find', 'looking for', 'jobs', 'role', 'in', or 'please'. Use only when the whole query is a job search; do not erase an unrelated or informational request."
+  },
+  "intentCriteria": {
+    "jobSearch": "The user wants job postings or a job search, including an unsupported occupation.",
+    "other": "This is an informational, advice, shopping, joke, or unrelated request rather than a job-posting search."
+  },
+  "occupationCatalog": [
+    {
+      "slug": "software-engineer",
+      "en": "Software Engineer",
+      "de": "Softwareingenieur",
+      "fr": "Ingénieur logiciel",
+      "it": "Ingegnere del software"
+    },
+    {
+      "slug": "frontend-developer",
+      "en": "Frontend Developer",
+      "de": "Frontend-Entwickler",
+      "fr": "Développeur frontend",
+      "it": "Sviluppatore frontend"
+    },
+    {
+      "slug": "backend-developer",
+      "en": "Backend Developer",
+      "de": "Backend-Entwickler",
+      "fr": "Développeur backend",
+      "it": "Sviluppatore backend"
+    },
+    {
+      "slug": "fullstack-developer",
+      "en": "Fullstack Developer",
+      "de": "Fullstack-Entwickler",
+      "fr": "Développeur fullstack",
+      "it": "Sviluppatore fullstack"
+    },
+    {
+      "slug": "mobile-developer",
+      "en": "Mobile Developer",
+      "de": "Mobile-Entwickler",
+      "fr": "Développeur mobile",
+      "it": "Sviluppatore mobile"
+    },
+    {
+      "slug": "embedded-engineer",
+      "en": "Embedded Engineer",
+      "de": "Embedded-Ingenieur",
+      "fr": "Ingénieur embarqué",
+      "it": "Ingegnere embedded"
+    },
+    {
+      "slug": "game-developer",
+      "en": "Game Developer",
+      "de": "Spieleentwickler",
+      "fr": "Développeur de jeux",
+      "it": "Sviluppatore di videogiochi"
+    },
+    {
+      "slug": "ai-engineer",
+      "en": "AI Engineer",
+      "de": "KI-Ingenieur",
+      "fr": "Ingénieur IA",
+      "it": "Ingegnere IA"
+    },
+    {
+      "slug": "research-engineer",
+      "en": "Research Engineer",
+      "de": "Research Engineer",
+      "fr": "Ingénieur de recherche",
+      "it": "Ingegnere di ricerca"
+    },
+    {
+      "slug": "devops-engineer",
+      "en": "DevOps Engineer",
+      "de": "DevOps-Ingenieur",
+      "fr": "Ingénieur DevOps",
+      "it": "Ingegnere DevOps"
+    },
+    {
+      "slug": "release-engineer",
+      "en": "Release Engineer",
+      "de": "Release-Ingenieur",
+      "fr": "Ingénieur de release",
+      "it": "Release Engineer"
+    },
+    {
+      "slug": "qa-engineer",
+      "en": "QA Engineer",
+      "de": "QA-Ingenieur",
+      "fr": "Ingénieur QA",
+      "it": "Ingegnere QA"
+    },
+    {
+      "slug": "data-engineer",
+      "en": "Data Engineer",
+      "de": "Dateningenieur",
+      "fr": "Ingénieur données",
+      "it": "Ingegnere dei dati"
+    },
+    {
+      "slug": "data-scientist",
+      "en": "Data Scientist",
+      "de": "Data Scientist",
+      "fr": "Data Scientist",
+      "it": "Data Scientist"
+    },
+    {
+      "slug": "ml-engineer",
+      "en": "ML Engineer",
+      "de": "ML-Ingenieur",
+      "fr": "Ingénieur ML",
+      "it": "Ingegnere ML"
+    },
+    {
+      "slug": "data-analyst",
+      "en": "Data Analyst",
+      "de": "Datenanalyst",
+      "fr": "Analyste de données",
+      "it": "Analista dati"
+    },
+    {
+      "slug": "data-annotator",
+      "en": "Data Annotator",
+      "de": "Datenannotator",
+      "fr": "Annotateur de données",
+      "it": "Annotatore di dati"
+    },
+    {
+      "slug": "security-engineer",
+      "en": "Security Engineer",
+      "de": "Security-Ingenieur",
+      "fr": "Ingénieur sécurité",
+      "it": "Ingegnere della sicurezza"
+    },
+    {
+      "slug": "solutions-architect",
+      "en": "Solutions Architect",
+      "de": "Solutions Architect",
+      "fr": "Architecte solutions",
+      "it": "Solutions Architect"
+    },
+    {
+      "slug": "database-administrator",
+      "en": "Database Administrator",
+      "de": "Datenbankadministrator",
+      "fr": "Administrateur de base de données",
+      "it": "Amministratore di database"
+    },
+    {
+      "slug": "network-engineer",
+      "en": "Network Engineer",
+      "de": "Netzwerkingenieur",
+      "fr": "Ingénieur réseau",
+      "it": "Ingegnere di rete"
+    },
+    {
+      "slug": "systems-administrator",
+      "en": "Systems Administrator",
+      "de": "Systemadministrator",
+      "fr": "Administrateur système",
+      "it": "Amministratore di sistema"
+    },
+    {
+      "slug": "product-manager",
+      "en": "Product Manager",
+      "de": "Produktmanager",
+      "fr": "Chef de produit",
+      "it": "Product Manager"
+    },
+    {
+      "slug": "designer",
+      "en": "Designer",
+      "de": "Designer",
+      "fr": "Designer",
+      "it": "Designer"
+    },
+    {
+      "slug": "ux-researcher",
+      "en": "UX Researcher",
+      "de": "UX Researcher",
+      "fr": "Chercheur UX",
+      "it": "UX Researcher"
+    },
+    {
+      "slug": "technical-writer",
+      "en": "Technical Writer",
+      "de": "Technischer Redakteur",
+      "fr": "Rédacteur technique",
+      "it": "Redattore tecnico"
+    },
+    {
+      "slug": "project-manager",
+      "en": "Project Manager",
+      "de": "Projektmanager",
+      "fr": "Chef de projet",
+      "it": "Project Manager"
+    },
+    {
+      "slug": "technical-program-manager",
+      "en": "Technical Program Manager",
+      "de": "Technical Program Manager",
+      "fr": "Technical Program Manager",
+      "it": "Technical Program Manager"
+    },
+    {
+      "slug": "scrum-master",
+      "en": "Scrum Master",
+      "de": "Scrum Master",
+      "fr": "Scrum Master",
+      "it": "Scrum Master"
+    },
+    {
+      "slug": "engineering-manager",
+      "en": "Engineering Manager",
+      "de": "Engineering Manager",
+      "fr": "Engineering Manager",
+      "it": "Engineering Manager"
+    },
+    {
+      "slug": "business-analyst",
+      "en": "Business Analyst",
+      "de": "Business Analyst",
+      "fr": "Analyste d'affaires",
+      "it": "Business Analyst"
+    },
+    {
+      "slug": "consultant",
+      "en": "Consultant",
+      "de": "Berater",
+      "fr": "Consultant",
+      "it": "Consulente"
+    },
+    {
+      "slug": "sales-engineer",
+      "en": "Sales Engineer",
+      "de": "Sales Engineer",
+      "fr": "Ingénieur commercial",
+      "it": "Sales Engineer"
+    },
+    {
+      "slug": "account-executive",
+      "en": "Account Executive",
+      "de": "Account Executive",
+      "fr": "Responsable de comptes",
+      "it": "Account Executive"
+    },
+    {
+      "slug": "sales-manager",
+      "en": "Sales Manager",
+      "de": "Vertriebsleiter",
+      "fr": "Responsable des ventes",
+      "it": "Responsabile vendite"
+    },
+    {
+      "slug": "customer-success-manager",
+      "en": "Customer Success Manager",
+      "de": "Customer Success Manager",
+      "fr": "Customer Success Manager",
+      "it": "Customer Success Manager"
+    },
+    {
+      "slug": "customer-engineer",
+      "en": "Customer Engineer",
+      "de": "Customer Engineer",
+      "fr": "Ingénieur client",
+      "it": "Customer Engineer"
+    },
+    {
+      "slug": "support-engineer",
+      "en": "Support Engineer",
+      "de": "Support-Ingenieur",
+      "fr": "Ingénieur support",
+      "it": "Ingegnere di supporto"
+    },
+    {
+      "slug": "marketing-manager",
+      "en": "Marketing Manager",
+      "de": "Marketing Manager",
+      "fr": "Responsable marketing",
+      "it": "Marketing Manager"
+    },
+    {
+      "slug": "content-strategist",
+      "en": "Content Strategist",
+      "de": "Content-Stratege",
+      "fr": "Stratégiste de contenu",
+      "it": "Content Strategist"
+    },
+    {
+      "slug": "hr-manager",
+      "en": "HR Manager",
+      "de": "HR-Manager",
+      "fr": "Responsable RH",
+      "it": "HR Manager"
+    },
+    {
+      "slug": "recruiter",
+      "en": "Recruiter",
+      "de": "Recruiter",
+      "fr": "Recruteur",
+      "it": "Recruiter"
+    },
+    {
+      "slug": "finance-manager",
+      "en": "Finance Manager",
+      "de": "Finanzmanager",
+      "fr": "Responsable financier",
+      "it": "Finance Manager"
+    },
+    {
+      "slug": "accountant",
+      "en": "Accountant",
+      "de": "Buchhalter",
+      "fr": "Comptable",
+      "it": "Contabile"
+    },
+    {
+      "slug": "auditor",
+      "en": "Auditor",
+      "de": "Wirtschaftsprüfer",
+      "fr": "Auditeur",
+      "it": "Revisore"
+    },
+    {
+      "slug": "tax-advisor",
+      "en": "Tax Advisor",
+      "de": "Steuerberater",
+      "fr": "Conseiller fiscal",
+      "it": "Consulente fiscale"
+    },
+    {
+      "slug": "legal-counsel",
+      "en": "Legal Counsel",
+      "de": "Rechtsberater",
+      "fr": "Conseiller juridique",
+      "it": "Consulente legale"
+    },
+    {
+      "slug": "compliance-officer",
+      "en": "Compliance Officer",
+      "de": "Compliance-Beauftragter",
+      "fr": "Responsable conformité",
+      "it": "Compliance Officer"
+    },
+    {
+      "slug": "risk-manager",
+      "en": "Risk Manager",
+      "de": "Risikomanager",
+      "fr": "Responsable des risques",
+      "it": "Risk Manager"
+    },
+    {
+      "slug": "executive-assistant",
+      "en": "Executive Assistant",
+      "de": "Assistenz der Geschäftsführung",
+      "fr": "Assistant de direction",
+      "it": "Assistente di direzione"
+    },
+    {
+      "slug": "operations-manager",
+      "en": "Operations Manager",
+      "de": "Operations Manager",
+      "fr": "Responsable des opérations",
+      "it": "Operations Manager"
+    },
+    {
+      "slug": "supply-chain-manager",
+      "en": "Supply Chain Manager",
+      "de": "Supply-Chain-Manager",
+      "fr": "Responsable chaîne d'approvisionnement",
+      "it": "Supply Chain Manager"
+    },
+    {
+      "slug": "facilities-manager",
+      "en": "Facilities Manager",
+      "de": "Facility Manager",
+      "fr": "Responsable des installations",
+      "it": "Facility Manager"
+    },
+    {
+      "slug": "warehouse-associate",
+      "en": "Warehouse Associate",
+      "de": "Lagermitarbeiter",
+      "fr": "Associé d'entrepôt",
+      "it": "Addetto al magazzino"
+    },
+    {
+      "slug": "loss-prevention-specialist",
+      "en": "Loss Prevention Specialist",
+      "de": "Sicherheitsspezialist",
+      "fr": "Spécialiste prévention des pertes",
+      "it": "Specialista prevenzione perdite"
+    },
+    {
+      "slug": "data-center-technician",
+      "en": "Data Center Technician",
+      "de": "Rechenzentrumstechniker",
+      "fr": "Technicien de centre de données",
+      "it": "Tecnico del data center"
+    },
+    {
+      "slug": "data-center-manager",
+      "en": "Data Center Manager",
+      "de": "Rechenzentrumsleiter",
+      "fr": "Responsable de centre de données",
+      "it": "Responsabile del data center"
+    },
+    {
+      "slug": "maintenance-technician",
+      "en": "Maintenance Technician",
+      "de": "Instandhaltungstechniker",
+      "fr": "Technicien de maintenance",
+      "it": "Tecnico di manutenzione"
+    },
+    {
+      "slug": "automation-engineer",
+      "en": "Automation Engineer",
+      "de": "Automatisierungsingenieur",
+      "fr": "Ingénieur automatisation",
+      "it": "Ingegnere dell'automazione"
+    },
+    {
+      "slug": "ehs-specialist",
+      "en": "EHS Specialist",
+      "de": "Arbeitssicherheitsspezialist",
+      "fr": "Spécialiste HSE",
+      "it": "Specialista sicurezza sul lavoro"
+    },
+    {
+      "slug": "construction-manager",
+      "en": "Construction Manager",
+      "de": "Bauleiter",
+      "fr": "Responsable de chantier",
+      "it": "Responsabile di cantiere"
+    },
+    {
+      "slug": "electrical-engineer",
+      "en": "Electrical Engineer",
+      "de": "Elektroingenieur",
+      "fr": "Ingénieur électricien",
+      "it": "Ingegnere elettrico"
+    },
+    {
+      "slug": "mechanical-engineer",
+      "en": "Mechanical Engineer",
+      "de": "Maschinenbauingenieur",
+      "fr": "Ingénieur mécanique",
+      "it": "Ingegnere meccanico"
+    },
+    {
+      "slug": "quality-manager",
+      "en": "Quality Manager",
+      "de": "Qualitätsmanager",
+      "fr": "Responsable qualité",
+      "it": "Responsabile qualità"
+    },
+    {
+      "slug": "pharmacist",
+      "en": "Pharmacist",
+      "de": "Apotheker",
+      "fr": "Pharmacien",
+      "it": "Farmacista"
+    },
+    {
+      "slug": "medical-representative",
+      "en": "Medical Representative",
+      "de": "Medizinischer Vertreter",
+      "fr": "Représentant médical",
+      "it": "Rappresentante medico"
+    },
+    {
+      "slug": "site-reliability-engineer",
+      "en": "Site Reliability Engineer",
+      "de": "Site Reliability Engineer",
+      "fr": "Ingénieur fiabilité",
+      "it": "Site Reliability Engineer"
+    },
+    {
+      "slug": "platform-engineer",
+      "en": "Platform Engineer",
+      "de": "Platform Engineer",
+      "fr": "Ingénieur plateforme",
+      "it": "Ingegnere di piattaforma"
+    },
+    {
+      "slug": "cloud-engineer",
+      "en": "Cloud Engineer",
+      "de": "Cloud-Ingenieur",
+      "fr": "Ingénieur cloud",
+      "it": "Ingegnere cloud"
+    },
+    {
+      "slug": "analytics-engineer",
+      "en": "Analytics Engineer",
+      "de": "Analytics Engineer",
+      "fr": "Ingénieur analytics",
+      "it": "Analytics Engineer"
+    },
+    {
+      "slug": "mlops-engineer",
+      "en": "MLOps Engineer",
+      "de": "MLOps-Ingenieur",
+      "fr": "Ingénieur MLOps",
+      "it": "Ingegnere MLOps"
+    },
+    {
+      "slug": "computer-vision-engineer",
+      "en": "Computer Vision Engineer",
+      "de": "Computer-Vision-Ingenieur",
+      "fr": "Ingénieur vision par ordinateur",
+      "it": "Ingegnere visione artificiale"
+    },
+    {
+      "slug": "nlp-engineer",
+      "en": "NLP Engineer",
+      "de": "NLP-Ingenieur",
+      "fr": "Ingénieur NLP",
+      "it": "Ingegnere NLP"
+    },
+    {
+      "slug": "application-security-engineer",
+      "en": "Application Security Engineer",
+      "de": "Application-Security-Ingenieur",
+      "fr": "Ingénieur sécurité applicative",
+      "it": "Ingegnere sicurezza applicativa"
+    },
+    {
+      "slug": "firmware-engineer",
+      "en": "Firmware Engineer",
+      "de": "Firmware-Ingenieur",
+      "fr": "Ingénieur firmware",
+      "it": "Ingegnere firmware"
+    },
+    {
+      "slug": "hardware-engineer",
+      "en": "Hardware Engineer",
+      "de": "Hardwareingenieur",
+      "fr": "Ingénieur matériel",
+      "it": "Ingegnere hardware"
+    },
+    {
+      "slug": "asic-engineer",
+      "en": "ASIC Engineer",
+      "de": "ASIC-Ingenieur",
+      "fr": "Ingénieur ASIC",
+      "it": "Ingegnere ASIC"
+    },
+    {
+      "slug": "sdet",
+      "en": "SDET",
+      "de": "SDET",
+      "fr": "SDET",
+      "it": "SDET"
+    },
+    {
+      "slug": "cloud-architect",
+      "en": "Cloud Architect",
+      "de": "Cloud-Architekt",
+      "fr": "Architecte cloud",
+      "it": "Architetto cloud"
+    },
+    {
+      "slug": "data-architect",
+      "en": "Data Architect",
+      "de": "Datenarchitekt",
+      "fr": "Architecte de données",
+      "it": "Architetto dei dati"
+    },
+    {
+      "slug": "tech-lead",
+      "en": "Tech Lead",
+      "de": "Tech Lead",
+      "fr": "Tech Lead",
+      "it": "Tech Lead"
+    },
+    {
+      "slug": "research-scientist",
+      "en": "Research Scientist",
+      "de": "Forschungswissenschaftler",
+      "fr": "Chercheur scientifique",
+      "it": "Ricercatore scientifico"
+    },
+    {
+      "slug": "applied-scientist",
+      "en": "Applied Scientist",
+      "de": "Applied Scientist",
+      "fr": "Applied Scientist",
+      "it": "Applied Scientist"
+    },
+    {
+      "slug": "quantitative-analyst",
+      "en": "Quantitative Analyst",
+      "de": "Quantitativer Analyst",
+      "fr": "Analyste quantitatif",
+      "it": "Analista quantitativo"
+    },
+    {
+      "slug": "bioinformatician",
+      "en": "Bioinformatician",
+      "de": "Bioinformatiker",
+      "fr": "Bioinformaticien",
+      "it": "Bioinformatico"
+    },
+    {
+      "slug": "robotics-engineer",
+      "en": "Robotics Engineer",
+      "de": "Robotik-Ingenieur",
+      "fr": "Ingénieur robotique",
+      "it": "Ingegnere robotica"
+    },
+    {
+      "slug": "developer-advocate",
+      "en": "Developer Advocate",
+      "de": "Developer Advocate",
+      "fr": "Developer Advocate",
+      "it": "Developer Advocate"
+    },
+    {
+      "slug": "performance-engineer",
+      "en": "Performance Engineer",
+      "de": "Performance-Ingenieur",
+      "fr": "Ingénieur performance",
+      "it": "Ingegnere delle prestazioni"
+    },
+    {
+      "slug": "product-engineer",
+      "en": "Product Engineer",
+      "de": "Produktingenieur",
+      "fr": "Ingénieur produit",
+      "it": "Ingegnere di prodotto"
+    },
+    {
+      "slug": "cybersecurity-analyst",
+      "en": "Cybersecurity Analyst",
+      "de": "Cybersicherheits-Analyst",
+      "fr": "Analyste cybersécurité",
+      "it": "Analista cybersecurity"
+    },
+    {
+      "slug": "geospatial-analyst",
+      "en": "Geospatial Analyst",
+      "de": "Geodaten-Analyst",
+      "fr": "Analyste géospatial",
+      "it": "Analista geospaziale"
+    }
+  ]
+}

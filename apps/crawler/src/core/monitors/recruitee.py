@@ -7,6 +7,7 @@ Also works on custom domains: GET https://{custom-domain}/api/offers
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -291,6 +292,11 @@ async def discover(
             status_code=response.status_code,
         )
     response.raise_for_status()
+
+    if os.environ.get("RECRUITEE_CAPTURE_TENANTS"):
+        from src.core.monitors.recruitee_capture import capture_recruitee_response
+
+        capture_recruitee_response(str(response.url), response.content)
 
     data = response.json()
     raw_offers = data.get("offers", [])

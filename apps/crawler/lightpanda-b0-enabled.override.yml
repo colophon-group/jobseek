@@ -144,7 +144,7 @@ services:
     environment:
       GOMEMLIMIT: 16MiB
       LIGHTPANDA_B0_PRODUCER_MODE: enabled
-      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1 or c4}
+      LIGHTPANDA_B0_PRODUCER_COHORT: ${LIGHTPANDA_B0_PRODUCER_COHORT:?choose exact c1, c2, or c3}
       LIGHTPANDA_B0_PRODUCER_CLIENT_UID: "0"
       LIGHTPANDA_B0_PRODUCER_SOCKET: /run/jobseek-lightpanda-producer/control.sock
       LIGHTPANDA_B0_QUEUE_NAMESPACE: production-b0
@@ -204,9 +204,11 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
     healthcheck:
-      test: ["CMD", "/app/.venv/bin/python", "-m", "src.lightpanda.executor", "--healthcheck"]
+      test: ["CMD", "/usr/local/bin/lightpanda-b0-supervisor", "executor-health"]
       interval: 5s
-      timeout: 3s
+      # Attest the live socket with the same Go client as real claims; avoid a
+      # fresh Python interpreter/asyncio startup on every health interval.
+      timeout: 15s
       retries: 3
       start_period: 10s
     mem_limit: 384m
