@@ -1432,8 +1432,12 @@ job51 — 51job employer microsites
   ctmid    Optional positive public tenant ID. When omitted, the monitor reads
            it from the unfiltered employer board before each cycle.
 
-  Board URLs must use the exact unfiltered employer listing form:
+  Board URLs must use an exact unfiltered employer listing form:
     https://{tenant}.51job.com/C01job_list.html
+    https://campus.51job.com/{tenant}/job.html
+
+  Shared campus microsites usually keep ctmid in an external script, so set
+  the public tenant ID explicitly for those boards.
 
   Detection: ws probe verifies the public tenant ID and first listing page."""
 

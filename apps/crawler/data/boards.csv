@@ -5583,6 +5583,9 @@ poka-en,poka-en-greenhouse,https://job-boards.greenhouse.io/poka,greenhouse,"{""
 poke-and-wiggle,poke-and-wiggle-careers,https://join.com/companies/pokeandwigglecom,join,"{""slug"": ""pokeandwigglecom""}",json-ld,"{""browser_backend"": ""lightpanda"", ""render"": true, ""routing_revision"": ""go-b0-1"", ""timeout"": 30000, ""wait"": ""load"", ""wait_fallback"": null}"
 polar,polar-ashby,https://jobs.ashbyhq.com/polar,ashby,"{""token"": ""polar""}",skip,
 polestar,polestar-global,https://polestar.teamtailor.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://polestar.teamtailor.com/jobs.rss""}",skip,
+poly-developments,poly-developments-careers,https://polycareer.zhiye.com/,beisen,{},skip,
+poly-developments,poly-developments-commerce-travel,https://campus.51job.com/polycommercetourism/job.html,job51,"{""ctmid"": 1787809}",skip,
+poly-developments,poly-developments-hospitality,https://job.veryeast.cn/1129501/jobs,dom,"{""link_selector"": ""a[href^=\""\/1129501\/\""]"", ""url_filter"": ""^https?://(?:www\\.)?job\\.veryeast\\.cn/1129501/\\d+/?$""}",veryeast,
 polyai,polyai-greenhouse,https://job-boards.greenhouse.io/polyai,greenhouse,"{""token"": ""polyai""}",skip,
 polychain-capital,polychain-capital-greenhouse,https://job-boards.greenhouse.io/polychaincapital,greenhouse,"{""token"": ""polychaincapital""}",skip,
 polygon-labs,polygon-labs-ashby,https://jobs.ashbyhq.com/polygon-labs,ashby,"{""token"": ""polygon-labs""}",skip,

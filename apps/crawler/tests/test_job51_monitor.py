@@ -52,8 +52,18 @@ def _detail(job_id: int, **overrides) -> dict:
 
 
 class TestBoardOrigin:
-    def test_accepts_exact_employer_board(self):
-        assert _board_origin("https://pvh.51job.com/C01job_list.html") == "https://pvh.51job.com"
+    @pytest.mark.parametrize(
+        ("url", "origin"),
+        [
+            ("https://pvh.51job.com/C01job_list.html", "https://pvh.51job.com"),
+            (
+                "https://campus.51job.com/polycommercetourism/job.html",
+                "https://campus.51job.com",
+            ),
+        ],
+    )
+    def test_accepts_exact_employer_board(self, url, origin):
+        assert _board_origin(url) == origin
 
     @pytest.mark.parametrize(
         "url",
@@ -63,6 +73,8 @@ class TestBoardOrigin:
             "https://jobs.51job.com/all/123.html",
             "https://pvh.51job.com/index.html",
             "https://pvh.51job.com/C01job_list.html?jobarea=020000",
+            "https://campus.51job.com/polycommercetourism/index.html",
+            "https://campus.51job.com/polycommercetourism/job.html?poscode=G01",
             "https://example.com/C01job_list.html",
         ],
     )
@@ -160,6 +172,28 @@ class TestDiscover:
             jobs = await discover(
                 {
                     "board_url": "https://pvh.51job.com/C01job_list.html",
+                    "metadata": {"ctmid": 258121},
+                },
+                client,
+            )
+
+        assert [job.metadata["id"] for job in jobs] == ["1"]
+
+    async def test_shared_campus_board_uses_configured_ctmid(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.host == "coapi.51job.com"
+            params = json.loads(request.url.params["params"])
+            if request.url.path.endswith("job_list.php"):
+                return httpx.Response(
+                    200,
+                    text=_jsonp({"totalnum": "1", "joblist": [_list_row(1)]}),
+                )
+            return httpx.Response(200, text=_jsonp(_detail(int(params["jobid"]))))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://campus.51job.com/polycommercetourism/job.html",
                     "metadata": {"ctmid": 258121},
                 },
                 client,
