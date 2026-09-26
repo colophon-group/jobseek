@@ -5604,6 +5604,7 @@ postman,postman-greenhouse,https://job-boards.greenhouse.io/postman,greenhouse,"
 postscript,postscript-greenhouse,https://job-boards.greenhouse.io/postscript,greenhouse,"{""token"": ""postscript""}",skip,
 power-digital,power-digital-greenhouse,https://job-boards.greenhouse.io/powerdigitalmarketing,greenhouse,"{""token"": ""powerdigitalmarketing""}",skip,
 powercell-sweden,powercell-sweden-main,https://careers.powercellgroup.com/,sitemap,"{""sitemap_url"": ""https://careers.powercellgroup.com/sitemap.xml"", ""url_filter"": ""^https://careers\\.powercellgroup\\.com/jobs/[0-9]+(?:-|$)""}",json-ld,"{""render"": true}"
+ppg,ppg-careers,https://ppg.wd5.myworkdayjobs.com/PPG_CAREERS,workday,,workday,
 ppro,ppro-careers,https://jobs.lever.co/ppro,lever,"{""token"": ""ppro""}",skip,
 practice-better,practice-better-greenhouse,https://job-boards.greenhouse.io/practicebetter,greenhouse,"{""token"": ""practicebetter""}",skip,
 prada-group,prada-group-china,https://jobschina.prada.cn/,mokahr,"{""org_id"": ""pradagroup"", ""site_id"": 151069}",mokahr,"{""enrich"": [""description""]}"
