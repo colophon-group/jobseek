@@ -520,7 +520,7 @@ class TestSet:
         board = load_board("test", "careers")
         assert board.job_link_pattern == r"^https?://test\.com/jobs/"
 
-    def test_set_logo_candidate_prefers_png_artifact(self, tmp_path, monkeypatch):
+    def test_set_logo_candidate_prefers_original_artifact(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="test"))
 
@@ -554,7 +554,40 @@ class TestSet:
         assert "Manual visual inspection required" in result.output
 
         workspace = load_workspace("test")
-        assert workspace.logo_url == str(png_path)
+        assert workspace.logo_url == str(original_path)
+
+    def test_set_webp_candidate_preserves_original_format(self, tmp_path, monkeypatch):
+        import io
+
+        from PIL import Image
+
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        candidates_dir = tmp_path / ".ws" / "test" / "artifacts" / "company" / "logo-candidates"
+        candidates_dir.mkdir(parents=True, exist_ok=True)
+        original_path = candidates_dir / "candidate-1.webp"
+        png_path = candidates_dir / "candidate-1.png"
+        output = io.BytesIO()
+        Image.new("RGB", (256, 256), "blue").save(output, format="WEBP")
+        original_path.write_bytes(output.getvalue())
+        Image.new("RGB", (32, 32), "blue").save(png_path)
+        (candidates_dir / "candidates.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "index": 1,
+                        "original_artifact_path": str(original_path),
+                        "png_artifact_path": str(png_path),
+                    }
+                ]
+            )
+        )
+
+        result = CliRunner().invoke(ws, ["set", "test", "--logo-candidate", "1"])
+
+        assert result.exit_code == 0
+        artifact = tmp_path / ".ws" / "test" / "artifacts" / "company" / "logo_original.webp"
+        assert artifact.read_bytes() == original_path.read_bytes()
 
     def test_set_icon_candidate_falls_back_to_original_artifact(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)

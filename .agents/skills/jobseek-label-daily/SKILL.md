@@ -15,15 +15,15 @@ The Python labeller code is deterministic orchestration only: database reads, Ji
 
 Use these project custom agents:
 
-- `jobseek-labeller-normalizer`: GPT-5.6 Luna at low reasoning; raw HTML
+- `jobseek-labeller-normalizer`: GPT-6 Luna at low reasoning; raw HTML
   task input -> `normalized.html`.
-- `jobseek-labeller-splitter`: GPT-5.6 Luna at medium reasoning;
+- `jobseek-labeller-splitter`: GPT-6 Luna at medium reasoning;
   `split_sections` task input -> `split-out.json`.
-- `jobseek-labeller-extractor`: GPT-5.6 Terra at high reasoning;
+- `jobseek-labeller-extractor`: GPT-6 Sol at high reasoning;
   `extract_all` task input -> `extract-all-out.json`.
 
 The committed `.codex/agents/*.toml` files pin these settings. Do not let the
-labeller agents inherit the Sol/high orchestrator default: normalization and
+labeller agents inherit the Astra/high orchestrator default: normalization and
 splitting are clear, repeatable tasks, while combined extraction needs more
 semantic judgment without requiring the flagship model.
 

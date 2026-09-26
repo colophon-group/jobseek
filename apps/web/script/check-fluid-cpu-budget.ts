@@ -10,7 +10,7 @@ export const FLUID_CPU_BASELINE = {
   routes: {
     companyOg: 120,
     companyPages: 91,
-    publicWatchlists: 39,
+    watchlistRoutes: 39,
     explore: 10,
     other: 17,
   },
@@ -25,14 +25,13 @@ export const FLUID_CPU_BUDGET = {
   timeoutRatePct: 0.1,
   typesenseCallsPerInvocation: 2.5,
   upstashCallsPerInvocation: 1.5,
-  companyOgR2HitRatePct: 95,
   pprShellHitRatePct: 35,
   minimumRecognizedBotRequests: 1,
   minimumLongTailUniqueKeys: 20,
   routes: {
     companyOg: 24,
     companyPages: 60,
-    publicWatchlists: 25,
+    watchlistRoutes: 25,
     explore: 10,
     other: 19.5,
   },
@@ -41,7 +40,7 @@ export const FLUID_CPU_BUDGET = {
 const REQUIRED_ROUTES = [
   "companyOg",
   "companyPages",
-  "publicWatchlists",
+  "watchlistRoutes",
   "explore",
   "other",
 ] as const;
@@ -50,8 +49,15 @@ const REQUIRED_FUNCTIONALITY = [
   "home",
   "explore",
   "companyPage",
-  "companyOg",
-  "publicWatchlist",
+  "companyOgDirect",
+  "companyOgLegacyRedirect",
+  "ownedWatchlist",
+  "sharedWatchlist",
+  "privateWatchlistAnonymousDenied",
+  "privateWatchlistCrossOwnerDenied",
+  "legacyWatchlistAnonymousDenied",
+  "legacyWatchlistCrossOwnerDenied",
+  "legacyWatchlistOwnerRedirects",
   "authentication",
 ] as const;
 
@@ -60,12 +66,14 @@ type Check = {
   actual: string;
   budget: string;
   passed: boolean;
+  available: boolean;
 };
 
 export type FluidCpuGateResult = {
   checks: Check[];
   markdown: string;
   passed: boolean;
+  status: "PASS" | "FAIL" | "INCOMPLETE" | "FAIL (INCOMPLETE EVIDENCE)";
 };
 
 function record(value: unknown, name: string): Record<string, unknown> {
@@ -80,6 +88,10 @@ function finiteNumber(value: unknown, name: string): number {
     throw new Error(`${name} must be a non-negative finite number`);
   }
   return value;
+}
+
+function measuredNumber(value: unknown, name: string): number | null {
+  return value === null ? null : finiteNumber(value, name);
 }
 
 function requiredString(value: unknown, name: string): string {
@@ -112,15 +124,16 @@ function ratioPercent(numerator: number, denominator: number): number {
 function addMaximum(
   checks: Check[],
   name: string,
-  actual: number,
+  actual: number | null,
   budget: number,
   unit: string,
 ) {
   checks.push({
     name,
-    actual: `${format(actual)}${unit}`,
+    actual: actual === null ? "unknown" : `${format(actual)}${unit}`,
     budget: `≤ ${format(budget)}${unit}`,
-    passed: actual <= budget,
+    passed: actual !== null && actual <= budget,
+    available: actual !== null,
   });
 }
 
@@ -136,12 +149,13 @@ function addMinimum(
     actual: `${format(actual)}${unit}`,
     budget: `≥ ${format(budget)}${unit}`,
     passed: actual >= budget,
+    available: true,
   });
 }
 
 export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
   const report = record(input, "report");
-  if (report.schemaVersion !== 1) throw new Error("schemaVersion must be 1");
+  if (report.schemaVersion !== 2) throw new Error("schemaVersion must be 2");
 
   const deployment = record(report.deployment, "deployment");
   const sha = requiredString(deployment.sha, "deployment.sha");
@@ -168,8 +182,8 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
   );
   const errorRate = finiteNumber(totals.errorRatePct, "totals.errorRatePct");
   const timeoutRate = finiteNumber(totals.timeoutRatePct, "totals.timeoutRatePct");
-  const typesenseCalls = finiteNumber(totals.typesenseCalls, "totals.typesenseCalls");
-  const upstashCalls = finiteNumber(totals.upstashCalls, "totals.upstashCalls");
+  const typesenseCalls = measuredNumber(totals.typesenseCalls, "totals.typesenseCalls");
+  const upstashCalls = measuredNumber(totals.upstashCalls, "totals.upstashCalls");
 
   const routes = record(report.routes, "routes");
   const routeCpu = {} as Record<(typeof REQUIRED_ROUTES)[number], number>;
@@ -183,11 +197,6 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
   }
 
   const cache = record(report.cache, "cache");
-  const companyOgR2Hits = finiteNumber(cache.companyOgR2Hits, "cache.companyOgR2Hits");
-  const companyOgR2Misses = finiteNumber(
-    cache.companyOgR2Misses,
-    "cache.companyOgR2Misses",
-  );
   const pprShellHits = finiteNumber(cache.pprShellHits, "cache.pprShellHits");
   const pprShellMisses = finiteNumber(cache.pprShellMisses, "cache.pprShellMisses");
 
@@ -204,6 +213,11 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
     traffic.sourceIncludesAllTraffic,
     "traffic.sourceIncludesAllTraffic",
   );
+  const trafficSource = requiredString(traffic.source, "traffic.source");
+  const samplingRatePct = finiteNumber(
+    traffic.samplingRatePct,
+    "traffic.samplingRatePct",
+  );
 
   const functionality = record(report.functionality, "functionality");
   const functionalityChecks = REQUIRED_FUNCTIONALITY.map((name) => ({
@@ -217,6 +231,7 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
     actual: new Date(windowStart).toISOString(),
     budget: `≥ ${new Date(readyAt).toISOString()}`,
     passed: windowStart >= readyAt,
+    available: true,
   });
   addMinimum(checks, "Clean window duration", windowHours, FLUID_CPU_BUDGET.minimumWindowHours, "h");
   addMaximum(checks, "Visible Active CPU", visibleCpu, FLUID_CPU_BUDGET.visibleActiveCpuSeconds, "s");
@@ -227,14 +242,14 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
   addMaximum(
     checks,
     "Typesense calls / invocation",
-    typesenseCalls / invocations,
+    typesenseCalls === null ? null : typesenseCalls / invocations,
     FLUID_CPU_BUDGET.typesenseCallsPerInvocation,
     "",
   );
   addMaximum(
     checks,
     "Upstash calls / invocation",
-    upstashCalls / invocations,
+    upstashCalls === null ? null : upstashCalls / invocations,
     FLUID_CPU_BUDGET.upstashCallsPerInvocation,
     "",
   );
@@ -255,15 +270,8 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
     actual: `${format(Math.abs(routeCpuSum - visibleCpu))}s difference`,
     budget: "≤ 0.5s difference",
     passed: Math.abs(routeCpuSum - visibleCpu) <= 0.5,
+    available: true,
   });
-
-  addMinimum(
-    checks,
-    "Company OG R2 hit rate",
-    ratioPercent(companyOgR2Hits, companyOgR2Hits + companyOgR2Misses),
-    FLUID_CPU_BUDGET.companyOgR2HitRatePct,
-    "%",
-  );
   addMinimum(
     checks,
     "PPR shell hit rate",
@@ -287,9 +295,17 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
   );
   checks.push({
     name: "Traffic source includes all requests",
-    actual: String(sourceIncludesAllTraffic),
+    actual: `${String(sourceIncludesAllTraffic)} (${trafficSource})`,
     budget: "true",
     passed: sourceIncludesAllTraffic,
+    available: true,
+  });
+  checks.push({
+    name: "Traffic source sampling",
+    actual: `${format(samplingRatePct)}%`,
+    budget: "100%",
+    passed: samplingRatePct === 100,
+    available: true,
   });
 
   for (const functionalityCheck of functionalityChecks) {
@@ -298,12 +314,18 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
       actual: String(functionalityCheck.passed),
       budget: "true",
       passed: functionalityCheck.passed,
+      available: true,
     });
   }
 
-  const passed = checks.every((check) => check.passed);
+  const incomplete = checks.some((check) => !check.available);
+  const failed = checks.some((check) => check.available && !check.passed);
+  const status = failed
+    ? (incomplete ? "FAIL (INCOMPLETE EVIDENCE)" : "FAIL")
+    : (incomplete ? "INCOMPLETE" : "PASS");
+  const passed = status === "PASS";
   const markdown = [
-    `# Vercel Fluid CPU gate: ${passed ? "PASS" : "FAIL"}`,
+    `# Vercel Fluid CPU gate: ${status}`,
     "",
     `Deployment: \`${sha}\``,
     `Window: ${new Date(windowStart).toISOString()} → ${new Date(windowEnd).toISOString()} (${format(windowHours, 2)}h)`,
@@ -311,13 +333,13 @@ export function evaluateFluidCpuReport(input: unknown): FluidCpuGateResult {
     "| Check | Actual | Budget | Result |",
     "|---|---:|---:|:---:|",
     ...checks.map((check) =>
-      `| ${check.name} | ${check.actual} | ${check.budget} | ${check.passed ? "PASS" : "FAIL"} |`,
+      `| ${check.name} | ${check.actual} | ${check.budget} | ${!check.available ? "INCOMPLETE" : check.passed ? "PASS" : "FAIL"} |`,
     ),
     "",
     `Visible CPU reduction vs baseline: ${format((1 - visibleCpu / FLUID_CPU_BASELINE.visibleActiveCpuSeconds) * 100)}%`,
   ].join("\n");
 
-  return { checks, markdown, passed };
+  return { checks, markdown, passed, status };
 }
 
 function parseArguments(argv: string[]): { inputPath: string | null } {

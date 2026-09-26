@@ -2,9 +2,12 @@ package workday
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -30,6 +33,36 @@ func testPoster(t *testing.T, trip roundTripFunc) *LivePoster {
 	poster.sleep = func(context.Context, time.Duration) error { return nil }
 	poster.random = func() float64 { return 0.5 }
 	return poster
+}
+
+func TestLivePosterHandlesHTTP2WorkdayEdge(t *testing.T) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.ProtoMajor != 2 {
+			t.Errorf("Workday edge negotiated %s; want HTTP/2", request.Proto)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"total":0,"jobPostings":[]}`)
+	}))
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+
+	poster, err := NewLivePoster(Site{Company: "example", Instance: "wd5", Name: "External"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport := poster.client.Transport.(*http.Transport)
+	transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
+	}
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // Local test server only.
+	_, err = poster.Post(context.Background(), poster.listURL, []byte(`{"limit":20,"offset":0}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if poster.Requests != 1 || poster.Responses != 1 || poster.TransportErrors != 0 {
+		t.Fatalf("requests=%d responses=%d transport_errors=%d", poster.Requests, poster.Responses, poster.TransportErrors)
+	}
 }
 
 func TestLivePosterRetries303WithoutFollowingAndKeepsRequestPolicy(t *testing.T) {

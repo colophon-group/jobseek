@@ -192,6 +192,17 @@ def test_governor_example_bounds_all_retained_codex_sessions() -> None:
     assert "JOBSEEK_CODEX_MAX_UNLINKED_SESSION_AGE_DAYS=7" in example
 
 
+def test_all_runner_units_pin_the_current_orchestrator_model() -> None:
+    for service_path in (GOVERNOR_SERVICE, ANNOTATIONS_SERVICE, ERROR_REVIEW_SERVICE):
+        service = service_path.read_text()
+        assert "Environment=JOBSEEK_CODEX_MODEL=gpt-6-astra" in service, service_path
+        assert "Environment=JOBSEEK_CODEX_REASONING_EFFORT=high" in service, service_path
+
+    example = GOVERNOR_ENV_EXAMPLE.read_text()
+    assert "JOBSEEK_CODEX_MODEL=gpt-6-astra" in example
+    assert "JOBSEEK_CODEX_REASONING_EFFORT=high" in example
+
+
 def _validate(tmp_path: Path, content: str) -> subprocess.CompletedProcess[str]:
     config_dir = tmp_path / "config"
     config_dir.mkdir()

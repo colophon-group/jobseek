@@ -11,7 +11,7 @@ ws new {slug} --issue {issue}
 
 ## 2. Set company details and discover brand assets
 
-Set the name and website — this triggers auto-discovery of full/minified logo candidates:
+Set the name and website — this triggers auto-discovery of logo and icon candidates:
 
 ```bash
 ws set --name "<Company Name>" --website "<homepage URL>"
@@ -36,7 +36,7 @@ If candidate evidence is weak, find a better image on the company's website
 (press page, about page, footer) and provide the URL directly:
 
 ```bash
-ws set --logo-url "<direct full-logo URL>" --icon-url "<direct square-logo URL>" --logo-type wordmark
+ws set --logo-url "<direct primary-logo URL>" --icon-url "<direct compact-mark URL>" --logo-type wordmark
 ```
 
 Use direct image file URLs (not HTML pages). Transparent background is preferred
@@ -51,8 +51,13 @@ Set `--logo-type` to match the full logo variant: `wordmark`, `wordmark+icon`, o
   (wordmark/lockup when available)? Reject generic images, banners, photos,
   hero images, or unrelated graphics.
 - **Logo Type (`logo_type`)**: Label the full logo as `wordmark`, `wordmark+icon`, or `icon`.
-- **Icon (`icon_url`)**: Is this a recognizable minified square logo/icon for
-  compact UI (typically a logomark or initials)?
+- **Icon (`icon_url`)**: Is this recognizable in compact UI (typically a
+  logomark or initials)? Compact refers to display size, not source resolution.
+  Prefer an SVG or a raster source of at least 128 pixels when available.
+  If it is the **same artwork** as the primary logo, use the higher-quality
+  source for both fields, even if the smaller file is called a favicon. The
+  image upload pipeline handles icon resizing. If it is a genuinely different
+  mark, keep that distinct artwork and find its best available source.
 - **Background**: Prefer transparent-background assets for both `logo_url` and
   `icon_url` when available from official sources (fallbacks are acceptable).
 

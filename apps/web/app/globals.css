@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Cached Explore HTML is the default feed. A parser-time script marks visits
+ * that require URL or viewer-specific results before those cards can paint. */
+[data-explore-pending-skeleton] { display: none; }
+html[data-explore-pending] [data-explore-result-host] { display: none; }
+html[data-explore-pending] [data-explore-pending-skeleton] { display: block; }
+
 /*
  * Design tokens — single source of truth for all styling.
  * CSS custom properties (below) are consumed by Tailwind via @theme.

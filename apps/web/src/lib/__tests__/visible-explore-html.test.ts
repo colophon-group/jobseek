@@ -11,40 +11,40 @@ describe("inspectVisibleExploreHtml", () => {
         </head>
         <body>
           <script type="application/json">
-            {"html":"<section data-explore-static-results><article data-search-result-company='fake'>Explore Jobs</article></section>"}
+            {"html":"<section data-explore-result-host><article data-search-result-company='fake'>Explore Jobs</article></section>"}
           </script>
-          <section data-explore-static-results>
+          <section data-explore-result-host>
             <h1>Explore Jobs</h1>
             <article data-search-result-company="real">Real company</article>
           </section>
         </body>
       </html>`);
 
-    expect(inspection.staticTextContent).toContain("Explore Jobs");
-    expect(inspection.staticTextContent).not.toContain("fake");
-    expect(inspection.staticResultsCount).toBe(1);
+    expect(inspection.resultTextContent).toContain("Explore Jobs");
+    expect(inspection.resultTextContent).not.toContain("fake");
+    expect(inspection.resultHostCount).toBe(1);
     expect(inspection.companyResultCount).toBe(1);
   });
 
-  it("ignores inert templates and markers outside the static-results subtree", () => {
+  it("ignores inert templates and markers outside the result subtree", () => {
     const inspection = inspectVisibleExploreHtml(`
       <template>
-        <section data-explore-static-results>
+        <section data-explore-result-host>
           <article data-search-result-company="template">Template company</article>
         </section>
       </template>
-      <section data-explore-interactive hidden>
+      <section data-explore-pending-skeleton>
         <article data-search-result-company="interactive">Interactive company</article>
         <article data-posting-id="hidden-posting">Hidden posting</article>
       </section>
-      <section data-explore-static-results data-explore-repository-fallback>
+      <section data-explore-result-host data-explore-repository-fallback>
         <article data-search-result-company="visible">Visible company</article>
       </section>`);
 
-    expect(inspection.staticTextContent).toContain("Visible company");
-    expect(inspection.staticTextContent).not.toContain("Template company");
-    expect(inspection.staticTextContent).not.toContain("Interactive company");
-    expect(inspection.staticResultsCount).toBe(1);
+    expect(inspection.resultTextContent).toContain("Visible company");
+    expect(inspection.resultTextContent).not.toContain("Template company");
+    expect(inspection.resultTextContent).not.toContain("Interactive company");
+    expect(inspection.resultHostCount).toBe(1);
     expect(inspection.companyResultCount).toBe(1);
     expect(inspection.repositoryFallbackCount).toBe(1);
     expect(inspection.postingResultCount).toBe(0);
@@ -54,29 +54,29 @@ describe("inspectVisibleExploreHtml", () => {
     const mixedCase = inspectVisibleExploreHtml(`
       <ScRiPt><article data-search-result-company="script">bad</article></sCrIpT>
       <StYlE><article data-search-result-company="style">bad</article></sTyLe>
-      <section data-explore-static-results>
+      <section data-explore-result-host>
         <article data-search-result-company="visible">Visible</article>
       </section>`);
     const unclosedStyle = inspectVisibleExploreHtml(`
-      <section data-explore-static-results></section>
+      <section data-explore-result-host></section>
       <style><article data-search-result-company="hidden">Hidden`);
 
     expect(mixedCase.companyResultCount).toBe(1);
-    expect(mixedCase.staticTextContent).toContain("Visible");
-    expect(mixedCase.staticTextContent).not.toContain("bad");
-    expect(unclosedStyle.staticResultsCount).toBe(1);
+    expect(mixedCase.resultTextContent).toContain("Visible");
+    expect(mixedCase.resultTextContent).not.toContain("bad");
+    expect(unclosedStyle.resultHostCount).toBe(1);
     expect(unclosedStyle.companyResultCount).toBe(0);
-    expect(unclosedStyle.staticTextContent).not.toContain("Hidden");
+    expect(unclosedStyle.resultTextContent).not.toContain("Hidden");
   });
 
   it("does not confuse similarly named visible elements with script or style tags", () => {
     const inspection = inspectVisibleExploreHtml(`
-      <scripture data-explore-static-results>
+      <scripture data-explore-result-host>
         <stylesheet data-search-result-company="visible">Visible company</stylesheet>
       </scripture>`);
 
-    expect(inspection.staticResultsCount).toBe(1);
+    expect(inspection.resultHostCount).toBe(1);
     expect(inspection.companyResultCount).toBe(1);
-    expect(inspection.staticTextContent).toContain("Visible company");
+    expect(inspection.resultTextContent).toContain("Visible company");
   });
 });

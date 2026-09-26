@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.codex/agents/**'
       - '.agents/**'
       - 'AGENTS.md'
       - 'apps/crawler/AGENTS.md'
@@ -16,6 +17,7 @@ on:
       - 'docs/17-codex-migration-verification-runbook.md'
       - 'docs/18-codex-automation-deployment.md'
       - 'scripts/codex-*.py'
+      - 'scripts/deploy-codex-runner-host.sh'
       - 'scripts/codex-routine-status.py'
       - 'scripts/jobseek-maintenance.py'
       - 'scripts/jobseek_maintenance_provenance.py'

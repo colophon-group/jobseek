@@ -73,7 +73,9 @@ func NewLivePoster(site Site) (*LivePoster, error) {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
 	transport.DialContext = publicDialContext
-	transport.ForceAttemptHTTP2 = false // httpx's production default is HTTP/1.1.
+	// Some Workday edges negotiate HTTP/2. With the guarded custom dialer,
+	// Go otherwise sends HTTP/1.1 and misreads HTTP/2 frames as a response.
+	transport.ForceAttemptHTTP2 = true
 	transport.MaxConnsPerHost = 20
 	transport.MaxIdleConnsPerHost = 10
 	return &LivePoster{

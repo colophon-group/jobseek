@@ -38,7 +38,7 @@ from src.workspace.state import (
 @click.option("--logo-url", help="Full primary logo image URL (direct file; transparent preferred)")
 @click.option(
     "--icon-url",
-    help="Minified square logo/icon image URL (direct file; transparent preferred)",
+    help="Compact-UI logo/icon source URL (use highest-quality matching artwork)",
 )
 @click.option(
     "--logo-type",
@@ -46,7 +46,7 @@ from src.workspace.state import (
     help="Full-logo label: wordmark, wordmark+icon, or icon",
 )
 @click.option("--logo-candidate", type=int, help="Select full-logo candidate number")
-@click.option("--icon-candidate", type=int, help="Select minified-logo candidate number")
+@click.option("--icon-candidate", type=int, help="Select compact-UI logo candidate number")
 @click.option("--board", "board_alias", help="Board alias for board-scoped settings")
 @click.option(
     "--job-link-pattern",
@@ -290,8 +290,8 @@ def _resolve_candidate(slug: str, index: int, role: str) -> str:
                 c.get("original_artifact_path", "") or c.get("artifact_path", "")
             )
             for label, path in (
-                ("PNG preview", png_artifact_path),
                 ("original artifact", original_artifact_path),
+                ("PNG preview", png_artifact_path),
             ):
                 if path and Path(path).exists():
                     out.info(role, f"Selected candidate #{index} ({label}): {path}")
@@ -400,7 +400,7 @@ def _show_final_logo_inspection_reminder(slug: str) -> None:
     out.warn(
         "logos",
         "Manual visual inspection required: ws cannot confirm that selected assets are the "
-        "correct full logo and minified icon.",
+        "correct primary logo and compact-UI artwork at adequate source resolution.",
     )
     # Prefer JPEG for agent viewing (avoids PNG API errors)
     logo_preview = artifact_dir / "logo.jpg"
@@ -464,9 +464,12 @@ def _show_logo_results(slug: str, html: str, final_url: str) -> None:
     _show_candidate_inspection_reminder(artifact_dir)
     print()
 
-    out.plain("logos", "Verify candidates visually, then select (logo=full, icon=minified):")
+    out.plain("logos", "Verify artwork and source dimensions, then select:")
     out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2 --logo-type wordmark")
-    out.plain("logos", "Or provide your own URLs (logo_url=full, icon_url=minified square):")
+    out.plain(
+        "logos", "  Use the SAME candidate twice if artwork matches and it is the better source."
+    )
+    out.plain("logos", "Or provide your own direct image URLs:")
     out.plain("logos", "  ws set --logo-url <url> --icon-url <url> --logo-type wordmark")
     out.plain("logos", "Rules: direct image URLs, brand-correct assets, transparent preferred.")
     out.plain(
@@ -772,7 +775,7 @@ def logos(slug: str | None):
         if ws.logo_url:
             out.plain("logos", f"  full_logo (logo_url): {ws.logo_url}")
         if ws.icon_url:
-            out.plain("logos", f"  minified_logo (icon_url): {ws.icon_url}")
+            out.plain("logos", f"  compact_icon (icon_url): {ws.icon_url}")
         if ws.logo_type:
             out.plain("logos", f"  full_logo_type (logo_type): {ws.logo_type}")
         print()
@@ -817,9 +820,9 @@ def logos(slug: str | None):
     _show_candidate_inspection_reminder(candidates_path.parent)
     print()
 
-    out.plain("logos", "Select (logo=full, icon=minified):")
+    out.plain("logos", "Select by artwork and source quality (same index is allowed):")
     out.plain("logos", "  ws set --logo-candidate 1 --icon-candidate 2 --logo-type wordmark")
-    out.plain("logos", "Or provide URLs (logo_url=full, icon_url=minified square):")
+    out.plain("logos", "Or provide direct image URLs:")
     out.plain("logos", "  ws set --logo-url <url> --icon-url <url> --logo-type wordmark")
     out.plain("logos", "Rules: direct image URLs, brand-correct assets, transparent preferred.")
     out.plain(
@@ -999,7 +1002,9 @@ def _check_image(label: str, url: str, slug: str) -> None:
         path = Path(url)
         if path.exists():
             data = path.read_bytes()
-            ct = "image/svg+xml" if path.suffix == ".svg" else "image/png"
+            from src.image_sync import CONTENT_TYPES
+
+            ct = CONTENT_TYPES.get(path.suffix.lower(), "application/octet-stream")
             out.info(label, f"Local file: {path.name}, {len(data):,} bytes")
             png_path = save_image_to_path(slug, label, data, ct)
             if png_path:

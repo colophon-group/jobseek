@@ -10,6 +10,7 @@ including HTML descriptions, locations, compensation, and metadata.
 
 from __future__ import annotations
 
+import os
 import re
 from urllib.parse import urlparse
 
@@ -171,6 +172,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     url = _api_url(slug)
     response = await client.get(url, follow_redirects=True)
     response.raise_for_status()
+
+    if os.environ.get("PINPOINT_CAPTURE_TENANTS"):
+        from src.core.monitors.pinpoint_capture import capture_pinpoint_response
+
+        capture_pinpoint_response(str(response.url), response.content)
 
     data = response.json()
     raw_postings = data.get("data", [])
