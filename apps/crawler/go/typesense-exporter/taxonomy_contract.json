@@ -1,0 +1,400 @@
+{
+  "collections": [
+    {
+      "collection": "location",
+      "query_by": "name_en",
+      "compared_fields": [
+        "id",
+        "location_id",
+        "slug",
+        "name_en",
+        "name_de",
+        "name_fr",
+        "name_it",
+        "aliases",
+        "parent_name",
+        "parent_id",
+        "ancestor_ids",
+        "member_country_ids",
+        "type",
+        "coordinates",
+        "population"
+      ],
+      "unordered_fields": [
+        "aliases",
+        "ancestor_ids",
+        "member_country_ids"
+      ],
+      "minimum_documents": 10,
+      "schema_fields": [
+        {
+          "name": "location_id",
+          "field_type": "int32",
+          "index": null,
+          "facet": null
+        },
+        {
+          "name": "slug",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "name_en",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "name_de",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "name_fr",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "name_it",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "aliases",
+          "field_type": "string[]",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "parent_name",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "parent_id",
+          "field_type": "int32",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "ancestor_ids",
+          "field_type": "int32[]",
+          "index": true,
+          "facet": true
+        },
+        {
+          "name": "member_country_ids",
+          "field_type": "int32[]",
+          "index": false,
+          "facet": null
+        },
+        {
+          "name": "type",
+          "field_type": "string",
+          "index": true,
+          "facet": true
+        },
+        {
+          "name": "coordinates",
+          "field_type": "geopoint",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "population",
+          "field_type": "int32",
+          "index": true,
+          "facet": null
+        }
+      ]
+    },
+    {
+      "collection": "occupation",
+      "query_by": "name",
+      "compared_fields": [
+        "id",
+        "occupation_id",
+        "slug",
+        "name",
+        "aliases",
+        "parent_id",
+        "domain_id",
+        "domain_slug",
+        "domain_name",
+        "locale"
+      ],
+      "unordered_fields": [
+        "aliases"
+      ],
+      "minimum_documents": 10,
+      "schema_fields": [
+        {
+          "name": "occupation_id",
+          "field_type": "int32",
+          "index": null,
+          "facet": null
+        },
+        {
+          "name": "slug",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "name",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "aliases",
+          "field_type": "string[]",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "parent_id",
+          "field_type": "int32",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "domain_id",
+          "field_type": "int32",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "domain_slug",
+          "field_type": "string",
+          "index": false,
+          "facet": null
+        },
+        {
+          "name": "domain_name",
+          "field_type": "string",
+          "index": true,
+          "facet": true
+        },
+        {
+          "name": "locale",
+          "field_type": "string",
+          "index": true,
+          "facet": true
+        }
+      ]
+    },
+    {
+      "collection": "seniority",
+      "query_by": "name",
+      "compared_fields": [
+        "id",
+        "seniority_id",
+        "slug",
+        "name",
+        "aliases",
+        "locale"
+      ],
+      "unordered_fields": [
+        "aliases"
+      ],
+      "minimum_documents": 10,
+      "schema_fields": [
+        {
+          "name": "seniority_id",
+          "field_type": "int32",
+          "index": null,
+          "facet": null
+        },
+        {
+          "name": "slug",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "name",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "aliases",
+          "field_type": "string[]",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "locale",
+          "field_type": "string",
+          "index": true,
+          "facet": true
+        }
+      ]
+    },
+    {
+      "collection": "technology",
+      "query_by": "name",
+      "compared_fields": [
+        "id",
+        "technology_id",
+        "slug",
+        "name",
+        "category"
+      ],
+      "unordered_fields": [],
+      "minimum_documents": 10,
+      "schema_fields": [
+        {
+          "name": "technology_id",
+          "field_type": "int32",
+          "index": null,
+          "facet": null
+        },
+        {
+          "name": "slug",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "name",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "category",
+          "field_type": "string",
+          "index": true,
+          "facet": true
+        }
+      ]
+    },
+    {
+      "collection": "company",
+      "query_by": "name",
+      "compared_fields": [
+        "id",
+        "industry_id",
+        "industry_name",
+        "industry_name_de",
+        "industry_name_fr",
+        "industry_name_it"
+      ],
+      "unordered_fields": [],
+      "minimum_documents": 1,
+      "schema_fields": [
+        {
+          "name": "name",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "industry_id",
+          "field_type": "int32",
+          "index": true,
+          "facet": true
+        },
+        {
+          "name": "industry_name",
+          "field_type": "string",
+          "index": true,
+          "facet": true
+        },
+        {
+          "name": "industry_name_de",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "industry_name_fr",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        },
+        {
+          "name": "industry_name_it",
+          "field_type": "string",
+          "index": true,
+          "facet": null
+        }
+      ]
+    }
+  ],
+  "job_posting_schema_fields": [
+    {
+      "name": "location_direct_ids",
+      "field_type": "int32[]",
+      "index": true,
+      "facet": true
+    }
+  ],
+  "location_macro_aliases": {
+    "eu": [
+      "European Union",
+      "Europe",
+      "EEA",
+      "Schengen"
+    ],
+    "emea": [
+      "Europe Middle East Africa",
+      "Europe & Middle East",
+      "EMEA region"
+    ],
+    "dach": [
+      "D-A-CH",
+      "German-speaking countries",
+      "Germany Austria Switzerland"
+    ],
+    "apac": [
+      "Asia Pacific",
+      "Asia-Pacific",
+      "Asia and the Pacific"
+    ],
+    "americas": [
+      "North America",
+      "South America",
+      "Western Hemisphere"
+    ],
+    "latam": [
+      "Latin America",
+      "South America",
+      "Central America"
+    ],
+    "nordics": [
+      "Nordic countries",
+      "Scandinavia",
+      "Northern Europe"
+    ],
+    "mena": [
+      "Middle East and North Africa",
+      "Middle East North Africa",
+      "Arab world"
+    ],
+    "worldwide": [
+      "Global",
+      "Anywhere",
+      "Remote",
+      "International"
+    ]
+  },
+  "queries": {
+    "location_rows": "\n    SELECT id, type, lat, lng, slug, population, parent_id\n    FROM location\n    ORDER BY id\n",
+    "location_names": "\n    SELECT location_id, locale, name, is_display\n    FROM location_name\n    WHERE locale IN ('en', 'de', 'fr', 'it')\n    ORDER BY location_id, locale, name\n",
+    "location_macros": "\n    SELECT macro_id, country_id\n    FROM location_macro_member\n    ORDER BY macro_id, country_id\n",
+    "occupation_rows": "\n    SELECT o.id, o.slug, o.parent_id, o.domain_id,\n           on2.locale, on2.name, on2.is_display,\n           d.slug AS domain_slug\n    FROM occupation o\n    JOIN occupation_name on2 ON on2.occupation_id = o.id\n    LEFT JOIN occupation_domain d ON d.id = o.domain_id\n    ORDER BY o.id, on2.locale, on2.name\n",
+    "occupation_domain_names": "\n    SELECT domain_id, locale, name\n    FROM occupation_domain_name\n    WHERE is_display\n    ORDER BY domain_id, locale, name\n",
+    "seniority_rows": "\n    SELECT s.id, s.slug, sn.locale, sn.name, sn.is_display\n    FROM seniority s\n    JOIN seniority_name sn ON sn.seniority_id = s.id\n    ORDER BY s.id, sn.locale, sn.name\n",
+    "technology_rows": "\n    SELECT id, slug, name, category\n    FROM technology\n    ORDER BY id\n",
+    "company_rows": "\n    SELECT c.id, c.industry, i.name AS industry_name\n    FROM company c\n    LEFT JOIN industry i ON i.id = c.industry\n    ORDER BY c.id\n",
+    "industry_names": "\n    SELECT industry_id, locale, name\n    FROM industry_name\n    WHERE is_display AND locale IN ('de', 'fr', 'it')\n    ORDER BY industry_id, locale, name\n"
+  }
+}

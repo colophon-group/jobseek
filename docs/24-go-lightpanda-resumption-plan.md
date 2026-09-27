@@ -35,6 +35,33 @@ wrapper before the binary exists would break the previous image. Taxonomy
 verification, configuration sync, and other Python-owned stages remain on the
 full migration backlog. The full #7966 gate is still open.
 
+## Implementation checkpoint: 2026-09-27 — Go taxonomy verification
+
+The next release slice on `fix-crawler/go-typesense-taxonomy-verification`
+ports `verify-typesense-taxonomies` to Go. It is implemented and locally
+verified; **it has not been deployed or proven against production yet**.
+Release it after reconciliation PR #10072 and after the active protected
+backfill proof releases the host mutation lock.
+
+The new runtime reads all five static taxonomy/company contracts in one
+read-only repeatable-read PostgreSQL snapshot, checks six live schemas, and
+compares every remote document with pages bounded to 250. It preserves exact
+Python evidence hashes, missing versus null fields, localized aliases,
+hierarchy membership, and redacted mismatch details. It fails on incomplete
+or repeating pagination and emits one JSON record. Both the compatibility
+CLI and protected maintenance route to Go; no Python verifier fallback is
+used. Retained Python code is an offline oracle/cold-rollback reference.
+
+Tests compare complete Go/Python evidence for ready and drifted collections;
+exercise malformed/count-changing pagination, ambiguous numeric values,
+hierarchy failures, schema differences, cancellation and error redaction;
+and execute all nine SQL queries against PostgreSQL while another connection
+commits a taxonomy update between reads. All Go race tests, nine focused
+Python tests, 90 workflow tests, and seven web safety assertions pass locally.
+CI, production verification, and resource evidence remain pending.
+Configuration/taxonomy sync and schema setup are still Python production
+work, so this slice does not satisfy the complete #7966 gate.
+
 ## Production checkpoint: 2026-09-27 — Go Typesense backfill
 
 [PR #10069](https://github.com/colophon-group/jobseek/pull/10069) merged as

@@ -308,12 +308,9 @@ def test_taxonomy_verification_dispatch_does_not_backfill_or_reconcile() -> None
     branch_end = maintenance.index("              fi", branch_start)
     branch = maintenance[branch_start:branch_end]
 
-    assert (
-        branch.count("operation_command=(uv run --no-sync crawler verify-typesense-taxonomies)")
-        == 1
-    )
-    assert "crawler backfill-typesense" not in branch
-    assert "crawler reconcile" not in branch
+    assert branch.count("operation_command=(go-typesense-exporter --verify-taxonomies)") == 1
+    assert "--backfill" not in branch
+    assert "--reconcile" not in branch
     assert "LOCAL_DATABASE_URL" in maintenance
     assert "TYPESENSE_OPERATIONS_KEY" in maintenance
     assert "verify-typesense-taxonomies)-'" in maintenance
@@ -325,7 +322,7 @@ def test_backfill_proof_is_one_locked_fail_closed_chain() -> None:
         "go-typesense-exporter --backfill && "
         "go-typesense-exporter --reconcile --repair --full --fresh-cycle "
         "--target typesense && "
-        "uv run --no-sync crawler verify-typesense-taxonomies"
+        "go-typesense-exporter --verify-taxonomies"
     )
 
     lock = maintenance.index("exec 9>/run/lock/jobseek-crawler-mutation.lock")

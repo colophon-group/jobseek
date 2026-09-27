@@ -2388,7 +2388,7 @@ test("taxonomy verification dispatch is exact-revision and verification-only", (
   assert.ok(verificationBranch);
   assert.match(
     verificationBranch[0],
-    /operation_command=\(uv run --no-sync crawler verify-typesense-taxonomies\)/,
+    /operation_command=\(go-typesense-exporter --verify-taxonomies\)/,
   );
   assert.doesNotMatch(verificationBranch[0], /crawler backfill-typesense/);
   assert.doesNotMatch(verificationBranch[0], /crawler reconcile/);

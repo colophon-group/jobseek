@@ -809,6 +809,9 @@ async def run() -> None:
                 ["--candidate-order-benchmark-sha256", args.candidate_order_benchmark_sha256]
             )
         os.execvp(command[0], command)
+
+    if args.command == "verify-typesense-taxonomies":
+        os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--verify-taxonomies"])
     setup_logging(settings.log_level)
 
     log.info("cli.starting", command=args.command, worker_id=WORKER_ID)
@@ -1299,15 +1302,6 @@ async def run() -> None:
                     max_age_days=args.max_age_days,
                     board_slugs=args.board_slug,
                 )
-
-        elif args.command == "verify-typesense-taxonomies":
-            local_pool = await create_local_pool()
-            from src.taxonomy_readiness import run_cli
-            from src.typesense_client import get_typesense_client
-
-            exit_code = await run_cli(local_pool, get_typesense_client())
-            if exit_code != 0:
-                raise SystemExit(exit_code)
 
         elif args.command == "refresh-typesense":
             from src.cron_metrics import cron_run
