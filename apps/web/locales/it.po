@@ -554,6 +554,12 @@ msgstr "Tutti i dati sono crittografati in transito e a riposo."
 msgid "watchlists.companyModal.allIndustries"
 msgstr "Tutti i settori"
 
+#. Paused notification state and resume behavior
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.paused"
+msgstr "Tutte le e-mail di lavoro sono sospese. Disattiva la pausa per riprendere le tue scelte salvate. Le offerte pubblicate durante la pausa non verranno inviate."
+
 #. All languages option
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx
@@ -1488,6 +1494,12 @@ msgstr "Impossibile rimuovere questi criteri di corrispondenza. Riprova."
 msgid "watchlists.updateFailed"
 msgstr "Impossibile salvare le modifiche."
 
+#. Pause setting save failure
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.error"
+msgstr "Impossibile salvare la preferenza. Riprova."
+
 #. Error after a watchlist alert preference cannot be updated
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx
@@ -1768,7 +1780,7 @@ msgstr "Direttamente dalla fonte"
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx
 msgid "watchlists.actions.disableAlerts"
-msgstr "Disattiva notifiche"
+msgstr "Disattiva le notifiche settimanali via e-mail"
 
 #. Disconnect social account button
 #. js-lingui-explicit-id
@@ -1851,6 +1863,18 @@ msgstr "E-mail"
 msgid "home.pricing.pro.f2"
 msgstr "Avvisi email sui nuovi risultati"
 
+#. Paused notifications warning dialog heading
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.notifications.pausedTitle"
+msgstr "Le notifiche via e-mail sono sospese"
+
+#. Tooltip on inert notification control while globally paused
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.actions.globallyPaused"
+msgstr "Le notifiche via e-mail sono sospese. Riattivale nelle impostazioni."
+
 #. Email or username input label for sign-in
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx
@@ -1869,11 +1893,17 @@ msgstr "Email verificata"
 msgid "search.employmentTypeModal.title"
 msgstr "Tipo di impiego"
 
+#. Explain consolidated weekly opt-in job emails
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.description"
+msgstr "Attiva le notifiche di una lista per ricevere un’e-mail settimanale con le nuove offerte corrispondenti. Se non ci sono novità, non riceverai e-mail."
+
 #. Enable alerts tooltip
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx
 msgid "watchlists.actions.enableAlerts"
-msgstr "Attiva notifiche"
+msgstr "Attiva le notifiche settimanali via e-mail"
 
 #. Forgot password page subtitle
 #. js-lingui-explicit-id
@@ -2663,6 +2693,12 @@ msgstr "Lavori presso {name}"
 msgid "search.bar.keepAsKeywords"
 msgstr "Mantieni \"{0}\" come parole chiave"
 
+#. Dismiss paused notification warning without changing preference
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.notifications.dismiss"
+msgstr "Mantieni la pausa"
+
 #. Add keyword filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
@@ -3356,6 +3392,12 @@ msgstr "Non trovato."
 msgid "app.home.request.issueWarning"
 msgstr "Nota: Non siamo riusciti a creare un ticket di monitoraggio, ma la tua richiesta è stata salvata."
 
+#. Pause setting save confirmation
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.saved"
+msgstr "Preferenza di notifica salvata."
+
 #. Add occupation filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
@@ -3452,6 +3494,12 @@ msgstr "Apri offerta di lavoro"
 msgid "common.header.openMenu"
 msgstr "Apri menu principale"
 
+#. Navigate from paused notification warning to settings
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.notifications.openSettings"
+msgstr "Apri le impostazioni delle notifiche"
+
 #. Generic SEO metadata text for positions on a company page.
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/page.tsx
@@ -3529,6 +3577,12 @@ msgstr "La nostra posizione sull'automazione"
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.automation.title"
 msgstr "La nostra posizione sull'automazione"
+
+#. Global pause preserves individual watchlist settings and excludes account emails
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.override"
+msgstr "Si applica a tutte le liste senza modificare le tue scelte. Continuerai a ricevere le e-mail di verifica e di reimpostazione della password."
 
 #. TOC: Overview
 #. js-lingui-explicit-id
@@ -3616,6 +3670,12 @@ msgstr "Le password non corrispondono"
 #: app/[lang]/(app)/progress/progress-loader.tsx
 msgid "app.home.request.description"
 msgstr "Inserisci il nome di un'azienda o l'URL di una pagina carriere e inizieremo a monitorare le loro offerte di lavoro."
+
+#. Global override switch label
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.pause"
+msgstr "Sospendi tutte le notifiche via e-mail"
 
 #. Label for pay period selector
 #. js-lingui-explicit-id
@@ -5292,6 +5352,12 @@ msgstr "Verifica fallita"
 msgid "auth.verify.error.title"
 msgstr "Verifica fallita"
 
+#. Notification eligibility explanation
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.verify"
+msgstr "Verifica il tuo indirizzo e-mail per ricevere le notifiche di lavoro."
+
 #. Shown while verifying email token
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx
@@ -5498,6 +5564,12 @@ msgstr "Inizieremo a monitorarla"
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.headingPrefix"
 msgstr "Stiamo lavorando per aggiungere"
+
+#. Weekly job email settings heading
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.title"
+msgstr "Notifiche settimanali via e-mail"
 
 #. Sign-in page subtitle
 #. js-lingui-explicit-id
@@ -5710,6 +5782,12 @@ msgstr "La copia manterrà i filtri standard. Con il piano gratuito non potrai c
 #: app/[lang]/verify-email/page.tsx
 msgid "auth.verify.success.description"
 msgstr "La tua email è stata verificata."
+
+#. Explain why watchlist toggle is inert and link to global setting
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.notifications.pausedDescription"
+msgstr "L’impostazione globale si applica a tutte le liste. Riattiva le notifiche via e-mail nelle impostazioni per modificare questa scelta. Le preferenze salvate restano invariate."
 
 #. Description after successful password reset
 #. js-lingui-explicit-id

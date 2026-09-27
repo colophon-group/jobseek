@@ -63,7 +63,7 @@ function identityKey(userId: string, cadence: NotificationCadence): string {
 async function listEligibleUserCandidatesPage(input: {
   afterUserId: string | null;
   limit: number;
-}) {
+}, internalUserIds?: readonly string[]) {
   if (input.limit < 1 || input.limit > NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE) {
     throw new RangeError("eligible owner page exceeds the scheduler batch cap");
   }
@@ -78,6 +78,7 @@ async function listEligibleUserCandidatesPage(input: {
     .innerJoin(userPreferences, eq(userPreferences.userId, user.id))
     .where(and(
       eq(user.emailVerified, true),
+      internalUserIds ? inArray(user.id, [...internalUserIds]) : undefined,
       eq(userPreferences.notificationsPaused, false),
       input.afterUserId ? gt(user.id, input.afterUserId) : undefined,
       sql`EXISTS (
@@ -100,7 +101,7 @@ async function listEligibleUserCandidatesPage(input: {
       .select({
         userId: notificationDelivery.userId,
         cadence: notificationDelivery.cadence,
-        windowEnd: sql<Date>`max(${notificationDelivery.windowEnd})`,
+        windowEnd: sql<Date>`max(${notificationDelivery.windowEnd})`.mapWith(notificationDelivery.windowEnd),
       })
       .from(notificationDelivery)
       .where(and(
@@ -347,7 +348,7 @@ function pendingLease(claim: NotificationDeliveryClaim) {
   );
 }
 
-const repository: NotificationSchedulerRepository = {
+export const notificationSchedulerRepository: NotificationSchedulerRepository = {
   listEligibleUserCandidatesPage,
   loadEligibleWatchlistSegment,
   claim,
@@ -386,7 +387,7 @@ const repository: NotificationSchedulerRepository = {
   },
 };
 
-async function match(input: {
+export async function matchNotificationWatchlists(input: {
   watchlists: readonly (EligibleNotificationWatchlist & { windowStart: Date })[];
   windowEnd: Date;
 }): Promise<NotificationMatchSummary> {
@@ -443,13 +444,22 @@ async function match(input: {
   };
 }
 
-/** Providerless entry point; no route or runtime configuration invokes it. */
+/** Providerless planner used by the protected notification runner. */
 export async function runNotificationScheduler(input: {
   mode?: NotificationExecutionMode;
   sweep: UtcWindow;
   quota: NotificationQuotaState;
   concurrency: number;
   cursor?: string | null;
+  pageSize?: number;
+  internalUserIds?: readonly string[];
 }) {
-  return runNotificationSchedulerCore(input, { repository, match });
+  const repository = input.internalUserIds ? {
+    ...notificationSchedulerRepository,
+    async listEligibleUserCandidatesPage(page: { afterUserId: string | null; limit: number }) {
+      const result = await listEligibleUserCandidatesPage(page, input.internalUserIds);
+      return result;
+    },
+  } : notificationSchedulerRepository;
+  return runNotificationSchedulerCore(input, { repository, match: matchNotificationWatchlists });
 }

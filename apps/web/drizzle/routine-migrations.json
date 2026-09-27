@@ -24,6 +24,11 @@
       "tag": "0094_ai_filter_candidate_languages",
       "createdAt": 1790082600000,
       "hash": "e702743fc50bc5d70a37db5e0a406e2f890186446407b728360aa61cd344c66c"
+    },
+    {
+      "tag": "0095_notification_delivery_quota",
+      "createdAt": 1790467200000,
+      "hash": "2835356929d47c9785e11d42316c24315dc261c913da50602676908fc266f33a"
     }
   ]
 }
