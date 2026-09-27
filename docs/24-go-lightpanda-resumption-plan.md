@@ -6,6 +6,54 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — complete Ashby monitor routing v0.13.877
+
+PR #10107 merged as `0893bd935b629601714dde3b828bcd3c8088dfe9`.
+[Deployment 36344767917](https://github.com/colophon-group/jobseek/actions/runs/36344767917)
+succeeded. **All 935 currently enabled Ashby monitors now select Go**, including
+the 57 configurations excluded by the previous route. The live census is
+**3,682 Go / 4,197 Python** of 7,879 enabled monitors, with zero routing errors.
+This is monitor-stage coverage; Python worker processing and Nord Security's
+configured JSON-LD detail path remain separate migration obligations.
+
+The request mapping preserves Python precedence and encoding for explicit or
+direct-URL-derived tokens, spaces/dots, custom career domains and matching
+legacy metadata. Writer-owned drop settings and separate detail configuration
+are unchanged. Verification passed 136 focused Ashby/routing tests, 57 existing
+writer/enrichment/drop tests, Go race/vet, Ruff/Pyright, Required CI and installed
+image parity. All 57 frozen Python/httpx request endpoints also pass through the
+installed native binary with networking disabled.
+
+The actual release's Go configuration sync completed 6,013 CSV companies and
+7,879 boards at 19:44:35 UTC. Supported rollback retired epoch 86 at 87 and
+restored all five schedules with zero terminal drops/write fences. The same
+**25 selectors** were cleared under lock and staged at the promoted revision.
+C1 is active at **epoch 88**, accepted/audit_ok, with five ready records and
+zero inflight/dead. All long-lived services are healthy; C2 remains dark.
+Typesense reported 64 successful exports, zero errors, zero lag and healthy
+status in the initial post-activation snapshot.
+
+Six natural Go monitor cycles were observed after activation. Abridge, newly
+admitted through direct-URL token derivation, returned 47 URLs with an exact
+active database URL hash and zero failures. Its posting-ID/description-hash
+digest also matches the pre-deploy baseline. Other new configuration forms
+continue through their normal schedules. The read-only baseline covers all
+57 newly admitted boards and 2,579 active postings. See the sanitized
+[production evidence](evidence/go-ashby-production-2026-09-27.json) for baseline
+hashes, exact selector values, route census and activation evidence. No origin
+requests or due times were forced.
+
+Before another deployment or selector mutation, complete supported `rollback c1`,
+then clear the current **25** selectors with
+`/tmp/jobseek-post-go-experience-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`0893bd935b629601714dde3b828bcd3c8088dfe9` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision, then reactivate c1. These current instructions supersede the older
+release/epoch instructions below. The full documented #7966 requirements remain
+unmet while Python and Chromium own production work; this slice makes no new
+whole-lane CPU/RAM/density/cost claim.
+
 ## Production checkpoint: 2026-09-27 — Go experience and Ashby expansion v0.13.876
 
 PR #10104 merged as `7da64809897c5e9d3ca13d2537318c707effc9a0`.
@@ -1238,7 +1286,7 @@ See [the replay evidence](evidence/go-experience-replay-2026-09-27.json).
 The v0.13.875 production record is preserved in #10103. For subsequent
 releases, use the newest production checkpoint's rollback and selector protocol.
 
-## Implementation queued: remaining Ashby monitor configurations, v0.13.877
+## Implementation: remaining Ashby monitor configurations, v0.13.877
 
 The Go Ashby monitor now covers the remaining enabled configuration forms:
 explicit tokens with internal spaces/dots, exact direct-URL token derivation,
@@ -1250,8 +1298,8 @@ route. No board configuration, detail policy or delisting policy is changed.
 
 A read-only snapshot of all 935 enabled Ashby monitors admits all 935 with
 `ASHBY_GO_PERCENT=100`, up from 878 in v0.13.876. This projects 3,682 Go / 4,197
-Python monitors across the unchanged 7,879-board registry; it is **not yet
-production routing evidence**. Nord Security's configured JSON-LD detail path
+Python monitors across the unchanged 7,879-board registry. The production
+checkpoint above now confirms those counts. Nord Security's configured JSON-LD detail path
 remains a separate Python/browser migration obligation.
 
 The 57 newly covered configurations have frozen Python/httpx endpoint fixtures;
@@ -1260,4 +1308,4 @@ CI repeats these checks with networking disabled. Focused Python/Go tests cover
 request equivalence, rich output, routing rejection and preserved writer/detail
 ownership. See [the native module contract](../apps/crawler/go/ashby-monitor/README.md).
 Use the latest production checkpoint's 25-selector helper and supported cold
-rollback before deployment; selectors remain unchanged at the next revision.
+rollback before subsequent deployments.
