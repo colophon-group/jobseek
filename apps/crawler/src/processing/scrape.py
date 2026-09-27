@@ -72,6 +72,17 @@ def _runtime_for_scrape(
 ) -> ScrapeRuntime | None:
     if provided is not None or not board_id:
         return provided
+    if scraper_type == "smartrecruiters":
+        selected = {
+            value.strip()
+            for value in os.environ.get("SMARTRECRUITERS_GO_DETAIL_BOARD_IDS", "").split(",")
+            if value.strip()
+        }
+        if board_id in selected:
+            from src.runtime.smartrecruiters_go_detail import GoSmartRecruitersDetailRuntime
+
+            return GoSmartRecruitersDetailRuntime()
+        return None
     if scraper_type == "workable":
         selected = {
             value.strip()

@@ -2067,6 +2067,24 @@ def _monitor_runtime_for_board(
         and recruitee_percentage_selected(board_id, board_url, monitor_config)
     ):
         return GoRecruiteeMonitorRuntime(board_id=board_id)
+    from src.runtime.smartrecruiters_go import (
+        GoSmartRecruitersMonitorRuntime,
+    )
+    from src.runtime.smartrecruiters_go import (
+        percentage_selected as smartrecruiters_percentage_selected,
+    )
+
+    smartrecruiters_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("SMARTRECRUITERS_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in smartrecruiters_board_ids or (
+        monitor_type == "smartrecruiters"
+        and board_url is not None
+        and smartrecruiters_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoSmartRecruitersMonitorRuntime(board_id=board_id)
     workable_board_ids = {
         selected.strip()
         for selected in os.environ.get("WORKABLE_GO_BOARD_IDS", "").split(",")
