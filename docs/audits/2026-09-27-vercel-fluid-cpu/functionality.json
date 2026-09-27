@@ -1,0 +1,88 @@
+{
+  "home": {
+    "status": 200,
+    "cache": "HIT",
+    "bytes": 123194
+  },
+  "companyPage": {
+    "status": 200,
+    "cache": "HIT",
+    "bytes": 134096
+  },
+  "companyOgDirect": {
+    "status": 200,
+    "cache": null,
+    "bytes": 53198,
+    "url": "https://jobseek-assets.colophon-group.org/og/company/3e40c77940a9f29e/en/aircall.png?v=00bb1bc46c6c884f",
+    "pngSignature": true,
+    "dimensions": [
+      1200,
+      630
+    ]
+  },
+  "signIn": {
+    "status": 200,
+    "cache": "HIT",
+    "bytes": 171674
+  },
+  "scanner": {
+    "status": 403,
+    "cache": null,
+    "bytes": 59
+  },
+  "legacyAnonymousDenied": {
+    "status": 404,
+    "cache": null,
+    "bytes": 1498
+  },
+  "companyOgLegacyRedirect": {
+    "status": 308,
+    "cache": null,
+    "bytes": 15,
+    "location": "https://jobseek-assets.colophon-group.org/og/company/3e40c77940a9f29e/en/aircall.png?v=00bb1bc46c6c884f",
+    "targetStatus": 200,
+    "targetPng": true
+  },
+  "observedAt": "2026-09-27T11:20:26.719247+00:00",
+  "browserChecks": {
+    "authenticatedOwner": {
+      "ownedTitleAndResults": true,
+      "activeJobs": 1183,
+      "legacyRedirectToOwnedUuid": true,
+      "legacyStatusCodes": [
+        307
+      ]
+    },
+    "sharedAnonymous": {
+      "titleVisible": true,
+      "activeJobs": 126,
+      "resultsVisible": true,
+      "loggedOutUi": true
+    },
+    "privateAnonymousDenied": {
+      "finalPath": "/en/watchlists",
+      "noPrivateContent": true
+    },
+    "privateCrossOwnerDenied": {
+      "finalPath": "/en/watchlists",
+      "noPrivateContent": true
+    },
+    "legacyCrossOwnerDenied": {
+      "notFoundDocument": true,
+      "statusCode": 404
+    },
+    "explore": {
+      "initialResultsVisible": true,
+      "filterInteraction": "Remote selected; URL and results updated from Starbucks to BJAK with 2,229 active jobs"
+    },
+    "company": {
+      "factsVisible": true,
+      "resultsVisible": true,
+      "activeJobs": 77
+    },
+    "authentication": {
+      "signInHttpStatus": 200,
+      "existingSessionUsable": true
+    }
+  }
+}
