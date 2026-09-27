@@ -1,0 +1,769 @@
+{
+  "status": "deployed, active and natural classification readback verified",
+  "release": "0.13.875",
+  "revision": "7f27c5006e45b484801494c149b262371bbf307c",
+  "pull_request": 10102,
+  "deployment_run": 36340121669,
+  "verification": {
+    "required_ci_run": 36339305169,
+    "installed_runtime_contracts_run": 36339305057,
+    "installed_image_parity": "passed",
+    "focused_tests": 336,
+    "frozen_title_cases": 1568,
+    "frozen_technology_cases": 2056,
+    "stored_posting_replay": "go-job-enrichment-replay-2026-09-27.json"
+  },
+  "supported_rollback": {
+    "from_epoch": 82,
+    "retired_epoch": 83,
+    "restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "cleared_exact_selectors": 26
+  },
+  "scope": "Occupation, seniority and technology matching. The remaining Python CPU and worker stages, extraction/browser routes and final whole-lane proof remain open.",
+  "observed_at": "2026-09-27T18:36:05.784767+00:00",
+  "activation": {
+    "epoch": 84,
+    "owner": "go",
+    "ready": 5,
+    "inflight": 0,
+    "dead": 0,
+    "audit": "accepted/audit_ok",
+    "exact_selectors_restaged": 26
+  },
+  "natural_enrichment": {
+    "pre_reactivation_successes": 3560,
+    "post_reactivation_execution_successes": 17475,
+    "post_reactivation_execution_errors": 0,
+    "worker_successes_in_port_order_9095_to_9098": [
+      2654.0,
+      4515.0,
+      2239.0,
+      8067.0
+    ],
+    "metrics": [
+      "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 2654.0",
+      "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1052.0",
+      "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1602.0",
+      "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 4515.0",
+      "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 2326.0",
+      "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 2189.0",
+      "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 2239.0",
+      "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1028.0",
+      "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1214.0",
+      "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 8067.0",
+      "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 772.0",
+      "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 7295.0"
+    ],
+    "note": "Metric families are sampled separately while work continues; capability and execution counts are not an atomic conservation sample."
+  },
+  "residents": [
+    {
+      "engine": "go",
+      "residents": [
+        {
+          "pid": 38,
+          "parent_pid": 11,
+          "rss": "11624 kB",
+          "peak_rss": "11812 kB",
+          "state": "S (sleeping)"
+        }
+      ],
+      "container": "deploy-worker-1-1"
+    },
+    {
+      "engine": "go",
+      "residents": [
+        {
+          "pid": 37,
+          "parent_pid": 10,
+          "rss": "12376 kB",
+          "peak_rss": "12428 kB",
+          "state": "S (sleeping)"
+        }
+      ],
+      "container": "deploy-worker-2-1"
+    },
+    {
+      "engine": "go",
+      "residents": [
+        {
+          "pid": 38,
+          "parent_pid": 11,
+          "rss": "12160 kB",
+          "peak_rss": "12160 kB",
+          "state": "S (sleeping)"
+        }
+      ],
+      "container": "deploy-worker-3-1"
+    },
+    {
+      "engine": "go",
+      "residents": [
+        {
+          "pid": 510,
+          "parent_pid": 24,
+          "rss": "12012 kB",
+          "peak_rss": "12012 kB",
+          "state": "S (sleeping)"
+        }
+      ],
+      "container": "deploy-browser-1-1"
+    }
+  ],
+  "typesense": {
+    "success_docs": 268,
+    "error_docs": 0,
+    "lag": 0,
+    "healthy": true
+  },
+  "config_sync": {
+    "completed_at": "2026-09-27T18:29:08.070750097Z",
+    "boards": 7879,
+    "companies": 6013,
+    "engine": "go"
+  },
+  "monitor_routes": {
+    "enabled": 7879,
+    "routes": {
+      "go-ashby": 209,
+      "go-booking-api": 1,
+      "go-greenhouse": 2520,
+      "go-lever": 194,
+      "go-personio": 2,
+      "go-pinpoint": 3,
+      "go-recruitee": 3,
+      "go-sitemap": 1,
+      "go-smartrecruiters": 4,
+      "go-successfactors-rss": 1,
+      "go-teamtailor-rss": 1,
+      "go-workable": 15,
+      "go-workday": 2,
+      "python": 4923
+    },
+    "errors": []
+  },
+  "new_posting_readback": {
+    "since": "2026-09-27T18:29:44+00:00",
+    "count": 43,
+    "occupation_all_match": true,
+    "seniority_all_match": true,
+    "technology_all_match": true,
+    "nonnull_occupation_expectations": 1,
+    "note": "Mostly discovery stubs with null classifications; use the populated recent-scrape evidence below for rich field readback.",
+    "readback_sha256": "42c0ca64ba6d240593feb975c0aff34477a59898e354f16c7ca98116ec59e6cd"
+  },
+  "recent_scrape_readback": {
+    "since": "2026-09-27T18:29:44+00:00",
+    "recent_scrapes": [
+      {
+        "id": "d630d049-6612-45a0-848b-8bf787ee9275",
+        "board_id": "0f180ef5-7cb5-428f-a5af-86724d97b9ed",
+        "first_seen_at": "2026-09-27 18:31:22.470156+00:00",
+        "last_scraped_at": "2026-09-27 18:31:25.903528+00:00",
+        "has_html": true,
+        "title_sha256": "43e65e5d7e83cac05f0e1a1d59d2e426cec8bbd209defc2c242596de25ab5a18",
+        "occupation": {
+          "expected": 37,
+          "stored": 37
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": [
+            123
+          ],
+          "stored": [
+            123
+          ]
+        }
+      },
+      {
+        "id": "1ff1cdca-d53e-4230-a891-f2537ddf309c",
+        "board_id": "b7d70099-f959-45ee-9ba3-19342102d44c",
+        "first_seen_at": "2026-09-23 00:48:24.081204+00:00",
+        "last_scraped_at": "2026-09-27 18:31:23.836820+00:00",
+        "has_html": true,
+        "title_sha256": "c45fc5777bf1fa6ab1f7124e8cbb886b80a0a7e50937cbc4282e6fe8f4283533",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": [
+            133
+          ],
+          "stored": [
+            133
+          ]
+        }
+      },
+      {
+        "id": "5f601c25-c95a-457f-a991-ed4e5f59f9f7",
+        "board_id": "e0a3bf1a-6d96-482b-bcab-0824c9050dbb",
+        "first_seen_at": "2026-08-12 10:12:39.612961+00:00",
+        "last_scraped_at": "2026-09-27 18:31:17.912616+00:00",
+        "has_html": true,
+        "title_sha256": "c40967ad60fcdbc3eb3dba3d4725ba61de4acafbbcfb4dbd8e36de23151d9b42",
+        "occupation": {
+          "expected": 11,
+          "stored": 11
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "d9676888-fe67-45d6-a30e-06045d0c0614",
+        "board_id": "30b82358-d8a1-49b3-94f8-cc6435848b21",
+        "first_seen_at": "2026-09-24 09:09:27.619563+00:00",
+        "last_scraped_at": "2026-09-27 18:31:13.933775+00:00",
+        "has_html": true,
+        "title_sha256": "0bc466de328041a937eb84fb9eb6a2d9857c685eafe278357c9abc53b87925e6",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "24522750-4e76-454b-aabb-a1ef8df58f59",
+        "board_id": "bab4330a-ae7e-483b-bc9d-21b220e931f0",
+        "first_seen_at": "2026-09-27 18:30:58.133866+00:00",
+        "last_scraped_at": "2026-09-27 18:31:13.656053+00:00",
+        "has_html": false,
+        "title_sha256": "2229393430ca5ff0553ec31e63ac04e09cc91f8c72a630f25ea6863b7c353424",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "21d5a4b0-7c03-4e00-a8dd-dcbb7ded810d",
+        "board_id": "bab4330a-ae7e-483b-bc9d-21b220e931f0",
+        "first_seen_at": "2026-09-27 18:30:58.133866+00:00",
+        "last_scraped_at": "2026-09-27 18:31:11.016609+00:00",
+        "has_html": false,
+        "title_sha256": "ea8284aae222e4e583ad5e4b893e56774b0db5750bd3b2eed17c76b7dc4662ab",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "09bdbcab-c1e0-48d9-a444-0879e7f73953",
+        "board_id": "6edc993e-b17e-4fa6-90fa-a533b3c625f8",
+        "first_seen_at": "2026-09-20 09:19:38.256221+00:00",
+        "last_scraped_at": "2026-09-27 18:31:10.701538+00:00",
+        "has_html": true,
+        "title_sha256": "7f673137905e991bc42442ee4eb76a1d92ae7e1cbe1ace9f13c9dcafb81e1228",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": [
+            133
+          ],
+          "stored": [
+            133
+          ]
+        }
+      },
+      {
+        "id": "2007c74b-472b-4f90-904b-05d3430db42c",
+        "board_id": "bab4330a-ae7e-483b-bc9d-21b220e931f0",
+        "first_seen_at": "2026-09-27 18:30:58.133866+00:00",
+        "last_scraped_at": "2026-09-27 18:31:08.715536+00:00",
+        "has_html": false,
+        "title_sha256": "ea8284aae222e4e583ad5e4b893e56774b0db5750bd3b2eed17c76b7dc4662ab",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "0a56c77e-025f-47fa-bb3c-9d986a21ad02",
+        "board_id": "bab4330a-ae7e-483b-bc9d-21b220e931f0",
+        "first_seen_at": "2026-09-27 18:30:58.133866+00:00",
+        "last_scraped_at": "2026-09-27 18:31:01.700340+00:00",
+        "has_html": true,
+        "title_sha256": "bc42968877904e837a354b395bd3157eb0f7fb10fe9ef7978d2032207403fa3a",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "037d38f4-18df-42d8-9ae5-c25a2bb46fc3",
+        "board_id": "bab4330a-ae7e-483b-bc9d-21b220e931f0",
+        "first_seen_at": "2026-09-27 18:30:58.133866+00:00",
+        "last_scraped_at": "2026-09-27 18:30:59.092358+00:00",
+        "has_html": true,
+        "title_sha256": "bc42968877904e837a354b395bd3157eb0f7fb10fe9ef7978d2032207403fa3a",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "34046bb7-f508-4d91-942c-36dff89cf2e1",
+        "board_id": "58d1beba-aecd-473e-b385-8cd200b449c8",
+        "first_seen_at": "2026-09-20 09:19:19.647543+00:00",
+        "last_scraped_at": "2026-09-27 18:30:56.052206+00:00",
+        "has_html": true,
+        "title_sha256": "f821f3f6d169369df954878ca147028e3247c67bbdbbfe1915961ef7ea686a14",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "6b10dc14-b250-4d35-934b-67b158e178ba",
+        "board_id": "ebd83943-693c-4749-a651-21e92897040e",
+        "first_seen_at": "2026-08-16 00:26:39.453289+00:00",
+        "last_scraped_at": "2026-09-27 18:30:54.365277+00:00",
+        "has_html": true,
+        "title_sha256": "be715ace8541b6b914f86adcbd0800cf595def97ddd28e9e4d7a87265e1c2ace",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "789588ac-ab82-4e93-a475-e121123bdb83",
+        "board_id": "bd470400-0727-4c99-8d4d-16e10b8c6fb3",
+        "first_seen_at": "2026-09-27 18:30:46.509500+00:00",
+        "last_scraped_at": "2026-09-27 18:30:48.806648+00:00",
+        "has_html": true,
+        "title_sha256": "262b830593a70da7082dbb3118185a2f62a1f7adaa9e0e68e5d10c6a2904b575",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "287c577d-329b-47ff-8a0d-72bb9814eb0e",
+        "board_id": "675920ea-ff0f-4dca-89c4-09957f9678bf",
+        "first_seen_at": "2026-08-13 09:53:14.994436+00:00",
+        "last_scraped_at": "2026-09-27 18:30:46.949325+00:00",
+        "has_html": true,
+        "title_sha256": "665a89a6a376d3c97f548600e899e4eb0ef72f196d7d4bcae3a4cd2ae5ad49f4",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": [
+            1,
+            135
+          ],
+          "stored": [
+            1,
+            135
+          ]
+        }
+      },
+      {
+        "id": "932b8689-a284-4c9f-a483-81b8efbf7f5b",
+        "board_id": "8fd170c9-1fd3-402c-98f8-f027f22c661a",
+        "first_seen_at": "2026-08-11 12:54:12.489456+00:00",
+        "last_scraped_at": "2026-09-27 18:30:40.179358+00:00",
+        "has_html": true,
+        "title_sha256": "36ee767095f7614c6837e98f79ad4f9051582f16c70e169a99cf674ce3268d6c",
+        "occupation": {
+          "expected": 34,
+          "stored": 34
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "c172e62f-274d-4945-87f4-62f55f50bb26",
+        "board_id": "bd470400-0727-4c99-8d4d-16e10b8c6fb3",
+        "first_seen_at": "2026-09-27 18:30:09.606027+00:00",
+        "last_scraped_at": "2026-09-27 18:30:15.956240+00:00",
+        "has_html": true,
+        "title_sha256": "687ad68265ddf516096573721d03a53b17a898eab5656dec6c17fd6afcd5653b",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "be00b5df-b0fc-43f1-a177-9568bb19a20b",
+        "board_id": "bd470400-0727-4c99-8d4d-16e10b8c6fb3",
+        "first_seen_at": "2026-09-27 18:30:08.032104+00:00",
+        "last_scraped_at": "2026-09-27 18:30:15.340642+00:00",
+        "has_html": true,
+        "title_sha256": "973eae5f29275e89a0f113f24ac700c5f96b5552f6bd3559a17d230c84ad5a99",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "483c08b9-9506-48e4-b42f-28ee89675c85",
+        "board_id": "c6513f39-dfdb-4a7a-b7b9-6ac589a7bd7c",
+        "first_seen_at": "2026-09-14 18:59:07.590101+00:00",
+        "last_scraped_at": "2026-09-27 18:30:07.351425+00:00",
+        "has_html": true,
+        "title_sha256": "816b5e5930f7d676613921fc4797de80b8baec29d209d20322c94d8b73b6c726",
+        "occupation": {
+          "expected": 1,
+          "stored": 1
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": [
+            1,
+            14,
+            71,
+            76,
+            77,
+            89
+          ],
+          "stored": [
+            1,
+            14,
+            71,
+            76,
+            77,
+            89
+          ]
+        }
+      },
+      {
+        "id": "56500a4f-82d3-4af0-930d-f019b81ebfcd",
+        "board_id": "ccdf1861-61f0-40ff-9a42-fb74849ced4b",
+        "first_seen_at": "2026-08-24 22:44:47.665828+00:00",
+        "last_scraped_at": "2026-09-27 18:30:03.667273+00:00",
+        "has_html": true,
+        "title_sha256": "084d1498080f4198dc25b3000eea67481655d1959b58d40a44fee79c89f407e8",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": [
+            69,
+            70
+          ],
+          "stored": [
+            69,
+            70
+          ]
+        }
+      },
+      {
+        "id": "f4aeab60-1291-4282-a016-a078179e925e",
+        "board_id": "bca586c6-8895-4399-99c8-8566eec25437",
+        "first_seen_at": "2026-05-26 14:46:36.650576+00:00",
+        "last_scraped_at": "2026-09-27 18:30:03.659986+00:00",
+        "has_html": true,
+        "title_sha256": "ed00ace08ca06b2215ccee45601f210b4424ca6ecbb70e0a3eaa5abaf4d52766",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": [
+            4,
+            14,
+            23,
+            27,
+            126,
+            127,
+            128
+          ],
+          "stored": [
+            4,
+            14,
+            23,
+            27,
+            126,
+            127,
+            128
+          ]
+        }
+      },
+      {
+        "id": "e86ab4b0-0de4-4e3b-aaaf-854fa1b95984",
+        "board_id": "30a5163d-77a8-4a37-bc04-b199b5bd65ca",
+        "first_seen_at": "2026-07-09 14:34:13.863019+00:00",
+        "last_scraped_at": "2026-09-27 18:29:54.937129+00:00",
+        "has_html": true,
+        "title_sha256": "bb240dd771c7546370f636cd8f0e065546217a84d058098db1aab457ee1c8129",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "e7e83029-acd5-4860-b49b-bc9c6f943956",
+        "board_id": "85c028ef-328f-4b03-85cc-8e51682c26c5",
+        "first_seen_at": "2026-08-30 21:48:00.994325+00:00",
+        "last_scraped_at": "2026-09-27 18:29:53.251801+00:00",
+        "has_html": false,
+        "title_sha256": "52ba7c6593bf35a86f4914ccf2d9320a3b77a62dba516d86b3019ec5e8443e4e",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "0c705d55-1550-4a08-8d8e-ee7ae3f0a8b9",
+        "board_id": "0dac8bc1-8c6b-465c-980a-2d5b5fbe7b25",
+        "first_seen_at": "2026-08-28 15:35:11.355256+00:00",
+        "last_scraped_at": "2026-09-27 18:29:50.563720+00:00",
+        "has_html": true,
+        "title_sha256": "7d5c2b713651a29c85b5cf6087b86e725623f382fda82e1eade7669870b8c78e",
+        "occupation": {
+          "expected": 11,
+          "stored": 11
+        },
+        "seniority": {
+          "expected_from_title": 4,
+          "stored": 4,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "d101ea80-80d1-484a-a70a-b3e805f2bd7b",
+        "board_id": "85c028ef-328f-4b03-85cc-8e51682c26c5",
+        "first_seen_at": "2026-08-30 21:48:00.994325+00:00",
+        "last_scraped_at": "2026-09-27 18:29:49.255516+00:00",
+        "has_html": false,
+        "title_sha256": "875ee4016d920cd0674e6427745c2b84a1358265f5e2c6d5c6e291e14c612b8a",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": null,
+          "stored": null,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      },
+      {
+        "id": "cb9347a7-15cf-4b18-904b-322ab141ad31",
+        "board_id": "85c028ef-328f-4b03-85cc-8e51682c26c5",
+        "first_seen_at": "2026-08-30 21:48:00.994325+00:00",
+        "last_scraped_at": "2026-09-27 18:29:47.184344+00:00",
+        "has_html": false,
+        "title_sha256": "ba811a5bf9d4c98b5b4d31fa491bf9bc6ba304433e1c480a4487875cb90db0e7",
+        "occupation": {
+          "expected": null,
+          "stored": null
+        },
+        "seniority": {
+          "expected_from_title": 4,
+          "stored": 4,
+          "structured_intern_possible": false
+        },
+        "technology": {
+          "expected_from_latest_description": null,
+          "stored": null
+        }
+      }
+    ]
+  },
+  "selectors": {
+    "SMARTRECRUITERS_GO_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,0f2fad9a-c102-49c9-9233-21bc6785a74e",
+    "SMARTRECRUITERS_GO_DETAIL_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,628cc519-cf15-43df-8ee0-0be4431326c6,143b8a70-441d-41c5-8001-0876d6e570e4",
+    "WORKDAY_REPLAY_CAPTURE_BOARD_ID": "02ff01a5-d8ec-4696-8a45-17e3c8d6483c",
+    "JOIN_CAPTURE_SLUGS": "agentur-kuehnende,stellantisandyou,lebensmittel-knupferde",
+    "RECRUITEE_CAPTURE_TENANTS": "gorgias",
+    "KANDOU_JSONLD_CAPTURE_URL": "https://kandou.bamboohr.com/careers/310",
+    "WORKDAY_DETAIL_CAPTURE_HOST": "freseniusglobal.wd3.myworkdayjobs.com",
+    "PINPOINT_CAPTURE_TENANTS": "accelercomm,includedhealth,penumbrainc,reply",
+    "ASHBY_CAPTURE_TOKENS": "megazone,bounce,tenex",
+    "WORKDAY_GO_BOARD_IDS": "20eae165-5251-40d4-b9a0-0254f4bd1ab3",
+    "WORKDAY_GO_PERCENT": "5",
+    "RECRUITEE_GO_BOARD_IDS": "0f1c7be6-42f6-4706-952c-0d304f8011ba,d3df984c-5f08-47ff-a299-c54a700f5eee,e43481a7-561a-4f29-ab36-df8c5ddaca9f",
+    "PINPOINT_GO_BOARD_IDS": "0ef903fe-82c9-4610-bdfc-0360f9d4226a,b2ce0b69-5896-4df3-8b12-5a6dce9a85d7,ef5d7575-4a45-44d7-8826-ce86a85085c2",
+    "BOOKING_GO_BOARD_ID": "d9730d93-3a2a-4003-a99e-4a8f0830aa2b",
+    "TEAMTAILOR_RSS_GO_BOARD_IDS": "72d8d377-2242-4203-9270-c7447b4a3b56",
+    "GREENHOUSE_GO_PERCENT": "100",
+    "ASHBY_GO_PERCENT": "25",
+    "SUCCESSFACTORS_RSS_GO_BOARD_IDS": "35461192-d877-4146-8f0d-31c97f14fedd",
+    "PERSONIO_GO_BOARD_IDS": "fdbe61f8-4615-49e6-8970-7e5e76452e24",
+    "PERSONIO_GO_PERCENT": "5",
+    "WORKABLE_CAPTURE_SLUGS": "pix4d,debiopharm,unit8,hack-the-box-ltd",
+    "WORKABLE_DETAIL_CAPTURE_JOBS": "lucidya/4733C5B44F,lucidya/E258A7CDA9,unit8/2FA384D52A,unit8/ACABC868E8",
+    "WORKABLE_GO_DETAIL_BOARD_IDS": "aef95fd2-55ea-43cd-9aa6-9bd541c2bc4e",
+    "WORKABLE_GO_PERCENT": "25",
+    "WORKABLE_GO_BOARD_IDS": "06e7e8f2-4741-49b2-a135-96cfeb3bcfdd,631e7fce-366e-409d-b372-4ee4870e74c1,acecf5fd-3252-420d-a098-542cb1c0fc77,08c21917-9457-4b19-b0e6-40d0280a36c4",
+    "SITEMAP_GO_BOARD_IDS": "c4779214-ef92-4261-98fb-ae64f264fd23"
+  }
+}

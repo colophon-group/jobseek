@@ -8,6 +8,8 @@ x-common-env: &common-env
   LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
   REDIS_URL: redis://localhost:6379/0
   WORKER_ID_PREFIX: hetzner
+  # Shared classification stage; Python remains an explicit cold rollback option.
+  JOB_ENRICHMENT_ENGINE: ${JOB_ENRICHMENT_ENGINE:-go}
   LOG_LEVEL: INFO
   # Python Prometheus counters/histograms otherwise mirror every bounded
   # family with an unused `_created` series, consuming ~2,463 tenant series.
@@ -64,6 +66,9 @@ x-common-env: &common-env
   RECRUITEE_GO_PERCENT: ${RECRUITEE_GO_PERCENT:-0}
   RECRUITEE_CAPTURE_TENANTS: ${RECRUITEE_CAPTURE_TENANTS:-}
   # Default-off Go Workable list monitor; the existing detail scraper remains scheduled.
+  SMARTRECRUITERS_GO_BOARD_IDS: ${SMARTRECRUITERS_GO_BOARD_IDS:-}
+  SMARTRECRUITERS_GO_DETAIL_BOARD_IDS: ${SMARTRECRUITERS_GO_DETAIL_BOARD_IDS:-}
+  SMARTRECRUITERS_GO_PERCENT: ${SMARTRECRUITERS_GO_PERCENT:-0}
   WORKABLE_GO_BOARD_IDS: ${WORKABLE_GO_BOARD_IDS:-}
   WORKABLE_GO_PERCENT: ${WORKABLE_GO_PERCENT:-0}
   WORKABLE_GO_DETAIL_BOARD_IDS: ${WORKABLE_GO_DETAIL_BOARD_IDS:-}
@@ -77,7 +82,7 @@ x-common-env: &common-env
   BOOKING_GO_BOARD_ID: ${BOOKING_GO_BOARD_ID:-}
   # Default-off Go Teamtailor RSS monitor and stable rich cohort.
   TEAMTAILOR_RSS_GO_BOARD_IDS: ${TEAMTAILOR_RSS_GO_BOARD_IDS:-}
-  TEAMTAILOR_RSS_GO_PERCENT: ${TEAMTAILOR_RSS_GO_PERCENT:-0}
+  TEAMTAILOR_RSS_GO_PERCENT: ${TEAMTAILOR_RSS_GO_PERCENT:-100}
   TEAMTAILOR_RSS_CAPTURE_HOST: ${TEAMTAILOR_RSS_CAPTURE_HOST:-}
   # Default-off Go SuccessFactors direct Google RSS monitor.
   SUCCESSFACTORS_RSS_GO_BOARD_IDS: ${SUCCESSFACTORS_RSS_GO_BOARD_IDS:-}

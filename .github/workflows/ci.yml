@@ -748,6 +748,29 @@ jobs:
           cache-from: type=gha,scope=crawler-browser
           cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
 
+      - name: Verify installed Go enrichment parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/job-enrichment/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_installed.py /usr/local/bin/job-enrichment /app/data
+
+      - name: Verify installed Ashby request parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/ashby-monitor/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_installed.py /usr/local/bin/ashby-monitor-live
+
+      - name: Verify installed SmartRecruiters monitor and detail parity offline
+        run: |
+          docker run --rm --network none --read-only \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/smartrecruiters-monitor/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_installed.py /usr/local/bin/smartrecruiters-monitor-live
+
       - name: Self-test sampler container probe
         run: python3 .github/scripts/crawler-sampler-container-smoke.py --self-test
 

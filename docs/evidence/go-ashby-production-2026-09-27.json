@@ -1,0 +1,1154 @@
+{
+  "release": "0.13.877",
+  "revision": "0893bd935b629601714dde3b828bcd3c8088dfe9",
+  "pull_request": 10107,
+  "deployment_run": 36344767917,
+  "status": "deployed, c1 active; all Ashby monitor routes selected and first newly supported configuration verified naturally",
+  "scope": "All currently enabled Ashby monitor configuration forms. Separate JSON-LD detail and other Python/browser/runtime ownership remain in scope.",
+  "verification": {
+    "required_ci_run": 36344127934,
+    "installed_runtime_contracts_run": 36344127920,
+    "crawler_deploy_gate_run": 36344127968,
+    "installed_ashby_endpoint_parity": "passed",
+    "focused_ashby_routing_tests": 136,
+    "writer_policy_tests": 57,
+    "frozen_endpoint_cases": 57,
+    "go_race_and_vet": "passed"
+  },
+  "supported_rollback": {
+    "from_epoch": 86,
+    "retired_epoch": 87,
+    "restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "cleared_exact_selectors": 25
+  },
+  "selectors": {
+    "SMARTRECRUITERS_GO_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,0f2fad9a-c102-49c9-9233-21bc6785a74e",
+    "SMARTRECRUITERS_GO_DETAIL_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,628cc519-cf15-43df-8ee0-0be4431326c6,143b8a70-441d-41c5-8001-0876d6e570e4",
+    "WORKDAY_REPLAY_CAPTURE_BOARD_ID": "02ff01a5-d8ec-4696-8a45-17e3c8d6483c",
+    "JOIN_CAPTURE_SLUGS": "agentur-kuehnende,stellantisandyou,lebensmittel-knupferde",
+    "RECRUITEE_CAPTURE_TENANTS": "gorgias",
+    "KANDOU_JSONLD_CAPTURE_URL": "https://kandou.bamboohr.com/careers/310",
+    "WORKDAY_DETAIL_CAPTURE_HOST": "freseniusglobal.wd3.myworkdayjobs.com",
+    "PINPOINT_CAPTURE_TENANTS": "accelercomm,includedhealth,penumbrainc,reply",
+    "WORKDAY_GO_BOARD_IDS": "20eae165-5251-40d4-b9a0-0254f4bd1ab3",
+    "WORKDAY_GO_PERCENT": "5",
+    "RECRUITEE_GO_BOARD_IDS": "0f1c7be6-42f6-4706-952c-0d304f8011ba,d3df984c-5f08-47ff-a299-c54a700f5eee,e43481a7-561a-4f29-ab36-df8c5ddaca9f",
+    "PINPOINT_GO_BOARD_IDS": "0ef903fe-82c9-4610-bdfc-0360f9d4226a,b2ce0b69-5896-4df3-8b12-5a6dce9a85d7,ef5d7575-4a45-44d7-8826-ce86a85085c2",
+    "BOOKING_GO_BOARD_ID": "d9730d93-3a2a-4003-a99e-4a8f0830aa2b",
+    "TEAMTAILOR_RSS_GO_BOARD_IDS": "72d8d377-2242-4203-9270-c7447b4a3b56",
+    "GREENHOUSE_GO_PERCENT": "100",
+    "ASHBY_GO_PERCENT": "100",
+    "SUCCESSFACTORS_RSS_GO_BOARD_IDS": "35461192-d877-4146-8f0d-31c97f14fedd",
+    "PERSONIO_GO_BOARD_IDS": "fdbe61f8-4615-49e6-8970-7e5e76452e24",
+    "PERSONIO_GO_PERCENT": "5",
+    "WORKABLE_CAPTURE_SLUGS": "pix4d,debiopharm,unit8,hack-the-box-ltd",
+    "WORKABLE_DETAIL_CAPTURE_JOBS": "lucidya/4733C5B44F,lucidya/E258A7CDA9,unit8/2FA384D52A,unit8/ACABC868E8",
+    "WORKABLE_GO_DETAIL_BOARD_IDS": "aef95fd2-55ea-43cd-9aa6-9bd541c2bc4e",
+    "WORKABLE_GO_PERCENT": "25",
+    "WORKABLE_GO_BOARD_IDS": "06e7e8f2-4741-49b2-a135-96cfeb3bcfdd,631e7fce-366e-409d-b372-4ee4870e74c1,acecf5fd-3252-420d-a098-542cb1c0fc77,08c21917-9457-4b19-b0e6-40d0280a36c4",
+    "SITEMAP_GO_BOARD_IDS": "c4779214-ef92-4261-98fb-ae64f264fd23"
+  },
+  "selector_helper": {
+    "path": "/tmp/jobseek-post-go-experience-selectors.py",
+    "sha256": "d3a8aa77fc1f21ebdb42754113c75f7cd26d321aead2f57aecd878de67a7842e",
+    "count": 25
+  },
+  "read_only_preview": {
+    "enabled_ashby_monitors": 935,
+    "go_ashby_before": 878,
+    "go_ashby_after": 935,
+    "newly_supported": 57
+  },
+  "before_deployment_baseline": {
+    "boards": 57,
+    "active_postings": 2579,
+    "rows": [
+      {
+        "board": {
+          "id": "22d2cd75-19b5-46e0-af08-4503865c5fec",
+          "board_url": "https://jobs.ashbyhq.com/Abridge",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 09:13:21.502596+00:00",
+          "next_check_at": "2026-09-27 10:13:21.502596+00:00"
+        },
+        "active": 47,
+        "url_sha256": "4c98b38290d6f0bb9c1d15ebd09d5015f6d0ecbd822c4958bfe9284d57080a4d",
+        "content_sha256": "be280978b9b05936b515b855f4f386e7ccc041885c08e40b1ae4052fd0ed96f6"
+      },
+      {
+        "board": {
+          "id": "e9ef3412-34d8-454e-b4c4-093d4bae9d24",
+          "board_url": "https://smallpdf.com/careers",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 09:23:45.749201+00:00",
+          "next_check_at": "2026-09-27 10:23:45.749201+00:00"
+        },
+        "active": 3,
+        "url_sha256": "fdd084db90e93d266d645b17d4d89fb76a15b92c642ea3af2aada2c86f695bd7",
+        "content_sha256": "a4834d08012f56ac1eea0504c9aa9cc8bfc1b17237f4bbc096ea08bacaea2e9a"
+      },
+      {
+        "board": {
+          "id": "77e05c3d-a2c3-4dab-802a-afc7ba785245",
+          "board_url": "https://jobs.ashbyhq.com/monad.foundation",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 09:44:27.016644+00:00",
+          "next_check_at": "2026-09-27 10:44:27.016644+00:00"
+        },
+        "active": 6,
+        "url_sha256": "00cde12726afa8aa1d1ba71430c1c4c0b0ca6e7931db5df0eaead0e8ae9819ed",
+        "content_sha256": "b89daa4ef6e12fc4fedf6d54ba54786814eb5c97c6cabeab067a4f6fe85a792d"
+      },
+      {
+        "board": {
+          "id": "3c9e99ea-aeae-4d4e-adcd-4d148d768fa6",
+          "board_url": "https://jobs.ashbyhq.com/upvest",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 09:45:17.714669+00:00",
+          "next_check_at": "2026-09-27 10:45:17.714669+00:00"
+        },
+        "active": 17,
+        "url_sha256": "1df39c962ae06ea4f1ada0cea2e6edf8b71a240b218bc229e38fb0aa80bbfa68",
+        "content_sha256": "a4cafa48b3b26eca736fd5b99678be4919589e0b671b36bcf2c973f73ba880e6"
+      },
+      {
+        "board": {
+          "id": "55779262-2d3f-47e3-af88-a4527c40a0ff",
+          "board_url": "https://nordsecurity.com/careers",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 09:49:51.500281+00:00",
+          "next_check_at": "2026-09-27 10:49:51.500281+00:00"
+        },
+        "active": 130,
+        "url_sha256": "fdd63f3537ffaf15f9a50501f8793bf6d08ca8447fa39482a5601a3f64c0739c",
+        "content_sha256": "8eeb3b4ade4b9b0c0caf73e2e0b1200626ad2475b808cf0de4cbea28affbe0b7"
+      },
+      {
+        "board": {
+          "id": "389bca36-9d06-409f-badc-6c0239389e62",
+          "board_url": "https://jobs.ashbyhq.com/govsignals",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 10:40:32.842279+00:00",
+          "next_check_at": "2026-09-27 11:40:32.842279+00:00"
+        },
+        "active": 8,
+        "url_sha256": "aac34057505339d62aea8e01db395aa5c3a54c311e784a63aaefad82925c1fb5",
+        "content_sha256": "fe9da7df5590d68bbe6c7d446e9e8f694317cb0c12540690f62049bfd8fee143"
+      },
+      {
+        "board": {
+          "id": "49f8f4d4-4744-4d51-b93e-05af5a0f83a4",
+          "board_url": "https://jobs.ashbyhq.com/li.fi",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 10:48:33.819980+00:00",
+          "next_check_at": "2026-09-27 11:48:33.819980+00:00"
+        },
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "35e68fa8-5775-4a20-981d-64496105a297",
+          "board_url": "https://jobs.ashbyhq.com/cohere",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 11:47:14.023562+00:00",
+          "next_check_at": "2026-09-27 12:47:14.023562+00:00"
+        },
+        "active": 147,
+        "url_sha256": "9f617d023fb9c7ad6b4a78b223ff53eabca3ab5d1c101a5b5362afcc7b259ba7",
+        "content_sha256": "3ec295ac6608448e37674f363705496cf5128529749d9a451b191117226a2aaf"
+      },
+      {
+        "board": {
+          "id": "06d46704-9648-4e33-8fed-dbe67cb2b3f0",
+          "board_url": "https://jobs.ashbyhq.com/Jasper%20AI",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 12:01:57.828482+00:00",
+          "next_check_at": "2026-09-27 13:01:57.828482+00:00"
+        },
+        "active": 6,
+        "url_sha256": "ad49cf015c0097d4b40f308d927eeab06ee2cd9e913bb271fffa1b00b6bd7d57",
+        "content_sha256": "3e8ef88dc348a0133cd2e902fed5a003fdb749225018ae67ad9a147aa574848e"
+      },
+      {
+        "board": {
+          "id": "d947d715-e775-49d8-8199-43bfc13aa58f",
+          "board_url": "https://jobs.ashbyhq.com/Flock%20Safety",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 12:02:09.750044+00:00",
+          "next_check_at": "2026-09-27 13:02:09.750044+00:00"
+        },
+        "active": 18,
+        "url_sha256": "19fcc21997daa0091931450dff0bc181f4c59c680492c7449319bfa690bb3d27",
+        "content_sha256": "39d999f3d53dfa835f1e4bae8301374faac67a0b766ff8751e2399db208fefd8"
+      },
+      {
+        "board": {
+          "id": "4c93f471-ddf2-4abf-a777-75cb551c49c6",
+          "board_url": "https://jobs.ashbyhq.com/rwa.xyz",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 12:37:46.745716+00:00",
+          "next_check_at": "2026-09-27 13:37:46.745716+00:00"
+        },
+        "active": 2,
+        "url_sha256": "f3be055db4bfd919311c0e27b96f56f4c77539b0a3a049792010aaa7d560ffcf",
+        "content_sha256": "50765d0b90eb55f61cdc63195d90a84fd21136dcea22a462b0e82939d7a0e4ef"
+      },
+      {
+        "board": {
+          "id": "9c58fb2a-1f06-4cab-b971-67944ddb0ba4",
+          "board_url": "https://jobs.ashbyhq.com/wordware.ai",
+          "board_status": "gone",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-05-13 06:51:15.276106+00:00",
+          "next_check_at": "2026-09-27 13:42:39.980545+00:00"
+        },
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "e636fe61-598f-4885-9c43-320429afc021",
+          "board_url": "https://inworld.ai/career",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 12:52:20.073942+00:00",
+          "next_check_at": "2026-09-27 13:52:20.073942+00:00"
+        },
+        "active": 14,
+        "url_sha256": "c253b907b2abb9a5b702910dd8d5e889386a40db92333cad9bb97015bda50d06",
+        "content_sha256": "285d3d777068b8a6c4cc37791966092877c189340458ddf982b10e6fbce9b7b4"
+      },
+      {
+        "board": {
+          "id": "aef319ae-dabc-4d5c-af58-82b42bf23dc6",
+          "board_url": "https://jobs.ashbyhq.com/kraken.com",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 12:58:40.961472+00:00",
+          "next_check_at": "2026-09-27 13:58:40.961472+00:00"
+        },
+        "active": 74,
+        "url_sha256": "b3a96ccb55aa485faa3efb9b163559fa2c908cf8a2c30c4df2224d0dab919e93",
+        "content_sha256": "61c6088365fa624b0970d548d05dd92e0682976b35794368f5a16d98c0aef86a"
+      },
+      {
+        "board": {
+          "id": "cde3a812-5d4c-4a12-bb64-dbeb17400efc",
+          "board_url": "https://jobs.ashbyhq.com/Tools%20for%20Humanity",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:02:17.642924+00:00",
+          "next_check_at": "2026-09-27 14:02:17.642924+00:00"
+        },
+        "active": 20,
+        "url_sha256": "5f457ef33b6e070950dc61ed3d9907644297b7ef7725f94adc818bcb05de5201",
+        "content_sha256": "85b054b2542715cbbd2a50fd6a7ba577a4f7b90423be551e6199622bba128999"
+      },
+      {
+        "board": {
+          "id": "d5e4578e-647f-4288-be34-6d561f3895ea",
+          "board_url": "https://jobs.ashbyhq.com/freetrade",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:06:13.316116+00:00",
+          "next_check_at": "2026-09-27 14:06:13.316116+00:00"
+        },
+        "active": 8,
+        "url_sha256": "07da4aaad9bc2d5d5183dc4c9979e7ebdef4e1ec0b211c4ec3a529da7cad45c9",
+        "content_sha256": "e179331fa6dd95999df9670ee525c5f291dd27a62e5679485ad82211f5c125e5"
+      },
+      {
+        "board": {
+          "id": "e731d6d2-73bd-401f-bb58-e057825c051e",
+          "board_url": "https://apify.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:12:36.791162+00:00",
+          "next_check_at": "2026-09-27 14:12:36.791162+00:00"
+        },
+        "active": 10,
+        "url_sha256": "90b17daee4ee28d362a8fd8cd0118ca2c087a0d2766d310503d9721e7c09a01d",
+        "content_sha256": "cfaa01a67e2ee0c6958b5b1f1e951bb029f7c0ec72b0855fe425242f34424031"
+      },
+      {
+        "board": {
+          "id": "ee66f6c5-ab03-40ff-8eb4-85fdafd006de",
+          "board_url": "https://jobs.ashbyhq.com/far.ai",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:13:06.282125+00:00",
+          "next_check_at": "2026-09-27 14:13:06.282125+00:00"
+        },
+        "active": 17,
+        "url_sha256": "f8ac922e7399e4a76c345de19d5bd6f31ccbe10a504ab89f479c609d33032ec9",
+        "content_sha256": "80870df77780ad16f57dc98ac4e75bf262700f05d004d4be2d26e9a15eafce63"
+      },
+      {
+        "board": {
+          "id": "467bd0b4-4cbb-4a3e-bb74-b3053042630a",
+          "board_url": "https://jobs.ashbyhq.com/arb-interactive",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:39:38.622142+00:00",
+          "next_check_at": "2026-09-27 14:39:38.622142+00:00"
+        },
+        "active": 6,
+        "url_sha256": "a62c0448ad369b1f0d9df2c06980226c7344def6031df04c21e25aaa336976a0",
+        "content_sha256": "a2333fb56790aca88e82f2bee7d9f1ad4dc574c85e55b6faab068f9813e7cc51"
+      },
+      {
+        "board": {
+          "id": "c65fe1c7-f284-47da-ba3a-a7abb24e5632",
+          "board_url": "https://jobs.ashbyhq.com/exa",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:45:55.503920+00:00",
+          "next_check_at": "2026-09-27 14:45:55.503920+00:00"
+        },
+        "active": 54,
+        "url_sha256": "8dab34c9f29b486a86b94183b5fe469b0251129d4df3f0f251d48bc4128a07e3",
+        "content_sha256": "8952bb4db3aba3123b1f7614c0bbf1beb58aa6d7f8a2c561ee333c328473e6a5"
+      },
+      {
+        "board": {
+          "id": "daa4fc98-7bae-448f-a805-f1b63c400c52",
+          "board_url": "https://www.skydio.com/careers",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:48:57.503594+00:00",
+          "next_check_at": "2026-09-27 14:48:57.503594+00:00"
+        },
+        "active": 136,
+        "url_sha256": "dd71e10aba67cc81598e16001acb0c228d347d0fe014e67611462fef88ee7df2",
+        "content_sha256": "d5b7ff1c43ad690fdf670a970d7979dc6e2089be0a2a812401b5aef4dc502dd7"
+      },
+      {
+        "board": {
+          "id": "eaf80f01-d903-4837-9eee-9d8beed0b7f9",
+          "board_url": "https://jobs.ashbyhq.com/modal",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:50:21.525044+00:00",
+          "next_check_at": "2026-09-27 14:50:21.525044+00:00"
+        },
+        "active": 39,
+        "url_sha256": "7deeadb5ea99d7e0b40c1584355983213600c11691ed30950b97eb00b2ca16fc",
+        "content_sha256": "c95aaa85b5a29003330c99bda27dfcad6c91b11e31a507ea0840203655575826"
+      },
+      {
+        "board": {
+          "id": "b2ba4060-c8e2-4dde-b004-a3e1c36b6efb",
+          "board_url": "https://jobs.ashbyhq.com/fastino-ai",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:50:30.329677+00:00",
+          "next_check_at": "2026-09-27 14:50:30.329677+00:00"
+        },
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "0538c9ea-b59f-4cdd-8188-699645f2e2f4",
+          "board_url": "https://jobs.ashbyhq.com/binance.us",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 13:58:34.765238+00:00",
+          "next_check_at": "2026-09-27 14:58:34.765238+00:00"
+        },
+        "active": 9,
+        "url_sha256": "6d919935d552e1f33356a6aea24bcb20b7e20d1aa8f6e11b9360b096d70297ae",
+        "content_sha256": "227065cfd9338a3446ac28eb2c5cbb17810935b2072f9a739575fe3faa9b86ec"
+      },
+      {
+        "board": {
+          "id": "b8369bf7-05a9-4e24-bef7-842154b11ed0",
+          "board_url": "https://jobs.ashbyhq.com/domestika.org",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:00:29.832007+00:00",
+          "next_check_at": "2026-09-27 16:00:29.832007+00:00"
+        },
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "088486d6-762d-4a17-ad30-e7e6d1ab1261",
+          "board_url": "https://jobs.ashbyhq.com/Solana%20Foundation",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:50:42.736017+00:00",
+          "next_check_at": "2026-09-27 16:50:42.736017+00:00"
+        },
+        "active": 8,
+        "url_sha256": "cd9c3fb9246f69013958da336f2fb70f881ba04c927e7e51c31aec137a9ac9fa",
+        "content_sha256": "d0e7d4fb784633e8bbda71e1eab383370709103e9a907e81132865b2e8091586"
+      },
+      {
+        "board": {
+          "id": "8871e3f6-851c-43b9-8a7d-feba1d75a383",
+          "board_url": "https://jobs.ashbyhq.com/Hippocratic%20AI",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:51:59.787038+00:00",
+          "next_check_at": "2026-09-27 16:51:59.787038+00:00"
+        },
+        "active": 77,
+        "url_sha256": "2134ba28666e3dd31144f4d1ece0c904ffb8a6e60627366969c8c3bd9420dd4e",
+        "content_sha256": "bce568818df62b028bd91e3485cf3012fb1a06f43eeccbe34ba01ab9002f75b1"
+      },
+      {
+        "board": {
+          "id": "22a187cb-8b22-4251-a108-0e98e33edca5",
+          "board_url": "https://jobs.ashbyhq.com/NorthwoodSpace",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:55:40.482813+00:00",
+          "next_check_at": "2026-09-27 16:55:40.482813+00:00"
+        },
+        "active": 80,
+        "url_sha256": "ac30f4c58e11ce2cc6b9d312c6e3ba40ad4ef76f6fa7030c50724c6a2d0bc640",
+        "content_sha256": "43701dbda98be39beafed1e5266fd50d3b713e8b860fc92271cf9d88a010330c"
+      },
+      {
+        "board": {
+          "id": "f108db7a-7725-4e0e-b6ec-ec6dae53f788",
+          "board_url": "https://jobs.ashbyhq.com/peec",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:10:10.362627+00:00",
+          "next_check_at": "2026-09-27 17:10:10.362627+00:00"
+        },
+        "active": 42,
+        "url_sha256": "8aaaf44196ceefad3130404dd3873d6812fad60a84a7e4b2cc4d6dccde22098b",
+        "content_sha256": "2eda87eed6ce0cb16c68561518f2c2bb6f00888a544c33be0903b12c0b9a56a7"
+      },
+      {
+        "board": {
+          "id": "9d072fe9-4a5c-4516-bd5c-e1009c21c827",
+          "board_url": "https://jobs.ashbyhq.com/neuralconcept",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:13:21.060499+00:00",
+          "next_check_at": "2026-09-27 17:13:21.060499+00:00"
+        },
+        "active": 38,
+        "url_sha256": "c9889dd0769d5945051bd7bd10560c21881be4ae4f9b58c15e325309ced4f18f",
+        "content_sha256": "b8fd861b41d8fece09f8f9c09b1c6663bf60e7c07622e4ef66bc35a8923f63f8"
+      },
+      {
+        "board": {
+          "id": "0da193af-b817-42b0-9341-0bc8599071dc",
+          "board_url": "https://jobs.ashbyhq.com/super.com",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:17:42.870367+00:00",
+          "next_check_at": "2026-09-27 17:17:42.870367+00:00"
+        },
+        "active": 28,
+        "url_sha256": "9b4a4cf302fec537448b923383f90f042c86d88b84753bf686e550b0a0308885",
+        "content_sha256": "dc8546d98ac7ce8ed42a7310cc97d89f025f1d53d81300d56fefb492894332eb"
+      },
+      {
+        "board": {
+          "id": "637f8c5d-47ca-47ec-ad62-c19ff29c6d22",
+          "board_url": "https://jobs.ashbyhq.com/lakera.ai",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:20:25.791306+00:00",
+          "next_check_at": "2026-09-27 17:20:25.791306+00:00"
+        },
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "8c0e3c5e-bae8-4cdc-bd26-bce92b2bf841",
+          "board_url": "https://jobs.ashbyhq.com/genomics",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:41:11.647823+00:00",
+          "next_check_at": "2026-09-27 17:41:11.647823+00:00"
+        },
+        "active": 13,
+        "url_sha256": "b0d57d445f85c0781fc54d40f432e744a4e67a6a794aecd6e965d51a036c9dd6",
+        "content_sha256": "a36a5da116f5c11faa2b512816e0941423a252c7c07cb62db706cac52ed4d792"
+      },
+      {
+        "board": {
+          "id": "2c9a5ec1-33ae-45fe-8a8a-c2154621bb56",
+          "board_url": "https://careers.snowflake.com/us/en/search-results",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:41:21.005759+00:00",
+          "next_check_at": "2026-09-27 17:41:21.005759+00:00"
+        },
+        "active": 349,
+        "url_sha256": "bdcdeea374d1710c189485bd65cff3832f0ef4206e9ad0958a844b29e6aa3cf3",
+        "content_sha256": "3d17f2db9285f9f33a258e7629b5a3a510d14930c67e7d6131c424218fa16f80"
+      },
+      {
+        "board": {
+          "id": "8567bf2e-4a86-428a-b327-9533fa6cce88",
+          "board_url": "https://jobs.ashbyhq.com/radiant-industries",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:47:01.997061+00:00",
+          "next_check_at": "2026-09-27 17:47:01.997061+00:00"
+        },
+        "active": 98,
+        "url_sha256": "346b04c3a604561dad3794aee2f04320fd1e6af8c3222a035f70d07ae51bb46b",
+        "content_sha256": "0cc402656551956f1ff733e0665d3f65858b354105bbbde032e211f59d7fab7f"
+      },
+      {
+        "board": {
+          "id": "d6893590-43f0-4410-a6ca-300b2e36fdd1",
+          "board_url": "https://jobs.ashbyhq.com/arch.co",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:50:16.272787+00:00",
+          "next_check_at": "2026-09-27 17:50:16.272787+00:00"
+        },
+        "active": 18,
+        "url_sha256": "1504cf4b513702cc2f5c4af94ed7118f2a316743a1da6bcd126d53299297bd77",
+        "content_sha256": "941e8f5c1f0c19b466ae6c4a4f3f879a4c75af86ab029d08e55c95bb2878fb81"
+      },
+      {
+        "board": {
+          "id": "8727140b-75f8-4abb-a18e-c47ec0b6e1f5",
+          "board_url": "https://jobs.ashbyhq.com/patch.io",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:50:37.030692+00:00",
+          "next_check_at": "2026-09-27 17:50:37.030692+00:00"
+        },
+        "active": 9,
+        "url_sha256": "2761c135063b4e937d4a3aebe390e864826ebe0c7a5ac64e46a5cd1c21b7c969",
+        "content_sha256": "ddf3c76fb89f4db956c65c75f4efede4506ddc4a01c7812443abe294be4cd245"
+      },
+      {
+        "board": {
+          "id": "e5af4fb1-da75-47e2-a658-493540a52f4e",
+          "board_url": "https://jobs.ashbyhq.com/solve.ai/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:58:47.057842+00:00",
+          "next_check_at": "2026-09-27 17:58:47.057842+00:00"
+        },
+        "active": 4,
+        "url_sha256": "1c4c807176b9756e57b1b7a7fc0889ef3a7649db4e1ef43eca3969de6b7e1c84",
+        "content_sha256": "4fe4c86d5687038d2aae12a8b56ce4a3cc41e14a64910ec01becd865a03be9c7"
+      },
+      {
+        "board": {
+          "id": "d12e9664-c2fa-447d-bdfc-590797d9c451",
+          "board_url": "https://jobs.ashbyhq.com/airspace-intelligence.com",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:11:02.071043+00:00",
+          "next_check_at": "2026-09-27 18:11:02.071043+00:00"
+        },
+        "active": 30,
+        "url_sha256": "e92c40b9ee44be47b49f1f51c22ba97fd7d167f87d97efd2fedff6b7cfb978de",
+        "content_sha256": "a03d56348340a18108dc4b864ffb321fd3d201aea6de84de9c47768d78bf8b12"
+      },
+      {
+        "board": {
+          "id": "5d07c892-781f-4457-842f-f82962660016",
+          "board_url": "https://jobs.ashbyhq.com/langchain",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:21:25.085856+00:00",
+          "next_check_at": "2026-09-27 18:21:25.085856+00:00"
+        },
+        "active": 102,
+        "url_sha256": "c942ca55f3f3918a3f07b6858ea9eb5fd310506fd1519f008b35b2c1e00795fe",
+        "content_sha256": "201a0d06257f7e73018ad1771130651384c94f74e15cb1fae309db9ede5e2b6b"
+      },
+      {
+        "board": {
+          "id": "9d11f4d4-e62f-4429-9c37-4e889f123e3b",
+          "board_url": "https://apply.workable.com/iceye/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:27:26.403678+00:00",
+          "next_check_at": "2026-09-27 18:27:26.403678+00:00"
+        },
+        "active": 190,
+        "url_sha256": "9a2d848b1062d7bf67cb50ef76bec7afc17cb5a98b7471698d5ced687032292f",
+        "content_sha256": "2b0b1a9b5134936d2204dc18849b99cd906cb0f6a0234c09bb03c2d9b261632c"
+      },
+      {
+        "board": {
+          "id": "4d17c5c9-c19f-494c-8132-b9c8d283b6db",
+          "board_url": "https://jobs.ashbyhq.com/v7labs.com",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:33:34.998612+00:00",
+          "next_check_at": "2026-09-27 18:33:34.998612+00:00"
+        },
+        "active": 6,
+        "url_sha256": "21df536609ce841e858b31026f9cd3489833adf4326d233a213e0f219488787b",
+        "content_sha256": "aa42f90f5db608320e98792e42d4782404e3b4cc9d805d42d31e00e08d456c5e"
+      },
+      {
+        "board": {
+          "id": "5523d000-571c-4ab7-b219-d00a82c8e787",
+          "board_url": "https://jobs.ashbyhq.com/perplexity",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:38:09.020436+00:00",
+          "next_check_at": "2026-09-27 18:38:09.020436+00:00"
+        },
+        "active": 123,
+        "url_sha256": "2c95303b479c01232917af7ac89b96d46f0c2446ec4c4b829ad4e45f7674a5d0",
+        "content_sha256": "9571e3b1e9f12d28742083e1f745c5d20ac849540de51bf7bf69613bd9f9be2d"
+      },
+      {
+        "board": {
+          "id": "35b07b94-e444-49c4-9ac1-8a071efe385a",
+          "board_url": "https://jobs.ashbyhq.com/ambient.ai",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:49:56.658081+00:00",
+          "next_check_at": "2026-09-27 18:49:56.658081+00:00"
+        },
+        "active": 25,
+        "url_sha256": "167f57901a01b3b2d55bda21cc37c41dd4b62c162829ac71e2f082fb44d4d454",
+        "content_sha256": "17434202fb7214d8d702914fb7ec7df969445a3f547ccca2f27c5f153b5987f7"
+      },
+      {
+        "board": {
+          "id": "44c66e96-4ec3-4cfc-8edd-42be35cecf26",
+          "board_url": "https://jobs.ashbyhq.com/mistral.ai",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:51:32.240717+00:00",
+          "next_check_at": "2026-09-27 18:51:32.240717+00:00"
+        },
+        "active": 207,
+        "url_sha256": "3a8594e874efa655b83e20fe65ca0632e2dc307ac43dff78de5435762188402e",
+        "content_sha256": "485fdab21d183b88ec2da748582a2aabf60d0310a11cc1e8e6e5a57286ce7d49"
+      },
+      {
+        "board": {
+          "id": "4246fa03-405b-4814-b7bb-c4f0fb31815c",
+          "board_url": "https://jobs.ashbyhq.com/fanvue.com",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:57:22.619569+00:00",
+          "next_check_at": "2026-09-27 18:57:22.619569+00:00"
+        },
+        "active": 13,
+        "url_sha256": "edfe5b3840511f059ff73f6a1871df53579a0129435f10181511102173a5166c",
+        "content_sha256": "cac75ac040de9a81b21bbd6bf50a6311a5c2e7a3adfa34c81e519fb0c2a11afd"
+      },
+      {
+        "board": {
+          "id": "617b792a-1949-46c9-8017-3dac21928ab5",
+          "board_url": "https://jobs.ashbyhq.com/qdrant.tech",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:59:39.492049+00:00",
+          "next_check_at": "2026-09-27 18:59:39.492049+00:00"
+        },
+        "active": 7,
+        "url_sha256": "b7ff1d16665607947c2a3bd4c5374773f772a2f9937d5f33fe93edeb57a36330",
+        "content_sha256": "c16d65d5ef3bfa22586c25c3389c26e71f15681d60699b72f80aedab90cfbf7b"
+      },
+      {
+        "board": {
+          "id": "d126279b-89e3-4a01-81d9-bdb1ec75fa70",
+          "board_url": "https://jobs.ashbyhq.com/enpal",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:02:52.744687+00:00",
+          "next_check_at": "2026-09-27 19:02:52.744687+00:00"
+        },
+        "active": 149,
+        "url_sha256": "5988a949aaa0e1029b8b7d2e752f5d25234b3c778ea378e109cff2f92aa45076",
+        "content_sha256": "c307b5a159b0ce7014f53eac552a86ac06086c049cbddd9b7778b65ba1be42b1"
+      },
+      {
+        "board": {
+          "id": "cd161ffc-f1ad-4105-802f-ce5dc59ba3ef",
+          "board_url": "https://jobs.ashbyhq.com/fathom.video",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:07:52.091232+00:00",
+          "next_check_at": "2026-09-27 19:07:52.091232+00:00"
+        },
+        "active": 4,
+        "url_sha256": "6420d7784795e41a05993ca12a1a22f511ec836931bad5ce3d6bf8259b1eedd4",
+        "content_sha256": "b5244a68000b7373c7daeef3737a4cc6e1d68031efe6d24e25376182f8bec64b"
+      },
+      {
+        "board": {
+          "id": "c40a847d-79b5-428a-a5f6-93e3ebb0638b",
+          "board_url": "https://jobs.ashbyhq.com/p2p.org",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:22:14.624732+00:00",
+          "next_check_at": "2026-09-27 19:22:14.624732+00:00"
+        },
+        "active": 3,
+        "url_sha256": "95a841724c199d118c040dea7cadb66ecc252716571d20aebf6951f4068bd1f2",
+        "content_sha256": "500e0d4c14f4e9040f02a0afde044eaa1e1614fe89413517882f9c530b9dcbb5"
+      },
+      {
+        "board": {
+          "id": "69c0229d-97d8-40f1-be52-f09be9ccb944",
+          "board_url": "https://jobs.ashbyhq.com/tracebit",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:27:37.791779+00:00",
+          "next_check_at": "2026-09-27 19:27:37.791779+00:00"
+        },
+        "active": 5,
+        "url_sha256": "872bf5b7d7ac9368a1223a568251e6ca8e7a9666cea62938d3e1aecb07fa8265",
+        "content_sha256": "34df08f161383f49818bd468565c9b8b4d95d9b1c7fd2e261f657c938c893159"
+      },
+      {
+        "board": {
+          "id": "49e1c3f4-e152-467d-ac7d-590bdffbbad5",
+          "board_url": "https://jobs.ashbyhq.com/happyrobot.ai",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:30:31.176438+00:00",
+          "next_check_at": "2026-09-27 19:30:31.176438+00:00"
+        },
+        "active": 78,
+        "url_sha256": "eda6ba0bd72824ed10cce651940103c855c1976d6cfd909f87c6a82924831997",
+        "content_sha256": "ade1692dc73ca347ba44fa07aaa029569e36364b07c0c9465aa16ef6710cb3e6"
+      },
+      {
+        "board": {
+          "id": "a075caff-47df-4295-9431-efd67ac5c2d8",
+          "board_url": "https://jobs.ashbyhq.com/harrison.ai",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:38:06.836768+00:00",
+          "next_check_at": "2026-09-27 19:38:06.836768+00:00"
+        },
+        "active": 6,
+        "url_sha256": "5c6fa89bd0ce995ff1a130e932b4bb926fd0f284e642c2d3a24bbe54778cbbc5",
+        "content_sha256": "08e909b06ed4e468d25ee2b59f4ed715eb9ae3bd7db8c2bdfe79b2f9d10e946e"
+      },
+      {
+        "board": {
+          "id": "97f5acaa-886a-4233-af54-979562bfe9fd",
+          "board_url": "https://jobs.ashbyhq.com/method.security",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:51:54.826883+00:00",
+          "next_check_at": "2026-09-27 19:51:54.826883+00:00"
+        },
+        "active": 8,
+        "url_sha256": "bf20e6d93ab927cfe1edfc6afc339083829a53f722a300f6e7a71fcac8d63e42",
+        "content_sha256": "5b4ddbc26a59859b7ccf5dca85a080e93cd02cd089421105882383c79219eb5b"
+      },
+      {
+        "board": {
+          "id": "c90203bb-e656-4569-a2a3-aace2734c36e",
+          "board_url": "https://jobs.ashbyhq.com/squint.ai",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:01:29.855201+00:00",
+          "next_check_at": "2026-09-27 20:01:29.855201+00:00"
+        },
+        "active": 6,
+        "url_sha256": "7dfa6b78c4a533cad269d6928eab82104f49458e0036cb87a2dcdd7f0250aa77",
+        "content_sha256": "aeadea49f2ded1f1453f7e05a434a35d54476e5fcbdd467bd81600bf457e309f"
+      },
+      {
+        "board": {
+          "id": "0ea36ef2-0840-4a75-a93d-9eebd55cee31",
+          "board_url": "https://jobs.ashbyhq.com/camber",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:02:30.707142+00:00",
+          "next_check_at": "2026-09-27 20:02:30.707142+00:00"
+        },
+        "active": 16,
+        "url_sha256": "a38cc9568c6a73154ae6d5f13ccef75c05ee913fcccd25ef5cb369f0502379e8",
+        "content_sha256": "aada282b65560cd0b9b4648c6e200207427cd9fadd2d2c4cef2fde48cc2be859"
+      },
+      {
+        "board": {
+          "id": "f9d35598-e146-4134-a50a-0b113f122cb1",
+          "board_url": "https://jobs.ashbyhq.com/ashby",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:21:17.827487+00:00",
+          "next_check_at": "2026-09-27 20:21:17.827487+00:00"
+        },
+        "active": 66,
+        "url_sha256": "5d063ca5e5a44f28f3fa180f5a9ffe5dac04b6ee232ee0b93eb963b4fb199c7e",
+        "content_sha256": "1a31733f9c61954ba9af5891cef5a0adaf73cb98da324911f1e67dcd74ddb318"
+      }
+    ]
+  },
+  "limitations": [
+    "Routing coverage is not natural output/database proof for every board.",
+    "Nord Security retains its separate configured JSON-LD detail path.",
+    "No forced due scores, duplicate origin requests or omitted enabled boards.",
+    "No whole-lane resource/cost claim from this configuration-coverage slice."
+  ],
+  "deployment_conclusion": "success",
+  "configuration_sync": {
+    "engine": "go",
+    "companies": 6013,
+    "boards": 7879,
+    "completed_at": "2026-09-27T19:44:35.010286686Z"
+  },
+  "activation": {
+    "epoch": 88,
+    "owner": "go",
+    "audit": "accepted/audit_ok",
+    "ready": 5,
+    "inflight": 0,
+    "dead": 0,
+    "exact_selectors_restaged": 25
+  },
+  "route_census": {
+    "enabled": 7879,
+    "routes": {
+      "go-ashby": 935,
+      "go-booking-api": 1,
+      "go-greenhouse": 2520,
+      "go-lever": 194,
+      "go-personio": 2,
+      "go-pinpoint": 3,
+      "go-recruitee": 3,
+      "go-sitemap": 1,
+      "go-smartrecruiters": 4,
+      "go-successfactors-rss": 1,
+      "go-teamtailor-rss": 1,
+      "go-workable": 15,
+      "go-workday": 2,
+      "python": 4197
+    },
+    "errors": [],
+    "python_monitor_types": {
+      "dom": 837,
+      "workday": 494,
+      "rss": 405,
+      "api_sniffer": 324,
+      "sitemap": 313,
+      "join": 276,
+      "oracle_hcm": 134,
+      "inline": 125,
+      "smartrecruiters": 125,
+      "icims": 118,
+      "recruitee": 112,
+      "pinpoint": 101,
+      "workable": 62,
+      "nextdata": 54,
+      "personio": 53,
+      "greenhouse": 50,
+      "gupy": 36,
+      "linkedin": 31,
+      "phenom": 31,
+      "eightfold": 30,
+      "jobylon": 28,
+      "beisen": 24,
+      "almacareer": 23,
+      "mokahr": 22,
+      "jazzhr": 20,
+      "ukg": 16,
+      "paycom": 16,
+      "softgarden": 15,
+      "adp": 14,
+      "recruiter_co_kr": 14,
+      "breezy": 13,
+      "gem": 13,
+      "accenture": 12,
+      "cornerstone": 12,
+      "computrabajo": 11,
+      "jobs_ch": 11,
+      "bamboohr": 10,
+      "dayforce": 10,
+      "rippling": 10,
+      "paylocity": 9,
+      "comeet": 9,
+      "umantis": 9,
+      "jobvite": 9,
+      "unifr": 9,
+      "talentbrew": 8,
+      "notion": 8,
+      "avature": 7,
+      "hrmos": 6,
+      "recruiterbox": 6,
+      "seek": 6,
+      "manatal": 5,
+      "darwinbox": 5,
+      "jobbank104": 4,
+      "brassring": 4,
+      "practicematch": 4,
+      "taleo": 4,
+      "ycombinator": 4,
+      "hibob": 4,
+      "pageup": 3,
+      "bytedance": 3,
+      "typify": 3,
+      "earcu": 3,
+      "welcometothejungle": 3,
+      "traffit": 3,
+      "intervieweb": 3,
+      "woowa": 3,
+      "jobstreet": 3,
+      "deel": 3,
+      "jobdiva": 2,
+      "johdi": 2,
+      "paynet": 2,
+      "cvwarehouse": 2,
+      "fenbi": 2,
+      "talentreef": 2,
+      "headhunter": 2,
+      "talemetry": 2,
+      "job51": 2,
+      "amazon": 1,
+      "curately": 1,
+      "njoyn": 1,
+      "jobconvo": 1,
+      "seamlesshiring": 1,
+      "wecruit": 1,
+      "inploi": 1,
+      "peoplesoft": 1,
+      "cnstaff": 1,
+      "infoniqa": 1,
+      "turbohire": 1,
+      "candidatus": 1,
+      "nowhiring": 1,
+      "beehire": 1,
+      "jarvi": 1,
+      "infor": 1,
+      "keka": 1,
+      "hirehive": 1,
+      "papa_johns": 1,
+      "kipt": 1,
+      "universia": 1,
+      "prospective": 1,
+      "unisante": 1,
+      "lever": 1
+    }
+  },
+  "observed_at": "2026-09-27T19:48:53.058565+00:00",
+  "health": [
+    "crawler-refresh-typesense-20260927T194839Z Up 12 seconds",
+    "deploy-lightpanda-claimant-1 Up 35 seconds (healthy)",
+    "deploy-browser-1-1 Up 40 seconds (healthy)",
+    "deploy-lightpanda-executor-1 Up 40 seconds (healthy)",
+    "deploy-worker-2-1 Up 40 seconds (healthy)",
+    "deploy-worker-1-1 Up 40 seconds (healthy)",
+    "deploy-worker-3-1 Up 40 seconds (healthy)",
+    "deploy-drain-1 Up 41 seconds (healthy)",
+    "deploy-lightpanda-producer-1 Up 50 seconds (healthy)",
+    "deploy-alloy-1 Up 4 minutes",
+    "deploy-exporter-1 Up 4 minutes",
+    "deploy-redis-1 Up 13 days (healthy)"
+  ],
+  "runtime_metrics": [
+    "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1080.0",
+    "crawler_runtime_executions_total{implementation=\"go-ashby\",outcome=\"success\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 137.0",
+    "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 806.0",
+    "crawler_runtime_capability_executions_total{capability=\"experience\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 137.0",
+    "crawler_runtime_capability_executions_total{capability=\"ashby\",implementation=\"go-ashby\",outcome=\"success\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 729.0",
+    "crawler_runtime_capability_executions_total{capability=\"experience\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 134.0",
+    "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 134.0",
+    "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 461.0",
+    "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1746.0",
+    "crawler_runtime_executions_total{implementation=\"go-ashby\",outcome=\"success\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 181.0",
+    "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1384.0",
+    "crawler_runtime_capability_executions_total{capability=\"experience\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 181.0",
+    "crawler_runtime_capability_executions_total{capability=\"ashby\",implementation=\"go-ashby\",outcome=\"success\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 275.0",
+    "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1.0",
+    "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 273.0",
+    "crawler_runtime_capability_executions_total{capability=\"experience\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1.0"
+  ],
+  "typesense_metrics": [
+    "crawler_typesense_export_docs_total{status=\"success\"} 64",
+    "crawler_typesense_export_docs_total{status=\"error\"} 0",
+    "crawler_typesense_export_lag 0",
+    "crawler_typesense_healthy 1"
+  ],
+  "natural_ashby_logs": [
+    {
+      "board_id": "09c3e933-3cb6-44d3-afe5-87df461dcc8d",
+      "urls": 55,
+      "url_sha256": "e3ddb6b230970f179307d0fe20b76b7ff8ef702fc13a44026240a5529b98715d",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 750602,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:48:40.336814Z"
+    },
+    {
+      "board_id": "7381cafc-12e7-4695-bbbe-fd5fb848ec3f",
+      "urls": 16,
+      "url_sha256": "194f65089768ec639ea250b91aa3b538d89f894597e6ffc99581d0d6f26b263a",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 257733,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:49:01.197957Z"
+    },
+    {
+      "board_id": "f6d776f7-4329-4efb-a5c9-67e8787bc734",
+      "urls": 7,
+      "url_sha256": "25ae257426534a36471a7b17fecaec5a032142c158788c053ec90bf020574b67",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 56797,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:49:33.521192Z"
+    },
+    {
+      "board_id": "f7ff3270-dbd4-4653-a176-cd5f90f75bbb",
+      "urls": 11,
+      "url_sha256": "706c0770c447532a40ce2575f418040dd4948a7e8bb0ff3331fad4f981ada0b7",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 90886,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:48:23.636381Z"
+    },
+    {
+      "board_id": "2371ff6e-ab32-42f3-8339-3d0485bfaf13",
+      "urls": 4,
+      "url_sha256": "179f7b9784671e05abc33a59dbd22178ab1e932f1ffdb1bdb662f578017bd601",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 44461,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:50:04.646708Z"
+    },
+    {
+      "board_id": "22d2cd75-19b5-46e0-af08-4503865c5fec",
+      "urls": 47,
+      "url_sha256": "4c98b38290d6f0bb9c1d15ebd09d5015f6d0ecbd822c4958bfe9284d57080a4d",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 1016919,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:51:43.775595Z"
+    }
+  ],
+  "pending_natural_configuration_readback": {
+    "next_queue_sample": [
+      {
+        "id": "e9ef3412-34d8-454e-b4c4-093d4bae9d24",
+        "url": "https://smallpdf.com/careers",
+        "rank": 5
+      },
+      {
+        "id": "77e05c3d-a2c3-4dab-802a-afc7ba785245",
+        "url": "https://jobs.ashbyhq.com/monad.foundation",
+        "rank": 24
+      },
+      {
+        "id": "3c9e99ea-aeae-4d4e-adcd-4d148d768fa6",
+        "url": "https://jobs.ashbyhq.com/upvest",
+        "rank": 25
+      },
+      {
+        "id": "55779262-2d3f-47e3-af88-a4527c40a0ff",
+        "url": "https://nordsecurity.com/careers",
+        "rank": 28
+      },
+      {
+        "id": "389bca36-9d06-409f-badc-6c0239389e62",
+        "url": "https://jobs.ashbyhq.com/govsignals",
+        "rank": 63
+      },
+      {
+        "id": "49f8f4d4-4744-4d51-b93e-05af5a0f83a4",
+        "url": "https://jobs.ashbyhq.com/li.fi",
+        "rank": 70
+      },
+      {
+        "id": "35e68fa8-5775-4a20-981d-64496105a297",
+        "url": "https://jobs.ashbyhq.com/cohere",
+        "rank": 123
+      },
+      {
+        "id": "06d46704-9648-4e33-8fed-dbe67cb2b3f0",
+        "url": "https://jobs.ashbyhq.com/Jasper%20AI",
+        "rank": 147
+      },
+      {
+        "id": "d947d715-e775-49d8-8199-43bfc13aa58f",
+        "url": "https://jobs.ashbyhq.com/Flock%20Safety",
+        "rank": 148
+      },
+      {
+        "id": "4c93f471-ddf2-4abf-a777-75cb551c49c6",
+        "url": "https://jobs.ashbyhq.com/rwa.xyz",
+        "rank": 182
+      }
+    ],
+    "note": "Abridge is verified below. Other newly supported configurations continue through normal scheduling; queue ranks are a snapshot, not execution-time promises."
+  },
+  "new_configuration_readback": {
+    "configuration_class": "direct URL token derivation, no explicit token",
+    "go_event": {
+      "board_id": "22d2cd75-19b5-46e0-af08-4503865c5fec",
+      "urls": 47,
+      "url_sha256": "4c98b38290d6f0bb9c1d15ebd09d5015f6d0ecbd822c4958bfe9284d57080a4d",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 1016919,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:51:43.775595Z"
+    },
+    "database": {
+      "board": {
+        "id": "22d2cd75-19b5-46e0-af08-4503865c5fec",
+        "board_url": "https://jobs.ashbyhq.com/Abridge",
+        "board_status": "active",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 19:51:47.825989+00:00",
+        "next_check_at": "2026-09-27 20:51:47.825989+00:00"
+      },
+      "active": 47,
+      "url_sha256": "4c98b38290d6f0bb9c1d15ebd09d5015f6d0ecbd822c4958bfe9284d57080a4d"
+    },
+    "posting_ids_and_description_hashes_sha256": "be280978b9b05936b515b855f4f386e7ccc041885c08e40b1ae4052fd0ed96f6",
+    "matches_before_deployment_ids_and_description_hashes": true,
+    "last_seen_range": [
+      "2026-09-27 19:51:43.834438+00:00",
+      "2026-09-27 19:51:43.834438+00:00"
+    ]
+  }
+}

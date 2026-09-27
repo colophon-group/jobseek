@@ -46,8 +46,9 @@ before submission; experience/salary reprocessing excludes reserved rows.
 
 The earlier #10095 fixes were subsequently included in the successful #10096
 rollout (run 36332710204, revision `1f37e47ef036c1b08a5ca45dfca94cd9d7e3dbf6`).
-The current deployment checkpoint records c1 reactivated at epoch 80 with 24
-selectors; this follow-up still needs its own coordinated release.
+The latest production checkpoint in `docs/24-go-lightpanda-resumption-plan.md`
+is authoritative for the active c1 epoch, deployed revision and selector set.
+This follow-up needs its own coordinated release.
 
 The database migration and Typesense schema must be installed **before** the web
 version that queries `tdm_reserved`. Keep this change in draft until the crawler

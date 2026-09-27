@@ -6,6 +6,303 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — complete Teamtailor RSS routing v0.13.878
+
+PR #10109 merged as `ca3d0c244b6e8288227276c0151f80edc1c3d988`.
+[Deployment 36347539962](https://github.com/colophon-group/jobseek/actions/runs/36347539962)
+succeeded. **All 162 enabled Teamtailor RSS monitors now select Go**, up from
+one. The live census is **3,843 Go / 4,036 Python** of 7,879 enabled monitors,
+with zero route errors. No enabled boards were removed; the baseline includes
+four already quarantined boards and five new boards without history.
+
+The retained real Sellpy feed matches Python across all seven rich fields for
+11 jobs. Verification passed 217 focused runtime/RSS/shared monitor tests, Go
+race/vet, Ruff/Pyright, Required CI and installed-image parity. Go configuration
+sync completed 6,013 companies and 7,879 boards at 20:27:50 UTC.
+
+Two newly admitted boards completed natural Go runs. Huawei Finland R&D
+returned 15 jobs at 20:28:15 UTC, matching the active DB URL hash exactly;
+posting IDs and description hashes also match the pre-deploy baseline.
+Doconomy returned one job after c1 reactivation at 20:31:41 UTC, also with an
+exact DB URL hash. Both have zero consecutive failures. The read-only baseline
+covers 162 boards and 3,178 active postings. No due scores or publisher requests
+were forced. The preceding Ashby rollout also has new custom-domain evidence:
+Smallpdf's three jobs match its natural Go output and active DB exactly.
+
+Supported rollback retired epoch 88 at 89, restored all five schedules and
+left zero terminal drops/write fences. The unchanged **25 selectors** were
+cleared under lock and restaged at the promoted revision. C1 is active at
+**epoch 90**, accepted/audit_ok, with five ready records and zero inflight/dead;
+all long-lived services are healthy. C2 remains dark. The post-activation
+snapshot reports 121 successful Typesense exports, zero errors, zero lag and
+healthy status. See the sanitized
+[production evidence](evidence/go-teamtailor-production-2026-09-27.json).
+
+Before another deployment or selector mutation, complete supported `rollback c1`,
+then clear all **25** selectors using `/tmp/jobseek-post-go-experience-selectors.py`
+under `/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`ca3d0c244b6e8288227276c0151f80edc1c3d988` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision, then reactivate c1. Teamtailor's percentage is now a release default
+of 100; it is not an additional host selector. These instructions supersede
+older release/epoch instructions below.
+
+Remaining work includes 4,036 Python monitors, detail/browser profiles, Python
+worker/writer and CPU stages, plus same-workload whole-lane efficiency and final
+cutover/reversal. No full retirement or new whole-lane resource claim is made.
+A read-only next-slice census found 227 enabled SuccessFactors RSS boards:
+188 pass current Go feed eligibility and 39 need configuration/profile work.
+
+## Implementation checkpoint: complete Teamtailor RSS routing v0.13.878
+
+The Teamtailor RSS runtime now defaults to Go for every supported direct feed,
+without the pilot's requirement for three recent nonzero counts below 501.
+A read-only production census found 162 enabled Teamtailor RSS boards, all with
+supported configurations; five have no history or active rows. The pre-release
+baseline covers 3,178 active postings. This change moves the 161 remaining
+Python Teamtailor RSS monitors to the existing native fetch/parser path.
+
+Transport/configuration validation, 100-item pagination, 50,000-job truncation,
+TDM handling and shared downstream filtering/URL identity/writer policies are
+preserved. The bridge bounds stdout while reading and reaps a stuck child after
+a bounded terminate/kill sequence, including cancellation. A new
+`go_teamtailor_rss.monitor_postprocessed` event records the canonical URL set
+hash after filtering and transformations, for exact database comparisons.
+
+Replaying the retained 69,210-byte Sellpy feed through current Python and Go
+matched all seven rich fields for 11 jobs (canonical field SHA-256
+`3e156cb0a84a47f5c2d64307d6626e079694e033b9aa871c0c56bf6028accbb5`).
+No publisher traffic was generated. Deployment and natural-run evidence are
+recorded in the production checkpoint above.
+
+For percentage rollback set `TEAMTAILOR_RSS_GO_PERCENT=0` through the supported
+cold configuration procedure. Explicit `TEAMTAILOR_RSS_GO_BOARD_IDS` still take
+precedence, so remove those too for full provider reversal, or restore the
+previous release for the existing Sellpy-only route. This is monitor ownership;
+Python worker/writer stages and the full retirement/resource gates remain open.
+
+## Production checkpoint: 2026-09-27 — complete Ashby monitor routing v0.13.877
+
+PR #10107 merged as `0893bd935b629601714dde3b828bcd3c8088dfe9`.
+[Deployment 36344767917](https://github.com/colophon-group/jobseek/actions/runs/36344767917)
+succeeded. **All 935 currently enabled Ashby monitors now select Go**, including
+the 57 configurations excluded by the previous route. The live census is
+**3,682 Go / 4,197 Python** of 7,879 enabled monitors, with zero routing errors.
+This is monitor-stage coverage; Python worker processing and Nord Security's
+configured JSON-LD detail path remain separate migration obligations.
+
+The request mapping preserves Python precedence and encoding for explicit or
+direct-URL-derived tokens, spaces/dots, custom career domains and matching
+legacy metadata. Writer-owned drop settings and separate detail configuration
+are unchanged. Verification passed 136 focused Ashby/routing tests, 57 existing
+writer/enrichment/drop tests, Go race/vet, Ruff/Pyright, Required CI and installed
+image parity. All 57 frozen Python/httpx request endpoints also pass through the
+installed native binary with networking disabled.
+
+The actual release's Go configuration sync completed 6,013 CSV companies and
+7,879 boards at 19:44:35 UTC. Supported rollback retired epoch 86 at 87 and
+restored all five schedules with zero terminal drops/write fences. The same
+**25 selectors** were cleared under lock and staged at the promoted revision.
+C1 is active at **epoch 88**, accepted/audit_ok, with five ready records and
+zero inflight/dead. All long-lived services are healthy; C2 remains dark.
+Typesense reported 64 successful exports, zero errors, zero lag and healthy
+status in the initial post-activation snapshot.
+
+Six natural Go monitor cycles were observed after activation. Abridge, newly
+admitted through direct-URL token derivation, returned 47 URLs with an exact
+active database URL hash and zero failures. Its posting-ID/description-hash
+digest also matches the pre-deploy baseline. Other new configuration forms
+continue through their normal schedules. The read-only baseline covers all
+57 newly admitted boards and 2,579 active postings. See the sanitized
+[production evidence](evidence/go-ashby-production-2026-09-27.json) for baseline
+hashes, exact selector values, route census and activation evidence. No origin
+requests or due times were forced.
+
+Before another deployment or selector mutation, complete supported `rollback c1`,
+then clear the current **25** selectors with
+`/tmp/jobseek-post-go-experience-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`0893bd935b629601714dde3b828bcd3c8088dfe9` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision, then reactivate c1. These current instructions supersede the older
+release/epoch instructions below. The full documented #7966 requirements remain
+unmet while Python and Chromium own production work; this slice makes no new
+whole-lane CPU/RAM/density/cost claim.
+
+## Production checkpoint: 2026-09-27 — Go experience and Ashby expansion v0.13.876
+
+PR #10104 merged as `7da64809897c5e9d3ca13d2537318c707effc9a0`.
+[Deployment 36342254765](https://github.com/colophon-group/jobseek/actions/runs/36342254765)
+succeeded. **Go now also owns experience extraction in shared monitor/detail
+CPU processing.** The installed-image oracle passed all 1,967 cases; 43 focused
+tests and the same-content replay of 256 stored postings passed. Local replay
+used approximately 21% less experience CPU including IPC and the native child;
+this remains stage evidence, not whole-lane RAM/density/cost proof.
+
+The first natural readback matched all six populated predictions among 52
+postings. After c1 reactivation, all 11 populated predictions among 48 postings
+matched persisted minimum/maximum experience. A fresh-worker snapshot recorded
+2,744 successful native experience calls and zero enrichment execution errors.
+Typesense reported 101 successful exports, zero errors, zero lag and healthy
+status. The actual release's Go configuration sync completed 7,879 boards and
+6,013 CSV companies at 19:03:56 UTC.
+
+**Ashby now selects 100% of strictly supported configurations:** 878 Go routes,
+up from 209. Its obsolete Python-only passive capture selector was removed.
+The actual enabled-monitor census is **3,625 Go / 4,254 Python** of 7,879,
+with zero routing errors. Fifty-seven other Ashby configurations remain Python;
+100% is the supported-profile percentage, not a claim of full provider coverage.
+Two newly admitted boards completed natural Go runs: Orb returned 25 URLs,
+matching its active database exactly; Spekit returned four URLs, all matching
+freshly seen database rows. Spekit's unchanged drop guard retained six older
+active rows last seen between July 9 and September 11. Its logged suspect-drop
+history predates this rollout; both boards have zero consecutive failures.
+
+Supported rollback retired epoch 84 at 85, restored all five schedules and
+left zero drops/write fences. After deployment, the reviewed **25-selector**
+set was staged against the exact promoted revision. C1 is active at **epoch 86**,
+accepted/audit_ok, with five ready records and zero inflight/dead; all services
+are healthy. C2 remains dark. The sanitized
+[production evidence](evidence/go-experience-production-2026-09-27.json) records
+selectors, readbacks, natural output hashes and the remaining Python monitor census.
+
+Before another deployment or selector mutation, complete supported `rollback c1`,
+then clear the current **25** selectors with
+`/tmp/jobseek-post-go-experience-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`7da64809897c5e9d3ca13d2537318c707effc9a0` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. The old 26-selector helper no longer
+matches production. Restage only against the next promoted revision, then
+reactivate c1. No due times or publisher traffic were forced.
+
+The owner closed #7966 on September 27, but its documented full-retirement
+requirements remain unmet: Python workers, remaining extraction/enrichment and
+browser profiles, whole-lane efficiency and final cutover/reversal still need
+implementation and evidence. This checkpoint supersedes the operational
+selector/epoch instructions in the historical checkpoints below.
+
+## Production checkpoint: 2026-09-27 — shared Go classification v0.13.875
+
+PR #10102 merged as `7f27c5006e45b484801494c149b262371bbf307c`.
+[Deployment 36340121669](https://github.com/colophon-group/jobseek/actions/runs/36340121669)
+succeeded. **Go now owns occupation, seniority and technology matching in
+monitor and detail CPU processing.** Each of the three HTTP workers and the
+browser worker has one resident native matcher; observed retained RSS is
+about 11–12 MiB per child. The Python worker, remaining CPU stages (HTML,
+language, location, salary, experience), scheduling and persistence remain
+in scope for #7966.
+
+Required CI, installed-runtime contracts and the installed-image offline Go
+parity step passed. Local verification covered 336 focused tests, 1,568 frozen
+title cases, 2,056 technology inputs and exact same-byte replay of 256 actual
+stored postings from 128 boards and eight locales. Local counterbalanced
+replay used approximately 44% less classification CPU including native child
+and bridge; this does not establish whole-lane RAM or cost savings.
+See [replay evidence](evidence/go-job-enrichment-replay-2026-09-27.json).
+
+Natural production execution recorded 3,560 successful Go classifications
+before c1 reactivation and 17,475 in the later fresh-worker snapshot, with
+zero enrichment errors. A readback of 43 new postings matched stored values
+(mostly null discovery stubs). Among 25 recent scrapes, all five populated
+occupation predictions, two seniority predictions and seven technology sets
+matched persisted fields. Each comparison uses current Python reference
+semantics against stored inputs; null-retention and structured-internship
+policy remain intact. Typesense reported 268 successful exports, zero errors,
+zero lag and healthy status. The actual release's Go sync completed 7,879
+boards and 6,013 CSV companies at 18:29:08 UTC.
+
+Supported c1 rollback retired epoch 82 at 83, restored all five schedules,
+and left zero drops/write fences. All 26 exact selectors were cleared under
+the mutation lock, then restaged against the promoted revision above.
+C1 is active at **epoch 84**, accepted/audit_ok, with five ready records and
+zero inflight/dead; all services are healthy. C2 remains dark. The unchanged
+monitor route census is 2,956 Go / 4,923 Python, with zero routing errors.
+Natural newly selected SmartRecruiters/Pinpoint route proof remains separate
+from this shared classification evidence.
+
+The durable [production record](evidence/go-job-enrichment-production-2026-09-27.json)
+contains sanitized readbacks, metrics, process memory and exact selectors.
+Before another deployment or selector mutation, use supported `rollback c1`,
+then clear the current **26** selectors with
+`/tmp/jobseek-post-smartrecruiters-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`7f27c5006e45b484801494c149b262371bbf307c` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only against the next promoted
+revision and reactivate c1. No due times or publisher traffic were forced.
+The full #7966 migration and final whole-lane efficiency/retirement gate remain open.
+
+## Production checkpoint: 2026-09-27 — SmartRecruiters v0.13.874
+
+PR #10099 merged as `2be9bd9d2465043a271c44722f2394ba23a9b00e`.
+[Deployment 36336660636](https://github.com/colophon-group/jobseek/actions/runs/36336660636)
+succeeded. The new Go binary owns selected SmartRecruiters monitor and
+scheduled detail extraction. All three configured localized identity modes
+are implemented; the initial routes select ordinary Lonza, Gousto and
+Dailymotion monitors plus Swiss Medical Network's `job-location-v1` monitor.
+Detail routes select Lonza, Gousto, Dailymotion, Domino's and Northwestern
+Medicine. The last two already have work in the normal detail queue; no due
+times or origin traffic were forced. **Natural Go output and database/content
+proof for these newly selected routes remain pending.**
+
+Required CI and installed-image parity passed on the exact reviewed head.
+The focused suite passed 123 tests; the native binary matches 60 offline
+Python monitor cases and 26 detail cases. During the actual deployment, Go
+configuration sync committed and published 7,879 boards, completed 6,013 CSV
+companies at 17:33:05 UTC, and reported zero unresolved dead letters.
+
+Supported c1 rollback retired epoch 80 at 81, restored all five schedules,
+and left zero drops/write fences. The prior 24 selectors were cleared under
+the host mutation lock. After promotion, the new **26-selector** set was
+staged at the exact full revision above. Supported activation restored c1 at
+**epoch 82**; its conservation audit is accepted/audit_ok with five ready
+records, zero inflight/dead, and all services healthy. The exporter snapshot
+reported 94 successful documents, zero errors, zero lag and healthy Typesense.
+The live monitor route census is **2,956 Go / 4,923 Python** of 7,879 enabled
+boards, with zero route-resolution errors. This census measures monitor
+routing, not complete worker/runtime ownership.
+
+Two normal Python Pinpoint captures also passed same-byte comparison across
+all nine rich fields: Accelercomm (12 jobs, 73,926 bytes) and Penumbra
+(three jobs, 26,305 bytes). Their active database URL hashes match exactly,
+with zero failures. Their existing Go routes are now selected alongside
+Bright Network; their first natural Go run is pending. In the existing
+Workable 25% rollout, Bjak naturally returned 10 jobs in Go at 17:13:34 UTC,
+with exact database URL parity and zero failures. Sanitized hashes, baseline
+identities, selector values and evidence are in
+[the release record](evidence/go-smartrecruiters-production-2026-09-27.json).
+Raw passive captures remain local mode-0600 files.
+
+Before the next crawler deployment or selector mutation, complete supported
+`rollback c1`. Then clear all **26** exact selectors with
+`/tmp/jobseek-post-smartrecruiters-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against the actual deployed full
+revision above and `https://kandou.bamboohr.com/careers/310`. The old 24-selector
+helper no longer matches production. Stage only at the next promoted
+revision, then reactivate c1. C2 remains dark. The full #7966 gate remains
+open for other extraction/browser profiles, Python runtime ownership,
+actual-workload whole-lane resource evidence, and final cutover/reversal.
+
+## Implementation: SmartRecruiters monitor and detail, v0.13.874
+
+The Go SmartRecruiters binary now implements ordinary publication discovery,
+all three configured localized identity modes, and scheduled provider detail
+extraction. Default-off monitor/detail selectors are independent. The unchanged
+writer retains queue, database, confirmed-drop and enrichment policies. See
+[the module contract](../apps/crawler/go/smartrecruiters-monitor/README.md).
+
+Offline verification covers 60 Python monitor cases and 26 detail cases,
+including complete rich fields, source identity, language variants, pagination
+and retry boundaries. CI also compares those outputs through the installed
+binary with network disabled. The runtime reads bounded output and terminates
+and reaps the child on cancellation or overflow. Scheduled details retain a
+single request and empty content on non-200; Go additionally applies the
+monitor's 1 MiB bound and TDM header/meta protections.
+
+The production checkpoint above records the subsequent release and activation.
+These offline fixtures remain implementation evidence; they do not establish
+natural production content or whole-lane resource parity. Continue natural
+monitor/detail and database/content/failure readback without changing due times.
+
 ## Production checkpoint: 2026-09-27 — Go configuration sync v0.13.873
 
 PR #10096 merged as `1f37e47ef036c1b08a5ca45dfca94cd9d7e3dbf6`.
@@ -1040,5 +1337,50 @@ evidence. A new abstraction is justified only by a measured migration need.
 - #7938: parked queue-v2 contract; it does not gate B0.
 - #7962/#7963 and other family-port issues: deferred until measured cohort
   demand justifies a bounded slice.
-- #7966: final zero-Python/Playwright/Chromium completion and retirement gate,
-  reopened for the complete migration goal; it does not block B0 admission.
+- #7966: documented final zero-Python/Playwright/Chromium completion and
+  retirement requirements. The owner closed the issue on 2026-09-27; the
+  production migration still has the outstanding work recorded above.
+
+## Implementation: Go experience extraction, v0.13.876
+
+The shared resident Go enrichment process now also implements experience
+requirements for monitor/detail CPU helpers. The production checkpoint above
+records its successful deployment and natural persistence readback.
+It preserves mixed-unit, forward and reversed rule ordering, numeric boundaries,
+Unicode matching, highest-minimum/tie behavior, false-positive context and
+exact half-up month rounding. Python remains the explicit rollback engine;
+there is no runtime fallback.
+
+The native and installed-protocol fixtures cover 1,967 Python oracle inputs;
+43 focused bridge/CPU/experience tests and Go race/vet checks pass. The same
+256 stored production postings match, with 66 non-null experience results.
+A counterbalanced local replay of 2,560 completions per arm uses about 21%
+less experience-stage CPU including IPC and the native child. Numeric output
+hashes match exactly. This does not establish whole-lane resource savings.
+See [the replay evidence](evidence/go-experience-replay-2026-09-27.json).
+The v0.13.875 production record is preserved in #10103. For subsequent
+releases, use the newest production checkpoint's rollback and selector protocol.
+
+## Implementation: remaining Ashby monitor configurations, v0.13.877
+
+The Go Ashby monitor now covers the remaining enabled configuration forms:
+explicit tokens with internal spaces/dots, exact direct-URL token derivation,
+custom career domains with explicit tokens, matching legacy `org`/`board_token`
+metadata, writer-owned `blast_radius_floor`, and separate JSON-LD detail
+configuration. Python token precedence and the single encoded API endpoint
+are preserved. Unknown monitor/transport settings remain outside the direct
+route. No board configuration, detail policy or delisting policy is changed.
+
+A read-only snapshot of all 935 enabled Ashby monitors admits all 935 with
+`ASHBY_GO_PERCENT=100`, up from 878 in v0.13.876. This projects 3,682 Go / 4,197
+Python monitors across the unchanged 7,879-board registry. The production
+checkpoint above now confirms those counts. Nord Security's configured JSON-LD detail path
+remains a separate Python/browser migration obligation.
+
+The 57 newly covered configurations have frozen Python/httpx endpoint fixtures;
+all match the native binary, including percent-encoded spaces. Installed-image
+CI repeats these checks with networking disabled. Focused Python/Go tests cover
+request equivalence, rich output, routing rejection and preserved writer/detail
+ownership. See [the native module contract](../apps/crawler/go/ashby-monitor/README.md).
+Use the latest production checkpoint's 25-selector helper and supported cold
+rollback before subsequent deployments.

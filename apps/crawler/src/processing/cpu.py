@@ -80,6 +80,11 @@ def _resolve_occupation_seniority(
     This handles multilingual titles correctly (e.g. German title may
     match seniority while English title matches occupation).
     """
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.occupation_seniority(titles, occ_ids, sen_ids, employment_type)
+
     if isinstance(titles, str):
         titles = [titles]
     elif not titles:
@@ -113,6 +118,11 @@ def _resolve_occupation_seniority(
 
 def _resolve_technology_ids(description: str | None, tech_ids: dict[str, int]) -> list[int] | None:
     """Extract technology IDs from description text. Returns None if no matches."""
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.technology_ids(description, tech_ids)
+
     if not description:
         return None
     slugs = match_technologies(description)
@@ -167,6 +177,11 @@ def _extract_experience_fields(html: str | None) -> tuple[float | None, float | 
 
     Returns (experience_min, experience_max). max is None for open-ended ("5+ years").
     """
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.experience_fields(html)
+
     if not html:
         return None, None
     result = extract_experience(html)

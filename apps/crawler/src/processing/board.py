@@ -1918,6 +1918,13 @@ def _go_rich_percentage_selected(
     percentage = int(raw)
     if percentage == 0:
         return False
+    if monitor_type == "ashby":
+        from src.runtime.ashby_go import direct_ashby_token
+
+        if direct_ashby_token(board_url, monitor_config) is None:
+            return False
+        bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
+        return bucket < percentage * 100
     try:
         parsed = urlparse(board_url)
         port = parsed.port
@@ -2067,6 +2074,24 @@ def _monitor_runtime_for_board(
         and recruitee_percentage_selected(board_id, board_url, monitor_config)
     ):
         return GoRecruiteeMonitorRuntime(board_id=board_id)
+    from src.runtime.smartrecruiters_go import (
+        GoSmartRecruitersMonitorRuntime,
+    )
+    from src.runtime.smartrecruiters_go import (
+        percentage_selected as smartrecruiters_percentage_selected,
+    )
+
+    smartrecruiters_board_ids = {
+        selected.strip()
+        for selected in os.environ.get("SMARTRECRUITERS_GO_BOARD_IDS", "").split(",")
+        if selected.strip()
+    }
+    if board_id in smartrecruiters_board_ids or (
+        monitor_type == "smartrecruiters"
+        and board_url is not None
+        and smartrecruiters_percentage_selected(board_id, board_url, monitor_config)
+    ):
+        return GoSmartRecruitersMonitorRuntime(board_id=board_id)
     workable_board_ids = {
         selected.strip()
         for selected in os.environ.get("WORKABLE_GO_BOARD_IDS", "").split(",")

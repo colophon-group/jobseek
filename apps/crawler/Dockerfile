@@ -84,7 +84,21 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/recruitee-monitor-live ./cmd/live
 
-# ── Default-off Go Workable list monitor ─────────────────────────────
+# Shared resident occupation/seniority/technology matching.
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-job-enrichment-build
+WORKDIR /workspace/apps/crawler/go/job-enrichment
+COPY go/job-enrichment/ ./
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/job-enrichment ./cmd/live
+
+# Default-off SmartRecruiters monitor/detail extraction.
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-smartrecruiters-build
+WORKDIR /workspace/apps/crawler/go/smartrecruiters-monitor
+COPY go/smartrecruiters-monitor/ ./
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+      -o /out/smartrecruiters-monitor-live ./cmd/live
+
 FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-workable-build
 WORKDIR /workspace/apps/crawler/go/workable-monitor
 COPY go/workable-monitor/ ./
@@ -182,6 +196,8 @@ COPY --from=go-ashby-build /out/ashby-monitor-live /usr/local/bin/ashby-monitor-
 COPY --from=go-lever-build /out/lever-monitor-live /usr/local/bin/lever-monitor-live
 COPY --from=go-join-build /out/join-monitor-live /usr/local/bin/join-monitor-live
 COPY --from=go-recruitee-build /out/recruitee-monitor-live /usr/local/bin/recruitee-monitor-live
+COPY --from=go-job-enrichment-build /out/job-enrichment /usr/local/bin/job-enrichment
+COPY --from=go-smartrecruiters-build /out/smartrecruiters-monitor-live /usr/local/bin/smartrecruiters-monitor-live
 COPY --from=go-workable-build /out/workable-monitor-live /usr/local/bin/workable-monitor-live
 COPY --from=go-workable-build /out/workable-detail-live /usr/local/bin/workable-detail-live
 COPY --from=go-pinpoint-build /out/pinpoint-monitor-live /usr/local/bin/pinpoint-monitor-live
