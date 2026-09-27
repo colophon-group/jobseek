@@ -1237,3 +1237,27 @@ hashes match exactly. This does not establish whole-lane resource savings.
 See [the replay evidence](evidence/go-experience-replay-2026-09-27.json).
 The v0.13.875 production record is preserved in #10103. For subsequent
 releases, use the newest production checkpoint's rollback and selector protocol.
+
+## Implementation queued: remaining Ashby monitor configurations, v0.13.877
+
+The Go Ashby monitor now covers the remaining enabled configuration forms:
+explicit tokens with internal spaces/dots, exact direct-URL token derivation,
+custom career domains with explicit tokens, matching legacy `org`/`board_token`
+metadata, writer-owned `blast_radius_floor`, and separate JSON-LD detail
+configuration. Python token precedence and the single encoded API endpoint
+are preserved. Unknown monitor/transport settings remain outside the direct
+route. No board configuration, detail policy or delisting policy is changed.
+
+A read-only snapshot of all 935 enabled Ashby monitors admits all 935 with
+`ASHBY_GO_PERCENT=100`, up from 878 in v0.13.876. This projects 3,682 Go / 4,197
+Python monitors across the unchanged 7,879-board registry; it is **not yet
+production routing evidence**. Nord Security's configured JSON-LD detail path
+remains a separate Python/browser migration obligation.
+
+The 57 newly covered configurations have frozen Python/httpx endpoint fixtures;
+all match the native binary, including percent-encoded spaces. Installed-image
+CI repeats these checks with networking disabled. Focused Python/Go tests cover
+request equivalence, rich output, routing rejection and preserved writer/detail
+ownership. See [the native module contract](../apps/crawler/go/ashby-monitor/README.md).
+Use the latest production checkpoint's 25-selector helper and supported cold
+rollback before deployment; selectors remain unchanged at the next revision.

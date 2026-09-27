@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -18,13 +19,13 @@ const (
 	accept       = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 )
 
-var tokenRE = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+var tokenRE = regexp.MustCompile(`^[A-Za-z0-9_-][A-Za-z0-9_. -]{0,127}$`)
 
 func TokenURL(token string) (string, error) {
-	if !tokenRE.MatchString(token) {
+	if !tokenRE.MatchString(token) || token != strings.TrimSpace(token) {
 		return "", errors.New("Ashby token is not a canonical board token")
 	}
-	return "https://api.ashbyhq.com/posting-api/job-board/" + token + "?includeCompensation=true", nil
+	return "https://api.ashbyhq.com/posting-api/job-board/" + url.PathEscape(token) + "?includeCompensation=true", nil
 }
 
 type FetchResult struct {

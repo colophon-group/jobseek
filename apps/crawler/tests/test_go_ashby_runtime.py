@@ -14,7 +14,7 @@ import pytest
 from src.core.monitors import ashby as ashby_monitor
 from src.core.monitors.ashby import discover
 from src.processing.board import _monitor_runtime_for_board
-from src.runtime.ashby_go import GoAshbyMonitorRuntime
+from src.runtime.ashby_go import GoAshbyMonitorRuntime, direct_ashby_token
 
 BOARD_URL = "https://jobs.ashbyhq.com/acme"
 API_URL = "https://api.ashbyhq.com/posting-api/job-board/acme?includeCompensation=true"
@@ -22,12 +22,12 @@ CONFIG = {"token": "acme", "scraper_type": "skip"}
 GO_MODULE = Path(__file__).resolve().parents[1] / "go" / "ashby-monitor"
 
 
-def fake_binary(tmp_path: Path, payload: dict, *, exit_code: int = 0) -> str:
+def fake_binary(tmp_path: Path, payload: dict, *, exit_code: int = 0, token: str = "acme") -> str:
     path = tmp_path / "ashby-live-fake"
     path.write_text(
         "#!/usr/bin/env python3\n"
         "import json, sys\n"
-        "assert sys.argv[1:] == ['--token', 'acme']\n"
+        f"assert sys.argv[1:] == ['--token', {token!r}]\n"
         f"print(json.dumps({payload!r}))\n"
         f"sys.exit({exit_code})\n"
     )
@@ -157,3 +157,130 @@ async def test_natural_capture_preserves_one_existing_response(tmp_path: Path, m
     assert requests == 2
     assert artifact.read_bytes() == body
     assert stat.S_IMODE(artifact.stat().st_mode) == 0o600
+
+
+ENDPOINT_CASES = json.loads((GO_MODULE / "testdata/python_endpoints.json").read_text())
+
+
+@pytest.mark.parametrize("case", ENDPOINT_CASES, ids=lambda case: case["token"])
+@pytest.mark.asyncio
+async def test_frozen_production_configuration_preserves_python_request(case, monkeypatch):
+    observed = []
+
+    def capture(request):
+        observed.append(str(request.url))
+        return httpx.Response(200, json={"jobs": []})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(capture)) as client:
+        assert (
+            await discover({"board_url": case["board_url"], "metadata": case["config"]}, client)
+            == []
+        )
+    assert observed == [case["endpoint"]]
+    assert direct_ashby_token(case["board_url"], case["config"]) == case["token"]
+    monkeypatch.setenv("ASHBY_GO_PERCENT", "100")
+    assert (
+        _monitor_runtime_for_board(
+            case["board_id"],
+            None,
+            monitor_type="ashby",
+            board_url=case["board_url"],
+            monitor_config=case["config"],
+        ).implementation
+        == "go-ashby"
+    )
+
+
+@pytest.mark.parametrize(
+    "url,patch",
+    [
+        (BOARD_URL, {"token": "../escape"}),
+        (BOARD_URL, {"token": "a%2Fb"}),
+        (BOARD_URL, {"token": "a?query=1"}),
+        (BOARD_URL, {"token": "a#fragment"}),
+        (BOARD_URL, {"token": "acme "}),
+        (BOARD_URL, {"proxy": True}),
+        (BOARD_URL, {"render": True}),
+        (BOARD_URL, {"ssl_verify": False}),
+        (BOARD_URL, {"org": "different"}),
+        (BOARD_URL, {"board_token": "different"}),
+        (BOARD_URL, {"blast_radius_floor": True}),
+        (BOARD_URL, {"blast_radius_floor": 1.1}),
+        (BOARD_URL, {"blast_radius_floor": float("nan")}),
+        (BOARD_URL, {"scraper_config": "invalid"}),
+        ("https://user:password@jobs.ashbyhq.com/acme", {}),
+        ("https://jobs.ashbyhq.com:bad/acme", {}),
+        ("https://jobs.ashbyhq.com:8443/acme", {}),
+        ("https://jobs.ashbyhq.com/acme?different=1", {}),
+        ("https://jobs.ashbyhq.com/acme/one", {"token": None}),
+        ("https://jobs.ashbyhq.com/Flock%20Safety", {"token": None}),
+        ("https://jobs.ashbyhq.com/lakera.ai", {"token": None}),
+        ("https://example.com/jobs", {"token": None}),
+    ],
+)
+def test_unsupported_configuration_stays_python(url, patch, monkeypatch):
+    config = {**CONFIG, **patch}
+    assert direct_ashby_token(url, config) is None
+    monkeypatch.setenv("ASHBY_GO_PERCENT", "100")
+    assert (
+        _monitor_runtime_for_board(
+            "board-a", None, monitor_type="ashby", board_url=url, monitor_config=config
+        ).implementation
+        == "python"
+    )
+
+
+@pytest.mark.asyncio
+async def test_spaced_token_accepts_exact_encoded_response_endpoint(tmp_path):
+    token = "Flock Safety"
+    endpoint = (
+        "https://api.ashbyhq.com/posting-api/job-board/Flock%20Safety?includeCompensation=true"
+    )
+    payload = {
+        "jobs": [],
+        "truncated": False,
+        "status": 200,
+        "requests": 1,
+        "responses": 1,
+        "bytes": 11,
+        "final_url": endpoint,
+    }
+    runtime = GoAshbyMonitorRuntime(fake_binary(tmp_path, payload, token=token), board_id="board-a")
+    assert [
+        r
+        async for r in runtime.stream(
+            "https://jobs.ashbyhq.com/Flock%20Safety", "ashby", {**CONFIG, "token": token}, None
+        )
+    ] == []
+    payload["final_url"] = endpoint.replace("Flock%20Safety", "other")
+    runtime = GoAshbyMonitorRuntime(fake_binary(tmp_path, payload, token=token), board_id="board-a")
+    with pytest.raises(ValueError, match="unexpected response endpoint"):
+        async for _ in runtime.stream(BOARD_URL, "ashby", {**CONFIG, "token": token}, None):
+            pass
+
+
+def test_monitor_routing_preserves_separate_detail_and_drop_settings(monkeypatch):
+    from src.processing.board import _monitor_owns_existing_description
+    from src.processing.scrape import _effective_board_enrich, _is_skip_no_scrape
+
+    config = {
+        "token": "acme",
+        "scraper_type": "json-ld",
+        "blast_radius_floor": 0.9,
+        "scraper_config": {"render": True, "enrich": ["description"]},
+    }
+    monkeypatch.setenv("ASHBY_GO_PERCENT", "100")
+    assert (
+        _monitor_runtime_for_board(
+            "board-a",
+            None,
+            monitor_type="ashby",
+            board_url="https://example.com/jobs",
+            monitor_config=config,
+        ).implementation
+        == "go-ashby"
+    )
+    assert _effective_board_enrich(config, "ashby") == ["description"]
+    assert not _monitor_owns_existing_description(_effective_board_enrich(config, "ashby"))
+    assert not _is_skip_no_scrape(config, "ashby")
+    assert config["blast_radius_floor"] == 0.9

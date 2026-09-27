@@ -1,4 +1,4 @@
-"""Default-off exclusive Go rich monitor for explicit Ashby board tokens."""
+"""Go rich monitor for supported direct Ashby configurations."""
 
 from __future__ import annotations
 
@@ -8,12 +8,14 @@ import json
 import re
 from collections.abc import AsyncIterator
 from time import monotonic
+from urllib.parse import urlparse
 
 import httpx
 import structlog
 
 from src.core.monitor import MonitorResult, _normalize_discovered
 from src.core.monitors import BoardGoneError, DiscoveredJob, all_monitor_types
+from src.core.monitors.ashby import _token_from_url
 from src.metrics import (
     runtime_execution_duration_seconds,
     runtime_executions_total,
@@ -29,15 +31,63 @@ from src.shared.egress import (
 from src.shared.http import mark_external_response, mark_reachable_response
 from src.shared.tdm import TDMReservedError
 
-_TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}")
+_TOKEN = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9_. -]{0,127}")
 _BOOKKEEPING = {
     "scraper_type",
+    "scraper_config",
+    "blast_radius_floor",
     "suspect_streak",
     "recent_discovered_counts",
     "_monitor_config_fingerprint",
     "_confirmed_drop_candidate",
 }
 log = structlog.get_logger()
+
+
+def direct_ashby_token(board_url: str, config: dict | None) -> str | None:
+    """Match Python's token precedence; keep downstream writer/detail settings."""
+    config = config or {}
+    try:
+        parsed = urlparse(board_url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or port is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+    token = config.get("token")
+    if not token:
+        if parsed.hostname != "jobs.ashbyhq.com":
+            return None
+        token = _token_from_url(board_url)
+        # Do not accidentally admit Python's partial regex match for a URL
+        # containing punctuation or an encoded token without explicit metadata.
+        if token is None or parsed.path not in {f"/{token}", f"/{token}/"}:
+            return None
+    if (
+        not isinstance(token, str)
+        or _TOKEN.fullmatch(token) is None
+        or token != token.strip()
+        or config.get("scraper_type") not in ("skip", "json-ld")
+        or set(config) - {"token", "org", "board_token"} - _BOOKKEEPING
+        or any(key in config and config[key] != token for key in ("org", "board_token"))
+        or ("scraper_config" in config and not isinstance(config["scraper_config"], dict))
+    ):
+        return None
+    # These values affect the unchanged writer, never the Ashby API request.
+    floor = config.get("blast_radius_floor")
+    if "blast_radius_floor" in config and (
+        isinstance(floor, bool) or not isinstance(floor, (int, float)) or not 0 <= floor <= 1
+    ):
+        return None
+    return token
 
 
 class GoAshbyMonitorRuntime:
@@ -58,18 +108,14 @@ class GoAshbyMonitorRuntime:
     ) -> AsyncIterator[MonitorResult]:
         del http
         config = monitor_config or {}
-        token = config.get("token")
-        if (
-            monitor_type != "ashby"
-            or not board_url.startswith("https://")
-            or pw is not None
-            or not isinstance(token, str)
-            or _TOKEN.fullmatch(token) is None
-            or config.get("scraper_type") != "skip"
-            or set(config) - {"token"} - _BOOKKEEPING
-        ):
-            raise ValueError("Go Ashby requires an explicit unchanged rich token configuration")
-        api_url = f"https://api.ashbyhq.com/posting-api/job-board/{token}?includeCompensation=true"
+        token = direct_ashby_token(board_url, config)
+        if monitor_type != "ashby" or pw is not None or token is None:
+            raise ValueError("Go Ashby requires an unchanged rich token configuration")
+        api_url = str(
+            httpx.URL(f"https://api.ashbyhq.com/posting-api/job-board/{token}").copy_with(
+                params={"includeCompensation": "true"}
+            )
+        )
         started = monotonic()
         outcome = "error"
         proc = None
