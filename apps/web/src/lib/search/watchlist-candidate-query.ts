@@ -114,7 +114,7 @@ export function buildWatchlistCandidateWindowFilter(
 export function hasWatchlistCandidateScope(
   filters: WatchlistCandidateFilters,
 ): boolean {
-  return filters.anyCompany === true || filters.companyIds.length > 0;
+  return filters.postingIds?.length !== 0 && (filters.anyCompany === true || filters.companyIds.length > 0);
 }
 
 function safeCompanyIds(values: readonly string[]): string[] {
@@ -173,6 +173,15 @@ export function buildWatchlistCandidateSearchParams(params: {
   });
   const companyIds = filters.anyCompany ? [] : safeCompanyIds(filters.companyIds);
   const filterParts = [POSTING_BASE_FILTER];
+  if (filters.postingIds !== undefined) {
+    if (filters.postingIds.some(id => !CANONICAL_UUID.test(id))) {
+      throw new TypeError("postingIds contains an invalid UUID");
+    }
+    // A contradictory clause keeps direct compiler users fail-closed on an empty set.
+    filterParts.push(filters.postingIds.length
+      ? `id:[${[...new Set(filters.postingIds)].join(",")}]`
+      : "id:=00000000-0000-0000-0000-000000000000 && id:!=00000000-0000-0000-0000-000000000000");
+  }
   if (params.window) {
     filterParts.push(buildWatchlistCandidateWindowFilter(params.window));
   }

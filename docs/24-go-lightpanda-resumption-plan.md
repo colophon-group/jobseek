@@ -6,6 +6,75 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — Go Typesense backfill
+
+[PR #10069](https://github.com/colophon-group/jobseek/pull/10069) merged as
+`fcb19acf39ab8f55687fa870de4e2e15dd21beb0`.
+[Deployment 36316456325](https://github.com/colophon-group/jobseek/actions/runs/36316456325)
+successfully promoted crawler v0.13.864. The operator backfill CLI now execs
+`go-typesense-exporter --backfill`; the maintenance workflow invokes it
+directly. The Go PostgreSQL integration fixture, race tests, installed-image
+parity, and required CI passed before merge. A stale deployment-test command
+expectation was corrected; the complete maintenance proof chain remains
+under one host mutation lock and fails on any unsuccessful step.
+
+Before deployment, supported c1 rollback retired epoch 72 at epoch 73,
+restored all five schedules, and reported zero terminal drops or remaining
+write fences. All 22 exact selectors were cleared under the mutation lock
+against the old release snapshot. After promotion they were staged against
+the new full revision above, and supported activation restored c1 at epoch
+74. The queue conservation audit returned `accepted/audit_ok`: five ready
+records, zero inflight, and zero dead. Workers, browser, drain, producer,
+executor, claimant, and Redis are healthy; the live exporter still reports
+the durable owner as `go`. No publisher due scores or duplicate origin
+requests were forced.
+
+The exact-revision full proof is running in
+[maintenance 36317322087](https://github.com/colophon-group/jobseek/actions/runs/36317322087).
+It runs Go backfill, then the existing full fresh Typesense reconciliation
+and taxonomy verification. **Production backfill output and final index
+parity remain pending until that run completes.** Read-only cgroup CPU and
+memory samples are being captured to local mode-0600
+`/tmp/jobseek-go-backfill-fcb19acf-resources.jsonl`; these describe the
+maintenance container, not same-workload whole-lane efficiency or cost.
+
+Before another crawler deployment or selector change, use the supported c1
+rollback, then clear all 22 selectors under
+`/run/lock/jobseek-crawler-mutation.lock` with
+`/tmp/jobseek-post-go-sitemap-selectors.py clear`, full release revision
+`fcb19acf39ab8f55687fa870de4e2e15dd21beb0`, and
+`https://kandou.bamboohr.com/careers/310`. The running maintenance operation
+also holds that lock; let it finish before another deployment. Never edit
+the host environment manually.
+
+The next implementation slice ports resumable reconciliation. Comparison and
+bounded Typesense streaming helpers are checkpointed on
+`fix-crawler/go-typesense-reconciliation` at `e94ed35e6`; they are not wired
+into production. PostgreSQL repair, durable partition/run progress, CLI and
+timer routing, and integrated failure/restart tests remain to implement.
+Python reconciliation and taxonomy verification still run in production,
+and the complete [#7966](https://github.com/colophon-group/jobseek/issues/7966)
+gate remains open.
+
+## Implementation slice: 2026-09-27 (before deployment)
+
+Read-only inspection confirms that production already runs the Go Typesense
+posting exporter, despite the older exporter section below. The host remains
+at `f4520232f1f8c0905a68586dbfe4b736b7f17e79` with c1 epoch 72 active and
+healthy. Scheduled count refreshes also invoke Go. The next runtime slice
+ports full posting backfill to `go-typesense-exporter --backfill` and routes
+both the operator CLI and maintenance workflow through it. It preserves the
+shared cursor fence, commit-safe cutoff, full posting/company projection,
+per-document acknowledgements, bounded retries, and cursor monotonicity.
+The follow-on full reconciliation and taxonomy verification remain Python.
+
+The backfill slice is not yet deployed or proven on production output. Its
+real PostgreSQL fixture exercises fence exclusion, ambiguous acknowledgements,
+restart/replay, and final cursor persistence. Before deploying, use the
+supported c1 rollback and exact 22-selector cleanup described in the production
+checkpoint below; restage and reactivate only against the promoted revision.
+See the [Go Typesense runtime commands](../apps/crawler/go/typesense-exporter/README.md).
+
 ## Production checkpoint: 2026-09-25 20:22 UTC
 
 This section supersedes the earlier pending Verity observation below.
