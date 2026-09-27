@@ -8,7 +8,8 @@ made by this task. The owner already sent the separate category inquiry.
 
 - Viktor Shcherbakov, individual operator in Switzerland; product **Job Seek**.
 - Public contact: Route d'Oron 5, 1010 Lausanne, Switzerland;
-  business@colophon-group.org.
+  business@colophon-group.org. The owner confirmed on 27 September that the
+  inbox is working; operational support confirmation is complete.
 - **US$10/month for Narrowed filtering only**, plus applicable tax. Eligible new
   subscribers get seven days with a payment method required, followed by monthly
   renewal unless cancelled. Returning subscribers have no repeat trial.
@@ -69,7 +70,7 @@ requests product access, supply a private entitled account or a recorded real
 Narrowed demonstration; confirm production flags/entitlements at that point.
 Never put account credentials in this repository.
 
-## Remaining pre-submission work: three groups
+## Remaining pre-submission work: two groups
 
 1. **Product eligibility — Paddle/owner, #10078.** Await the written decision on
    seeker-paid filtering in view of the job-board advertising restriction.
@@ -83,12 +84,8 @@ Never put account credentials in this repository.
    origin-file signals and restrictions on further use of affected stored content
    remain open. No production-wide exclusions were applied without the source
    policy decision. Full removal implementation is expressly deferred below.
-3. **Working support contact — owner, #10083 / #10081.** Confirm that
-   business@colophon-group.org receives messages and is monitored. MX records
-   exist, but DNS and an API permission error are not delivery evidence. The
-   question is pending; no test message was sent without an instruction.
 
-These are readiness judgments, not three additional forms imposed by Paddle.
+These are readiness judgments, not additional forms imposed by Paddle.
 Paddle's actual domain/identity/final review still occurs during its application
 process. The product access evidence noted above is a conditional handoff, not
 an invented universal prerequisite for submitting the website.
@@ -102,7 +99,8 @@ an invented universal prerequisite for submitting the website.
   that does not settle Swiss administration. Use the
   [Swiss SME guide](https://www.kmu.admin.ch/en/legal-form-sole-proprietorships),
   without inventing a UID, VAT number, certificate or incorporation requirement.
-  Public identity/Terms publication is complete.
+  Public identity/Terms publication is complete. Refund-policy issue #10081
+  is complete with the owner's support-inbox confirmation.
 - **Removal procedure:** owner expressly chose implementation upon the first
   request. Not a pre-verification blocker. Existing dataset scrub support covers
   dated JSONLs only; no tested cross-system takedown guarantee is claimed.
