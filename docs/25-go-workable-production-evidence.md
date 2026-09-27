@@ -49,3 +49,19 @@ Reactivate c1 through the supported script.
 After that activation, subsequent cleanup must use the new 23-selector
 helper, not the old one. Observe natural Go success, database URL parity,
 and failure rates; never force due times. Keep the full #7966 gate open.
+
+## Natural Go runs on v0.13.871
+
+Without forced due times or duplicate requests, Pix4D completed Go monitoring
+at **15:37:59 UTC** and Debiopharm at **15:45:58 UTC** on 2026-09-27. They
+returned four and seven URLs respectively, with the exact hashes in the
+comparison table. Both runs reported complete output, six requests and six
+responses (2,698 and 3,316 response bytes). The subsequent database readback
+matched every active URL hash and count, recorded the corresponding natural
+success time, and showed zero consecutive failures for both enabled boards.
+
+Unit8 and Hack The Box still awaited their normal Go runs at that readback;
+their previous database counts/hashes remained stable and failure counts zero.
+The production release is `ce5dfd821ca6e6b95d0b79a9eb534c26ddd486ec`, with
+all four selectors restored at c1 epoch 78. This is actual output evidence for
+the first two boards, not a whole-lane resource comparison.

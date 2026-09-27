@@ -106,11 +106,13 @@ A 1,001-board case covers the batch boundary and stops later batches/removals
 on failure. This implementation is deployed in v0.13.871. CSV/local PostgreSQL sync,
 workers and remaining extraction/profile stages still require Go migration.
 
-## Implementation checkpoint: Go local registry preparation
+## Release candidate: Go configuration sync v0.13.873
 
 The next configuration-sync port is on `fix-crawler/go-registry-sync`, created
 from then-latest main `334f5631d` in an isolated worktree and subsequently
-integrated with #10093's merged revision. It is not a production command yet.
+integrated with #10093 and latest main `012191b81` (#10095). The candidate
+is implemented but not deployed. Both `crawler sync` and the standalone
+`python -m src.sync` entrypoint exec `go-typesense-exporter --sync-registry`.
 
 Go now reads CSVs while preserving Python/Polars null versus quoted-empty
 cells, BOMs and multiline CRLF; prepares canonical taxonomy, company and
@@ -132,12 +134,26 @@ Local mode-0600 oracle artifacts are
 `/tmp/jobseek-go-registry-repository-fixture.json` and
 `/tmp/jobseek-go-registry-board-fixture.json`. Run the Go preparation tests with
 `REGISTRY_TEST_FIXTURE` and `REGISTRY_BOARD_TEST_FIXTURE`, respectively.
-These comparisons prove preparation only. Next implement local transaction
-execution, exact board identity/rehome/recovery effects, pending taxonomy
-misses, installed read-only data-mount checks, and the orchestrator's
-commit-before-Redis/Typesense boundary. Exercise real PostgreSQL rollback and
-identity preservation before wiring the production CLI. Python still owns
-that local transaction; no full configuration-sync migration is claimed.
+The complete local transaction, board identity/rehome/recovery effects,
+pending taxonomy resolution, installed read-only data-mount checks and
+post-commit Redis/Typesense orchestration are now implemented in Go. Real
+PostgreSQL fixtures verify stable IDs, recovery deadlines, runtime metadata,
+posting rehomes, removal/reappearance, transaction rollback and ambiguous
+commit acknowledgements. A real Redis fixture verifies no queue effects on
+local failure. Index tests repair the covering index and prove lock release.
+All 6,013 companies and 7,879 boards also committed successfully from the
+actual repository into an isolated local PostgreSQL fixture, with no external
+publication. Go matches 5,915 Python occupation-resolution samples. The
+technology-miss query uses explicit integer casts to avoid ambiguous array
+inference; existing populated fields and technology arrays remain intact.
+
+The module race suite, vet and focused CLI tests passed. Required CI and the
+installed-image checks precede supported rollout. Python remains the retained
+oracle and still owns the deployed local sync until this candidate is
+promoted. The latest main #10095 crawler deployment 36330596574 was correctly
+held by the active B0 receipt; production remains the healthy v0.13.871
+checkpoint above. This candidate includes #10095 and must use the normal
+cold rollback and exact 23-selector sequence. Do not bypass that guard.
 
 ## Historical release candidate: Go maintenance v0.13.870
 
