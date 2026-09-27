@@ -8,6 +8,7 @@ import json
 import os
 import re
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from time import monotonic
 from urllib.parse import urlparse
 
@@ -60,24 +61,22 @@ def _eligible(
     host_match = re.fullmatch(
         r"([A-Za-z0-9_-]{1,128})\.jobs\.personio\.(de|com)", parsed.hostname or ""
     )
+    # Python discover uses an explicit slug even for custom career URLs and
+    # derives the preferred TLD only from a hosted Personio board URL.
     slug = metadata.get("slug") or (host_match.group(1) if host_match else None)
     if (
         monitor_type != "personio"
         or pw is not None
-        or host_match is None
+        or not parsed.hostname
         or not isinstance(slug, str)
         or _SLUG.fullmatch(slug) is None
-        or slug != host_match.group(1)
         or parsed.scheme != "https"
         or parsed.username is not None
         or parsed.password is not None
         or port not in (None, 443)
-        or parsed.path not in ("", "/")
-        or parsed.query
-        or parsed.fragment
         or set(metadata) - {"slug", "language", "backfill_languages"} - _BOOKKEEPING - _DOWNSTREAM
     ):
-        raise ValueError("Go Personio requires an unchanged direct XML/HTML configuration")
+        raise ValueError("Go Personio requires a configured provider slug and HTTPS board")
     language = metadata.get("language", "en")
     backfill = metadata.get("backfill_languages")
     if backfill is None:
@@ -91,23 +90,16 @@ def _eligible(
         or any(not isinstance(item, str) or _LANGUAGE.fullmatch(item) is None for item in backfill)
     ):
         raise ValueError("Go Personio requires bounded language configuration")
-    return slug, host_match.group(2), language, backfill
+    return slug, host_match.group(2) if host_match else "de", language, backfill
 
 
 def percentage_selected(board_id: str, board_url: str, config: dict | None) -> bool:
-    raw = os.environ.get("PERSONIO_GO_PERCENT", "0")
+    raw = os.environ.get("PERSONIO_GO_PERCENT", "100")
     if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw) or int(raw) == 0:
         return False
     try:
         _eligible(board_url, "personio", config, None)
     except ValueError:
-        return False
-    recent = (config or {}).get("recent_discovered_counts")
-    if (
-        not isinstance(recent, list)
-        or len(recent) < 3
-        or not all(type(count) is int and 1 <= count <= 500 for count in recent[-3:])
-    ):
         return False
     bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
     return bucket < int(raw) * 100
@@ -148,12 +140,21 @@ class GoPersonioMonitorRuntime:
                 "--backfill-languages",
                 ",".join(backfill),
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
             )
-            stdout, stderr = await proc.communicate()
-            if len(stdout) > 160_000_000:
-                raise ValueError("Go Personio output exceeded its selected feed bound")
-            payload = json.loads(stdout)
+            assert proc.stdout is not None
+            chunks = []
+            size = 0
+            limit = 160_000_000
+            while chunk := await asyncio.wait_for(
+                proc.stdout.read(min(1 << 20, limit + 1 - size)), 60
+            ):
+                chunks.append(chunk)
+                size += len(chunk)
+                if size > limit:
+                    raise ValueError("Go Personio output exceeded its selected feed bound")
+            await proc.wait()
+            payload = json.loads(b"".join(chunks))
             if not isinstance(payload, dict):
                 raise ValueError("invalid Go Personio response")
             attempts = payload.get("requests")
@@ -194,7 +195,7 @@ class GoPersonioMonitorRuntime:
                     )
                 if responses:
                     mark_external_response(board_url, status)
-                detail = payload.get("error") or stderr.decode(errors="replace")[:300]
+                detail = payload.get("error") or "child process failed"
                 raise RuntimeError(f"Go Personio failed: {detail}")
             if status != 200 or responses < 1:
                 raise ValueError("Go Personio success had no HTTP 200 response")
@@ -252,8 +253,13 @@ class GoPersonioMonitorRuntime:
             raise
         finally:
             if proc is not None and proc.returncode is None:
-                proc.terminate()
-                await proc.wait()
+                with suppress(ProcessLookupError):
+                    proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), 5)
+                except TimeoutError:
+                    proc.kill()
+                    await proc.wait()
             runtime_execution_duration_seconds.labels(
                 stage="monitor", implementation=self.implementation
             ).observe(monotonic() - started)

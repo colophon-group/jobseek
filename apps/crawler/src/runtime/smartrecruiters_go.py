@@ -87,19 +87,12 @@ def eligible(board_url: str, monitor_type: str, config: dict | None, pw=None) ->
 
 
 def percentage_selected(board_id: str, board_url: str, config: dict | None) -> bool:
-    raw = os.environ.get("SMARTRECRUITERS_GO_PERCENT", "0")
+    raw = os.environ.get("SMARTRECRUITERS_GO_PERCENT", "100")
     if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw) or int(raw) == 0:
         return False
     try:
         eligible(board_url, "smartrecruiters", config)
     except ValueError:
-        return False
-    counts = (config or {}).get("recent_discovered_counts")
-    if (
-        not isinstance(counts, list)
-        or len(counts) < 3
-        or not all(type(n) is int and 1 <= n <= 500 for n in counts[-3:])
-    ):
         return False
     bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
     return bucket < int(raw) * 100

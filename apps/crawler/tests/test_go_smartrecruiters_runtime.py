@@ -41,6 +41,7 @@ def test_go_module_parity_transport_and_cancellation():
 def test_strict_routes_and_all_configured_identity_modes(monkeypatch):
     monkeypatch.delenv("SMARTRECRUITERS_GO_BOARD_IDS", raising=False)
     monkeypatch.delenv("SMARTRECRUITERS_GO_PERCENT", raising=False)
+    assert percentage_selected(BOARD_ID, URL, CONFIG)
     assert _monitor_runtime_for_board(BOARD_ID, None).implementation == "python"
     for mode in [None, "job-v1", "job-location-v1"]:
         cfg = {**CONFIG, **({"canonical_identity": mode} if mode else {})}
@@ -58,7 +59,9 @@ def test_strict_routes_and_all_configured_identity_modes(monkeypatch):
     monkeypatch.setenv("SMARTRECRUITERS_GO_BOARD_IDS", BOARD_ID)
     assert _monitor_runtime_for_board(BOARD_ID, None).implementation == "go-smartrecruiters"
     monkeypatch.setenv("SMARTRECRUITERS_GO_PERCENT", "100")
-    assert percentage_selected(BOARD_ID, URL, {**CONFIG, "recent_discovered_counts": [3, 3, 3]})
+    assert percentage_selected(BOARD_ID, URL, {**CONFIG, "recent_discovered_counts": [24_800]})
+    assert percentage_selected(BOARD_ID, URL, CONFIG)
+    monkeypatch.setenv("SMARTRECRUITERS_GO_PERCENT", "0")
     assert not percentage_selected(BOARD_ID, URL, CONFIG)
 
 

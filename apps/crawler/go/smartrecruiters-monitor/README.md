@@ -33,11 +33,12 @@ All modes emit one JSON result and return nonzero on failure.
 ## Rollout
 
 `SMARTRECRUITERS_GO_BOARD_IDS` explicitly selects monitor boards.
-`SMARTRECRUITERS_GO_PERCENT` defaults to zero and admits only direct supported
-configurations with three positive recent inventories (at most 500 each).
+`SMARTRECRUITERS_GO_PERCENT` defaults to 100 and admits direct supported
+configurations, including large ordinary publication inventories up to the
+existing 50,000-publication bound. Set the percentage to zero for route reversal.
 `SMARTRECRUITERS_GO_DETAIL_BOARD_IDS` separately selects scheduled detail boards.
-Unsupported configurations fail closed in a selected runtime. No selector is
-activated by installing the image.
+Unsupported configurations fail closed in a selected runtime. Exact board
+selectors take precedence over the percentage route.
 
 Use the supported B0 cold rollback and exact selector cleanup before deploying
 or changing selectors. Stage against the exact deployed revision and reactivate
