@@ -79,6 +79,7 @@ _FETCH_ALREADY_DUE_BATCH = """
 SELECT jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
 FROM job_posting jp
 WHERE jp.is_active = true
+  AND NOT jp.tdm_reserved
   AND jp.location_ids IS NULL
   AND jp.description_r2_hash IS NOT NULL
   AND jp.next_scrape_at IS NOT NULL
@@ -214,6 +215,7 @@ WITH targets AS (
     SELECT jp.id FROM job_posting jp
     JOIN company c ON c.id = jp.company_id
     WHERE jp.is_active = true
+      AND NOT jp.tdm_reserved
       AND jp.description_r2_hash IS NULL
       AND jp.next_scrape_at IS NULL
       AND ($1::text[] IS NULL OR c.slug = ANY($1::text[]))
@@ -250,6 +252,7 @@ SELECT jp.id::text, jp.source_url, jp.board_id::text, jp.description_r2_hash
 FROM job_posting jp
 JOIN company c ON c.id = jp.company_id
 WHERE jp.is_active = true
+  AND NOT jp.tdm_reserved
   AND jp.description_r2_hash IS NULL
   AND jp.next_scrape_at IS NOT NULL
   AND ($1::text[] IS NULL OR c.slug = ANY($1::text[]))
@@ -267,6 +270,7 @@ _COUNT_DESCRIPTIONS_CANDIDATES = """
 SELECT COUNT(*)::int FROM job_posting jp
 JOIN company c ON c.id = jp.company_id
 WHERE jp.is_active = true
+  AND NOT jp.tdm_reserved
   AND jp.description_r2_hash IS NULL
   AND ($1::text[] IS NULL OR c.slug = ANY($1::text[]))
 """
@@ -445,6 +449,7 @@ WITH candidates AS (
     FROM job_posting jp
     JOIN company c ON c.id = jp.company_id
     WHERE jp.is_active = true
+      AND NOT jp.tdm_reserved
       AND ($1::uuid IS NULL OR jp.id > $1::uuid)
       AND ($2::text[] IS NULL OR c.slug = ANY($2::text[]))
       AND (

@@ -71,6 +71,8 @@ COLLECTIONS: list[dict] = [
             # `!=false` matches `true` and absent values, only excluding docs
             # the exporter has explicitly stamped as `false`.
             {"name": "has_content", "type": "bool", "facet": True, "optional": True},
+            # Mining eligibility only: ordinary search continues to show the posting.
+            {"name": "tdm_reserved", "type": "bool", "optional": True},
             {"name": "location_ids", "type": "int32[]", "facet": True},
             # Unexpanded source IDs as stored on the crawler row. Company
             # location views need direct-tag counts, while ``location_ids``

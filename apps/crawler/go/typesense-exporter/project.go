@@ -13,6 +13,7 @@ import (
 // Row contains the fields read by the existing job_posting CDC query. JSON
 // numbers are decoded into their database-compatible int64/float64 forms.
 type Row struct {
+	TDMReserved       bool       `json:"tdm_reserved"`
 	ID                string     `json:"id"`
 	CompanyID         string     `json:"company_id"`
 	CompanyName       string     `json:"company_name"`
@@ -182,6 +183,7 @@ func project(row Row, maps Maps) (map[string]any, error) {
 		"company_id": row.CompanyID, "company_name": row.CompanyName,
 		"company_slug": row.CompanySlug, "title": title, "is_active": row.IsActive,
 		"has_content":  strings.TrimSpace(title) != "" && row.DescriptionR2Hash != nil,
+		"tdm_reserved": row.TDMReserved,
 		"location_ids": locations, "location_direct_ids": append([]int{}, row.LocationIDs...),
 		"location_names": locationNames, "location_types": append([]string{}, row.LocationTypes...),
 		"location_geo_types": geoTypes, "technology_ids": append([]int{}, row.TechnologyIDs...),

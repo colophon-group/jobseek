@@ -27,7 +27,7 @@ if os.environ.get("JOBSEEK_LABELLER_ENV_FILE"):
 dotenv.load_dotenv(".env.local")
 dotenv.load_dotenv(".env")
 
-_DATABASE_COMMANDS = frozenset({"sample", "prepare", "prepare-pre-llm"})
+_DATABASE_COMMANDS = frozenset({"sample", "prepare", "prepare-pre-llm", "render-task", "upload"})
 _DATABASE_LOCK_POLL_SECONDS = 0.05
 
 
@@ -388,7 +388,10 @@ async def _cmd_prepare(args: argparse.Namespace) -> int:
 
 
 def _cmd_render_task(args: argparse.Namespace) -> int:
+    from .mining_guard import assert_mining_allowed
     from .render import render_to_file
+
+    assert_mining_allowed([json.loads(args.input.read_text())["id"]])
 
     output_hint = args.output_path
     if output_hint is None:

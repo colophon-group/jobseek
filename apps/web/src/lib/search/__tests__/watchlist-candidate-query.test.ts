@@ -178,3 +178,10 @@ it("intersects narrowed candidate IDs with structured filters and fails closed f
   expect(empty.filter_by).toContain("id:=00000000-0000-0000-0000-000000000000 && id:!=00000000-0000-0000-0000-000000000000");
   expect(() => buildWatchlistCandidateSearchParams({ filters: { ...base, postingIds: ["x] || is_active:true"] }, offset: 0, limit: 50 })).toThrow(/invalid UUID/);
 });
+
+
+it("restricts mining queries without removing postings from ordinary search", () => {
+  const params = { filters: { companyIds: [companyId], keywords: [] }, offset: 0, limit: 25 };
+  expect(buildWatchlistCandidateSearchParams(params).filter_by).not.toContain("tdm_reserved");
+  expect(buildWatchlistCandidateSearchParams({ ...params, excludeTdmReserved: true }).filter_by).toContain("tdm_reserved:!=true");
+});

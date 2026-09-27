@@ -2021,6 +2021,7 @@ def _make_taxonomy_maps() -> TaxonomyMaps:
 def _make_posting_record(
     *,
     is_active: bool = True,
+    tdm_reserved: bool = False,
     location_ids: list[int] | None = None,
     occupation_id: int | None = None,
     titles: list[str] | None = None,
@@ -2044,6 +2045,7 @@ def _make_posting_record(
         "company_id": company_id,
         "titles": ["Test Job"] if titles is None else titles,
         "is_active": is_active,
+        "tdm_reserved": tdm_reserved,
         "location_ids": location_ids,
         "location_types": ["onsite"] * len(location_ids or []),
         "occupation_id": occupation_id,
@@ -2848,3 +2850,14 @@ class TestRunExporterAtomicCursorWiring:
                 "_save_cursors_atomic so both cursors are committed in "
                 "one transaction"
             )
+
+
+def test_reserved_posting_remains_visible_but_is_marked_for_mining_consumers():
+    row = _make_posting_record(
+        location_ids=[10], titles=["Engineer"], description_r2_hash=99, tdm_reserved=True
+    )
+    doc = _build_typesense_docs([row], _make_taxonomy_maps())[0]
+    assert doc["tdm_reserved"] is True
+    assert doc["is_active"] is True
+    assert doc["has_content"] is True
+    assert doc["title"] == "Engineer"

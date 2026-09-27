@@ -601,6 +601,7 @@ def _build_typesense_docs(
             "title": title,
             "is_active": row["is_active"],
             "has_content": has_content,
+            "tdm_reserved": row.get("tdm_reserved", False),
             "location_ids": expanded_location_ids,
             "location_direct_ids": list(raw_location_ids),
             "location_names": location_names,
@@ -1478,6 +1479,7 @@ class PostingSchema:
         row makes correctness independent of that cache window.
         """
         select_columns = [f"jp.{name}" for name in cls.column_names()]
+        select_columns.append("jp.tdm_reserved")
         select_columns.extend(f"jp.{name}" for name in extras)
         select_columns.extend(
             (

@@ -10,6 +10,12 @@ import {
   jevCostNanodollars,
 } from "./policy";
 
+export class AiFilterMiningPolicyError extends Error {
+  constructor(readonly code: "tdm_reserved" | "tdm_policy_unavailable") {
+    super(code);
+  }
+}
+
 export type AiFilterExecutionContext = Readonly<{
   ownerId: string;
   watchlistId: string;
@@ -206,11 +212,24 @@ export async function executeAiFilterSegment(input: {
   repository: AiFilterExecutionRepository;
   classifier: AiFilterJevClassifier;
   executionEnabled: boolean;
+  assertMiningAllowed: (ids: readonly string[]) => Promise<void>;
   now?: Date;
   signal?: AbortSignal;
 }): Promise<AiFilterSegmentOutcome> {
   const now = input.now ?? new Date();
   assertCandidates(input.candidates, now);
+  try {
+    // Recheck before any cache reuse, including already persisted decisions.
+    await input.assertMiningAllowed(input.candidates.map(candidate => candidate.candidateId));
+  } catch (error) {
+    const counters = initialOutcome({ persistedDecisionCount: 0, cacheHits: [], claims: [], waitingCacheKeys: [] });
+    await input.repository.finishSegment({
+      context: input.context, status: "paused_provider",
+      stopReason: error instanceof AiFilterMiningPolicyError ? error.code : "tdm_policy_unavailable",
+      completedCount: 0, telemetry: counters, now,
+    });
+    return finalOutcome("paused_provider", counters);
+  }
   const bindings = input.candidates.map((candidate) => Object.freeze({
     ...candidate,
     cacheKey: buildAiFilterCacheIdentity({
@@ -275,6 +294,7 @@ export async function executeAiFilterSegment(input: {
 
     let result: JevBatchResult;
     try {
+      await input.assertMiningAllowed(claimedBatch.map(candidate => candidate.candidateId));
       result = await input.classifier.classify({
         normalizedQuery: buildAiFilterCacheIdentity({
           queryText: input.context.queryText,
@@ -291,7 +311,7 @@ export async function executeAiFilterSegment(input: {
         context: input.context,
         bindings: claimedBatch,
         reservation: budget.reservation,
-        code: clientError?.code ?? "provider_unavailable",
+        code: error instanceof AiFilterMiningPolicyError ? error.code : clientError?.code ?? "provider_unavailable",
         uncertain,
         providerAttempts: clientError?.attempts ?? 0,
         ambiguousAttempts: clientError?.ambiguousFailedAttempts ?? 0,
@@ -300,7 +320,7 @@ export async function executeAiFilterSegment(input: {
       await input.repository.finishSegment({
         context: input.context,
         status: "paused_provider",
-        stopReason: clientError?.code ?? "provider_unavailable",
+        stopReason: error instanceof AiFilterMiningPolicyError ? error.code : clientError?.code ?? "provider_unavailable",
         completedCount:
           counters.persistedDecisionHits +
           counters.globalCacheHits +

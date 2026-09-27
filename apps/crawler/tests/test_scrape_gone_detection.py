@@ -37,6 +37,12 @@ from src.queries.scrape import _RECORD_SCRAPE_FAILURE, _RECORD_SCRAPE_TRANSIENT
 from src.shared.browser import BrowserNavigationHTTPStatusError
 
 
+class _UnreservedPostingPool:
+    async def fetchval(self, sql: str, posting_id: str) -> bool:
+        assert sql == "SELECT tdm_reserved FROM job_posting WHERE id = $1"
+        return False
+
+
 def _http_error(status: int, url: str) -> httpx.HTTPStatusError:
     request = httpx.Request("GET", url)
     response = httpx.Response(status, request=request)
@@ -172,7 +178,7 @@ async def test_do_one_scrape_passes_permanent_gone_true_on_404(
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -306,7 +312,7 @@ async def test_do_one_scrape_routes_403_to_transient_sql(
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -360,7 +366,7 @@ async def test_do_one_scrape_routes_5xx_to_transient_sql(
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -412,7 +418,7 @@ async def test_do_one_scrape_routes_400_to_budget_sql(
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -467,7 +473,7 @@ async def test_pipeline_skips_scrape_for_tombstoned_posting(
             assert "is_active" in query and "next_scrape_at" in query
             return {"is_active": False, "next_scrape_at": None}
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -544,7 +550,7 @@ async def test_pipeline_skips_scrape_when_next_scrape_at_null(
         async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
             return {"is_active": True, "next_scrape_at": None}
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -633,7 +639,7 @@ async def test_eightfold_style_empty_jobcontent_takes_transient_path(
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -688,7 +694,7 @@ async def test_pipeline_self_heal_does_not_reschedule_on_db_error(
         async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
             raise RuntimeError("simulated DB outage")
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -746,7 +752,7 @@ async def test_pipeline_self_heal_skips_invalid_posting_id(
 
     pool_acquire_called = []
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             pool_acquire_called.append(True)
 
@@ -816,7 +822,7 @@ async def test_pipeline_self_heal_does_not_delete_redis_hash(
         async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
             return {"is_active": False, "next_scrape_at": None}
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -890,7 +896,7 @@ async def test_pipeline_proceeds_for_active_posting_with_due_next_scrape(
 
             return {"is_active": True, "next_scrape_at": datetime.now(UTC)}
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:
@@ -968,7 +974,7 @@ async def test_do_one_scrape_routes_timeout_to_transient_sql(
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
-    class _StubPool:
+    class _StubPool(_UnreservedPostingPool):
         def acquire(self):  # type: ignore[no-untyped-def]
             class _Ctx:
                 async def __aenter__(self) -> _StubConn:

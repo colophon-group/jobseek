@@ -21,7 +21,7 @@ const reconciliationPartitions = 256
 // sets. Fingerprints are attempt-local, never persisted or trusted from remote
 // documents.
 var reconciliationPayloadFields = []string{
-	"company_id", "company_name", "company_slug", "company_icon", "title", "has_content",
+	"company_id", "company_name", "company_slug", "company_icon", "title", "has_content", "tdm_reserved",
 	"location_ids", "location_direct_ids", "location_names", "location_types", "location_geo_types",
 	"occupation_id", "occupation_ids", "occupation_name", "seniority_id", "seniority_name",
 	"technology_ids", "technology_names", "employment_type", "salary_eur", "salary_min",
@@ -216,6 +216,9 @@ func reconciliationFingerprint(document map[string]any) ([32]byte, error) {
 	payload := make(map[string]any, len(reconciliationPayloadFields))
 	for _, field := range reconciliationPayloadFields {
 		value := normalized[field]
+		if field == "tdm_reserved" && value == nil {
+			value = false
+		}
 		if field == "locales" || field == "occupation_ids" {
 			if array, ok := value.([]any); ok {
 				keys := make([]struct {

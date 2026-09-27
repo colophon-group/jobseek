@@ -71,6 +71,7 @@ Legend: Q = `query_by`; F = filter; A = facet; G = group; S = sort; R = returned
 | `company_icon` | R, C | saved-job/card fallback | already stored-only |
 | `title` | Q, R, C | all keyword ranking and rendered posting titles | retain text index |
 | `is_active` | F, R, C | base filter, posting/saved state, reconciliation | retain filter index; benchmark facet removal |
+| `tdm_reserved` | F, R, C | Narrowed candidate exclusion and current mining-eligibility checks; propagated by CDC/reconciliation | retain filter index; optional for legacy documents (updated 2026-09-27) |
 | `has_content` | F, C | hides incomplete postings on supported flows | retain filter index; benchmark facet removal |
 | `location_ids` | F, A, R, C | ancestor-expanded hierarchy filtering and posting detail | retain facet/index and order |
 | `location_direct_ids` | A, C | direct-tag company location counts | retain facet/index |

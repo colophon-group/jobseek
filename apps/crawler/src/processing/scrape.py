@@ -45,6 +45,7 @@ from src.processing.cpu import (
     _resolve_technology_ids,
 )
 from src.processing.r2_stage import _stage_r2_pending
+from src.processing.tdm import posting_reserved, record_reservation
 from src.queries.scrape import (
     _CLEAR_SCRAPE_FOR_RICH,
     _FETCH_BOARD_SCRAPERS,
@@ -60,6 +61,7 @@ from src.shared.html_normalize import normalize_description_html
 from src.shared.http import is_avature_job_detail_url
 from src.shared.langdetect import detect_all_languages, detect_language
 from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
+from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
 
@@ -738,6 +740,8 @@ async def _process_one_enrich_scrape(
     lookups = lookup_provider or cast(_ScrapeLookupProvider, _batch)
     t0 = monotonic()
     try:
+        if await posting_reserved(pool, item.job_posting_id):
+            return True, monotonic() - t0
         cfg = scraper_config or {}
         content = await _scrape_with_browser_target_recovery(
             item.url,
@@ -961,6 +965,17 @@ async def _process_one_enrich_scrape(
         )
         return True, elapsed
 
+    except TDMReservedError as exc:
+        async with authoritative_write(
+            pool,
+            write_fence,
+            job_posting_id=item.job_posting_id,
+            authority_guard=authority_guard,
+        ) as conn:
+            await record_reservation(conn, posting_id=item.job_posting_id, error=exc)
+        log.info("batch.scrape.tdm_reserved", posting_id=item.job_posting_id, source=exc.source)
+        return True, monotonic() - t0
+
     except Exception as exc:
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
@@ -1040,6 +1055,8 @@ async def _process_one_scrape(
     t0 = monotonic()
     operation = "scrape_fetch"
     try:
+        if await posting_reserved(pool, item.job_posting_id):
+            return True, monotonic() - t0
         board_cfg = scraper_config or {}
 
         # Early dispatch for enrich-only scrapes (step 0 only)
@@ -1313,6 +1330,17 @@ async def _process_one_scrape(
         if elapsed >= _SLOW_SCRAPE_SECONDS:
             log.warning("batch.scrape.slow", url=item.url, duration_s=round(elapsed, 2))
         return True, elapsed
+
+    except TDMReservedError as exc:
+        async with authoritative_write(
+            pool,
+            write_fence,
+            job_posting_id=item.job_posting_id,
+            authority_guard=authority_guard,
+        ) as conn:
+            await record_reservation(conn, posting_id=item.job_posting_id, error=exc)
+        log.info("batch.scrape.tdm_reserved", posting_id=item.job_posting_id, source=exc.source)
+        return True, monotonic() - t0
 
     except Exception as exc:
         elapsed = monotonic() - t0

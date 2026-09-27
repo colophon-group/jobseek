@@ -24,6 +24,7 @@ from pathlib import Path
 
 from src.shared.hf_private import require_private_dataset
 
+from .mining_guard import MiningGuardError, assert_mining_allowed
 from .paths import data_root, optout_file, schemas_dir
 
 HF_REPO = "viktoroo/jobseek-postings-labelled"
@@ -482,6 +483,11 @@ def push_to_hub(
             "  - Verify LABELLER_DATA_ROOT is set correctly.\n"
             "  - Use --dry-run to inspect what would be uploaded."
         )
+
+    try:
+        assert_mining_allowed([row["id"] for rows in by_date.values() for row in rows])
+    except MiningGuardError as exc:
+        raise UploadGuardError(str(exc)) from exc
 
     token = _huggingface_token()
     if not token:
