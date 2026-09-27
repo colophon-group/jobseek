@@ -1,6 +1,6 @@
 # Stored-copy mining restrictions
 
-27 September 2026. Implementation follow-up to #10090; deployment pending.
+27 September 2026. #10100 is merged and deployed; remaining work stays in #10090.
 
 ## Behavior
 
@@ -48,13 +48,17 @@ The earlier #10095 fixes were subsequently included in the successful #10096
 rollout (run 36332710204, revision `1f37e47ef036c1b08a5ca45dfca94cd9d7e3dbf6`).
 The latest production checkpoint in `docs/24-go-lightpanda-resumption-plan.md`
 is authoritative for the active c1 epoch, deployed revision and selector set.
-This follow-up needs its own coordinated release.
+This follow-up deployed as `265d7e8b8f12beabff3d5e7e131f2e8eb168903d`: crawler
+run 36349867411 and web run 36349867352 both passed. Migration 0034 and the
+index field were installed before the web rollout. C1 was restored at epoch 92
+with all 25 selectors; the post-activation queue audit and service health passed.
+See [release evidence](../evidence/tdm-production-2026-09-27.json).
 
 The database migration and Typesense schema must be installed **before** the web
-version that queries `tdm_reserved`. Keep this change in draft until the crawler
-rollout owner has coordinated that order. The active Go/Lightpanda pilot receipt
+version that queries `tdm_reserved`. That order was verified for this release. The active Go/Lightpanda pilot receipt
 must be handled through the supported release/rollback procedure; do not remove
-it manually or bypass the deploy gate. This task has not changed that receipt.
+it manually or bypass the deploy gate. This release used supported rollback
+and activation to replace the prior receipt.
 
 1. Apply migration 0034 on the crawler database and install the optional boolean
    index field through the existing Go schema setup command. These are additive.

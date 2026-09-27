@@ -38,16 +38,58 @@ now reaps cancelled/stuck children after bounded termination and records a
 postprocessed canonical URL hash for DB comparison. No extra publisher requests
 were made. Deployment and natural output readback are pending. This slice incorporates
 PR #10100 (v0.13.879), including its authoritative TDM reservation check before
-Go dispatch. Its deployment is owned by the TDM task. After that operation
-finishes, re-read the promoted revision and c1 receipt before supported cold
-rollback and clearing the unchanged 25 selectors; the older v0.13.878 release
-and epoch below are historical and must not be used for mutation.
+Go dispatch. The TDM deployment and documentation checkpoint are complete:
+promoted revision `265d7e8b8f12beabff3d5e7e131f2e8eb168903d`, c1 epoch 92,
+with the unchanged 25 selectors. Use the production checkpoint immediately
+below for supported cold rollback before this release.
 
 For reversal, restore the previous release or use the supported cold
 configuration procedure with `SUCCESSFACTORS_RSS_GO_PERCENT=0`; explicit
 `SUCCESSFACTORS_RSS_GO_BOARD_IDS` still take precedence and must also be cleared
 for full provider reversal. This slice does not establish complete provider or
 Python/browser retirement, or whole-lane resource efficiency.
+
+## Production checkpoint: 2026-09-27 — TDM follow-up v0.13.879
+
+PR #10100 merged as `265d7e8b8f12beabff3d5e7e131f2e8eb168903d`.
+[Crawler deployment 36349867411](https://github.com/colophon-group/jobseek/actions/runs/36349867411)
+and [web deployment 36349867352](https://github.com/colophon-group/jobseek/actions/runs/36349867352)
+both succeeded. Observed TDM reservations now persist through crawler storage,
+Typesense export and later mining consumers. Ordinary listings and description
+display remain available. Detection gaps and the complete synthetic production
+rehearsal remain under #10090; this release does not close that issue.
+
+Crawler migration 0034 and the optional indexed boolean `tdm_reserved` were
+installed before the web rollout. An initial database lock timeout applied no
+changes; the migration then completed during a bounded writer pause. The
+Typesense PATCH exceeded the client timeout but completed server-side, verified
+by schema read-back and a live query showing an existing unreserved document
+still eligible. The ambiguous PATCH was not blindly replayed. All existing
+writers restarted healthy before merge.
+
+The refreshed PR passed Required CI, installed-image parity and its exact-head
+deployment gate: 13,507 crawler tests passed, with 44 skipped, plus the web,
+Go and database checks. Another 476 focused processing/runtime tests passed
+locally after incorporating current main.
+
+Supported c1 rollback retired epoch 90 at **91**, restored all five schedules,
+and left zero terminal drops or write fences. All **25 selectors** were cleared
+under lock and restaged at the promoted revision. C1 is active at **epoch 92**,
+accepted/audit_ok: five ready records, zero inflight or dead. All long-lived
+services are running, and all configured health checks pass. The initial
+post-activation exporter snapshot recorded 136 successes, zero errors, zero
+lag and healthy Typesense status. See the sanitized
+[release evidence](evidence/tdm-production-2026-09-27.json).
+
+Before another crawler deployment or selector mutation, finish supported
+`rollback c1`, then clear the unchanged 25 selectors using
+`/tmp/jobseek-post-go-experience-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`265d7e8b8f12beabff3d5e7e131f2e8eb168903d` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next successfully
+promoted revision, then reactivate c1. These instructions supersede the earlier
+revision/epoch checkpoints below. No extraction ownership or retirement claim
+is added by this release.
 
 ## Production checkpoint: 2026-09-27 — complete Teamtailor RSS routing v0.13.878
 
