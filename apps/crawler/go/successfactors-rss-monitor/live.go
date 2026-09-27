@@ -18,7 +18,6 @@ import (
 	"time"
 )
 
-const maxFeedBytes = 256 << 20
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
 
 type Summary struct {
@@ -97,7 +96,7 @@ var categoryQuery = regexp.MustCompile(`^catid=[1-9][0-9]{0,15}$`)
 func validFeedURL(raw string) (*url.URL, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed == nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil || parsed.Fragment != "" || parsed.Port() != "" && parsed.Port() != "443" {
-		return nil, errors.New("SuccessFactors feed URL is not canonical HTTPS /googlefeed.xml")
+		return nil, errors.New("SuccessFactors feed URL is not canonical HTTPS")
 	}
 	googleFeed := parsed.RawQuery == "" && strings.EqualFold(strings.TrimRight(parsed.Path, "/"), "/googlefeed.xml")
 	categoryFeed := parsed.Path == "/services/rss/category/" && categoryQuery.MatchString(parsed.RawQuery)
@@ -119,8 +118,10 @@ func newClient() *http.Client {
 	transport.Proxy = nil
 	transport.DialContext = publicDialContext
 	transport.ForceAttemptHTTP2 = true
+	transport.ResponseHeaderTimeout = 30 * time.Second
+	transport.TLSHandshakeTimeout = 30 * time.Second
 	return &http.Client{
-		Timeout: 5 * time.Minute, Transport: transport,
+		Transport: transport,
 		CheckRedirect: func(request *http.Request, via []*http.Request) error {
 			if len(via) >= 3 {
 				return errors.New("SuccessFactors feed redirected more than three times")
@@ -143,14 +144,34 @@ func tdmReserved(value string) bool {
 	return err == nil && parsed == 1
 }
 
+// Match the Python HTTP client's read-inactivity timeout. A total request
+// deadline would also charge time spent waiting for downstream DB processing.
+type readIdleBody struct {
+	io.ReadCloser
+	timeout time.Duration
+}
+
+func (r *readIdleBody) Read(p []byte) (int, error) {
+	timer := time.AfterFunc(r.timeout, func() { _ = r.ReadCloser.Close() })
+	n, err := r.ReadCloser.Read(p)
+	if !timer.Stop() {
+		return n, context.DeadlineExceeded
+	}
+	return n, err
+}
+
 type countedReader struct {
-	source io.Reader
-	n      int64
+	source    io.Reader
+	n         int64
+	readError error
 }
 
 func (r *countedReader) Read(buf []byte) (int, error) {
 	n, err := r.source.Read(buf)
 	r.n += int64(n)
+	if err != nil && err != io.EOF {
+		r.readError = err
+	}
 	return n, err
 }
 
@@ -211,22 +232,29 @@ func Fetch(ctx context.Context, client requestDoer, feedURL string, emit func(Jo
 			}
 			return result, fmt.Errorf("SuccessFactors RSS returned HTTP %d", response.StatusCode)
 		}
-		limited := io.LimitReader(response.Body, maxFeedBytes+1)
-		counted := &countedReader{source: limited}
+		counted := &countedReader{source: &readIdleBody{ReadCloser: response.Body, timeout: 30 * time.Second}}
 		buffered := bufio.NewReaderSize(counted, 64<<10)
 		if !xmlHead(buffered) {
 			response.Body.Close()
 			result.Bytes += counted.n
+			if counted.readError != nil {
+				if attempt < 2 {
+					continue
+				}
+				return result, counted.readError
+			}
 			return result, errors.New("SuccessFactors feed returned non-XML content")
 		}
 		items, jobs, truncated, parseErr := ParseStream(buffered, emit)
 		response.Body.Close()
 		result.Bytes += counted.n
 		result.Items, result.Jobs, result.Truncated = items, jobs, truncated
-		if counted.n > maxFeedBytes {
-			return result, fmt.Errorf("SuccessFactors RSS exceeded %d bytes", maxFeedBytes)
-		}
 		if parseErr != nil {
+			// Never replay an already emitted raw item, including one without
+			// a usable URL. Python applies the same streaming retry boundary.
+			if items == 0 && counted.readError != nil && attempt < 2 {
+				continue
+			}
 			return result, parseErr
 		}
 		return result, nil

@@ -215,11 +215,34 @@ func parseItem(value item) (Job, bool) {
 	}, true
 }
 
+// Bound an individual XML token/item, not a whole streamed inventory. Large
+// boards legitimately exceed the pilot's former 256 MiB aggregate response cap.
+const maxXMLReadWindow = 32 << 20
+
+type xmlReadWindow struct {
+	source    io.Reader
+	remaining int
+}
+
+func (r *xmlReadWindow) Read(p []byte) (int, error) {
+	if r.remaining == 0 {
+		return 0, errors.New("SuccessFactors XML item/token exceeded 32 MiB")
+	}
+	if len(p) > r.remaining {
+		p = p[:r.remaining]
+	}
+	n, err := r.source.Read(p)
+	r.remaining -= n
+	return n, err
+}
+
 // ParseStream sends each parsed job to emit without retaining the feed or its
 // jobs. The caller must treat an error after emitted jobs as a failed cycle.
 func ParseStream(reader io.Reader, emit func(Job) error) (items int, jobs int, truncated bool, err error) {
-	decoder := xml.NewDecoder(reader)
+	window := &xmlReadWindow{source: reader, remaining: maxXMLReadWindow}
+	decoder := xml.NewDecoder(window)
 	for {
+		window.remaining = maxXMLReadWindow
 		token, decodeErr := decoder.Token()
 		if decodeErr == io.EOF {
 			return items, jobs, false, nil

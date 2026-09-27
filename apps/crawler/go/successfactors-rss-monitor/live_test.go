@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"strings"
 	"testing"
+	"time"
 )
 
 type doFunc func(*http.Request) (*http.Response, error)
@@ -94,6 +95,69 @@ func TestConfiguredCategoryFeedRequest(t *testing.T) {
 	} {
 		if _, err := validFeedURL(raw); err == nil {
 			t.Errorf("accepted %s", raw)
+		}
+	}
+}
+
+func TestReadIdleBodyTimesOutAndClosesBlockedRead(t *testing.T) {
+	reader, writer := io.Pipe()
+	defer writer.Close()
+	body := &readIdleBody{ReadCloser: reader, timeout: 20 * time.Millisecond}
+	_, err := body.Read(make([]byte, 1))
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("got %v", err)
+	}
+	if _, err := writer.Write([]byte("x")); err == nil {
+		t.Fatal("body remained open")
+	}
+}
+
+func TestReadIdleBudgetExcludesDownstreamPause(t *testing.T) {
+	body := &readIdleBody{ReadCloser: io.NopCloser(strings.NewReader("ab")), timeout: 100 * time.Millisecond}
+	one := make([]byte, 1)
+	if _, err := body.Read(one); err != nil || string(one) != "a" {
+		t.Fatalf("first read %q %v", one, err)
+	}
+	time.Sleep(150 * time.Millisecond)
+	if _, err := body.Read(one); err != nil || string(one) != "b" {
+		t.Fatalf("after pause %q %v", one, err)
+	}
+	client := newClient()
+	defer client.CloseIdleConnections()
+	if client.Timeout != 0 {
+		t.Fatalf("whole-response timeout still active: %s", client.Timeout)
+	}
+}
+
+type failedBody struct{ io.Reader }
+
+func (b failedBody) Close() error { return nil }
+func (b failedBody) Read(p []byte) (int, error) {
+	n, err := b.Reader.Read(p)
+	if err == io.EOF {
+		return n, io.ErrUnexpectedEOF
+	}
+	return n, err
+}
+
+func TestTransportRetryBoundaryBeforeFirstRawItem(t *testing.T) {
+	for _, prefix := range []string{"", `<?xml version="1.0"?><rss>`, `<rss><item><title>No link</title></item>`} {
+		attempts := 0
+		result, err := Fetch(context.Background(), doFunc(func(req *http.Request) (*http.Response, error) {
+			attempts++
+			if attempts == 1 {
+				r := response(req, 200, "")
+				r.Body = failedBody{strings.NewReader(prefix)}
+				return r, nil
+			}
+			return response(req, 200, `<rss><item><link>https://jobs.example.com/1</link></item></rss>`), nil
+		}), "https://jobs.example.com/googlefeed.xml", func(Job) error { return nil })
+		if strings.Contains(prefix, "<item>") {
+			if err == nil || attempts != 1 {
+				t.Fatalf("replayed partial feed: %+v %v", result, err)
+			}
+		} else if err != nil || attempts != 2 || result.Jobs != 1 {
+			t.Fatalf("did not retry before first item: %+v %v", result, err)
 		}
 	}
 }

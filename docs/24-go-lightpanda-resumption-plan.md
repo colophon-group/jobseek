@@ -18,14 +18,21 @@ inline detail-field or job-invite identity requests. None are disabled.
 
 Native parsing now matches Python's Unicode case folding, whitespace, exact
 XML namespaces, first repeated field, and text before nested child elements.
-Entity-decoded description whitespace is preserved. Thirty-two frozen Python
+Entity-decoded description whitespace is preserved. The aggregate 256 MiB
+pilot feed cap is replaced by a 32 MiB XML token/item read window, preserving
+streaming for large boards. HTTP reads use the Python path's 30-second
+inactivity budget instead of charging downstream DB backpressure against a
+five-minute whole-request limit. The 216-board baseline has 236,664 active postings.
+Thirty-two frozen Python
 parser cases pass in Go; CI also replays them through the installed binary with
 networking disabled. The retained 482,801-byte Mobiliar feed matches all 71 rich
 jobs exactly, including all descriptions, locations and metadata. Its source
 SHA-256 is `0a65c6e9d7fbe329d95fa59e126d0cbe72770033897a27a6ed2ba79d7c228ff4`.
 
-Verification passed 227 focused runtime/RSS/shared monitor tests, Go race/vet,
-Ruff/Pyright and the offline native verifier. Streamed output, HTTP/TDM failure
+Verification passed 228 focused runtime/RSS/shared monitor tests, Go race/vet,
+Ruff/Pyright and the offline native verifier. A streamed synthetic feed above
+256 MiB passes without retaining the inventory; read-inactivity and partial-feed
+retry boundaries are covered. Streamed output, HTTP/TDM failure
 classification and downstream writer/drop policy remain in place. The bridge
 now reaps cancelled/stuck children after bounded termination and records a
 postprocessed canonical URL hash for DB comparison. No extra publisher requests

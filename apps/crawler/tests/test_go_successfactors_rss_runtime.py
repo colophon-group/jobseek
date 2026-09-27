@@ -223,3 +223,19 @@ async def test_cancel_reaps_child_that_ignores_termination(tmp_path, monkeypatch
             await task
     with pytest.raises(ProcessLookupError):
         os.kill(int(pid_file.read_text()), 0)
+
+
+@pytest.mark.asyncio
+async def test_large_stream_accounting_is_not_rejected_at_pilot_byte_cap(tmp_path):
+    runtime = GoSuccessFactorsRSSMonitorRuntime(
+        fake_binary(
+            tmp_path,
+            [
+                {"type": "job", "job": {"url": "https://jobs.example.com/job/1"}},
+                {**summary(jobs=1), "bytes": 300 << 20},
+            ],
+        ),
+        board_id=BOARD_ID,
+    )
+    result = [item async for item in runtime.stream(BOARD_URL, "rss", CONFIG, None)]
+    assert result[0].urls == {"https://jobs.example.com/job/1"}

@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	successfactorsrss "github.com/colophon-group/jobseek/apps/crawler/go/successfactors-rss-monitor"
 )
@@ -29,7 +27,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "parse-stdin cannot fetch a feed")
 			os.Exit(2)
 		}
-		jobs, items, err := successfactorsrss.ParseReader(io.LimitReader(os.Stdin, (256<<20)+1))
+		jobs, items, err := successfactorsrss.ParseReader(os.Stdin)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -45,10 +43,8 @@ func main() {
 	}
 	parent, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	ctx, cancel := context.WithTimeout(parent, 5*time.Minute)
-	defer cancel()
 	encoder := json.NewEncoder(os.Stdout)
-	summary, err := successfactorsrss.FetchFeed(ctx, feedURL, func(job successfactorsrss.Job) error {
+	summary, err := successfactorsrss.FetchFeed(parent, feedURL, func(job successfactorsrss.Job) error {
 		return encoder.Encode(struct {
 			Type string                `json:"type"`
 			Job  successfactorsrss.Job `json:"job"`

@@ -1,6 +1,7 @@
 package successfactorsrss
 
 import (
+	"io"
 	"strings"
 	"testing"
 )
@@ -65,5 +66,36 @@ func TestParseReaderUsesFirstRepeatedFieldLikeElementTreeFind(t *testing.T) {
 	}
 	if len(jobs) != 1 || jobs[0].URL != "https://jobs.example.com/first" || len(jobs[0].Locations) != 1 || jobs[0].Locations[0] != "Zurich" {
 		t.Fatalf("unexpected repeated-field precedence: %+v", jobs)
+	}
+}
+
+func TestLargeFeedStreamsBeyondPilotByteLimit(t *testing.T) {
+	// Reuse one half-MiB item instead of retaining the 256+ MiB feed in memory.
+	const count = 513
+	description := strings.Repeat("x", 512<<10)
+	item := `<item><link>https://jobs.example.com/1</link><description>` + description + `</description></item>`
+	readers := []io.Reader{strings.NewReader(`<rss>`)}
+	for range count {
+		readers = append(readers, strings.NewReader(item))
+	}
+	readers = append(readers, strings.NewReader(`</rss>`))
+	emitted := 0
+	items, jobs, truncated, err := ParseStream(io.MultiReader(readers...), func(job Job) error {
+		if job.Description == nil || len(*job.Description) != len(description) {
+			t.Fatal("description changed")
+		}
+		emitted++
+		return nil
+	})
+	if err != nil || items != count || jobs != count || emitted != count || truncated {
+		t.Fatalf("items=%d jobs=%d emitted=%d truncated=%v err=%v", items, jobs, emitted, truncated, err)
+	}
+}
+
+func TestXMLReadWindowFailsClosed(t *testing.T) {
+	window := &xmlReadWindow{source: strings.NewReader(strings.Repeat("x", 65)), remaining: 64}
+	body, err := io.ReadAll(window)
+	if err == nil || len(body) != 64 {
+		t.Fatalf("bytes=%d err=%v", len(body), err)
 	}
 }

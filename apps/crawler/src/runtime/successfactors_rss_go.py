@@ -185,7 +185,8 @@ class GoSuccessFactorsRSSMonitorRuntime:
                     or type(responses) is not int
                     or not 0 <= responses <= attempts
                     or type(body_bytes) is not int
-                    or not 0 <= body_bytes <= responses * ((256 << 20) + 1)
+                    or body_bytes < 0
+                    or (responses == 0 and body_bytes != 0)
                     or type(status) is not int
                     or (status != 0 and not 100 <= status <= 599)
                     or (responses > 0 and (not isinstance(final_url, str) or not final_url))
