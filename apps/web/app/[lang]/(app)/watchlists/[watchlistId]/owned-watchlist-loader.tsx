@@ -1,3 +1,4 @@
+import { getNotificationPreferencesForUser } from "@/lib/services/notification-preferences";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -135,7 +136,7 @@ export async function OwnedWatchlistLoader({
   }
   const isOwner = ownedDetail !== null;
 
-  const [jobLanguages, limit, aiFilterState] = await Promise.all([
+  const [jobLanguages, limit, aiFilterState, notifications] = await Promise.all([
     isOwner
       ? getViewerJobLanguages()
       : Promise.resolve(sharedDetail!.ownerJobLanguages),
@@ -148,6 +149,7 @@ export async function OwnedWatchlistLoader({
           watchlistId,
         })
       : getOptionalSharedAiFilterState({ watchlistId }),
+    isOwner && session ? getNotificationPreferencesForUser(session.user.id) : Promise.resolve(null),
   ]);
 
   const [data, initialAiAcceptedPage] = await Promise.all([
@@ -182,6 +184,7 @@ export async function OwnedWatchlistLoader({
       </Link>
       <WatchlistViewPage
         data={data}
+        notificationsPaused={notifications?.notificationsPaused ?? false}
         locale={locale}
         initialAiFilterState={aiFilterState}
         initialAiAcceptedPage={initialAiAcceptedPage}
