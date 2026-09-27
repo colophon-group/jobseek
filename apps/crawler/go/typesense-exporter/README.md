@@ -247,3 +247,20 @@ No Typesense access or additional service port is required. Read-only lifecycle
 work uses one database connection; per-operation deadlines and signal handling
 bound shutdown. This is a scheduler-stage port, not the final Go worker runtime
 or a claim of whole-lane resource improvement.
+
+### Committed board queue publication
+
+`go-typesense-exporter --sync-board-queues` reads a bounded JSON document from
+stdin containing `schedules` and `orphans`. The CSV sync invokes it only after
+the authoritative local PostgreSQL transaction commits. Go publishes board
+hashes, delay keys and queue entries with the canonical enqueue/removal Lua
+scripts, using the existing ordered nontransactional pipelines of at most
+1,000 boards. The input is fully decoded before Redis writes. A failed or
+ambiguous batch aborts the sync without automatic transport retries; a later
+operator/deployment sync can reconcile from local authority again.
+
+The command needs `REDIS_URL` and the existing throttle-delay settings, not
+Typesense or database credentials. It has a five-minute process budget and
+honors SIGTERM. Python currently transports the committed effects and reaps
+its child on shutdown; CSV parsing and the local transaction remain Python.
+The retained Python queue publisher is an offline oracle, not a fallback.

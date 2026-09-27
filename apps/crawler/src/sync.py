@@ -21,7 +21,7 @@ import json
 import time
 from collections.abc import Mapping
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
@@ -1675,6 +1675,18 @@ async def sync_boards(
 
 
 async def apply_board_redis_effects(effects: BoardSyncEffects) -> None:
+    """Hand committed board effects to the Go queue publisher."""
+    from src.runtime.go_board_sync import publish_board_queues
+
+    await publish_board_queues(
+        {
+            "schedules": [asdict(schedule) for schedule in effects.schedules],
+            "orphans": [(domain, str(board_id)) for domain, board_id in effects.orphan_monitors],
+        }
+    )
+
+
+async def _apply_board_redis_effects_python_reference(effects: BoardSyncEffects) -> None:
     """Publish board state derived from a successfully committed local sync."""
     await enqueue_monitors(list(effects.schedules))
     if effects.orphan_monitors:

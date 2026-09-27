@@ -172,6 +172,21 @@ func leaseReaperLoop(ctx context.Context, interval time.Duration, backend leaseR
 		}
 	}
 }
+func leaseReaperPoolConfig(dsn string) (*pgxpool.Config, error) {
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, errors.New("invalid local database configuration")
+	}
+	config.MinConns = 0
+	config.MaxConns = 1
+	config.MaxConnIdleTime = time.Minute
+	config.ConnConfig.ConnectTimeout = 5 * time.Second
+	config.ConnConfig.RuntimeParams["application_name"] = "jobseek:crawler:lease-reaper|lifecycle:local"
+	config.ConnConfig.RuntimeParams["statement_timeout"] = "10000"
+	config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60000"
+	return config, nil
+}
+
 func runLeaseReaper() error {
 	settings, err := loadLeaseReaperSettings()
 	if err != nil {
@@ -183,14 +198,10 @@ func runLeaseReaper() error {
 	if dsn == "" {
 		return errors.New("LOCAL_DATABASE_URL is required")
 	}
-	config, err := pgxpool.ParseConfig(dsn)
+	config, err := leaseReaperPoolConfig(dsn)
 	if err != nil {
-		return errors.New("invalid local database configuration")
+		return err
 	}
-	config.MaxConns = 1
-	config.ConnConfig.ConnectTimeout = 5 * time.Second
-	config.ConnConfig.RuntimeParams["application_name"] = "jobseek:crawler:lease-reaper|lifecycle:local"
-	config.ConnConfig.RuntimeParams["statement_timeout"] = "10000"
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return errors.New("open lease reaper database pool failed")
