@@ -61,9 +61,9 @@ remaining sources; do not apply a single employer's permission to every board.
 
 - Source and employer attribution, original application links, and a public
   contact/removal route exist. Inspect a live posting as part of review.
-- `HowWeIndexContent.tsx` explicitly says `robots.txt` is used for discovery and
-  Disallow enforcement is not active. Do not represent robots compliance as
-  implemented or treat robots permission as an IP licence.
+- Source-access controls remain tracked internally in #2841. At the owner's
+  request, robots.txt/Disallow implementation details are removed from public
+  indexing copy. No new compliance or content-licensing claim is made.
 - `apps/crawler/src/shared/tdm.py`, HTTP retry helpers and several adapters check
   TDM reservation signals. Code evidence is not proof that every transport/path
   enforces every signal; any rights assessment relying on complete coverage
