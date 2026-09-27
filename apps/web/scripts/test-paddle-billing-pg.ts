@@ -20,7 +20,7 @@ async function main() {
       await tx.unsafe("GRANT USAGE ON SCHEMA public TO anon, authenticated");
       await tx.unsafe("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated");
       await tx.unsafe('CREATE TABLE public."user" (id text PRIMARY KEY)');
-      const migration = await readFile(resolve("drizzle/0095_paddle_billing.sql"), "utf8");
+      const migration = await readFile(resolve("drizzle/0096_paddle_billing.sql"), "utf8");
       for (const statement of migration.split("--> statement-breakpoint").filter(s => s.trim())) {
         await tx.unsafe(statement);
       }

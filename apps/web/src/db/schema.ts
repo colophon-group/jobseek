@@ -779,6 +779,7 @@ export const watchlist = pgTable(
     shareEnabled: boolean("share_enabled").default(false).notNull(),
     alertsEnabled: boolean("alerts_enabled").default(false).notNull(),
     alertsEnabledAt: timestamp("alerts_enabled_at", { withTimezone: true }),
+    alertsNarrowedOnly: boolean("alerts_narrowed_only").default(false).notNull(),
     filters: jsonb("filters").default({}).notNull(),
     sourceWatchlistId: uuid("source_watchlist_id").references((): AnyPgColumn => watchlist.id, {
       onDelete: "set null",
@@ -887,9 +888,11 @@ export const notificationDelivery = pgTable(
       sql`${table.status} <> 'skipped' OR (
         ${table.matchCount} IS NOT NULL
         AND ${table.matchCount} = 0
-        AND ${table.providerAttemptCount} = 0
-        AND ${table.lastProviderAttemptAt} IS NULL
         AND ${table.providerMessageId} IS NULL
+        AND (
+          (${table.providerAttemptCount} = 0 AND ${table.lastProviderAttemptAt} IS NULL)
+          OR (${table.providerAttemptCount} > 0 AND ${table.lastProviderAttemptAt} IS NOT NULL)
+        )
       )`,
     ),
     check(
@@ -1397,3 +1400,9 @@ export const murmurAcceptLog = pgTable(
   },
   (table) => [index("murmur_accept_log_applied_idx").on(table.appliedAt)],
 );
+
+/** Global UTC day/month notification-attempt reservations; server-only. */
+export const notificationQuota = pgTable("notification_quota", {
+  period: text("period").primaryKey(),
+  used: integer("used").notNull().default(0),
+}, (table) => [check("notification_quota_used_check", sql`${table.used} >= 0`)]);

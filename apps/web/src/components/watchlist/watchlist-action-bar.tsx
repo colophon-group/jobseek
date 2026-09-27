@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -35,6 +36,7 @@ function ActionButton({
   announce,
   busy,
   disabled,
+  opensDialog,
   buttonRef,
   children,
 }: {
@@ -45,6 +47,7 @@ function ActionButton({
   announce?: boolean;
   busy?: boolean;
   disabled?: boolean;
+  opensDialog?: boolean;
   buttonRef?: React.Ref<HTMLButtonElement>;
   children: React.ReactNode;
 }) {
@@ -65,6 +68,7 @@ function ActionButton({
           aria-label={label}
           aria-busy={busy || undefined}
           aria-disabled={busy || disabled || undefined}
+          aria-haspopup={opensDialog ? "dialog" : undefined}
         >
           {children}
         </button>
@@ -85,12 +89,14 @@ function ActionButton({
 export function WatchlistActionBar({
   watchlistId,
   alertsEnabled,
+  notificationsPaused = false,
   onEdit,
   accountRequired = false,
   onDelete,
 }: {
   watchlistId: string;
   alertsEnabled: boolean;
+  notificationsPaused?: boolean;
   onEdit?: () => void;
   /** Browser-backed watchlists preserve account-only controls in a clearly
    * disabled state instead of silently removing them. */
@@ -104,6 +110,10 @@ export function WatchlistActionBar({
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [alertsBusy, setAlertsBusy] = useState(false);
   const [displayAlertsEnabled, setDisplayAlertsEnabled] = useState(alertsEnabled);
+  const [paused, setPaused] = useState(notificationsPaused);
+  const [pauseWarningOpen, setPauseWarningOpen] = useState(false);
+  const alertsButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => setPaused(notificationsPaused), [notificationsPaused]);
   const [alertsError, setAlertsError] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -168,6 +178,7 @@ export function WatchlistActionBar({
   }
 
   async function handleToggleAlerts() {
+    if (paused) { setPauseWarningOpen(true); return; }
     if (alertsMutationInFlightRef.current) return;
     alertsMutationInFlightRef.current = true;
     clearTimeout(alertsResetRef.current);
@@ -176,6 +187,9 @@ export function WatchlistActionBar({
     try {
       const result = await toggleWatchlistAlerts(watchlistId);
       if ("error" in result) {
+        if (result.error === "notifications_paused") {
+          setPaused(true); setPauseWarningOpen(true); return;
+        }
         throw new Error(result.error);
       }
       setDisplayAlertsEnabled(result.enabled);
@@ -206,11 +220,13 @@ export function WatchlistActionBar({
       : t({ id: "watchlists.actions.share", comment: "Action to share a watchlist by unlisted link", message: "Share" });
   const alertsLabel = accountRequired
     ? t({ id: "watchlists.actions.loginToAlerts", comment: "Disabled alerts tooltip for a browser-only watchlist", message: "Log in to manage alerts" })
+    : paused
+    ? t({ id: "watchlists.actions.globallyPaused", comment: "Tooltip on inert notification control while globally paused", message: "Email notifications are paused. Resume them in Settings." })
     : alertsError
     ? t({ id: "watchlists.actions.alertsFailed", comment: "Error after a watchlist alert preference cannot be updated", message: "Could not update alerts" })
     : displayAlertsEnabled
-      ? t({ id: "watchlists.actions.disableAlerts", comment: "Disable alerts tooltip", message: "Disable alerts" })
-      : t({ id: "watchlists.actions.enableAlerts", comment: "Enable alerts tooltip", message: "Enable alerts" });
+      ? t({ id: "watchlists.actions.disableAlerts", comment: "Disable alerts tooltip", message: "Disable weekly email notifications" })
+      : t({ id: "watchlists.actions.enableAlerts", comment: "Enable alerts tooltip", message: "Enable weekly email notifications" });
 
   return (
     <>
@@ -243,6 +259,8 @@ export function WatchlistActionBar({
             </ActionButton>
             <ActionButton
               label={alertsLabel}
+              buttonRef={alertsButtonRef}
+              opensDialog={paused}
               onClick={() => void handleToggleAlerts()}
               disabled={accountRequired}
               busy={alertsBusy}
@@ -306,6 +324,19 @@ export function WatchlistActionBar({
           </>
         </div>
       </Tooltip.Provider>
+      <AlertDialog.Root open={pauseWarningOpen} onOpenChange={setPauseWarningOpen}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          <AlertDialog.Content onCloseAutoFocus={event => { event.preventDefault(); alertsButtonRef.current?.focus(); }} className="fixed inset-0 z-50 flex flex-col justify-center bg-surface p-6 sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border sm:border-divider sm:shadow-xl">
+            <AlertDialog.Title className="text-xl font-semibold"><Trans id="watchlists.notifications.pausedTitle" comment="Paused notifications warning dialog heading">Email notifications are paused</Trans></AlertDialog.Title>
+            <AlertDialog.Description className="mt-3 text-sm text-muted"><Trans id="watchlists.notifications.pausedDescription" comment="Explain why watchlist toggle is inert and link to global setting">Your global setting overrides every watchlist. Resume email notifications in Settings to change this choice. Your saved watchlist preferences are unchanged.</Trans></AlertDialog.Description>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <AlertDialog.Action asChild><Link href={lp("/settings#notifications")} prefetch={false} className="rounded-lg bg-primary px-4 py-3 text-center text-sm font-medium text-primary-contrast"><Trans id="watchlists.notifications.openSettings" comment="Navigate from paused notification warning to settings">Open notification settings</Trans></Link></AlertDialog.Action>
+              <AlertDialog.Cancel className="cursor-pointer rounded-lg border border-divider px-4 py-3 text-sm"><Trans id="watchlists.notifications.dismiss" comment="Dismiss paused notification warning without changing preference">Keep paused</Trans></AlertDialog.Cancel>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
       {deleteError ? <span className="text-xs text-error" role="alert">{deleteError}</span> : null}
     </>
   );

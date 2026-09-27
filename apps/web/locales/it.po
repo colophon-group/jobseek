@@ -471,6 +471,60 @@ msgstr ""
 #~ msgid "pro.example.note"
 #~ msgstr "Esempio illustrativo. Controlla sempre l’annuncio originale."
 
+#. Label for a watchlist's contribution to the consolidated weekly email
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.include"
+#~ msgstr "Includi nella mia email settimanale"
+
+#. Open watchlist to inspect narrowed jobs and edit its prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.preview"
+#~ msgstr "Visualizza i risultati e modifica la richiesta"
+
+#. Explain how to make narrowed-only emails available
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.noPrompt"
+#~ msgstr "Imposta una richiesta di affinamento in questa lista per ricevere via email solo i risultati affinati."
+
+#. Preview label for the saved narrow-results prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.prompt"
+#~ msgstr "La tua richiesta per affinare i risultati"
+
+#. Link below expanded saved prompt to inspect results and edit prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.editPrompt"
+#~ msgstr "Risultati / modifica richiesta"
+
+#. Pro feature: email alerts
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.pro.f2"
+#~ msgstr "Avvisi email sui nuovi risultati"
+
+#. Pro plan availability detail
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.pro.f1"
+#~ msgstr "Dettagli del piano in arrivo"
+
+#. Pro feature: unlimited watchlists
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.pro.f1"
+#~ msgstr "Watchlist illimitate"
+
+#. Pro tier description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.pro.description"
+#~ msgstr "Watchlist illimitate con avvisi via email così non perdi mai un'apertura."
+
 #. Fictional excerpt illustrating a match
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
@@ -498,12 +552,16 @@ msgstr "\"Viktor Shcherbakov, Collection of Job Postings\" con un link alla font
 #. Screen reader text for external links
 #. Screen reader text for external links
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx src/components/HowWeIndexContent.tsx src/components/LicenseContent.tsx src/components/PrivacyPolicyContent.tsx src/components/PublicDomainArt.tsx src/components/TermsContent.tsx
+#: src/components/Footer.tsx
+#: src/components/HowWeIndexContent.tsx
+#: src/components/LicenseContent.tsx
+#: src/components/PrivacyPolicyContent.tsx
+#: src/components/PublicDomainArt.tsx
+#: src/components/TermsContent.tsx
 msgid "common.a11y.opensInNewTab"
 msgstr "(apre in una nuova scheda)"
 
-#. Explains the maximum AI-filter candidate count; variables are current count
-#. and maximum
+#. Explains the maximum AI-filter candidate count; variables are current count and maximum
 #. js-lingui-explicit-id
 #. placeholder {0}: eligibility.candidateCount
 #. placeholder {1}: eligibility.maxCandidates
@@ -518,9 +576,7 @@ msgstr "Ci sono {0} offerte corrispondenti. Usa località, ruolo, livello o un a
 msgid "search.detail.showMoreLocations"
 msgstr "{0} in più"
 
-#. Heatmap tooltip and accessible summary for an application-activity day;
-#. {date} is a localized date and {count} is the number of applications that
-#. day.
+#. Heatmap tooltip and accessible summary for an application-activity day; {date} is a localized date and {count} is the number of applications that day.
 #. js-lingui-explicit-id
 #: src/components/my-jobs/activity-heatmap.tsx
 msgid "myJobs.heatmap.tooltip"
@@ -556,8 +612,7 @@ msgstr "{count, plural, one {# corrispondenza} other {# corrispondenze}}"
 msgid "company.similar.positionCount"
 msgstr "{count, plural, one {# posizione aperta} other {# posizioni aperte}}"
 
-#. Stat label on a CompanyCard mention card — pluralized 'active posting' /
-#. 'active postings'. {count} is the integer count.
+#. Stat label on a CompanyCard mention card — pluralized 'active posting' / 'active postings'. {count} is the integer count.
 #. js-lingui-explicit-id
 #: src/components/blog/MdxMentions.tsx
 msgid "blog.mention.company.activePostingsLabel"
@@ -569,15 +624,13 @@ msgstr "{count, plural, one {offerta attiva} other {offerte attive}}"
 msgid "company.meta.descriptionBasic"
 msgstr "{countText} presso {name}"
 
-#. SEO description for a company page; includes job count, company name, and
-#. company summary.
+#. SEO description for a company page; includes job count, company name, and company summary.
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/page.tsx
 msgid "company.meta.descriptionWithInfo"
 msgstr "{countText} presso {name}. {description}"
 
-#. Reading-time label shown in the blog post byline. {minutes} is the integer
-#. minute count.
+#. Reading-time label shown in the blog post byline. {minutes} is the integer minute count.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/[slug]/page.tsx
 msgid "blog.post.readingTime"
@@ -589,8 +642,7 @@ msgstr "{minutes, plural, one {# min di lettura} other {# min di lettura}}"
 msgid "search.aiFilter.reminder.matchCount"
 msgstr "{narrowedResultCount, plural, one {# corrispondenza in questo feed} other {# corrispondenze in questo feed}}"
 
-#. Meta line on a CompanyCard mention card — '{range} employees' (range like
-#. '11–50' or '5k–10k')
+#. Meta line on a CompanyCard mention card — '{range} employees' (range like '11–50' or '5k–10k')
 #. js-lingui-explicit-id
 #: src/components/blog/MdxMentions.tsx
 msgid "blog.mention.company.employeesCount"
@@ -608,15 +660,13 @@ msgstr "{range} dipendenti"
 msgid "search.aiFilter.compactMatchCount"
 msgstr "{safeNarrowedResultCount, plural, one {# corrispondenza} other {# corrispondenze}}"
 
-#. Heading for the 'install the Murmur MCP server' step on the agent-prompt
-#. success card
+#. Heading for the 'install the Murmur MCP server' step on the agent-prompt success card
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.install_heading"
 msgstr "1. Installa MCP"
 
-#. Heading for the 'paste this into Claude Code' step on the agent-prompt
-#. success card
+#. Heading for the 'paste this into Claude Code' step on the agent-prompt success card
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.run_heading"
@@ -634,8 +684,7 @@ msgstr "7 giorni gratis"
 msgid "pro.discovery.trial"
 msgstr "7 giorni per provare Pro."
 
-#. FAQ answer explaining private-by-default saved-search watchlists and
-#. unlisted sharing.
+#. FAQ answer explaining private-by-default saved-search watchlists and unlisted sharing.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.whatIsWatchlist"
@@ -644,7 +693,8 @@ msgstr "Una watchlist è una ricerca salvata con filtro opzionale per azienda. S
 #. Nav link: About
 #. Nav link: About
 #. js-lingui-explicit-id
-#: src/components/Header.tsx src/components/MobileMenu.tsx
+#: src/components/Header.tsx
+#: src/components/MobileMenu.tsx
 msgid "common.nav.about"
 msgstr "Chi siamo"
 
@@ -733,8 +783,7 @@ msgstr "Aggiungi filtro per luogo o parola chiave…"
 msgid "search.locations.addPlaceholder"
 msgstr "Aggiungi località..."
 
-#. Suffix shown on the success link after the Murmur run completes; the link
-#. text reads '{company name} {this label}'
+#. Suffix shown on the success link after the Murmur run completes; the link text reads '{company name} {this label}'
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.companyAddedLabel"
@@ -758,8 +807,7 @@ msgstr "Modifica i filtri attuali finché non corrisponde almeno un’offerta."
 msgid "app.home.request.agent.promptRegionLabel"
 msgstr "Prompt dell'agente"
 
-#. Footer shown after all paged countries have been loaded into the location
-#. modal
+#. Footer shown after all paged countries have been loaded into the location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx
 msgid "search.locationModal.allLoaded"
@@ -800,6 +848,12 @@ msgstr "Tutte le sedi"
 #: src/components/search/location-modal.tsx
 msgid "company.locationModal.title"
 msgstr "Tutte le sedi"
+
+#. Include all jobs matching the structured watchlist filters
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.all"
+msgstr "Tutti i risultati"
 
 #. Button that closes narrowed results and returns to the broad watchlist feed
 #. js-lingui-explicit-id
@@ -963,6 +1017,12 @@ msgstr "Applicazione…"
 msgid "indexing.ingestion.s3.body"
 msgstr "Come ultima risorsa analizziamo le pagine carriere stesse, preferendo l'ordine dal più recente e fermandoci non appena ricompaiono posizioni già indicizzate, anziché scansionare ogni pagina."
 
+#. Paddle independently handles buyer data
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.payments.controller"
+msgstr "In qualità di venditore ufficiale, Paddle tratta i dati degli acquirenti per pagamenti, imposte, prevenzione delle frodi, assistenza alla fatturazione e rimborsi secondo la propria informativa sulla privacy. L’eliminazione dell’account Job Seek non cancella i dati che Paddle deve conservare."
+
 #. Username too short hint
 #. js-lingui-explicit-id
 #: src/components/settings/account/UsernameSection.tsx
@@ -1046,7 +1106,8 @@ msgstr "Blog"
 #. Nav link: Blog
 #. Nav link: Blog
 #. js-lingui-explicit-id
-#: src/components/Header.tsx src/components/MobileMenu.tsx
+#: src/components/Header.tsx
+#: src/components/MobileMenu.tsx
 msgid "common.nav.blog"
 msgstr "Blog"
 
@@ -1068,8 +1129,7 @@ msgstr "Blog"
 msgid "blog.post.backToIndex"
 msgstr "Blog"
 
-#. Subtitle on the sign-in CTA card shown to anonymous users at the end of the
-#. similar-companies strip
+#. Subtitle on the sign-in CTA card shown to anonymous users at the end of the similar-companies strip
 #. js-lingui-explicit-id
 #: src/components/company/similar-companies-strip.tsx
 msgid "company.similar.signIn.subtitle"
@@ -1094,8 +1154,7 @@ msgstr "Esplora le watchlist"
 msgid "home.meta.description"
 msgstr "Crea watchlist delle aziende che ti interessano, ricevi avvisi via email quando si aprono nuove posizioni, e monitora le candidature in un unico posto. Le offerte arrivano direttamente dalle pagine carriere delle aziende, entro poche ore dalla pubblicazione — niente spam dei recruiter, nessun annuncio ripubblicato."
 
-#. Hero description paragraph — watchlist + alerts pitch with direct sourcing
-#. as supporting claim
+#. Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx
 msgid "home.hero.description"
@@ -1122,7 +1181,8 @@ msgstr "Posso rifiutare l'indicizzazione della mia azienda da parte di Jobseek?"
 #. Cancel delete watchlist
 #. Cancel delete watchlist
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.delete.cancel"
 msgstr "Annulla"
 
@@ -1136,7 +1196,8 @@ msgstr "Annulla"
 #. Button that cancels precise-matching setup or editing
 #. Cancel cloning a shared narrowed watchlist
 #. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx src/components/watchlist/watchlist-view-page.tsx
+#: src/components/search/ai-search-filter.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "common.actions.cancel"
 msgstr "Annulla"
 
@@ -1151,6 +1212,18 @@ msgstr "Annulla"
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteCancel"
 msgstr "Annulla"
+
+#. How and when subscription cancellation takes effect
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.cancel"
+msgstr "Disdici prima della fine della prova per evitare il primo addebito. Usa Impostazioni → Abbonamento → Gestisci abbonamento, il link nella ricevuta o l’assistenza Paddle. La normale disdetta mantiene l’accesso fino alla data indicata nelle impostazioni dell’abbonamento. L’eliminazione dell’account interrompe immediatamente fatturazione e accesso."
+
+#. Explains cancellation is separate from requesting a refund
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.cancel"
+msgstr "La disdetta interrompe i rinnovi futuri, ma non invia automaticamente una richiesta di rimborso. Per problemi con Job Seek, contattaci all’indirizzo email qui sotto."
 
 #. Link to change language settings
 #. js-lingui-explicit-id
@@ -1258,7 +1331,9 @@ msgstr "Scegli in quali lingue vuoi vedere le offerte di lavoro."
 #. Location type label for cities
 #. Location type label for cities
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx src/components/search/location-pills.tsx src/components/search/search-bar.tsx
+#: src/components/search/filter-bar.tsx
+#: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.city"
 msgstr "Città"
 
@@ -1283,7 +1358,8 @@ msgstr "Rimuovi tutti"
 #. Button to clear all active search filters
 #. Button to clear all active search filters
 #. js-lingui-explicit-id
-#: src/components/search/filter-pills-readonly.tsx src/components/search/search-toolbar.tsx
+#: src/components/search/filter-pills-readonly.tsx
+#: src/components/search/search-toolbar.tsx
 msgid "search.filters.clearAll"
 msgstr "Cancella tutto"
 
@@ -1305,8 +1381,7 @@ msgstr "Clicca per rinominare"
 msgid "indexing.ingestion.s2.title"
 msgstr "API client come seconda opzione."
 
-#. Action to clone an unlisted shared watchlist into the signed-in user's
-#. account
+#. Action to clone an unlisted shared watchlist into the signed-in user's account
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.clone"
@@ -1499,8 +1574,7 @@ msgstr "Azienda"
 msgid "myJobs.group.company"
 msgstr "Azienda"
 
-#. Eyebrow label on a CompanyCard mention card (the small uppercase tag above
-#. the company name)
+#. Eyebrow label on a CompanyCard mention card (the small uppercase tag above the company name)
 #. js-lingui-explicit-id
 #: src/components/blog/MdxMentions.tsx
 msgid "blog.mention.company.eyebrow"
@@ -1620,12 +1694,6 @@ msgstr "Continua con LinkedIn"
 msgid "search.employmentType.contract"
 msgstr "Freelance"
 
-#. Cookies
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.short.r4"
-msgstr "Job Seek utilizza cookie essenziali per l’autenticazione. Il checkout Paddle e i relativi servizi di pagamento operano secondo l’informativa sulla privacy di Paddle."
-
 #. Toast shown briefly after the agent prompt is copied
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -1648,7 +1716,9 @@ msgstr "Copia il comando"
 #. Error after an unlisted watchlist link cannot be copied
 #. Error after an unlisted watchlist link cannot be copied
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx src/components/watchlist/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.shareFailed"
 msgstr "Copia non riuscita"
 
@@ -1697,7 +1767,8 @@ msgstr "Impossibile creare questa watchlist. Riprova."
 #. Error shown when deleting a watchlist fails
 #. Error shown when deleting a watchlist from its overview card fails
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.actions.deleteFailed"
 msgstr "Impossibile eliminare questa watchlist."
 
@@ -1718,6 +1789,14 @@ msgstr "Impossibile rimuovere questi criteri di corrispondenza. Riprova."
 #: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.updateFailed"
 msgstr "Impossibile salvare le modifiche."
+
+#. Pause setting save failure
+#. Pause setting save failure
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.error"
+msgstr "Impossibile salvare la preferenza. Riprova."
 
 #. Error after a watchlist alert preference cannot be updated
 #. js-lingui-explicit-id
@@ -1752,7 +1831,9 @@ msgstr "Impossibile aggiornare il colloquio. Riprova."
 #. Location type label for countries
 #. Location type label for countries
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx src/components/search/location-pills.tsx src/components/search/search-bar.tsx
+#: src/components/search/filter-bar.tsx
+#: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.country"
 msgstr "Paese"
 
@@ -1791,6 +1872,12 @@ msgstr "Crea un account gratuito per consultare tutti i risultati, salvare offer
 #: src/components/search/save-search-button.tsx
 msgid "search.saveSearch.tooltip"
 msgstr "Crea una watchlist dai tuoi filtri attuali"
+
+#. Empty notification settings link to watchlists
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.addWatchlist"
+msgstr "Crea una lista per scegliere quali annunci ricevere."
 
 #. Sign-up page heading
 #. js-lingui-explicit-id
@@ -1852,15 +1939,13 @@ msgstr "Giornaliero"
 msgid "settings.theme.dark"
 msgstr "Scuro"
 
-#. Meta description (under 160 chars) for the blog index page — covers data
-#. analyses + report breakdowns + news commentary
+#. Meta description (under 160 chars) for the blog index page — covers data analyses + report breakdowns + news commentary
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx
 msgid "blog.meta.description"
 msgstr "Analisi dei dati, novità e riepiloghi di report di settore — tratti dagli annunci di lavoro che monitoriamo nelle pagine carriere di migliaia di aziende."
 
-#. One-line tagline under the blog index <h1> — covers data analyses +
-#. reports/papers + news
+#. One-line tagline under the blog index <h1> — covers data analyses + reports/papers + news
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx
 msgid "blog.index.tagline"
@@ -1875,14 +1960,16 @@ msgstr "Data di salvataggio"
 #. Delete watchlist action
 #. Delete watchlist tooltip
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.actions.delete"
 msgstr "Elimina"
 
 #. Confirm delete watchlist
 #. Confirm delete watchlist
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.delete.confirm"
 msgstr "Elimina"
 
@@ -1920,7 +2007,8 @@ msgstr "Elimina il mio account"
 #. Delete watchlist confirmation title
 #. Delete watchlist confirmation title
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.delete.title"
 msgstr "Eliminare la lista di osservazione?"
 
@@ -1936,10 +2024,8 @@ msgstr "Eliminazione…"
 msgid "myJobs.interview.deleting"
 msgstr "Eliminazione…"
 
-#. Explains that entering AI criteria creates a watchlist from the focused
-#. search
-#. Explains that entering AI criteria creates a watchlist from the focused
-#. search
+#. Explains that entering AI criteria creates a watchlist from the focused search
+#. Explains that entering AI criteria creates a watchlist from the focused search
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.descriptionCreatesWatchlist"
@@ -2004,7 +2090,7 @@ msgstr "Direttamente dalla fonte"
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx
 msgid "watchlists.actions.disableAlerts"
-msgstr "Disattiva notifiche"
+msgstr "Disattiva le notifiche settimanali via e-mail"
 
 #. Disconnect social account button
 #. js-lingui-explicit-id
@@ -2036,6 +2122,12 @@ msgstr "Non hai un account? <0>Registrati</0>"
 msgid "terms.short.r3"
 msgstr "Niente scraping, candidature automatizzate o abuso della piattaforma."
 
+#. Expanded explanation of combined delivery and pause behavior
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.deliveryHelp"
+msgstr "Gli annunci duplicati appaiono una sola volta. Nessun risultato, nessuna email. Alla ripresa non vengono inviate le offerte del periodo di pausa."
+
 #. Example natural-language criteria for Jev
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -2047,7 +2139,10 @@ msgstr "es. Ruoli orientati al backend per strumenti di sviluppo. Escludi la ges
 #. Placeholder for the company request input field
 #. Placeholder for the company request input field
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.placeholder"
 msgstr "es. Stripe, oppure https://boards.greenhouse.io/stripe"
 
@@ -2073,9 +2168,22 @@ msgstr "Modifica richiesta"
 #. Email input label
 #. Email input label
 #. js-lingui-explicit-id
-#: app/[lang]/(auth)/forgot-password/page.tsx src/components/AuthForm.tsx
+#: app/[lang]/(auth)/forgot-password/page.tsx
+#: src/components/AuthForm.tsx
 msgid "auth.field.email"
 msgstr "E-mail"
+
+#. Paused notifications warning dialog heading
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.notifications.pausedTitle"
+msgstr "Le notifiche via e-mail sono sospese"
+
+#. Tooltip on inert notification control while globally paused
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.actions.globallyPaused"
+msgstr "Le notifiche via e-mail sono sospese. Riattivale nelle impostazioni."
 
 #. Email or username input label for sign-in
 #. js-lingui-explicit-id
@@ -2095,11 +2203,23 @@ msgstr "Email verificata"
 msgid "search.employmentTypeModal.title"
 msgstr "Tipo di impiego"
 
+#. Narrowed emails stay quiet until narrowing is re-enabled
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.inactivePrompt"
+msgstr "Attiva l’affinamento per riprendere questa lista."
+
+#. Save failure when narrowing is disabled or the subscription has expired
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.unavailable"
+msgstr "Attiva l’affinamento con un abbonamento attivo per questa lista, poi riprova."
+
 #. Enable alerts tooltip
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx
 msgid "watchlists.actions.enableAlerts"
-msgstr "Attiva notifiche"
+msgstr "Attiva le notifiche settimanali via e-mail"
 
 #. Scheduled cancellation status
 #. js-lingui-explicit-id
@@ -2171,7 +2291,8 @@ msgstr "Scopri le aziende"
 #. Hidden page H1 for /explore — screen-reader landmark
 #. Hidden page H1 for /explore — screen-reader landmark
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/search-page.tsx src/components/search/explore-skeleton.tsx
+#: app/[lang]/(app)/explore/search-page.tsx
+#: src/components/search/explore-skeleton.tsx
 msgid "explore.h1"
 msgstr "Esplora lavori"
 
@@ -2258,7 +2379,8 @@ msgstr "Impossibile aggiornare il nome utente"
 #. Nav link: FAQ
 #. Nav link: FAQ
 #. js-lingui-explicit-id
-#: src/components/Header.tsx src/components/MobileMenu.tsx
+#: src/components/Header.tsx
+#: src/components/MobileMenu.tsx
 msgid "common.nav.faq"
 msgstr "FAQ"
 
@@ -2271,7 +2393,8 @@ msgstr "FAQ"
 #. Nav link: Features
 #. Nav link: Features
 #. js-lingui-explicit-id
-#: src/components/Header.tsx src/components/MobileMenu.tsx
+#: src/components/Header.tsx
+#: src/components/MobileMenu.tsx
 msgid "common.nav.features"
 msgstr "Funzionalità"
 
@@ -2449,7 +2572,9 @@ msgstr "Contattaci"
 #. Hero primary call-to-action
 #. Hero primary call-to-action
 #. js-lingui-explicit-id
-#: src/components/Header.tsx src/components/Hero.tsx src/components/MobileMenu.tsx
+#: src/components/Header.tsx
+#: src/components/Hero.tsx
+#: src/components/MobileMenu.tsx
 msgid "home.hero.primaryCta"
 msgstr "Inizia ora"
 
@@ -2575,11 +2700,19 @@ msgstr "Come troviamo e processiamo gli annunci di lavoro"
 msgid "indexing.meta.title"
 msgstr "Come indicizziamo"
 
+#. Collapsed explanation of weekly email behavior
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.how"
+msgstr "Come funzionano le email"
+
 #. Work mode: hybrid (mixed onsite/remote)
 #. Work mode: hybrid (mixed onsite/remote)
 #. Work mode: hybrid (mixed onsite/remote)
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx src/components/search/search-toolbar.tsx src/components/search/work-mode-modal.tsx
+#: src/components/search/search-bar.tsx
+#: src/components/search/search-toolbar.tsx
+#: src/components/search/work-mode-modal.tsx
 msgid "search.workMode.hybrid"
 msgstr "Ibrido"
 
@@ -2607,9 +2740,7 @@ msgstr "Se noti attività impreviste del nostro crawler o preferisci che il tuo 
 msgid "indexing.outreach.body"
 msgstr "Se noti un comportamento anomalo del crawler, preferisci che non indicizziamo i tuoi contenuti o hai suggerimenti su come migliorare le nostre misure di sicurezza, contattaci."
 
-#. Tooltip on a disabled filter pill explaining the row is implied by an
-#. already-selected ancestor (e.g. 'Included in European Union' when EU is
-#. selected).
+#. Tooltip on a disabled filter pill explaining the row is implied by an already-selected ancestor (e.g. 'Included in European Union' when EU is selected).
 #. js-lingui-explicit-id
 #: src/components/search/disabled-filter-pill.tsx
 msgid "search.filterModal.includedInAncestor"
@@ -2632,7 +2763,10 @@ msgstr "Settore"
 #. Error when company request input is too long
 #. Error when company request input is too long
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.error.tooLong"
 msgstr "L'input è troppo lungo."
 
@@ -2641,12 +2775,14 @@ msgstr "L'input è troppo lungo."
 #. Error when company request input is too short
 #. Error when company request input is too short
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.error.tooShort"
 msgstr "L'input è troppo corto."
 
-#. About paragraph 2: how it works — leads with direct sourcing and watchlist
-#. ICP, no platform listing
+#. About paragraph 2: how it works — leads with direct sourcing and watchlist ICP, no platform listing
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.p2"
@@ -2757,7 +2893,8 @@ msgstr "Dati sugli annunci (CC BY-NC 4.0)"
 #. Job detail panel title
 #. Job detail panel title
 #. js-lingui-explicit-id
-#: src/components/search/job-detail-dialog.tsx src/components/search/mobile-job-detail-dialog.tsx
+#: src/components/search/job-detail-dialog.tsx
+#: src/components/search/mobile-job-detail-dialog.tsx
 msgid "search.detail.title"
 msgstr "Dettagli dell'offerta"
 
@@ -2822,6 +2959,12 @@ msgstr "Job Seek è in fase di sviluppo attivo. Resta aggiornato per le novità!
 msgid "about.p1"
 msgstr "Job Seek è sviluppato da Colophon Group, un piccolo team di sviluppatori con sede in Svizzera. L'abbiamo creato perché eravamo stanchi dello stesso problema che ogni persona in cerca di lavoro conosce: destreggiarsi tra decine di schede del browser, perdere nuove offerte perché un aggregatore era troppo lento, e annegare nel rumore algoritmico ottimizzato per i clic anziché per la rilevanza."
 
+#. Identifies the service operator and merchant of record
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.seller"
+msgstr "Job Seek è gestito da Viktor Shcherbakov con il nome Colophon Group. Paddle è il nostro rivenditore autorizzato e il venditore ufficiale degli abbonamenti Pro e gestisce pagamenti, imposte applicabili, assistenza alla fatturazione e rimborsi."
+
 #. JSON-LD page description for the public Privacy Policy page.
 #. SEO description for the public Privacy Policy page.
 #. js-lingui-explicit-id
@@ -2834,6 +2977,12 @@ msgstr "Informativa sulla privacy di Job Seek — dati personali raccolti, utili
 #: src/components/Features.tsx
 msgid "home.features.s1.screenshot.alt"
 msgstr "Risultati di ricerca Job Seek filtrati per ruolo e luogo"
+
+#. Cookies
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.short.r4"
+msgstr "Job Seek utilizza cookie essenziali per l’autenticazione. Il checkout Paddle e i relativi servizi di pagamento operano secondo l’informativa sulla privacy di Paddle."
 
 #. Alt text for feature section 3 screenshot
 #. js-lingui-explicit-id
@@ -2865,6 +3014,12 @@ msgstr "Lavori presso {name}"
 #: src/components/search/search-bar.tsx
 msgid "search.bar.keepAsKeywords"
 msgstr "Mantieni \"{0}\" come parole chiave"
+
+#. Dismiss paused notification warning without changing preference
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.notifications.dismiss"
+msgstr "Mantieni la pausa"
 
 #. Low-pressure alternative to purchasing Pro
 #. js-lingui-explicit-id
@@ -2992,19 +3147,19 @@ msgstr "Chiaro"
 #. Confirmation after copying an unlisted watchlist link
 #. Confirmation after copying an unlisted watchlist link
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx src/components/watchlist/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.copied"
 msgstr "Link copiato"
 
-#. Accessible heading shown when live Explore job results are unavailable and
-#. repository-owned company profile links are shown instead
+#. Accessible heading shown when live Explore job results are unavailable and repository-owned company profile links are shown instead
 #. js-lingui-explicit-id
 #: src/components/search/explore-repository-fallback.tsx
 msgid "explore.fallback.heading"
 msgstr "I risultati delle offerte di lavoro sono temporaneamente indisponibili."
 
-#. Screen-reader announcement while the company search modal is fetching
-#. results
+#. Screen-reader announcement while the company search modal is fetching results
 #. js-lingui-explicit-id
 #: src/components/watchlist/company-search-modal.tsx
 msgid "watchlists.companyModal.loading"
@@ -3016,10 +3171,8 @@ msgstr "Caricamento delle aziende"
 msgid "search.detail.loading"
 msgstr "Caricamento dei dettagli dell'offerta"
 
-#. Aria label and screen-reader announcement on the infinite-scroll sentinel
-#. that triggers fetching the next page of results
-#. Aria label and screen-reader announcement on the infinite-scroll sentinel
-#. that triggers fetching the next page of results
+#. Aria label and screen-reader announcement on the infinite-scroll sentinel that triggers fetching the next page of results
+#. Aria label and screen-reader announcement on the infinite-scroll sentinel that triggers fetching the next page of results
 #. js-lingui-explicit-id
 #: src/components/InfiniteScrollSentinel.tsx
 msgid "common.a11y.loadingMoreResults"
@@ -3040,7 +3193,8 @@ msgstr "Caricamento della watchlist…"
 #. Accessible loading status for the private watchlists overview route
 #. Accessible loading status for the private watchlists overview route
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/page.tsx app/[lang]/(app)/watchlists/watchlists-page.tsx
+#: app/[lang]/(app)/watchlists/page.tsx
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.load.loading"
 msgstr "Caricamento delle watchlist…"
 
@@ -3087,7 +3241,9 @@ msgstr "Sedi"
 #. Login button label
 #. Login button label
 #. js-lingui-explicit-id
-#: src/components/AppHeader.tsx src/components/search/ai-search-filter.tsx src/components/settings/account/LoginPrompt.tsx
+#: src/components/AppHeader.tsx
+#: src/components/search/ai-search-filter.tsx
+#: src/components/settings/account/LoginPrompt.tsx
 msgid "common.auth.login"
 msgstr "Accedi"
 
@@ -3106,14 +3262,16 @@ msgstr "Accedi per gestire gli avvisi"
 #. Disabled share tooltip for a browser-only watchlist
 #. Disabled share tooltip for a browser-only watchlist
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/watchlists-page.tsx src/components/watchlist/watchlist-action-bar.tsx
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
 msgid "watchlists.actions.loginToShare"
 msgstr "Accedi per condividere"
 
 #. Manage subscription button label
 #. Manage subscription button label
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx src/components/TermsContent.tsx
+#: src/components/settings/BillingSettings.tsx
+#: src/components/TermsContent.tsx
 msgid "settings.billing.manage"
 msgstr "Gestisci abbonamento"
 
@@ -3147,8 +3305,7 @@ msgstr "Segna come rifiutato"
 msgid "pro.example.match"
 msgstr "Corrisponde"
 
-#. Header for the server-side search-results cluster shown when the user types
-#. in the location modal search box
+#. Header for the server-side search-results cluster shown when the user types in the location modal search box
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx
 msgid "search.locationModal.searchHitsHeader"
@@ -3177,16 +3334,16 @@ msgstr "Max"
 #. Warning tooltip when the account-wide watchlist limit is reached
 #. Warning when precise matching would exceed the account watchlist limit
 #. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx src/components/search/save-search-button.tsx src/components/watchlist/watchlist-card.tsx src/components/watchlist/watchlist-view-page.tsx
+#: src/components/search/ai-search-filter.tsx
+#: src/components/search/save-search-button.tsx
+#: src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.card.limitReached"
 msgstr "Raggiunto il massimo di 10 watchlist"
 
-#. Notice that signed-out watchlists were discarded because the account is
-#. full
-#. Notice that signed-out watchlists were discarded because the account is
-#. full
-#. Notice that signed-out watchlists were discarded because the account is
-#. full
+#. Notice that signed-out watchlists were discarded because the account is full
+#. Notice that signed-out watchlists were discarded because the account is full
+#. Notice that signed-out watchlists were discarded because the account is full
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.pending.limitDiscarded"
@@ -3252,8 +3409,7 @@ msgstr "Sposta ogni posizione da salvata a candidata, in colloquio, offerta rice
 msgid "home.features.s1.p2.title"
 msgstr "Filtri multidimensionali"
 
-#. WebApplication JSON-LD feature list item about supported interface
-#. languages.
+#. WebApplication JSON-LD feature list item about supported interface languages.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx
 msgid "app.schema.feature.languages"
@@ -3264,7 +3420,10 @@ msgstr "Supporto multilingue"
 #. Warning when Enter is pressed but multiple items match
 #. Warning when Enter is pressed but multiple items match
 #. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx src/components/search/location-search-modal.tsx src/components/search/occupation-modal.tsx src/components/search/technology-modal.tsx
+#: src/components/search/location-modal.tsx
+#: src/components/search/location-search-modal.tsx
+#: src/components/search/occupation-modal.tsx
+#: src/components/search/technology-modal.tsx
 msgid "search.bestGuess.ambiguous"
 msgstr "Risultati multipli — selezionane uno qui sotto"
 
@@ -3290,7 +3449,9 @@ msgstr "I miei lavori"
 #. Default watchlist title when saving a search without descriptive filters
 #. Default watchlist title when saving a search without descriptive filters
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx app/[lang]/(app)/explore/search-page.tsx src/components/search/save-search-button.tsx
+#: app/[lang]/(app)/company/[slug]/company-page.tsx
+#: app/[lang]/(app)/explore/search-page.tsx
+#: src/components/search/save-search-button.tsx
 msgid "watchlists.savedSearch.defaultTitle"
 msgstr "La mia ricerca"
 
@@ -3343,14 +3504,19 @@ msgstr "Restringi prima la ricerca"
 msgid "search.aiFilter.reminder.title"
 msgstr "Affina questi risultati"
 
+#. Include only accepted results from the saved prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.narrowed"
+msgstr "Affinati"
+
 #. Name of the Pro feature; keep the product name Narrowed
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
 msgid "pro.pitch.feature"
 msgstr "Narrowed"
 
-#. State-neutral title of the scroll reminder for an already-narrowed
-#. watchlist
+#. State-neutral title of the scroll reminder for an already-narrowed watchlist
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.reminder.resultsTitle"
@@ -3374,8 +3540,13 @@ msgstr "Risultati affinati"
 msgid "app.schema.offer.pro"
 msgstr "Risultati Narrowed per le watchlist"
 
-#. Heading asking the viewer to sign in before creating a precisely matched
-#. watchlist
+#. Expanded explanation of narrowed email selection
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.narrowedHelp"
+msgstr "I risultati affinati seguono la tua richiesta salvata. L’email attende la fine della valutazione. Se l’affinamento non è disponibile, quella lista non invia risultati."
+
+#. Heading asking the viewer to sign in before creating a precisely matched watchlist
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.login.title"
@@ -3429,8 +3600,7 @@ msgstr "Prossimo rinnovo"
 msgid "company.page.noActivePostings"
 msgstr "Nessuna offerta attiva al momento."
 
-#. Accessible summary when the application activity heatmap has no non-zero
-#. days
+#. Accessible summary when the application activity heatmap has no non-zero days
 #. js-lingui-explicit-id
 #: src/components/my-jobs/activity-heatmap.tsx
 msgid "myJobs.heatmap.emptySummary"
@@ -3466,8 +3636,7 @@ msgstr "Nessun settore trovato."
 msgid "watchlists.jobList.empty"
 msgstr "Nessuna offerta trovata."
 
-#. Empty state when no jobs satisfy a watchlist's natural-language matching
-#. request
+#. Empty state when no jobs satisfy a watchlist's natural-language matching request
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
 msgid "watchlists.jobList.noPreciseMatches"
@@ -3587,18 +3756,31 @@ msgstr "Non candidato"
 msgid "actions.error.notFound"
 msgstr "Non trovato."
 
-#. Warning shown when the request was saved in DB but GitHub issue creation
-#. failed
+#. Warning shown when the request was saved in DB but GitHub issue creation failed
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.issueWarning"
 msgstr "Nota: Non siamo riusciti a creare un ticket di monitoraggio, ma la tua richiesta è stata salvata."
+
+#. Pause setting save confirmation
+#. Pause setting save confirmation
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.saved"
+msgstr "Preferenza di notifica salvata."
 
 #. Add occupation filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
 msgid "watchlists.filters.occupation"
 msgstr "Professione"
+
+#. Exclude this watchlist from the weekly email
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.off"
+msgstr "Disattivato"
 
 #. Application tracker status: offer
 #. js-lingui-explicit-id
@@ -3640,7 +3822,9 @@ msgstr "Ok"
 #. Work mode: onsite (in-office)
 #. Work mode: onsite (in-office)
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx src/components/search/search-toolbar.tsx src/components/search/work-mode-modal.tsx
+#: src/components/search/search-bar.tsx
+#: src/components/search/search-toolbar.tsx
+#: src/components/search/work-mode-modal.tsx
 msgid "search.workMode.onsite"
 msgstr "In sede"
 
@@ -3649,6 +3833,12 @@ msgstr "In sede"
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.ingestion.s4.body"
 msgstr "Una volta recuperato un singolo annuncio, memorizziamo solo i metadati specifici della posizione (titolo, descrizione del ruolo, sede, note sulla retribuzione, URL dell'annuncio e date) oltre ai campi strutturati estratti. Non archiviamo contenuti del sito non correlati."
+
+#. Explain consolidated weekly opt-in job emails
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.description"
+msgstr "Un’unica email con i risultati di tutte le tue liste attive."
 
 #. Username invalid characters hint
 #. js-lingui-explicit-id
@@ -3674,19 +3864,17 @@ msgstr "Ops, qualcosa è andato storto."
 msgid "pro.billing.use"
 msgstr "Apri una watchlist e scegli « Restringi i risultati ». Aggiungi i tuoi criteri, poi esplora gli annunci corrispondenti."
 
-#. Aria label for the row open-posting button when the posting title is
-#. missing
+#. Aria label for the row open-posting button when the posting title is missing
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
 msgid "watchlists.jobList.openPosting"
 msgstr "Apri offerta di lavoro"
 
-#. Aria label for opening a job posting from a company card row when the
-#. posting title is missing
-#. Aria label for opening a job posting from a company card row when the
-#. posting title is missing
+#. Aria label for opening a job posting from a company card row when the posting title is missing
+#. Aria label for opening a job posting from a company card row when the posting title is missing
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-posting-row.tsx src/components/search/company-card.tsx
+#: app/[lang]/(app)/company/[slug]/company-posting-row.tsx
+#: src/components/search/company-card.tsx
 msgid "search.card.openPosting"
 msgstr "Apri offerta di lavoro"
 
@@ -3695,6 +3883,12 @@ msgstr "Apri offerta di lavoro"
 #: src/components/Header.tsx
 msgid "common.header.openMenu"
 msgstr "Apri menu principale"
+
+#. Navigate from paused notification warning to settings
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.notifications.openSettings"
+msgstr "Apri le impostazioni delle notifiche"
 
 #. Generic SEO metadata text for positions on a company page.
 #. js-lingui-explicit-id
@@ -3750,16 +3944,13 @@ msgstr "o"
 msgid "settings.general.salary.period.original"
 msgstr "Originale"
 
-#. Fallback label for a country header in the location modal when the city has
-#. no parent country in the hierarchy. Rare path.
+#. Fallback label for a country header in the location modal when the city has no parent country in the hierarchy. Rare path.
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx
 msgid "search.locationModal.otherCountry"
 msgstr "Altro"
 
-#. Fallback label for a region row in the location modal when the region has
-#. no display name (e.g. orphaned cities). Rare path; only shown when a city's
-#. parent region in the hierarchy has no localized name.
+#. Fallback label for a region row in the location modal when the region has no display name (e.g. orphaned cities). Rare path; only shown when a city's parent region in the hierarchy has no localized name.
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx
 msgid "search.locationModal.otherRegion"
@@ -3801,6 +3992,30 @@ msgstr "Panoramica"
 msgid "license.toc.overview"
 msgstr "Panoramica"
 
+#. Link to Paddle buyer terms
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.buyerTerms"
+msgstr "Condizioni di acquisto di Paddle"
+
+#. Link to Paddle privacy notice
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.payments.notice"
+msgstr "Informativa sulla privacy di Paddle"
+
+#. Link to Paddle refund policy
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.policy"
+msgstr "Politica di rimborso di Paddle"
+
+#. Link to Paddle buyer support and refunds
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.support"
+msgstr "Assistenza e rimborsi Paddle"
+
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -3816,7 +4031,8 @@ msgstr "Contenuti della pagina"
 #. Heading shown on the 404 page
 #. Heading shown on the 404 page
 #. js-lingui-explicit-id
-#: app/[lang]/not-found-content.tsx app/[lang]/not-found.tsx
+#: app/[lang]/not-found-content.tsx
+#: app/[lang]/not-found.tsx
 msgid "notFound.title"
 msgstr "Pagina non trovata"
 
@@ -3875,11 +4091,29 @@ msgstr "Le password non corrispondono"
 msgid "app.home.request.description"
 msgstr "Inserisci il nome di un'azienda o l'URL di una pagina carriere e inizieremo a monitorare le loro offerte di lavoro."
 
+#. Global override switch label
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.pause"
+msgstr "Sospendi tutte"
+
 #. Paused subscription status
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.status.paused"
 msgstr "In pausa"
+
+#. Paused notification state and resume behavior
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.paused"
+msgstr "In pausa. Le scelte delle tue liste sono salvate."
+
+#. Expanded explanation of global pause and account emails
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.override"
+msgstr "La pausa mantiene le tue scelte. Le email di verifica e reimpostazione della password continuano ad arrivare."
 
 #. Label for pay period selector
 #. js-lingui-explicit-id
@@ -3959,7 +4193,10 @@ msgstr "Riprendi da dove hai lasciato. Fatturazione mensile."
 #. Error when company request input is empty
 #. Error when company request input is empty
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.error.empty"
 msgstr "Inserisci un nome di azienda o un URL."
 
@@ -3986,7 +4223,10 @@ msgstr "Inserisci una password"
 #. Error when company request input has no alphanumeric characters
 #. Error when company request input has no alphanumeric characters
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.error.invalid"
 msgstr "Inserisci un nome di azienda o un URL valido."
 
@@ -4026,8 +4266,7 @@ msgstr "Offerta non trovata."
 msgid "myJobs.detail.notFound"
 msgstr "Offerta non trovata."
 
-#. Accessible label for the compact precise-matching control between watchlist
-#. stats and results
+#. Accessible label for the compact precise-matching control between watchlist stats and results
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.controlPanel"
@@ -4042,14 +4281,16 @@ msgstr "La corrispondenza precisa è temporaneamente non disponibile"
 #. Nav link: Pricing
 #. Nav link: Pricing
 #. js-lingui-explicit-id
-#: src/components/Header.tsx src/components/MobileMenu.tsx
+#: src/components/Header.tsx
+#: src/components/MobileMenu.tsx
 msgid "common.nav.pricing"
 msgstr "Prezzi"
 
 #. Footer link to privacy policy page
 #. Footer link to privacy policy page
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx src/components/pro/ProPitch.tsx
+#: src/components/Footer.tsx
+#: src/components/pro/ProPitch.tsx
 msgid "common.footer.privacyLink"
 msgstr "Privacy"
 
@@ -4091,6 +4332,24 @@ msgstr "Pro"
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.accessUntil"
 msgstr "Accesso Pro fino al"
+
+#. Subscription scope and recurring trial terms
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.offer"
+msgstr "Pro aggiunge i risultati Narrowed alle watchlist. Gli account idonei ricevono sette giorni gratuiti, poi pagano 10 USD al mese più le imposte applicabili indicate al pagamento. È richiesto un metodo di pagamento. L’abbonamento si rinnova automaticamente fino alla disdetta; chi si riabbona non riceve un’altra prova."
+
+#. Payment data privacy heading
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.payments.title"
+msgstr "Pagamenti Pro"
+
+#. Paid subscription terms heading
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.title"
+msgstr "Abbonamenti Pro e pagamenti"
 
 #. Fallback credit text for public domain artwork
 #. js-lingui-explicit-id
@@ -4164,24 +4423,38 @@ msgstr "Registra ogni round di colloquio con data, tipo e note così non ti sfug
 msgid "license.code.r2"
 msgstr "Ridistribuire le proprie modifiche, a condizione di includere l'avviso MIT."
 
+#. Public refund policy heading
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.title"
+msgstr "Politica di rimborso"
+
+#. Footer link to refund policy
+#. Footer link to refund policy
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx
+#: src/components/pro/ProPitch.tsx
+msgid "common.footer.refundsLink"
+msgstr "Rimborsi"
+
 #. Location type label for macro-regions
 #. Location type label for macro-regions
 #. Location type label for regions
 #. Location type label for regions
 #. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx src/components/search/location-pills.tsx src/components/search/search-bar.tsx
+#: src/components/search/filter-bar.tsx
+#: src/components/search/location-pills.tsx
+#: src/components/search/search-bar.tsx
 msgid "location.type.region"
 msgstr "Regione"
 
-#. Header for the macro-region cluster (EU, EMEA, DACH) in company-page
-#. location modal
+#. Header for the macro-region cluster (EU, EMEA, DACH) in company-page location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-modal.tsx
 msgid "company.locationModal.regionsHeader"
 msgstr "Regioni"
 
-#. Header for the macro-region cluster (EU, EMEA, DACH) at the top of the
-#. location modal
+#. Header for the macro-region cluster (EU, EMEA, DACH) at the top of the location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx
 msgid "search.locationModal.regionsHeader"
@@ -4227,7 +4500,9 @@ msgstr "Rilasciato sotto licenza MIT. I dati sugli annunci sono CC BY-NC 4.0."
 #. Work mode: remote (work-from-home)
 #. Work mode: remote (work-from-home)
 #. js-lingui-explicit-id
-#: src/components/search/search-bar.tsx src/components/search/search-toolbar.tsx src/components/search/work-mode-modal.tsx
+#: src/components/search/search-bar.tsx
+#: src/components/search/search-toolbar.tsx
+#: src/components/search/work-mode-modal.tsx
 msgid "search.workMode.remote"
 msgstr "Remoto"
 
@@ -4238,64 +4513,47 @@ msgstr "Remoto"
 msgid "search.aiFilter.remove.short"
 msgstr "Rimuovi"
 
-#. Aria label for the X button that removes a company pill; {name} is the
-#. company name
+#. Aria label for the X button that removes a company pill; {name} is the company name
 #. js-lingui-explicit-id
 #. placeholder {0}: company.name
 #: src/components/watchlist/company-pill.tsx
 msgid "watchlists.companyPill.remove"
 msgstr "Rimuovi {0}"
 
-#. Aria label for the X button that removes a filter pill; {name} is the
-#. filter value
-#. Aria label for the X button that removes a filter pill; {name} is the
-#. filter value
+#. Aria label for the X button that removes a filter pill; {name} is the filter value
+#. Aria label for the X button that removes a filter pill; {name} is the filter value
 #. js-lingui-explicit-id
 #. placeholder {0}: pill.filter.name
 #: src/components/search/filter-bar.tsx
 msgid "company.page.removeFilter"
 msgstr "Rimuovi filtro {0}"
 
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the
-#. filter value
+#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
+#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
+#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
+#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
+#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
+#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
+#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
 msgid "watchlists.filters.removeFilter"
 msgstr "Rimuovi filtro {name}"
 
-#. Aria label for remove-filter X button on a filter pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a filter pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a filter pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a filter pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a filter pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a filter pill; {name} is the
-#. filter value
-#. Aria label for remove-filter X button on a filter pill; {name} is the
-#. filter value
+#. Aria label for remove-filter X button on a filter pill; {name} is the filter value
+#. Aria label for remove-filter X button on a filter pill; {name} is the filter value
+#. Aria label for remove-filter X button on a filter pill; {name} is the filter value
+#. Aria label for remove-filter X button on a filter pill; {name} is the filter value
+#. Aria label for remove-filter X button on a filter pill; {name} is the filter value
+#. Aria label for remove-filter X button on a filter pill; {name} is the filter value
+#. Aria label for remove-filter X button on a filter pill; {name} is the filter value
 #. js-lingui-explicit-id
-#: src/components/search/filter-pills-readonly.tsx src/components/search/search-toolbar.tsx
+#: src/components/search/filter-pills-readonly.tsx
+#: src/components/search/search-toolbar.tsx
 msgid "search.filters.removeFilter"
 msgstr "Rimuovi filtro {name}"
 
-#. Aria label for the X button that clears the experience-range watchlist
-#. filter
+#. Aria label for the X button that clears the experience-range watchlist filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
 msgid "watchlists.filters.removeExperience"
@@ -4304,7 +4562,8 @@ msgstr "Rimuovi filtro esperienza"
 #. Aria label for the X button that clears the experience-range filter
 #. Aria label for the X button that clears the experience-range filter
 #. js-lingui-explicit-id
-#: src/components/search/filter-pills-readonly.tsx src/components/search/search-toolbar.tsx
+#: src/components/search/filter-pills-readonly.tsx
+#: src/components/search/search-toolbar.tsx
 msgid "search.filters.removeExperience"
 msgstr "Rimuovi filtro esperienza"
 
@@ -4314,8 +4573,7 @@ msgstr "Rimuovi filtro esperienza"
 msgid "search.keywords.remove"
 msgstr "Rimuovi parola chiave"
 
-#. Aria label for the X button that removes a keyword filter pill; {name} is
-#. the keyword
+#. Aria label for the X button that removes a keyword filter pill; {name} is the keyword
 #. js-lingui-explicit-id
 #. placeholder {0}: pill.filter.value
 #: src/components/search/filter-bar.tsx
@@ -4325,7 +4583,8 @@ msgstr "Rimuovi parola chiave {0}"
 #. Aria label for remove-keyword X button; {name} is the keyword
 #. Aria label for remove-keyword X button; {name} is the keyword
 #. js-lingui-explicit-id
-#: src/components/search/filter-pills-readonly.tsx src/components/search/search-toolbar.tsx
+#: src/components/search/filter-pills-readonly.tsx
+#: src/components/search/search-toolbar.tsx
 msgid "search.filters.removeKeyword"
 msgstr "Rimuovi parola chiave {name}"
 
@@ -4335,8 +4594,7 @@ msgstr "Rimuovi parola chiave {name}"
 msgid "search.locations.remove"
 msgstr "Rimuovi località"
 
-#. Aria label for the X button that removes a location filter pill; {name} is
-#. the location label
+#. Aria label for the X button that removes a location filter pill; {name} is the location label
 #. js-lingui-explicit-id
 #. placeholder {0}: pill.filter.name
 #: src/components/search/filter-bar.tsx
@@ -4347,7 +4605,8 @@ msgstr "Rimuovi località {0}"
 #. Aria label for remove-location X button; {name} is the location label
 #. Aria label for remove-location X button; {name} is the location label
 #. js-lingui-explicit-id
-#: src/components/search/filter-pills-readonly.tsx src/components/search/search-toolbar.tsx
+#: src/components/search/filter-pills-readonly.tsx
+#: src/components/search/search-toolbar.tsx
 msgid "search.filters.removeLocation"
 msgstr "Rimuovi località {name}"
 
@@ -4368,7 +4627,8 @@ msgstr "Rimuovi filtro stipendio"
 #. Aria label for the X button that clears the salary-range filter
 #. Aria label for the X button that clears the salary-range filter
 #. js-lingui-explicit-id
-#: src/components/search/filter-pills-readonly.tsx src/components/search/search-toolbar.tsx
+#: src/components/search/filter-pills-readonly.tsx
+#: src/components/search/search-toolbar.tsx
 msgid "search.filters.removeSalary"
 msgstr "Rimuovi filtro stipendio"
 
@@ -4378,8 +4638,7 @@ msgstr "Rimuovi filtro stipendio"
 msgid "pro.offer.repeatTerms"
 msgstr "Si rinnova mensilmente fino all’annullamento. Non è inclusa una nuova prova gratuita."
 
-#. Synthetic dropdown row that lets the user request a company that's not in
-#. the catalog
+#. Synthetic dropdown row that lets the user request a company that's not in the catalog
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
 msgid "search.bar.request"
@@ -4391,21 +4650,25 @@ msgstr "Richiedi \\\"{trimmedInput}\\\""
 msgid "companies.request.heading.generic"
 msgstr "Richiedi un'azienda"
 
+#. Refund request process without restricting statutory rights
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.request"
+msgstr "Richiedi un rimborso o esercita un diritto di recesso applicabile tramite l’assistenza Paddle o il link di assistenza nella ricevuta. Paddle valuta e gestisce le richieste secondo la propria politica di rimborso. I tuoi diritti inderogabili di consumatore restano invariati."
+
 #. Feature: request companies title
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s3.p2.title"
 msgstr "Richiedi qualsiasi azienda"
 
-#. Success message after submitting a company request, with link to GitHub
-#. issue for tracking
+#. Success message after submitting a company request, with link to GitHub issue for tracking
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.success.withIssue"
 msgstr "Richiesta inviata! Segui i progressi qui:"
 
-#. Success message when request was saved but GitHub issue could not be
-#. created
+#. Success message when request was saved but GitHub issue could not be created
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.success.noIssue"
@@ -4465,15 +4728,19 @@ msgstr "Reimpostazione…"
 msgid "indexing.assurances.i1.title"
 msgstr "Ritmo rispettoso."
 
-#. Prompt to review uncertain city or occupation matches in the proposed
-#. search filters
+#. Global pause prevents changes to individual watchlist choices
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.resumeFirst"
+msgstr "Riattiva le notifiche email qui sopra per modificare le scelte delle tue liste."
+
+#. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
 msgid "search.bar.reviewSuggestedFilters"
 msgstr "Controlla le corrispondenze incerte qui sotto"
 
-#. Loading state while a saved matching request is evaluated against a
-#. watchlist
+#. Loading state while a saved matching request is evaluated against a watchlist
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
 msgid "watchlists.jobList.evaluating"
@@ -4599,8 +4866,7 @@ msgstr "Salvato"
 msgid "myJobs.group.saved"
 msgstr "Salvato"
 
-#. Compact warning above anonymous watchlists stored in the current browser
-#. tab
+#. Compact warning above anonymous watchlists stored in the current browser tab
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.pending.collectionWarning"
@@ -4841,6 +5107,12 @@ msgstr "Imposta password"
 msgid "search.aiFilter.setup"
 msgstr "Configura"
 
+#. Link to add a saved narrow-results prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.setupPrompt"
+msgstr "Configura affinamento"
+
 #. Set password button while loading
 #. js-lingui-explicit-id
 #: src/components/settings/account/PasswordSection.tsx
@@ -4863,7 +5135,9 @@ msgstr "Impostazioni"
 #. Action to share a watchlist by unlisted link
 #. Action to share a watchlist by unlisted link
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx src/components/watchlist/watchlist-view-page.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.actions.share"
 msgstr "Condividi"
 
@@ -4873,8 +5147,19 @@ msgstr "Condividi"
 msgid "watchlists.pending.cloneTitle"
 msgstr "Copia della watchlist condivisa"
 
-#. Action shown when fresher Explore results are available without
-#. interrupting the current feed
+#. Expand all filters in a compact preview
+#. js-lingui-explicit-id
+#: src/components/search/filter-pills-readonly.tsx
+msgid "search.filters.showAll"
+msgstr "Mostra tutti i filtri"
+
+#. Collapse a compact filter preview
+#. js-lingui-explicit-id
+#: src/components/search/filter-pills-readonly.tsx
+msgid "search.filters.showFewer"
+msgstr "Mostra meno filtri"
+
+#. Action shown when fresher Explore results are available without interrupting the current feed
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/explore/search-page.tsx
 msgid "explore.results.showLatest"
@@ -4934,8 +5219,7 @@ msgstr "Accedi"
 msgid "auth.resetPassword.success.signIn"
 msgstr "Accedi"
 
-#. Title on the sign-in CTA card shown to anonymous users at the end of the
-#. similar-companies strip
+#. Title on the sign-in CTA card shown to anonymous users at the end of the similar-companies strip
 #. js-lingui-explicit-id
 #: src/components/company/similar-companies-strip.tsx
 msgid "company.similar.signIn.title"
@@ -5012,7 +5296,10 @@ msgstr "Qualcosa è andato storto"
 #. Generic error when company request fails
 #. Generic error when company request fails
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.error.unknown"
 msgstr "Qualcosa è andato storto. Riprova."
 
@@ -5022,8 +5309,7 @@ msgstr "Qualcosa è andato storto. Riprova."
 msgid "auth.forgotPassword.error.generic"
 msgstr "Qualcosa è andato storto. Riprova."
 
-#. Companies-request page heading when a company name was supplied via query
-#. string
+#. Companies-request page heading when a company name was supplied via query string
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/companies/request/page.tsx
 msgid "companies.request.heading.named"
@@ -5078,8 +5364,7 @@ msgstr "Stato"
 msgid "home.features.s2.p1.title"
 msgstr "Tracciamento dello stato"
 
-#. Footer shown on the agent-prompt success card after 30 minutes of polling
-#. without seeing the run complete
+#. Footer shown on the agent-prompt success card after 30 minutes of polling without seeing the run complete
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.givenUpLabel"
@@ -5090,7 +5375,10 @@ msgstr "Ancora in esecuzione… ricontrolla più tardi."
 #. Submit button for the company request form
 #. Submit button for the company request form
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.submit"
 msgstr "Invia"
 
@@ -5099,7 +5387,10 @@ msgstr "Invia"
 #. Submit button while request is in progress
 #. Submit button while request is in progress
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.submitting"
 msgstr "Invio in corso..."
 
@@ -5169,8 +5460,7 @@ msgstr "Tecnologia"
 msgid "search.advanced.technology"
 msgstr "Tecnologia"
 
-#. Companies-request page body paragraph explaining the agent-driven request
-#. flow
+#. Companies-request page body paragraph explaining the agent-driven request flow
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/companies/request/page.tsx
 msgid "companies.request.body"
@@ -5185,7 +5475,8 @@ msgstr "Temporaneo"
 #. Footer link to terms of service page
 #. Footer link to terms of service page
 #. js-lingui-explicit-id
-#: src/components/Footer.tsx src/components/pro/ProPitch.tsx
+#: src/components/Footer.tsx
+#: src/components/pro/ProPitch.tsx
 msgid "common.footer.termsLink"
 msgstr "Termini"
 
@@ -5221,8 +5512,7 @@ msgstr "Termini di servizio di Job Seek — regole d'uso, proprietà intellettua
 msgid "actions.error.invalidStatusTransition"
 msgstr "Questa modifica dello stato non è consentita."
 
-#. Body text for the company-not-found page; explains the company is either
-#. gone or never existed
+#. Body text for the company-not-found page; explains the company is either gone or never existed
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/not-found.tsx
 msgid "company.notFound.body"
@@ -5330,8 +5620,7 @@ msgstr "Questo nome utente è riservato"
 msgid "actions.error.usernameReserved"
 msgstr "Questo nome utente è riservato."
 
-#. Body text for the watchlist-not-found page; explains the watchlist is
-#. either gone or private
+#. Body text for the watchlist-not-found page; explains the watchlist is either gone or private
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/not-found.tsx
 msgid "watchlist.notFound.body"
@@ -5340,7 +5629,8 @@ msgstr "Questa watchlist non esiste o non è pubblica."
 #. Delete watchlist confirmation description
 #. Delete watchlist confirmation description
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx src/components/watchlist/watchlist-card.tsx
+#: src/components/watchlist/watchlist-action-bar.tsx
+#: src/components/watchlist/watchlist-card.tsx
 msgid "watchlists.delete.description"
 msgstr "Questa lista di osservazione e tutte le sue impostazioni verranno eliminate definitivamente. Questa azione non può essere annullata."
 
@@ -5411,8 +5701,7 @@ msgstr "Riprova"
 msgid "search.unavailable.body"
 msgstr "Prova ad aggiornare la pagina."
 
-#. Try-again guidance shown above company profile links when live Explore job
-#. results are unavailable
+#. Try-again guidance shown above company profile links when live Explore job results are unavailable
 #. js-lingui-explicit-id
 #: src/components/search/explore-repository-fallback.tsx
 msgid "explore.fallback.body"
@@ -5441,12 +5730,6 @@ msgstr "Digita lo slug e premi Invio"
 #: app/[lang]/(app)/progress/progress-loader.tsx
 msgid "app.home.title"
 msgstr "In fase di sviluppo"
-
-#. Your rights intro
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.rights.intro"
-msgstr "Puoi richiedere l’accesso, la rettifica, la cancellazione o l’esportazione dei dati oppure opporti al trattamento ove applicabile. L’eliminazione dell’account rimuove i tuoi dati dal nostro database entro 30 giorni. Paddle può conservare i dati delle transazioni per adempiere ai propri obblighi legali."
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
@@ -5496,8 +5779,7 @@ msgstr "Upgrade necessario"
 msgid "pro.offer.monthly"
 msgstr "10 USD / mese"
 
-#. FAQ answer explaining how to request a missing company from the Explore
-#. page.
+#. FAQ answer explaining how to request a missing company from the Explore page.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.requestCompany"
@@ -5563,6 +5845,12 @@ msgstr "Verifica fallita"
 msgid "auth.verify.error.title"
 msgstr "Verifica fallita"
 
+#. Notification eligibility explanation
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.verify"
+msgstr "Verifica il tuo indirizzo e-mail per ricevere le notifiche di lavoro."
+
 #. Shown while verifying email token
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx
@@ -5594,8 +5882,7 @@ msgstr "Vedi offerta"
 msgid "search.employmentType.volunteer"
 msgstr "Volontariato"
 
-#. Footer shown on the agent-prompt success card while we wait for the user's
-#. agent to complete the Murmur run
+#. Footer shown on the agent-prompt success card while we wait for the user's agent to complete the Murmur run
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.pollingLabel"
@@ -5622,7 +5909,8 @@ msgstr "Liste di osservazione"
 #. Link from an owned watchlist detail back to the private overview
 #. Title of the private watchlists page
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/watchlists/[watchlistId]/page.tsx app/[lang]/(app)/watchlists/watchlists-page.tsx
+#: app/[lang]/(app)/watchlists/[watchlistId]/page.tsx
+#: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.page.title"
 msgstr "Liste di osservazione"
 
@@ -5632,8 +5920,7 @@ msgstr "Liste di osservazione"
 msgid "home.features.s1.p3.title"
 msgstr "Watchlist e avvisi"
 
-#. WebApplication JSON-LD feature list item about watchlists and application
-#. tracking.
+#. WebApplication JSON-LD feature list item about watchlists and application tracking.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx
 msgid "app.schema.feature.watchlists"
@@ -5693,8 +5980,7 @@ msgstr "Non vendiamo, affittiamo o condividiamo i tuoi dati per scopi di marketi
 msgid "faq.a.differentiation"
 msgstr "Indicizziamo le pagine carriere delle aziende direttamente, non feed di terze parti. Niente spam dei recruiter, nessun annuncio fantasma ripubblicato, e ricontrolliamo le aziende frequentemente — così la maggior parte delle posizioni appare qui entro poche ore dalla pubblicazione. Siamo costruiti per chi sa già in quali aziende vuole lavorare, non per ricerche generiche del tipo «trovami un lavoro qualsiasi»."
 
-#. FAQ answer accurately summarizing robots handling, request identity,
-#. pacing, and TDM policy.
+#. FAQ answer accurately summarizing robots handling, request identity, pacing, and TDM policy.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.crawlingPolicy"
@@ -5712,8 +5998,7 @@ msgstr "Cerchiamo una sitemap che elenchi già tutte le pagine carriere o di det
 msgid "indexing.ingestion.description"
 msgstr "Cerchiamo feed strutturati prima di fare scraping dell'HTML grezzo. Prima controlliamo le sitemap, poi le API JSON lato client, e analizziamo le pagine complete solo quando nessuno dei due è disponibile."
 
-#. Feature: direct from source description — no platform names, leads with the
-#. ICP differentiator
+#. Feature: direct from source description — no platform names, leads with the ICP differentiator
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s1.p1.description"
@@ -5773,12 +6058,17 @@ msgstr "Inizieremo a monitorarla"
 msgid "settings.billing.processing"
 msgstr "Stiamo confermando il tuo abbonamento. Se il piano non è ancora aggiornato, aggiorna la pagina tra poco."
 
-#. Heading prefix on the agent-prompt success card; followed by the company
-#. name
+#. Heading prefix on the agent-prompt success card; followed by the company name
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.headingPrefix"
 msgstr "Stiamo lavorando per aggiungere"
+
+#. Weekly job email settings heading
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.title"
+msgstr "Email settimanale"
 
 #. Sign-in page subtitle
 #. js-lingui-explicit-id
@@ -5840,8 +6130,7 @@ msgstr "Modalità di lavoro"
 msgid "search.advanced.workMode"
 msgstr "Modalità di lavoro"
 
-#. Section header for work-mode (onsite/hybrid/remote) suggestions in search
-#. bar
+#. Section header for work-mode (onsite/hybrid/remote) suggestions in search bar
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
 msgid "search.bar.workMode"
@@ -5927,6 +6216,12 @@ msgstr "Puoi eliminare il tuo account in qualsiasi momento."
 msgid "license.data.r3"
 msgstr "È possibile rielaborare/trasformare i dati per ricerche o dashboard personali."
 
+#. Your rights intro
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.rights.intro"
+msgstr "Puoi richiedere l’accesso, la rettifica, la cancellazione o l’esportazione dei dati oppure opporti al trattamento ove applicabile. L’eliminazione dell’account rimuove i tuoi dati dal nostro database entro 30 giorni. Paddle può conservare i dati delle transazioni per adempiere ai propri obblighi legali."
+
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -5939,8 +6234,7 @@ msgstr "Puoi velocizzare il processo chiedendo al tuo agente AI di completarlo t
 msgid "license.code.summary"
 msgstr "È possibile utilizzare, modificare e ridistribuire il codice in prodotti personali o commerciali a condizione di includere l'avviso di copyright e licenza."
 
-#. Heading above the 'you may also be interested in' cross-link block at the
-#. bottom of a blog post
+#. Heading above the 'you may also be interested in' cross-link block at the bottom of a blog post
 #. js-lingui-explicit-id
 #: src/components/blog/RelatedPosts.tsx
 msgid "blog.post.relatedPosts.heading"
@@ -5964,9 +6258,7 @@ msgstr "Devi avere almeno 16 anni per usare Job Seek."
 msgid "settings.account.password.setDescription"
 msgstr "Hai effettuato l'accesso con un account social. Imposta una password per abilitare le modifiche email e maggiore sicurezza."
 
-#. Footnote on the agent-prompt success card explaining that the user must
-#. replace the literal placeholder <token-from-jobseek-team> with a token
-#. handed out by the jobseek team before running the install command
+#. Footnote on the agent-prompt success card explaining that the user must replace the literal placeholder <token-from-jobseek-team> with a token handed out by the jobseek team before running the install command
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.token_caveat"
@@ -5978,23 +6270,21 @@ msgstr "Avrai bisogno di un token dal team di Jobseek — sostituisci <token-fro
 msgid "pro.offer.signIn"
 msgstr "Prima accedi, poi prosegui al pagamento."
 
-#. Message shown when the user has hit the per-hour limit on triggering Murmur
-#. company-add runs
+#. Message shown when the user has hit the per-hour limit on triggering Murmur company-add runs
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.rateLimited"
 msgstr "Hai raggiunto il limite orario per le richieste di aziende. Riprova più tardi."
 
-#. Error when the user has hit the per-hour limit on company-request
-#. submissions
-#. Error when the user has hit the per-hour limit on company-request
-#. submissions
-#. Error when the user has hit the per-hour limit on company-request
-#. submissions
-#. Error when the user has hit the per-hour limit on company-request
-#. submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
+#. Error when the user has hit the per-hour limit on company-request submissions
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/companies/request/company-request-page-form.tsx app/[lang]/(app)/explore/company-request-form.tsx app/[lang]/(app)/progress/company-request-form.tsx src/components/search/request-company.tsx
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+#: app/[lang]/(app)/explore/company-request-form.tsx
+#: app/[lang]/(app)/progress/company-request-form.tsx
+#: src/components/search/request-company.tsx
 msgid "app.home.request.error.rateLimited"
 msgstr "Hai raggiunto il limite orario per le richieste di aziende. Riprova più tardi."
 
@@ -6010,8 +6300,7 @@ msgstr "Il tuo acquisto è ancora in elaborazione. Aggiorna questa pagina tra po
 msgid "home.features.s3.eyebrow"
 msgstr "Le tue aziende, le tue regole"
 
-#. Explanation that a free clone keeps ordinary filters but cannot use the
-#. shared narrowed feed
+#. Explanation that a free clone keeps ordinary filters but cannot use the shared narrowed feed
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.clone.narrowedFree.description"
@@ -6053,11 +6342,23 @@ msgstr "I tuoi criteri.<0/>Una lista più breve."
 msgid "auth.verify.success.description"
 msgstr "La tua email è stata verificata."
 
+#. Data exchanged with Paddle and stored by Job Seek
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.payments.data"
+msgstr "La tua email viene fornita a Paddle al checkout. Paddle raccoglie direttamente i dati di pagamento, l’indirizzo di fatturazione e i dati fiscali. Conserviamo i riferimenti cliente e abbonamento, l’utilizzo della prova, lo stato e le date di fatturazione per gestire l’accesso Pro. Non conserviamo numeri completi di carte o codici di sicurezza."
+
 #. Label for the trial end date
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.trialUntil"
 msgstr "La tua prova gratuita termina il"
+
+#. Explain why watchlist toggle is inert and link to global setting
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-action-bar.tsx
+msgid "watchlists.notifications.pausedDescription"
+msgstr "L’impostazione globale si applica a tutte le liste. Riattiva le notifiche via e-mail nelle impostazioni per modificare questa scelta. Le preferenze salvate restano invariate."
 
 #. Reassures that core job search features stay free
 #. js-lingui-explicit-id
@@ -6106,94 +6407,3 @@ msgstr "Le tue watchlist, le offerte salvate e gli avvisi email sono ancora qui.
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.ready"
 msgstr "Le tue watchlist, un po’ più mirate."
-
-#. Paddle independently handles buyer data
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.payments.controller"
-msgstr "In qualità di venditore ufficiale, Paddle tratta i dati degli acquirenti per pagamenti, imposte, prevenzione delle frodi, assistenza alla fatturazione e rimborsi secondo la propria informativa sulla privacy. L’eliminazione dell’account Job Seek non cancella i dati che Paddle deve conservare."
-
-#. How and when subscription cancellation takes effect
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.billing.cancel"
-msgstr "Disdici prima della fine della prova per evitare il primo addebito. Usa Impostazioni → Abbonamento → Gestisci abbonamento, il link nella ricevuta o l’assistenza Paddle. La normale disdetta mantiene l’accesso fino alla data indicata nelle impostazioni dell’abbonamento. L’eliminazione dell’account interrompe immediatamente fatturazione e accesso."
-
-#. Explains cancellation is separate from requesting a refund
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.refunds.cancel"
-msgstr "La disdetta interrompe i rinnovi futuri, ma non invia automaticamente una richiesta di rimborso. Per problemi con Job Seek, contattaci all’indirizzo email qui sotto."
-
-#. Identifies the service operator and merchant of record
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.billing.seller"
-msgstr "Job Seek è gestito da Viktor Shcherbakov con il nome Colophon Group. Paddle è il nostro rivenditore autorizzato e il venditore ufficiale degli abbonamenti Pro e gestisce pagamenti, imposte applicabili, assistenza alla fatturazione e rimborsi."
-
-#. Link to Paddle buyer terms
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.billing.buyerTerms"
-msgstr "Condizioni di acquisto di Paddle"
-
-#. Link to Paddle privacy notice
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.payments.notice"
-msgstr "Informativa sulla privacy di Paddle"
-
-#. Link to Paddle refund policy
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.refunds.policy"
-msgstr "Politica di rimborso di Paddle"
-
-#. Link to Paddle buyer support and refunds
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.refunds.support"
-msgstr "Assistenza e rimborsi Paddle"
-
-#. Subscription scope and recurring trial terms
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.billing.offer"
-msgstr "Pro aggiunge i risultati Narrowed alle watchlist. Gli account idonei ricevono sette giorni gratuiti, poi pagano 10 USD al mese più le imposte applicabili indicate al pagamento. È richiesto un metodo di pagamento. L’abbonamento si rinnova automaticamente fino alla disdetta; chi si riabbona non riceve un’altra prova."
-
-#. Payment data privacy heading
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.payments.title"
-msgstr "Pagamenti Pro"
-
-#. Paid subscription terms heading
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.billing.title"
-msgstr "Abbonamenti Pro e pagamenti"
-
-#. Public refund policy heading
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.refunds.title"
-msgstr "Politica di rimborso"
-
-#. Footer link to refund policy
-#. Footer link to refund policy
-#. js-lingui-explicit-id
-#: src/components/Footer.tsx src/components/pro/ProPitch.tsx
-msgid "common.footer.refundsLink"
-msgstr "Rimborsi"
-
-#. Refund request process without restricting statutory rights
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.refunds.request"
-msgstr "Richiedi un rimborso o esercita un diritto di recesso applicabile tramite l’assistenza Paddle o il link di assistenza nella ricevuta. Paddle valuta e gestisce le richieste secondo la propria politica di rimborso. I tuoi diritti inderogabili di consumatore restano invariati."
-
-#. Data exchanged with Paddle and stored by Job Seek
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.payments.data"
-msgstr "La tua email viene fornita a Paddle al checkout. Paddle raccoglie direttamente i dati di pagamento, l’indirizzo di fatturazione e i dati fiscali. Conserviamo i riferimenti cliente e abbonamento, l’utilizzo della prova, lo stato e le date di fatturazione per gestire l’accesso Pro. Non conserviamo numeri completi di carte o codici di sicurezza."

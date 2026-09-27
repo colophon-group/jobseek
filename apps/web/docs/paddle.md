@@ -57,7 +57,7 @@ administration permissions are setup-only; use a scoped runtime key at launch.
 
 ## Persistence and access
 
-Apply additive migration `0095_paddle_billing` before enabling Paddle runtime
+Apply additive migration `0096_paddle_billing` before enabling Paddle runtime
 configuration. It is registered in the routine migration journal and registry.
 Do not run schema push against production. Follow the existing routine migration
 workflow and bind its confirmation to the reviewed commit and SQL hash.

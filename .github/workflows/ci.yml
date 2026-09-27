@@ -477,6 +477,22 @@ jobs:
     if: needs.changes.outputs.crawler_code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: crawler
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      GO_TYPESENSE_TEST_DATABASE_URL: postgresql://crawler:crawler@localhost:5432/crawler?sslmode=disable
     defaults:
       run:
         working-directory: apps/crawler/go/typesense-exporter
@@ -1077,6 +1093,19 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: jobseek_notification_fixture
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d jobseek_notification_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     # `packages/mcp-server/package.json` has `"prepare": "tsc"`, so
     # `pnpm install --frozen-lockfile` below builds `dist/` automatically.
     # No explicit `pnpm --filter @jseek/mcp-server build` step is needed.
@@ -1101,6 +1130,13 @@ jobs:
       - run: >
           pnpm --filter @jobseek/web exec vitest run
           --exclude src/lib/search/__tests__/typesense.e2e.test.ts
+
+      - name: Verify notification delivery transactions against PostgreSQL
+        env:
+          NOTIFICATION_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/jobseek_notification_fixture
+        run: >-
+          pnpm --filter @jobseek/web exec vitest run
+          src/lib/services/__tests__/notification-delivery-pg.test.ts
 
       - run: pnpm --filter @jobseek/trace-viewer test
 

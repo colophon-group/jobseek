@@ -26,7 +26,12 @@
       "hash": "e702743fc50bc5d70a37db5e0a406e2f890186446407b728360aa61cd344c66c"
     },
     {
-      "tag": "0095_paddle_billing",
+      "tag": "0095_notification_delivery_quota",
+      "createdAt": 1790467200000,
+      "hash": "a04c5f02531284cc6286ce40e52d586982b91f6bd9433229e7d04c57addd503f"
+    },
+    {
+      "tag": "0096_paddle_billing",
       "createdAt": 1790510322209,
       "hash": "6dc583e104d9ecb8a200e2215882098dd90ef43133b159685dcf0936f75abc28"
     }

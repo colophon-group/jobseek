@@ -10,7 +10,7 @@ import {
 
 const migrationFolder = resolve(process.cwd(), "drizzle");
 const target = {
-  tag: "0095_paddle_billing",
+  tag: "0096_paddle_billing",
   createdAt: 1_790_510_322_209,
   hash: "6dc583e104d9ecb8a200e2215882098dd90ef43133b159685dcf0936f75abc28",
 };
@@ -28,8 +28,8 @@ describe("routine migration guard", () => {
     const plan = loadRoutineMigrationPlan(migrationFolder, environment);
 
     expect(plan?.target).toEqual(target);
-    expect(plan?.localMigrationCount).toBe(84);
-    expect(plan?.prerequisite.tag).toBe("0094_ai_filter_candidate_languages");
+    expect(plan?.localMigrationCount).toBe(85);
+    expect(plan?.prerequisite.tag).toBe("0095_notification_delivery_quota");
   });
 
   it.each([
