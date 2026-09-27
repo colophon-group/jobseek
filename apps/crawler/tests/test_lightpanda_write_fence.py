@@ -267,6 +267,8 @@ async def test_rejection_is_cancellation_and_bypasses_exception_handlers() -> No
 
 
 def _install_scrape_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
+    # These tests isolate the authority fence after the TDM eligibility read.
+    monkeypatch.setattr(scrape_module, "posting_reserved", AsyncMock(return_value=False))
     # Failure-path coverage must not be the first call through the module's
     # lazy structlog proxy.  Caching that production processor chain would
     # leak across tests and defeat a later ``capture_logs()`` context.

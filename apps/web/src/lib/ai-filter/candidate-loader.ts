@@ -350,6 +350,7 @@ export async function countAiFilterCandidates(input: {
       window: { windowStart, windowEnd },
       order: "newest",
       requireStableOrder: true,
+      excludeTdmReserved: true,
       abortSignal: input.signal,
     });
     return result.total;
@@ -459,6 +460,7 @@ export async function loadAiFilterCandidatePage(input: {
         window: { windowStart: input.windowStart, windowEnd: input.windowEnd },
         order: "newest",
         requireStableOrder: true,
+      excludeTdmReserved: true,
         includeClassifierMetadata: true,
         abortSignal: input.signal,
       });

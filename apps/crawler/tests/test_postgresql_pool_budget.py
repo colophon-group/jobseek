@@ -199,9 +199,9 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
     )
     assert labeller_child["JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS"] == "300"
     labeller_cli = (CRAWLER / "src/labeller/cli.py").read_text(encoding="utf-8")
-    assert '_DATABASE_COMMANDS = frozenset({"sample", "prepare", "prepare-pre-llm"})' in (
-        labeller_cli
-    )
+    from src.labeller.cli import _DATABASE_COMMANDS
+
+    assert {"sample", "prepare", "prepare-pre-llm", "render-task", "upload"} == _DATABASE_COMMANDS
     assert "with _database_process_lock(args.command)" in labeller_cli
     deployment = (ROOT / "scripts/deploy-codex-runner-host.sh").read_text(encoding="utf-8")
     assert "labeller PostgreSQL pool contract mismatch" in deployment

@@ -2698,3 +2698,14 @@ async def test_typesense_bootstrap_fails_closed_for_unbucketed_local_document() 
             remote,  # type: ignore[arg-type]
         )
     assert remote.deleted == []
+
+
+def test_absent_legacy_mining_flag_does_not_trigger_mass_reindex():
+    from src.reconciliation import _typesense_payload_fingerprint
+
+    assert _typesense_payload_fingerprint({}) == _typesense_payload_fingerprint(
+        {"tdm_reserved": False}
+    )
+    assert _typesense_payload_fingerprint({}) != _typesense_payload_fingerprint(
+        {"tdm_reserved": True}
+    )

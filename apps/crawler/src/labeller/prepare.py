@@ -66,7 +66,7 @@ async def load_posting(pool: asyncpg.Pool, posting_id: str) -> RawPosting | None
             COALESCE(titles[1], '') AS title_raw,
             COALESCE(locales[1], 'en') AS locale
           FROM job_posting
-          WHERE id = $1
+          WHERE id = $1 AND NOT tdm_reserved
         ),
         d AS (
           SELECT html, locale

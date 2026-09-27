@@ -1,5 +1,7 @@
 import "server-only";
 
+import { assertAiFilterMiningAllowed } from "./mining-policy";
+
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
 
@@ -502,6 +504,7 @@ export async function runAiFilterCatchupStep(input: {
     hmacSecret,
     repository,
     classifier: new JevClient(),
+    assertMiningAllowed: assertAiFilterMiningAllowed,
     executionEnabled,
     now: checkpointAt,
     signal: input.signal,

@@ -153,6 +153,7 @@ def _country_rows_sql(limit: int | None, include_inactive: bool = False) -> str:
                LIMIT 1
          ) d ON true
          WHERE jp.location_ids && $1::int[]{active_clause}
+           AND NOT jp.tdm_reserved
            AND ($2::uuid IS NULL OR jp.id > $2::uuid)
          ORDER BY jp.id
     """

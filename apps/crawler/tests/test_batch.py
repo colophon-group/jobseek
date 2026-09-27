@@ -26,6 +26,7 @@ from src.batch import (
     _RECORD_BOARD_GONE,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
+    _RECORD_SCRAPE_FAILURE,
     _RECORD_SCRAPE_SUCCESS,
     _RECORD_SCRAPE_TRANSIENT,
     _RECORD_SUCCESS_NONEMPTY,
@@ -2072,6 +2073,7 @@ class TestProcessOneBoard:
         # Run reported success — TDM is not a failure.
         assert outcome.success is True
         assert outcome.status == "tdm_reserved"
+        assert any("tdm_reserved = true" in c.args[0] for c in conn.execute.await_args_list)
         # No failure ramp.
         failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert failure_calls == []
@@ -3503,6 +3505,34 @@ class TestProcessOneScrape:
         failure_calls = [c for c in execute_calls if c.args[0] == _RECORD_SCRAPE_TRANSIENT]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[1] == "jp-missing"
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_tdm_reservation_persists_without_failure_or_fallback(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        from src.shared.tdm import TDMReservedError
+
+        pool, conn = mock_pool
+        mock_scrape.side_effect = TDMReservedError("https://example.com/job/1", source="meta")
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        ok, _ = await _process_one_scrape(
+            item, pool, mock_http, "json-ld", {"fallback": {"type": "dom"}}
+        )
+        assert ok is True
+        mock_scrape.assert_awaited_once()
+        writes = [call.args[0] for call in conn.execute.await_args_list]
+        assert any("tdm_reserved = true" in query for query in writes)
+        assert _RECORD_SCRAPE_TRANSIENT not in writes
+        assert _RECORD_SCRAPE_FAILURE not in writes
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_stored_reservation_skips_scrape(self, mock_scrape, mock_pool, mock_http):
+        pool, _ = mock_pool
+        pool.fetchval.return_value = True
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        ok, _ = await _process_one_scrape(item, pool, mock_http, "json-ld", None)
+        assert ok is True
+        mock_scrape.assert_not_awaited()
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_failure_records_scrape_failure(self, mock_scrape, mock_pool, mock_http):

@@ -10,13 +10,16 @@ The shared parser accepts additional HTML attributes, ignores script/comment
 literals, uses a 64 KiB bound and applies available HTML metadata before headers.
 This follows [TDMRep section 6.7](https://w3c.github.io/cg-reports/tdmrep/CG-FINAL-tdmrep-20240510/).
 Header-only early checks may conservatively stop before a later HTML opt-in.
-Origin-file support and complete transport/downstream parity are not established.
+Origin-file support and complete transport parity are not established.
+The subsequent [stored-copy control implementation](tdm-stored-copy-controls.md)
+adds durable observed restrictions and downstream checks; its production
+rollout and the remaining discovery audit are tracked separately.
 
 Go header checks are present in `apps/crawler/go/greenhouse-monitor/live.go`,
 `lever-monitor/live.go`, `personio-monitor/live.go`, `successfactors-rss-monitor/live.go`
 and the sitemap bounded HTTP client. Presence is not a completed live-runtime
 parity test. Browser tests in `test_tdm.py` cover shared parsing/fetch hooks;
-remaining active paths and retained-copy use restrictions stay in #10090.
+remaining active paths, rollout and retained-copy coverage stay in #10090.
 
 | Direct fetch candidate | Lines |
 | --- | --- |

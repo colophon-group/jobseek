@@ -19,7 +19,7 @@ const reconciliationSelectSQL = `SELECT to_jsonb(selected) FROM (
            jp.salary_min, jp.salary_max, jp.salary_currency, jp.salary_period,
            jp.salary_eur, jp.experience_min, jp.experience_max,
            jp.occupation_id, jp.seniority_id, jp.technology_ids,
-           jp.description_r2_hash, jp.first_seen_at, jp.last_seen_at,
+           jp.tdm_reserved, jp.description_r2_hash, jp.first_seen_at, jp.last_seen_at,
            c.name AS company_name, c.slug AS company_slug, c.icon AS company_icon
     FROM job_posting jp JOIN company c ON c.id = jp.company_id WHERE `
 

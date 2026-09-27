@@ -91,6 +91,7 @@ _TYPESENSE_LOCAL_SELECT_LIST = ", ".join(
     (
         *(f"jp.{name}" for name in PostingSchema.column_names()),
         "jp.last_seen_at",
+        "jp.tdm_reserved",
         "c.name AS company_name",
         "c.slug AS company_slug",
         "c.icon AS company_icon",
@@ -125,6 +126,7 @@ TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "company_icon",
     "title",
     "has_content",
+    "tdm_reserved",
     "location_ids",
     "location_direct_ids",
     "location_names",
@@ -306,7 +308,9 @@ def _canonical_payload_value(value: object) -> object:
 def _typesense_payload_fingerprint(document: Mapping[str, object]) -> str:
     payload: dict[str, object] = {}
     for field in TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS:
-        value = _canonical_payload_value(document.get(field))
+        value = _canonical_payload_value(
+            document.get(field, False if field == "tdm_reserved" else None)
+        )
         if field in _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS and isinstance(value, list):
             value = sorted(
                 value,
