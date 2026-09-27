@@ -48,7 +48,11 @@ was empty. UI tests cover pause/resume persistence, save failures and focus.
 
 Subject/body/manage/unsubscribe copy is available in English, German, French,
 and Italian. Job/company/watchlist strings are escaped; unsafe source URL
-schemes are rejected. The email also has a plain-text alternative.
+schemes are rejected. Each role includes the company icon (initials when unavailable) and a localized
+“Added … ago” label based on when Jobseek first found it, measured at email
+render time. Company names remain readable when the mail client blocks images.
+The email also has a plain-text alternative with the same age labels.
+Preview roles are fictional; Google and Microsoft icons demonstrate image rendering.
 
 Regenerate all four email previews without credentials or sending mail:
 

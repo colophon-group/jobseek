@@ -48,6 +48,37 @@ describe("notification delivery boundaries", () => {
     expect(email.html).toContain(`/${locale}/watchlists/list`);
     expect(email.text).toContain("unsubscribe?token=test");
   });
+  it.each([
+    ["en", "Added 2 days ago"], ["de", "Hinzugefügt: vor 2 Tagen"],
+    ["fr", "Ajoutée il y a 2 jours"], ["it", "Aggiunta 2 giorni fa"],
+  ])("renders company icons and localized first-seen age in %s", (locale, age) => {
+    const item = { ...plan.displayPostings[0]!, firstSeenAt: "2026-09-25T10:00:00Z",
+      company: { ...plan.displayPostings[0]!.company, icon: 'https://assets.example/icon.png?a=1&b="test"' } };
+    const email = renderNotificationEmail({ plan: { ...plan, displayPostings: [item] }, now: new Date("2026-09-27T10:00:00Z"), locale, origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/unsubscribe" });
+    expect(email.html).toContain('<img src="https://assets.example/icon.png?a=1&amp;b=%22test%22"');
+    expect(email.html).toContain('width="32" height="32"');
+    expect(email.html).toContain("A &amp; B");
+    expect(email.html).toContain(age);
+    expect(email.text).toContain(age);
+    expect(email.text).not.toContain("https://assets.example/icon.png");
+  });
+  it.each([null, "javascript:alert(1)", "data:image/svg+xml,<svg/>", "https://user:pass@example.com/icon.png", "not a url"])("uses initials for an unavailable or unsafe company icon (%s)", icon => {
+    const item = { ...plan.displayPostings[0]!, firstSeenAt: "invalid", company: { ...plan.displayPostings[0]!.company, name: '<A & B>', icon } };
+    const email = renderNotificationEmail({ plan: { ...plan, displayPostings: [item] }, locale: "en", origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/unsubscribe" });
+    expect(email.html).not.toContain("<img");
+    expect(email.html).toContain("&lt;A</span>");
+    expect(email.text).not.toContain("Added");
+    expect(email.html).not.toContain("NaN");
+  });
+  it.each([
+    ["2026-09-27T08:00:00Z", "Added 2 hours ago"],
+    ["2026-09-27T09:59:00Z", "Added 1 minute ago"],
+    ["2026-09-27T10:01:00Z", "Added now"],
+  ])("measures age at render time and clamps clock skew (%s)", (firstSeenAt, age) => {
+    const email = renderNotificationEmail({ plan: { ...plan, displayPostings: [{ ...plan.displayPostings[0]!, firstSeenAt }] }, now: new Date("2026-09-27T10:00:00Z"), locale: "en", origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/unsubscribe" });
+    expect(email.html).toContain(age);
+    expect(email.text).toContain(age);
+  });
   it.each([400, 401, 403, 422, 429, 409, 500, 503])("classifies provider HTTP %i conservatively without retry", async status => {
     const fetch = vi.fn().mockResolvedValue(new Response("failure", { status }));
     vi.stubGlobal("fetch", fetch);

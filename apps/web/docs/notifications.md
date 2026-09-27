@@ -4,6 +4,9 @@ The implementation of [#8317](https://github.com/colophon-group/jobseek/issues/8
 uses the existing Resend account and sender. Alerts are opt-in and available
 without a subscription. Only verified owners receive mail. One weekly digest
 combines enabled watchlists, deduplicates postings and shows at most 20 roles.
+Each role shows its company icon and localized age since first seen by Jobseek
+(“Added … ago”), calculated at render time and included in plain text too.
+Missing/unsafe icon URLs use company initials; invalid dates omit the age.
 Each watchlist contributes either all current structured matches or only its
 narrowed matches, chosen through visible icon-labelled controls in Settings.
 Each row includes a compact filter preview and keeps the full saved narrowing

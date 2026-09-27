@@ -10,8 +10,31 @@ function safeRoleUrl(raw: string, fallback: string): string {
     return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password ? url.href : fallback;
   } catch { return fallback; }
 }
+function companyIconHtml(icon: string | null, name: string): string {
+  const initials = Array.from(name.trim()).slice(0, 2).join("").toUpperCase() || "?";
+  const fallback = `<span style="font-size:13px;font-weight:bold;color:#616661">${escapeEmailHtml(initials)}</span>`;
+  if (!icon) return fallback;
+  try {
+    const url = new URL(icon);
+    if (url.protocol !== "https:" || url.username || url.password) return fallback;
+    return `<img src="${escapeEmailHtml(url.href)}" alt="${escapeEmailHtml(initials)}" width="32" height="32" style="display:block;width:32px;height:32px;object-fit:contain;border:0;border-radius:4px">`;
+  } catch { return fallback; }
+}
+
+/** Same first-seen timestamp as watchlists; measured when the email is rendered. */
+function postingAge(firstSeenAt: string, now: Date, locale: string): string | null {
+  const timestamp = Date.parse(firstSeenAt);
+  if (!Number.isFinite(timestamp)) return null;
+  const seconds = Math.max(0, Math.floor((now.getTime() - timestamp) / 1000));
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: "always" });
+  for (const [unit, size] of [["year", 31536000], ["month", 2592000], ["week", 604800], ["day", 86400], ["hour", 3600], ["minute", 60]] as const) {
+    if (seconds >= size) return format.format(-Math.floor(seconds / size), unit);
+  }
+  return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(0, "second");
+}
+
 export function renderNotificationEmail(input: {
-  plan: NotificationDeliveryPlan; locale: string; origin: string; unsubscribeUrl: string;
+  plan: NotificationDeliveryPlan; locale: string; origin: string; unsubscribeUrl: string; now?: Date;
 }): { subject: string; html: string; text: string } {
   const locale = notificationLocale(input.locale);
   const t = notificationCopy[locale];
@@ -19,12 +42,17 @@ export function renderNotificationEmail(input: {
   const watchlistsUrl = `${input.origin}/${locale}/watchlists`;
   const settingsUrl = `${input.origin}/${locale}/settings#notifications`;
   const postings = input.plan.displayPostings.slice(0, 20);
+  const now = input.now ?? new Date();
+  const added = (firstSeenAt: string) => {
+    const age = postingAge(firstSeenAt, now, locale);
+    return age === null ? "" : t.added.replace("{age}", age);
+  };
   const items = postings.map(p => {
     const labels = p.matchedWatchlists.map(w => `<a style="color:#23766a" href="${e(`${watchlistsUrl}/${encodeURIComponent(w.id)}`)}">${e(w.label)}</a>`).join(" · ");
-    return `<tr><td style="padding:24px 0;border-bottom:1px solid #e5e7eb"><p style="margin:0 0 6px;color:#616661;font-size:14px">${e(p.company.name)}</p><h2 style="margin:0 0 8px;font-size:19px;line-height:1.4"><a style="color:#162e26;text-decoration:none" href="${e(safeRoleUrl(p.sourceUrl, watchlistsUrl))}">${e(p.title || t.role)}</a></h2><p style="margin:0 0 10px;color:#616661;font-size:14px">${e((p.locationNames ?? []).join(" · "))}</p><p style="margin:0;font-size:13px;color:#616661">${e(t.matches)}: ${labels}</p></td></tr>`;
+    return `<tr><td style="padding:24px 0;border-bottom:1px solid #e5e7eb"><table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px"><tr><td width="32" height="32" align="center" valign="middle" style="width:32px;height:32px;background:#f5f6f3;border-radius:4px">${companyIconHtml(p.company.icon, p.company.name)}</td><td style="padding-left:10px;color:#616661;font-size:14px;line-height:1.4">${e(p.company.name)}</td></tr></table><h2 style="margin:0 0 8px;font-size:19px;line-height:1.4"><a style="color:#162e26;text-decoration:none" href="${e(safeRoleUrl(p.sourceUrl, watchlistsUrl))}">${e(p.title || t.role)}</a></h2><p style="margin:0 0 10px;color:#616661;font-size:14px">${e([...(p.locationNames ?? []), added(p.firstSeenAt)].filter(Boolean).join(" · "))}</p><p style="margin:0;font-size:13px;color:#616661">${e(t.matches)}: ${labels}</p></td></tr>`;
   }).join("");
   const text = [t.heading, t.intro, ...postings.map(p => [
-    `${p.title || t.role} — ${p.company.name}`, (p.locationNames ?? []).join(" · "),
+    `${p.title || t.role} — ${p.company.name}`, [...(p.locationNames ?? []), added(p.firstSeenAt)].filter(Boolean).join(" · "),
     safeRoleUrl(p.sourceUrl, watchlistsUrl),
     ...p.matchedWatchlists.map(w => `${w.label}: ${watchlistsUrl}/${encodeURIComponent(w.id)}`),
   ].join("\n")), t.limited, `${t.more}: ${watchlistsUrl}`, `${t.settings}: ${settingsUrl}`,

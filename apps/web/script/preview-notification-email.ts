@@ -13,16 +13,16 @@ async function main() {
     scheduledFor: now, windowStart: new Date("2026-09-20T10:00:00Z"), windowEnd: now,
     idempotencyKey: "preview-only", totalMatches: 3, watchlistMatchCount: 4, sourceResultsTruncated: false,
     displayPostings: [
-      { title: "Senior Software Engineer", name: "Example Research", location: "Zurich, Switzerland" },
-      { title: "Platform Engineer", name: "Example Systems", location: "Remote · Switzerland" },
+      { title: "Senior Software Engineer", name: "Google (example role)", location: "Zurich, Switzerland" },
+      { title: "Platform Engineer", name: "Microsoft (example role)", location: "Remote · Switzerland" },
       { title: "Frontend Engineer", name: "Example Studio", location: "Lausanne, Switzerland" },
     ].map((job, index) => ({ id: String(index), title: job.title, sourceUrl: "https://example.com/jobs", isActive: true,
-      firstSeenAt: now.toISOString(), locationNames: [job.location], company: { id: String(index), name: job.name, slug: "example", icon: null },
+      firstSeenAt: new Date(now.getTime() - [7200000, 172800000, 518400000][index]!).toISOString(), locationNames: [job.location], company: { id: String(index), name: job.name, slug: "example", icon: index === 0 ? "https://jobseek-assets.colophon-group.org/companies/google/icon.png" : index === 1 ? "https://jobseek-assets.colophon-group.org/companies/microsoft/icon.webp" : null },
       matchedWatchlists: [{ id: "11111111-1111-4111-8111-111111111111", label: "Engineering in Switzerland" }, ...(index === 1 ? [{ id: "22222222-2222-4222-8222-222222222222", label: "Remote roles" }] : [])],
     })),
   };
   for (const locale of ["en", "de", "fr", "it"]) {
-    const email = renderNotificationEmail({ plan, locale, origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/api/notifications/unsubscribe?token=preview-only" });
+    const email = renderNotificationEmail({ plan, now, locale, origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/api/notifications/unsubscribe?token=preview-only" });
     await writeFile(resolve(directory, `email-${locale}.html`), email.html);
     await writeFile(resolve(directory, `email-${locale}.txt`), email.text);
   }
