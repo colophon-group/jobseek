@@ -504,6 +504,8 @@ jobs:
         with:
           go-version-file: apps/crawler/go/typesense-exporter/go.mod
           cache-dependency-path: apps/crawler/go/typesense-exporter/go.sum
+      - name: Install Redis for read-only lifecycle integration
+        run: sudo apt-get update -qq && sudo apt-get install -y redis-server
       - name: Test projection, cursor, and import acknowledgements
         run: |
           go test -race ./...

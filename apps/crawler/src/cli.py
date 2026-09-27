@@ -786,6 +786,10 @@ async def run() -> None:
         # has already populated the environment; exec forwards signals/status
         # directly and opens no Python database pools or metrics server.
         os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--backfill"])
+    if args.command == "deadletters" and args.action == "inspect":
+        if args.apply:
+            raise ValueError("inspect is always read-only; omit --apply")
+        os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--inspect-deadletters"])
     setup_logging(settings.log_level)
 
     log.info("cli.starting", command=args.command, worker_id=WORKER_ID)

@@ -1,0 +1,938 @@
+{
+  "input": {
+    "entries": [
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000001",
+        "reaped_at": 1725000000.0588236
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000002",
+        "reaped_at": 1725000000.1176472
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000003",
+        "reaped_at": 1725000000.1764705
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000004",
+        "reaped_at": 1725000000.235294
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000005",
+        "reaped_at": 1725000000.2941177
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000006",
+        "reaped_at": 1725000000.3529413
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|old.example.test|abcdef00-0000-0000-0000-000000000007",
+        "reaped_at": 1725000000.4117646
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|old.example.test|abcdef00-0000-0000-0000-000000000008",
+        "reaped_at": 1725000000.4705882
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|old.example.test|abcdef00-0000-0000-0000-000000000009",
+        "reaped_at": 1725000000.5294118
+      },
+      {
+        "wtype": "browser",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000010",
+        "reaped_at": 1725000000.5882354
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000011",
+        "reaped_at": 1725000000.6470587
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000012",
+        "reaped_at": 1725000000.7058823
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000013",
+        "reaped_at": 1725000000.764706
+      },
+      {
+        "wtype": "simple",
+        "member": "scrape|example.test|abcdef00-0000-0000-0000-000000000014",
+        "reaped_at": 1725000000.8235295
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|",
+        "reaped_at": 1725000000.8823528
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|bad",
+        "reaped_at": 1725000000.9411764
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|ABCDEF00-0000-0000-0000-000000000017",
+        "reaped_at": 1725000001.0
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00000000000000000000000018",
+        "reaped_at": 1725000001.0588236
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000019",
+        "reaped_at": 1725000001.1176472
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000020",
+        "reaped_at": 1725000001.1764705
+      },
+      {
+        "wtype": "browser",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000021",
+        "reaped_at": 1725000001.235294
+      },
+      {
+        "wtype": "simple",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000022",
+        "reaped_at": 1725000001.2941177
+      },
+      {
+        "wtype": "browser",
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000022",
+        "reaped_at": -6e-07
+      }
+    ],
+    "boards": [
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000001",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000003",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": false,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000004",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "disabled",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000005",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000006",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000007",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000008",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000009",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000010",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000011",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "gone",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000012",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "suspect",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000013",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "quarantined",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000014",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000015",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000016",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000017",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000018",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000019",
+        "board_slug": null,
+        "board_url": null,
+        "crawler_type": null,
+        "board_status": null,
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000020",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": null,
+        "monitor_needs_browser": false
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000021",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": true
+      },
+      {
+        "board_id": "abcdef00-0000-0000-0000-000000000022",
+        "board_slug": "fixture",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "board_status": "active",
+        "is_enabled": true,
+        "throttle_key": "example.test",
+        "monitor_needs_browser": false
+      }
+    ],
+    "configs": {
+      "abcdef00-0000-0000-0000-000000000001": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000002": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000003": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000004": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000005": {},
+      "abcdef00-0000-0000-0000-000000000006": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "old",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000007": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000008": {},
+      "abcdef00-0000-0000-0000-000000000009": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "old",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000010": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000011": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000012": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000013": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000014": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000015": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000016": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000017": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000018": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000019": {
+        "domain": "example.test",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000020": {
+        "domain": "",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      },
+      "abcdef00-0000-0000-0000-000000000021": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": " YES "
+      },
+      "abcdef00-0000-0000-0000-000000000022": {
+        "domain": "example.test",
+        "board_url": "https://example.test/careers",
+        "crawler_type": "dom",
+        "monitor_needs_browser": "0"
+      }
+    }
+  },
+  "expected": {
+    "action": "inspect",
+    "dry_run": true,
+    "total": 23,
+    "counts": {
+      "simple": {
+        "actionable": 8,
+        "retired": 5,
+        "superseded": 2,
+        "unresolved": 5
+      },
+      "browser": {
+        "actionable": 1,
+        "retired": 0,
+        "superseded": 2,
+        "unresolved": 0
+      }
+    },
+    "selected": 23,
+    "entries": [
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000022",
+        "wtype": "browser",
+        "reaped_at": -6e-07,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000022",
+        "lifecycle": "superseded",
+        "reason": "monitor_route_changed",
+        "resolution": "prune_after_current_schedule",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "browser:monitor|example.test|abcdef00-0000-0000-0000-000000000022",
+        "reaped_at_iso": "1969-12-31T23:59:59.999999+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000010",
+        "wtype": "browser",
+        "reaped_at": 1725000000.5882354,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000010",
+        "lifecycle": "superseded",
+        "reason": "monitor_route_changed",
+        "resolution": "prune_after_current_schedule",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "browser:monitor|example.test|abcdef00-0000-0000-0000-000000000010",
+        "reaped_at_iso": "2024-08-30T06:40:00.588235+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000021",
+        "wtype": "browser",
+        "reaped_at": 1725000001.235294,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000021",
+        "lifecycle": "actionable",
+        "reason": "active",
+        "resolution": "retry",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "browser",
+        "config_state": "valid",
+        "ref": "browser:monitor|example.test|abcdef00-0000-0000-0000-000000000021",
+        "reaped_at_iso": "2024-08-30T06:40:01.235294+00:00",
+        "retryable": true,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000001",
+        "wtype": "simple",
+        "reaped_at": 1725000000.0588236,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000001",
+        "lifecycle": "actionable",
+        "reason": "active",
+        "resolution": "retry",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000001",
+        "reaped_at_iso": "2024-08-30T06:40:00.058824+00:00",
+        "retryable": true,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000002",
+        "wtype": "simple",
+        "reaped_at": 1725000000.1176472,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000002",
+        "lifecycle": "retired",
+        "reason": "removed",
+        "resolution": "prune",
+        "board_slug": null,
+        "board_status": null,
+        "expected_domain": null,
+        "expected_wtype": null,
+        "config_state": "not_applicable",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000002",
+        "reaped_at_iso": "2024-08-30T06:40:00.117647+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000003",
+        "wtype": "simple",
+        "reaped_at": 1725000000.1764705,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000003",
+        "lifecycle": "retired",
+        "reason": "disabled",
+        "resolution": "prune",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000003",
+        "reaped_at_iso": "2024-08-30T06:40:00.176471+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000004",
+        "wtype": "simple",
+        "reaped_at": 1725000000.235294,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000004",
+        "lifecycle": "retired",
+        "reason": "disabled",
+        "resolution": "prune",
+        "board_slug": "fixture",
+        "board_status": "disabled",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000004",
+        "reaped_at_iso": "2024-08-30T06:40:00.235294+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000005",
+        "wtype": "simple",
+        "reaped_at": 1725000000.2941177,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000005",
+        "lifecycle": "actionable",
+        "reason": "active_config_missing",
+        "resolution": "sync_then_retry",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "missing",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000005",
+        "reaped_at_iso": "2024-08-30T06:40:00.294118+00:00",
+        "retryable": false,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000006",
+        "wtype": "simple",
+        "reaped_at": 1725000000.3529413,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000006",
+        "lifecycle": "actionable",
+        "reason": "active_config_stale",
+        "resolution": "sync_then_retry",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "stale",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000006",
+        "reaped_at_iso": "2024-08-30T06:40:00.352941+00:00",
+        "retryable": false,
+        "prunable": false
+      },
+      {
+        "member": "monitor|old.example.test|abcdef00-0000-0000-0000-000000000007",
+        "wtype": "simple",
+        "reaped_at": 1725000000.4117646,
+        "task_type": "monitor",
+        "domain": "old.example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000007",
+        "lifecycle": "superseded",
+        "reason": "monitor_route_changed",
+        "resolution": "prune_after_current_schedule",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|old.example.test|abcdef00-0000-0000-0000-000000000007",
+        "reaped_at_iso": "2024-08-30T06:40:00.411765+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|old.example.test|abcdef00-0000-0000-0000-000000000008",
+        "wtype": "simple",
+        "reaped_at": 1725000000.4705882,
+        "task_type": "monitor",
+        "domain": "old.example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000008",
+        "lifecycle": "unresolved",
+        "reason": "superseded_config_missing",
+        "resolution": "sync_then_inspect",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "missing",
+        "ref": "simple:monitor|old.example.test|abcdef00-0000-0000-0000-000000000008",
+        "reaped_at_iso": "2024-08-30T06:40:00.470588+00:00",
+        "retryable": false,
+        "prunable": false
+      },
+      {
+        "member": "monitor|old.example.test|abcdef00-0000-0000-0000-000000000009",
+        "wtype": "simple",
+        "reaped_at": 1725000000.5294118,
+        "task_type": "monitor",
+        "domain": "old.example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000009",
+        "lifecycle": "unresolved",
+        "reason": "superseded_config_stale",
+        "resolution": "sync_then_inspect",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "stale",
+        "ref": "simple:monitor|old.example.test|abcdef00-0000-0000-0000-000000000009",
+        "reaped_at_iso": "2024-08-30T06:40:00.529412+00:00",
+        "retryable": false,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000011",
+        "wtype": "simple",
+        "reaped_at": 1725000000.6470587,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000011",
+        "lifecycle": "actionable",
+        "reason": "active",
+        "resolution": "retry",
+        "board_slug": "fixture",
+        "board_status": "gone",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000011",
+        "reaped_at_iso": "2024-08-30T06:40:00.647059+00:00",
+        "retryable": true,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000012",
+        "wtype": "simple",
+        "reaped_at": 1725000000.7058823,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000012",
+        "lifecycle": "actionable",
+        "reason": "active",
+        "resolution": "retry",
+        "board_slug": "fixture",
+        "board_status": "suspect",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000012",
+        "reaped_at_iso": "2024-08-30T06:40:00.705882+00:00",
+        "retryable": true,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000013",
+        "wtype": "simple",
+        "reaped_at": 1725000000.764706,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000013",
+        "lifecycle": "actionable",
+        "reason": "active",
+        "resolution": "retry",
+        "board_slug": "fixture",
+        "board_status": "quarantined",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000013",
+        "reaped_at_iso": "2024-08-30T06:40:00.764706+00:00",
+        "retryable": true,
+        "prunable": false
+      },
+      {
+        "member": "scrape|example.test|abcdef00-0000-0000-0000-000000000014",
+        "wtype": "simple",
+        "reaped_at": 1725000000.8235295,
+        "task_type": "scrape",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000014",
+        "lifecycle": "unresolved",
+        "reason": "non_monitor_task",
+        "resolution": "manual_review",
+        "board_slug": null,
+        "board_status": null,
+        "expected_domain": null,
+        "expected_wtype": null,
+        "config_state": "not_applicable",
+        "ref": "simple:scrape|example.test|abcdef00-0000-0000-0000-000000000014",
+        "reaped_at_iso": "2024-08-30T06:40:00.823529+00:00",
+        "retryable": false,
+        "prunable": false
+      },
+      {
+        "member": "monitor|",
+        "wtype": "simple",
+        "reaped_at": 1725000000.8823528,
+        "task_type": "monitor",
+        "domain": "",
+        "task_id": "",
+        "lifecycle": "unresolved",
+        "reason": "malformed_descriptor",
+        "resolution": "manual_review",
+        "board_slug": null,
+        "board_status": null,
+        "expected_domain": null,
+        "expected_wtype": null,
+        "config_state": "not_applicable",
+        "ref": "simple:monitor|",
+        "reaped_at_iso": "2024-08-30T06:40:00.882353+00:00",
+        "retryable": false,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|bad",
+        "wtype": "simple",
+        "reaped_at": 1725000000.9411764,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "bad",
+        "lifecycle": "unresolved",
+        "reason": "invalid_monitor_id",
+        "resolution": "manual_review",
+        "board_slug": null,
+        "board_status": null,
+        "expected_domain": null,
+        "expected_wtype": null,
+        "config_state": "not_applicable",
+        "ref": "simple:monitor|example.test|bad",
+        "reaped_at_iso": "2024-08-30T06:40:00.941176+00:00",
+        "retryable": false,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|ABCDEF00-0000-0000-0000-000000000017",
+        "wtype": "simple",
+        "reaped_at": 1725000001.0,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "ABCDEF00-0000-0000-0000-000000000017",
+        "lifecycle": "retired",
+        "reason": "removed",
+        "resolution": "prune",
+        "board_slug": null,
+        "board_status": null,
+        "expected_domain": null,
+        "expected_wtype": null,
+        "config_state": "not_applicable",
+        "ref": "simple:monitor|example.test|ABCDEF00-0000-0000-0000-000000000017",
+        "reaped_at_iso": "2024-08-30T06:40:01+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|example.test|abcdef00000000000000000000000018",
+        "wtype": "simple",
+        "reaped_at": 1725000001.0588236,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00000000000000000000000018",
+        "lifecycle": "retired",
+        "reason": "removed",
+        "resolution": "prune",
+        "board_slug": null,
+        "board_status": null,
+        "expected_domain": null,
+        "expected_wtype": null,
+        "config_state": "not_applicable",
+        "ref": "simple:monitor|example.test|abcdef00000000000000000000000018",
+        "reaped_at_iso": "2024-08-30T06:40:01.058824+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000019",
+        "wtype": "simple",
+        "reaped_at": 1725000001.1176472,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000019",
+        "lifecycle": "actionable",
+        "reason": "active",
+        "resolution": "retry",
+        "board_slug": null,
+        "board_status": null,
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000019",
+        "reaped_at_iso": "2024-08-30T06:40:01.117647+00:00",
+        "retryable": true,
+        "prunable": false
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000020",
+        "wtype": "simple",
+        "reaped_at": 1725000001.1764705,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000020",
+        "lifecycle": "superseded",
+        "reason": "monitor_route_changed",
+        "resolution": "prune_after_current_schedule",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000020",
+        "reaped_at_iso": "2024-08-30T06:40:01.176471+00:00",
+        "retryable": false,
+        "prunable": true
+      },
+      {
+        "member": "monitor|example.test|abcdef00-0000-0000-0000-000000000022",
+        "wtype": "simple",
+        "reaped_at": 1725000001.2941177,
+        "task_type": "monitor",
+        "domain": "example.test",
+        "task_id": "abcdef00-0000-0000-0000-000000000022",
+        "lifecycle": "actionable",
+        "reason": "active",
+        "resolution": "retry",
+        "board_slug": "fixture",
+        "board_status": "active",
+        "expected_domain": "example.test",
+        "expected_wtype": "simple",
+        "config_state": "valid",
+        "ref": "simple:monitor|example.test|abcdef00-0000-0000-0000-000000000022",
+        "reaped_at_iso": "2024-08-30T06:40:01.294118+00:00",
+        "retryable": true,
+        "prunable": false
+      }
+    ],
+    "outcomes": []
+  }
+}

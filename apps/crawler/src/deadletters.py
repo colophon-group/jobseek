@@ -9,9 +9,12 @@ allows exact, explicitly selected entries to be retried or pruned.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import time
 import uuid
 from collections import Counter
+from contextlib import suppress
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -162,6 +165,46 @@ def _config_state(config: dict[str, str], row: Any) -> str:
 
 
 async def classify_deadletters(
+    db: asyncpg.Pool | asyncpg.Connection,
+) -> list[DeadletterEntry]:
+    """Read the Go-owned lifecycle join; the pool is a compatibility argument.
+
+    No credentials are passed in argv. A bounded child lifetime prevents an
+    unavailable authority from delaying lease recovery indefinitely.
+    """
+    process = await asyncio.create_subprocess_exec(
+        "go-typesense-exporter", "--inspect-deadletters", stdout=asyncio.subprocess.PIPE
+    )
+    try:
+        output, _ = await asyncio.wait_for(process.communicate(), timeout=50)
+        if process.returncode != 0:
+            raise RuntimeError("Go deadletter inspection failed")
+        report = json.loads(output)
+        fields = DeadletterEntry.__dataclass_fields__
+        entries = [
+            DeadletterEntry(**{key: value for key, value in row.items() if key in fields})
+            for row in report["entries"]
+        ]
+        if (
+            report["action"] != "inspect"
+            or not report["dry_run"]
+            or report["total"] != len(entries)
+        ):
+            raise RuntimeError("Invalid Go deadletter inspection report")
+        return entries
+    finally:
+        if process.returncode is None:
+            with suppress(ProcessLookupError):
+                process.terminate()
+            try:
+                await asyncio.wait_for(process.communicate(), timeout=5)
+            except TimeoutError:
+                with suppress(ProcessLookupError):
+                    process.kill()
+                await process.communicate()
+
+
+async def _classify_deadletters_python_reference(
     db: asyncpg.Pool | asyncpg.Connection,
 ) -> list[DeadletterEntry]:
     """Join every dead-letter descriptor to local Postgres lifecycle truth.
