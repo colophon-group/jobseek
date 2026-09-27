@@ -1,0 +1,9837 @@
+[
+  {
+    "text": "Tests for experience extraction heuristics.",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "When multiple experience requirements exist, return the highest minimum.",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "These must return None — company history / unrelated years.",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<li>5+ years of experience in consumer electronics</li>",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "<li>3-5 years of software development experience</li>",
+    "min": 3.0,
+    "max": 5.0
+  },
+  {
+    "text": "<li>5 years of experience with 3D CAD modeling</li>",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "<li>1+ years' experience with Microsoft Office</li>",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "<li>3+ years of non-internship professional software development experience</li>",
+    "min": 3.0,
+    "max": null
+  },
+  {
+    "text": "<li>7+ years of engineering experience</li>",
+    "min": 7.0,
+    "max": null
+  },
+  {
+    "text": "<li>Minimum 2.5 years of software engineering experience</li>",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "<li>At least 1.5+ years of sourcing or buying experience</li>",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "<li>8 months experience supporting enterprise customers</li>",
+    "min": 0.7,
+    "max": null
+  },
+  {
+    "text": "<li>6+ months of relevant experience in customer support</li>",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "<li>6-18 months of professional experience with logistics operations</li>",
+    "min": 0.5,
+    "max": 1.5
+  },
+  {
+    "text": "<li>Minimum 6 months to 1 year work experience in a similar BPO field</li>",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "\n        <h3>Basic Qualifications</h3>\n        <li>7+ years of experience in consumer electronics products</li>\n        <li>5+ years of experience with 3D CAD modeling</li>\n        <li>5+ years of experience with designing for high volume manufacturing</li>\n        ",
+    "min": 7.0,
+    "max": null
+  },
+  {
+    "text": "\n        <li>5 years of experience with software development</li>\n        <li>3 years of experience testing, maintaining, or launching software products.</li>\n        ",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "\n        <li>8+ years of specific technology domain areas experience</li>\n        <li>3+ years of design, implementation, or consulting in applications experience</li>\n        <li>10+ years of IT development or implementation/consulting experience</li>\n        ",
+    "min": 10.0,
+    "max": null
+  },
+  {
+    "text": "<li>Erfahrung von mindestens 5 Jahren im Bereich Softwareentwicklung</li>",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "<li>expérience de 3 ans minimum en développement</li>",
+    "min": 3.0,
+    "max": null
+  },
+  {
+    "text": "<li>Berufserfahrung von 7+ Jahren</li>",
+    "min": 7.0,
+    "max": null
+  },
+  {
+    "text": "<li>esperienza di almeno 4 anni nel settore</li>",
+    "min": 4.0,
+    "max": null
+  },
+  {
+    "text": "<li>At least 5 years of experience in software engineering</li>",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "<li>Minimum 3 years of professional experience</li>",
+    "min": 3.0,
+    "max": null
+  },
+  {
+    "text": "<p>For over 15 years, our company has been the market leader in cloud computing.</p>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<p>For over 20 years, Acme Corp has been delivering innovation.</p>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<p>The team with 11+ years, and supports our legal teams.</p>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<p>We have been operating for 10 years in 5 countries.</p>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<p>The company was founded 20 years ago.</p>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<p>All products come with a 2 years warranty.</p>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<p>We are looking for a passionate team player who loves building great products.</p>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<p>Since 2005, we have spent 20 years building the best platform.</p>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<li>Able to commit at least 3 months, preferably in a business administration or data analytics major.</li><li>Experience with Excel and data analytical tools.</li>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "<li>Able to commit to a full-time internship for at least 3 months.</li><li>Preferred Qualifications: Proven experience in procurement.</li>",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ years experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 years experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ years of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 years of relevant experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ years de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 years de experiencia",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ years software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 years software engineering experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ months experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 months experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ months of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 months of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ months de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 months de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ months software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 months software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ Jahre experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 Jahre experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ Jahre of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 Jahre of relevant experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ Jahre de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 Jahre de experiencia",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ Jahre software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 Jahre software engineering experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ Monate experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 Monate experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ Monate of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 Monate of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ Monate de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 Monate de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ Monate software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 Monate software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ ans experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 ans experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ ans of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 ans of relevant experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ ans de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 ans de experiencia",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ ans software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 ans software engineering experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ mois experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 mois experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ mois of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 mois of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ mois de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 mois de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ mois software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 mois software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ anni experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 anni experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ anni of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 anni of relevant experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ anni de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 anni de experiencia",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ anni software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 anni software engineering experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ mesi experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 mesi experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ mesi of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 mesi of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ mesi de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 mesi de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ mesi software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 mesi software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ años experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 años experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ años of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 años of relevant experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ años de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 años de experiencia",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ años software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 años software engineering experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ meses experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 meses experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ meses of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 meses of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ meses de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 meses de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ meses software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 meses software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ jaar experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 jaar experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ jaar of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 jaar of relevant experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ jaar de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 jaar de experiencia",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ jaar software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 jaar software engineering experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ maanden experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 maanden experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ maanden of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 maanden of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ maanden de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 maanden de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ maanden software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 maanden software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ år experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 år experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ år of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 år of relevant experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ år de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 år de experiencia",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ år software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 år software engineering experience",
+    "min": 0.0,
+    "max": 5.0
+  },
+  {
+    "text": "0+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ månader experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 månader experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ månader of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 månader of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ månader de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 månader de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ månader software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 månader software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0+ måneder experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 måneder experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ måneder of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 måneder of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ måneder de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 måneder de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ måneder software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0-5 måneder software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ years experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 years experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ years of relevant experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 years of relevant experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ years de experiencia",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 years de experiencia",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ years software engineering experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 years software engineering experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ months experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 months experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ months of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 months of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ months de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 months de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ months software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 months software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ Jahre experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Jahre experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ Jahre of relevant experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Jahre of relevant experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ Jahre de experiencia",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Jahre de experiencia",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ Jahre software engineering experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Jahre software engineering experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ Monate experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Monate experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ Monate of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Monate of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ Monate de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Monate de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ Monate software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Monate software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ ans experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 ans experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ ans of relevant experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 ans of relevant experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ ans de experiencia",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 ans de experiencia",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ ans software engineering experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 ans software engineering experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ mois experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mois experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ mois of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mois of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ mois de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mois de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ mois software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mois software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ anni experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 anni experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ anni of relevant experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 anni of relevant experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ anni de experiencia",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 anni de experiencia",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ anni software engineering experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 anni software engineering experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ mesi experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mesi experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ mesi of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mesi of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ mesi de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mesi de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ mesi software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mesi software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ años experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 años experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ años of relevant experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 años of relevant experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ años de experiencia",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 años de experiencia",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ años software engineering experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 años software engineering experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ meses experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 meses experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ meses of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 meses of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ meses de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 meses de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ meses software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 meses software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ jaar experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 jaar experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ jaar of relevant experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 jaar of relevant experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ jaar de experiencia",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 jaar de experiencia",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ jaar software engineering experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 jaar software engineering experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ maanden experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 maanden experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ maanden of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 maanden of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ maanden de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 maanden de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ maanden software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 maanden software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ år experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 år experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ år of relevant experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 år of relevant experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ år de experiencia",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 år de experiencia",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ år software engineering experience",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "0.5-5 år software engineering experience",
+    "min": 0.5,
+    "max": 5.0
+  },
+  {
+    "text": "0.5+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ månader experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 månader experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ månader of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 månader of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ månader de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 månader de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ månader software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 månader software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5+ måneder experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 måneder experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ måneder of relevant experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 måneder of relevant experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ måneder de experiencia",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 måneder de experiencia",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ måneder software engineering experience",
+    "min": 0.0,
+    "max": null
+  },
+  {
+    "text": "0.5-5 måneder software engineering experience",
+    "min": 0.0,
+    "max": 0.4
+  },
+  {
+    "text": "0.5+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "0.5-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ years experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 years experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ years of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 years of relevant experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ years de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 years de experiencia",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ years software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 years software engineering experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ months experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 months experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ months of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 months of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ months de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 months de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ months software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 months software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ Jahre experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 Jahre experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ Jahre of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 Jahre of relevant experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ Jahre de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 Jahre de experiencia",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ Jahre software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 Jahre software engineering experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ Monate experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 Monate experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ Monate of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 Monate of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ Monate de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 Monate de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ Monate software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 Monate software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ ans experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 ans experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ ans of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 ans of relevant experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ ans de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 ans de experiencia",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ ans software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 ans software engineering experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ mois experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 mois experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ mois of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 mois of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ mois de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 mois de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ mois software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 mois software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ anni experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 anni experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ anni of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 anni of relevant experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ anni de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 anni de experiencia",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ anni software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 anni software engineering experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ mesi experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 mesi experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ mesi of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 mesi of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ mesi de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 mesi de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ mesi software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 mesi software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ años experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 años experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ años of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 años of relevant experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ años de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 años de experiencia",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ años software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 años software engineering experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ meses experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 meses experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ meses of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 meses of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ meses de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 meses de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ meses software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 meses software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ jaar experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 jaar experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ jaar of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 jaar of relevant experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ jaar de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 jaar de experiencia",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ jaar software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 jaar software engineering experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ maanden experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 maanden experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ maanden of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 maanden of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ maanden de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 maanden de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ maanden software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 maanden software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ år experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 år experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ år of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 år of relevant experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ år de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 år de experiencia",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ år software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "1-5 år software engineering experience",
+    "min": 1.0,
+    "max": 5.0
+  },
+  {
+    "text": "1+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ månader experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 månader experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ månader of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 månader of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ månader de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 månader de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ månader software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 månader software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1+ måneder experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 måneder experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ måneder of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 måneder of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ måneder de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 måneder de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ måneder software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1-5 måneder software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ years experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 years experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ years of relevant experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 years of relevant experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ years de experiencia",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 years de experiencia",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ years software engineering experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 years software engineering experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ months experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 months experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ months of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 months of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ months de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 months de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ months software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 months software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ Jahre experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Jahre experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ Jahre of relevant experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Jahre of relevant experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ Jahre de experiencia",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Jahre de experiencia",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ Jahre software engineering experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Jahre software engineering experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ Monate experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Monate experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ Monate of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Monate of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ Monate de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Monate de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ Monate software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Monate software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ ans experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 ans experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ ans of relevant experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 ans of relevant experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ ans de experiencia",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 ans de experiencia",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ ans software engineering experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 ans software engineering experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ mois experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mois experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ mois of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mois of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ mois de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mois de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ mois software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mois software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ anni experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 anni experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ anni of relevant experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 anni of relevant experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ anni de experiencia",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 anni de experiencia",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ anni software engineering experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 anni software engineering experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ mesi experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mesi experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ mesi of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mesi of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ mesi de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mesi de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ mesi software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mesi software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ años experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 años experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ años of relevant experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 años of relevant experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ años de experiencia",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 años de experiencia",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ años software engineering experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 años software engineering experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ meses experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 meses experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ meses of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 meses of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ meses de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 meses de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ meses software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 meses software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ jaar experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 jaar experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ jaar of relevant experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 jaar of relevant experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ jaar de experiencia",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 jaar de experiencia",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ jaar software engineering experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 jaar software engineering experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ maanden experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 maanden experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ maanden of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 maanden of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ maanden de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 maanden de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ maanden software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 maanden software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ år experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 år experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ år of relevant experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 år of relevant experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ år de experiencia",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 år de experiencia",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ år software engineering experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "1.5-5 år software engineering experience",
+    "min": 1.5,
+    "max": 5.0
+  },
+  {
+    "text": "1.5+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ månader experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 månader experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ månader of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 månader of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ månader de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 månader de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ månader software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 månader software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5+ måneder experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 måneder experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ måneder of relevant experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 måneder of relevant experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ måneder de experiencia",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 måneder de experiencia",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ måneder software engineering experience",
+    "min": 0.1,
+    "max": null
+  },
+  {
+    "text": "1.5-5 måneder software engineering experience",
+    "min": 0.1,
+    "max": 0.4
+  },
+  {
+    "text": "1.5+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "1.5-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ years experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 years experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ years of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 years of relevant experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ years de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 years de experiencia",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ years software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 years software engineering experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ months experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 months experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ months of relevant experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 months of relevant experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ months de experiencia",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 months de experiencia",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ months software engineering experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 months software engineering experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ Jahre experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Jahre experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ Jahre of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Jahre of relevant experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ Jahre de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Jahre de experiencia",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ Jahre software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Jahre software engineering experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ Monate experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Monate experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ Monate of relevant experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Monate of relevant experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ Monate de experiencia",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Monate de experiencia",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ Monate software engineering experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Monate software engineering experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ ans experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 ans experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ ans of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 ans of relevant experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ ans de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 ans de experiencia",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ ans software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 ans software engineering experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ mois experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mois experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ mois of relevant experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mois of relevant experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ mois de experiencia",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mois de experiencia",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ mois software engineering experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mois software engineering experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ anni experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 anni experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ anni of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 anni of relevant experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ anni de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 anni de experiencia",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ anni software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 anni software engineering experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ mesi experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mesi experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ mesi of relevant experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mesi of relevant experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ mesi de experiencia",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mesi de experiencia",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ mesi software engineering experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mesi software engineering experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ años experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 años experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ años of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 años of relevant experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ años de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 años de experiencia",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ años software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 años software engineering experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ meses experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 meses experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ meses of relevant experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 meses of relevant experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ meses de experiencia",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 meses de experiencia",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ meses software engineering experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 meses software engineering experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ jaar experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 jaar experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ jaar of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 jaar of relevant experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ jaar de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 jaar de experiencia",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ jaar software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 jaar software engineering experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ maanden experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 maanden experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ maanden of relevant experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 maanden of relevant experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ maanden de experiencia",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 maanden de experiencia",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ maanden software engineering experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 maanden software engineering experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ år experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 år experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ år of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 år of relevant experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ år de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 år de experiencia",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ år software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "2,5-5 år software engineering experience",
+    "min": 2.5,
+    "max": 5.0
+  },
+  {
+    "text": "2,5+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ månader experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 månader experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ månader of relevant experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 månader of relevant experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ månader de experiencia",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 månader de experiencia",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ månader software engineering experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 månader software engineering experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5+ måneder experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 måneder experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ måneder of relevant experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 måneder of relevant experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ måneder de experiencia",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 måneder de experiencia",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ måneder software engineering experience",
+    "min": 0.2,
+    "max": null
+  },
+  {
+    "text": "2,5-5 måneder software engineering experience",
+    "min": 0.2,
+    "max": 0.4
+  },
+  {
+    "text": "2,5+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "2,5-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 years experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ years of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 years of relevant experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ years de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 years de experiencia",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ years software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 years software engineering experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ months experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 months experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ months of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 months of relevant experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ months de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 months de experiencia",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ months software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 months software engineering experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ Jahre experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 Jahre experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ Jahre of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 Jahre of relevant experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ Jahre de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 Jahre de experiencia",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ Jahre software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 Jahre software engineering experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ Monate experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 Monate experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ Monate of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 Monate of relevant experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ Monate de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 Monate de experiencia",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ Monate software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 Monate software engineering experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ ans experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 ans experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ ans of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 ans of relevant experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ ans de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 ans de experiencia",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ ans software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 ans software engineering experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ mois experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 mois experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ mois of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 mois of relevant experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ mois de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 mois de experiencia",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ mois software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 mois software engineering experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ anni experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 anni experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ anni of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 anni of relevant experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ anni de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 anni de experiencia",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ anni software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 anni software engineering experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ mesi experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 mesi experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ mesi of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 mesi of relevant experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ mesi de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 mesi de experiencia",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ mesi software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 mesi software engineering experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ años experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 años experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ años of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 años of relevant experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ años de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 años de experiencia",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ años software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 años software engineering experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ meses experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 meses experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ meses of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 meses of relevant experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ meses de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 meses de experiencia",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ meses software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 meses software engineering experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ jaar experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 jaar experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ jaar of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 jaar of relevant experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ jaar de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 jaar de experiencia",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ jaar software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 jaar software engineering experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ maanden experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 maanden experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ maanden of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 maanden of relevant experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ maanden de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 maanden de experiencia",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ maanden software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 maanden software engineering experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ år experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 år experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ år of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 år of relevant experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ år de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 år de experiencia",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ år software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "5-5 år software engineering experience",
+    "min": 5.0,
+    "max": 5.0
+  },
+  {
+    "text": "5+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ månader experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 månader experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ månader of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 månader of relevant experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ månader de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 månader de experiencia",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ månader software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 månader software engineering experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5+ måneder experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 måneder experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ måneder of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 måneder of relevant experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ måneder de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 måneder de experiencia",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ måneder software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "5-5 måneder software engineering experience",
+    "min": 0.4,
+    "max": 0.4
+  },
+  {
+    "text": "5+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ years experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ years of relevant experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 years of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ years de experiencia",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 years de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ years software engineering experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 years software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ months experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 months experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ months of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 months of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ months de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 months de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ months software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 months software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Jahre experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 Jahre experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Jahre of relevant experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 Jahre of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Jahre de experiencia",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 Jahre de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Jahre software engineering experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 Jahre software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Monate experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 Monate experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Monate of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 Monate of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Monate de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 Monate de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Monate software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 Monate software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ ans experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 ans experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ ans of relevant experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 ans of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ ans de experiencia",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 ans de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ ans software engineering experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 ans software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mois experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 mois experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mois of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 mois of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mois de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 mois de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mois software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 mois software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ anni experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 anni experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ anni of relevant experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 anni of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ anni de experiencia",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 anni de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ anni software engineering experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 anni software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mesi experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 mesi experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mesi of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 mesi of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mesi de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 mesi de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mesi software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 mesi software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ años experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 años experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ años of relevant experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 años of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ años de experiencia",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 años de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ años software engineering experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 años software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ meses experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 meses experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ meses of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 meses of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ meses de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 meses de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ meses software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 meses software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ jaar experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 jaar experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ jaar of relevant experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 jaar of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ jaar de experiencia",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 jaar de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ jaar software engineering experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 jaar software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ maanden experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 maanden experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ maanden of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 maanden of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ maanden de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 maanden de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ maanden software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 maanden software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ år experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 år experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ år of relevant experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 år of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ år de experiencia",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 år de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ år software engineering experience",
+    "min": 30.0,
+    "max": null
+  },
+  {
+    "text": "30-5 år software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ månader experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 månader experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ månader of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 månader of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ månader de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 månader de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ månader software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 månader software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ måneder experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 måneder experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ måneder of relevant experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 måneder of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ måneder de experiencia",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 måneder de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ måneder software engineering experience",
+    "min": 2.5,
+    "max": null
+  },
+  {
+    "text": "30-5 måneder software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "30-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ years of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 years of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ years de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 years de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ years software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 years software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ months experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 months experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ months of relevant experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 months of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ months de experiencia",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 months de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ months software engineering experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 months software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Jahre experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 Jahre experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Jahre of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 Jahre of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Jahre de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 Jahre de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Jahre software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 Jahre software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Monate experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 Monate experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Monate of relevant experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 Monate of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Monate de experiencia",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 Monate de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Monate software engineering experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 Monate software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ ans experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 ans experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ ans of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 ans of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ ans de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 ans de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ ans software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 ans software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mois experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 mois experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mois of relevant experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 mois of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mois de experiencia",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 mois de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mois software engineering experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 mois software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ anni experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 anni experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ anni of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 anni of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ anni de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 anni de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ anni software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 anni software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mesi experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 mesi experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mesi of relevant experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 mesi of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mesi de experiencia",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 mesi de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mesi software engineering experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 mesi software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ años experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 años experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ años of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 años of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ años de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 años de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ años software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 años software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ meses experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 meses experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ meses of relevant experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 meses of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ meses de experiencia",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 meses de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ meses software engineering experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 meses software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ jaar experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 jaar experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ jaar of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 jaar of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ jaar de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 jaar de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ jaar software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 jaar software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ maanden experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 maanden experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ maanden of relevant experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 maanden of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ maanden de experiencia",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 maanden de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ maanden software engineering experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 maanden software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ år experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 år experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ år of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 år of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ år de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 år de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ år software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 år software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ månader experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 månader experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ månader of relevant experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 månader of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ månader de experiencia",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 månader de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ månader software engineering experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 månader software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ måneder experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 måneder experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ måneder of relevant experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 måneder of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ måneder de experiencia",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 måneder de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ måneder software engineering experience",
+    "min": 2.6,
+    "max": null
+  },
+  {
+    "text": "31-5 måneder software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "31-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ years of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 years of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ years de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 years de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ years software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 years software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ months experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 months experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ months of relevant experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 months of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ months de experiencia",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 months de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ months software engineering experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 months software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Jahre experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 Jahre experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Jahre of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 Jahre of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Jahre de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 Jahre de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Jahre software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 Jahre software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Monate experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 Monate experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Monate of relevant experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 Monate of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Monate de experiencia",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 Monate de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Monate software engineering experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 Monate software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ ans experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 ans experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ ans of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 ans of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ ans de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 ans de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ ans software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 ans software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mois experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 mois experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mois of relevant experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 mois of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mois de experiencia",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 mois de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mois software engineering experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 mois software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ anni experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 anni experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ anni of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 anni of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ anni de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 anni de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ anni software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 anni software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mesi experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 mesi experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mesi of relevant experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 mesi of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mesi de experiencia",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 mesi de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mesi software engineering experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 mesi software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ años experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 años experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ años of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 años of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ años de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 años de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ años software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 años software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ meses experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 meses experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ meses of relevant experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 meses of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ meses de experiencia",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 meses de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ meses software engineering experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 meses software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ jaar experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 jaar experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ jaar of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 jaar of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ jaar de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 jaar de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ jaar software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 jaar software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ maanden experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 maanden experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ maanden of relevant experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 maanden of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ maanden de experiencia",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 maanden de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ maanden software engineering experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 maanden software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ år experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 år experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ år of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 år of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ år de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 år de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ år software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 år software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ månader experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 månader experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ månader of relevant experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 månader of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ månader de experiencia",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 månader de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ månader software engineering experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 månader software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ måneder experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 måneder experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ måneder of relevant experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 måneder of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ måneder de experiencia",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 måneder de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ måneder software engineering experience",
+    "min": 8.3,
+    "max": null
+  },
+  {
+    "text": "99-5 måneder software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "99-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ years of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 years of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ years de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 years de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ years software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 years software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ months experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 months experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ months of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 months of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ months de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 months de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ months software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 months software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ Jahre experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Jahre experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ Jahre of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Jahre of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ Jahre de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Jahre de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ Jahre software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Jahre software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ Monate experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Monate experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ Monate of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Monate of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ Monate de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Monate de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ Monate software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Monate software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ ans experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 ans experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ ans of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 ans of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ ans de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 ans de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ ans software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 ans software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ mois experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mois experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ mois of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mois of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ mois de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mois de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ mois software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mois software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ anni experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 anni experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ anni of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 anni of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ anni de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 anni de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ anni software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 anni software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ mesi experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mesi experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ mesi of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mesi of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ mesi de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mesi de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ mesi software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mesi software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ años experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 años experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ años of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 años of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ años de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 años de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ años software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 años software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ meses experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 meses experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ meses of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 meses of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ meses de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 meses de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ meses software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 meses software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ jaar experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 jaar experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ jaar of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 jaar of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ jaar de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 jaar de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ jaar software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 jaar software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ maanden experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 maanden experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ maanden of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 maanden of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ maanden de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 maanden de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ maanden software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 maanden software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ år experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 år experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ år of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 år of relevant experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ år de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 år de experiencia",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ år software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 år software engineering experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "100+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ månader experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 månader experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ månader of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 månader of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ månader de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 månader de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ månader software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 månader software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100+ måneder experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 måneder experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ måneder of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 måneder of relevant experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ måneder de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 måneder de experiencia",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ måneder software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 måneder software engineering experience",
+    "min": 0.4,
+    "max": null
+  },
+  {
+    "text": "100+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "100-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ years experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ years of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 years of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ years de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 years de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ years software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 years software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ months experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 months experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ months of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 months of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ months de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 months de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ months software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 months software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Jahre experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 Jahre experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Jahre of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 Jahre of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Jahre de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 Jahre de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Jahre software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 Jahre software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Monate experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 Monate experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Monate of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 Monate of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Monate de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 Monate de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Monate software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 Monate software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ ans experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 ans experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ ans of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 ans of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ ans de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 ans de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ ans software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 ans software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mois experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 mois experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mois of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 mois of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mois de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 mois de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mois software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 mois software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ anni experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 anni experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ anni of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 anni of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ anni de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 anni de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ anni software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 anni software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mesi experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 mesi experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mesi of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 mesi of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mesi de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 mesi de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mesi software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 mesi software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ años experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 años experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ años of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 años of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ años de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 años de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ años software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 años software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ meses experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 meses experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ meses of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 meses of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ meses de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 meses de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ meses software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 meses software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ jaar experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 jaar experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ jaar of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 jaar of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ jaar de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 jaar de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ jaar software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 jaar software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ maanden experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 maanden experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ maanden of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 maanden of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ maanden de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 maanden de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ maanden software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 maanden software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ år experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 år experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ år of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 år of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ år de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 år de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ år software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 år software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ månader experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 månader experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ månader of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 månader of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ månader de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 månader de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ månader software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 månader software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ måneder experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 måneder experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ måneder of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 måneder of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ måneder de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 måneder de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ måneder software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "１２-5 måneder software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "１２-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ years experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ years of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 years of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ years de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 years de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ years software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 years software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 years of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ months experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 months experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ months of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 months of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ months de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 months de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ months software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 months software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 months of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Jahre experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Jahre experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Jahre of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Jahre of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Jahre de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Jahre de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Jahre software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Jahre software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Jahre of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Monate experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Monate experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Monate of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Monate of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Monate de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Monate de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Monate software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Monate software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 Monate of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ ans experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 ans experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ ans of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 ans of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ ans de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 ans de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ ans software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 ans software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 ans of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mois experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mois experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mois of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mois of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mois de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mois de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mois software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mois software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mois of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ anni experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 anni experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ anni of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 anni of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ anni de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 anni de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ anni software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 anni software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 anni of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mesi experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mesi experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mesi of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mesi of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mesi de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mesi de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mesi software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mesi software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 mesi of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ años experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 años experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ años of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 años of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ años de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 años de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ años software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 años software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 años of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ meses experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 meses experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ meses of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 meses of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ meses de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 meses de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ meses software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 meses software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 meses of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ jaar experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 jaar experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ jaar of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 jaar of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ jaar de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 jaar de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ jaar software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 jaar software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 jaar of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ maanden experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 maanden experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ maanden of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 maanden of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ maanden de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 maanden de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ maanden software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 maanden software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 maanden of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ år experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 år experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ år of relevant experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 år of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ år de experiencia",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 år de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ år software engineering experience",
+    "min": 12.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 år software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 år of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ månader experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 månader experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ månader of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 månader of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ månader de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 månader de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ månader software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 månader software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 månader of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ måneder experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 måneder experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ måneder of relevant experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 måneder of relevant experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ måneder de experiencia",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 måneder de experiencia",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ måneder software engineering experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "١٢-5 måneder software engineering experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢+ måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "١٢-5 måneder of unrelated historical information",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "6 months to 1 year work experience; 1 year experience",
+    "min": 1.0,
+    "max": null
+  },
+  {
+    "text": "founded 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "Intern: 6 months experıence",
+    "min": 0.5,
+    "max": null
+  },
+  {
+    "text": "3 years of experİence",
+    "min": 3.0,
+    "max": null
+  },
+  {
+    "text": "7 months to 1.5 years of experience",
+    "min": 1.5,
+    "max": null
+  },
+  {
+    "text": "5 years experience aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "5 years experience; 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "6 months to 1 year work experience; 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded  at least 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "at least 5 years experience; at least 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  at least 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "at least 6 months to 1 year work experience; at least 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé at least 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé at least 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded  minimum 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "minimum 5 years experience; minimum 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  minimum 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "minimum 6 months to 1 year work experience; minimum 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé minimum 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé minimum 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded  au moins 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "au moins 5 years experience; au moins 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  au moins 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "au moins 6 months to 1 year work experience; au moins 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé au moins 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé au moins 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé au moins 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé au moins 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé au moins 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé au moins 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé au moins 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé au moins 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé au moins 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé au moins 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded  MINİMUM 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "MINİMUM 5 years experience; MINİMUM 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  MINİMUM 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "MINİMUM 6 months to 1 year work experience; MINİMUM 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé MINİMUM 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded  minimo 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "minimo 5 years experience; minimo 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  minimo 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "minimo 6 months to 1 year work experience; minimo 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé minimo 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé minimo 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé minimo 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé minimo 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimo 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimo 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimo 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimo 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimo 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimo 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded  mindestens 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "mindestens 5 years experience; mindestens 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  mindestens 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "mindestens 6 months to 1 year work experience; mindestens 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé mindestens 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé mindestens 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé mindestens 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé mindestens 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé mindestens 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé mindestens 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé mindestens 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé mindestens 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé mindestens 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé mindestens 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded  minimum at least 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "minimum at least 5 years experience; minimum at least 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  minimum at least 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "minimum at least 6 months to 1 year work experience; minimum at least 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum at least 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded  minimum minimum 5 years experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "minimum minimum 5 years experience; minimum minimum 2 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded  minimum minimum 6 months to 1 year work experience",
+    "min": null,
+    "max": null
+  },
+  {
+    "text": "minimum minimum 6 months to 1 year work experience; minimum minimum 2 years experience",
+    "min": 2.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 5 years experience",
+    "min": 5.0,
+    "max": null
+  },
+  {
+    "text": "founded ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé minimum minimum 6 months to 1 year work experience",
+    "min": 0.5,
+    "max": 1.0
+  }
+]

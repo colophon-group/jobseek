@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 
 from src.core.enum_normalize import employment_type_implies_intern_level
+from src.core.experience_extract import extract_experience
 from src.core.occupation_resolve import match_occupation
 from src.core.seniority_resolve import match_seniority
 from src.core.technology_resolve import match_technologies
@@ -22,6 +23,7 @@ parser.add_argument("--engine", choices=("compare", "python", "go"), default="co
 parser.add_argument("--binary", default="/usr/local/bin/job-enrichment")
 parser.add_argument("--data-dir", type=Path, required=True)
 parser.add_argument("--rounds", type=int, default=1)
+parser.add_argument("--scope", choices=("classification", "experience"), default="classification")
 args = parser.parse_args()
 assert 1 <= args.rounds <= 100
 raw = args.sample.read_bytes()
@@ -30,6 +32,12 @@ client = GoJobEnrichment(args.binary, args.data_dir) if args.engine in {"compare
 
 
 def legacy(row):
+    if args.scope == "experience":
+        result = extract_experience(row["html"])
+        return {
+            "experience_min": result.min_years if result else None,
+            "experience_max": result.max_years if result else None,
+        }
     return {
         "titles": [
             {"occupation": match_occupation(t), "seniority": match_seniority(t)}
@@ -42,6 +50,12 @@ def legacy(row):
 
 def native(row):
     assert client is not None
+    if args.scope == "experience":
+        result = client.request("experience", description=row["html"])
+        return {
+            key: float(result[key]) if result.get(key) is not None else None
+            for key in ("experience_min", "experience_max")
+        }
     title = client.request(
         "occupation_seniority",
         titles=row["titles"],
@@ -78,6 +92,7 @@ print(
     json.dumps(
         {
             "engine": args.engine,
+            "scope": args.scope,
             "sample_rows": len(rows),
             "boards": len({r.get("board_id") for r in rows}),
             "locales": sorted({r.get("locale", "") for r in rows}),

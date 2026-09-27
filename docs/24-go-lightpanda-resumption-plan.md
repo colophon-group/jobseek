@@ -1164,3 +1164,22 @@ evidence. A new abstraction is justified only by a measured migration need.
   demand justifies a bounded slice.
 - #7966: final zero-Python/Playwright/Chromium completion and retirement gate,
   reopened for the complete migration goal; it does not block B0 admission.
+
+## Implementation queued: Go experience extraction, v0.13.876
+
+The shared resident Go enrichment process now also implements experience
+requirements for monitor/detail CPU helpers. **This slice is not deployed.**
+It preserves mixed-unit, forward and reversed rule ordering, numeric boundaries,
+Unicode matching, highest-minimum/tie behavior, false-positive context and
+exact half-up month rounding. Python remains the explicit rollback engine;
+there is no runtime fallback.
+
+The native and installed-protocol fixtures cover 1,967 Python oracle inputs;
+43 focused bridge/CPU/experience tests and Go race/vet checks pass. The same
+256 stored production postings match, with 66 non-null experience results.
+A counterbalanced local replay of 2,560 completions per arm uses about 21%
+less experience-stage CPU including IPC and the native child. Numeric output
+hashes match exactly. This does not establish whole-lane resource savings.
+See [the replay evidence](evidence/go-experience-replay-2026-09-27.json).
+The v0.13.875 production record is complete in #10103. Use the current
+supported c1 rollback and exact-selector protocol before deploying.

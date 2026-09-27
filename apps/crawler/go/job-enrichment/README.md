@@ -1,14 +1,14 @@
 # Shared Go job classification
 
-The resident `job-enrichment` binary owns occupation, seniority and technology
+The resident `job-enrichment` binary owns occupation, seniority, technology and experience
 matching for the monitor and detail CPU helpers. It loads the same read-only
-CSV taxonomy once, returns slugs, and leaves database ID resolution to the
-caller. `Matcher` is directly reusable by the future native worker.
+CSV taxonomy once, returns taxonomy slugs and experience bounds, and leaves
+database ID resolution to the caller. `Matcher` is directly reusable by the future native worker.
 
 Compose selects `JOB_ENRICHMENT_ENGINE=go`. Outside Compose the default is
 `python`; explicitly selecting `python` is the cold rollback path. There is
 no same-task Python fallback. Unknown engine names fail. The worker and
-remaining CPU stages (HTML, language, location, salary, experience), scheduling
+remaining CPU stages (HTML, language, location, salary), scheduling
 and persistence still run in Python. This is not the full #7966 completion.
 
 Each Python worker process creates one child on first use. A lock serializes
@@ -42,5 +42,20 @@ bridge; RSS maxima are reported separately. This measures classification only,
 not whole-lane RAM, density or cost.
 
 Production instrumentation uses `stage="enrichment"`,
-`implementation="go-job-enrichment"`, and the two bounded capabilities
-`occupation_seniority` / `technology`. These executions add no origin traffic.
+`implementation="go-job-enrichment"`, and the bounded capabilities
+`occupation_seniority` / `technology` / `experience`. These executions add no origin traffic.
+
+## Experience requirements
+
+`experience` preserves the three ordered Python matching passes (mixed units,
+forward and reversed wording), highest accepted minimum, equal-minimum tie
+behavior, Unicode number/space classes, the 60-character preceding-context
+exclusions, and the 30-year ceiling. Integer tenths preserve decimal half-up
+month conversion without floating-point rounding drift. Forward expressions
+are anchored at eligible numeric starts; optional prefix positions still
+define the false-positive context window.
+
+`testdata/generate_experience.py` freezes the retained Python expressions and
+1,967 oracle cases, including existing regression inputs and numeric boundary,
+multilingual-unit and prefix/context combinations. Installed-image CI and the
+shared bridge test exercise them through the same resident process.

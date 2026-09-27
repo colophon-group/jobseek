@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import atexit
 import json
+import math
 import os
 import select
 import subprocess
@@ -144,7 +145,9 @@ class GoJobEnrichment:
                     stage="enrichment",
                     implementation="go-job-enrichment",
                     capability=operation,
-                    allowed_capabilities=frozenset({"occupation_seniority", "technology"}),
+                    allowed_capabilities=frozenset(
+                        {"occupation_seniority", "technology", "experience"}
+                    ),
                     outcome=outcome,
                 )
 
@@ -225,3 +228,16 @@ def technology_ids(description, tech_ids):
     if not isinstance(slugs, list) or not all(isinstance(s, str) for s in slugs):
         raise ValueError("invalid Go technology slugs")
     return sorted({tech_ids[s] for s in slugs if s in tech_ids}) or None
+
+
+def experience_fields(description):
+    if not description:
+        return None, None
+    result = client().request("experience", description=description)
+    values = result.get("experience_min"), result.get("experience_max")
+    if any(
+        v is not None and (type(v) not in {int, float} or not math.isfinite(v) or not 0 <= v <= 30)
+        for v in values
+    ) or (values[1] is not None and (values[0] is None or values[1] < values[0])):
+        raise ValueError("invalid Go experience requirement")
+    return values

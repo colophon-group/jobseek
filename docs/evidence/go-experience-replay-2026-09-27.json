@@ -1,0 +1,131 @@
+{
+  "status": "implemented, not deployed",
+  "scope": "Experience extraction only; local actual-content replay, not whole-lane production resource proof",
+  "platform": "macOS-14.4-arm64-arm-64bit-Mach-O",
+  "fixture_cases": 1967,
+  "focused_tests": 43,
+  "rows_with_experience": 66,
+  "rounds": [
+    {
+      "engine": "compare",
+      "scope": "experience",
+      "sample_rows": 256,
+      "boards": 128,
+      "locales": [
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it",
+        "nl",
+        "pt",
+        "zh"
+      ],
+      "completions": 2560,
+      "input_sha256": "35c1773f4a5c99cf448df7fb063565057c99bcdbb7868250a62dd5d73d004bf1",
+      "output_sha256": "581392f8f86756e9d1694469826e4b49e87c917ec239b4a5ed14230c33460496",
+      "wall_seconds": 5.491903959002229,
+      "cpu_seconds": 5.642167,
+      "parent_peak_rss_bytes": 71204864,
+      "child_peak_rss_bytes": 17809408
+    },
+    {
+      "engine": "python",
+      "scope": "experience",
+      "sample_rows": 256,
+      "boards": 128,
+      "locales": [
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it",
+        "nl",
+        "pt",
+        "zh"
+      ],
+      "completions": 2560,
+      "input_sha256": "35c1773f4a5c99cf448df7fb063565057c99bcdbb7868250a62dd5d73d004bf1",
+      "output_sha256": "581392f8f86756e9d1694469826e4b49e87c917ec239b4a5ed14230c33460496",
+      "wall_seconds": 3.1283882499992615,
+      "cpu_seconds": 3.125558,
+      "parent_peak_rss_bytes": 70270976,
+      "child_peak_rss_bytes": 0
+    },
+    {
+      "engine": "go",
+      "scope": "experience",
+      "sample_rows": 256,
+      "boards": 128,
+      "locales": [
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it",
+        "nl",
+        "pt",
+        "zh"
+      ],
+      "completions": 2560,
+      "input_sha256": "35c1773f4a5c99cf448df7fb063565057c99bcdbb7868250a62dd5d73d004bf1",
+      "output_sha256": "581392f8f86756e9d1694469826e4b49e87c917ec239b4a5ed14230c33460496",
+      "wall_seconds": 2.3344112079939805,
+      "cpu_seconds": 2.470629,
+      "parent_peak_rss_bytes": 70516736,
+      "child_peak_rss_bytes": 17727488
+    },
+    {
+      "engine": "go",
+      "scope": "experience",
+      "sample_rows": 256,
+      "boards": 128,
+      "locales": [
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it",
+        "nl",
+        "pt",
+        "zh"
+      ],
+      "completions": 2560,
+      "input_sha256": "35c1773f4a5c99cf448df7fb063565057c99bcdbb7868250a62dd5d73d004bf1",
+      "output_sha256": "581392f8f86756e9d1694469826e4b49e87c917ec239b4a5ed14230c33460496",
+      "wall_seconds": 2.335070207991521,
+      "cpu_seconds": 2.474281,
+      "parent_peak_rss_bytes": 70483968,
+      "child_peak_rss_bytes": 17580032
+    },
+    {
+      "engine": "python",
+      "scope": "experience",
+      "sample_rows": 256,
+      "boards": 128,
+      "locales": [
+        "de",
+        "en",
+        "es",
+        "fr",
+        "it",
+        "nl",
+        "pt",
+        "zh"
+      ],
+      "completions": 2560,
+      "input_sha256": "35c1773f4a5c99cf448df7fb063565057c99bcdbb7868250a62dd5d73d004bf1",
+      "output_sha256": "581392f8f86756e9d1694469826e4b49e87c917ec239b4a5ed14230c33460496",
+      "wall_seconds": 3.134922249999363,
+      "cpu_seconds": 3.131557,
+      "parent_peak_rss_bytes": 70254592,
+      "child_peak_rss_bytes": 0
+    }
+  ],
+  "cpu_reduction_percent_approx": 21,
+  "notes": [
+    "Same 256 stored postings as Go classification replay. No publisher traffic.",
+    "Native child and Python IPC are included in CPU; parent and child peak RSS are separate maxima.",
+    "All output hashes use normalized numeric JSON values."
+  ]
+}
