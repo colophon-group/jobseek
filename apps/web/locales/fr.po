@@ -817,7 +817,7 @@ msgstr "Tous les {totalCountries} pays chargés"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r5"
-msgstr "Toutes les données sont chiffrées en transit et au repos."
+msgstr "Nous utilisons HTTPS, le hachage des mots de passe, des accès système restreints et des sauvegardes de récupération chiffrées."
 
 #. Option to show all industries
 #. js-lingui-explicit-id
@@ -2963,14 +2963,14 @@ msgstr "Job Seek est développé par Colophon Group, une petite équipe de déve
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.billing.seller"
-msgstr "Job Seek est exploité par Viktor Shcherbakov sous le nom Colophon Group. Paddle est notre revendeur agréé et le vendeur officiel des abonnements Pro. Il gère les paiements, les taxes applicables, l’assistance à la facturation et les remboursements."
+msgstr "Job Seek est exploité par Viktor Shcherbakov en Suisse. Pour les achats via Paddle, Paddle agit comme revendeur et Merchant of Record et gère les paiements, les taxes applicables, l’assistance de facturation et les remboursements."
 
 #. JSON-LD page description for the public Privacy Policy page.
 #. SEO description for the public Privacy Policy page.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/privacy-policy/page.tsx
 msgid "privacy.meta.description"
-msgstr "Politique de confidentialité de Job Seek — données collectées, utilisation, droits RGPD, politique de cookies et suppression de compte et de données."
+msgstr "Politique de confidentialité de Job Seek — données personnelles collectées, utilisation, droits, cookies et demandes de suppression du compte et des données."
 
 #. Alt text for feature section 1 screenshot
 #. js-lingui-explicit-id
@@ -2982,7 +2982,7 @@ msgstr "Résultats de recherche Job Seek filtrés par rôle et lieu"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r4"
-msgstr "Job Seek utilise des cookies essentiels à l’authentification. Le paiement Paddle et ses services de paiement sont régis par la notice de confidentialité de Paddle."
+msgstr "Nous utilisons des cookies de connexion nécessaires et stockons vos préférences, dont certaines persistent entre les visites. Nous n’utilisons pas de cookies publicitaires."
 
 #. Alt text for feature section 3 screenshot
 #. js-lingui-explicit-id
@@ -2994,7 +2994,7 @@ msgstr "Liste de suivi Job Seek montrant des postes sélectionnés en ingénieri
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.hero.description"
-msgstr "Le code source de Job Seek est ouvert sous licence MIT. Les données d'emploi que nous collectons et enrichissons sont sous Creative Commons BY-NC 4.0. Tu trouveras ci-dessous un résumé en langage clair — consulte les licences complètes pour les termes exacts."
+msgstr "Le code de Job Seek est ouvert sous licence MIT. Nos droits sur la compilation et nos enrichissements originaux sont sous CC BY-NC 4.0 ; les contenus de tiers sont exclus. Voici un résumé en langage clair — consultez les licences complètes pour les conditions exactes."
 
 #. Plural job count on watchlist card
 #. Plural job count on watchlist card
@@ -3616,7 +3616,7 @@ msgstr "Aucun compte de facturation trouvé."
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.r2"
-msgstr "Aucune redistribution ou revente commerciale sans autorisation."
+msgstr "L’utilisation commerciale de nos droits nécessite notre autorisation ; nous ne pouvons pas concéder de droits appartenant à des tiers."
 
 #. Empty state when no filters are set
 #. js-lingui-explicit-id
@@ -4391,13 +4391,13 @@ msgstr "Lire la licence MIT complète"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.extras.fullPolicyLink"
-msgstr "Lire la politique de confidentialité complète"
+msgstr "Politique de confidentialité sur GitHub"
 
 #. Link to full terms of service text
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.fullTermsLink"
-msgstr "Lire les conditions d'utilisation complètes"
+msgstr "Conditions d’utilisation sur GitHub"
 
 #. WebApplication JSON-LD feature list item about job alert notifications.
 #. js-lingui-explicit-id
@@ -4430,10 +4430,8 @@ msgid "terms.refunds.title"
 msgstr "Politique de remboursement"
 
 #. Footer link to refund policy
-#. Footer link to refund policy
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
-#: src/components/pro/ProPitch.tsx
 msgid "common.footer.refundsLink"
 msgstr "Remboursements"
 
@@ -4494,7 +4492,7 @@ msgstr "Refusé"
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "common.footer.text"
-msgstr "Publié sous licence MIT. Les données d'emploi sont sous CC BY-NC 4.0."
+msgstr "Code : MIT. Nos droits sur les données : CC BY-NC 4.0. Les contenus de tiers sont exclus."
 
 #. Work mode: remote (work-from-home)
 #. Work mode: remote (work-from-home)
@@ -5552,7 +5550,7 @@ msgstr "La file espace les requêtes vers un même domaine de limitation de 2 se
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.short.r4"
-msgstr "Le service est fourni tel quel, sans garantie."
+msgstr "Le service comporte des limites. Vos droits impératifs en tant que consommateur restent protégés."
 
 #. Short version section title
 #. js-lingui-explicit-id
@@ -5942,7 +5940,7 @@ msgstr "Nous pensons que la recherche d'emploi devrait être dirigée par la per
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.hero.description"
-msgstr "Nous collectons les données nécessaires à Job Seek, nous ne les vendons pas et vous pouvez demander leur accès ou leur suppression."
+msgstr "Comment nous utilisons vos données, les prestataires concernés, ainsi que vos choix et vos droits."
 
 #. Account deletion cannot proceed until recurring payments are canceled
 #. js-lingui-explicit-id
@@ -6032,7 +6030,7 @@ msgstr "Nous avons envoyé un lien de vérification à <0>{email}</0>. Clique su
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r1"
-msgstr "Nous stockons ton nom, ton e-mail et ta photo de profil de ta connexion OAuth, ainsi que les données que tu crées dans l'appli."
+msgstr "Nous conservons les informations du compte et les données que vous créez. Les comptes avec e-mail et mot de passe conservent une empreinte du mot de passe ; la connexion externe ne nous transmet pas votre mot de passe chez le fournisseur."
 
 #. Info box about sitemaps
 #. js-lingui-explicit-id
@@ -6044,7 +6042,7 @@ msgstr "Nous encourageons vivement la publication d'un sitemap facilement décou
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r3"
-msgstr "Nous utilisons des services tiers pour faire fonctionner Job Seek, notamment pour la connexion, l’hébergement, le stockage et Paddle pour les paiements Pro."
+msgstr "Des prestataires nous aident à héberger le service, envoyer des e-mails, interpréter les recherches, filtrer les descriptions de postes et gérer les paiements. La politique complète les nomme et explique les traitements internationaux."
 
 #. Secondary line under the Request <query> dropdown row
 #. js-lingui-explicit-id
@@ -6214,13 +6212,13 @@ msgstr "Tu peux supprimer ton compte à tout moment."
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.r3"
-msgstr "Tu peux remixer ou transformer les données à des fins de recherche ou pour des tableaux de bord personnels."
+msgstr "Cet avis ne restreint ni les informations factuelles ni les exceptions prévues par la loi applicable."
 
 #. Your rights intro
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.intro"
-msgstr "Vous pouvez demander l’accès, la correction, la suppression ou l’export de vos données, ou vous opposer au traitement lorsque cela s’applique. La suppression du compte efface vos données de notre base sous 30 jours. Paddle peut conserver les données de transaction pour respecter ses obligations légales."
+msgstr "Le droit suisse de la protection des données et, le cas échéant, le RGPD de l’UE ou du Royaume-Uni vous donnent des droits sur vos données. La suppression du compte efface les données actives du compte ; les sauvegardes et les données conservées par les prestataires ont des durées de conservation distinctes, expliquées ci-dessous."
 
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
@@ -6244,7 +6242,7 @@ msgstr "Vous pourriez également être intéressé par"
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.summary"
-msgstr "Tu peux réutiliser le jeu de données d'emploi avec attribution à des fins non commerciales. Toute utilisation commerciale nécessite un accord écrit préalable."
+msgstr "CC BY-NC 4.0 couvre uniquement nos droits sur la compilation et nos enrichissements originaux. Les descriptions de postes, logos et autres contenus de tiers sont exclus ; obtenez les autorisations nécessaires auprès de leurs titulaires."
 
 #. Age requirement
 #. js-lingui-explicit-id
@@ -6407,3 +6405,24 @@ msgstr "Vos watchlists, offres enregistrées et alertes e-mail sont toujours là
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.ready"
 msgstr "Vos watchlists, un peu plus ciblées."
+
+
+#. Heading identifying the full English legal document below the translated summary
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.complete.title"
+msgstr "Politique de confidentialité complète (en anglais)"
+
+#. Heading identifying the full English legal document below the translated summary
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.complete.title"
+msgstr "Conditions d’utilisation complètes (en anglais)"
+
+#. Country in the public seller and controller address
+#. Country in the public seller and controller address
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+#: src/components/TermsContent.tsx
+msgid "legal.contact.country"
+msgstr "Suisse"

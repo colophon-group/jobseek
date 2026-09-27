@@ -30,7 +30,7 @@ export function Footer({ lang }: FooterProps) {
             id="common.footer.text"
             comment="Footer license summary text"
           >
-            Released under the MIT License. Job data is CC BY-NC 4.0.
+            Code: MIT. Our data rights: CC BY-NC 4.0. Third-party content is excluded.
           </Trans>
         </p>
         <nav aria-label={i18n._(msg({ id: "common.footer.ariaLabel", comment: "Aria label for footer navigation", message: "Footer" }))} className="order-1 sm:order-2">

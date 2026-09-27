@@ -4,7 +4,9 @@ Last updated: 27 September 2026
 
 These Terms of Service ("Terms") govern your access to and use of the
 Job Seek web application ("Service") operated by Viktor Shcherbakov,
-operating as Colophon Group ("we", "us", "our"), available at
+an individual business operator in Switzerland ("we", "us", "our"), at
+Route d'Oron 5, 1010 Lausanne, Switzerland. Job Seek is our product brand.
+Contact: business@colophon-group.org. The Service is available at
 https://jseek.co and any successor domains.
 
 By creating an account or using the Service you agree to be bound by
@@ -32,8 +34,9 @@ of any job posting or employer information displayed on the Service.
 
 3. ACCOUNTS
 
-  a. You must sign in through a supported OAuth provider to use
-     certain features. You are responsible for maintaining the
+  a. Certain features require an account. You can register with an
+     email address and password or a supported sign-in provider.
+     You are responsible for maintaining the
      security of your account.
 
   b. You may not create multiple accounts, impersonate another
@@ -76,20 +79,25 @@ You agree not to:
   a. Application code — the source code of Job Seek is released
      under the MIT License. See the LICENSE file for details.
 
-  b. Job data — the collection of job postings indexed by the
-     Service is licensed under Creative Commons
-     Attribution-NonCommercial 4.0 International (CC BY-NC 4.0).
-     See the LICENSE-JOB-DATA file for details.
+  b. Job data — to the extent we hold rights in our compilation and
+     original enrichment, we license those rights under Creative
+     Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0).
+     This does not license third-party descriptions, images, logos,
+     or other employer content. See LICENSE-JOB-DATA for details.
 
   c. Employer content — individual job posting descriptions remain
      the intellectual property of their respective authors and
-     employers. We display them for informational purposes under
-     fair use / fair dealing principles.
+     employers. Their display does not imply endorsement or grant you
+     a licence to reuse them. Follow the source link for the employer's
+     current posting and application process. For rights or removal
+     requests, contact business@colophon-group.org with the source URL
+     and the material concerned.
 
 
 6. DISCLAIMER OF WARRANTIES
 
-THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE SERVICE IS PROVIDED
+"AS IS" AND "AS AVAILABLE" WITHOUT
 WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY,
 INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
@@ -118,6 +126,11 @@ USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM:
   d. UNAUTHORISED ACCESS, USE, OR ALTERATION OF YOUR DATA.
 
 
+Nothing in Sections 6 or 7 excludes mandatory consumer remedies or any
+liability that cannot lawfully be excluded, including liability for
+intentional misconduct or gross negligence.
+
+
 8. PAID FEATURES
 
   a. Job Seek Pro adds Narrowed results for watchlists. Standard search,
@@ -125,8 +138,8 @@ USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM:
      free. Narrowed checks job descriptions against your criteria; it
      does not guarantee that a posting meets every requirement.
 
-  b. Paddle is our authorised reseller and merchant of record for Pro
-     purchases. You buy the subscription from Paddle; we provide Job
+  b. For Pro purchases offered through Paddle, Paddle acts as reseller
+     and merchant of record. You buy the subscription from Paddle; we provide Job
      Seek. Paddle handles checkout, payments, applicable taxes, billing
      support, and refunds. Purchases are also subject to Paddle's Buyer
      Terms: https://www.paddle.com/legal/buyer-terms
@@ -181,11 +194,13 @@ you have read and understood the Privacy Policy.
 
 11. GOVERNING LAW AND DISPUTES
 
-These Terms are governed by the laws of the Federal Republic of
-Germany. Any disputes arising from or relating to these Terms or
-the Service shall be resolved in the courts of Berlin, Germany,
-unless mandatory consumer protection laws in your jurisdiction
-require otherwise.
+These Terms governing our provision of Job Seek are governed by Swiss
+law. If you are a consumer, this choice does not remove mandatory
+protections afforded by the law of your habitual residence. Courts with
+jurisdiction are determined by applicable law; nothing in these Terms
+requires a consumer to waive a mandatory right to bring proceedings in
+their home courts. Paddle purchases are separately governed by Paddle's
+Buyer Terms; this section does not replace those terms.
 
 
 12. CHANGES TO THESE TERMS
@@ -194,12 +209,16 @@ We may update these Terms from time to time. When we do, we will
 revise the "Last updated" date at the top. If the changes are
 material, we will make a reasonable effort to notify you (e.g. via
 a notice on the Service). Your continued use of the Service after
-publication constitutes acceptance of the updated Terms.
+publication does not waive any notice, consent, cancellation, or other
+rights required by applicable law.
 
 
 13. CONTACT
 
 For questions about these Terms, contact:
 
-Viktor Shcherbakov
+Viktor Shcherbakov — Job Seek
+Route d'Oron 5
+1010 Lausanne
+Switzerland
 Email: business@colophon-group.org

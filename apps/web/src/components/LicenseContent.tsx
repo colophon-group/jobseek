@@ -35,7 +35,7 @@ export function LicenseContent() {
                 eyebrow={<Trans id="license.hero.eyebrow" comment="License page eyebrow">Licensing</Trans>}
                 title={<Trans id="license.hero.title" comment="License page title">License of Job Seek</Trans>}
                 description={<Trans id="license.hero.description" comment="License page description">
-                  {"Job Seek's codebase is open source under MIT. The job data we collect and enrich is Creative Commons BY-NC 4.0. Below is the plain-language summary \u2014 please read the full licenses for exact terms."}
+                  {"Job Seek's codebase is open source under MIT. Rights we hold in our compilation and original enrichment are CC BY-NC 4.0; third-party content is excluded. Below is the plain-language summary \u2014 please read the full licenses for exact terms."}
                 </Trans>}
                 artAssetKey={siteConfig.license.hero.art.assetKey}
                 artFocus={siteConfig.license.hero.art.focus}
@@ -71,7 +71,7 @@ export function LicenseContent() {
               </h2>
               <p className="mt-2 text-muted">
                 <Trans id="license.data.summary" comment="CC license summary">
-                  You may reuse the job dataset with attribution for non-commercial purposes. Commercial usage requires prior written consent.
+                  CC BY-NC 4.0 covers only rights we hold in the compilation and original enrichment. Employer descriptions, logos and other third-party material are excluded; obtain any permissions needed from their owners.
                 </Trans>
               </p>
               <ul className="mt-3 list-disc space-y-1 pl-6">
@@ -80,8 +80,8 @@ export function LicenseContent() {
                     {"\u201CViktor Shcherbakov, Collection of Job Postings\u201D with a link to the source."}
                   </Trans>
                 </li>
-                <li><Trans id="license.data.r2" comment="CC right 2">No commercial redistribution or resale without permission.</Trans></li>
-                <li><Trans id="license.data.r3" comment="CC right 3">You can remix/transform the data for research or personal dashboards.</Trans></li>
+                <li><Trans id="license.data.r2" comment="CC right 2">Commercial use of rights we hold requires our permission; we cannot license third-party rights.</Trans></li>
+                <li><Trans id="license.data.r3" comment="CC right 3">This notice does not restrict factual information or exceptions available under applicable law.</Trans></li>
               </ul>
               <a href={dataLink} target="_blank" rel="noreferrer" className="mt-3 inline-block font-semibold text-primary underline">
                 <Trans id="license.data.linkLabel" comment="Link to full CC license">Read the CC BY-NC 4.0 License</Trans>
