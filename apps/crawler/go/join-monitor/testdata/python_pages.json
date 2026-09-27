@@ -1,0 +1,648 @@
+[
+  {
+    "name": "id-0",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"42-engineer\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/42-engineer"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-1",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"Über-uns\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/Über-uns"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-2",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-3",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a/b?x=1\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a/b?x=1"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-4",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": 0}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/0"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-5",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": -12}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/-12"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-6",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": 9007199254740993}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/9007199254740993"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-7",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": 1.0}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/1.0"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-8",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": -0.0}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/-0.0"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-9",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": 0.0001}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/0.0001"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-10",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": 1e-05}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/1e-05"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-11",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": 1000000000000000.0}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/1000000000000000.0"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-12",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": 1e+16}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/1e+16"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-13",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": 1.2345678901234567}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/1.2345678901234567"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-14",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": true}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/True"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-15",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": false}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/False"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-16",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": null}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-17",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": []}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "id-18",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": {}}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "mixed-and-duplicates",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [null, 3, [], {\"x\": \"skip\"}, {\"idParam\": \"a\"}, {\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "count-0",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 0}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 0
+    }
+  },
+  {
+    "name": "count-1",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "count-2",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 2}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 2
+    }
+  },
+  {
+    "name": "count-3",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": -1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": -1
+    }
+  },
+  {
+    "name": "count-4",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": \"1\"}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "count-5",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": \" 2 \"}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 2
+    }
+  },
+  {
+    "name": "count-6",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": \"2_0\"}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 20
+    }
+  },
+  {
+    "name": "count-7",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": true}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "count-8",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": false}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 0
+    }
+  },
+  {
+    "name": "count-9",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1.9}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "count-10",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": -1.9}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": -1
+    }
+  },
+  {
+    "name": "count-11",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": \"bad\"}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "count-12",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": null}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "count-13",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": []}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "count-14",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": {}}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "empty-first-0",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [], \"pagination\": {\"pageCount\": 0}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [],
+      "page_count": 0
+    }
+  },
+  {
+    "name": "empty-first-1",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "empty-first-2",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [], \"pagination\": {\"pageCount\": 2}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "empty-first--1",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [], \"pagination\": {\"pageCount\": -1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [],
+      "page_count": -1
+    }
+  },
+  {
+    "name": "empty-first-None",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [], \"pagination\": {\"pageCount\": null}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "empty-required",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": false,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "required-count-ignored",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": \"bad\"}}}}}}</script>",
+    "first": false,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 0
+    }
+  },
+  {
+    "name": "missing-items",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": null, \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "missing-script",
+    "html": "<html>missing</html>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "invalid-json",
+    "html": "<script id=\"__NEXT_DATA__\">{bad}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "trailing-json",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1}}}}}}{} </script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "wrong-root",
+    "html": "<script id=\"__NEXT_DATA__\">[]</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "prefix-inside-character-bound",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 3999000,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "prefix-outside-character-bound",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 4000000,
+    "suffix": 0,
+    "expected_error": true
+  },
+  {
+    "name": "suffix-beyond-bound",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "x",
+    "prefix": 0,
+    "suffix": 4001000,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "unicode-prefix-inside-bound",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "é",
+    "prefix": 3999000,
+    "suffix": 0,
+    "expected": {
+      "urls": [
+        "https://join.com/companies/acme/a"
+      ],
+      "page_count": 1
+    }
+  },
+  {
+    "name": "unicode-prefix-outside-bound",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"jobs\": {\"items\": [{\"idParam\": \"a\"}], \"pagination\": {\"pageCount\": 1}}}}}}</script>",
+    "first": true,
+    "fill": "é",
+    "prefix": 4000000,
+    "suffix": 0,
+    "expected_error": true
+  }
+]

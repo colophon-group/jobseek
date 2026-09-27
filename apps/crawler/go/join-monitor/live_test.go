@@ -12,7 +12,86 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
+
+func TestRedirectHeadersCookiesAndRequestAccounting(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Accept") != accept || r.Header.Get("User-Agent") != userAgent {
+			t.Error("request did not preserve Python headers")
+		}
+		if r.URL.Path == "/companies/acme" {
+			http.SetCookie(w, &http.Cookie{Name: "session", Value: "kept", Path: "/", Secure: true})
+			http.Redirect(w, r, "/redirected?"+r.URL.RawQuery, http.StatusFound)
+			return
+		}
+		cookie, err := r.Cookie("session")
+		if err != nil || cookie.Value != "kept" {
+			t.Error("redirect lost its session cookie")
+		}
+		page := r.URL.Query().Get("page")
+		if page == "" {
+			page = "1"
+		}
+		_, _ = w.Write(samplePage(`[{"idParam":"`+page+`-job"}]`, "2"))
+	}))
+	defer server.Close()
+	client := newClient()
+	defer client.CloseIdleConnections()
+	transport := client.Transport.(*http.Transport)
+	transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "tcp", server.Listener.Addr().String())
+	}
+	transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} // Local test server only.
+	result, err := Fetch(context.Background(), client, "https://join.com/companies/acme", "acme")
+	if err != nil || len(result.URLs) != 2 || result.Requests != 4 || result.Responses != 4 || result.FinalURL != "https://join.com/redirected?page=2" {
+		t.Fatalf("redirected pagination failed: %#v, %v", result, err)
+	}
+}
+
+type largeClient struct{ filler string }
+
+func (c largeClient) Do(request *http.Request) (*http.Response, error) {
+	page := request.URL.Query().Get("page")
+	if page == "" {
+		page = "1"
+	}
+	reader := io.MultiReader(strings.NewReader(string(samplePage(`[{"idParam":"`+page+`-job"}]`, "24"))), strings.NewReader(c.filler))
+	return &http.Response{StatusCode: 200, Body: io.NopCloser(reader), Request: request, Header: http.Header{}}, nil
+}
+
+func TestLargeInventoryHasPerPageMemoryBound(t *testing.T) {
+	result, err := Fetch(context.Background(), largeClient{strings.Repeat("x", 3<<20)}, "https://join.com/companies/acme", "acme")
+	if err != nil || len(result.URLs) != 24 || result.Requests != 24 || result.Bytes <= 64<<20 {
+		t.Fatalf("complete inventory rejected by aggregate body size: %#v, %v", result, err)
+	}
+}
+
+func TestReadInactivityClosesBody(t *testing.T) {
+	reader, writer := io.Pipe()
+	defer writer.Close()
+	body := &readIdleBody{ReadCloser: reader, timeout: 10 * time.Millisecond}
+	_, err := body.Read(make([]byte, 1))
+	if err != context.DeadlineExceeded {
+		t.Fatalf("blocked body read was not timed out: %v", err)
+	}
+}
+
+type cancelledClient struct{}
+
+func (cancelledClient) Do(request *http.Request) (*http.Response, error) {
+	<-request.Context().Done()
+	return nil, request.Context().Err()
+}
+
+func TestCancellationDoesNotRetryOrPublish(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	result, err := Fetch(ctx, cancelledClient{}, "https://join.com/companies/acme", "acme")
+	if err != context.Canceled || len(result.URLs) != 0 || result.Requests != 1 || result.Responses != 0 {
+		t.Fatalf("cancelled inventory leaked or retried: %#v, %v", result, err)
+	}
+}
 
 func TestLiveClientNegotiatesHTTP2WithCustomDialer(t *testing.T) {
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {

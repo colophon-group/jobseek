@@ -6,6 +6,35 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: JOIN monitor broad route v0.13.883
+
+The Go JOIN route now defaults to 100% in both the runtime and Compose. A
+read-only production registry snapshot admits all **276 enabled JOIN monitors**,
+all previously routed to Python. The pre-deploy baseline contains **4,169 active
+postings** and zero consecutive failures; the largest recent inventory has 288
+jobs. The private baseline is retained mode 0600 at
+`/tmp/jobseek-join-baseline.json`, SHA-256
+`34a10c37aa0446d5b281933deac10d1d64540d53625275cefd3540f10fe2abc2`.
+This projects 4,725 Go / 3,154 Python monitors across the unchanged 7,879 enabled
+boards. Deployment and natural production output for this route are pending.
+
+The native fetcher now preserves redirects, cookies, Python request headers,
+three-attempt page retries and the four-million-character HTML prefix. Response
+memory is bounded per page instead of rejecting a complete inventory once its
+aggregate response bodies exceed 64 MiB. Required-page failure publishes no
+inventory. The bridge bounds stdout while reading and reaps cancelled children.
+All 52 frozen Python parser cases match, native race/vet checks pass, and 215
+focused monitor/runtime/capture/nextdata tests pass. Installed-image CI repeats
+the parser oracle with networking disabled. See the
+[native contract](../apps/crawler/go/join-monitor/README.md).
+
+JOIN detail scrapers and the Python worker/writer remain migration obligations;
+this release changes monitor fetch/parser ownership. Use the latest deployed
+checkpoint's supported rollback/24-selector clear before deployment, then stage
+the same selectors at the newly promoted full revision and reactivate c1.
+`JOIN_GO_PERCENT=0` reverses the broad route through that cold mutation procedure.
+No additional publisher request or due score was forced for these checks.
+
 ## Production checkpoint: 2026-09-28 — SmartRecruiters and Personio v0.13.882
 
 PR #10116 merged as `5eb32570ddb4b6561f3a2e14347b0c1c32315367`.

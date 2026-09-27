@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -68,25 +70,73 @@ func field(object map[string]any, path ...string) any {
 }
 
 func pageCount(value any) (int, error) {
+	var n int64
+	var err error
 	switch raw := value.(type) {
 	case json.Number:
-		if n, err := raw.Int64(); err == nil && n >= 0 && n <= MaxPages {
-			return int(n), nil
+		if strings.ContainsAny(raw.String(), ".eE") {
+			var f float64
+			f, err = raw.Float64()
+			if f < -MaxPages || f > MaxPages || math.IsInf(f, 0) || math.IsNaN(f) {
+				return 0, errors.New("JOIN pageCount exceeds the request bound")
+			}
+			n = int64(f)
+		} else {
+			n, err = raw.Int64()
 		}
 	case string:
-		if n, err := strconv.Atoi(raw); err == nil && n >= 0 && n <= MaxPages {
-			return n, nil
+		raw = strings.TrimSpace(raw)
+		if !regexp.MustCompile(`^[+-]?[0-9](?:_?[0-9])*$`).MatchString(raw) {
+			return 0, errors.New("JOIN pageCount is missing or unsupported")
 		}
+		n, err = strconv.ParseInt(strings.ReplaceAll(raw, "_", ""), 10, 64)
+	case bool:
+		if raw {
+			n = 1
+		}
+	default:
+		return 0, errors.New("JOIN pageCount is missing or unsupported")
 	}
-	return 0, errors.New("JOIN pageCount is missing or unsupported")
+	if err != nil || n < -MaxPages || n > MaxPages {
+		return 0, errors.New("JOIN pageCount exceeds the request bound")
+	}
+	return int(n), nil
+}
+
+func pythonHTML(body []byte) []byte {
+	if !utf8.Valid(body) {
+		body = []byte(strings.ToValidUTF8(string(body), "\ufffd"))
+	}
+	runes := 0
+	for index := range string(body) {
+		if runes == 4_000_000 {
+			return body[:index]
+		}
+		runes++
+	}
+	return body
+}
+
+func pythonNumber(raw json.Number) string {
+	if !strings.ContainsAny(raw.String(), ".eE") {
+		return raw.String()
+	}
+	n, _ := raw.Float64()
+	mode := byte('g')
+	if math.Abs(n) >= 1e-4 && math.Abs(n) < 1e16 || n == 0 {
+		mode = 'f'
+	}
+	s := strconv.FormatFloat(n, mode, -1, 64)
+	if !strings.ContainsAny(s, ".e") {
+		s += ".0"
+	}
+	return s
 }
 
 // ParsePage extracts exactly the URL-only fields used by the configured Python
-// JOIN wrapper. It fails closed on missing required pagination data.
+// JOIN wrapper, including its four-million-character HTML prefix.
 func ParsePage(html []byte, slug string, first bool) (Page, error) {
-	if !utf8.Valid(html) || utf8.RuneCount(html) > 4_000_000 {
-		return Page{}, errors.New("JOIN page exceeded the Python HTML bound")
-	}
+	html = pythonHTML(html)
 	match := nextDataRE.FindSubmatch(html)
 	if len(match) != 2 {
 		return Page{}, errors.New("JOIN page has no __NEXT_DATA__ script")
@@ -130,7 +180,12 @@ func ParsePage(html []byte, slug string, first bool) (Page, error) {
 		case string:
 			id = raw
 		case json.Number:
-			id = raw.String()
+			id = pythonNumber(raw)
+		case bool:
+			id = "False"
+			if raw {
+				id = "True"
+			}
 		default:
 			continue
 		}

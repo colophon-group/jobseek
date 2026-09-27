@@ -7,15 +7,18 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/netip"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
 
-const maxResponseBytes = 8 << 20
+const maxResponseBytes = 16 << 20
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+const accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 
 var metaRE = regexp.MustCompile(`(?is)<meta\b[^>]*>`)
 var tdmNameRE = regexp.MustCompile(`(?i)\bname\s*=\s*["']?tdm-reservation(?:["']|\s|/?>)`)
@@ -120,11 +123,94 @@ func newClient() *http.Client {
 	transport.DialContext = publicDialContext
 	// A custom DialContext disables automatic HTTP/2 setup unless forced.
 	transport.ForceAttemptHTTP2 = true
+	transport.ResponseHeaderTimeout = 30 * time.Second
+	transport.TLSHandshakeTimeout = 30 * time.Second
+	jar, _ := cookiejar.New(nil)
 	return &http.Client{
-		Timeout:       30 * time.Second,
 		Transport:     transport,
+		Jar:           jar,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
+}
+
+func validEndpoint(endpoint string) bool {
+	u, err := url.Parse(endpoint)
+	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil &&
+		(u.Port() == "" || u.Port() == "443") && u.Fragment == ""
+}
+
+type readIdleBody struct {
+	io.ReadCloser
+	timeout time.Duration
+}
+
+func (r *readIdleBody) Read(p []byte) (int, error) {
+	timer := time.AfterFunc(r.timeout, func() { _ = r.ReadCloser.Close() })
+	n, err := r.ReadCloser.Read(p)
+	if !timer.Stop() {
+		return n, context.DeadlineExceeded
+	}
+	return n, err
+}
+
+// Count each redirect request and consume only one bounded response at a time.
+// DNS/IP validation remains in the transport for every target.
+func fetchPage(ctx context.Context, client requestDoer, endpoint string, stats *FetchResult) ([]byte, error) {
+	for hop := 0; hop <= 20; hop++ {
+		if !validEndpoint(endpoint) {
+			return nil, errors.New("JOIN requires a public HTTPS endpoint")
+		}
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+		if err != nil {
+			return nil, err
+		}
+		request.Header.Set("User-Agent", userAgent)
+		request.Header.Set("Accept", accept)
+		stats.Requests++
+		response, err := client.Do(request)
+		if err != nil {
+			return nil, err
+		}
+		stats.Responses++
+		stats.Status = response.StatusCode
+		stats.FinalURL = endpoint
+		if response.Request != nil && response.Request.URL != nil {
+			stats.FinalURL = response.Request.URL.String()
+		}
+		if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
+			response.Body.Close()
+			stats.ErrorKind = "tdm"
+			stats.TDMPolicy = response.Header.Get("TDM-Policy")
+			return nil, errors.New("tdm-reservation=1")
+		}
+		body, readErr := io.ReadAll(io.LimitReader(&readIdleBody{ReadCloser: response.Body, timeout: 30 * time.Second}, maxResponseBytes+1))
+		response.Body.Close()
+		stats.Bytes += len(body)
+		if readErr != nil {
+			return nil, readErr
+		}
+		if len(body) > maxResponseBytes {
+			return nil, errors.New("JOIN response exceeded 16 MiB")
+		}
+		if tdmMetaReserved(pythonHTML(body)) {
+			stats.ErrorKind = "tdm"
+			stats.TDMPolicy = response.Header.Get("TDM-Policy")
+			return nil, errors.New("tdm-reservation=1")
+		}
+		switch response.StatusCode {
+		case 301, 302, 303, 307, 308:
+			if response.Header.Get("Location") != "" {
+				target, err := response.Location()
+				if err != nil {
+					return nil, err
+				}
+				endpoint = target.String()
+				continue
+			}
+		}
+		return body, nil
+	}
+	return nil, errors.New("JOIN exceeded 20 redirects")
 }
 
 func onePage(ctx context.Context, client requestDoer, boardURL, slug string, number int) pageOutcome {
@@ -138,43 +224,13 @@ func onePage(ctx context.Context, client requestDoer, boardURL, slug string, num
 	}
 	result := pageOutcome{}
 	for attempt := 0; attempt < 3; attempt++ {
-		request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-		if err != nil {
-			result.err = err
-			return result
-		}
-		request.Header.Set("User-Agent", userAgent)
-		result.stats.Requests++
-		response, err := client.Do(request)
+		body, err := fetchPage(ctx, client, endpoint, &result.stats)
 		if err == nil {
-			result.stats.Responses++
-			result.stats.Status = response.StatusCode
-			result.stats.FinalURL = response.Request.URL.String()
-			if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
-				response.Body.Close()
-				result.stats.ErrorKind = "tdm"
-				result.stats.TDMPolicy = response.Header.Get("TDM-Policy")
-				result.err = errors.New("tdm-reservation=1")
-				return result
-			}
-			body, readErr := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
-			response.Body.Close()
-			result.stats.Bytes += len(body)
-			if readErr != nil {
-				err = readErr
-			} else if len(body) > maxResponseBytes {
-				result.err = errors.New("JOIN response exceeded 8 MiB")
-				return result
-			} else if tdmMetaReserved(body) {
-				result.stats.ErrorKind = "tdm"
-				result.stats.TDMPolicy = response.Header.Get("TDM-Policy")
-				result.err = errors.New("tdm-reservation=1")
-				return result
-			} else if number == 1 && (response.StatusCode == 404 || response.StatusCode == 410) {
+			if number == 1 && (result.stats.Status == 404 || result.stats.Status == 410) {
 				result.stats.ErrorKind = "gone"
-				result.err = fmt.Errorf("JOIN board returned HTTP %d", response.StatusCode)
+				result.err = fmt.Errorf("JOIN board returned HTTP %d", result.stats.Status)
 				return result
-			} else if response.StatusCode == 200 {
+			} else if result.stats.Status == 200 {
 				page, parseErr := ParsePage(body, slug, number == 1)
 				if parseErr == nil {
 					result.page = page
@@ -182,10 +238,13 @@ func onePage(ctx context.Context, client requestDoer, boardURL, slug string, num
 				}
 				err = parseErr
 			} else {
-				err = fmt.Errorf("JOIN returned HTTP %d", response.StatusCode)
+				err = fmt.Errorf("JOIN returned HTTP %d", result.stats.Status)
 			}
 		}
 		result.err = err
+		if result.stats.ErrorKind == "tdm" || ctx.Err() != nil {
+			return result
+		}
 		if attempt == 2 {
 			return result
 		}
@@ -266,9 +325,6 @@ func Fetch(ctx context.Context, client requestDoer, boardURL, slug string) (Fetc
 				firstError = outcome.err
 			}
 			pages = append(pages, outcome.page)
-		}
-		if result.Bytes > 64<<20 {
-			return result, errors.New("JOIN run exceeded 64 MiB of responses")
 		}
 		if firstError != nil {
 			return result, firstError
