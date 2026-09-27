@@ -1,0 +1,619 @@
+[
+  {
+    "name": "job_posting",
+    "fields": [
+      {
+        "name": "reconciliation_bucket",
+        "type": "string",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "company_id",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "company_name",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "company_slug",
+        "type": "string",
+        "index": false
+      },
+      {
+        "name": "company_icon",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "name": "is_active",
+        "type": "bool",
+        "facet": true
+      },
+      {
+        "name": "has_content",
+        "type": "bool",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "location_ids",
+        "type": "int32[]",
+        "facet": true
+      },
+      {
+        "name": "location_direct_ids",
+        "type": "int32[]",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "location_names",
+        "type": "string[]",
+        "facet": true
+      },
+      {
+        "name": "location_types",
+        "type": "string[]",
+        "facet": true
+      },
+      {
+        "name": "location_geo_types",
+        "type": "string[]",
+        "index": false
+      },
+      {
+        "name": "occupation_id",
+        "type": "int32",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "occupation_ids",
+        "type": "int32[]",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "occupation_name",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "seniority_id",
+        "type": "int32",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "seniority_name",
+        "type": "string",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "technology_ids",
+        "type": "int32[]",
+        "facet": true
+      },
+      {
+        "name": "technology_names",
+        "type": "string[]",
+        "facet": true
+      },
+      {
+        "name": "employment_type",
+        "type": "string",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "salary_eur",
+        "type": "int32",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "salary_min",
+        "type": "int32",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "salary_max",
+        "type": "int32",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "salary_currency",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "salary_period",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "experience_min_years",
+        "type": "float",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "experience_max_years",
+        "type": "float",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "experience_min",
+        "type": "int32",
+        "facet": true
+      },
+      {
+        "name": "experience_max",
+        "type": "int32",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "locales",
+        "type": "string[]",
+        "facet": true
+      },
+      {
+        "name": "source_url",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "first_seen_at",
+        "type": "int64"
+      },
+      {
+        "name": "candidate_order_key",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "candidate_order_hi",
+        "type": "int64",
+        "sort": true,
+        "optional": true
+      },
+      {
+        "name": "candidate_order_lo",
+        "type": "int64",
+        "sort": true,
+        "optional": true
+      },
+      {
+        "name": "last_seen_at",
+        "type": "int64",
+        "index": false,
+        "optional": true
+      }
+    ],
+    "default_sorting_field": "first_seen_at",
+    "token_separators": [
+      "-",
+      "/"
+    ]
+  },
+  {
+    "name": "location",
+    "fields": [
+      {
+        "name": "location_id",
+        "type": "int32"
+      },
+      {
+        "name": "slug",
+        "type": "string"
+      },
+      {
+        "name": "name_en",
+        "type": "string",
+        "locale": "en"
+      },
+      {
+        "name": "name_de",
+        "type": "string",
+        "locale": "de",
+        "optional": true
+      },
+      {
+        "name": "name_fr",
+        "type": "string",
+        "locale": "fr",
+        "optional": true
+      },
+      {
+        "name": "name_it",
+        "type": "string",
+        "locale": "it",
+        "optional": true
+      },
+      {
+        "name": "aliases",
+        "type": "string[]",
+        "optional": true
+      },
+      {
+        "name": "parent_name",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "parent_id",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "ancestor_ids",
+        "type": "int32[]",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "member_country_ids",
+        "type": "int32[]",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "type",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "coordinates",
+        "type": "geopoint",
+        "optional": true
+      },
+      {
+        "name": "population",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "has_active_postings",
+        "type": "bool",
+        "facet": true
+      },
+      {
+        "name": "active_posting_count",
+        "type": "int32"
+      }
+    ],
+    "default_sorting_field": "active_posting_count"
+  },
+  {
+    "name": "occupation",
+    "fields": [
+      {
+        "name": "occupation_id",
+        "type": "int32"
+      },
+      {
+        "name": "slug",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "aliases",
+        "type": "string[]"
+      },
+      {
+        "name": "parent_id",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "domain_id",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "domain_slug",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "domain_name",
+        "type": "string",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "locale",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "has_active_postings",
+        "type": "bool",
+        "facet": true
+      },
+      {
+        "name": "active_posting_count",
+        "type": "int32"
+      }
+    ],
+    "default_sorting_field": "active_posting_count"
+  },
+  {
+    "name": "seniority",
+    "fields": [
+      {
+        "name": "seniority_id",
+        "type": "int32"
+      },
+      {
+        "name": "slug",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "aliases",
+        "type": "string[]"
+      },
+      {
+        "name": "locale",
+        "type": "string",
+        "facet": true
+      },
+      {
+        "name": "has_active_postings",
+        "type": "bool",
+        "facet": true
+      },
+      {
+        "name": "active_posting_count",
+        "type": "int32"
+      }
+    ],
+    "default_sorting_field": "active_posting_count"
+  },
+  {
+    "name": "technology",
+    "fields": [
+      {
+        "name": "technology_id",
+        "type": "int32"
+      },
+      {
+        "name": "slug",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "category",
+        "type": "string",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "has_active_postings",
+        "type": "bool",
+        "facet": true
+      },
+      {
+        "name": "active_posting_count",
+        "type": "int32"
+      }
+    ],
+    "default_sorting_field": "active_posting_count",
+    "token_separators": [
+      "+",
+      "#",
+      "."
+    ],
+    "symbols_to_index": [
+      "+",
+      "#",
+      "."
+    ]
+  },
+  {
+    "name": "company",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string"
+      },
+      {
+        "name": "icon",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "logo",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "website",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "description_de",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "description_fr",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "description_it",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "industry_id",
+        "type": "int32",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "industry_name",
+        "type": "string",
+        "facet": true,
+        "optional": true
+      },
+      {
+        "name": "industry_name_de",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "industry_name_fr",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "industry_name_it",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "employee_count_range",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "founded_year",
+        "type": "int32",
+        "optional": true
+      },
+      {
+        "name": "active_posting_count",
+        "type": "int32"
+      },
+      {
+        "name": "year_posting_count",
+        "type": "int32"
+      }
+    ],
+    "default_sorting_field": "active_posting_count"
+  },
+  {
+    "name": "watchlist",
+    "fields": [
+      {
+        "name": "id",
+        "type": "string"
+      },
+      {
+        "name": "slug",
+        "type": "string",
+        "index": false
+      },
+      {
+        "name": "title",
+        "type": "string"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "optional": true
+      },
+      {
+        "name": "owner_name",
+        "type": "string"
+      },
+      {
+        "name": "owner_username",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "filters_json",
+        "type": "string",
+        "index": false,
+        "optional": true
+      },
+      {
+        "name": "company_count",
+        "type": "int32"
+      },
+      {
+        "name": "active_job_count",
+        "type": "int32"
+      },
+      {
+        "name": "mirror_count",
+        "type": "int32"
+      },
+      {
+        "name": "is_featured",
+        "type": "bool",
+        "facet": true
+      },
+      {
+        "name": "has_description",
+        "type": "bool",
+        "facet": true
+      },
+      {
+        "name": "created_at",
+        "type": "int64"
+      },
+      {
+        "name": "is_public",
+        "type": "bool",
+        "facet": true
+      }
+    ],
+    "default_sorting_field": "created_at"
+  }
+]

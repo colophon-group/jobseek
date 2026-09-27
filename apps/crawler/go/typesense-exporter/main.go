@@ -19,6 +19,21 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "--setup-schemas" {
+		if len(os.Args) > 3 || len(os.Args) == 3 && os.Args[2] != "--force" {
+			fmt.Fprintln(os.Stderr, "usage: go-typesense-exporter --setup-schemas [--force]")
+			os.Exit(2)
+		}
+		if err := runSchemaSetup(len(os.Args) == 3); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			if errors.Is(err, context.Canceled) {
+				os.Exit(130)
+			}
+			os.Exit(1)
+		}
+		return
+	}
+
 	if len(os.Args) >= 2 && os.Args[1] == "--reconcile" {
 		if err := runReconcile(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -103,7 +118,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--backfill|--reconcile [options]|--verify-taxonomies|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
+		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--backfill|--reconcile [options]|--verify-taxonomies|--setup-schemas [--force]|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
 		os.Exit(2)
 	}
 	var input struct {

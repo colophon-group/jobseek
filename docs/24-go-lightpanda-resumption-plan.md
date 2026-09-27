@@ -62,6 +62,29 @@ CI, production verification, and resource evidence remain pending.
 Configuration/taxonomy sync and schema setup are still Python production
 work, so this slice does not satisfy the complete #7966 gate.
 
+## Implementation checkpoint: 2026-09-27 — Go Typesense schema setup
+
+`fix-crawler/go-typesense-schema-setup` implements the next deploy-time Python
+owner in Go, intended after reconciliation #10072 and taxonomy verification
+#10074. **This branch has not been deployed.** The production backfill proof
+still holds the mutation lock; do not interrupt it to release this slice.
+
+Deployment invokes `go-typesense-exporter --setup-schemas` directly using the
+same Typesense-only credential scope and maintenance provenance. CLI/operator
+wrappers exec Go. All seven collection definitions, aliases, search token
+configuration, one-field index rebuilds, missing-field additions, explicit
+force behavior, and memory-delta evidence are preserved. Ambiguous synchronous
+PATCH timeouts are observed and re-read before retry; schema requests retain
+the one-hour timeout and two-hour per-collection repair deadline.
+
+Local Go race/vet tests pass, including existing-alias preservation,
+concurrent collection creation, timeout-after-apply without replay,
+busy-operation observation, missing status endpoint fallback, and bounded
+cancellation. The embedded schema is compared with the retained Python source;
+94 Python/schema/deployment tests and 90 workflow tests pass. CI and production
+setup/readiness evidence are pending. CSV/configuration/taxonomy sync remains
+Python and full #7966 completion remains open.
+
 ## Production checkpoint: 2026-09-27 — Go Typesense backfill
 
 [PR #10069](https://github.com/colophon-group/jobseek/pull/10069) merged as

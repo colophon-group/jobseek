@@ -1361,6 +1361,18 @@ jobs:
       - run: uv sync --group dev
         working-directory: apps/crawler
 
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/typesense-exporter/go.mod
+          cache-dependency-path: apps/crawler/go/typesense-exporter/go.sum
+
+      - name: Build Go Typesense schema runtime
+        working-directory: apps/crawler/go/typesense-exporter
+        run: |
+          mkdir -p "$RUNNER_TEMP/jobseek-go-bin"
+          go build -trimpath -o "$RUNNER_TEMP/jobseek-go-bin/go-typesense-exporter" .
+          echo "$RUNNER_TEMP/jobseek-go-bin" >> "$GITHUB_PATH"
+
       - run: uv run python ../../scripts/typesense-setup.py --force
         working-directory: apps/crawler
 

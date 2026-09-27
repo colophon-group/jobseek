@@ -113,3 +113,29 @@ proves snapshot isolation across a concurrent committed taxonomy change.
 Deploy after Go reconciliation (#10072), then use the exact-revision
 `verify-typesense-taxonomies` maintenance dispatch for production evidence.
 Configuration/taxonomy sync and schema setup remain separate Python owners.
+
+## Collection schema setup
+
+`go-typesense-exporter --setup-schemas` owns idempotent collection and alias
+setup. Deployment invokes Go directly in the same credential-scoped,
+provenance-labelled maintenance container while writers remain quiesced.
+`crawler setup-typesense` and the developer wrapper exec the same binary.
+Only Typesense credentials are required; setup opens no database connections.
+
+The embedded seven-collection schema contract is checked against the retained
+Python definitions in CI, including token separators and indexed symbols.
+Existing alias targets are preserved. Missing fields are added; index drift
+is repaired one existing field per PATCH. Type drift is reported without an
+automatic type rebuild. Implicit `id` is never patched.
+
+Synchronous schema requests retain the one-hour HTTP timeout. Each collection
+repair has a two-hour deadline. Busy/ambiguous timeout responses trigger
+schema-change observation (or bounded backoff when that endpoint is absent),
+then a fresh schema read before any retry. Signals cancel requests and waits.
+Optional allocator metrics retain before/after/delta evidence.
+
+`--force` retains the existing explicit destructive operator operation: drop
+the alias and its conventional `_v1` collection, then recreate. Deployment does
+not pass it. Production proof is the ordinary successful setup phase of the
+reviewed crawler deployment, followed by exact taxonomy verification. The
+previous image/deployment script remains the cold rollback route.
