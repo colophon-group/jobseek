@@ -1484,6 +1484,9 @@ def upload_and_verify(
     from huggingface_hub import HfApi, hf_hub_download
 
     api = HfApi(token=token)
+    from src.shared.hf_private import require_private_dataset
+
+    require_private_dataset(api, repo_id)
     remote_dir = f"{prefix.rstrip('/')}/{quality_tier}/{run_id}"
     commit = api.upload_folder(
         folder_path=bundle_dir,

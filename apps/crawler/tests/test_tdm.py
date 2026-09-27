@@ -124,13 +124,12 @@ class TestCheckResponse:
         resp = _resp(200, body)
         check_response(resp, body_excerpt=body)
 
-    def test_header_zero_overrides_meta_one(self):
-        """Header is canonical (#2842 spec). ``tdm-reservation: 0`` in
-        header takes precedence over a conflicting ``content="1"`` meta —
-        the publisher's most authoritative declaration wins."""
+    def test_meta_one_overrides_header_zero(self):
         body = '<head><meta name="tdm-reservation" content="1"></head>'
         resp = _resp(200, body, headers={"tdm-reservation": "0"})
-        check_response(resp, body_excerpt=body)  # must not raise
+        with pytest.raises(TDMReservedError) as exc:
+            check_response(resp, body_excerpt=body)
+        assert exc.value.source == "meta"
 
     def test_header_one_with_policy_captured(self):
         """``tdm-policy`` companion URL is captured into the exception
@@ -185,22 +184,10 @@ class TestCheckResponse:
         with pytest.raises(TDMReservedError):
             check_response(resp, body_excerpt=body)
 
-    def test_meta_inside_script_does_not_match(self):
-        """``<meta ...>`` substring inside a JS string literal must not
-        spuriously match — the regex is anchored on real ``<meta>`` tags."""
-        body = '<script>const s = "<meta name=tdm-reservation content=1>";</script>'
-        resp = _resp(200, body)
-        # The current regex is structural — it actually WOULD match
-        # ``<meta...>`` even inside a script string. We treat this as
-        # acceptable: the false-positive cost is one skipped board, and
-        # publishers rarely embed literal ``<meta tdm-reservation>``
-        # strings as data inside scripts on real careers pages. The
-        # alternative (full HTML parse) is too expensive on the hot path.
-        # Pinning the current behaviour so a future tightening is
-        # explicit. NOTE: if this assertion changes, audit the body-meta
-        # scan policy in ``shared/tdm.py``.
-        with pytest.raises(TDMReservedError):
-            check_response(resp, body_excerpt=body)
+    @pytest.mark.parametrize("wrapper", ["<script>{}</script>", "<!-- {} -->", "<style>{}</style>"])
+    def test_literal_meta_is_not_a_signal(self, wrapper):
+        body = wrapper.format('<meta name="tdm-reservation" content="1">')
+        check_response(_resp(200, body), body_excerpt=body)
 
 
 # =============================================================================
@@ -228,9 +215,10 @@ class TestCheckBrowserResponse:
             check_browser_response({}, body, url="https://x.example")
         assert exc.value.source == "meta"
 
-    def test_header_canonical_wins_over_meta(self):
+    def test_html_metadata_wins_over_header(self):
         body = '<head><meta name="tdm-reservation" content="1"></head>'
-        check_browser_response({"tdm-reservation": "0"}, body, url="https://x.example")
+        with pytest.raises(TDMReservedError):
+            check_browser_response({"tdm-reservation": "0"}, body, url="https://x.example")
 
     def test_uppercase_header_keys(self):
         """JS ``Headers`` normalises to lowercase, but defend against
@@ -862,3 +850,69 @@ class TestSitemapParseRobotsHook:
         async with _httpx.AsyncClient(transport=_httpx.MockTransport(handler)) as client:
             sitemaps = await _parse_robots_sitemaps("https://example.com/careers", client)
             assert sitemaps == ["https://example.com/sitemap.xml"]
+
+
+@pytest.mark.parametrize(
+    "html",
+    [
+        '<meta name="tdm-reservation" content="1" data-source="publisher">',
+        '<META data-source="publisher" CONTENT="1" NAME="TDM-RESERVATION">',
+        '<meta content="1" data-note="a > b" name="tdm-reservation">',
+        '<meta name="tdm-reservation" content="&#49;">',
+    ],
+)
+def test_meta_attribute_variations(html):
+    with pytest.raises(TDMReservedError):
+        check_response(_resp(200), body_excerpt=html)
+    with pytest.raises(TDMReservedError):
+        check_browser_response({}, html, url="https://example.com")
+
+
+@pytest.mark.parametrize(
+    "html",
+    [
+        '<meta name="tdm-reservation">',
+        '<meta name="tdm-reservation" content="10">',
+        '<meta name="tdm-reservation" content="1e0">',
+        " " * 65_536 + '<meta name="tdm-reservation" content="1">',
+    ],
+)
+def test_missing_invalid_or_outside_bounded_meta(html):
+    check_response(_resp(200), body_excerpt=html)
+
+
+def test_available_meta_opt_in_overrides_header_reservation():
+    html = '<meta name="tdm-reservation" content="0">'
+    check_response(_resp(200, headers={"tdm-reservation": "1"}), body_excerpt=html)
+    check_browser_response({"tdm-reservation": "1"}, html, url="https://example.com")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("provider", ["greenhouse", "ashby"])
+async def test_direct_monitor_rejects_reserved_response_before_capture(provider, monkeypatch):
+    from importlib import import_module
+    from unittest.mock import Mock
+
+    adapter = import_module(f"src.core.monitors.{provider}")
+    capture = Mock()
+    capture_name = (
+        "_capture_scheduled_response"
+        if provider == "ashby"
+        else "_capture_scheduled_greenhouse_response"
+    )
+    monkeypatch.setattr(adapter, capture_name, capture)
+    host = "jobs.ashbyhq.com" if provider == "ashby" else "job-boards.greenhouse.io"
+    row = {
+        "id": "test",
+        "title": "Synthetic job",
+        "absolute_url": "https://example.com/job",
+        "jobUrl": "https://example.com/job",
+        "isListed": True,
+    }
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, json={"jobs": [row]}, headers={"tdm-reservation": "1"})
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(TDMReservedError):
+            await adapter.discover({"board_url": f"https://{host}/test"}, client)
+    capture.assert_not_called()

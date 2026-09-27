@@ -25,6 +25,7 @@ from src.core.monitors import (
 )
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
+from src.shared.tdm import check_response
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -272,6 +273,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     url = _api_url(token)
     params = {"includeCompensation": "true"}
     response = await client.get(url, params=params)
+    check_response(response)
     _capture_scheduled_response(token, response)
     if response.status_code == 404:
         # Ashby returns 404 when the board token has been removed

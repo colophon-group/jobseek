@@ -22,8 +22,8 @@ For each ``data/<date>.jsonl`` on the HF repo:
 5. Otherwise → ``upload_file`` with the surviving rows.
 
 After all files are processed, the README is regenerated to keep the
-counts line in sync with the post-scrub local truth (mirroring the
-existing upload code path; see issue #2701).
+counts line in sync with the surviving remote releases, independently of
+the operator's local checkout.
 
 Safety
 ------
@@ -46,13 +46,14 @@ Safety
 from __future__ import annotations
 
 import json
-import os
 import tempfile
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .upload import HF_REPO, _accepted_by_date, _readme_text
+from src.shared.hf_private import require_private_dataset
+
+from .upload import HF_REPO, _huggingface_token, _readme_text, _remote_jsonl_counts
 
 
 class ScrubGuardError(RuntimeError):
@@ -228,23 +229,19 @@ def scrub(
             "(a no-filter run would wipe every row on every date)."
         )
 
-    if not dry_run and api is None:
-        token = os.environ.get("HF_TOKEN")
+    if api is None:
+        token = _huggingface_token()
         if not token:
             raise RuntimeError(
-                "HF_TOKEN env var not set — cannot scrub HuggingFace dataset."
+                "Hugging Face token unavailable — cannot inspect the private dataset."
                 " Set it in apps/crawler/.env.local."
             )
         from huggingface_hub import HfApi
 
         api = HfApi(token=token)
 
-    if api is None:
-        # dry_run with no api — use a token-less HfApi just to list
-        # files. The HF dataset is public so this works without auth.
-        from huggingface_hub import HfApi
-
-        api = HfApi()
+    if not dry_run:
+        require_private_dataset(api, HF_REPO)
 
     hf_paths = _list_jsonl_files(api, HF_REPO)
     files: list[FileChange] = []
@@ -314,18 +311,8 @@ def scrub(
 
 
 def _refresh_readme(api, *, label: str) -> None:
-    """Re-upload README.md so the counts line reflects post-scrub local truth.
-
-    Mirrors :func:`upload.push_to_hub`'s behaviour. The counts come from
-    ``_accepted_by_date``, which already excludes opted-out slugs — so
-    after the operator adds the scrubbed slug to ``labeller_optout.txt``
-    (the documented workflow), the README counts and HF row counts stay
-    consistent. If the operator runs scrub without updating the opt-out
-    file, the README will overcount until the next regular upload reads
-    the updated opt-out — acceptable: the row-level truth on HF is
-    correct either way.
-    """
-    counts = {date: len(rows) for date, rows in _accepted_by_date(None).items()}
+    """Count surviving remote releases, regardless of the operator's local files."""
+    counts = _remote_jsonl_counts(api)
     text = _readme_text(counts)
     with tempfile.NamedTemporaryFile("w", delete=False, prefix="readme-", suffix=".md") as fh:
         fh.write(text)

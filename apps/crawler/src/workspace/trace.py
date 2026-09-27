@@ -899,6 +899,9 @@ def upload_trace_to_hf(slug: str) -> str | None:
     from huggingface_hub import HfApi
 
     api = HfApi(token=token)
+    from src.shared.hf_private import require_private_dataset
+
+    require_private_dataset(api, _HF_REPO)
     date = header["date"]
 
     # Check for existing file and add suffix if needed

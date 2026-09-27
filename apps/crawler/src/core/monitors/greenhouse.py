@@ -24,6 +24,7 @@ from src.core.monitors import (
 )
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
+from src.shared.tdm import check_response
 from src.shared.truncation import truncated_rich_result
 
 if TYPE_CHECKING:
@@ -279,6 +280,7 @@ async def discover(
 
     url = _api_url(token)
     response = await client.get(url, params={"content": "true"})
+    check_response(response)
     _capture_scheduled_greenhouse_response(board["board_url"], token, response)
     if response.status_code == 404:
         # Greenhouse returns 404 when the board token has been deleted

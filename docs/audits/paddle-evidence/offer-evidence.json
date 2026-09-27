@@ -1,0 +1,22 @@
+[
+  {
+    "locale": "en",
+    "status": 200,
+    "offer": "JOB SEEK PRO\n/\nNARROWED\n\nYour criteria.\nA shorter list.\n\nDescribe what matters beyond job titles. Narrowed checks the postings in your watchlist against your criteria, so you can focus on the matches.\n\nWorks with your watchlists and usual filters.\n\nAN EXAMPLE\n\nYour criteria\n\nBackend roles using Python, without an on-call rotation.\n\nChecked against the job description\nBackend engineer\nMatch\n\n“Build Python APIs. No on-call duties.”\n\nBackend engineer\nFiltered out\n\n“Python services. Join the on-call rotation.”\n\n7 days to try Pro.\n\nThen US$10 per month. Cancel anytime.\n\nExplore Pro\n\nYour job search stays free. Full search, up to 10 watchlists, email alerts, and application tracking. Pro adds Narrowed results."
+  },
+  {
+    "locale": "de",
+    "status": 200,
+    "offer": "JOB SEEK PRO\n/\nNARROWED\n\nDeine Kriterien.\nEine kürzere Liste.\n\nBeschreibe, was dir über den Stellentitel hinaus wichtig ist. Narrowed gleicht die Stellen in deiner Watchlist mit deinen Kriterien ab, damit du dich auf die passenden konzentrieren kannst.\n\nFunktioniert mit deinen Watchlists und den üblichen Filtern.\n\nEIN BEISPIEL\n\nDeine Kriterien\n\nBackend-Stellen mit Python, ohne Rufbereitschaft.\n\nMit der Stellenbeschreibung abgeglichen\nBackend-Entwickler\nPasst\n\n„Entwickle Python-APIs. Keine Rufbereitschaft.“\n\nBackend-Entwickler\nHerausgefiltert\n\n„Python-Dienste. Teilnahme an der Rufbereitschaft.“\n\n7 Tage, um Pro auszuprobieren.\n\nDanach 10 US$ pro Monat. Jederzeit kündbar.\n\nPro entdecken\n\nDeine Jobsuche bleibt kostenlos. Vollständige Suche, bis zu 10 Watchlists, E-Mail-Benachrichtigungen und Bewerbungstracking. Pro ergänzt Narrowed-Ergebnisse."
+  },
+  {
+    "locale": "fr",
+    "status": 200,
+    "offer": "JOB SEEK PRO\n/\nNARROWED\n\nVos critères.\nUne liste plus courte.\n\nDécrivez ce qui compte au-delà des intitulés. Narrowed compare les offres de votre watchlist à vos critères pour vous aider à vous concentrer sur celles qui correspondent.\n\nFonctionne avec vos watchlists et vos filtres habituels.\n\nUN EXEMPLE\n\nVos critères\n\nDes postes backend en Python, sans astreintes.\n\nComparé à la description du poste\nDéveloppeur backend\nCorrespond\n\n« Développez des API Python. Aucune astreinte. »\n\nDéveloppeur backend\nÉcarté\n\n« Services Python. Participation aux astreintes. »\n\n7 jours pour essayer Pro.\n\nPuis 10 $ US par mois. Résiliable à tout moment.\n\nDécouvrir Pro\n\nVotre recherche d’emploi reste gratuite. Recherche complète, jusqu’à 10 watchlists, alertes e-mail et suivi des candidatures. Pro ajoute les résultats Narrowed."
+  },
+  {
+    "locale": "it",
+    "status": 200,
+    "offer": "JOB SEEK PRO\n/\nNARROWED\n\nI tuoi criteri.\nUna lista più breve.\n\nDescrivi cosa conta oltre ai titoli. Narrowed confronta gli annunci della tua watchlist con i tuoi criteri, così puoi concentrarti su quelli corrispondenti.\n\nFunziona con le tue watchlist e i filtri abituali.\n\nUN ESEMPIO\n\nI tuoi criteri\n\nRuoli backend con Python, senza turni di reperibilità.\n\nVerificato nella descrizione del lavoro\nSviluppatore backend\nCorrisponde\n\n« Sviluppa API Python. Nessun turno di reperibilità. »\n\nSviluppatore backend\nEscluso\n\n« Servizi Python. Partecipazione ai turni di reperibilità. »\n\n7 giorni per provare Pro.\n\nPoi 10 USD al mese. Annulla quando vuoi.\n\nScopri Pro\n\nLa tua ricerca di lavoro resta gratuita. Ricerca completa, fino a 10 watchlist, avvisi email e monitoraggio candidature. Pro aggiunge i risultati Narrowed."
+  }
+]
