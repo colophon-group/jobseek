@@ -1,0 +1,192 @@
+{
+  "status": "deployed and activated; natural new-route proof pending",
+  "release": "0.13.874",
+  "revision": "2be9bd9d2465043a271c44722f2394ba23a9b00e",
+  "pull_request": 10099,
+  "deployment_run": 36336660636,
+  "verification": {
+    "focused_tests": 123,
+    "monitor_python_cases": 60,
+    "detail_python_cases": 26,
+    "installed_image_parity": "passed",
+    "required_ci_run": 36335840122
+  },
+  "supported_rollback": {
+    "from_epoch": 80,
+    "retired_epoch": 81,
+    "restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "cleared_exact_selectors": 24
+  },
+  "smartrecruiters_baseline": [
+    {
+      "board_id": "4fd07c26-62bb-46af-a705-8533c074e28d",
+      "board_url": "https://careers.smartrecruiters.com/lonza",
+      "active_jobs": 6,
+      "url_sha256": "27e76af88108fcd85bab5b7127795e698851df2cac3f905ba39d1108294fc7f1",
+      "descriptions": 0,
+      "failures": 0,
+      "posting_ids_sha256": "bd24100665f444ca633e2ef6da7b9479d072fe5bd5bfa52dafc509ab9449b090",
+      "description_bytes_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "board_id": "d87bd096-8b45-4b97-bf70-bcd3c10f62fc",
+      "board_url": "https://careers.smartrecruiters.com/Gousto1",
+      "active_jobs": 10,
+      "url_sha256": "3d09b401a37c01378c9e8bacc762162009e53fa9e88d57deaeb60cd9ccb5e942",
+      "descriptions": 10,
+      "failures": 0,
+      "posting_ids_sha256": "60d2eae8364a843c5459c559baf96ae1bfad6ac4c1d7ece47f734a2a561b545a",
+      "description_bytes_sha256": "3db5887e940e751ed3b120bd7340ec97fd0c2cdc2becd19e691fd4932c532557"
+    },
+    {
+      "board_id": "868edd45-75dc-4174-adab-ffa2831957c1",
+      "board_url": "https://careers.smartrecruiters.com/Dailymotion",
+      "active_jobs": 9,
+      "url_sha256": "001227f554e1f5c217186f8a77b11cb7c391dca33b51653adbdfafae972465a2",
+      "descriptions": 9,
+      "failures": 0,
+      "posting_ids_sha256": "6fda1b50d31a2dff3664756901bfd5e5d2e2d641fc21208d9bca2667195e6265",
+      "description_bytes_sha256": "e9bb552a15c6cea7d25782f6f6da602bf813b5fd5f0cf1d73edd37854f408faf"
+    },
+    {
+      "board_id": "0f2fad9a-c102-49c9-9233-21bc6785a74e",
+      "board_url": "https://careers.smartrecruiters.com/SwissMedicalNetwork1",
+      "active_jobs": 105,
+      "url_sha256": "cb8f84920908e284fa0735016f4f3fc64fd419b00f543610f769ae28c282fca8",
+      "descriptions": 105,
+      "failures": 0,
+      "posting_ids_sha256": "d1e68e78c3b8358d44d53872986641b7adc9560ea9b0b22b9200e21f9b7d6cad",
+      "description_bytes_sha256": "7ea57cb651a001ed15d125249d9ca0475a6adecfe298442d80256f1b76201ccd"
+    }
+  ],
+  "smartrecruiters_natural_go": "pending",
+  "pinpoint_passive_capture_parity": [
+    {
+      "tenant": "accelercomm",
+      "board_id": "b2ce0b69-5896-4df3-8b12-5a6dce9a85d7",
+      "bytes": 73926,
+      "body_sha256": "1996562deeb1389d78920b449062d9476a9ac10d1ed43825912f11bcbf6ccda6",
+      "jobs": 12,
+      "url_sha256": "4e42ed62e44f99ae93e2ea3f589d2c5ad671abb3d99fa17abccbd8142c1be952",
+      "python_db_success_utc": "2026-09-27T16:44:45.452159Z",
+      "same_bytes_rich_fields": 9,
+      "same_bytes_parity": true,
+      "db_url_parity": true,
+      "failures": 0,
+      "natural_go_success": "pending"
+    },
+    {
+      "tenant": "penumbrainc",
+      "board_id": "ef5d7575-4a45-44d7-8826-ce86a85085c2",
+      "bytes": 26305,
+      "body_sha256": "0eacf10f233753b01b3aac7ace941f68166156edf6f0c6038145120ce7307b1e",
+      "jobs": 3,
+      "url_sha256": "04c735fb0a312de4c5f6f6901692e66868279210805e5b7a04025180ded02b64",
+      "python_db_success_utc": "2026-09-27T17:07:11.898393Z",
+      "same_bytes_rich_fields": 9,
+      "same_bytes_parity": true,
+      "db_url_parity": true,
+      "failures": 0,
+      "natural_go_success": "pending"
+    }
+  ],
+  "broadened_workable_natural_go": {
+    "board": {
+      "id": "88254417-1050-4b20-9152-a3184d5a1ef8",
+      "board_url": "https://apply.workable.com/bjak-1/",
+      "board_status": "active",
+      "consecutive_failures": 0,
+      "last_success_at": "2026-09-27 17:13:34.637922+00:00",
+      "next_check_at": "2026-09-27 18:13:34.637922+00:00",
+      "active": 10,
+      "url_sha256": "629e3c47a4fd13c51cb41eafe55cefd29cb4e0df28521dfe907c5307e6bb2e8e"
+    },
+    "go_event_utc": "2026-09-27T17:13:34.543938Z",
+    "requests": 6,
+    "responses": 6,
+    "response_bytes": 3753,
+    "db_url_parity": true
+  },
+  "full_migration_complete": false,
+  "remaining": [
+    "Natural Go monitor/detail and database content evidence for newly selected SmartRecruiters routes",
+    "Other enabled Python extraction, enrichment, persistence and browser profiles",
+    "Actual-workload whole-lane CPU/RAM/density/cost comparison and final cutover/reversal"
+  ],
+  "deployment_conclusion": "success",
+  "selectors": {
+    "SMARTRECRUITERS_GO_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,0f2fad9a-c102-49c9-9233-21bc6785a74e",
+    "SMARTRECRUITERS_GO_DETAIL_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,628cc519-cf15-43df-8ee0-0be4431326c6,143b8a70-441d-41c5-8001-0876d6e570e4",
+    "WORKDAY_REPLAY_CAPTURE_BOARD_ID": "02ff01a5-d8ec-4696-8a45-17e3c8d6483c",
+    "JOIN_CAPTURE_SLUGS": "agentur-kuehnende,stellantisandyou,lebensmittel-knupferde",
+    "RECRUITEE_CAPTURE_TENANTS": "gorgias",
+    "KANDOU_JSONLD_CAPTURE_URL": "https://kandou.bamboohr.com/careers/310",
+    "WORKDAY_DETAIL_CAPTURE_HOST": "freseniusglobal.wd3.myworkdayjobs.com",
+    "PINPOINT_CAPTURE_TENANTS": "accelercomm,includedhealth,penumbrainc,reply",
+    "ASHBY_CAPTURE_TOKENS": "megazone,bounce,tenex",
+    "WORKDAY_GO_BOARD_IDS": "20eae165-5251-40d4-b9a0-0254f4bd1ab3",
+    "WORKDAY_GO_PERCENT": "5",
+    "RECRUITEE_GO_BOARD_IDS": "0f1c7be6-42f6-4706-952c-0d304f8011ba,d3df984c-5f08-47ff-a299-c54a700f5eee,e43481a7-561a-4f29-ab36-df8c5ddaca9f",
+    "PINPOINT_GO_BOARD_IDS": "0ef903fe-82c9-4610-bdfc-0360f9d4226a,b2ce0b69-5896-4df3-8b12-5a6dce9a85d7,ef5d7575-4a45-44d7-8826-ce86a85085c2",
+    "BOOKING_GO_BOARD_ID": "d9730d93-3a2a-4003-a99e-4a8f0830aa2b",
+    "TEAMTAILOR_RSS_GO_BOARD_IDS": "72d8d377-2242-4203-9270-c7447b4a3b56",
+    "GREENHOUSE_GO_PERCENT": "100",
+    "ASHBY_GO_PERCENT": "25",
+    "SUCCESSFACTORS_RSS_GO_BOARD_IDS": "35461192-d877-4146-8f0d-31c97f14fedd",
+    "PERSONIO_GO_BOARD_IDS": "fdbe61f8-4615-49e6-8970-7e5e76452e24",
+    "PERSONIO_GO_PERCENT": "5",
+    "WORKABLE_CAPTURE_SLUGS": "pix4d,debiopharm,unit8,hack-the-box-ltd",
+    "WORKABLE_DETAIL_CAPTURE_JOBS": "lucidya/4733C5B44F,lucidya/E258A7CDA9,unit8/2FA384D52A,unit8/ACABC868E8",
+    "WORKABLE_GO_DETAIL_BOARD_IDS": "aef95fd2-55ea-43cd-9aa6-9bd541c2bc4e",
+    "WORKABLE_GO_PERCENT": "25",
+    "WORKABLE_GO_BOARD_IDS": "06e7e8f2-4741-49b2-a135-96cfeb3bcfdd,631e7fce-366e-409d-b372-4ee4870e74c1,acecf5fd-3252-420d-a098-542cb1c0fc77,08c21917-9457-4b19-b0e6-40d0280a36c4",
+    "SITEMAP_GO_BOARD_IDS": "c4779214-ef92-4261-98fb-ae64f264fd23"
+  },
+  "selector_count": 26,
+  "c1": {
+    "epoch": 82,
+    "engine": "go",
+    "decision": "accepted",
+    "reason": "audit_ok",
+    "records": 5,
+    "ready": 5,
+    "inflight": 0,
+    "dead": 0,
+    "services": "healthy"
+  },
+  "monitor_route_census": {
+    "enabled": 7879,
+    "routes": {
+      "go-ashby": 209,
+      "go-booking-api": 1,
+      "go-greenhouse": 2520,
+      "go-lever": 194,
+      "go-personio": 2,
+      "go-pinpoint": 3,
+      "go-recruitee": 3,
+      "go-sitemap": 1,
+      "go-smartrecruiters": 4,
+      "go-successfactors-rss": 1,
+      "go-teamtailor-rss": 1,
+      "go-workable": 15,
+      "go-workday": 2,
+      "python": 4923
+    },
+    "errors": []
+  },
+  "exporter_snapshot": {
+    "success_documents": 94,
+    "error_documents": 0,
+    "lag": 0,
+    "typesense_healthy": true
+  },
+  "configuration_sync": {
+    "engine": "go",
+    "boards": 7879,
+    "companies": 6013,
+    "complete_utc": "2026-09-27T17:33:05.734352046Z",
+    "unresolved_deadletters": 0
+  }
+}
