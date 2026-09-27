@@ -6,6 +6,48 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — Go queue sync v0.13.871
+
+PR #10093 merged as `ce5dfd821ca6e6b95d0b79a9eb534c26ddd486ec`.
+[Crawler deployment 36328634446](https://github.com/colophon-group/jobseek/actions/runs/36328634446)
+and [host launcher deployment 36328634440](https://github.com/colophon-group/jobseek/actions/runs/36328634440)
+both succeeded. Production configuration sync now publishes committed board
+queues in Go. Its actual deployment log records **7,879 schedules enqueued
+and 133 retired-board queue entries removed**, followed by dead-letter
+inspection with zero unresolved entries. Go taxonomy/company publication
+completed at 15:23:05 UTC. The mode-0600 evidence log is
+`/tmp/jobseek-go-board-queues-deploy-36328634446.log`.
+
+Required CI and installed-image parity passed before merge; Crawler Deploy
+Gate was green on the exact ready head. Supported c1 rollback retired epoch
+76 at 77, restored five schedules, and left zero terminal drops or write
+fences. A scheduled Go reconciliation held the host mutation lock afterward;
+it finished with service exit zero before all 23 selectors were cleared.
+Image promotion occurred only after that cleanup. The host wrapper is now
+attested at the merged revision and invokes Go directly. Source draft #10092
+is superseded by this deployment.
+
+All four workers started Go reapers on the new image. An initial exporter
+snapshot reported 129 successful document exports, zero errors and zero lag.
+The 23 selectors were staged against the exact new full revision above.
+Supported c1 activation reached **epoch 78**, with all services healthy. Its
+conservation audit returned accepted/audit_ok: five ready records, zero
+inflight or dead. A read-only comparison of all **7,879 enabled boards**
+found zero differences in Redis versus PostgreSQL board URL, crawler type,
+company ID, domain and monitor/detail browser flags. The helper is
+`/tmp/jobseek-go-queue-db-proof.py`; it performs no mutations or origin calls.
+A later exporter snapshot reported 230 successes, zero errors and zero lag.
+Natural Go Workable monitor cycles remain pending. The active selector helper remains
+`/tmp/jobseek-post-go-maintenance-selectors.py`, with Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Before the next deployment, roll c1
+back, then clear all 23 selectors under the mutation lock against the actual
+current revision. Never reuse the older 22-selector helper.
+
+CSV preparation and the local PostgreSQL transaction are still Python in
+production. The implementation checkpoint below advances their Go replacement;
+workers, remaining extraction profiles and final whole-lane evidence remain
+open under #7966.
+
 ## Production checkpoint: 2026-09-27 — Go maintenance v0.13.870
 
 PR #10089 merged as `ec892dc2899228e3a72526eb7d2f4cd5820445f3` and
@@ -40,14 +82,13 @@ reapers without errors. The six original maintenance drafts were closed as
 superseded by deployed #10089. Natural Go Workable cycles remain pending;
 do not force them.
 
-Before any further image/selector mutation, use supported `rollback c1`, then
-clear **23** selectors under the host lock with
+For that v0.13.870 release, mutation required supported `rollback c1`, then
+clearing **23** selectors under the host lock with
 `/tmp/jobseek-post-go-maintenance-selectors.py clear`, the actual deployed
 full revision above, and `https://kandou.bamboohr.com/careers/310`. The older
-22-selector helper no longer matches the live set. PR #10093 contains the
-next Go board-queue publisher, the direct host launcher from #10092, and the
-reaper pool-limit/budget correction. Keep it draft until its required checks
-and the live release proof pass. The full #7966 migration remains open.
+22-selector helper no longer matches the live set. PR #10093 subsequently delivered the Go board-queue publisher, direct host
+launcher and reaper pool-limit/budget correction; see the newer checkpoint
+above. The full #7966 migration remains open.
 
 ## Implementation checkpoint: Go board sync queue publication
 
@@ -62,7 +103,7 @@ The Redis fixture compares every stored key against the Python publisher,
 including repeated execution, both worker types, first-time/recurring work,
 existing leases, repair deadlines, rate/rotation floors, and corrupt state.
 A 1,001-board case covers the batch boundary and stops later batches/removals
-on failure. This implementation is not deployed. CSV/local PostgreSQL sync,
+on failure. This implementation is deployed in v0.13.871. CSV/local PostgreSQL sync,
 workers and remaining extraction/profile stages still require Go migration.
 
 ## Implementation checkpoint: Go local registry preparation
