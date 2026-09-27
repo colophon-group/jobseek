@@ -9,6 +9,9 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"unicode"
+
+	"golang.org/x/text/cases"
 )
 
 const MaxJobs = 50_000
@@ -34,23 +37,110 @@ type item struct {
 	JobFunction    []string `xml:"http://base.google.com/ns/1.0 job_function"`
 }
 
+// ElementTree's .text stops at the first child element. Match namespaces
+// exactly and retain the first repeated field even when it is empty.
+func (value *item) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	for {
+		token, err := d.Token()
+		if err != nil {
+			return err
+		}
+		switch token := token.(type) {
+		case xml.StartElement:
+			var target *[]string
+			if token.Name.Space == "" {
+				switch token.Name.Local {
+				case "link":
+					target = &value.Link
+				case "title":
+					target = &value.Title
+				case "description":
+					target = &value.Description
+				case "guid":
+					target = &value.GUID
+				case "pubDate":
+					target = &value.PubDate
+				}
+			} else if token.Name.Space == "http://base.google.com/ns/1.0" {
+				switch token.Name.Local {
+				case "location":
+					target = &value.Location
+				case "expiration_date":
+					target = &value.ExpirationDate
+				case "employer":
+					target = &value.Employer
+				case "job_function":
+					target = &value.JobFunction
+				}
+			}
+			if target == nil {
+				if err := d.Skip(); err != nil {
+					return err
+				}
+				continue
+			}
+			var text firstText
+			if err := d.DecodeElement(&text, &token); err != nil {
+				return err
+			}
+			*target = append(*target, string(text))
+		case xml.EndElement:
+			return nil
+		}
+	}
+}
+
+type firstText string
+
+func (text *firstText) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var out strings.Builder
+	beforeChild := true
+	for {
+		token, err := d.Token()
+		if err != nil {
+			return err
+		}
+		switch token := token.(type) {
+		case xml.CharData:
+			if beforeChild {
+				out.Write(token)
+			}
+		case xml.StartElement:
+			beforeChild = false
+			if err := d.Skip(); err != nil {
+				return err
+			}
+		case xml.EndElement:
+			*text = firstText(out.String())
+			return nil
+		}
+	}
+}
+
+const pythonSpacePattern = `[\p{Z}\t\n\f\r\v\x{0085}\x{001c}-\x{001f}]`
+
+func pythonSpace(r rune) bool { return unicode.IsSpace(r) || r >= 0x1c && r <= 0x1f }
+func pythonPattern(pattern string) *regexp.Regexp {
+	return regexp.MustCompile(strings.ReplaceAll(pattern, `\s`, pythonSpacePattern))
+}
+
 var (
 	htmlTag             = regexp.MustCompile(`<[^>]+>`)
-	descriptionLocation = regexp.MustCompile(`(?i)<(?:strong|b)\b[^>]*>\s*Location\s*:?\s*</(?:strong|b)>\s*([^<]+)`)
-	titleLocationSuffix = regexp.MustCompile(`\s*\([^)]+,\s*[^)]+\)\s*$`)
-	titleLocationValue  = regexp.MustCompile(`\s*\(([^()]+,\s*[^()]+)\)\s*$`)
+	descriptionLocation = pythonPattern(`(?i)<(?:strong|b)\b[^>]*>\s*Location\s*:?\s*</(?:strong|b)>\s*([^<]+)`)
+	titleLocationSuffix = pythonPattern(`\s*\([^)]+,\s*[^)]+\)\s*$`)
+	titleLocationValue  = pythonPattern(`\s*\(([^()]+,\s*[^()]+)\)\s*$`)
 )
 
 func optional(value string) *string {
-	value = strings.TrimSpace(value)
 	if value == "" {
 		return nil
 	}
+	value = strings.TrimFunc(value, pythonSpace)
 	return &value
 }
 
 func normalizedText(value string) string {
-	return strings.Join(strings.Fields(value), " ")
+	return strings.Join(strings.FieldsFunc(value, pythonSpace), " ")
 }
 
 func first(values []string) string {
@@ -62,30 +152,31 @@ func first(values []string) string {
 
 func parseItem(value item) (Job, bool) {
 	link := optional(first(value.Link))
-	if link == nil {
+	if link == nil || *link == "" {
 		return Job{}, false
 	}
 	title := optional(first(value.Title))
 	var description *string
-	if raw := optional(first(value.Description)); raw != nil {
-		description = optional(html.UnescapeString(*raw))
+	if raw := optional(first(value.Description)); raw != nil && *raw != "" {
+		decoded := html.UnescapeString(*raw)
+		description = &decoded
 	}
-	if description != nil && title != nil {
-		plainDescription := strings.ToLower(normalizedText(htmlTag.ReplaceAllString(*description, " ")))
-		plainTitle := strings.ToLower(normalizedText(html.UnescapeString(*title)))
+	if description != nil && *description != "" && title != nil && *title != "" {
+		plainDescription := cases.Fold().String(normalizedText(htmlTag.ReplaceAllString(*description, " ")))
+		plainTitle := cases.Fold().String(normalizedText(html.UnescapeString(*title)))
 		if plainDescription == plainTitle {
 			description = nil
 		}
 	}
 	location := optional(first(value.Location))
 	stripTitleLocation := location != nil
-	if location == nil && description != nil {
+	if (location == nil || *location == "") && description != nil && *description != "" {
 		if match := descriptionLocation.FindStringSubmatch(*description); len(match) == 2 {
 			location = optional(normalizedText(html.UnescapeString(match[1])))
 			if location != nil && title != nil {
 				if match := titleLocationValue.FindStringSubmatch(*title); len(match) == 2 {
 					candidate := normalizedText(match[1])
-					descriptionKey, candidateKey := strings.ToLower(*location), strings.ToLower(candidate)
+					descriptionKey, candidateKey := cases.Fold().String(*location), cases.Fold().String(candidate)
 					if candidateKey == descriptionKey || strings.HasPrefix(candidateKey, descriptionKey+",") {
 						location = &candidate
 						stripTitleLocation = true
@@ -100,7 +191,7 @@ func parseItem(value item) (Job, bool) {
 		}
 	}
 	var locations []string
-	if location != nil {
+	if location != nil && *location != "" {
 		locations = []string{*location}
 	}
 	metadata := map[string]any{}
@@ -108,11 +199,11 @@ func parseItem(value item) (Job, bool) {
 		{"id", first(value.GUID)}, {"employer", first(value.Employer)},
 		{"expiration_date", first(value.ExpirationDate)},
 	} {
-		if text := optional(field.value); text != nil {
+		if text := optional(field.value); text != nil && *text != "" {
 			metadata[field.name] = *text
 		}
 	}
-	if function := optional(first(value.JobFunction)); function != nil && *function != "ATS_WEBFORM" {
+	if function := optional(first(value.JobFunction)); function != nil && *function != "" && *function != "ATS_WEBFORM" {
 		metadata["job_function"] = *function
 	}
 	if len(metadata) == 0 {
@@ -124,11 +215,34 @@ func parseItem(value item) (Job, bool) {
 	}, true
 }
 
+// Bound an individual XML token/item, not a whole streamed inventory. Large
+// boards legitimately exceed the pilot's former 256 MiB aggregate response cap.
+const maxXMLReadWindow = 32 << 20
+
+type xmlReadWindow struct {
+	source    io.Reader
+	remaining int
+}
+
+func (r *xmlReadWindow) Read(p []byte) (int, error) {
+	if r.remaining == 0 {
+		return 0, errors.New("SuccessFactors XML item/token exceeded 32 MiB")
+	}
+	if len(p) > r.remaining {
+		p = p[:r.remaining]
+	}
+	n, err := r.source.Read(p)
+	r.remaining -= n
+	return n, err
+}
+
 // ParseStream sends each parsed job to emit without retaining the feed or its
 // jobs. The caller must treat an error after emitted jobs as a failed cycle.
 func ParseStream(reader io.Reader, emit func(Job) error) (items int, jobs int, truncated bool, err error) {
-	decoder := xml.NewDecoder(reader)
+	window := &xmlReadWindow{source: reader, remaining: maxXMLReadWindow}
+	decoder := xml.NewDecoder(window)
 	for {
+		window.remaining = maxXMLReadWindow
 		token, decodeErr := decoder.Token()
 		if decodeErr == io.EOF {
 			return items, jobs, false, nil

@@ -6,6 +6,49 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: SuccessFactors RSS feed routing v0.13.880
+
+Go now defaults to all supported direct SuccessFactors feeds, including explicit
+`variant=feed`, configured cross-domain Google feeds, the category RSS endpoint,
+and shared URL filters/transforms and writer identity-migration metadata. The
+pilot-only recent-count requirement is removed. A read-only replay of all 227
+current configurations selects **216 Go monitors**, up from one. Eleven remain
+Python: three legacy HTML, one legacy XML, three RMK, and four profiles with
+inline detail-field or job-invite identity requests. None are disabled.
+
+Native parsing now matches Python's Unicode case folding, whitespace, exact
+XML namespaces, first repeated field, and text before nested child elements.
+Entity-decoded description whitespace is preserved. The aggregate 256 MiB
+pilot feed cap is replaced by a 32 MiB XML token/item read window, preserving
+streaming for large boards. HTTP reads use the Python path's 30-second
+inactivity budget instead of charging downstream DB backpressure against a
+five-minute whole-request limit. The 216-board baseline has 236,664 active postings.
+Thirty-two frozen Python
+parser cases pass in Go; CI also replays them through the installed binary with
+networking disabled. The retained 482,801-byte Mobiliar feed matches all 71 rich
+jobs exactly, including all descriptions, locations and metadata. Its source
+SHA-256 is `0a65c6e9d7fbe329d95fa59e126d0cbe72770033897a27a6ed2ba79d7c228ff4`.
+
+Verification passed 228 focused runtime/RSS/shared monitor tests, Go race/vet,
+Ruff/Pyright and the offline native verifier. A streamed synthetic feed above
+256 MiB passes without retaining the inventory; read-inactivity and partial-feed
+retry boundaries are covered. Streamed output, HTTP/TDM failure
+classification and downstream writer/drop policy remain in place. The bridge
+now reaps cancelled/stuck children after bounded termination and records a
+postprocessed canonical URL hash for DB comparison. No extra publisher requests
+were made. Deployment and natural output readback are pending. This slice incorporates
+PR #10100 (v0.13.879), including its authoritative TDM reservation check before
+Go dispatch. The TDM deployment and documentation checkpoint are complete:
+promoted revision `265d7e8b8f12beabff3d5e7e131f2e8eb168903d`, c1 epoch 92,
+with the unchanged 25 selectors. Use the production checkpoint immediately
+below for supported cold rollback before this release.
+
+For reversal, restore the previous release or use the supported cold
+configuration procedure with `SUCCESSFACTORS_RSS_GO_PERCENT=0`; explicit
+`SUCCESSFACTORS_RSS_GO_BOARD_IDS` still take precedence and must also be cleared
+for full provider reversal. This slice does not establish complete provider or
+Python/browser retirement, or whole-lane resource efficiency.
+
 ## Production checkpoint: 2026-09-27 — TDM follow-up v0.13.879
 
 PR #10100 merged as `265d7e8b8f12beabff3d5e7e131f2e8eb168903d`.

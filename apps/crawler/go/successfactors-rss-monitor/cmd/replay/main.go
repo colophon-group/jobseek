@@ -3,14 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	successfactorsrss "github.com/colophon-group/jobseek/apps/crawler/go/successfactors-rss-monitor"
 )
 
 func main() {
-	jobs, items, err := successfactorsrss.ParseReader(io.LimitReader(os.Stdin, (256<<20)+1))
+	jobs, items, err := successfactorsrss.ParseReader(os.Stdin)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

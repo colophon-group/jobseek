@@ -1,0 +1,319 @@
+[
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item></item></channel></rss>",
+    "items": 1,
+    "jobs": []
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link/></item></channel></rss>",
+    "items": 1,
+    "jobs": []
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link> </link></item></channel></rss>",
+    "items": 1,
+    "jobs": []
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><link>https://example.test/2</link></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link/><link>https://example.test/2</link></item></channel></rss>",
+    "items": 1,
+    "jobs": []
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><x:link>https://wrong.test/1</x:link><link>https://example.test/1</link></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1<nested/>ignored-tail</link></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title/></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title> </title></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": ""
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title> First <b>nested</b> tail</title></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "First"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title><!--comment-->Title</title></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Title"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>First</title><title>Second</title></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "First"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title/><title>Second</title></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><x:title>Wrong</x:title><title>Right</title></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Right"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><description>&amp;nbsp;Build&amp;nbsp;</description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "description": " Build "
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><description>&amp;#32;</description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "description": " "
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><description>&amp;copy; &amp;notit; &amp;amp; &amp;#x1F600;</description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "description": "© ¬it; & 😀"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><description>First<b>nested</b>tail</description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "description": "First"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>Straße</title><description>STRASSE</description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Straße"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>ΟΣ</title><description>οσ</description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "ΟΣ"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>Engineer (Bern, CH)</title><g:location>Bern, CH</g:location></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Engineer",
+        "locations": [
+          "Bern, CH"
+        ]
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>Engineer (Bern, CH)</title><g:location> </g:location></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Engineer"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>Engineer (STRASSE, CH)</title><description><![CDATA[<b>Location:</b>Straße]]></description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Engineer",
+        "description": "<b>Location:</b>Straße",
+        "locations": [
+          "STRASSE, CH"
+        ]
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>Engineer (Bern, CH)</title><description><![CDATA[<b> Location: </b>Bern]]></description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Engineer",
+        "description": "<b> Location: </b>Bern",
+        "locations": [
+          "Bern, CH"
+        ]
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>Engineer (Bern, CH)</title><description><![CDATA[<b>Location</b>Zurich]]></description></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Engineer (Bern, CH)",
+        "description": "<b>Location</b>Zurich",
+        "locations": [
+          "Zurich"
+        ]
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><title>Engineer (Bern, CH)</title><g:location>Bern</g:location><g:location>Zurich</g:location></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "title": "Engineer",
+        "locations": [
+          "Bern"
+        ]
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><guid> </guid><pubDate> </pubDate><g:job_function> </g:job_function><g:employer> </g:employer></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "date_posted": ""
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><guid>ID</guid><pubDate>2026-09-27</pubDate><g:job_function>ATS_WEBFORM</g:job_function></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "date_posted": "2026-09-27",
+        "metadata": {
+          "id": "ID"
+        }
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><g:employer>Employer</g:employer><g:job_function>Engineering</g:job_function><g:expiration_date>2027-01-01</g:expiration_date></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1",
+        "metadata": {
+          "employer": "Employer",
+          "job_function": "Engineering",
+          "expiration_date": "2027-01-01"
+        }
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><g:location/><g:location>Zurich</g:location></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1"
+      }
+    ]
+  },
+  {
+    "feed": "<rss xmlns:g=\"http://base.google.com/ns/1.0\" xmlns:x=\"urn:other\"><channel><item><link>https://example.test/1</link><location>Wrong</location><x:location>Wrong too</x:location></item></channel></rss>",
+    "items": 1,
+    "jobs": [
+      {
+        "url": "https://example.test/1"
+      }
+    ]
+  }
+]

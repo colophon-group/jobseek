@@ -1,4 +1,4 @@
-"""Default-off Go owner for direct SuccessFactors Google RSS feeds."""
+"""Go owner for direct SuccessFactors Google RSS feeds."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import json
 import os
 import re
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from time import monotonic
 from urllib.parse import urlparse
 
@@ -41,8 +42,10 @@ _BOOKKEEPING = {
     "_monitor_config_fingerprint",
     "_confirmed_drop_candidate",
     "_identity_migration_receipt",
+    "identity_migration",
 }
-_DOWNSTREAM = {"url_allowlist", "url_transform", "url", "job_filter"}
+_DOWNSTREAM = {"url_allowlist", "url_transform", "url", "url_filter", "job_filter"}
+_CHILD_STOP_SECONDS = 5
 
 
 def _eligible(board_url: str, monitor_type: str, config: dict | None, pw: object | None) -> str:
@@ -52,9 +55,10 @@ def _eligible(board_url: str, monitor_type: str, config: dict | None, pw: object
         or pw is not None
         or metadata.get("preset") != "successfactors"
         or metadata.get("render")
-        or set(metadata) - {"preset", "feed_url"} - _BOOKKEEPING - _DOWNSTREAM
+        or metadata.get("variant") not in (None, "feed")
+        or set(metadata) - {"preset", "feed_url", "variant"} - _BOOKKEEPING - _DOWNSTREAM
     ):
-        raise ValueError("Go SuccessFactors requires a direct default RSS configuration")
+        raise ValueError("Go SuccessFactors requires a direct RSS feed configuration")
     resolved = _feed_config({"board_url": board_url, "metadata": metadata})
     if resolved is None or resolved[0] != "successfactors":
         raise ValueError("Go SuccessFactors could not resolve the configured RSS feed")
@@ -64,39 +68,38 @@ def _eligible(board_url: str, monitor_type: str, config: dict | None, pw: object
         board_port, feed_port = board.port, feed.port
     except ValueError as exc:
         raise ValueError("Go SuccessFactors requires canonical HTTPS URLs") from exc
+    google_feed = not feed.query and feed.path.rstrip("/").lower() == "/googlefeed.xml"
+    category_feed = (
+        feed.path == "/services/rss/category/"
+        and re.fullmatch(r"catid=[1-9][0-9]{0,15}", feed.query) is not None
+    )
     if (
         board.scheme != "https"
         or feed.scheme != "https"
         or not board.hostname
-        or board.hostname != feed.hostname
+        or not feed.hostname
         or board.username is not None
         or board.password is not None
         or feed.username is not None
         or feed.password is not None
         or board_port not in (None, 443)
         or feed_port not in (None, 443)
-        or feed.query
         or feed.fragment
-        or feed.path.rstrip("/").lower() != "/googlefeed.xml"
+        or not (google_feed or category_feed)
     ):
-        raise ValueError("Go SuccessFactors requires same-origin HTTPS /googlefeed.xml")
+        raise ValueError(
+            "Go SuccessFactors requires a configured HTTPS Google or category RSS feed"
+        )
     return feed_url
 
 
 def percentage_selected(board_id: str, board_url: str, config: dict | None) -> bool:
-    raw = os.environ.get("SUCCESSFACTORS_RSS_GO_PERCENT", "0")
+    raw = os.environ.get("SUCCESSFACTORS_RSS_GO_PERCENT", "100")
     if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw) or int(raw) == 0:
         return False
     try:
         _eligible(board_url, "rss", config, None)
     except ValueError:
-        return False
-    recent = (config or {}).get("recent_discovered_counts")
-    if (
-        not isinstance(recent, list)
-        or len(recent) < 3
-        or not all(type(count) is int and 1 <= count <= 500 for count in recent[-3:])
-    ):
         return False
     bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
     return bucket < int(raw) * 100
@@ -182,7 +185,8 @@ class GoSuccessFactorsRSSMonitorRuntime:
                     or type(responses) is not int
                     or not 0 <= responses <= attempts
                     or type(body_bytes) is not int
-                    or not 0 <= body_bytes <= responses * ((256 << 20) + 1)
+                    or body_bytes < 0
+                    or (responses == 0 and body_bytes != 0)
                     or type(status) is not int
                     or (status != 0 and not 100 <= status <= 599)
                     or (responses > 0 and (not isinstance(final_url, str) or not final_url))
@@ -249,16 +253,33 @@ class GoSuccessFactorsRSSMonitorRuntime:
                 if truncated:
                     yield MonitorResult(truncated=True)
 
+            canonical_urls: set[str] = set()
+            was_truncated = False
             async for result in postprocess_monitor_stream(raw_batches(), monitor_config or {}):
+                canonical_urls.update(result.urls)
+                was_truncated |= result.truncated
                 yield result
+            log.info(
+                "go_successfactors_rss.monitor_postprocessed",
+                board_id=self.board_id,
+                urls=len(canonical_urls),
+                url_sha256=hashlib.sha256("\n".join(sorted(canonical_urls)).encode()).hexdigest(),
+                truncated=was_truncated,
+            )
             outcome = "success"
         except asyncio.CancelledError:
             outcome = "cancelled"
             raise
         finally:
             if proc is not None and proc.returncode is None:
-                proc.terminate()
-                await proc.wait()
+                with suppress(ProcessLookupError):
+                    proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), _CHILD_STOP_SECONDS)
+                except TimeoutError:
+                    with suppress(ProcessLookupError):
+                        proc.kill()
+                    await proc.wait()
             runtime_execution_duration_seconds.labels(
                 stage="monitor", implementation=self.implementation
             ).observe(monotonic() - started)
