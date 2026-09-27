@@ -786,6 +786,29 @@ async def run() -> None:
         # has already populated the environment; exec forwards signals/status
         # directly and opens no Python database pools or metrics server.
         os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--backfill"])
+    if args.command == "reconcile":
+        command = [
+            "go-typesense-exporter",
+            "--reconcile",
+            "--max-partitions",
+            str(args.max_partitions),
+            "--start-partition",
+            str(args.start_partition),
+            "--target",
+            args.target,
+        ]
+        for enabled, option in (
+            (args.repair, "--repair"),
+            (args.full, "--full"),
+            (args.fresh_cycle, "--fresh-cycle"),
+        ):
+            if enabled:
+                command.append(option)
+        if args.candidate_order_benchmark_sha256 is not None:
+            command.extend(
+                ["--candidate-order-benchmark-sha256", args.candidate_order_benchmark_sha256]
+            )
+        os.execvp(command[0], command)
     setup_logging(settings.log_level)
 
     log.info("cli.starting", command=args.command, worker_id=WORKER_ID)
@@ -1396,46 +1419,6 @@ async def run() -> None:
                 )
                 if not summary.dry_run:
                     await refresh_derived_surfaces(local_pool)
-
-        elif args.command == "reconcile":
-            local_pool = await create_local_pool()
-            from src.reconciliation import (
-                issue_candidate_order_readiness_receipt,
-                run_reconciliation,
-            )
-
-            summary = await _await_task_or_shutdown(
-                asyncio.create_task(
-                    run_reconciliation(
-                        local_pool,
-                        None,
-                        repair=args.repair,
-                        full=args.full,
-                        fresh_cycle=args.fresh_cycle,
-                        max_partitions=args.max_partitions,
-                        start_partition=args.start_partition,
-                        target_scope=args.target,
-                    )
-                ),
-                shutdown_event,
-            )
-            if summary is None:
-                raise SystemExit(130)
-            benchmark_sha256 = getattr(args, "candidate_order_benchmark_sha256", None)
-            if benchmark_sha256 is not None:
-                receipt = await issue_candidate_order_readiness_receipt(
-                    local_pool,
-                    summary,
-                    benchmark_sha256=benchmark_sha256,
-                )
-                sys.stdout.write(
-                    json.dumps(
-                        {"candidate_order_readiness_receipt": receipt},
-                        sort_keys=True,
-                    )
-                    + "\n"
-                )
-                sys.stdout.flush()
 
         elif args.command == "board":
             local_pool = await create_local_pool()

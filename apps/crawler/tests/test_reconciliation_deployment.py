@@ -323,7 +323,7 @@ def test_backfill_proof_is_one_locked_fail_closed_chain() -> None:
     maintenance = MAINTENANCE.read_text(encoding="utf-8")
     chain = (
         "go-typesense-exporter --backfill && "
-        "uv run --no-sync crawler reconcile --repair --full --fresh-cycle "
+        "go-typesense-exporter --reconcile --repair --full --fresh-cycle "
         "--target typesense && "
         "uv run --no-sync crawler verify-typesense-taxonomies"
     )
@@ -337,6 +337,53 @@ def test_backfill_proof_is_one_locked_fail_closed_chain() -> None:
     assert "operation_budget=14400" in maintenance
     assert 'timeout --foreground --signal=TERM --kill-after=90s "$operation_budget"' in maintenance
     assert "command_timeout: 8h" in maintenance
+
+
+@pytest.mark.asyncio
+async def test_reconciliation_cli_execs_go_before_opening_python_pools(monkeypatch) -> None:
+    from src import cli
+
+    digest = "a" * 64
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "crawler",
+            "reconcile",
+            "--repair",
+            "--full",
+            "--fresh-cycle",
+            "--candidate-order-benchmark-sha256",
+            digest,
+        ],
+    )
+
+    async def unexpected_pool():
+        raise AssertionError("Python reconciliation pool must not open")
+
+    def exec_go(executable, args):
+        assert executable == "go-typesense-exporter"
+        assert args == [
+            "go-typesense-exporter",
+            "--reconcile",
+            "--max-partitions",
+            "16",
+            "--start-partition",
+            "0",
+            "--target",
+            "typesense",
+            "--repair",
+            "--full",
+            "--fresh-cycle",
+            "--candidate-order-benchmark-sha256",
+            digest,
+        ]
+        raise SystemExit(17)
+
+    monkeypatch.setattr(cli, "create_local_pool", unexpected_pool)
+    monkeypatch.setattr(os, "execvp", exec_go)
+    with pytest.raises(SystemExit, match="17"):
+        await cli.run()
 
 
 def test_scheduled_refresh_resolves_the_committed_digest_before_dispatch() -> None:
