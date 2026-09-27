@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 import pytest
 
 from src.processing.board import _monitor_runtime_for_board
-from src.runtime.personio_go import GoPersonioMonitorRuntime, percentage_selected
+from src.runtime.personio_go import GoPersonioMonitorRuntime, _eligible, percentage_selected
 
 BOARD_ID = "20eae165-5251-40d4-b9a0-0254f4bd1ab3"
 BOARD_URL = "https://acme.jobs.personio.de/"
@@ -92,19 +94,68 @@ async def test_go_personio_failure_cannot_publish_partial_jobs(tmp_path):
                 pass
 
 
-def test_go_personio_default_dark_and_config_guard(monkeypatch):
+@pytest.mark.asyncio
+async def test_go_personio_cancel_reaps_child(tmp_path, monkeypatch):
+    children = []
+    create = asyncio.create_subprocess_exec
+
+    async def capture(*args, **kwargs):
+        proc = await create(*args, **kwargs)
+        children.append(proc)
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", capture)
+    path = tmp_path / "personio-live-hang"
+    path.write_text("#!/usr/bin/env python3\nimport time\ntime.sleep(60)\n")
+    path.chmod(0o755)
+    runtime = GoPersonioMonitorRuntime(str(path), board_id=BOARD_ID)
+
+    async def run():
+        async with httpx.AsyncClient() as client:
+            return [item async for item in runtime.stream(BOARD_URL, "personio", CONFIG, client)]
+
+    task = asyncio.create_task(run())
+    async with asyncio.timeout(5):
+        while not children:
+            await asyncio.sleep(0.01)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(task, 10)
+    assert children[0].returncode is not None
+
+
+def test_go_personio_routes_full_provider_and_config_guard(monkeypatch):
     monkeypatch.delenv("PERSONIO_GO_PERCENT", raising=False)
     monkeypatch.delenv("PERSONIO_GO_BOARD_IDS", raising=False)
+    assert percentage_selected(BOARD_ID, BOARD_URL, CONFIG)
     assert _monitor_runtime_for_board(BOARD_ID, None).implementation == "python"
     monkeypatch.setenv("PERSONIO_GO_BOARD_IDS", BOARD_ID)
     assert _monitor_runtime_for_board(BOARD_ID, None).implementation == "go-personio"
     monkeypatch.delenv("PERSONIO_GO_BOARD_IDS")
     monkeypatch.setenv("PERSONIO_GO_PERCENT", "100")
-    selected = {**CONFIG, "recent_discovered_counts": [4, 4, 4]}
+    selected = CONFIG
     assert percentage_selected(BOARD_ID, BOARD_URL, selected)
     assert not percentage_selected(BOARD_ID, BOARD_URL, {**selected, "language": "EN"})
     assert not percentage_selected(BOARD_ID, BOARD_URL, {**selected, "variant": "custom"})
-    assert not percentage_selected(BOARD_ID, "https://other.test/", selected)
-    assert not percentage_selected(
-        BOARD_ID, BOARD_URL, {**selected, "recent_discovered_counts": [4, 4]}
+    assert _eligible("https://other.test/careers", "personio", selected, None) == (
+        "acme",
+        "de",
+        "en",
+        ["de"],
     )
+    assert _eligible(
+        "https://livenation.jobs.personio.de/?language=en",
+        "personio",
+        {**CONFIG, "slug": "live-nation"},
+        None,
+    ) == ("live-nation", "de", "en", ["de"])
+    assert _eligible(
+        "https://tenant.jobs.personio.com/?language=en",
+        "personio",
+        {**CONFIG, "slug": "tenant", "backfill_languages": []},
+        None,
+    ) == ("tenant", "com", "en", [])
+    assert not percentage_selected(BOARD_ID, "http://other.test/", selected)
+    assert not percentage_selected(BOARD_ID, "https://other.test/", {})
+    monkeypatch.setenv("PERSONIO_GO_PERCENT", "0")
+    assert not percentage_selected(BOARD_ID, BOARD_URL, CONFIG)

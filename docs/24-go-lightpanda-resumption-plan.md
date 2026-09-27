@@ -57,6 +57,37 @@ follow-up observations, not a claim of all-board success.
 Full Python/Chromium retirement and same-actual-workload whole-lane
 CPU/RAM/density/cost proof remain open.
 
+## Implementation checkpoint: SmartRecruiters and Personio broad routes v0.13.882
+
+The existing Go SmartRecruiters and Personio monitor binaries and Compose
+environment now have default 100% routes for their supported configurations.
+The previous three-run,
+500-posting eligibility ceiling no longer excludes large boards or new boards;
+the native 50,000-posting boundary and bounded response/output accounting remain.
+Personio follows the Python monitor's configured slug precedence, preferred
+`.de`/`.com` domain and custom-career-URL behavior. Its Python bridge now reads
+child output with a bound and reaps a cancelled child. Explicit board selectors
+and percentage-zero rollback remain available. The previous production
+Compose default pins SmartRecruiters at 0%, while its selector overlay pins
+Personio at 5%; the next supported rollback/clear must remove the Personio
+pin, and the post-deploy stage helper must preserve the other 24 exact
+selectors without reintroducing it.
+
+A read-only 2026-09-28 production registry snapshot found **129 enabled
+SmartRecruiters and 55 enabled Personio** boards. All 184 select Go with this
+code. Their pre-deploy active database baseline contains 113,170 postings:
+112,560 SmartRecruiters and 610 Personio. SmartRecruiters includes Domino's
+24,825 active rows, Accor 6,263 and AECOM 5,309; none of its 129 boards has a
+consecutive failure. Personio has one previously quarantined board with a
+failure. The complete private baseline JSON is retained mode 0600 outside the
+repository at `/tmp/jobseek-smartrecruiters-personio-baseline.json` with SHA-256
+`7a1ea55f6c8f2a72ab70671d62525952eb12f2ced3c73a19468a8161fdd049d3`.
+Twelve focused runtime tests and both native modules' tests pass locally, with
+the Personio race detector and the SmartRecruiters race detector in its runtime
+test. Production deploy and natural Go output/database readback are still
+required before this slice counts as a production checkpoint. No publisher
+request was added for this verification.
+
 ## Implementation checkpoint: Recruitee and Pinpoint routing v0.13.881
 
 The native runtimes now cover all **115 Recruitee and 104 Pinpoint** configurations
