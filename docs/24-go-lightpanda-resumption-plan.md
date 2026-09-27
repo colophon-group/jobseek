@@ -30,10 +30,15 @@ returned accepted/audit_ok: five ready records, zero inflight or dead. Workers
 run the Go lease-reaper child. A point-in-time exporter read reported 5,151
 exported documents, zero document errors, and zero lag.
 
-The first bounded Go reconciliation slice is running through the existing
-attested host launcher, which execs Go via the compatibility CLI. Its local
-log is `/tmp/jobseek-go-reconciliation-ec892dc2.log`; final results remain
-pending. Natural Go Workable cycles also remain pending; do not force them.
+The first bounded Go reconciliation slice completed at 14:50:48 UTC through
+the existing attested host launcher, which execs Go via the compatibility
+CLI. Run `6f0ca3ad-8671-4291-b998-7f33f33eb8b9` checked 355,623 local and
+remote rows across 16 partitions, repaired one difference, and left zero
+unresolved. The launcher exited zero; its mode-0600 local log is
+`/tmp/jobseek-go-reconciliation-ec892dc2.log`. All four workers reported Go
+reapers without errors. The six original maintenance drafts were closed as
+superseded by deployed #10089. Natural Go Workable cycles remain pending;
+do not force them.
 
 Before any further image/selector mutation, use supported `rollback c1`, then
 clear **23** selectors under the host lock with

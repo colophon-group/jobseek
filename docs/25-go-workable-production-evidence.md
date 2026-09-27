@@ -25,9 +25,18 @@ The corresponding successful Python runs were at 13:53:46, 13:55:38,
 14:00:37, and 14:07:38 UTC. This evidence proves parser parity on those
 responses. It does not yet prove live Go execution or whole-lane efficiency.
 
-## Pending exact-board activation
+## Exact-board activation
 
-Wait for maintenance proof 36317322087 to finish, then deploy candidate
+After successful #10089 deployment, all four exact Go board selectors were
+staged at `ec892dc2899228e3a72526eb7d2f4cd5820445f3` on 2026-09-27. C1
+reactivated at epoch 76 with five retained schedules and healthy services.
+Worker 1 exposes the exact four `WORKABLE_GO_BOARD_IDS` below. Natural Go
+success is still pending as of 14:51 UTC; parser parity alone is not live
+execution evidence.
+
+### Activation procedure used
+
+Maintenance proof 36317322087 completed successfully before deploying candidate
 #10089 using the supported c1 rollback and old exact **22-selector** cleanup
 (`/tmp/jobseek-post-go-sitemap-selectors.py`). After successful image promotion,
 use `/tmp/jobseek-post-go-maintenance-selectors.py stage NEW_FULL_SHA
