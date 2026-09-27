@@ -231,7 +231,7 @@ jobs:
                 operation_budget=14400
                 operation_command=(
                   sh -ceu
-                  'uv run --no-sync crawler backfill-typesense && uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense && uv run --no-sync crawler verify-typesense-taxonomies'
+                  'go-typesense-exporter --backfill && uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense && uv run --no-sync crawler verify-typesense-taxonomies'
                 )
               elif [[ "$TASK" == verify-typesense-taxonomies ]]; then
                 # Verification-only dispatch: prove the live taxonomy state
