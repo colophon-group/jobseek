@@ -6,7 +6,7 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
-## Implementation checkpoint: SuccessFactors RSS feed routing v0.13.879
+## Implementation checkpoint: SuccessFactors RSS feed routing v0.13.880
 
 Go now defaults to all supported direct SuccessFactors feeds, including explicit
 `variant=feed`, configured cross-domain Google feeds, the category RSS endpoint,
@@ -36,8 +36,12 @@ retry boundaries are covered. Streamed output, HTTP/TDM failure
 classification and downstream writer/drop policy remain in place. The bridge
 now reaps cancelled/stuck children after bounded termination and records a
 postprocessed canonical URL hash for DB comparison. No extra publisher requests
-were made. Deployment and natural output readback are pending; use the v0.13.878
-production selector/epoch instructions below until a new release is promoted.
+were made. Deployment and natural output readback are pending. This slice incorporates
+PR #10100 (v0.13.879), including its authoritative TDM reservation check before
+Go dispatch. Its deployment is owned by the TDM task. After that operation
+finishes, re-read the promoted revision and c1 receipt before supported cold
+rollback and clearing the unchanged 25 selectors; the older v0.13.878 release
+and epoch below are historical and must not be used for mutation.
 
 For reversal, restore the previous release or use the supported cold
 configuration procedure with `SUCCESSFACTORS_RSS_GO_PERCENT=0`; explicit
