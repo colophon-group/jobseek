@@ -1,0 +1,832 @@
+[
+  {
+    "board_url": "https://bighatbiosciences.pinpointhq.com/",
+    "config": {
+      "slug": "bighatbiosciences",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bighatbiosciences.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://accelercomm.pinpointhq.com/en",
+    "config": {
+      "slug": "accelercomm",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://accelercomm.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://built.pinpointhq.com",
+    "config": {
+      "slug": "built",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://built.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://agomab.pinpointhq.com/",
+    "config": {
+      "slug": "agomab",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://agomab.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://enable.pinpointhq.com",
+    "config": {
+      "slug": "enable",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://enable.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://alliance.pinpointhq.com",
+    "config": {
+      "slug": "alliance",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://alliance.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://arm.pinpointhq.com",
+    "config": {
+      "slug": "arm",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://arm.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://barkbox.pinpointhq.com",
+    "config": {
+      "slug": "barkbox",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://barkbox.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://100ms.pinpointhq.com",
+    "config": {
+      "slug": "100ms",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://100ms.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://boomi.pinpointhq.com",
+    "config": {
+      "slug": "boomi",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://boomi.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://cinven.pinpointhq.com",
+    "config": {
+      "slug": "cinven",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://cinven.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://americanveterinarygroup.pinpointhq.com/",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://americanveterinarygroup.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://appquantum.pinpointhq.com/",
+    "config": {
+      "slug": "appquantum",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://appquantum.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://ekimetrics.pinpointhq.com",
+    "config": {
+      "slug": "ekimetrics",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://ekimetrics.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://covergenius.pinpointhq.com",
+    "config": {
+      "slug": "covergenius",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://covergenius.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://deltacapita.pinpointhq.com",
+    "config": {
+      "slug": "deltacapita",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://deltacapita.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://lush.pinpointhq.com",
+    "config": {
+      "slug": "lush",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://lush.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://gtci.pinpointhq.com/",
+    "config": {
+      "slug": "gtci",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://gtci.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://ericsson.pinpointhq.com",
+    "config": {
+      "slug": "ericsson",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://ericsson.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://everbridge.pinpointhq.com",
+    "config": {
+      "slug": "everbridge",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://everbridge.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://firmus.pinpointhq.com",
+    "config": {
+      "slug": "firmus",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://firmus.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://fundingcircle.pinpointhq.com",
+    "config": {
+      "slug": "fundingcircle",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://fundingcircle.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://glia.pinpointhq.com",
+    "config": {
+      "slug": "glia",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://glia.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://imagination.pinpointhq.com",
+    "config": {
+      "slug": "imagination",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://imagination.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://includedhealth.pinpointhq.com",
+    "config": {
+      "slug": "includedhealth",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://includedhealth.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://legalzoom.pinpointhq.com",
+    "config": {
+      "slug": "legalzoom",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://legalzoom.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://kiwi.pinpointhq.com",
+    "config": {
+      "slug": "kiwi",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://kiwi.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://www.lvmh.com/en/join-us/our-job-offers",
+    "config": {
+      "slug": "lvmh",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://lvmh.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://marksandspencer.pinpointhq.com",
+    "config": {
+      "slug": "marksandspencer",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://marksandspencer.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://logicmanager.pinpointhq.com",
+    "config": {
+      "slug": "logicmanager",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://logicmanager.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://lumindigital.pinpointhq.com",
+    "config": {
+      "slug": "lumindigital",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://lumindigital.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://orbit.pinpointhq.com",
+    "config": {
+      "slug": "orbit",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://orbit.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://moneyboxapp.pinpointhq.com",
+    "config": {
+      "slug": "moneyboxapp",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://moneyboxapp.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://nccgroup.pinpointhq.com",
+    "config": {
+      "slug": "nccgroup",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://nccgroup.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://beautybarrage.pinpointhq.com",
+    "config": {
+      "slug": "beautybarrage",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://beautybarrage.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://obsidian.pinpointhq.com",
+    "config": {
+      "slug": "obsidian",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://obsidian.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://onboardmeetings.pinpointhq.com",
+    "config": {
+      "slug": "onboardmeetings",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://onboardmeetings.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://oneapp.pinpointhq.com",
+    "config": {
+      "slug": "oneapp",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://oneapp.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://openx.pinpointhq.com",
+    "config": {
+      "slug": "openx",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://openx.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://bhhc.pinpointhq.com",
+    "config": {
+      "slug": "bhhc",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bhhc.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://oviva.pinpointhq.com",
+    "config": {
+      "slug": "oviva",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://oviva.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://pergolux.pinpointhq.com",
+    "config": {
+      "slug": "pergolux",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://pergolux.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://planhat.pinpointhq.com",
+    "config": {
+      "slug": "planhat",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://planhat.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://platform9.pinpointhq.com",
+    "config": {
+      "slug": "platform9",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://platform9.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://apollo.pinpointhq.com",
+    "config": {
+      "slug": "apollo",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://apollo.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://embark.pinpointhq.com",
+    "config": {
+      "slug": "embark",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://embark.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://productschool.pinpointhq.com",
+    "config": {
+      "slug": "productschool",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://productschool.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://baincapital.pinpointhq.com",
+    "config": {
+      "slug": "baincapital",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://baincapital.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://gett.pinpointhq.com",
+    "config": {
+      "slug": "gett",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://gett.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://jerry.pinpointhq.com",
+    "config": {
+      "slug": "jerry",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://jerry.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://bright.pinpointhq.com",
+    "config": {
+      "slug": "bright",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bright.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://razorpay.pinpointhq.com",
+    "config": {
+      "slug": "razorpay",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://razorpay.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://recruitaero.pinpointhq.com",
+    "config": {
+      "slug": "recruitaero",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://recruitaero.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://elfbeauty.pinpointhq.com",
+    "config": {
+      "slug": "elfbeauty",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://elfbeauty.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://gearset.pinpointhq.com",
+    "config": {
+      "slug": "gearset",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://gearset.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://copper.pinpointhq.com",
+    "config": {
+      "slug": "copper",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://copper.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://riverflex.pinpointhq.com",
+    "config": {
+      "slug": "riverflex",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://riverflex.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://kodland.pinpointhq.com",
+    "config": {
+      "slug": "kodland",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://kodland.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://rowdentech.pinpointhq.com/",
+    "config": {
+      "slug": "rowdentech",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://rowdentech.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://mambu.pinpointhq.com",
+    "config": {
+      "slug": "mambu",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://mambu.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://brightnetwork.pinpointhq.com",
+    "config": {
+      "slug": "brightnetwork",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://brightnetwork.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://exp.pinpointhq.com",
+    "config": {
+      "slug": "exp",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://exp.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://editasmedicine.pinpointhq.com",
+    "config": {
+      "slug": "editasmedicine",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://editasmedicine.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://koleyjessen.pinpointhq.com",
+    "config": {
+      "slug": "koleyjessen",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://koleyjessen.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://hermeus.pinpointhq.com",
+    "config": {
+      "slug": "hermeus",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://hermeus.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://matrix.pinpointhq.com",
+    "config": {
+      "slug": "matrix",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://matrix.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://pentera.pinpointhq.com",
+    "config": {
+      "slug": "pentera",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://pentera.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://mammoth.pinpointhq.com",
+    "config": {
+      "slug": "mammoth",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://mammoth.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://odysseyhotelgroup.pinpointhq.com",
+    "config": {
+      "slug": "odysseyhotelgroup",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://odysseyhotelgroup.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://sequra.pinpointhq.com",
+    "config": {
+      "slug": "sequra",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://sequra.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://merge.pinpointhq.com",
+    "config": {
+      "slug": "merge",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://merge.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://smarsh.pinpointhq.com",
+    "config": {
+      "slug": "smarsh",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://smarsh.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://careers.hadrian.io/jobs",
+    "config": {
+      "slug": "hadrian",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://hadrian.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://alector.pinpointhq.com",
+    "config": {
+      "slug": "alector",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://alector.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://sonder.pinpointhq.com",
+    "config": {
+      "slug": "sonder",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://sonder.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://quantcast.pinpointhq.com",
+    "config": {
+      "slug": "quantcast",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://quantcast.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://pmaconsultants.pinpointhq.com",
+    "config": {
+      "slug": "pmaconsultants",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://pmaconsultants.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://reply.pinpointhq.com",
+    "config": {
+      "slug": "reply",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://reply.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://coindcx.pinpointhq.com",
+    "config": {
+      "slug": "coindcx",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://coindcx.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://confluence.pinpointhq.com",
+    "config": {
+      "slug": "confluence",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://confluence.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://attentivemobile.pinpointhq.com",
+    "config": {
+      "slug": "attentivemobile",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://attentivemobile.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://cvent.pinpointhq.com",
+    "config": {
+      "slug": "cvent",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://cvent.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://rewind.pinpointhq.com",
+    "config": {
+      "slug": "rewind",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://rewind.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://magic.pinpointhq.com",
+    "config": {
+      "slug": "magic",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://magic.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://desmos.pinpointhq.com",
+    "config": {
+      "slug": "desmos",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://desmos.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://penumbrainc.pinpointhq.com",
+    "config": {
+      "slug": "penumbrainc",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://penumbrainc.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://careers.petroineos.com",
+    "config": {
+      "slug": "petroineos",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://petroineos.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://sui.pinpointhq.com",
+    "config": {
+      "slug": "sui",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://sui.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://planner5d.pinpointhq.com",
+    "config": {
+      "slug": "planner5d",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://planner5d.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://surrealdb.pinpointhq.com",
+    "config": {
+      "slug": "surrealdb",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://surrealdb.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://supernovacompanies.pinpointhq.com",
+    "config": {
+      "slug": "supernovacompanies",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://supernovacompanies.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://tabby.pinpointhq.com",
+    "config": {
+      "slug": "tabby",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://tabby.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://synopsys.pinpointhq.com",
+    "config": {
+      "slug": "synopsys",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://synopsys.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://www.synthace.com/about/careers",
+    "config": {
+      "slug": "synthace",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://synthace.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://tealium.pinpointhq.com",
+    "config": {
+      "slug": "tealium",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://tealium.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://teya.pinpointhq.com",
+    "config": {
+      "slug": "teya",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://teya.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://tidio.pinpointhq.com",
+    "config": {
+      "slug": "tidio",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://tidio.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://trilongroup.pinpointhq.com/",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://trilongroup.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://uvcyber.pinpointhq.com",
+    "config": {
+      "slug": "uvcyber",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://uvcyber.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://vastspace.pinpointhq.com",
+    "config": {
+      "slug": "vastspace",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://vastspace.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://wolve.pinpointhq.com",
+    "config": {
+      "slug": "wolve",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://wolve.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://zeffy.pinpointhq.com",
+    "config": {
+      "slug": "zeffy",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://zeffy.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://www.yelp.careers/us/en/search-results",
+    "config": {
+      "slug": "yelp",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://yelp.pinpointhq.com/postings.json"
+  },
+  {
+    "board_url": "https://zendesk.pinpointhq.com",
+    "config": {
+      "slug": "zendesk",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://zendesk.pinpointhq.com/postings.json"
+  }
+]

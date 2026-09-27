@@ -74,7 +74,7 @@ async def test_go_pinpoint_preserves_http_404_failure(tmp_path):
             pass
 
 
-def test_dark_default_and_strict_percent(monkeypatch):
+def test_default_routing_and_strict_percent(monkeypatch):
     monkeypatch.delenv("PINPOINT_GO_PERCENT", raising=False)
     monkeypatch.delenv("PINPOINT_GO_BOARD_IDS", raising=False)
     assert _monitor_runtime_for_board(BOARD_ID, None).implementation == "python"
@@ -87,7 +87,5 @@ def test_dark_default_and_strict_percent(monkeypatch):
     assert not percentage_selected(
         BOARD_ID, BOARD_URL, {**config, "api_base": "https://other.test"}
     )
-    assert not percentage_selected(BOARD_ID, BOARD_URL, {**config, "scraper_type": "json-ld"})
-    assert not percentage_selected(
-        BOARD_ID, BOARD_URL, {**config, "recent_discovered_counts": [4, 4]}
-    )
+    assert percentage_selected(BOARD_ID, BOARD_URL, {**config, "scraper_type": "json-ld"})
+    assert percentage_selected(BOARD_ID, BOARD_URL, {**config, "recent_discovered_counts": [4, 4]})

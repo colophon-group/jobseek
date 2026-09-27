@@ -6,6 +6,41 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: Recruitee and Pinpoint routing v0.13.881
+
+The native runtimes now cover all **115 Recruitee and 104 Pinpoint** configurations
+in the enabled registry, including 29 configurations previously excluded by
+hosted-domain restrictions. Go preserves Python's explicit API-base/slug/URL
+precedence and supports public HTTPS redirects, with per-request accounting,
+TDM checks and a 30-second read-inactivity timeout. Native payload bounds rise
+from 16 to 64 MiB; child stdout retention and terminate/kill cleanup are bounded.
+Shared URL/job filters, URL identity transformations and writer policies remain
+in place. Both provider percentages default to 100 without pilot history/count
+requirements. Explicit board selectors still take precedence for reversal.
+
+Verification maps all 219 current configurations to frozen Python request
+endpoints and checks 230 frozen Python parser cases, including tolerant fields,
+normalization, rich metadata and errors. Six retained actual API responses
+match all nine rich fields for 58 jobs. Go race/vet and 443 focused provider,
+runtime, processing and policy tests passed (the two new allowlist test cases
+were corrected to use the shared full-match contract and then passed). CI also
+runs the parser cases through the installed binaries with networking disabled.
+The read-only baseline covers 219 enabled boards and 4,791 active postings;
+all have zero consecutive failures, including 13 already marked gone and 25
+suspect. No board is disabled and no extra origin request is issued.
+
+Deployment and natural-run readback are pending. Before deploying, use the
+v0.13.880 production checkpoint below: supported c1 rollback from epoch 94,
+then clear the unchanged 25 selectors under lock at the actual promoted revision
+`aa9b5e4f046c8964bb557220cbd23ec750909bc5`. Restage only at the new successfully
+promoted revision, then reactivate c1. These new percentages are release
+defaults, not additional host selectors. Supported percentage reversal sets
+both `RECRUITEE_GO_PERCENT` and `PINPOINT_GO_PERCENT` to zero and removes their
+explicit board-ID selectors, or restores the prior release.
+
+This is monitor fetch/parser ownership. Python worker/writer/detail/browser
+retirement and actual-workload whole-lane resource evidence remain outstanding.
+
 ## Production checkpoint: 2026-09-27 — SuccessFactors RSS routing v0.13.880
 
 PR #10111 merged as `aa9b5e4f046c8964bb557220cbd23ec750909bc5`.

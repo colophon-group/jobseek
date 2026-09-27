@@ -18,7 +18,7 @@ def fake_binary(tmp_path, payload: dict, *, exit_code: int = 0) -> str:
     path.write_text(
         "#!/usr/bin/env python3\n"
         "import json, sys\n"
-        "assert sys.argv[1:] == ['--tenant', 'acme']\n"
+        "assert sys.argv[1:] == ['--api-base', 'https://acme.recruitee.com']\n"
         f"print(json.dumps({payload!r}))\n"
         f"sys.exit({exit_code})\n"
     )
@@ -75,7 +75,7 @@ async def test_go_recruitee_maps_retired_tenant(tmp_path):
             pass
 
 
-def test_dark_default_and_strict_percent(monkeypatch):
+def test_default_routing_and_strict_percent(monkeypatch):
     monkeypatch.delenv("RECRUITEE_GO_PERCENT", raising=False)
     monkeypatch.delenv("RECRUITEE_GO_BOARD_IDS", raising=False)
     assert _monitor_runtime_for_board(BOARD_ID, None).implementation == "python"
@@ -85,10 +85,6 @@ def test_dark_default_and_strict_percent(monkeypatch):
     config = {**CONFIG, "recent_discovered_counts": [4, 4, 4]}
     monkeypatch.setenv("RECRUITEE_GO_PERCENT", "100")
     assert percentage_selected(BOARD_ID, BOARD_URL, config)
-    assert not percentage_selected(
-        BOARD_ID, BOARD_URL, {**config, "api_base": "https://other.test"}
-    )
-    assert not percentage_selected(BOARD_ID, BOARD_URL, {**config, "scraper_type": "json-ld"})
-    assert not percentage_selected(
-        BOARD_ID, BOARD_URL, {**config, "recent_discovered_counts": [4, 4]}
-    )
+    assert percentage_selected(BOARD_ID, BOARD_URL, {**config, "api_base": "https://other.test"})
+    assert percentage_selected(BOARD_ID, BOARD_URL, {**config, "scraper_type": "json-ld"})
+    assert percentage_selected(BOARD_ID, BOARD_URL, {**config, "recent_discovered_counts": [4, 4]})

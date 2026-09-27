@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 )
 
 const MaxJobs = 50_000
@@ -53,7 +54,7 @@ func salaryUnit(value any) string {
 	if !ok {
 		return "year"
 	}
-	key := strings.ToLower(strings.TrimSpace(raw))
+	key := strings.ToLower(strings.TrimFunc(raw, func(r rune) bool { return unicode.IsSpace(r) || r >= 0x1c && r <= 0x1f }))
 	for _, entry := range []struct{ needle, unit string }{
 		{"two_weeks", "week"}, {"biweekly", "week"},
 		{"hour", "hour"}, {"month", "month"}, {"week", "week"},
@@ -137,7 +138,7 @@ func parseSalary(offer map[string]any) (map[string]any, error) {
 	}
 	salary, ok := value.(map[string]any)
 	if !ok {
-		return nil, errors.New("Recruitee salary must be an object")
+		return nil, nil
 	}
 	if salary["min"] == nil && salary["max"] == nil {
 		return nil, nil

@@ -1,7 +1,6 @@
 package pinpoint
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -23,14 +22,12 @@ func TestParseRichPosting(t *testing.T) {
 
 func TestParseRejectsMalformedWholeInventory(t *testing.T) {
 	for _, input := range []string{
-		`{"data":{}}`, `{"data":[{},true]}`, `{"data":[{"url":"x","location":[1]}]}`,
+		`{"data":{}}`, `{"data":[{},true]}`,
 		`{"data":[]}{"data":[]}`,
 	} {
 		if _, err := Parse([]byte(input)); err == nil {
 			t.Fatalf("accepted malformed inventory %s", input)
 		}
 	}
-	if _, err := Parse([]byte(`{"data":[{"url":"x","description":42}]}`)); err == nil || !strings.Contains(err.Error(), "description") {
-		t.Fatalf("accepted malformed description: %v", err)
-	}
+
 }
