@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import type { WatchlistCandidateFilters } from "@/lib/watchlist-matcher-contract";
 
 import {
+  hasWatchlistCandidateScope,
   buildWatchlistCandidateSearchParams,
   buildWatchlistCandidateWindowFilter,
   candidateOrderKeyFromCanonicalId,
@@ -164,4 +165,16 @@ describe("canonical watchlist candidate query", () => {
       }),
     ).toThrow("invalid Typesense identifier");
   });
+});
+
+it("intersects narrowed candidate IDs with structured filters and fails closed for empty or injected IDs", () => {
+  const base = { companyIds: [companyId], workMode: ["remote" as const] };
+  const query = buildWatchlistCandidateSearchParams({ filters: { ...base, postingIds: [companyId] }, offset: 0, limit: 50 });
+  expect(query.filter_by).toContain(`id:[${companyId}]`);
+  expect(query.filter_by).toContain(`company_id:[${companyId}]`);
+  expect(query.filter_by).toContain("location_types:[remote]");
+  expect(hasWatchlistCandidateScope({ ...base, postingIds: [] })).toBe(false);
+  const empty = buildWatchlistCandidateSearchParams({ filters: { ...base, postingIds: [] }, offset: 0, limit: 50 });
+  expect(empty.filter_by).toContain("id:=00000000-0000-0000-0000-000000000000 && id:!=00000000-0000-0000-0000-000000000000");
+  expect(() => buildWatchlistCandidateSearchParams({ filters: { ...base, postingIds: ["x] || is_active:true"] }, offset: 0, limit: 50 })).toThrow(/invalid UUID/);
 });

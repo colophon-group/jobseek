@@ -402,12 +402,14 @@ function SharedWatchlistActions({
 export function WatchlistViewPage({
   data,
   locale,
+  notificationsPaused = false,
   initialAiFilterState = null,
   initialAiAcceptedPage = null,
   sessionWatchlistId,
 }: {
   data: WatchlistPageData;
   locale: string;
+  notificationsPaused?: boolean;
   initialAiFilterState?: AiFilterUiState | null;
   initialAiAcceptedPage?: AiFilterAcceptedPage | null;
   /** Browser-backed watchlists use the normal view with a local persistence adapter. */
@@ -1048,6 +1050,7 @@ export function WatchlistViewPage({
             <WatchlistActionBar
               watchlistId={detail.id}
               alertsEnabled={detail.alertsEnabled === true}
+              notificationsPaused={notificationsPaused}
               accountRequired={isSessionWatchlist}
               onDelete={isSessionWatchlist
                 ? () => removePendingWatchlist(detail.id)

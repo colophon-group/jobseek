@@ -33,6 +33,8 @@ import { canonicalStringCompare } from "@/lib/sort";
 export type EligibleNotificationWatchlist = Readonly<{
   source: WatchlistMatcherSource;
   alertsEnabledAt: Date;
+  narrowedOnly?: boolean;
+  ownerId?: string;
 }>;
 
 export type OpenNotificationDelivery = Readonly<{
@@ -77,6 +79,7 @@ export type NotificationMatchSummary = Readonly<{
 
 export type NotificationDeliveryPlan = Readonly<{
   deliveryId: string;
+  plannedAt: Date;
   userId: string;
   cadence: NotificationCadence;
   scheduledFor: Date;
@@ -264,6 +267,7 @@ export async function runNotificationSchedulerCore(
     quota: NotificationQuotaState;
     concurrency: number;
     cursor?: string | null;
+    pageSize?: number;
   },
   dependencies: NotificationSchedulerDependencies,
 ): Promise<{
@@ -285,7 +289,7 @@ export async function runNotificationSchedulerCore(
   let telemetry = emptyTelemetry(mode, input.quota);
   const page = await dependencies.repository.listEligibleUserCandidatesPage({
     afterUserId: input.cursor ?? null,
-    limit: NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
+    limit: input.pageSize ?? NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
   });
   const dueCandidates = page.candidates.filter((candidate) =>
     candidateIsDue(candidate, input.sweep),
@@ -541,6 +545,7 @@ export async function runNotificationSchedulerCore(
     quota = quotaDecision.nextState;
     plans.push({
       deliveryId: outcome.claim.id,
+      plannedAt: startedAt,
       userId: outcome.work.user.userId,
       cadence: outcome.work.user.cadence,
       scheduledFor: outcome.work.scheduledFor,

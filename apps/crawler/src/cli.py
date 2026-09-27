@@ -781,6 +781,11 @@ def parse_args() -> argparse.Namespace:
 
 async def run() -> None:
     args = parse_args()
+    if args.command == "backfill-typesense":
+        # Preserve the operator command while replacing its runtime. Dotenv
+        # has already populated the environment; exec forwards signals/status
+        # directly and opens no Python database pools or metrics server.
+        os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--backfill"])
     setup_logging(settings.log_level)
 
     log.info("cli.starting", command=args.command, worker_id=WORKER_ID)
@@ -1271,15 +1276,6 @@ async def run() -> None:
                     max_age_days=args.max_age_days,
                     board_slugs=args.board_slug,
                 )
-
-        elif args.command == "backfill-typesense":
-            from src.cron_metrics import cron_run
-
-            async with cron_run("backfill-typesense"):
-                local_pool = await create_local_pool()
-                from src.exporter import backfill_typesense
-
-                await backfill_typesense(local_pool)
 
         elif args.command == "verify-typesense-taxonomies":
             local_pool = await create_local_pool()
