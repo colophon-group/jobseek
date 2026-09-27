@@ -22,6 +22,7 @@ func TestRegistryBoardPreparationMatchesPython(t *testing.T) {
 		MonitorBrowser bool               `json:"monitor_browser"`
 		ScraperBrowser bool               `json:"scraper_browser"`
 		Invalid        bool               `json:"invalid"`
+		ThrottleKey    string             `json:"throttle_key"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
@@ -54,6 +55,9 @@ func TestRegistryBoardPreparationMatchesPython(t *testing.T) {
 		scr := registryScraperBrowser(scrType, scrConfig, routes)
 		if mon != c.MonitorBrowser || scr != c.ScraperBrowser {
 			t.Fatalf("routing differs for %s: %v/%v expected %v/%v", registryText(c.Row, "board_url"), mon, scr, c.MonitorBrowser, c.ScraperBrowser)
+		}
+		if key := registryThrottleKey(registryText(c.Row, "monitor_type"), registryText(c.Row, "board_url"), metadata, routes); key != c.ThrottleKey {
+			t.Fatalf("throttle differs for %s: %q expected %q", registryText(c.Row, "board_url"), key, c.ThrottleKey)
 		}
 	}
 	t.Logf("matched %d board configurations", len(cases))

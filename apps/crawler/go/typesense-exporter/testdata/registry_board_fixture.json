@@ -8686,5 +8686,288 @@
     "monitor_browser": false,
     "scraper_browser": false,
     "throttle_key": "fixture.invalid"
+  },
+  {
+    "row": {
+      "board_url": "https://example.invalid",
+      "monitor_type": "darwinbox",
+      "monitor_config": "{\"host\": \" ACME.DARWINBOX.IN. \", \"company_id\": \"main\"}"
+    },
+    "metadata": {
+      "host": " ACME.DARWINBOX.IN. ",
+      "company_id": "main",
+      "_monitor_config_fingerprint": "cf11c0ec17b0c8d98ba22141e6dba390299cf310d494170ff9923f6da13ab4e5"
+    },
+    "monitor_browser": true,
+    "scraper_browser": false,
+    "throttle_key": "acme.darwinbox.in"
+  },
+  {
+    "row": {
+      "board_url": "https://example.invalid",
+      "monitor_type": "darwinbox",
+      "monitor_config": "{\"host\": \"www.darwinbox.in\"}"
+    },
+    "metadata": {
+      "host": "www.darwinbox.in",
+      "_monitor_config_fingerprint": "1291a0fd580070b3445ebefe9c8acb4f4a93da126e0c1e398053732f3ed266ce"
+    },
+    "monitor_browser": true,
+    "scraper_browser": false,
+    "throttle_key": "darwinbox"
+  },
+  {
+    "row": {
+      "board_url": "https://example.invalid",
+      "monitor_type": "darwinbox",
+      "monitor_config": "{\"host\": \"acme.darwinbox.in\", \"company_id\": null}"
+    },
+    "metadata": {
+      "host": "acme.darwinbox.in",
+      "company_id": null,
+      "_monitor_config_fingerprint": "a1647372d09fd256a197f24ecac4ba42a7510faeedd2c1b5f82337d5dd4c4bff"
+    },
+    "monitor_browser": true,
+    "scraper_browser": false,
+    "throttle_key": "darwinbox"
+  },
+  {
+    "row": {
+      "board_url": "https://acme.darwinbox.in/ms/candidate/careers",
+      "monitor_type": "darwinbox",
+      "monitor_config": "{}"
+    },
+    "metadata": {
+      "_monitor_config_fingerprint": "6a6c0eb52c0dd24f30115e5fa1848ad92616543f90afae518b43119cc5dbd5ee"
+    },
+    "monitor_browser": true,
+    "scraper_browser": false,
+    "throttle_key": "acme.darwinbox.in"
+  },
+  {
+    "row": {
+      "board_url": "https://acme.darwinbox.com/ms/candidatev2/main/careers/jobDetails/1",
+      "monitor_type": "darwinbox",
+      "monitor_config": "{}"
+    },
+    "metadata": {
+      "_monitor_config_fingerprint": "dee1952ea7be54ca5576a0370725db9cd24537292acd973102b91a9101f0e162"
+    },
+    "monitor_browser": true,
+    "scraper_browser": false,
+    "throttle_key": "acme.darwinbox.com"
+  },
+  {
+    "row": {
+      "board_url": "https://acme.darwinbox.in/ms/candidatev2/main/careers?scope=x",
+      "monitor_type": "darwinbox",
+      "monitor_config": "{}"
+    },
+    "metadata": {
+      "_monitor_config_fingerprint": "c894eef10d3797a68299cb5875906b1b2aa84294dadd77619b0bda6d94dcf5ea"
+    },
+    "monitor_browser": true,
+    "scraper_browser": false,
+    "throttle_key": "darwinbox"
+  },
+  {
+    "row": {
+      "board_url": "https://user@acme.darwinbox.in/ms/candidate/careers",
+      "monitor_type": "darwinbox",
+      "monitor_config": "{}"
+    },
+    "metadata": {
+      "_monitor_config_fingerprint": "8192076cb24723d7868331f83f17579e027673372cab69a42b74f1239e7eee02"
+    },
+    "monitor_browser": true,
+    "scraper_browser": false,
+    "throttle_key": "darwinbox"
+  },
+  {
+    "row": {
+      "board_url": "https://acme.darwinbox.in:444/ms/candidate/careers",
+      "monitor_type": "darwinbox",
+      "monitor_config": "{}"
+    },
+    "metadata": {
+      "_monitor_config_fingerprint": "390e8a0b82a7f2a7240ff18cb345733e9acdc4df5901b81da2d1d811918f7a3c"
+    },
+    "monitor_browser": true,
+    "scraper_browser": false,
+    "throttle_key": "darwinbox"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "avature",
+      "monitor_config": "{\"listing_url\": \"https://jobs.example.com/en_US/careers/SearchJobs\"}"
+    },
+    "metadata": {
+      "listing_url": "https://jobs.example.com/en_US/careers/SearchJobs",
+      "_monitor_config_fingerprint": "773a5982bbcdff4ed47a28030a6f52061305ae8dda061851b17a72effc623316"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "jobs.example.com"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "avature",
+      "monitor_config": "{\"listing_url\": \"https://127.0.0.1/careers/SearchJobs\"}"
+    },
+    "metadata": {
+      "listing_url": "https://127.0.0.1/careers/SearchJobs",
+      "_monitor_config_fingerprint": "5d99b08b2df2d8a82ba91b6d3a96b19618a09d09bf9fa3b8b47a331040b70901"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "old.invalid"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "avature",
+      "monitor_config": "{\"listing_url\": \"https://localhost.localdomain/careers/SearchJobs\"}"
+    },
+    "metadata": {
+      "listing_url": "https://localhost.localdomain/careers/SearchJobs",
+      "_monitor_config_fingerprint": "11eeb469d580e9d402dc0f1b9c95b5ab8374d4b66ac5e695543f74d6c3aa40d8"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "old.invalid"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "avature",
+      "monitor_config": "{\"listing_url\": \"https://example.avature.net/en_US/careers/JobDetail/Title/123\"}"
+    },
+    "metadata": {
+      "listing_url": "https://example.avature.net/en_US/careers/JobDetail/Title/123",
+      "_monitor_config_fingerprint": "b0a68355eb0d51fcb629cedaa7cdfb93ccf05ccdae07ce0fcd9cedc7525de9a4"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "example.avature.net"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "avature",
+      "monitor_config": "{\"listing_url\": \"https://example.avature.net/en_US/careers/JobDetail?jobId=123\"}"
+    },
+    "metadata": {
+      "listing_url": "https://example.avature.net/en_US/careers/JobDetail?jobId=123",
+      "_monitor_config_fingerprint": "7bc5150fda3310d15eaffec437aed9887c913b8d8bb3f389cdfc13a7521f1dd1"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "example.avature.net"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "avature",
+      "monitor_config": "{\"listing_url\": \"https://example.avature.net/careers/SearchJobs?offset=10\"}"
+    },
+    "metadata": {
+      "listing_url": "https://example.avature.net/careers/SearchJobs?offset=10",
+      "_monitor_config_fingerprint": "981bddc30b639402810420b875f6af430099911048facbbf8c76d72056d931d4"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "old.invalid"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "taleo",
+      "monitor_config": "{\"host\": \"phf.tbe.taleo.net\", \"partition\": \"phf01\", \"org\": \"example\", \"cws\": 1}"
+    },
+    "metadata": {
+      "host": "phf.tbe.taleo.net",
+      "partition": "phf01",
+      "org": "example",
+      "cws": 1,
+      "_monitor_config_fingerprint": "ed79aed74d635e7eaecf65f02ce46bd48ff60a16024ccf23773c0d196988b356"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "phf.tbe.taleo.net"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "taleo",
+      "monitor_config": "{\"host\": \"phf.tbe.taleo.net\", \"partition\": \"phg01\", \"org\": \"example\", \"cws\": 1}"
+    },
+    "metadata": {
+      "host": "phf.tbe.taleo.net",
+      "partition": "phg01",
+      "org": "example",
+      "cws": 1,
+      "_monitor_config_fingerprint": "65e1e884e44affd1c610cd459f3e29a657fea3487ec344d5ae62dd11518b5a59"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "old.invalid"
+  },
+  {
+    "row": {
+      "board_url": "https://old.invalid",
+      "monitor_type": "taleo",
+      "monitor_config": "{\"host\": \"phf.tbe.taleo.net\", \"partition\": \"phf01\", \"org\": \"example\", \"cws\": true}"
+    },
+    "metadata": {
+      "host": "phf.tbe.taleo.net",
+      "partition": "phf01",
+      "org": "example",
+      "cws": true,
+      "_monitor_config_fingerprint": "8f01fd9a76e2c1994746b75bf6f0b46b478126217d2ffc57afcbba657fdd028c"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "old.invalid"
+  },
+  {
+    "row": {
+      "board_url": "https://phf.tbe.taleo.net/phf01/ats/careers/v2/searchResults?org=EXAMPLE&cws=1&rowFrom=20",
+      "monitor_type": "taleo",
+      "monitor_config": "{}"
+    },
+    "metadata": {
+      "_monitor_config_fingerprint": "f2c5c45170d150fdc30884ea9db3b9cace65a76b6121ad18e1116b2f9fc85d5e"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "phf.tbe.taleo.net"
+  },
+  {
+    "row": {
+      "board_url": "https://phf.tbe.taleo.net/phf01/ats/careers/v2/viewRequisition?org=EXAMPLE&amp;cws=1&amp;rid=123",
+      "monitor_type": "taleo",
+      "monitor_config": "{}"
+    },
+    "metadata": {
+      "_monitor_config_fingerprint": "ca2cdbaca09019f1cc88ea4d5c2619099df6a026d5e5ed3724f8995604bc441e"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "phf.tbe.taleo.net"
+  },
+  {
+    "row": {
+      "board_url": "https://phf.tbe.taleo.net/phf01/ats/careers/v2/searchResults?org=EXAMPLE&cws=1&cws=2",
+      "monitor_type": "taleo",
+      "monitor_config": "{}"
+    },
+    "metadata": {
+      "_monitor_config_fingerprint": "52c6cdbb550d11824e733455f326cc9725b58ada118e8dc42280be5b3f98d8ca"
+    },
+    "monitor_browser": false,
+    "scraper_browser": false,
+    "throttle_key": "phf.tbe.taleo.net"
   }
 ]

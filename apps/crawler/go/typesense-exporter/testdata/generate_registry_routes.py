@@ -69,6 +69,91 @@ def main():
                     "scraper_config": raw,
                 }
             )
+        for kind, url, metadata in [
+            (
+                "darwinbox",
+                "https://example.invalid",
+                {"host": " ACME.DARWINBOX.IN. ", "company_id": "main"},
+            ),
+            ("darwinbox", "https://example.invalid", {"host": "www.darwinbox.in"}),
+            (
+                "darwinbox",
+                "https://example.invalid",
+                {"host": "acme.darwinbox.in", "company_id": None},
+            ),
+            ("darwinbox", "https://acme.darwinbox.in/ms/candidate/careers", {}),
+            (
+                "darwinbox",
+                "https://acme.darwinbox.com/ms/candidatev2/main/careers/jobDetails/1",
+                {},
+            ),
+            ("darwinbox", "https://acme.darwinbox.in/ms/candidatev2/main/careers?scope=x", {}),
+            ("darwinbox", "https://user@acme.darwinbox.in/ms/candidate/careers", {}),
+            ("darwinbox", "https://acme.darwinbox.in:444/ms/candidate/careers", {}),
+            (
+                "avature",
+                "https://old.invalid",
+                {"listing_url": "https://jobs.example.com/en_US/careers/SearchJobs"},
+            ),
+            (
+                "avature",
+                "https://old.invalid",
+                {"listing_url": "https://127.0.0.1/careers/SearchJobs"},
+            ),
+            (
+                "avature",
+                "https://old.invalid",
+                {"listing_url": "https://localhost.localdomain/careers/SearchJobs"},
+            ),
+            (
+                "avature",
+                "https://old.invalid",
+                {"listing_url": "https://example.avature.net/en_US/careers/JobDetail/Title/123"},
+            ),
+            (
+                "avature",
+                "https://old.invalid",
+                {"listing_url": "https://example.avature.net/en_US/careers/JobDetail?jobId=123"},
+            ),
+            (
+                "avature",
+                "https://old.invalid",
+                {"listing_url": "https://example.avature.net/careers/SearchJobs?offset=10"},
+            ),
+            (
+                "taleo",
+                "https://old.invalid",
+                {"host": "phf.tbe.taleo.net", "partition": "phf01", "org": "example", "cws": 1},
+            ),
+            (
+                "taleo",
+                "https://old.invalid",
+                {"host": "phf.tbe.taleo.net", "partition": "phg01", "org": "example", "cws": 1},
+            ),
+            (
+                "taleo",
+                "https://old.invalid",
+                {"host": "phf.tbe.taleo.net", "partition": "phf01", "org": "example", "cws": True},
+            ),
+            (
+                "taleo",
+                "https://phf.tbe.taleo.net/phf01/ats/careers/v2/searchResults?org=EXAMPLE&cws=1&rowFrom=20",
+                {},
+            ),
+            (
+                "taleo",
+                "https://phf.tbe.taleo.net/phf01/ats/careers/v2/viewRequisition?org=EXAMPLE&amp;cws=1&amp;rid=123",
+                {},
+            ),
+            (
+                "taleo",
+                "https://phf.tbe.taleo.net/phf01/ats/careers/v2/searchResults?org=EXAMPLE&cws=1&cws=2",
+                {},
+            ),
+        ]:
+            rows.append(
+                {"board_url": url, "monitor_type": kind, "monitor_config": json.dumps(metadata)}
+            )
     if rows:
         cases = []
         for row in rows:
