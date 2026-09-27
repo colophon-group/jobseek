@@ -1,3 +1,4 @@
+import { LegalDocument } from "@/components/LegalDocument";
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
@@ -67,7 +68,7 @@ export default async function TermsPage({ params }: Props) {
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
         lastReviewed: siteConfig.terms.lastUpdated,
       }} />
-      <TermsContent />
+      <TermsContent><LegalDocument document="terms" /></TermsContent>
     </>
   );
 }

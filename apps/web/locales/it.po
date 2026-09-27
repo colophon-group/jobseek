@@ -576,7 +576,7 @@ msgstr "Tutti i {totalCountries} paesi caricati"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r5"
-msgstr "Tutti i dati sono crittografati in transito e a riposo."
+msgstr "Usiamo HTTPS, hashing delle password, accesso limitato ai sistemi e backup di ripristino cifrati."
 
 #. Option to show all industries
 #. js-lingui-explicit-id
@@ -1426,7 +1426,7 @@ msgstr "Freelance"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r4"
-msgstr "I cookie servono solo per la sessione — niente pubblicità, niente tracciamento."
+msgstr "Utilizziamo cookie necessari per l’accesso e memorizziamo preferenze, alcune delle quali persistono tra le visite. Non usiamo cookie pubblicitari."
 
 #. Toast shown briefly after the agent prompt is copied
 #. js-lingui-explicit-id
@@ -2710,7 +2710,7 @@ msgstr "Job Seek è sviluppato da Colophon Group, un piccolo team di sviluppator
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/privacy-policy/page.tsx
 msgid "privacy.meta.description"
-msgstr "Informativa sulla privacy di Job Seek — dati personali raccolti, utilizzo, diritti GDPR, politica sui cookie e come richiedere la cancellazione dell'account."
+msgstr "Informativa sulla privacy di Job Seek — dati personali raccolti, utilizzo, diritti sulla privacy, cookie e richieste di cancellazione dell’account e dei dati."
 
 #. Alt text for feature section 1 screenshot
 #. js-lingui-explicit-id
@@ -2728,7 +2728,7 @@ msgstr "Watchlist di Job Seek con posizioni selezionate in ingegneria robotica a
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.hero.description"
-msgstr "Il codice sorgente di Job Seek è open source sotto licenza MIT. I dati sugli annunci che raccogliamo e arricchiamo sono Creative Commons BY-NC 4.0. Di seguito il riepilogo in linguaggio semplice — si prega di leggere le licenze complete per i termini esatti."
+msgstr "Il codice di Job Seek è open source con licenza MIT. I nostri diritti sulla raccolta e sugli arricchimenti originali sono CC BY-NC 4.0; i contenuti di terzi sono esclusi. Segue un riepilogo semplice — leggi le licenze complete per le condizioni esatte."
 
 #. Plural job count on watchlist card
 #. Plural job count on watchlist card
@@ -3314,7 +3314,7 @@ msgstr "Nessun account di fatturazione trovato."
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.r2"
-msgstr "Nessuna ridistribuzione commerciale o rivendita senza autorizzazione."
+msgstr "L’uso commerciale dei nostri diritti richiede il nostro permesso; non possiamo concedere diritti di terzi."
 
 #. Empty state when no filters are set
 #. js-lingui-explicit-id
@@ -4039,13 +4039,13 @@ msgstr "Leggi la licenza MIT completa"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.extras.fullPolicyLink"
-msgstr "Leggi l'informativa sulla privacy completa"
+msgstr "Informativa sulla privacy su GitHub"
 
 #. Link to full terms of service text
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.fullTermsLink"
-msgstr "Leggi i termini di servizio completi"
+msgstr "Termini di servizio su GitHub"
 
 #. WebApplication JSON-LD feature list item about job alert notifications.
 #. js-lingui-explicit-id
@@ -4128,7 +4128,7 @@ msgstr "Rifiutato"
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "common.footer.text"
-msgstr "Rilasciato sotto licenza MIT. I dati sugli annunci sono CC BY-NC 4.0."
+msgstr "Codice: MIT. I nostri diritti sui dati: CC BY-NC 4.0. I contenuti di terzi sono esclusi."
 
 #. Work mode: remote (work-from-home)
 #. Work mode: remote (work-from-home)
@@ -5171,7 +5171,7 @@ msgstr "La coda distanzia le richieste allo stesso dominio di rate limit di 2 se
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.short.r4"
-msgstr "Il servizio è fornito così com'è, senza garanzie."
+msgstr "Il servizio ha dei limiti. I tuoi diritti inderogabili di consumatore restano tutelati."
 
 #. Short version section title
 #. js-lingui-explicit-id
@@ -5330,7 +5330,7 @@ msgstr "In fase di sviluppo"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.intro"
-msgstr "Secondo il GDPR puoi richiedere una copia dei tuoi dati, farli correggere o cancellare, esportarli o opporti al trattamento. Elimina il tuo account e tutto viene cancellato entro 30 giorni."
+msgstr "La legge svizzera sulla protezione dei dati e, ove applicabili, il GDPR dell’UE o del Regno Unito ti conferiscono diritti sui tuoi dati. La cancellazione dell’account rimuove i dati attivi; i backup e i dati conservati dai fornitori hanno periodi di conservazione separati, spiegati di seguito."
 
 #. Pro feature: unlimited watchlists
 #. js-lingui-explicit-id
@@ -5567,7 +5567,7 @@ msgstr "Crediamo che la ricerca di lavoro debba essere guidata dalla persona che
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.hero.description"
-msgstr "Raccogliamo solo il necessario, non vendiamo i tuoi dati e puoi cancellare tutto in qualsiasi momento."
+msgstr "Come utilizziamo i tuoi dati, i fornitori coinvolti e le tue scelte e i tuoi diritti."
 
 #. Explains fail-closed behavior when the exact candidate count is unavailable
 #. js-lingui-explicit-id
@@ -5651,7 +5651,7 @@ msgstr "Abbiamo inviato un link di verifica a <0>{email}</0>. Clicca il link per
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r1"
-msgstr "Conserviamo il tuo nome, la tua email e la foto del profilo dall'accesso OAuth, più i dati che crei nell'app."
+msgstr "Conserviamo i dati dell’account e quelli che crei. Gli account con email e password memorizzano un hash della password; l’accesso esterno non ci comunica la tua password del fornitore."
 
 #. Info box about sitemaps
 #. js-lingui-explicit-id
@@ -5663,7 +5663,7 @@ msgstr "Incoraggiamo vivamente la pubblicazione di una sitemap facilmente indivi
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r3"
-msgstr "Utilizziamo pochi servizi terzi per accesso, hosting e archiviazione — nient’altro."
+msgstr "I fornitori ci aiutano a ospitare il servizio, inviare email, interpretare le ricerche, filtrare le descrizioni delle posizioni e gestire i pagamenti. L’informativa completa li identifica e spiega il trattamento internazionale."
 
 #. Secondary line under the Request <query> dropdown row
 #. js-lingui-explicit-id
@@ -5815,7 +5815,7 @@ msgstr "Puoi eliminare il tuo account in qualsiasi momento."
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.r3"
-msgstr "È possibile rielaborare/trasformare i dati per ricerche o dashboard personali."
+msgstr "Questo avviso non limita le informazioni fattuali né le eccezioni previste dalla legge applicabile."
 
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
@@ -5839,7 +5839,7 @@ msgstr "Potresti anche essere interessato a"
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.summary"
-msgstr "È consentito riutilizzare il dataset degli annunci con attribuzione per scopi non commerciali. L'uso commerciale richiede il previo consenso scritto."
+msgstr "CC BY-NC 4.0 copre solo i nostri diritti sulla raccolta e sugli arricchimenti originali. Descrizioni delle posizioni, loghi e altri materiali di terzi sono esclusi; ottieni le autorizzazioni necessarie dai rispettivi titolari."
 
 #. Age requirement
 #. js-lingui-explicit-id
@@ -5924,3 +5924,89 @@ msgstr "Il tuo identificativo univoco per l’account Job Seek."
 #: src/components/Features.tsx
 msgid "home.features.s3.p3.description"
 msgstr "Le tue watchlist sono private per impostazione predefinita. Condividi un link non elencato solo quando lo desideri; solo tu puoi gestire l’elenco."
+
+#. How and when subscription cancellation takes effect
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.cancel"
+msgstr "Disdici prima della fine della prova per evitare il primo addebito. Usa Impostazioni → Abbonamento → Gestisci abbonamento, il link nella ricevuta o l’assistenza Paddle. La normale disdetta mantiene l’accesso fino alla data indicata nelle impostazioni dell’abbonamento. L’eliminazione dell’account interrompe immediatamente fatturazione e accesso."
+
+#. Explains cancellation is separate from requesting a refund
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.cancel"
+msgstr "La disdetta interrompe i rinnovi futuri, ma non invia automaticamente una richiesta di rimborso. Per problemi con Job Seek, contattaci all’indirizzo email qui sotto."
+
+#. Heading identifying the full English legal document below the translated summary
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.complete.title"
+msgstr "Informativa sulla privacy completa (in inglese)"
+
+#. Heading identifying the full English legal document below the translated summary
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.complete.title"
+msgstr "Termini di servizio completi (in inglese)"
+
+#. Identifies the service operator and merchant of record
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.seller"
+msgstr "Job Seek è gestito da Viktor Shcherbakov in Svizzera. Per gli acquisti tramite Paddle, Paddle agisce da rivenditore e Merchant of Record, gestendo pagamenti, imposte applicabili, assistenza per la fatturazione e rimborsi."
+
+#. Link to Paddle buyer terms
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.buyerTerms"
+msgstr "Condizioni di acquisto di Paddle"
+
+#. Link to Paddle refund policy
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.policy"
+msgstr "Politica di rimborso di Paddle"
+
+#. Link to Paddle buyer support and refunds
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.support"
+msgstr "Assistenza e rimborsi Paddle"
+
+#. Subscription scope and recurring trial terms
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.offer"
+msgstr "Pro aggiunge i risultati Narrowed alle watchlist. Gli account idonei ricevono sette giorni gratuiti, poi pagano 10 USD al mese più le imposte applicabili indicate al pagamento. È richiesto un metodo di pagamento. L’abbonamento si rinnova automaticamente fino alla disdetta; chi si riabbona non riceve un’altra prova."
+
+#. Paid subscription terms heading
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.title"
+msgstr "Abbonamenti Pro e pagamenti"
+
+#. Public refund policy heading
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.title"
+msgstr "Politica di rimborso"
+
+#. Footer link to refund policy
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx
+msgid "common.footer.refundsLink"
+msgstr "Rimborsi"
+
+#. Refund request process without restricting statutory rights
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.request"
+msgstr "Richiedi un rimborso o esercita un diritto di recesso applicabile tramite l’assistenza Paddle o il link di assistenza nella ricevuta. Paddle valuta e gestisce le richieste secondo la propria politica di rimborso. I tuoi diritti inderogabili di consumatore restano invariati."
+
+#. Country in the public seller and controller address
+#. Country in the public seller and controller address
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+#: src/components/TermsContent.tsx
+msgid "legal.contact.country"
+msgstr "Svizzera"

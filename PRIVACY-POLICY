@@ -1,182 +1,252 @@
 PRIVACY POLICY
 
-Last updated: 22 February 2026
+Last updated: 27 September 2026
 
-This Privacy Policy describes how Viktor Shcherbakov, operating as
-Colophon Group ("we", "us", "our"), collects, uses, stores, and
-protects personal data when you use the Job Seek web application
-("Service") available at https://jseek.co and any successor domains.
-
-By using the Service you agree to the collection and use of
-information in accordance with this policy. If you do not agree, please
-do not use the Service.
+This notice explains how personal data is handled when you use Job Seek at
+https://jseek.co. It describes our processing; it does not ask you to waive
+your rights or treat visiting the website as consent to every use of data.
 
 
 1. DATA CONTROLLER
 
-Viktor Shcherbakov
+Viktor Shcherbakov — Job Seek
+Route d'Oron 5
+1010 Lausanne
+Switzerland
 Email: business@colophon-group.org
 
-
-2. DATA WE COLLECT
-
-  a. Account data
-     When you sign in via an OAuth provider (e.g. Google, GitHub) we
-     receive and store:
-       - your name,
-       - your email address, and
-       - your profile picture.
-     We do not receive or store your password. We do not request access
-     to your contacts, calendar, files, or any other data held by the
-     OAuth provider beyond the basic profile information listed above.
-
-  b. Usage data
-     As you use the Service we store the data you create, including
-     but not limited to saved companies, job postings, alert
-     preferences, and application tracking information.
-
-  c. Technical data
-     We collect anonymous, aggregated page-view analytics through
-     Vercel Analytics. This data contains no personal identifiers and
-     does not use cookies.
+Viktor Shcherbakov is the individual operator and controller of Job Seek.
+Job Seek is the product brand. Paddle has a separate role for purchases
+made through its checkout, described below.
 
 
-3. LEGAL BASIS FOR PROCESSING (GDPR Art. 6)
+2. DATA WE PROCESS
 
-  We process personal data on the following bases:
-    - Contract (Art. 6(1)(b)):  to provide and maintain the Service
-      you signed up for.
-    - Consent (Art. 6(1)(a)):   where you have given consent, e.g. by
-      opting in to job-alert notifications.
-    - Legitimate interest (Art. 6(1)(f)):  to improve, secure, and
-      maintain the Service (anonymous analytics).
+Account and authentication: name, email address, optional profile picture,
+account identifiers, sign-in provider details, verification/reset tokens,
+and session information. You can register with email and password or sign
+in with Google, GitHub, or LinkedIn. Email/password accounts store a
+password hash, not the plaintext password. We do not receive your sign-in
+provider's password. Session records can include IP address and user agent.
 
+Your activity: watchlists, saved jobs and companies, search/filter criteria,
+alert and language preferences, application status, notes, interview or
+other tracking details you choose to enter, and associated timestamps.
 
-4. HOW WE USE YOUR DATA
+Search and Narrowed: natural-language search text and language, saved
+Narrowed criteria, matching decisions, feedback, and usage records needed
+to deliver and troubleshoot the feature. Free text may contain personal
+data you include. Please keep it about the work you are seeking and avoid
+sensitive personal information or confidential information about others.
 
-  We use the data described in Section 2 to:
-    - authenticate your identity,
-    - provide the core features of the Service (saved companies, saved
-      job postings, job-search alerts),
-    - send you job-alert notifications you have opted in to, and
-    - understand usage patterns and improve the Service (anonymous
-      analytics only).
+Billing, when you purchase Pro: email, internal account reference, Paddle
+customer/subscription identifiers, subscription status, billing dates, and
+trial usage. Paddle collects payment and billing details through its own
+checkout. We do not store full payment-card details.
 
-  We do NOT:
-    - sell, rent, or share your personal data with third parties for
-      marketing or advertising purposes,
-    - use your data to build advertising profiles, or
-    - make automated decisions that produce legal effects concerning
-      you.
+Technical and support information: network and device information needed
+to serve and secure requests, rate-limit and diagnostic records, aggregate
+usage/performance measurements, and messages you send to support.
 
-
-5. THIRD-PARTY SERVICES
-
-  The Service relies on the following third-party processors. Each
-  operates under its own privacy policy.
-
-  a. OAuth providers (authentication)
-     We use third-party OAuth providers (e.g. Google, GitHub) to
-     authenticate users. We receive only the basic profile information
-     listed in Section 2(a). Each provider's use of your data is
-     governed by its own privacy policy.
-
-  b. Vercel (hosting and analytics)
-     The Service is hosted on Vercel. Vercel Analytics collects
-     anonymous, cookie-free page-view data. Vercel's privacy policy:
-     https://vercel.com/legal/privacy-policy
-
-  c. Neon (database)
-     Your account and usage data is stored in a managed PostgreSQL
-     database provided by Neon. Data is encrypted at rest. Neon's
-     privacy policy:
-     https://neon.tech/privacy-policy
+Public job content may contain recruiters' names or business contact
+information. It comes from employer career pages and hiring platforms.
+Contact us with a source URL to request correction or removal.
 
 
-6. DATA STORAGE AND SECURITY
+3. PURPOSES AND LEGAL GROUNDS
 
-  - All data in transit is encrypted via HTTPS / TLS.
-  - Data at rest is encrypted by the database provider (Neon).
-  - We do not store your OAuth provider password.
-  - Access to production systems is restricted to authorised
-    personnel.
-  - We review our security practices periodically and apply updates
-    as needed.
+We use this information to create and secure accounts, provide search,
+watchlists, Narrowed and application tracking, deliver account emails and
+requested alerts, manage subscriptions, answer support requests, prevent
+abuse, maintain reliable service, and meet legal obligations.
 
+Swiss data protection law applies to our processing. Where the EU or UK
+GDPR applies, we rely on performance of the service contract for requested
+features and billing; legitimate interests for security, diagnostics and
+service improvement; legal obligations where relevant; and consent where
+required, including optional communications. You can withdraw consent
+without affecting processing that lawfully occurred before withdrawal.
 
-7. COOKIES
-
-  The Service uses only strictly necessary cookies for session
-  management and authentication. We do not use advertising, tracking,
-  or analytics cookies. Vercel Analytics operates without cookies.
-
-
-8. YOUR RIGHTS (GDPR)
-
-  If you are located in the European Economic Area (EEA), United
-  Kingdom, or Switzerland, you have the following rights under the
-  General Data Protection Regulation:
-
-    - Access:          request a copy of all personal data we hold
-                       about you.
-    - Rectification:   ask us to correct inaccurate or incomplete
-                       data.
-    - Erasure:         request deletion of your account and all
-                       associated data ("right to be forgotten").
-    - Data portability: receive your personal data in a structured,
-                       commonly used, machine-readable format.
-    - Restriction:     ask us to limit processing of your data.
-    - Objection:       object to processing based on legitimate
-                       interest.
-    - Withdraw consent: revoke consent at any time (e.g. by deleting
-                       your account or contacting us). Withdrawal does
-                       not affect the lawfulness of processing before
-                       withdrawal.
-
-  To exercise any of these rights, email us at the address in
-  Section 1. We will respond within 30 days. If you are unsatisfied
-  with our response, you have the right to lodge a complaint with your
-  local data protection supervisory authority.
+We do not sell personal data or use it to create advertising profiles.
 
 
-9. DATA RETENTION
+4. SEARCH, NARROWED AND SHARING
 
-  We retain your personal data for as long as your account is active.
-  If you delete your account, all associated personal data will be
-  permanently removed from our database within 30 days. Anonymous
-  analytics data that cannot be linked back to you may be retained
-  indefinitely.
+TypeSafe AI provides the model used to interpret natural-language searches
+and to check job descriptions against Narrowed criteria. For search we
+send the query text and language. For Narrowed we send normalized criteria
+and job identifiers, titles, company names and description text. We do not
+include your account email, password or application-tracking notes in
+these model requests. Information you put into the query or criteria is
+nevertheless included.
+
+Narrowed evaluates postings, not applicants. It helps you choose which
+jobs to view; it does not make hiring decisions. Results can be incomplete
+or mistaken. Review the original posting and make your own decisions.
+
+TypeSafe's published policy says it does not train or fine-tune models on
+customer inputs. It does not promise a fixed deletion period for our
+standard API use; we do not promise zero data retention.
+
+Watchlists you publish are visible to others. Unlisted sharing makes the
+shared information accessible to anyone with the link. Check the sharing
+setting before including personal information. Applying through an
+employer's website is subject to that employer's own privacy practices.
 
 
-10. INTERNATIONAL TRANSFERS
+5. RECIPIENTS AND SERVICE PROVIDERS
 
-  Your data may be processed on servers located in the United States
-  (Vercel, Neon). Where data is transferred outside the EEA, we rely
-  on the processor's Standard Contractual Clauses or other lawful
-  transfer mechanisms.
+Providers process service data on our behalf where they act as processors.
+Some also act as independent controllers for their own account, security,
+legal or billing purposes. Sign-in providers and Paddle have their own
+relationships with you; not every recipient is our processor.
+
+- Vercel hosts the website and provides delivery, analytics and performance
+  services. Application functions are configured in Frankfurt, Germany;
+  global delivery and provider operations can involve other countries,
+  including the United States. https://vercel.com/legal/privacy-policy
+
+- Supabase provides the PostgreSQL database for account and application
+  data, configured in Frankfurt, Germany.
+  https://supabase.com/privacy
+
+- Hetzner hosts our search infrastructure in Germany and our encrypted
+  recovery backups in Finland. Search infrastructure handles posting data, search
+  requests and indexed watchlist information.
+  https://www.hetzner.com/legal/privacy-policy/
+
+- Upstash provides caching and abuse-prevention counters, including keys
+  based on IP addresses or account identifiers. Our Redis database is
+  configured in Frankfurt, Germany. https://upstash.com/trust/privacy.pdf
+
+- Cloudflare delivers assets and job content and carries search traffic;
+  its global network processes connection/request metadata.
+  https://www.cloudflare.com/privacypolicy/
+
+- Resend delivers verification, password-reset and notification emails.
+  It receives recipient addresses, message content and delivery metadata.
+  Its published documentation states that customer data is stored in the
+  United States. https://resend.com/legal/privacy-policy
+
+- TypeSafe AI processes the search and Narrowed inputs described above.
+  Its published policy identifies US hosting.
+  https://typesafe.ai/legal/privacy-policy
+
+- Google, GitHub and LinkedIn process sign-in under their respective
+  privacy notices when you choose those sign-in methods:
+  https://policies.google.com/privacy
+  https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement
+  https://www.linkedin.com/legal/privacy-policy
+
+For purchases through Paddle, Paddle is the reseller and merchant of
+record and processes checkout, payment, tax, fraud-prevention, billing and
+refund information under its own privacy notice. We provide your email
+and an account reference to connect the purchase with your Job Seek
+account, and receive subscription updates. Paddle may retain records
+independently of your Job Seek account.
+https://www.paddle.com/legal/privacy
+
+We may also disclose information where required by law or necessary to
+establish, exercise or defend legal claims. Contact us about the handling
+of a specific support request or data recipient.
 
 
-11. CHILDREN'S PRIVACY
+6. SECURITY
 
-  The Service is not directed at children under the age of 16. We do
-  not knowingly collect personal data from children. If you believe a
-  child has provided us with personal data, please contact us so we
-  can delete it.
+We use HTTPS for the website, password hashing for email/password accounts,
+restricted access to production systems, and encrypted recovery backups.
+These measures reduce risk; they do not guarantee absolute security or
+mean that every internal processing step is end-to-end encrypted.
 
 
-12. CHANGES TO THIS POLICY
+7. COOKIES AND BROWSER STORAGE
 
-  We may update this Privacy Policy from time to time. When we do, we
-  will revise the "Last updated" date at the top. If the changes are
-  material, we will make a reasonable effort to notify you (e.g. via
-  a notice on the Service). Your continued use of the Service after
-  publication constitutes acceptance of the updated policy.
+We use authentication/session cookies and browser storage for functions
+such as sign-in and saved preferences. Some persist beyond a browser
+session. We do not use advertising cookies. Vercel Web Analytics uses
+cookie-free aggregate measurements; operational request logs are separate
+and can contain technical identifiers. Paddle's checkout uses its own
+technologies and notices for payment processing and fraud prevention.
+
+
+8. YOUR RIGHTS
+
+Under the Swiss Federal Act on Data Protection and, where applicable, the
+EU or UK GDPR, you can request information/access, correction, deletion
+and, where the relevant conditions apply, a portable copy, restriction of
+processing, or object to processing. You may withdraw consent at any time.
+Some data must be retained for legal obligations or legitimate claims.
+
+Contact business@colophon-group.org. We may verify your identity before
+acting and will respond within the applicable legal deadline, normally
+one month. You can contact the Swiss Federal Data Protection and Information
+Commissioner (https://www.edoeb.admin.ch/) or the competent authority where
+you live. You can also delete your account in account settings.
+
+
+9. RETENTION AND DELETION
+
+Account and user-created records are generally kept while your account
+is active or the feature needs them. Account deletion removes the account
+and linked application records from the active database. Narrowed matching
+decisions are scheduled for cleanup after 30 days from evaluation; saved
+criteria and related configuration remain until changed or deleted.
+
+Recovery backups rotate through daily, weekly and monthly recovery points,
+including twelve monthly snapshots. Deleted data can therefore remain in
+backups for approximately a year, and longer if a backup/rotation failure
+requires recovery work. Backups are restricted to recovery purposes;
+account deletion does not individually rewrite historical snapshots.
+
+Provider retention is separate. Resend publishes standard email/log
+retention of 30 days with additional backup and account-termination windows.
+TypeSafe retains data as needed for the purposes described in its policy;
+we have not promised a fixed API retention period. Paddle retains purchase
+records under its own legal and accounting obligations. Security, support
+or dispute records may be retained as needed for those purposes or law.
+Contact us if you need a deletion request coordinated with a provider.
+
+
+10. INTERNATIONAL PROCESSING
+
+The configured application, database, cache and search regions described
+above are in Germany; encrypted recovery backups are held in Finland.
+TypeSafe and Resend process data in the United
+States. Global hosting/delivery and sign-in or payment providers can
+process information in additional countries under their published notices
+and subprocessor lists. A European database location does not mean that
+all processing stays in Europe.
+
+Providers' data-processing terms describe international-transfer safeguards,
+including EU Standard Contractual Clauses and Swiss/UK adaptations where
+applicable. These include:
+https://vercel.com/legal/dpa
+https://supabase.com/legal/customer-resources/data-processing-addendum
+https://resend.com/legal/dpa
+https://typesafe.ai/legal/data-processing
+
+Contact us for information about the safeguards applicable to your data
+or a copy, subject to appropriate protection of confidential information.
+
+
+11. CHILDREN
+
+Job Seek is intended for people aged 16 and over. If you believe a child
+under 16 has supplied personal data, contact us so we can investigate and
+handle deletion where appropriate.
+
+
+12. CHANGES
+
+We update this notice when our processing changes and revise the date
+above. We will give appropriate notice of material changes. A notice
+update does not replace consent where consent is required.
 
 
 13. CONTACT
 
-  For questions about this Privacy Policy or to exercise your data
-  rights, contact:
-
-  Viktor Shcherbakov
-  Email: business@colophon-group.org
+Viktor Shcherbakov — Job Seek
+Route d'Oron 5
+1010 Lausanne
+Switzerland
+Email: business@colophon-group.org

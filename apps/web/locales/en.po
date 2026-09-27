@@ -576,7 +576,7 @@ msgstr "All {totalCountries} countries loaded"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r5"
-msgstr "All data is encrypted in transit and at rest."
+msgstr "We use HTTPS, password hashing, restricted system access and encrypted recovery backups."
 
 #. Option to show all industries
 #. js-lingui-explicit-id
@@ -1426,7 +1426,7 @@ msgstr "Contract"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r4"
-msgstr "Cookies are session-only — no ads, no tracking."
+msgstr "We use necessary sign-in cookies and preference storage, some of which persist between visits. We do not use advertising cookies."
 
 #. Toast shown briefly after the agent prompt is copied
 #. js-lingui-explicit-id
@@ -2710,7 +2710,7 @@ msgstr "Job Seek is built by Colophon Group, a small team of developers based in
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/privacy-policy/page.tsx
 msgid "privacy.meta.description"
-msgstr "Job Seek privacy policy — what personal data we collect, how we use it, your GDPR rights, cookie policy, and how to request deletion of your account and data."
+msgstr "Job Seek privacy policy — what personal data we collect, how we use it, your privacy rights, cookie policy, and how to request deletion of your account and data."
 
 #. Alt text for feature section 1 screenshot
 #. js-lingui-explicit-id
@@ -2728,7 +2728,7 @@ msgstr "Job Seek watchlist showing curated robotics engineering roles in Zurich"
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.hero.description"
-msgstr "Job Seek's codebase is open source under MIT. The job data we collect and enrich is Creative Commons BY-NC 4.0. Below is the plain-language summary — please read the full licenses for exact terms."
+msgstr "Job Seek's codebase is open source under MIT. Rights we hold in our compilation and original enrichment are CC BY-NC 4.0; third-party content is excluded. Below is the plain-language summary — please read the full licenses for exact terms."
 
 #. Plural job count on watchlist card
 #. Plural job count on watchlist card
@@ -3314,7 +3314,7 @@ msgstr "No billing account found."
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.r2"
-msgstr "No commercial redistribution or resale without permission."
+msgstr "Commercial use of rights we hold requires our permission; we cannot license third-party rights."
 
 #. Empty state when no filters are set
 #. js-lingui-explicit-id
@@ -4039,13 +4039,13 @@ msgstr "Read the full MIT License"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.extras.fullPolicyLink"
-msgstr "Read the full Privacy Policy"
+msgstr "Privacy Policy on GitHub"
 
 #. Link to full terms of service text
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.fullTermsLink"
-msgstr "Read the full Terms of Service"
+msgstr "Terms of Service on GitHub"
 
 #. WebApplication JSON-LD feature list item about job alert notifications.
 #. js-lingui-explicit-id
@@ -4128,7 +4128,7 @@ msgstr "Rejected"
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 msgid "common.footer.text"
-msgstr "Released under the MIT License. Job data is CC BY-NC 4.0."
+msgstr "Code: MIT. Our data rights: CC BY-NC 4.0. Third-party content is excluded."
 
 #. Work mode: remote (work-from-home)
 #. Work mode: remote (work-from-home)
@@ -5171,7 +5171,7 @@ msgstr "The queue spaces requests to the same rate-limit domain by 2 seconds by 
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.short.r4"
-msgstr "The service is provided as-is — no warranties."
+msgstr "The service has limitations. Your mandatory consumer rights remain protected."
 
 #. Short version section title
 #. js-lingui-explicit-id
@@ -5330,7 +5330,7 @@ msgstr "Under Active Development"
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.intro"
-msgstr "Under GDPR you can ask for a copy of your data, have it corrected or deleted, export it, or object to processing. Delete your account and everything is wiped within 30 days."
+msgstr "Swiss data protection law and, where applicable, the EU or UK GDPR give you rights over your data. Account deletion removes active account records; recovery backups and records held by providers have separate retention periods, explained below."
 
 #. Pro feature: unlimited watchlists
 #. js-lingui-explicit-id
@@ -5567,7 +5567,7 @@ msgstr "We believe job search should be driven by the person searching, not by a
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.hero.description"
-msgstr "We collect only what we need, we don’t sell your data, and you can delete everything at any time."
+msgstr "How we use your data, the providers involved, and your choices and rights."
 
 #. Explains fail-closed behavior when the exact candidate count is unavailable
 #. js-lingui-explicit-id
@@ -5651,7 +5651,7 @@ msgstr "We sent a verification link to <0>{email}</0>. Click the link to verify 
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r1"
-msgstr "We store your name, email, and profile picture from your OAuth sign-in, plus the data you create while using the app."
+msgstr "We store account details and the data you create. Email/password accounts store a password hash; external sign-in does not give us your provider password."
 
 #. Info box about sitemaps
 #. js-lingui-explicit-id
@@ -5663,7 +5663,7 @@ msgstr "We strongly encourage publishing an easily discoverable sitemap for your
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.short.r3"
-msgstr "We use a handful of third-party services for sign-in, hosting, and storage — nothing else."
+msgstr "Providers help us host the service, send email, interpret searches, filter job descriptions and handle payments. The full policy names them and explains international processing."
 
 #. Secondary line under the Request <query> dropdown row
 #. js-lingui-explicit-id
@@ -5815,7 +5815,7 @@ msgstr "You can delete your account at any time."
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.r3"
-msgstr "You can remix/transform the data for research or personal dashboards."
+msgstr "This notice does not restrict factual information or exceptions available under applicable law."
 
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
@@ -5839,7 +5839,7 @@ msgstr "You may also be interested in"
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
 msgid "license.data.summary"
-msgstr "You may reuse the job dataset with attribution for non-commercial purposes. Commercial usage requires prior written consent."
+msgstr "CC BY-NC 4.0 covers only rights we hold in the compilation and original enrichment. Employer descriptions, logos and other third-party material are excluded; obtain any permissions needed from their owners."
 
 #. Age requirement
 #. js-lingui-explicit-id
@@ -5924,3 +5924,89 @@ msgstr "Your unique handle for your Job Seek account."
 #: src/components/Features.tsx
 msgid "home.features.s3.p3.description"
 msgstr "Your watchlists are private by default. Share an unlisted link only when you choose; only you can manage the list."
+
+#. How and when subscription cancellation takes effect
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.cancel"
+msgstr "Cancel before the trial ends to avoid the first charge. Use Settings → Subscription → Manage subscription, the link in your receipt, or Paddle support. Normal cancellation preserves access until the end shown in your subscription settings. Deleting your account cancels billing and ends access immediately."
+
+#. Explains cancellation is separate from requesting a refund
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.cancel"
+msgstr "Canceling a subscription stops future renewals; it does not automatically request a refund. For a problem with Job Seek, contact us at the email below so we can help."
+
+#. Heading identifying the full English legal document below the translated summary
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.complete.title"
+msgstr "Complete Privacy Policy (English)"
+
+#. Heading identifying the full English legal document below the translated summary
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.complete.title"
+msgstr "Complete Terms of Service (English)"
+
+#. Identifies the service operator and merchant of record
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.seller"
+msgstr "Job Seek is operated by Viktor Shcherbakov in Switzerland. For purchases through Paddle, Paddle acts as reseller and merchant of record, handling payments, applicable taxes, billing support, and refunds."
+
+#. Link to Paddle buyer terms
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.buyerTerms"
+msgstr "Paddle Buyer Terms"
+
+#. Link to Paddle refund policy
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.policy"
+msgstr "Paddle Refund Policy"
+
+#. Link to Paddle buyer support and refunds
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.support"
+msgstr "Paddle support and refunds"
+
+#. Subscription scope and recurring trial terms
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.offer"
+msgstr "Pro adds Narrowed results for watchlists. Eligible accounts receive seven days free, then pay US$10 per month plus applicable taxes shown at checkout. A payment method is required. Subscriptions renew automatically until canceled; returning subscribers do not receive another trial."
+
+#. Paid subscription terms heading
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.billing.title"
+msgstr "Pro subscriptions and payments"
+
+#. Public refund policy heading
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.title"
+msgstr "Refund policy"
+
+#. Footer link to refund policy
+#. js-lingui-explicit-id
+#: src/components/Footer.tsx
+msgid "common.footer.refundsLink"
+msgstr "Refunds"
+
+#. Refund request process without restricting statutory rights
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.request"
+msgstr "Request a refund or exercise an applicable withdrawal right through Paddle support or the support link in your receipt. Paddle assesses and processes requests under its Refund Policy. Your mandatory consumer rights are unaffected."
+
+#. Country in the public seller and controller address
+#. Country in the public seller and controller address
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+#: src/components/TermsContent.tsx
+msgid "legal.contact.country"
+msgstr "Switzerland"

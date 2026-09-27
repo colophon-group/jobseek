@@ -1,3 +1,4 @@
+import { LegalDocument } from "@/components/LegalDocument";
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
@@ -22,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = i18n._({
     id: "privacy.meta.description",
     comment: "SEO description for the public Privacy Policy page.",
-    message: "Job Seek privacy policy — what personal data we collect, how we use it, your GDPR rights, cookie policy, and how to request deletion of your account and data.",
+    message: "Job Seek privacy policy — what personal data we collect, how we use it, your privacy rights, cookie policy, and how to request deletion of your account and data.",
   });
 
   return {
@@ -60,14 +61,14 @@ export default async function PrivacyPolicyPage({ params }: Props) {
         description: i18n._({
           id: "privacy.meta.description",
           comment: "JSON-LD page description for the public Privacy Policy page.",
-          message: "Job Seek privacy policy — what personal data we collect, how we use it, your GDPR rights, cookie policy, and how to request deletion of your account and data.",
+          message: "Job Seek privacy policy — what personal data we collect, how we use it, your privacy rights, cookie policy, and how to request deletion of your account and data.",
         }),
         url: `${siteConfig.url}/${locale}/privacy-policy`,
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
         lastReviewed: siteConfig.privacy.lastUpdated,
       }} />
-      <PrivacyPolicyContent />
+      <PrivacyPolicyContent><LegalDocument document="privacy" /></PrivacyPolicyContent>
     </>
   );
 }
