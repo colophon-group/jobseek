@@ -6,6 +6,58 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — Go experience and Ashby expansion v0.13.876
+
+PR #10104 merged as `7da64809897c5e9d3ca13d2537318c707effc9a0`.
+[Deployment 36342254765](https://github.com/colophon-group/jobseek/actions/runs/36342254765)
+succeeded. **Go now also owns experience extraction in shared monitor/detail
+CPU processing.** The installed-image oracle passed all 1,967 cases; 43 focused
+tests and the same-content replay of 256 stored postings passed. Local replay
+used approximately 21% less experience CPU including IPC and the native child;
+this remains stage evidence, not whole-lane RAM/density/cost proof.
+
+The first natural readback matched all six populated predictions among 52
+postings. After c1 reactivation, all 11 populated predictions among 48 postings
+matched persisted minimum/maximum experience. A fresh-worker snapshot recorded
+2,744 successful native experience calls and zero enrichment execution errors.
+Typesense reported 101 successful exports, zero errors, zero lag and healthy
+status. The actual release's Go configuration sync completed 7,879 boards and
+6,013 CSV companies at 19:03:56 UTC.
+
+**Ashby now selects 100% of strictly supported configurations:** 878 Go routes,
+up from 209. Its obsolete Python-only passive capture selector was removed.
+The actual enabled-monitor census is **3,625 Go / 4,254 Python** of 7,879,
+with zero routing errors. Fifty-seven other Ashby configurations remain Python;
+100% is the supported-profile percentage, not a claim of full provider coverage.
+Two newly admitted boards completed natural Go runs: Orb returned 25 URLs,
+matching its active database exactly; Spekit returned four URLs, all matching
+freshly seen database rows. Spekit's unchanged drop guard retained six older
+active rows last seen between July 9 and September 11. Its logged suspect-drop
+history predates this rollout; both boards have zero consecutive failures.
+
+Supported rollback retired epoch 84 at 85, restored all five schedules and
+left zero drops/write fences. After deployment, the reviewed **25-selector**
+set was staged against the exact promoted revision. C1 is active at **epoch 86**,
+accepted/audit_ok, with five ready records and zero inflight/dead; all services
+are healthy. C2 remains dark. The sanitized
+[production evidence](evidence/go-experience-production-2026-09-27.json) records
+selectors, readbacks, natural output hashes and the remaining Python monitor census.
+
+Before another deployment or selector mutation, complete supported `rollback c1`,
+then clear the current **25** selectors with
+`/tmp/jobseek-post-go-experience-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`7da64809897c5e9d3ca13d2537318c707effc9a0` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. The old 26-selector helper no longer
+matches production. Restage only against the next promoted revision, then
+reactivate c1. No due times or publisher traffic were forced.
+
+The owner closed #7966 on September 27, but its documented full-retirement
+requirements remain unmet: Python workers, remaining extraction/enrichment and
+browser profiles, whole-lane efficiency and final cutover/reversal still need
+implementation and evidence. This checkpoint supersedes the operational
+selector/epoch instructions in the historical checkpoints below.
+
 ## Production checkpoint: 2026-09-27 — shared Go classification v0.13.875
 
 PR #10102 merged as `7f27c5006e45b484801494c149b262371bbf307c`.
@@ -1162,13 +1214,15 @@ evidence. A new abstraction is justified only by a measured migration need.
 - #7938: parked queue-v2 contract; it does not gate B0.
 - #7962/#7963 and other family-port issues: deferred until measured cohort
   demand justifies a bounded slice.
-- #7966: final zero-Python/Playwright/Chromium completion and retirement gate,
-  reopened for the complete migration goal; it does not block B0 admission.
+- #7966: documented final zero-Python/Playwright/Chromium completion and
+  retirement requirements. The owner closed the issue on 2026-09-27; the
+  production migration still has the outstanding work recorded above.
 
-## Implementation queued: Go experience extraction, v0.13.876
+## Implementation: Go experience extraction, v0.13.876
 
 The shared resident Go enrichment process now also implements experience
-requirements for monitor/detail CPU helpers. **This slice is not deployed.**
+requirements for monitor/detail CPU helpers. The production checkpoint above
+records its successful deployment and natural persistence readback.
 It preserves mixed-unit, forward and reversed rule ordering, numeric boundaries,
 Unicode matching, highest-minimum/tie behavior, false-positive context and
 exact half-up month rounding. Python remains the explicit rollback engine;
@@ -1181,5 +1235,5 @@ A counterbalanced local replay of 2,560 completions per arm uses about 21%
 less experience-stage CPU including IPC and the native child. Numeric output
 hashes match exactly. This does not establish whole-lane resource savings.
 See [the replay evidence](evidence/go-experience-replay-2026-09-27.json).
-The v0.13.875 production record is complete in #10103. Use the current
-supported c1 rollback and exact-selector protocol before deploying.
+The v0.13.875 production record is preserved in #10103. For subsequent
+releases, use the newest production checkpoint's rollback and selector protocol.
