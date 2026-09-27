@@ -1918,6 +1918,13 @@ def _go_rich_percentage_selected(
     percentage = int(raw)
     if percentage == 0:
         return False
+    if monitor_type == "ashby":
+        from src.runtime.ashby_go import direct_ashby_token
+
+        if direct_ashby_token(board_url, monitor_config) is None:
+            return False
+        bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
+        return bucket < percentage * 100
     try:
         parsed = urlparse(board_url)
         port = parsed.port
