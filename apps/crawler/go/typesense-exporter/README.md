@@ -74,8 +74,8 @@ Configuration/taxonomy sync and schema setup remain separate Python owners.
 `go-typesense-exporter --sync-taxonomies` owns the Typesense stage after the
 Python CSV/local transaction commits. The parent waits for Go and propagates
 failure; shutdown terminates and reaps the child. There is no Python runtime
-fallback. CSV parsing/local writes, Redis board effects, deadletter reporting,
-and the preceding taxonomy rename detection remain to migrate.
+fallback. CSV parsing/local writes, Redis board effects, and deadletter reporting
+remain to migrate.
 
 Go reads one static authority snapshot for all five collections, including
 full localized company details. It preserves producer strings and unordered
@@ -98,3 +98,16 @@ orchestrator against real PostgreSQL plus an HTTP Typesense fixture. That
 fixture intentionally has no posting table, proving the normal count path
 uses Typesense. Actual production output/resources remain to measure after
 release through the supported crawler deployment procedure.
+
+The pre-transaction name snapshot now runs with `--snapshot-taxonomy-names`.
+Python passes it over stdin to `--sync-taxonomies --rename-input`; the JSON
+handoff is bounded to 8 MiB and accepts only the three name-map kinds. Go
+re-reads current names under the shared exporter cursor fence and streams
+affected posting IDs in 1,000-row UUID keyset batches. Technology arrays retain
+order and duplicates while omitting unknown/null/empty names. Posting updates
+remain partial `update` operations: no CDC cursor or ownership is changed.
+Existing per-document rejection semantics remain best-effort; ambiguous import
+acknowledgements stop the rename stage and are reported without posting values.
+The ordinary full sync then publishes the taxonomies and companies. A real
+PostgreSQL fixture covers 1,001 affected postings, a retained unaffected row,
+null technology IDs, fence ownership, and ambiguous-acknowledgement release.

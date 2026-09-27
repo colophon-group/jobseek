@@ -304,8 +304,9 @@ async def test_typesense_local_boundary_runs_only_after_local_commit(monkeypatch
     async def apply_redis(_effects: sync.BoardSyncEffects) -> None:
         events.append("redis")
 
-    async def sync_typesense(local, client) -> None:
+    async def sync_typesense(local, client, *, before_names=None) -> None:
         del client
+        assert before_names == {}
         assert local is local_conn
         assert "local_commit" in events
         events.append("typesense")

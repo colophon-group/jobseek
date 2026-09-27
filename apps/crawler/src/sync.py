@@ -3226,6 +3226,23 @@ async def refresh_typesense_counts(
 
 async def _snapshot_name_maps(
     local_conn: asyncpg.Connection,
+) -> dict[str, dict[int, str | None]]:
+    """Capture pre-transaction display names in the Go read-only runtime."""
+    output = await _run_typesense_go(["--snapshot-taxonomy-names"], capture=True)
+    if output is None or len(output) > 8 * 1024 * 1024:
+        raise CompanyTypesenseSyncError("Invalid Go taxonomy name snapshot")
+    try:
+        values = json.loads(output)
+        return {
+            kind: {int(key): value for key, value in names.items()}
+            for kind, names in values.items()
+        }
+    except (ValueError, AttributeError, TypeError):
+        raise CompanyTypesenseSyncError("Invalid Go taxonomy name snapshot") from None
+
+
+async def _snapshot_name_maps_python_reference(
+    local_conn: asyncpg.Connection,
 ) -> dict[str, dict[int, str]]:
     """Snapshot current display names for rename detection.
 
@@ -3346,22 +3363,28 @@ async def _apply_taxonomy_renames(
 # ---------------------------------------------------------------------------
 
 
-async def sync_typesense(
-    local_conn: asyncpg.Connection,
-    client: typesense.Client,
-) -> None:
-    """Publish the committed local snapshot through the Go runtime.
-
-    Keep the signature while the CSV transaction/rename stage is migrated.
-    The child inherits the existing scoped environment and owns all taxonomy
-    writes, exact company pruning, count refresh, and cache invalidation.
-    """
+async def _run_typesense_go(
+    arguments: list[str], *, input_data: bytes | None = None, capture: bool = False
+) -> bytes | None:
+    options: dict[str, Any] = {}
+    if input_data is not None:
+        options["stdin"] = asyncio.subprocess.PIPE
+    if capture:
+        options["stdout"] = asyncio.subprocess.PIPE
     try:
-        process = await asyncio.create_subprocess_exec("go-typesense-exporter", "--sync-taxonomies")
+        process = await asyncio.create_subprocess_exec(
+            "go-typesense-exporter", *arguments, **options
+        )
     except OSError:
         raise CompanyTypesenseSyncError("Go Typesense sync could not start") from None
     try:
-        result = await asyncio.wait_for(process.wait(), timeout=1830)
+        if capture or input_data is not None:
+            output, _ = await asyncio.wait_for(process.communicate(input_data), timeout=1830)
+            result = process.returncode
+        else:
+            await asyncio.wait_for(process.wait(), timeout=1830)
+            result = process.returncode
+            output = None
     except (asyncio.CancelledError, TimeoutError):
         if process.returncode is None:
             with suppress(ProcessLookupError):
@@ -3375,6 +3398,26 @@ async def sync_typesense(
         raise
     if result != 0:
         raise CompanyTypesenseSyncError("Go Typesense company exact sync failed")
+    return output
+
+
+async def sync_typesense(
+    local_conn: asyncpg.Connection,
+    client: typesense.Client,
+    *,
+    before_names: dict[str, dict[int, str | None]] | None = None,
+) -> None:
+    """Publish committed names, taxonomies, and companies through Go.
+
+    The child inherits the scoped environment and owns posting rename updates,
+    taxonomy writes, company pruning, count refresh, and cache invalidation.
+    """
+    command = ["--sync-taxonomies"]
+    payload = None
+    if before_names is not None:
+        command.append("--rename-input")
+        payload = json.dumps({"before": before_names}, ensure_ascii=False).encode()
+    await _run_typesense_go(command, input_data=payload)
 
 
 async def _sync_typesense_python_reference(
@@ -3470,7 +3513,7 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
 
     local_pool = await create_local_pool()
     board_effects = BoardSyncEffects()
-    name_maps_before: dict[str, dict[int, str]] | None = None
+    name_maps_before: dict[str, dict[int, str | None]] | None = None
     try:
         async with local_pool.acquire() as local_conn:
             local_connection = cast("asyncpg.Connection", local_conn)
@@ -3550,18 +3593,7 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
             try:
                 async with local_pool.acquire() as local_conn:
                     local_connection = cast("asyncpg.Connection", local_conn)
-                    if name_maps_before is not None:
-                        try:
-                            name_maps_after = await _snapshot_name_maps(local_connection)
-                            await _apply_taxonomy_renames(
-                                name_maps_before,
-                                name_maps_after,
-                                local_connection,
-                                ts_client,
-                            )
-                        except Exception:
-                            log.exception("typesense.rename_detection.failed")
-                    await sync_typesense(local_connection, ts_client)
+                    await sync_typesense(local_connection, ts_client, before_names=name_maps_before)
             except CompanyTypesenseSyncError:
                 log.exception("typesense.sync.failed")
                 raise

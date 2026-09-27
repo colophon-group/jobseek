@@ -118,7 +118,7 @@ func publishSyncTaxonomies(ctx context.Context, publisher taxonomyPublisher, doc
 	slog.Info("typesense.companies.synced", "expected_count", len(documents["company"]), "deleted_count", deleted)
 	return nil
 }
-func runSyncTaxonomies() (runErr error) {
+func runSyncTaxonomies(before ...renameNameMaps) (runErr error) {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -162,6 +162,20 @@ func runSyncTaxonomies() (runErr error) {
 	}
 	client := &http.Client{Timeout: 120 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	reader := taxonomyReader{Client: client, BaseURL: settings.TypesenseURL, Key: settings.OperationsKey}
+	if len(before) > 0 && before[0] != nil {
+		conn, err := pool.Acquire(ctx)
+		if err != nil {
+			return errors.New("taxonomy rename connection unavailable")
+		}
+		err = applyRenameUpdates(ctx, conn.Conn(), reader, before[0])
+		conn.Release()
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			slog.Error("typesense.rename_detection.failed")
+		}
+	}
 	counts, year, err := syncPostingCounts(ctx, pool, reader, time.Now().UTC())
 	if err != nil {
 		return err

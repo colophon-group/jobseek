@@ -31,8 +31,17 @@ five count updates, twelve facet reads, and both company censuses. It has no
 posting table, so passing proves that normal count reads stay in Typesense.
 Prune-budget/failure, exact-pagination, import-bound, and child-lifecycle tests
 also pass locally. CI and real production output/resource evidence remain
-pending. Python still owns CSV/local transaction writes, taxonomy rename
-handling, Redis board effects, and deadletter reporting; #7966 remains open.
+pending. Python still owns CSV/local transaction writes, Redis board effects, and
+deadletter reporting; #7966 remains open.
+
+The same sync slice now also owns pre-transaction name snapshots and posting
+rename updates in Go. The before-map travels over a bounded stdin JSON handoff;
+Go re-reads names under the exporter fence and processes affected postings in
+1,000-row UUID keyset batches. Technology-name order/duplicates and existing
+per-document rejection behavior are preserved. It never changes CDC cursor or
+owner. The real PostgreSQL test covers 1,001 affected postings, an unaffected
+row, null technology IDs, and fence release after ambiguous acknowledgement.
+The Python snapshot/rename implementations remain offline references only.
 
 ## Implementation checkpoint: 2026-09-27 — Go taxonomy verification
 

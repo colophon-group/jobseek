@@ -64,3 +64,37 @@ def test_go_sync_fixture_matches_retained_python_producer() -> None:
     crawler = Path(__file__).resolve().parents[1]
     script = crawler / "go/typesense-exporter/testdata/generate_sync_fixture.py"
     subprocess.run([sys.executable, str(script), "--check"], cwd=crawler, check=True)
+
+
+async def test_go_sync_receives_before_names_over_stdin() -> None:
+    import json
+
+    before = {"occupation": {1: "Old title"}, "technology": {2: None}}
+    process = MagicMock(returncode=0)
+    process.communicate = AsyncMock(return_value=(None, None))
+    with patch("src.sync.asyncio.create_subprocess_exec", new_callable=AsyncMock) as execute:
+        execute.return_value = process
+        await sync_typesense(AsyncMock(), MagicMock(), before_names=before)
+    execute.assert_awaited_once_with(
+        "go-typesense-exporter",
+        "--sync-taxonomies",
+        "--rename-input",
+        stdin=asyncio.subprocess.PIPE,
+    )
+    assert json.loads(process.communicate.await_args.args[0]) == {
+        "before": {"occupation": {"1": "Old title"}, "technology": {"2": None}}
+    }
+
+
+async def test_before_snapshot_is_captured_by_go() -> None:
+    from src.sync import _snapshot_name_maps
+
+    process = MagicMock(returncode=0)
+    process.communicate = AsyncMock(return_value=(b'{"occupation":{"1":"Old"}}', None))
+    with patch("src.sync.asyncio.create_subprocess_exec", new_callable=AsyncMock) as execute:
+        execute.return_value = process
+        result = await _snapshot_name_maps(AsyncMock())
+    assert result == {"occupation": {1: "Old"}}
+    execute.assert_awaited_once_with(
+        "go-typesense-exporter", "--snapshot-taxonomy-names", stdout=asyncio.subprocess.PIPE
+    )
