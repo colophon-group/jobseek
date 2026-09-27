@@ -3,7 +3,7 @@
   "revision": "0893bd935b629601714dde3b828bcd3c8088dfe9",
   "pull_request": 10107,
   "deployment_run": 36344767917,
-  "status": "deployed, c1 active; natural newly supported configuration output pending",
+  "status": "deployed, c1 active; all Ashby monitor routes selected and first newly supported configuration verified naturally",
   "scope": "All currently enabled Ashby monitor configuration forms. Separate JSON-LD detail and other Python/browser/runtime ownership remain in scope.",
   "verification": {
     "required_ci_run": 36344127934,
@@ -1051,6 +1051,17 @@
       "event": "go_ashby.monitor_complete",
       "level": "info",
       "timestamp": "2026-09-27T19:50:04.646708Z"
+    },
+    {
+      "board_id": "22d2cd75-19b5-46e0-af08-4503865c5fec",
+      "urls": 47,
+      "url_sha256": "4c98b38290d6f0bb9c1d15ebd09d5015f6d0ecbd822c4958bfe9284d57080a4d",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 1016919,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:51:43.775595Z"
     }
   ],
   "pending_natural_configuration_readback": {
@@ -1106,6 +1117,38 @@
         "rank": 182
       }
     ],
-    "note": "Newly supported configuration runs are pending natural scheduling. Queue rank is a snapshot, not a promise of execution time."
+    "note": "Abridge is verified below. Other newly supported configurations continue through normal scheduling; queue ranks are a snapshot, not execution-time promises."
+  },
+  "new_configuration_readback": {
+    "configuration_class": "direct URL token derivation, no explicit token",
+    "go_event": {
+      "board_id": "22d2cd75-19b5-46e0-af08-4503865c5fec",
+      "urls": 47,
+      "url_sha256": "4c98b38290d6f0bb9c1d15ebd09d5015f6d0ecbd822c4958bfe9284d57080a4d",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 1016919,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:51:43.775595Z"
+    },
+    "database": {
+      "board": {
+        "id": "22d2cd75-19b5-46e0-af08-4503865c5fec",
+        "board_url": "https://jobs.ashbyhq.com/Abridge",
+        "board_status": "active",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 19:51:47.825989+00:00",
+        "next_check_at": "2026-09-27 20:51:47.825989+00:00"
+      },
+      "active": 47,
+      "url_sha256": "4c98b38290d6f0bb9c1d15ebd09d5015f6d0ecbd822c4958bfe9284d57080a4d"
+    },
+    "posting_ids_and_description_hashes_sha256": "be280978b9b05936b515b855f4f386e7ccc041885c08e40b1ae4052fd0ed96f6",
+    "matches_before_deployment_ids_and_description_hashes": true,
+    "last_seen_range": [
+      "2026-09-27 19:51:43.834438+00:00",
+      "2026-09-27 19:51:43.834438+00:00"
+    ]
   }
 }

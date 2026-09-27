@@ -33,10 +33,12 @@ zero inflight/dead. All long-lived services are healthy; C2 remains dark.
 Typesense reported 64 successful exports, zero errors, zero lag and healthy
 status in the initial post-activation snapshot.
 
-Natural Go monitor cycles are succeeding. First natural output/database proof
-for the newly supported configurations is pending their unchanged schedules.
-The read-only baseline covers all 57 newly admitted boards and 2,579 active
-postings. See the sanitized
+Six natural Go monitor cycles were observed after activation. Abridge, newly
+admitted through direct-URL token derivation, returned 47 URLs with an exact
+active database URL hash and zero failures. Its posting-ID/description-hash
+digest also matches the pre-deploy baseline. Other new configuration forms
+continue through their normal schedules. The read-only baseline covers all
+57 newly admitted boards and 2,579 active postings. See the sanitized
 [production evidence](evidence/go-ashby-production-2026-09-27.json) for baseline
 hashes, exact selector values, route census and activation evidence. No origin
 requests or due times were forced.
