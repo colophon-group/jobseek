@@ -22,14 +22,14 @@ describe("public Pro-plan availability claims", () => {
     );
   });
 
-  it("tells human readers that Pro is coming soon", () => {
+  it("describes AI filtering as the paid benefit", () => {
     const faq = readFileSync(
       "app/[lang]/(public)/faq/page.tsx",
       "utf8",
     );
 
     expect(faq).toContain(
-      "Pro is coming soon and will add unlimited watchlists",
+      "Pro adds AI filtering for your watchlists.",
     );
   });
 });

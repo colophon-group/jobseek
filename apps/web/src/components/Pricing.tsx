@@ -44,11 +44,12 @@ function FreeTier() {
             </span>
           </div>
           <p className="mt-2 text-muted">
-            <Trans id="home.pricing.free.description" comment="Free tier description">Full search, one watchlist, and a built-in application tracker to manage your pipeline.</Trans>
+            <Trans id="home.pricing.free.description" comment="Free tier description">Full search, up to 10 watchlists, and a built-in application tracker to manage your pipeline.</Trans>
           </p>
           <ul className="mt-4 flex-1 space-y-2">
             <FeatureItem><Trans id="home.pricing.free.f1" comment="Free feature: full search">Search across all companies and filters</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.free.f2" comment="Free feature: one watchlist">1 watchlist</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.free.f2" comment="Free feature: watchlist limit">Up to 10 watchlists</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.free.alerts" comment="Email alerts available to everyone">Email alerts on new matches</Trans></FeatureItem>
             <FeatureItem><Trans id="home.pricing.free.f3" comment="Free feature: application tracker">Application tracker with interview log</Trans></FeatureItem>
           </ul>
         </div>
@@ -86,12 +87,11 @@ function ProTier() {
             </span>
           </div>
           <p className="mt-2 text-muted">
-            <Trans id="home.pricing.pro.description" comment="Pro tier description">Unlimited watchlists with email alerts so you never miss an opening.</Trans>
+            <Trans id="home.pricing.pro.description" comment="Pro tier description">Narrow your watchlists with AI filtering.</Trans>
           </p>
           <ul className="mt-4 flex-1 space-y-2">
             <FeatureItem><Trans id="home.pricing.pro.f0" comment="Pro feature: includes free">Everything in Free</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f1" comment="Pro feature: unlimited watchlists">Unlimited watchlists</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f2" comment="Pro feature: email alerts">Email alerts on new matches</Trans></FeatureItem>
+            <FeatureItem><Trans id="home.pricing.pro.f1" comment="Pro feature: AI filtering">AI filtering for your watchlists</Trans></FeatureItem>
           </ul>
         </div>
         <div className="px-6 pb-6">

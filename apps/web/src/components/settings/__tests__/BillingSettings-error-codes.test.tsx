@@ -8,6 +8,8 @@ import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
   createPortalSession: vi.fn(),
+  createCheckoutSession: vi.fn(),
+  open: vi.fn(),
   replace: vi.fn(),
   searchParams: new URLSearchParams(),
 }));
@@ -29,7 +31,10 @@ vi.mock("@/lib/useLocalePath", () => ({
 
 vi.mock("@/lib/actions/billing", () => ({
   createPortalSession: mocks.createPortalSession,
+  createCheckoutSession: mocks.createCheckoutSession,
 }));
+
+vi.mock("@/lib/paddle/browser", () => ({ loadPaddle: async () => ({ Checkout: { open: mocks.open } }) }));
 
 import { BillingSettings } from "../BillingSettings";
 
@@ -47,7 +52,7 @@ describe("BillingSettings action errors", () => {
 
     render(
       <BillingSettings
-        planInfo={{ plan: "unlimited", canReceiveAlerts: true }}
+        planInfo={{ plan: "unlimited" }}
       />,
     );
 
@@ -58,27 +63,44 @@ describe("BillingSettings action errors", () => {
     });
   });
 
+  it("opens the server transaction and preserves the return destination", async () => {
+    mocks.searchParams = new URLSearchParams({ next: "/en/explore?q=engineer" });
+    mocks.createCheckoutSession.mockResolvedValue({ transactionId: "txn_verified", email: "test@example.com" });
+    render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true }} />);
+    await userEvent.click(screen.getByRole("button", { name: "Start 7-day free trial" }));
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledWith(expect.objectContaining({ transactionId: "txn_verified" })));
+    const url = new URL(mocks.open.mock.calls[0][0].settings.successUrl);
+    expect(url.searchParams.get("next")).toBe("/en/explore?q=engineer");
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("retains the portal for an expired subscriber and offers no repeat trial", () => {
+    render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true, hasBillingAccount: true, trialEligible: false, status: "canceled" }} />);
+    expect(screen.getByRole("button", { name: "Manage subscription" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Subscribe to Pro" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start 7-day free trial" })).toBeNull();
+  });
+
   it("offers no purchase action while Pro billing is unavailable", () => {
     render(
       <BillingSettings
-        planInfo={{ plan: "free", canReceiveAlerts: false }}
+        planInfo={{ plan: "free" }}
       />,
     );
 
-    expect(screen.getByText("Plan details coming soon")).toBeTruthy();
+    expect(screen.getByText("AI filtering for your watchlists")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Upgrade to Pro" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
   });
 
   it.each([
-    ["de", "Bis zu 10 Watchlists", "Unternehmen favorisieren", "Tarifdetails folgen", "Alles aus dem kostenlosen Tarif"],
-    ["fr", "Jusqu’à 10 watchlists", "Ajouter des entreprises aux favoris", "Détails du forfait à venir", "Tout ce qui est inclus dans l’offre gratuite"],
-    ["it", "Fino a 10 watchlist", "Aggiungi aziende ai preferiti", "Dettagli del piano in arrivo", "Tutto ciò che è incluso nel piano Free"],
-  ])("keeps the %s billing catalog free of retired restrictions", (locale, limit, star, details, included) => {
+    ["de", "Bis zu 10 Watchlists", "Unternehmen favorisieren", "Alles aus dem kostenlosen Tarif"],
+    ["fr", "Jusqu’à 10 watchlists", "Ajouter des entreprises aux favoris", "Tout ce qui est inclus dans l’offre gratuite"],
+    ["it", "Fino a 10 watchlist", "Aggiungi aziende ai preferiti", "Tutto ciò che è incluso nel piano Free"],
+  ])("keeps the %s billing catalog free of retired restrictions", (locale, limit, star, included) => {
     const catalog = readFileSync(join(process.cwd(), "locales", `${locale}.po`), "utf8");
     expect(catalog).toContain(`msgid "settings.billing.free.f0"\nmsgstr "${limit}"`);
     expect(catalog).toContain(`msgid "settings.billing.free.f1"\nmsgstr "${star}"`);
-    expect(catalog).toContain(`msgid "settings.billing.pro.f1"\nmsgstr "${details}"`);
     expect(catalog).toContain(`msgid "settings.billing.pro.f2"\nmsgstr "${included}"`);
   });
 
@@ -90,7 +112,7 @@ describe("BillingSettings action errors", () => {
 
     render(
       <BillingSettings
-        planInfo={{ plan: "unlimited", canReceiveAlerts: true }}
+        planInfo={{ plan: "unlimited" }}
       />,
     );
 

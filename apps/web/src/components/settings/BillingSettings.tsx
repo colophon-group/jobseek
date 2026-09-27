@@ -7,7 +7,8 @@ import { useLingui } from "@lingui/react/macro";
 import { Check, Crown } from "lucide-react";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { createPortalSession } from "@/lib/actions/billing";
+import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
+import { loadPaddle } from "@/lib/paddle/browser";
 import { translateActionError } from "@/lib/action-error-messages";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -19,7 +20,12 @@ import {
 
 type PlanInfo = {
   plan: PlanId;
-  canReceiveAlerts: boolean;
+  checkoutEnabled?: boolean;
+  hasBillingAccount?: boolean;
+  trialEligible?: boolean;
+  status?: string | null;
+  periodEnd?: string | null;
+  cancellationScheduled?: boolean;
 };
 
 function LoginPrompt({ returnPath }: { returnPath: string | null }) {
@@ -88,13 +94,25 @@ function PlanCard({
 }
 
 export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
+  const lp = useLocalePath();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoggedIn } = useSession();
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState<"portal" | null>(null);
+  const [loading, setLoading] = useState<"portal" | "checkout" | null>(null);
   const returnPath = normalizeAuthReturnPath(searchParams.get("next"));
+  const checkoutComplete = searchParams.get("checkout") === "complete";
+
+  useEffect(() => {
+    if (!checkoutComplete || planInfo.plan === "unlimited") return;
+    let attempts = 0;
+    const interval = window.setInterval(() => {
+      router.refresh();
+      if (++attempts >= 15) window.clearInterval(interval);
+    }, 2000);
+    return () => window.clearInterval(interval);
+  }, [checkoutComplete, planInfo.plan, router]);
 
   useEffect(() => {
     if (isLoggedIn && planInfo.plan === "unlimited" && returnPath) {
@@ -110,25 +128,52 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
     t({ id: "settings.billing.free.f0", comment: "Free plan feature: universal watchlist limit", message: "Up to 10 watchlists" }),
     t({ id: "settings.billing.free.f1", comment: "Free plan feature: star companies", message: "Star companies" }),
     t({ id: "settings.billing.free.f2", comment: "Free plan feature: search", message: "Full job search" }),
+    t({ id: "settings.billing.free.alerts", comment: "Email alerts available to everyone", message: "Email alerts for matching jobs" }),
     t({ id: "settings.billing.free.f3", comment: "Free plan feature: save jobs", message: "Save jobs" }),
   ];
 
   const proPlanFeatures = [
     t({ id: "settings.billing.pro.f2", comment: "Pro plan feature: everything free", message: "Everything in Free" }),
-    t({ id: "settings.billing.pro.f1", comment: "Pro plan availability detail", message: "Plan details coming soon" }),
+    t({ id: "settings.billing.pro.filtering", comment: "Pro unlocks AI filtering only", message: "AI filtering for your watchlists" }),
   ];
+
+  async function handleCheckout() {
+    setError("");
+    setLoading("checkout");
+    try {
+      const result = await createCheckoutSession();
+      if (result.error) {
+        setError(translateActionError(t, result.error));
+        return;
+      }
+      if (!result.transactionId) throw new Error("Missing checkout transaction");
+      const paddle = await loadPaddle(i18n.locale);
+      const destination = new URL(lp("/settings/billing"), window.location.origin);
+      destination.searchParams.set("checkout", "complete");
+      if (returnPath) destination.searchParams.set("next", returnPath);
+      paddle.Checkout.open({
+        transactionId: result.transactionId,
+        ...(result.email ? { customer: { email: result.email } } : {}),
+        settings: { locale: i18n.locale, successUrl: destination.href },
+      });
+    } catch {
+      setError(translateActionError(t, "payments_unavailable"));
+    } finally {
+      setLoading(null);
+    }
+  }
 
   async function handleManage() {
     setError("");
     setLoading("portal");
-    const result = await createPortalSession();
-    setLoading(null);
-    if (result.error) {
-      setError(translateActionError(t, result.error));
-      return;
-    }
-    if (result.url) {
-      window.location.href = result.url;
+    try {
+      const result = await createPortalSession();
+      if (result.error) setError(translateActionError(t, result.error));
+      else if (result.url) window.location.href = result.url;
+    } catch {
+      setError(translateActionError(t, "billing_portal_unavailable"));
+    } finally {
+      setLoading(null);
     }
   }
 
@@ -164,13 +209,50 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
 
         {error && <div className="mt-4"><ErrorAlert message={error} focusOnRender /></div>}
 
-        {!isFree && (
+        {checkoutComplete && isFree && (
+          <p className="mt-4 text-sm text-muted" role="status">
+            <Trans id="settings.billing.processing" comment="Shown after checkout while waiting for verified subscription activation">
+              We’re confirming your subscription. If your plan hasn’t updated yet, refresh shortly.
+            </Trans>
+          </p>
+        )}
+
+        {planInfo.status === "trialing" && planInfo.periodEnd && (
+          <p className="mt-4 text-sm" role="status">
+            <Trans id="settings.billing.trialEnds" comment="Trial end date in billing settings">
+              Your free trial ends on {new Intl.DateTimeFormat(i18n.locale).format(new Date(planInfo.periodEnd))}.
+            </Trans>
+          </p>
+        )}
+        {planInfo.cancellationScheduled && (
+          <p className="mt-4 text-sm text-muted">
+            <Trans id="settings.billing.cancellationScheduled" comment="Subscription canceled at the end of the current billing period">
+              Your subscription will end after the current period. You can manage it in the billing portal.
+            </Trans>
+          </p>
+        )}
+
+        {isFree && planInfo.checkoutEnabled && (!planInfo.status || planInfo.status === "canceled") && (
+          <div className="mt-4 space-y-3">
+            <Button onClick={handleCheckout} disabled={loading !== null}>
+              {planInfo.trialEligible !== false
+                ? t({ id: "settings.billing.startTrial", comment: "Button opening Paddle checkout for a seven-day trial", message: "Start 7-day free trial" })
+                : t({ id: "settings.billing.subscribe", comment: "Subscribe again without another trial", message: "Subscribe to Pro" })}
+            </Button>
+            <p className="text-sm text-muted">
+              {planInfo.trialEligible !== false && <Trans id="settings.billing.trialTerms" comment="Trial renewal disclosure next to checkout button">7 days free, then US$10 per month. Payment method required. Cancel before the trial ends to avoid being charged.</Trans>}
+              {" "}<Trans id="settings.billing.paddleSeller" comment="Merchant of record and tax disclosure">Paddle handles payments and applicable taxes. Your final total is shown at checkout.</Trans>
+            </p>
+          </div>
+        )}
+
+        {(planInfo.hasBillingAccount || !isFree) && (
           <div className="mt-4">
             <Button
               variant="outline"
               size="md"
               onClick={handleManage}
-              disabled={loading === "portal"}
+              disabled={loading !== null}
             >
               {loading === "portal"
                 ? t({ id: "settings.billing.managing", comment: "Manage subscription button loading state", message: "Loading…" })

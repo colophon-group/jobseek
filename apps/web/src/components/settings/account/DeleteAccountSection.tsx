@@ -26,6 +26,10 @@ export function DeleteAccountSection() {
     setLoading(false);
 
     if (error) {
+      if (error.code === "BILLING_DELETION_UNAVAILABLE") {
+        setError(t({ id: "settings.account.delete.billingError", comment: "Account deletion cannot proceed until recurring payments are canceled", message: "We could not stop your billing. Please retry account deletion shortly or contact support." }));
+        return;
+      }
       setError(error.message ?? t({ id: "settings.account.delete.error", comment: "Generic account deletion error", message: "Failed to delete account" }));
       return;
     }
@@ -40,7 +44,7 @@ export function DeleteAccountSection() {
       </h2>
       <p className="mb-4 text-sm text-error">
         <Trans id="settings.account.delete.description" comment="Delete account section description">
-          Permanently delete your account and all associated data. This action cannot be undone.
+          Permanently delete your account and all associated data, and cancel any subscription immediately. This action cannot be undone.
         </Trans>
       </p>
       <AlertDialog.Root open={confirmOpen} onOpenChange={handleOpenChange}>
@@ -66,7 +70,7 @@ export function DeleteAccountSection() {
             </AlertDialog.Title>
             <AlertDialog.Description className="mt-2 text-sm text-muted">
               <Trans id="settings.account.delete.description" comment="Delete account section description">
-                Permanently delete your account and all associated data. This action cannot be undone.
+                Permanently delete your account and all associated data, and cancel any subscription immediately. This action cannot be undone.
               </Trans>
             </AlertDialog.Description>
             <div className="mt-4">

@@ -19,6 +19,7 @@ export const RESERVED_USERNAMES = [
   "progress",
   "my-jobs",
   "billing",
+  "checkout",
   "how-we-index",
   "license",
   "privacy-policy",

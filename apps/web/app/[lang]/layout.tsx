@@ -135,7 +135,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                   description: i18n._({
                     id: "app.schema.offer.free",
                     comment: "WebApplication JSON-LD offer description for the Free plan.",
-                    message: "Full search, 1 watchlist, application tracker",
+                    message: "Full search, up to 10 watchlists, email alerts, application tracker",
                   }),
                 },
                 {
@@ -151,7 +151,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                   description: i18n._({
                     id: "app.schema.offer.pro",
                     comment: "WebApplication JSON-LD offer description for the Pro plan.",
-                    message: "Unlimited watchlists, email alerts on new matches",
+                    message: "AI filtering for watchlists",
                   }),
                 },
               ],

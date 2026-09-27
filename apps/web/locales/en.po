@@ -401,12 +401,6 @@ msgstr "$10"
 msgid "settings.billing.plan.proPrice"
 msgstr "$10 / month"
 
-#. Free feature: one watchlist
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.f2"
-msgstr "1 watchlist"
-
 #. Heading for the 'install the Murmur MCP server' step on the agent-prompt success card
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -418,6 +412,12 @@ msgstr "1. Install MCP"
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.run_heading"
 msgstr "2. Run the prompt"
+
+#. Trial renewal disclosure next to checkout button
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.trialTerms"
+msgstr "7 days free, then US$10 per month. Payment method required. Cancel before the trial ends to avoid being charged."
 
 #. FAQ answer explaining private-by-default saved-search watchlists and unlisted sharing.
 #. js-lingui-explicit-id
@@ -535,6 +535,24 @@ msgstr "Adjust the current filters until at least one job matches."
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.promptRegionLabel"
 msgstr "Agent prompt"
+
+#. WebApplication JSON-LD offer description for the Pro plan.
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx
+msgid "app.schema.offer.pro"
+msgstr "AI filtering for watchlists"
+
+#. Pro feature: AI filtering
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+msgid "home.pricing.pro.f1"
+msgstr "AI filtering for your watchlists"
+
+#. Pro unlocks AI filtering only
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.pro.filtering"
+msgstr "AI filtering for your watchlists"
 
 #. Footer shown after all paged countries have been loaded into the location modal
 #. js-lingui-explicit-id
@@ -982,6 +1000,12 @@ msgstr "Checking availability..."
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.accessChecking.short"
 msgstr "Checking…"
+
+#. Paddle script failed to load
+#. js-lingui-explicit-id
+#: src/components/PaddlePaymentLink.tsx
+msgid "checkout.loadError"
+msgstr "Checkout could not load. Please refresh and try again."
 
 #. Explains the normal-filter prerequisite for Jev
 #. js-lingui-explicit-id
@@ -1845,10 +1869,16 @@ msgstr "Edit request"
 msgid "auth.field.email"
 msgstr "Email"
 
-#. Pro feature: email alerts
+#. Email alerts available to everyone
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.free.alerts"
+msgstr "Email alerts for matching jobs"
+
+#. Email alerts available to everyone
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx
-msgid "home.pricing.pro.f2"
+msgid "home.pricing.free.alerts"
 msgstr "Email alerts on new matches"
 
 #. Email or username input label for sign-in
@@ -2184,7 +2214,7 @@ msgstr "Free"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.freeVsPro"
-msgstr "Free gives you full search across all companies, one watchlist, and the application tracker with interview logging. Pro is coming soon and will add unlimited watchlists and email alerts when new roles match your criteria."
+msgstr "Free includes full search, up to 10 watchlists, email alerts, and the application tracker. Pro adds AI filtering for your watchlists."
 
 #. FAQ page heading
 #. js-lingui-explicit-id
@@ -2210,17 +2240,17 @@ msgstr "From saved role to signed offer, all in one place"
 msgid "settings.billing.free.f2"
 msgstr "Full job search"
 
-#. WebApplication JSON-LD offer description for the Free plan.
-#. js-lingui-explicit-id
-#: app/[lang]/layout.tsx
-msgid "app.schema.offer.free"
-msgstr "Full search, 1 watchlist, application tracker"
-
 #. Free tier description
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx
 msgid "home.pricing.free.description"
-msgstr "Full search, one watchlist, and a built-in application tracker to manage your pipeline."
+msgstr "Full search, up to 10 watchlists, and a built-in application tracker to manage your pipeline."
+
+#. WebApplication JSON-LD offer description for the Free plan.
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx
+msgid "app.schema.offer.free"
+msgstr "Full search, up to 10 watchlists, email alerts, application tracker"
 
 #. Employment type: full-time
 #. js-lingui-explicit-id
@@ -3128,6 +3158,12 @@ msgstr "Narrow the search first"
 msgid "search.aiFilter.reminder.title"
 msgstr "Narrow these results"
 
+#. Pro tier description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+msgid "home.pricing.pro.description"
+msgstr "Narrow your watchlists with AI filtering."
+
 #. State-neutral title of the scroll reminder for an already-narrowed watchlist
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -3542,6 +3578,12 @@ msgstr "Overview"
 msgid "license.toc.overview"
 msgstr "Overview"
 
+#. Merchant of record and tax disclosure
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.paddleSeller"
+msgstr "Paddle handles payments and applicable taxes. Your final total is shown at checkout."
+
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -3658,7 +3700,7 @@ msgstr "Period"
 #. js-lingui-explicit-id
 #: src/components/settings/account/DeleteAccountSection.tsx
 msgid "settings.account.delete.description"
-msgstr "Permanently delete your account and all associated data. This action cannot be undone."
+msgstr "Permanently delete your account and all associated data, and cancel any subscription immediately. This action cannot be undone."
 
 #. Interview type label: phone screen
 #. js-lingui-explicit-id
@@ -3677,12 +3719,6 @@ msgstr "Pick the companies you care about, set your filters, and get a private l
 #: src/components/settings/BillingSettings.tsx
 msgid "settings.billing.plan.title"
 msgstr "Plan"
-
-#. Pro plan availability detail
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.pro.f1"
-msgstr "Plan details coming soon"
 
 #. Error when company request input is empty
 #. Error when company request input is empty
@@ -4473,6 +4509,12 @@ msgstr "Search with suggested filters"
 msgid "search.bar.placeholder"
 msgstr "Search..."
 
+#. Paddle payment link page title
+#. js-lingui-explicit-id
+#: src/components/PaddlePaymentLink.tsx
+msgid "checkout.title"
+msgstr "Secure checkout"
+
 #. Feature: application stats description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
@@ -4783,6 +4825,12 @@ msgstr "Star companies"
 msgid "search.card.starred"
 msgstr "Starred"
 
+#. Button opening Paddle checkout for a seven-day trial
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.startTrial"
+msgstr "Start 7-day free trial"
+
 #. Free tier CTA
 #. js-lingui-explicit-id
 #: src/components/Pricing.tsx
@@ -4848,6 +4896,12 @@ msgstr "Submit"
 #: src/components/search/request-company.tsx
 msgid "app.home.request.submitting"
 msgstr "Submitting..."
+
+#. Subscribe again without another trial
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.subscribe"
+msgstr "Subscribe to Pro"
 
 #. Subscription settings nav link
 #. js-lingui-explicit-id
@@ -5160,24 +5214,6 @@ msgstr "Under Active Development"
 msgid "privacy.rights.intro"
 msgstr "Under GDPR you can ask for a copy of your data, have it corrected or deleted, export it, or object to processing. Delete your account and everything is wiped within 30 days."
 
-#. Pro feature: unlimited watchlists
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.f1"
-msgstr "Unlimited watchlists"
-
-#. Pro tier description
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.description"
-msgstr "Unlimited watchlists with email alerts so you never miss an opening."
-
-#. WebApplication JSON-LD offer description for the Pro plan.
-#. js-lingui-explicit-id
-#: app/[lang]/layout.tsx
-msgid "app.schema.offer.pro"
-msgstr "Unlimited watchlists, email alerts on new matches"
-
 #. Unsave job aria label
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
@@ -5189,6 +5225,12 @@ msgstr "Unsave job"
 #: src/components/search/save-button.tsx
 msgid "search.save.unsave"
 msgstr "Unsave job"
+
+#. Free feature: watchlist limit
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+msgid "home.pricing.free.f2"
+msgstr "Up to 10 watchlists"
 
 #. Free plan feature: universal watchlist limit
 #. js-lingui-explicit-id
@@ -5237,6 +5279,12 @@ msgstr "Upgrade to evaluate a focused job feed against the criteria that matter 
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.requestCompany"
 msgstr "Use the request form on the explore page — paste a careers page URL or company name and we'll start indexing it. You can track progress via the issue number we return."
+
+#. Paddle payment link page instructions
+#. js-lingui-explicit-id
+#: src/components/PaddlePaymentLink.tsx
+msgid "checkout.description"
+msgstr "Use your payment link to open Paddle’s secure checkout or update your payment method."
 
 #. Generic account error when the current user row is missing
 #. js-lingui-explicit-id
@@ -5391,6 +5439,12 @@ msgstr "We believe job search should be driven by the person searching, not by a
 msgid "privacy.hero.description"
 msgstr "We collect only what we need, we don’t sell your data, and you can delete everything at any time."
 
+#. Account deletion cannot proceed until recurring payments are canceled
+#. js-lingui-explicit-id
+#: src/components/settings/account/DeleteAccountSection.tsx
+msgid "settings.account.delete.billingError"
+msgstr "We could not stop your billing. Please retry account deletion shortly or contact support."
+
 #. Explains fail-closed behavior when the exact candidate count is unavailable
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -5492,6 +5546,12 @@ msgstr "We use a handful of third-party services for sign-in, hosting, and stora
 #: src/components/search/search-bar.tsx
 msgid "search.bar.request.subtext"
 msgstr "We'll start tracking it"
+
+#. Shown after checkout while waiting for verified subscription activation
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.processing"
+msgstr "We’re confirming your subscription. If your plan hasn’t updated yet, refresh shortly."
 
 #. Heading prefix on the agent-prompt success card; followed by the company name
 #. js-lingui-explicit-id
@@ -5621,6 +5681,12 @@ msgstr "Yes. The crawler and extraction pipeline are fully open source on GitHub
 msgid "watchlists.jobList.yesterday"
 msgstr "Yesterday"
 
+#. Checkout blocked because an account already has a subscription
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.billingAlreadySubscribed"
+msgstr "You already have a subscription. Use Manage subscription to make changes."
+
 #. Account deletion
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
@@ -5693,6 +5759,12 @@ msgstr "You've hit the hourly limit for company requests. Please try again later
 msgid "app.home.request.error.rateLimited"
 msgstr "You've hit the hourly limit for company requests. Please try again later."
 
+#. Checkout completed but subscription webhook is still processing
+#. js-lingui-explicit-id
+#: src/lib/action-error-messages.ts
+msgid "actions.error.billingProcessing"
+msgstr "Your checkout is still processing. Please refresh this page shortly."
+
 #. Feature section 3 eyebrow text
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
@@ -5711,6 +5783,13 @@ msgstr "Your copy will keep the standard filters. On Free, you won’t be able t
 msgid "auth.verify.success.description"
 msgstr "Your email has been verified."
 
+#. Trial end date in billing settings
+#. js-lingui-explicit-id
+#. placeholder {0}: new Intl.DateTimeFormat(i18n.locale).format(new Date(planInfo.periodEnd))
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.trialEnds"
+msgstr "Your free trial ends on {0}."
+
 #. Description after successful password reset
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx
@@ -5722,6 +5801,12 @@ msgstr "Your password has been reset. You can now sign in with your new password
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.title"
 msgstr "Your rights"
+
+#. Subscription canceled at the end of the current billing period
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "settings.billing.cancellationScheduled"
+msgstr "Your subscription will end after the current period. You can manage it in the billing portal."
 
 #. Username section description without retired public-profile wording
 #. js-lingui-explicit-id

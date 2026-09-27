@@ -2,6 +2,7 @@
 
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import { paidEntitlementCondition } from "@/lib/paid-entitlement";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSession } from "@/lib/sessionCache";
 import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
@@ -66,13 +67,8 @@ async function _fetchBootstrapForUser(userId: string): Promise<{
     () =>
       db.execute<Row & Record<string, unknown>>(sql`
         SELECT
-          (SELECT s.plan
-            FROM subscription s
-            WHERE s.user_id = ${userId}
-              AND s.status = 'active'
-              AND (s.ends_at IS NULL OR s.ends_at > now())
-            LIMIT 1
-          ) AS plan,
+          CASE WHEN ${paidEntitlementCondition(userId)}
+            THEN 'unlimited' ELSE 'free' END AS plan,
           (SELECT row_to_json(p) FROM (
             SELECT
               theme,

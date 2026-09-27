@@ -387,6 +387,38 @@ export const subscription = pgTable(
   ],
 );
 
+// Paddle owns these records; legacy/manual subscriptions remain independent.
+export const paddleAccount = pgTable("paddle_account", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  environment: text("environment", { enum: ["sandbox", "production"] }).notNull(),
+  customerId: text("customer_id"),
+  pendingTransactionId: text("pending_transaction_id"),
+  pendingPriceId: text("pending_price_id"),
+  trialUsedAt: timestamp("trial_used_at", { withTimezone: true }),
+  deletionRequested: boolean("deletion_requested").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  check("paddle_account_environment_check", sql`${table.environment} IN ('sandbox', 'production')`),
+  uniqueIndex("idx_paddle_account_user_environment").on(table.userId, table.environment),
+  uniqueIndex("idx_paddle_account_customer_environment").on(table.customerId, table.environment),
+  uniqueIndex("idx_paddle_account_transaction").on(table.pendingTransactionId),
+]);
+
+export const paddleSubscription = pgTable("paddle_subscription", {
+  id: text("id").primaryKey(),
+  accountId: uuid("account_id").notNull().references(() => paddleAccount.id, { onDelete: "cascade" }),
+  status: text("status").notNull(),
+  priceId: text("price_id"),
+  expectedPriceId: text("expected_price_id").notNull(),
+  entitled: boolean("entitled").default(false).notNull(),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  scheduledCancelAt: timestamp("scheduled_cancel_at", { withTimezone: true }),
+  // Preserve provider microseconds when comparing out-of-order deliveries.
+  eventOccurredAt: timestamp("event_occurred_at", { withTimezone: true, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("idx_paddle_subscription_account").on(table.accountId)]);
+
 export const industry = pgTable("industry", {
   id: smallint("id").primaryKey(),
   name: text("name").notNull().unique(),
