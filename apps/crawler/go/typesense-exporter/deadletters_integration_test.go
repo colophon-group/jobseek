@@ -154,6 +154,7 @@ func TestDeadlettersPostgresRedisReadOnly(t *testing.T) {
 		t.Fatal("corrupt Redis authority was silently classified")
 	}
 	exerciseDeadletterRecovery(t, ctx, conn, dsn, schema, admin, input)
+	exerciseLiveLeaseReaper(t, ctx, pool, admin)
 }
 func lenByLane(entries []deadletterEntry, lane string) int {
 	count := 0

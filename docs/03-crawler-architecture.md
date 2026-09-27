@@ -120,6 +120,13 @@ host-circuit metrics with the bounded, backward-compatible label
 
 ### Inflight Leases And Dead-Letter Recovery
 
+The expired-lease reaper runs as `go-typesense-exporter --reap-leases`, one
+supervised child per worker. Go owns both lane sweeps and the 30-second loop;
+the Python worker forwards its events to the existing metrics and reaps it
+on shutdown. An unexpected child exit triggers the pipeline's existing early
+exit/drain behavior. Failed PostgreSQL lifecycle observation does not stop
+Redis lease recovery.
+
 `claim_work.lua` moves claimed tasks into `inflight:<wtype>` with a lease deadline. Workers clear the lease when they reschedule or complete the task, and the reaper moves expired leases back to the appropriate per-domain queue. If the same task expires too many times (`redis_reaper_max_strikes`), the reaper stops retrying it and parks the descriptor in `deadletter:<wtype>`.
 
 `go-typesense-exporter --inspect-deadletters` owns the read-only lifecycle join.

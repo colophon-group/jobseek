@@ -18,6 +18,14 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--reap-leases" {
+		if err := runLeaseReaper(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if len(os.Args) == 2 && os.Args[1] == "--inspect-deadletters" {
 		if err := runDeadletters([]string{"inspect"}); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -105,7 +113,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--deadletters inspect|retry|prune [--entry REF] [--apply]|--inspect-deadletters|--run|--backfill|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
+		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--reap-leases|--deadletters inspect|retry|prune [--entry REF] [--apply]|--inspect-deadletters|--run|--backfill|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
 		os.Exit(2)
 	}
 	var input struct {

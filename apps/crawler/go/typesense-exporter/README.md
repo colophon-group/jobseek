@@ -80,3 +80,28 @@ the legacy raw-ID lookup is insufficient retirement evidence for mutation.
 `testdata/deadletter_fixture.json` is the retained Python oracle; regenerate
 from `apps/crawler` with `PYTHONPATH=. python
 go/typesense-exporter/testdata/generate_deadletter_fixture.py`.
+
+## Expired-lease recovery loop
+
+`go-typesense-exporter --reap-leases` is the worker's supervised Go recovery
+process. Go owns the interval, both simple/browser sweeps, depth reads, and
+dead-letter lifecycle join. Python's worker host only forwards config, exports
+the existing metrics from Go's NDJSON events, and terminates/reaps the process
+on shutdown. An unexpected child exit fails the existing pipeline supervisor;
+there is no Python recovery fallback.
+
+The loop waits `REAPER_INTERVAL_SECONDS` (default 30, minimum 1) before each
+tick, retaining the existing one-loop-per-worker, both-lanes-per-tick behavior.
+`REAPER_BATCH_SIZE` defaults to 200 and `REAPER_MAX_STRIKES` to 5. Each sweep
+uses Redis time and the canonical `reap_expired.lua`, checked byte-for-byte
+against its retained source. Publisher throttle/ready tiers, existing scores,
+repair deadlines, strike limits, missing-config behavior and B0 ownership
+quarantine are preserved. Failed lane sweeps and failed lifecycle observation
+are reported independently; a database outage cannot prevent later recovery
+ticks. Redis mutations are not automatically replayed on transport errors.
+
+Credentials are the existing worker `REDIS_URL` and `LOCAL_DATABASE_URL`.
+No Typesense access or additional service port is required. Read-only lifecycle
+work uses one database connection; per-operation deadlines and signal handling
+bound shutdown. This is a scheduler-stage port, not the final Go worker runtime
+or a claim of whole-lane resource improvement.

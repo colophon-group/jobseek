@@ -6,6 +6,24 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implemented next: Go expired-lease recovery (not deployed)
+
+The scheduler's reaper loop now runs in a supervised Go process. It owns the
+interval, both Redis lane sweeps and the dead-letter lifecycle join. The
+remaining Python worker is a process/metrics adapter for this stage; it no
+longer decides when or how expired leases recover. The canonical Lua and
+publisher/queue policy are preserved. The frozen Python fixture checks exact
+Redis state across 16 cases and three consecutive sweeps per case, including
+batch bounds, unchanged due times, poison strikes, repair deadlines, missing
+configs, ready tiers/rotation and the Lightpanda ownership guard. Real Redis
+and PostgreSQL also exercise the complete sweep/dead-letter/classification
+tick. Child cancellation, early exit, force-kill fallback and metric labels
+are covered at the Python supervisor boundary.
+
+This release remains queued behind the full maintenance proof and earlier Go
+maintenance PRs. Do not deploy over the running mutation lock or claim this
+completes worker scheduling, the full pipeline or #7966.
+
 ## Progress: 2026-09-27 13:40 UTC — backfill complete, proof running
 
 The Go phase of [maintenance 36317322087](https://github.com/colophon-group/jobseek/actions/runs/36317322087)
