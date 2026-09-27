@@ -786,6 +786,11 @@ async def run() -> None:
         # has already populated the environment; exec forwards signals/status
         # directly and opens no Python database pools or metrics server.
         os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--backfill"])
+    if args.command == "setup-typesense":
+        command = ["go-typesense-exporter", "--setup-schemas"]
+        if args.force:
+            command.append("--force")
+        os.execvp(command[0], command)
     setup_logging(settings.log_level)
 
     log.info("cli.starting", command=args.command, worker_id=WORKER_ID)
@@ -1339,11 +1344,6 @@ async def run() -> None:
                     updated_at=result.updated_at.isoformat(),
                     count=result.count,
                 )
-
-        elif args.command == "setup-typesense":
-            from src.typesense_schema import run_setup
-
-            run_setup(force=args.force)
 
         elif args.command == "notify-indexnow":
             start_metrics_server(settings.metrics_port)

@@ -2313,7 +2313,7 @@ docker run --rm \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-setup-typesense \
   "$CRAWLER_IMAGE_REF" \
-  uv run --no-sync crawler setup-typesense
+  go-typesense-exporter --setup-schemas
 
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
 FORWARD_SYNC_STARTED=1
