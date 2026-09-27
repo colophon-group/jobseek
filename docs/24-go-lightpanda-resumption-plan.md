@@ -59,14 +59,19 @@ CPU/RAM/density/cost proof remain open.
 
 ## Implementation checkpoint: SmartRecruiters and Personio broad routes
 
-The existing Go SmartRecruiters and Personio monitor binaries now have default
-100% routes for their supported configurations. The previous three-run,
+The existing Go SmartRecruiters and Personio monitor binaries and Compose
+environment now have default 100% routes for their supported configurations.
+The previous three-run,
 500-posting eligibility ceiling no longer excludes large boards or new boards;
 the native 50,000-posting boundary and bounded response/output accounting remain.
 Personio follows the Python monitor's configured slug precedence, preferred
 `.de`/`.com` domain and custom-career-URL behavior. Its Python bridge now reads
 child output with a bound and reaps a cancelled child. Explicit board selectors
-and percentage-zero rollback remain available.
+and percentage-zero rollback remain available. The previous production
+Compose default pins SmartRecruiters at 0%, while its selector overlay pins
+Personio at 5%; the next supported rollback/clear must remove the Personio
+pin, and the post-deploy stage helper must preserve the other 24 exact
+selectors without reintroducing it.
 
 A read-only 2026-09-28 production registry snapshot found **129 enabled
 SmartRecruiters and 55 enabled Personio** boards. All 184 select Go with this
