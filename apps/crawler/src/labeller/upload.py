@@ -512,7 +512,7 @@ def push_to_hub(
         # README counts cover every JSONL that will exist on HF after this
         # upload. Start from remote truth, then overlay only the staged dates.
         # This keeps scoped backfills from temp worktrees from dropping old
-        # dates from the public dataset card.
+        # dates from the private dataset card.
         counts_by_date = _readme_counts_for_upload(api, by_date)
         (stage / "README.md").write_text(_readme_text(counts_by_date))
         (stage / "LICENSE").write_text(DATASET_LICENSE)

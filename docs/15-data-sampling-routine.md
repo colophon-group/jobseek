@@ -1,7 +1,7 @@
 # Daily labelled-postings routine
 
 Scheduled agent routine that samples job postings, labels them via
-task-specific subagents, and uploads a gold dataset to a public HuggingFace
+task-specific subagents, and uploads a gold dataset to a private HuggingFace
 dataset repo (`viktoroo/jobseek-postings-labelled`). Codex is the preferred
 path for new pilots; the existing Claude Code slash command remains a
 compatible alternate path. The dataset is the substrate for training a better

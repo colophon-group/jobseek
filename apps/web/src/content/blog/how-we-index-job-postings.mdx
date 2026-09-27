@@ -24,7 +24,7 @@ For Anthropic specifically — a Greenhouse board — the monitor hits `https://
 Two rules govern every request the crawler makes:
 
 - **A few seconds between requests to the same host.** Default is 2s, dropping to 0.5s for known-friendly ATS domains. A full board re-check fires at most once an hour. Even at the largest companies in our set, we're never the loudest visitor on the careers page. Concurrency budget per IP, exponential backoff on errors, automatic disable after 5 consecutive failures so a misconfigured or moved board fails loudly instead of silently.
-- **`robots.txt` is currently a discovery source.** We read sitemap directives from it; Disallow enforcement is not yet active and the rollout is [tracked publicly](https://github.com/colophon-group/jobseek/issues/2841). We respect the EU's TDM-Reservation (text and data mining opt-out) header for companies that emit it. Most requests use a stable browser-compatible User-Agent because some ATS and WAF paths reject bot UAs; source-specific paths may use an identifying Job Seek UA.
+- **Request identity and content restrictions.** Most requests use a stable browser-compatible User-Agent; source-specific paths may use an identifying Job Seek UA. Our [indexing policy](https://jseek.co/en/how-we-index) describes current content-restriction handling and how to contact us.
 
 This isn't generosity, it's how you stay welcome over years. The number of companies that have asked us to slow down or stop is small, which is the only metric here that matters.
 

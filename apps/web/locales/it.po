@@ -2667,7 +2667,7 @@ msgstr "Come si comporta il crawler sul sito della mia azienda?"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/how-we-index/page.tsx
 msgid "indexing.meta.description"
-msgstr "Come Job Seek scopre e indicizza le offerte: fonti, frequenza di crawl, limiti di frequenza, rilevamento tramite robots.txt, gestione di TDM-Reservation e opt-out."
+msgstr "Come Job Seek scopre e indicizza le offerte: fonti, frequenza di crawl, limiti di frequenza, restrizioni sui contenuti e opt-out."
 
 #. FAQ question about job listing refresh cadence.
 #. js-lingui-explicit-id
@@ -5520,7 +5520,7 @@ msgstr "L'azienda che stai cercando non esiste o è stata rimossa."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.transparency.p1"
-msgstr "Il codice del crawler è open source, così chiunque può verificare come raccogliamo i dati. Controlliamo robots.txt per rilevare le sitemap, rispettiamo gli header TDM-Reservation e distanziamo le richieste per dominio di rate limit. Ogni link in uscita include utm_source=jobseek, così i datori di lavoro sanno da dove arriva il traffico."
+msgstr "Il codice del crawler è open source, così chiunque può verificare come raccogliamo i dati. Distanziamo le richieste per dominio di rate limit. La nostra pagina di indicizzazione descrive la gestione attuale delle restrizioni sui contenuti e come contattarci. Ogni link in uscita include utm_source=jobseek, così i datori di lavoro sanno da dove arriva il traffico."
 
 #. FAQ answer explaining crawler discovery and refresh frequency.
 #. js-lingui-explicit-id
@@ -5978,17 +5978,17 @@ msgstr "Non vendiamo, affittiamo o condividiamo i tuoi dati per scopi di marketi
 msgid "faq.a.differentiation"
 msgstr "Indicizziamo le pagine carriere delle aziende direttamente, non feed di terze parti. Niente spam dei recruiter, nessun annuncio fantasma ripubblicato, e ricontrolliamo le aziende frequentemente — così la maggior parte delle posizioni appare qui entro poche ore dalla pubblicazione. Siamo costruiti per chi sa già in quali aziende vuole lavorare, non per ricerche generiche del tipo «trovami un lavoro qualsiasi»."
 
-#. FAQ answer accurately summarizing robots handling, request identity, pacing, and TDM policy.
+#. FAQ answer summarizing request identity, pacing, and the indexing-policy contact route.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.crawlingPolicy"
-msgstr "Controlliamo robots.txt per rilevare le sitemap; l'applicazione delle regole Disallow non è ancora attiva. Rispettiamo gli header TDM-Reservation, distanziamo le richieste per dominio di rate limit e usiamo il backoff esponenziale. La maggior parte delle richieste usa uno User-Agent stabile e compatibile con i browser; alcuni percorsi specifici per una fonte possono usare uno UA Job Seek identificabile. Consulta la nostra pagina sull'indicizzazione per tutti i dettagli."
+msgstr "Distanziamo le richieste per dominio di rate limit e usiamo un backoff esponenziale. La maggior parte delle richieste usa uno User-Agent stabile e compatibile con i browser; percorsi specifici per una fonte possono usare uno UA Job Seek identificabile. La nostra pagina di indicizzazione descrive la gestione attuale delle restrizioni sui contenuti e riporta i nostri contatti."
 
 #. Step 1 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.ingestion.s1.body"
-msgstr "Cerchiamo una sitemap che elenchi già tutte le pagine carriere o di dettaglio degli annunci — idealmente collegata da <0>robots.txt</0> — e ci affidiamo ad essa ogni volta che è possibile."
+msgstr "Cerchiamo una sitemap che elenchi già tutte le pagine delle carriere o dei dettagli delle offerte e ci affidiamo ad essa quando possibile."
 
 #. Ingestion section description
 #. js-lingui-explicit-id

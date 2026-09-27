@@ -111,7 +111,7 @@ export function HowWeIndexContent() {
                   <span className="font-semibold"><Trans id="indexing.ingestion.s1.title" comment="Step 1 title">Sitemap first.</Trans></span>{" "}
                   <span className="text-muted">
                     <Trans id="indexing.ingestion.s1.body" comment="Step 1 body">
-                      We look for a sitemap that already lists every careers or job detail page{"\u2014"}ideally linked from <code>robots.txt</code>{"\u2014"}and rely on it whenever possible.
+                      We look for a sitemap that already lists every careers or job detail page and rely on it whenever possible.
                     </Trans>
                   </span>
                 </li>

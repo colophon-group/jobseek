@@ -2667,7 +2667,7 @@ msgstr "How does the crawler behave on my company's website?"
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/how-we-index/page.tsx
 msgid "indexing.meta.description"
-msgstr "How Job Seek discovers and indexes job postings: sourcing, crawl frequency, rate limits, robots.txt discovery, TDM-Reservation handling, and how to opt out."
+msgstr "How Job Seek discovers and indexes job postings: sourcing, crawl frequency, rate limits, content restrictions, and how to opt out."
 
 #. FAQ question about job listing refresh cadence.
 #. js-lingui-explicit-id
@@ -5520,7 +5520,7 @@ msgstr "The company you are looking for does not exist or has been removed."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
 msgid "about.transparency.p1"
-msgstr "The crawler code is open source so anyone can audit how we collect data. We inspect robots.txt for sitemap discovery, honor TDM-Reservation headers, and pace requests per rate-limit domain. Every outbound link includes utm_source=jobseek so employers know where their traffic comes from."
+msgstr "The crawler code is open source so anyone can audit how we collect data. We pace requests per rate-limit domain. Our Job Indexing page describes current content-restriction handling and how to contact us. Every outbound link includes utm_source=jobseek so employers know where their traffic comes from."
 
 #. FAQ answer explaining crawler discovery and refresh frequency.
 #. js-lingui-explicit-id
@@ -5978,17 +5978,17 @@ msgstr "We don’t sell, rent, or share your data for marketing."
 msgid "faq.a.differentiation"
 msgstr "We index company career pages directly, not third-party feeds. No recruiter spam, no reposted ghost jobs, and we re-check companies frequently — so most roles show up here within hours of being published. We're built for users who already know which companies they want to work at, not broad 'find me any job' searches."
 
-#. FAQ answer accurately summarizing robots handling, request identity, pacing, and TDM policy.
+#. FAQ answer summarizing request identity, pacing, and the indexing-policy contact route.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.crawlingPolicy"
-msgstr "We inspect robots.txt for sitemap discovery; Disallow enforcement is not yet active. We respect TDM-Reservation headers, pace requests per rate-limit domain, and use exponential backoff. Most requests use a stable browser-compatible User-Agent, while source-specific paths may use an identifying Job Seek UA. See our Job Indexing page for full details."
+msgstr "We pace requests per rate-limit domain and use exponential backoff. Most requests use a stable browser-compatible User-Agent, while source-specific paths may use an identifying Job Seek UA. See our Job Indexing page for current content-restriction handling and contact details."
 
 #. Step 1 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.ingestion.s1.body"
-msgstr "We look for a sitemap that already lists every careers or job detail page—ideally linked from <0>robots.txt</0>—and rely on it whenever possible."
+msgstr "We look for a sitemap that already lists every careers or job detail page and rely on it whenever possible."
 
 #. Ingestion section description
 #. js-lingui-explicit-id
