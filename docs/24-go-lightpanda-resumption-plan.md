@@ -6,27 +6,55 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
-## Implementation: shared Go classification, v0.13.875 candidate
+## Production checkpoint: 2026-09-27 — shared Go classification v0.13.875
 
-The resident `job-enrichment` binary replaces occupation, seniority and
-technology matching in both monitor and detail CPU processing. Compose selects
-Go; Python is an explicit cold rollback option. Requests are bounded and
-serialized, failures reap the native child, and there is no hidden Python
-fallback. The remaining CPU helpers and Python worker/scheduling/persistence
-ownership remain in scope for #7966.
+PR #10102 merged as `7f27c5006e45b484801494c149b262371bbf307c`.
+[Deployment 36340121669](https://github.com/colophon-group/jobseek/actions/runs/36340121669)
+succeeded. **Go now owns occupation, seniority and technology matching in
+monitor and detail CPU processing.** Each of the three HTTP workers and the
+browser worker has one resident native matcher; observed retained RSS is
+about 11–12 MiB per child. The Python worker, remaining CPU stages (HTML,
+language, location, salary, experience), scheduling and persistence remain
+in scope for #7966.
 
-Verification: 336 focused tests, Go race/vet/module checks, all 1,568 frozen
-title cases and 2,056 technology cases. A read-only sample of 256 actual stored
-postings from 128 boards and eight locales matched every classification field.
-No new publisher requests were made. Same-byte local replay (2,560 completions
-per arm, Python/Go/Go/Python) used approximately 44% less classification CPU
-including the resident child and bridge. The Go child added roughly 16.8 MB
-peak RSS; parent/child peaks are separate and this does not prove a whole-lane
-RAM or cost improvement. See
-[`evidence/go-job-enrichment-replay-2026-09-27.json`](evidence/go-job-enrichment-replay-2026-09-27.json).
-Installed-image CI and production cutover/readback remain pending. Preserve the
-current 26 selectors through supported c1 cold rollback, exact clear, release,
-restage and reactivation; do not force due work.
+Required CI, installed-runtime contracts and the installed-image offline Go
+parity step passed. Local verification covered 336 focused tests, 1,568 frozen
+title cases, 2,056 technology inputs and exact same-byte replay of 256 actual
+stored postings from 128 boards and eight locales. Local counterbalanced
+replay used approximately 44% less classification CPU including native child
+and bridge; this does not establish whole-lane RAM or cost savings.
+See [replay evidence](evidence/go-job-enrichment-replay-2026-09-27.json).
+
+Natural production execution recorded 3,560 successful Go classifications
+before c1 reactivation and 17,475 in the later fresh-worker snapshot, with
+zero enrichment errors. A readback of 43 new postings matched stored values
+(mostly null discovery stubs). Among 25 recent scrapes, all five populated
+occupation predictions, two seniority predictions and seven technology sets
+matched persisted fields. Each comparison uses current Python reference
+semantics against stored inputs; null-retention and structured-internship
+policy remain intact. Typesense reported 268 successful exports, zero errors,
+zero lag and healthy status. The actual release's Go sync completed 7,879
+boards and 6,013 CSV companies at 18:29:08 UTC.
+
+Supported c1 rollback retired epoch 82 at 83, restored all five schedules,
+and left zero drops/write fences. All 26 exact selectors were cleared under
+the mutation lock, then restaged against the promoted revision above.
+C1 is active at **epoch 84**, accepted/audit_ok, with five ready records and
+zero inflight/dead; all services are healthy. C2 remains dark. The unchanged
+monitor route census is 2,956 Go / 4,923 Python, with zero routing errors.
+Natural newly selected SmartRecruiters/Pinpoint route proof remains separate
+from this shared classification evidence.
+
+The durable [production record](evidence/go-job-enrichment-production-2026-09-27.json)
+contains sanitized readbacks, metrics, process memory and exact selectors.
+Before another deployment or selector mutation, use supported `rollback c1`,
+then clear the current **26** selectors with
+`/tmp/jobseek-post-smartrecruiters-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`7f27c5006e45b484801494c149b262371bbf307c` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only against the next promoted
+revision and reactivate c1. No due times or publisher traffic were forced.
+The full #7966 migration and final whole-lane efficiency/retirement gate remain open.
 
 ## Production checkpoint: 2026-09-27 — SmartRecruiters v0.13.874
 
