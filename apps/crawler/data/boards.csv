@@ -344,6 +344,7 @@ allbirds,allbirds-retail,https://boards-api.greenhouse.io/v1/boards/allbirdsreta
 allegro,allegro-careers,https://careers.allegro.eu/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.allegro.eu/googlefeed.xml""}",skip,
 allen-control-systems,allen-control-systems-greenhouse,https://job-boards.greenhouse.io/allencontrolsystems,greenhouse,"{""token"": ""allencontrolsystems""}",skip,
 alliance,alliance-pinpoint,https://alliance.pinpointhq.com,pinpoint,"{""slug"": ""alliance""}",skip,
+alliance-animal-health,alliance-animal-health-careers,https://careers.smartrecruiters.com/AllianceAnimalHealth,smartrecruiters,,smartrecruiters,
 alliance-defending-freedom,alliance-defending-freedom-greenhouse,https://job-boards.greenhouse.io/alliancedefendingfreedom,greenhouse,"{""token"": ""alliancedefendingfreedom""}",skip,
 allianz,allianz-careers,https://careers.allianz.com/,phenom,,json-ld,
 allianz-suisse,allianz-suisse-careers,https://careers.allianz.com/ch/de/search-results,sitemap,"{""url_filter"": ""/ch/de/job/""}",json-ld,
