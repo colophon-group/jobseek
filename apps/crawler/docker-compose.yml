@@ -63,7 +63,7 @@ x-common-env: &common-env
   JOIN_CAPTURE_SLUGS: ${JOIN_CAPTURE_SLUGS:-}
   # Default-off Go Recruitee rich monitor and natural response capture.
   RECRUITEE_GO_BOARD_IDS: ${RECRUITEE_GO_BOARD_IDS:-}
-  RECRUITEE_GO_PERCENT: ${RECRUITEE_GO_PERCENT:-0}
+  RECRUITEE_GO_PERCENT: ${RECRUITEE_GO_PERCENT:-100}
   RECRUITEE_CAPTURE_TENANTS: ${RECRUITEE_CAPTURE_TENANTS:-}
   # Default-off Go Workable list monitor; the existing detail scraper remains scheduled.
   SMARTRECRUITERS_GO_BOARD_IDS: ${SMARTRECRUITERS_GO_BOARD_IDS:-}
@@ -76,7 +76,7 @@ x-common-env: &common-env
   WORKABLE_DETAIL_CAPTURE_JOBS: ${WORKABLE_DETAIL_CAPTURE_JOBS:-}
   # Default-off Go Pinpoint rich monitor and natural response capture.
   PINPOINT_GO_BOARD_IDS: ${PINPOINT_GO_BOARD_IDS:-}
-  PINPOINT_GO_PERCENT: ${PINPOINT_GO_PERCENT:-0}
+  PINPOINT_GO_PERCENT: ${PINPOINT_GO_PERCENT:-100}
   PINPOINT_CAPTURE_TENANTS: ${PINPOINT_CAPTURE_TENANTS:-}
   # Default-off direct HTTP replacement for the selected Booking DOM monitor.
   BOOKING_GO_BOARD_ID: ${BOOKING_GO_BOARD_ID:-}

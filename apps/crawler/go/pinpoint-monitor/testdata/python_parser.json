@@ -1,0 +1,5157 @@
+[
+  {
+    "name": "empty",
+    "body": {
+      "data": []
+    },
+    "expected": {
+      "jobs": [],
+      "truncated": false
+    }
+  },
+  {
+    "name": "full",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "requirements": "<p>Ship</p>",
+          "remote": true,
+          "hybrid": true,
+          "on_site": true,
+          "employment_type_code": "fulltime",
+          "published_at": "2026-09-27",
+          "locations": [
+            {
+              "city": "Zurich",
+              "country": "CH"
+            },
+            {
+              "city": "Zurich",
+              "country": "CH"
+            }
+          ],
+          "department": "Engineering",
+          "tags": [
+            "Go"
+          ],
+          "category_code": "TECH",
+          "id": 123,
+          "key_responsibilities": "<p>Deliver</p>",
+          "key_responsibilities_header": "Tasks",
+          "skills_knowledge_expertise": "<p>Go</p>",
+          "benefits": "<p>Time off</p>",
+          "benefits_header": "Benefits",
+          "location": {
+            "city": "Zurich",
+            "province": "ZH"
+          },
+          "workplace_type": "hybrid",
+          "employment_type": "full_time",
+          "deadline_at": "2026-10-01",
+          "job": {
+            "department": {
+              "name": "Tech"
+            },
+            "division": {
+              "name": "Cloud"
+            },
+            "requisition_id": "R1"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "<p>Build</p>\n<h3>Tasks</h3>\n<p>Deliver</p>\n<p>Go</p>\n<h3>Benefits</h3>\n<p>Time off</p>",
+          "locations": [
+            "Zurich, ZH"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-01",
+          "base_salary": null,
+          "metadata": {
+            "department": "Tech",
+            "division": "Cloud",
+            "requisition_id": "R1"
+          }
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "description-None",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-None",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-None",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-None",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "description-''",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": ""
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-''",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": ""
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-''",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": ""
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-''",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": ""
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "description-False",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": false
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-False",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": false
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-False",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": false
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-False",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": false
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "description-0",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": 0
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-0",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": 0
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-0",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": 0
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-0",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": 0
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "description-1",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": 1
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-1",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": 1
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-1",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": 1
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-1",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": 1
+        }
+      ]
+    },
+    "error": true
+  },
+  {
+    "name": "description-[]",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": []
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-[]",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": []
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-[]",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": []
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-[]",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": []
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "description-{}",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": {}
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-{}",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": {}
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-{}",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": {}
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-{}",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": {}
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "description-'text'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "text"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "text",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-'text'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": "text"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-'text'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": "text"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-'text'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "text"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "description-['x']",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": [
+            "x"
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "location-['x']",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": [
+            "x"
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "job-['x']",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "job": [
+            "x"
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace_type-['x']",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": [
+            "x"
+          ]
+        }
+      ]
+    },
+    "error": true
+  },
+  {
+    "name": "salary-None",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": null
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-''",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": ""
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": ""
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'year'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "year"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "year"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'yr'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "yr"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "yr"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'yearly'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "yearly"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "yearly"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'annual'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "annual"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "annual"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'annually'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "annually"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "annually"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per year'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per year"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per year"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per-year'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per-year"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per-year"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per-year-salary'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per-year-salary"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per-year-salary"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'yearly_annually'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "yearly_annually"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "yearly_annually"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'month'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "month"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "month"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "month"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'mo'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "mo"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "mo"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "month"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'monthly'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "monthly"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "monthly"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "month"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per month'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per month"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per month"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "month"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per-month'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per-month"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per-month"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "month"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per-month-salary'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per-month-salary"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per-month-salary"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "month"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'week'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "week"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "week"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "week"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'weekly'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "weekly"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "weekly"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "week"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per week'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per week"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per week"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "week"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per-week'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per-week"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per-week"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "week"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'two_weeks'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "two_weeks"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "two_weeks"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "week"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'biweekly'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "biweekly"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "biweekly"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "week"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'day'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "day"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "day"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "day"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'daily'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "daily"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "daily"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "day"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per day'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per day"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per day"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "day"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per-day'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per-day"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per-day"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "day"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'hour'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "hour"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "hour"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "hour"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'hr'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "hr"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "hr"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "hour"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'hourly'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "hourly"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "hourly"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "hour"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per hour'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per hour"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per hour"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "hour"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per-hour'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per-hour"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per-hour"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "hour"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'per-hour-wage'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "per-hour-wage"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "per-hour-wage"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "hour"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'UNKNOWN'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "UNKNOWN"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "UNKNOWN"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "salary-'\\x1chr\\x1f'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "salary": {
+            "min": 0,
+            "max": 12.5,
+            "currency": "EUR",
+            "period": "\u001chr\u001f"
+          },
+          "compensation_minimum": 0,
+          "compensation_maximum": 12.5,
+          "compensation_currency": "EUR",
+          "compensation_frequency": "\u001chr\u001f"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": "EUR",
+            "min": 0,
+            "max": 12.5,
+            "unit": "hour"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-onsite",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "onsite"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-on-site",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "on-site"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-on-site working",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "on-site working"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-onsite working",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "onsite working"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-on_site",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "on_site"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-on site",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "on site"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-office",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "office"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-in-office",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "in-office"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-in_office",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "in_office"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-in office",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "in office"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-on-premises",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "on-premises"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-in-person",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "in-person"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-in person",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "in person"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-no",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "no"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-remote",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "remote"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-remote working",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "remote working"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-telecommute",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "telecommute"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-work from home",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "work from home"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-wfh",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "wfh"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-fully remote",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "fully remote"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-100% remote",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "100% remote"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-fulltime",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "fulltime"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-hybrid",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "hybrid"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-hybrid working",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "hybrid working"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-office, remote",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "office, remote"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-remote, office",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "remote, office"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-office/remote",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "office/remote"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-remote/office",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "remote/office"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-flexible",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "flexible"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-partially remote",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "partially remote"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-partial",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "partial"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-punctual",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "punctual"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-remotework_none",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "remotework_none"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-remotework_full",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "remotework_full"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-remotework_partial",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "remotework_partial"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-vor ort",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "vor ort"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-büro",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "büro"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-homeoffice",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "homeoffice"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-home office",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "home office"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-fernarbeit",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "fernarbeit"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-remote arbeit",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "remote arbeit"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-teilweise remote",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "teilweise remote"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-flexibel",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "flexibel"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-sur site",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "sur site"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-sur place",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "sur place"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-présentiel",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "présentiel"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-en présentiel",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "en présentiel"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-bureau",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "bureau"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-télétravail",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "télétravail"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-à distance",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "à distance"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-travail à distance",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "travail à distance"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-hybride",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "hybride"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-travail à distance possible",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "travail à distance possible"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-télétravail partiel",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "télétravail partiel"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-gedeeltelijk afstandswerk",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "gedeeltelijk afstandswerk"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-afstandswerk mogelijk",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "afstandswerk mogelijk"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-volledig afstandswerk",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "volledig afstandswerk"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-geen afstandswerk",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "geen afstandswerk"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-in sede",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "in sede"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-in ufficio",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "in ufficio"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-in loco",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "in loco"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-da remoto",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "da remoto"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-lavoro da remoto",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "lavoro da remoto"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-telelavoro",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "telelavoro"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-lavoro a distanza",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "lavoro a distanza"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-ibrido",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "ibrido"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-HYBRID (one day)",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "HYBRID (one day)"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-\u001cremote\u001f",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "\u001cremote\u001f"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "workplace-unknown",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "workplace_type": "unknown"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "header-True",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "benefits": "Text",
+          "benefits_header": true
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "<h3>True</h3>\nText",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "header-False",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "benefits": "Text",
+          "benefits_header": false
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "Text",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "header-None",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "benefits": "Text",
+          "benefits_header": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "Text",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "header-0",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "benefits": "Text",
+          "benefits_header": 0
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "Text",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "header-1",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "benefits": "Text",
+          "benefits_header": 1
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "<h3>1</h3>\nText",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "header-'Heading'",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "benefits": "Text",
+          "benefits_header": "Heading"
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": "<h3>Heading</h3>\nText",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "visible-False",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "compensation_minimum": 1,
+          "compensation_visible": false
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "visible-None",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "compensation_minimum": 1,
+          "compensation_visible": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "visible-0",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "compensation_minimum": 1,
+          "compensation_visible": 0
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "visible-True",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "compensation_minimum": 1,
+          "compensation_visible": true
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": {
+            "currency": null,
+            "min": 1,
+            "max": null,
+            "unit": "year"
+          },
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "nontext-location-name",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "location": {
+            "name": 7,
+            "city": "Paris"
+          }
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Paris"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "nontext-frequency",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "compensation_minimum": 1,
+          "compensation_frequency": 5
+        }
+      ]
+    },
+    "error": true
+  },
+  {
+    "name": "hidden-nontext-frequency",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "compensation_minimum": 1,
+          "compensation_frequency": 5,
+          "compensation_visible": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
+  }
+]

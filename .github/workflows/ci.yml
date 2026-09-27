@@ -764,6 +764,22 @@ jobs:
             --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
             -I /fixtures/verify_installed.py /usr/local/bin/successfactors-rss-monitor-live
 
+      - name: Verify installed Recruitee parser parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/recruitee-monitor/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_installed.py /usr/local/bin/recruitee-monitor-live
+
+      - name: Verify installed Pinpoint parser parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/pinpoint-monitor/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_installed.py /usr/local/bin/pinpoint-monitor-live
+
       - name: Verify installed Ashby request parity offline
         run: |
           timeout --foreground --signal=TERM --kill-after=5s 90s \

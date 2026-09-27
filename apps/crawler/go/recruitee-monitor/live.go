@@ -8,12 +8,13 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
 )
 
-const maxResponseBytes = 16 << 20
+const maxResponseBytes = 64 << 20
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
 
 var tenantRE = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
@@ -108,57 +109,84 @@ type requestDoer interface {
 	Do(*http.Request) (*http.Response, error)
 }
 
+func validEndpoint(endpoint string) bool {
+	u, err := url.Parse(endpoint)
+	return err == nil && u.Scheme == "https" && u.Hostname() != "" && u.User == nil &&
+		(u.Port() == "" || u.Port() == "443") && u.Fragment == ""
+}
+
 func Fetch(ctx context.Context, client requestDoer, tenant string) (FetchResult, error) {
-	result := FetchResult{Inventory: Inventory{Jobs: []Job{}}}
 	if !tenantRE.MatchString(tenant) {
-		return result, errors.New("Recruitee tenant is not canonical")
+		return FetchResult{Inventory: Inventory{Jobs: []Job{}}}, errors.New("Recruitee tenant is not canonical")
 	}
-	endpoint := "https://" + tenant + ".recruitee.com/api/offers"
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return result, err
+	return fetchEndpoint(ctx, client, "https://"+tenant+".recruitee.com/api/offers")
+}
+
+func fetchEndpoint(ctx context.Context, client requestDoer, endpoint string) (FetchResult, error) {
+	result := FetchResult{Inventory: Inventory{Jobs: []Job{}}}
+	for hop := 0; hop <= 20; hop++ {
+		if !validEndpoint(endpoint) {
+			return result, errors.New("Recruitee requires a public HTTPS endpoint")
+		}
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+		if err != nil {
+			return result, err
+		}
+		request.Header.Set("User-Agent", userAgent)
+		result.Requests++
+		response, err := client.Do(request)
+		if err != nil {
+			return result, err
+		}
+		result.Responses++
+		result.Status = response.StatusCode
+		result.FinalURL = response.Request.URL.String()
+		if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
+			response.Body.Close()
+			result.ErrorKind = "tdm"
+			result.TDMPolicy = response.Header.Get("TDM-Policy")
+			return result, errors.New("tdm-reservation=1")
+		}
+		body, readErr := io.ReadAll(io.LimitReader(&readIdleBody{ReadCloser: response.Body, timeout: 30 * time.Second}, int64(maxResponseBytes-result.Bytes+1)))
+		response.Body.Close()
+		result.Bytes += len(body)
+		if readErr != nil {
+			return result, readErr
+		}
+		if result.Bytes > maxResponseBytes {
+			return result, errors.New("Recruitee response exceeded 64 MiB")
+		}
+		if tdmMetaReserved(body) {
+			result.ErrorKind = "tdm"
+			result.TDMPolicy = response.Header.Get("TDM-Policy")
+			return result, errors.New("tdm-reservation=1")
+		}
+		switch response.StatusCode {
+		case 301, 302, 303, 307, 308:
+			if response.Header.Get("Location") != "" {
+				target, err := response.Location()
+				if err != nil {
+					return result, err
+				}
+				endpoint = target.String()
+				continue
+			}
+		}
+		if response.StatusCode == 404 {
+			result.ErrorKind = "gone"
+			return result, errors.New("Recruitee tenant returned HTTP 404")
+		}
+		if response.StatusCode != 200 {
+			return result, fmt.Errorf("Recruitee returned HTTP %d", response.StatusCode)
+		}
+		inventory, err := Parse(body)
+		if err != nil {
+			return result, err
+		}
+		result.Inventory = inventory
+		return result, nil
 	}
-	request.Header.Set("User-Agent", userAgent)
-	result.Requests = 1
-	response, err := client.Do(request)
-	if err != nil {
-		return result, err
-	}
-	defer response.Body.Close()
-	result.Responses = 1
-	result.Status = response.StatusCode
-	result.FinalURL = response.Request.URL.String()
-	if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
-		result.ErrorKind = "tdm"
-		result.TDMPolicy = response.Header.Get("TDM-Policy")
-		return result, errors.New("tdm-reservation=1")
-	}
-	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBytes+1))
-	result.Bytes = len(body)
-	if err != nil {
-		return result, err
-	}
-	if len(body) > maxResponseBytes {
-		return result, errors.New("Recruitee response exceeded 16 MiB")
-	}
-	if tdmMetaReserved(body) {
-		result.ErrorKind = "tdm"
-		result.TDMPolicy = response.Header.Get("TDM-Policy")
-		return result, errors.New("tdm-reservation=1")
-	}
-	if response.StatusCode == 404 {
-		result.ErrorKind = "gone"
-		return result, errors.New("Recruitee tenant returned HTTP 404")
-	}
-	if response.StatusCode != 200 {
-		return result, fmt.Errorf("Recruitee returned HTTP %d", response.StatusCode)
-	}
-	inventory, err := Parse(body)
-	if err != nil {
-		return result, err
-	}
-	result.Inventory = inventory
-	return result, nil
+	return result, errors.New("Recruitee exceeded 20 redirects")
 }
 
 func newClient() *http.Client {
@@ -167,8 +195,10 @@ func newClient() *http.Client {
 	transport.DialContext = publicDialContext
 	// A custom DialContext disables automatic HTTP/2 setup unless forced.
 	transport.ForceAttemptHTTP2 = true
+	transport.ResponseHeaderTimeout = 30 * time.Second
+	transport.TLSHandshakeTimeout = 30 * time.Second
 	return &http.Client{
-		Timeout: 30 * time.Second, Transport: transport,
+		Transport:     transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 }
@@ -177,4 +207,32 @@ func FetchTenant(ctx context.Context, tenant string) (FetchResult, error) {
 	client := newClient()
 	defer client.CloseIdleConnections()
 	return Fetch(ctx, client, tenant)
+}
+
+// FetchBase preserves the configured Python API-base precedence, including
+// custom domains. DNS validation applies on every request and redirect.
+func FetchBase(ctx context.Context, apiBase string) (FetchResult, error) {
+	u, err := url.Parse(apiBase)
+	if err != nil || !validEndpoint(apiBase) || u.RawQuery != "" || (u.Path != "" && u.Path != "/") {
+		return FetchResult{Inventory: Inventory{Jobs: []Job{}}}, errors.New("Recruitee requires an HTTPS API origin")
+	}
+	client := newClient()
+	defer client.CloseIdleConnections()
+	return fetchEndpoint(ctx, client, apiBase+"/api/offers")
+}
+
+// Match the Python HTTP client's read-inactivity timeout. A total request
+// deadline would also charge time spent waiting for downstream DB processing.
+type readIdleBody struct {
+	io.ReadCloser
+	timeout time.Duration
+}
+
+func (r *readIdleBody) Read(p []byte) (int, error) {
+	timer := time.AfterFunc(r.timeout, func() { _ = r.ReadCloser.Close() })
+	n, err := r.ReadCloser.Read(p)
+	if !timer.Stop() {
+		return n, context.DeadlineExceeded
+	}
+	return n, err
 }

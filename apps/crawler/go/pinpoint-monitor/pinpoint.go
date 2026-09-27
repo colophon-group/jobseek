@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
 )
 
 const MaxJobs = 50_000
@@ -59,6 +60,25 @@ func text(value any, field string) (string, error) {
 	return result, nil
 }
 
+func headerText(value any) (string, error) {
+	if !truthy(value) {
+		return "", nil
+	}
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case bool:
+		if v {
+			return "True", nil
+		}
+		return "False", nil
+	case json.Number:
+		return string(v), nil
+	default:
+		return "", errors.New("Pinpoint header must be scalar text")
+	}
+}
+
 func description(posting map[string]any) (any, error) {
 	parts := []string{}
 	for _, pair := range []struct{ field, header string }{
@@ -67,15 +87,12 @@ func description(posting map[string]any) (any, error) {
 		{"skills_knowledge_expertise", "skills_knowledge_expertise_header"},
 		{"benefits", "benefits_header"},
 	} {
-		body, err := text(posting[pair.field], pair.field)
-		if err != nil {
-			return nil, err
-		}
+		body, _ := posting[pair.field].(string)
 		if body == "" {
 			continue
 		}
 		if pair.header != "" {
-			header, err := text(posting[pair.header], pair.header)
+			header, err := headerText(posting[pair.header])
 			if err != nil {
 				return nil, err
 			}
@@ -98,12 +115,9 @@ func locations(posting map[string]any) ([]string, error) {
 	}
 	location, ok := raw.(map[string]any)
 	if !ok {
-		return nil, errors.New("Pinpoint location is not an object")
+		return nil, nil
 	}
-	name, err := text(location["name"], "location name")
-	if err != nil {
-		return nil, err
-	}
+	name, _ := location["name"].(string)
 	if name != "" {
 		return []string{name}, nil
 	}
@@ -128,7 +142,7 @@ func salaryUnit(value any) string {
 	if !ok {
 		return "year"
 	}
-	key := strings.ToLower(strings.TrimSpace(raw))
+	key := strings.ToLower(strings.TrimFunc(raw, func(r rune) bool { return unicode.IsSpace(r) || r >= 0x1c && r <= 0x1f }))
 	for _, pair := range []struct{ needle, unit string }{
 		{"two_weeks", "week"}, {"biweekly", "week"}, {"hour", "hour"},
 		{"month", "month"}, {"week", "week"}, {"year", "year"},
@@ -238,7 +252,7 @@ func locationType(value any) *string {
 	if !ok {
 		return nil
 	}
-	key := strings.ToLower(strings.TrimSpace(raw))
+	key := strings.ToLower(strings.TrimFunc(raw, func(r rune) bool { return unicode.IsSpace(r) || r >= 0x1c && r <= 0x1f }))
 	result, found := normalizedLocationTypes[key]
 	if !found && strings.HasSuffix(key, ")") {
 		if base, _, qualified := strings.Cut(key, " ("); qualified {
@@ -295,6 +309,19 @@ func parseJob(posting map[string]any) (Job, bool, error) {
 		employment = posting["employment_type_text"]
 		if !truthy(employment) {
 			employment = nil
+		}
+	}
+	if v := posting["workplace_type"]; truthy(v) {
+		if _, ok := v.(string); !ok {
+			return Job{}, false, errors.New("Pinpoint workplace type must be text")
+		}
+	}
+	visible, hasVisibility := posting["compensation_visible"]
+	if (posting["compensation_minimum"] != nil || posting["compensation_maximum"] != nil) && (!hasVisibility || truthy(visible)) {
+		if v := posting["compensation_frequency"]; v != nil {
+			if _, ok := v.(string); !ok {
+				return Job{}, false, errors.New("Pinpoint compensation frequency must be text")
+			}
 		}
 	}
 	return Job{

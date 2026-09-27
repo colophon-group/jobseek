@@ -10,9 +10,9 @@ import (
 )
 
 func main() {
-	input, err := io.ReadAll(io.LimitReader(os.Stdin, (16<<20)+1))
-	if err != nil || len(input) > 16<<20 {
-		fmt.Fprintln(os.Stderr, "Recruitee replay input exceeded 16 MiB")
+	input, err := io.ReadAll(io.LimitReader(os.Stdin, (64<<20)+1))
+	if err != nil || len(input) > 64<<20 {
+		fmt.Fprintln(os.Stderr, "Recruitee replay input exceeded 64 MiB")
 		os.Exit(1)
 	}
 	inventory, err := recruitee.Parse(input)

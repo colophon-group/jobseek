@@ -1,0 +1,896 @@
+[
+  {
+    "board_url": "https://autopilot.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://autopilot.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://11bitstudios.recruitee.com/",
+    "config": {
+      "slug": "11bitstudios",
+      "api_base": "https://11bitstudios.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://11bitstudios.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://agicap.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://agicap.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://asm.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://asm.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://alpha.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://alpha.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://assembly.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://assembly.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://florence.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://florence.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://bluebird.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bluebird.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://bungemagdeburggmbh.recruitee.com/",
+    "config": {
+      "slug": "bungemagdeburggmbh",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bungemagdeburggmbh.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://adarga.recruitee.com/",
+    "config": {
+      "slug": "adarga",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://adarga.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://bravo.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bravo.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://bridgefund.recruitee.com",
+    "config": {
+      "slug": "bridgefund",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bridgefund.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://celestia.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://celestia.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://ey.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://ey.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://gorgias.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://gorgias.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://climeworks.recruitee.com/",
+    "config": {
+      "slug": "climeworks",
+      "api_base": "https://climeworks.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://climeworks.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://jobs.cm.com/all-jobs",
+    "config": {
+      "slug": "cmcom",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://cmcom.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.convious.com/",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://careers.convious.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.convious.com/api/offers"
+  },
+  {
+    "board_url": "https://eraneos.recruitee.com/",
+    "config": {
+      "slug": "eraneos",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://eraneos.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://eraneosiberia.recruitee.com/",
+    "config": {
+      "slug": "eraneosiberia",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://eraneosiberia.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://www.hevs.ch/fr/emplois/",
+    "config": {
+      "slug": "hessovalaiswallis",
+      "api_base": "https://hessovalaiswallis.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://hessovalaiswallis.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://dnata.recruitee.com/",
+    "config": {
+      "slug": "dnata",
+      "api_base": "https://dnata.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://dnata.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.grantthornton.be/l/nl/",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://careers.grantthornton.be",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.grantthornton.be/api/offers"
+  },
+  {
+    "board_url": "https://causalens.recruitee.com/",
+    "config": {
+      "slug": "causalens",
+      "api_base": "https://causalens.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://causalens.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.dronamics.com/",
+    "config": {
+      "api_base": "https://careers.dronamics.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.dronamics.com/api/offers"
+  },
+  {
+    "board_url": "https://consultdss.recruitee.com/jobs",
+    "config": {
+      "slug": "consultdss",
+      "api_base": "https://consultdss.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://consultdss.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.anywhere.now/",
+    "config": {
+      "api_base": "https://careers.anywhere.now",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.anywhere.now/api/offers"
+  },
+  {
+    "board_url": "https://8advisory.recruitee.com/l/en/",
+    "config": {
+      "slug": "8advisory",
+      "api_base": "https://8advisory.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://8advisory.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://emertongroup.recruitee.com",
+    "config": {
+      "slug": "emertongroup",
+      "api_base": "https://emertongroup.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://emertongroup.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://eleqtron.recruitee.com/",
+    "config": {
+      "slug": "eleqtron",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://eleqtron.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://exa.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://exa.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://harmony.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://harmony.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://hp.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://hp.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://jobs.floryn.com/",
+    "config": {
+      "api_base": "https://jobs.floryn.com",
+      "scraper_type": "json-ld"
+    },
+    "endpoint": "https://jobs.floryn.com/api/offers"
+  },
+  {
+    "board_url": "https://jobs.dexterenergy.ai/job-openings",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://jobs.dexterenergy.ai",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://jobs.dexterenergy.ai/api/offers"
+  },
+  {
+    "board_url": "https://constellr.recruitee.com/",
+    "config": {
+      "slug": "constellr",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://constellr.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://grantthorntonaustria.recruitee.com/",
+    "config": {
+      "slug": "grantthorntonaustria",
+      "api_base": "https://grantthorntonaustria.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://grantthorntonaustria.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://grow.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://grow.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://heidelbergmaterialsbenelux.recruitee.com/",
+    "config": {
+      "slug": "heidelbergmaterialsbenelux",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://heidelbergmaterialsbenelux.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://hawkeye360.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://hawkeye360.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://werkenbij.howdennederland.nl/alle-vacatures",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://werkenbij.howdennederland.nl",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://werkenbij.howdennederland.nl/api/offers"
+  },
+  {
+    "board_url": "https://ibm.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://ibm.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.hydrosat.com/",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://careers.hydrosat.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.hydrosat.com/api/offers"
+  },
+  {
+    "board_url": "https://makersitegmbh.recruitee.com/",
+    "config": {
+      "slug": "makersitegmbh",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://makersitegmbh.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://auditdata.recruitee.com/",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://auditdata.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://leydenlabs.recruitee.com/",
+    "config": {
+      "slug": "leydenlabs",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://leydenlabs.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://leydenjar.recruitee.com/",
+    "config": {
+      "slug": "leydenjar",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://leydenjar.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://ib1.recruitee.com/",
+    "config": {
+      "slug": "ib1",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://ib1.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://lnfusedinnovations.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://lnfusedinnovations.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://m1.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://m1.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://mayflower.recruitee.com",
+    "config": {
+      "slug": "mayflower",
+      "api_base": "https://mayflower.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://mayflower.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://megagroupinternational.recruitee.com/",
+    "config": {
+      "slug": "megagroupinternational",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://megagroupinternational.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://mhiecpd.recruitee.com/",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://mhiecpd.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://msf.recruitee.com",
+    "config": {
+      "slug": "msf",
+      "api_base": "https://msf.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://msf.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.nearfieldinstruments.com/jobs",
+    "config": {
+      "api_base": "https://careers.nearfieldinstruments.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.nearfieldinstruments.com/api/offers"
+  },
+  {
+    "board_url": "https://jump.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://jump.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://nutrisense.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://nutrisense.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://oak.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://oak.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://optics11.recruitee.com/",
+    "config": {
+      "slug": "optics11",
+      "api_base": "https://optics11.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://optics11.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://parallel.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://parallel.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://personio.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://personio.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://ans.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://ans.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://artifactsa.recruitee.com/",
+    "config": {
+      "slug": "artifactsa",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://artifactsa.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://aikidosecurity.recruitee.com",
+    "config": {
+      "slug": "aikidosecurity",
+      "api_base": "https://aikidosecurity.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://aikidosecurity.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://safesize.recruitee.com/",
+    "config": {
+      "slug": "safesize",
+      "api_base": "https://safesize.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://safesize.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://speditiondecker.recruitee.com/",
+    "config": {
+      "slug": "speditiondecker",
+      "api_base": "https://speditiondecker.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://speditiondecker.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://speditionmaier.recruitee.com/",
+    "config": {
+      "slug": "speditionmaier",
+      "api_base": "https://speditionmaier.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://speditionmaier.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.atlys.com/",
+    "config": {
+      "api_base": "https://careers.atlys.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.atlys.com/api/offers"
+  },
+  {
+    "board_url": "https://projectivegroup.recruitee.com/",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://projectivegroup.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://prisma.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://prisma.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://propel.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://propel.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://clay.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://clay.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.qblox.com/vacancies",
+    "config": {
+      "api_base": "https://careers.qblox.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.qblox.com/api/offers"
+  },
+  {
+    "board_url": "https://qts.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://qts.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://qualifyzegmbh.recruitee.com/",
+    "config": {
+      "slug": "qualifyzegmbh",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://qualifyzegmbh.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://bitfinex.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bitfinex.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://reach.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://reach.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://remedyproductstudio.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://remedyproductstudio.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://bolster.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bolster.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://rift.recruitee.com/",
+    "config": {
+      "slug": "rift",
+      "api_base": "https://rift.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://rift.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://karriere.rsm.at/",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://karriere.rsm.at",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://karriere.rsm.at/api/offers"
+  },
+  {
+    "board_url": "https://careers.samotics.com/jobs",
+    "config": {
+      "api_base": "https://careers.samotics.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.samotics.com/api/offers"
+  },
+  {
+    "board_url": "https://zara.recruitee.com/",
+    "config": {
+      "slug": "zara",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://zara.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://europebv.nikon.com/all-open-positions",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://europebv.nikon.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.scwsystems.com/l/en/",
+    "config": {
+      "api_base": "https://careers.scwsystems.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.scwsystems.com/api/offers"
+  },
+  {
+    "board_url": "https://werkenbijsecuritastechnology.nl/vacatures",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://werkenbijsecuritastechnology.nl",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://werkenbijsecuritastechnology.nl/api/offers"
+  },
+  {
+    "board_url": "https://careers.semrush.com/",
+    "config": {
+      "slug": "semrush",
+      "api_base": "https://semrush.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://semrush.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://1x.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://1x.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://spark.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://spark.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://callista.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://callista.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://careers.source.ag",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://careers.source.ag",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://careers.source.ag/api/offers"
+  },
+  {
+    "board_url": "https://collective.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://collective.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://calendly.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://calendly.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://bamboohr.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://bamboohr.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://easypost.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://easypost.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://spring.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://spring.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://eleven.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://eleven.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://ethonai.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://ethonai.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://strike.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://strike.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://swordtechnologies.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://swordtechnologies.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://swordtech.recruitee.com/open-positions",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://swordtech.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://swisscom.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://swisscom.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://sword-services.ch/l/en/offres",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://sword-services.ch/api/offers"
+  },
+  {
+    "board_url": "https://career.tagaviation.com/",
+    "config": {
+      "slug": "careers-analytics",
+      "api_base": "https://career.tagaviation.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://career.tagaviation.com/api/offers"
+  },
+  {
+    "board_url": "https://technology.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://technology.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://tpcareer.com/l/en",
+    "config": {
+      "api_base": "https://tpcareer.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://tpcareer.com/api/offers"
+  },
+  {
+    "board_url": "https://tether.recruitee.com",
+    "config": {
+      "slug": "tether",
+      "api_base": "https://tether.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://tether.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://tytantechnologiesgmbh.recruitee.com/",
+    "config": {
+      "slug": "tytantechnologiesgmbh",
+      "api_base": "https://tytantechnologiesgmbh.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://tytantechnologiesgmbh.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://upside.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://upside.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://upgrade.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://upgrade.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://vdkgroep.recruitee.com/",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://vdkgroep.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://veritas.recruitee.com",
+    "config": {
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://veritas.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://vitestro.recruitee.com/",
+    "config": {
+      "slug": "vitestro",
+      "api_base": "https://vitestro.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://vitestro.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://zeotap.recruitee.com",
+    "config": {
+      "slug": "zeotap",
+      "api_base": "https://zeotap.recruitee.com",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://zeotap.recruitee.com/api/offers"
+  },
+  {
+    "board_url": "https://www.ergon.ch/en/careers/jobs",
+    "config": {
+      "api_base": "https://apply.ergon.ch",
+      "scraper_type": "skip"
+    },
+    "endpoint": "https://apply.ergon.ch/api/offers"
+  }
+]
