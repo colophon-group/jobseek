@@ -3606,6 +3606,13 @@ async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> Non
 
 
 def main():
+    # The standalone entrypoint must export the same dotenv values as crawler
+    # CLI before spawning the Go runtime (settings alone reads, but does not
+    # export, values from its env files).
+    import dotenv
+
+    dotenv.load_dotenv(".env.local")
+    dotenv.load_dotenv(".env")
     parser = argparse.ArgumentParser(description="Sync CSV config to database")
     parser.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     args = parser.parse_args()
