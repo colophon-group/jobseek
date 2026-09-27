@@ -1,0 +1,2637 @@
+[
+  {
+    "name": "detail-0",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-1",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-2",
+    "input": {
+      "id": "743999001003",
+      "name": "FR title",
+      "uuid": "00000000-0000-4000-8000-743999001003",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001003",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "fr"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "48.0",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "FR title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-3",
+    "input": {
+      "id": "743999001004",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001004",
+      "jobId": "819700b3-a847-46f1-9b08-cf23a9591f68",
+      "jobAdId": "10000000-0000-4000-8000-743999001004",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "  Stra\u00dfe-\u00c9  ",
+        "remote": false,
+        "hybrid": false,
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-4",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": null
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-5",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "hr"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-6",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "TWO_WEEKS"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-7",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "monthly"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-8",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "weird"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-9",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "91",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-10",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "-90.0000000000000001",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-11",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "047",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-12",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "NaN",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-13",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "1e1",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-14",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": null,
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-15",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": 47,
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-16",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "-0.000",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-17",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "1.\u0662\u0663",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-18",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1234567890123456",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-19",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-20",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-21",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": null,
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-22",
+    "input": {
+      "id": "743999001001",
+      "name": "DE title",
+      "uuid": "00000000-0000-4000-8000-743999001001",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001001",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": true,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "de"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "DE title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-23",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-24",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": false,
+      "visibility": "PUBLIC",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "detail-25",
+    "input": {
+      "id": "743999001002",
+      "name": "EN title",
+      "uuid": "00000000-0000-4000-8000-743999001002",
+      "jobId": "095623dd-81c4-41fc-8c8c-e2612fa22ca0",
+      "jobAdId": "10000000-0000-4000-8000-743999001002",
+      "active": true,
+      "visibility": "PRIVATE",
+      "defaultJobAd": false,
+      "refNumber": "REF-123",
+      "releasedDate": "2026-08-25T12:00:00.000Z",
+      "language": {
+        "code": "en"
+      },
+      "company": {
+        "identifier": "SwissMedicalNetwork1",
+        "name": "Swiss Medical Network"
+      },
+      "location": {
+        "country": "ch",
+        "postalCode": "2502",
+        "remote": false,
+        "hybrid": false,
+        "latitude": "47.1391567",
+        "longitude": "7.2443098",
+        "fullLocation": "Biel, Switzerland"
+      },
+      "department": {
+        "id": 10114871,
+        "label": "Research"
+      },
+      "industry": {
+        "id": "hospital_and_health_care"
+      },
+      "function": {
+        "id": "health_care_provider",
+        "label": "Engineering"
+      },
+      "typeOfEmployment": {
+        "id": "full-time",
+        "label": "Full-time"
+      },
+      "experienceLevel": {
+        "id": "not_applicable",
+        "label": "Experienced"
+      },
+      "customField": [
+        {
+          "fieldId": "642d47ae571c9c5746eeeec4",
+          "valueId": "RDA"
+        },
+        {
+          "fieldId": "642d47ae571c9c5746eeeec5",
+          "valueId": "10114871"
+        }
+      ],
+      "jobAd": {
+        "sections": {
+          "jobDescription": {
+            "title": "Tasks & duties",
+            "text": "<p>Build things.</p>"
+          },
+          "qualifications": {
+            "text": "<ul><li>Experience</li></ul>"
+          }
+        }
+      },
+      "compensation": {
+        "salary": {
+          "min": 0,
+          "max": 100000,
+          "currency": "CHF",
+          "period": "annually"
+        }
+      }
+    },
+    "expected": {
+      "title": "EN title",
+      "description": "<h3>Tasks & duties</h3>\n<p>Build things.</p>\n<ul><li>Experience</li></ul>",
+      "locations": [
+        "Biel, Switzerland"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2026-08-25T12:00:00.000Z",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 0,
+        "max": 100000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "department": "Research",
+        "function": "Engineering",
+        "experienceLevel": "Experienced"
+      }
+    }
+  }
+]

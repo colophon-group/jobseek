@@ -6,6 +6,30 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation: SmartRecruiters monitor and detail, v0.13.874
+
+The Go SmartRecruiters binary now implements ordinary publication discovery,
+all three configured localized identity modes, and scheduled provider detail
+extraction. Default-off monitor/detail selectors are independent. The unchanged
+writer retains queue, database, confirmed-drop and enrichment policies. See
+[the module contract](../apps/crawler/go/smartrecruiters-monitor/README.md).
+
+Offline verification covers 60 Python monitor cases and 26 detail cases,
+including complete rich fields, source identity, language variants, pagination
+and retry boundaries. CI also compares those outputs through the installed
+binary with network disabled. The runtime reads bounded output and terminates
+and reaps the child on cancellation or overflow. Scheduled details retain a
+single request and empty content on non-200; Go additionally applies the
+monitor's 1 MiB bound and TDM header/meta protections.
+
+This is implementation evidence, **not a deployed production claim**. After
+the release gates pass, cold-rollback c1 and clear the current 24 selectors
+using the v0.13.873 procedure below. Deploy first, then stage a new exact
+selector set against the promoted full revision. Admit ordinary monitor and
+detail work on natural schedules, compare database/content/failure evidence,
+and retain localized profile and whole-lane resource proof as explicit work.
+No production due times should be changed for admission.
+
 ## Production checkpoint: 2026-09-27 — Go configuration sync v0.13.873
 
 PR #10096 merged as `1f37e47ef036c1b08a5ca45dfca94cd9d7e3dbf6`.
