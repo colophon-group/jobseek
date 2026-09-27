@@ -6,6 +6,39 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Unified release candidate: Go maintenance v0.13.870
+
+The completed implementations from #10072, #10074, #10076, #10077, #10085 and
+#10088 are assembled on `fix-crawler/go-maintenance-transition`, created from
+latest main `52e8c7b6a`. The individual sections below record implementation
+history; the unified candidate supersedes their separate release order.
+**This candidate is not deployed.** Its combined CI and production evidence
+must pass before the source PRs are retired.
+
+One crawler image now includes Go reconciliation, exact taxonomy verification,
+schema setup, taxonomy/company publication and posting rename updates,
+dead-letter inspection/recovery, and the supervised expired-lease loop. Shared
+CLI conflicts retain every command. The protected maintenance chain invokes
+Go backfill, Go reconciliation, then Go taxonomy verification under its existing
+host lock; schema setup remains part of deployment and sync remains post-commit.
+This keeps the existing completed backfill implementation and cold rollback
+image, queue guards, cursor fences, credential scopes and publisher policies.
+
+Release only after the already-running production proof 36317322087 finishes.
+Then re-read live revision/receipt and exact PR checks, use supported c1
+rollback, clear all 22 selectors under the mutation lock, promote the combined
+candidate, stage at the new full revision and reactivate c1. Record normal
+worker/reaper health, zero queue loss, Go schema/sync output, taxonomy parity,
+CDC catch-up and the next bounded scheduled Go reconciliation result. The
+systemd wrapper's separately attested direct-Go launcher follows **after** the
+new binary is deployed; its current compatibility CLI already execs Go in the
+candidate image.
+
+CSV/local transaction sync, Redis board setup, worker claims/heartbeats and
+processing, remaining monitor/detail/browser profiles, final whole-lane
+resource/cost proof and retirement remain open under #7966. Do not equate this
+maintenance release with completion of the full migration.
+
 ## Implementation slice: 2026-09-27 — Go reconciliation
 
 The next release adds `go-typesense-exporter --reconcile`, replaces the

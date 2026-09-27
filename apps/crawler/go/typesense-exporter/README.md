@@ -112,7 +112,8 @@ runs only in tests. The Go PostgreSQL test executes all nine SQL queries and
 proves snapshot isolation across a concurrent committed taxonomy change.
 Deploy after Go reconciliation (#10072), then use the exact-revision
 `verify-typesense-taxonomies` maintenance dispatch for production evidence.
-Configuration/taxonomy sync and schema setup remain separate Python owners.
+Taxonomy publication and schema setup are included in this combined Go release;
+CSV/local transaction sync remains Python.
 
 ## Collection schema setup
 
@@ -145,8 +146,8 @@ previous image/deployment script remains the cold rollback route.
 `go-typesense-exporter --sync-taxonomies` owns the Typesense stage after the
 Python CSV/local transaction commits. The parent waits for Go and propagates
 failure; shutdown terminates and reaps the child. There is no Python runtime
-fallback. CSV parsing/local writes, Redis board effects, and deadletter reporting
-remain to migrate.
+fallback. CSV parsing/local writes and Redis board effects remain to migrate;
+dead-letter lifecycle reporting and recovery use the Go commands below.
 
 Go reads one static authority snapshot for all five collections, including
 full localized company details. It preserves producer strings and unordered
