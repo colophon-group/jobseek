@@ -129,6 +129,11 @@ class Connection:
     async def execute(self, *args):
         return "UPDATE 1"
 
+class Pool:
+    async def fetchval(self, query, posting_id):
+        assert query == "SELECT tdm_reserved FROM job_posting WHERE id = $1"
+        return False
+
 async def value(result):
     return result
 
@@ -156,7 +161,7 @@ scrape._stage_r2_pending = lambda **kwargs: None
 async def main():
     success, _ = await scrape._process_one_scrape(
         scrape.ScrapeItem("00000000-0000-0000-0000-000000000001", "https://example.invalid/job"),
-        object(),
+        Pool(),
         object(),
         "json-ld",
         None,
