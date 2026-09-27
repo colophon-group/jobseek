@@ -177,6 +177,11 @@ def _extract_experience_fields(html: str | None) -> tuple[float | None, float | 
 
     Returns (experience_min, experience_max). max is None for open-ended ("5+ years").
     """
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.experience_fields(html)
+
     if not html:
         return None, None
     result = extract_experience(html)

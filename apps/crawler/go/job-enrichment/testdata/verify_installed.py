@@ -40,6 +40,13 @@ try:
         assert result["technologies"] == case["slugs"], case["text"]
     for signal in cases["intern_signals"]:
         assert request("occupation_seniority", titles=[], employment_type=signal)["intern"]
+    experience_cases = json.loads(Path(__file__).with_name("python_experience.json").read_text())
+    for case in experience_cases:
+        result = request("experience", description=case["text"])
+        assert (result.get("experience_min"), result.get("experience_max")) == (
+            case["min"],
+            case["max"],
+        ), case["text"]
 finally:
     proc.stdin.close()
     try:
@@ -51,5 +58,6 @@ finally:
 assert proc.returncode == 0
 print(
     f"Resident Go enrichment matches {len(titles)} title "
-    f"and {len(cases['technologies'])} technology cases"
+    f"and {len(cases['technologies'])} technology cases; "
+    f"{len(experience_cases)} experience cases"
 )

@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import concurrent.futures
+import json
 import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from src.processing.cpu import _resolve_occupation_seniority, _resolve_technology_ids
+from src.processing.cpu import (
+    _extract_experience_fields,
+    _resolve_occupation_seniority,
+    _resolve_technology_ids,
+)
 from src.runtime import job_enrichment_go as bridge
 
 MODULE = Path(__file__).resolve().parents[1] / "go/job-enrichment"
@@ -73,6 +78,15 @@ def test_one_resident_serializes_concurrent_calls(native):
     assert native.proc is child and child.poll() is None
     native.close()
     assert child.poll() == 0
+
+
+def test_experience_bridge_uses_resident_for_all_python_cases(native):
+    for case in json.loads((MODULE / "testdata/python_experience.json").read_text()):
+        assert _extract_experience_fields(case["text"]) == (case["min"], case["max"])
+    child = native.proc
+    assert child is not None and child.poll() is None
+    assert _resolve_technology_ids("Python", {"python": 1}) == [1]
+    assert native.proc is child
 
 
 def test_failure_reaps_and_does_not_fall_back(tmp_path, monkeypatch):
