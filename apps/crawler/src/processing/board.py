@@ -2182,6 +2182,11 @@ async def _process_one_board_streaming(
     workday_capture = None
     capture_succeeded = False
 
+    # Redis configuration can predate a reservation. Read authoritative state
+    # before selecting either the Python, Go, or browser runtime.
+    if await pool.fetchval("SELECT tdm_reserved FROM job_board WHERE id = $1", board_id) is True:
+        return BoardMonitorResult(True, monotonic() - t0, "tdm_reserved")
+
     try:
         metadata = board["metadata"] if board["metadata"] else {}
         if isinstance(metadata, str):
@@ -3006,6 +3011,10 @@ async def _process_one_board_streaming(
         # Discard stale location misses from this skipped board. Mirrors
         # the cleanup the failure path does.
         loc_resolver.drain_location_misses()
+        from src.processing.tdm import record_reservation
+
+        async with pool.acquire() as conn, conn.transaction():
+            await record_reservation(conn, board_id=board_id, error=exc)
         # Return success-shaped: the run was not a failure.
         return BoardMonitorResult(True, elapsed, "tdm_reserved")
 

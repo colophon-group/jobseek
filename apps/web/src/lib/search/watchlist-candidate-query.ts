@@ -147,6 +147,7 @@ export function buildWatchlistCandidateSearchParams(params: {
   order?: WatchlistCandidateOrder;
   /** True only for an explicitly required read with a verified readiness receipt. */
   stableNewestReady?: boolean;
+  excludeTdmReserved?: boolean;
 }): WatchlistCandidateSearchParams {
   if (!Number.isInteger(params.offset) || params.offset < 0) {
     throw new RangeError("offset must be a non-negative integer");
@@ -173,6 +174,7 @@ export function buildWatchlistCandidateSearchParams(params: {
   });
   const companyIds = filters.anyCompany ? [] : safeCompanyIds(filters.companyIds);
   const filterParts = [POSTING_BASE_FILTER];
+  if (params.excludeTdmReserved) filterParts.push("tdm_reserved:!=true");
   if (filters.postingIds !== undefined) {
     if (filters.postingIds.some(id => !CANONICAL_UUID.test(id))) {
       throw new TypeError("postingIds contains an invalid UUID");

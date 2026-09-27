@@ -45,6 +45,11 @@
         "optional": true
       },
       {
+        "name": "tdm_reserved",
+        "type": "bool",
+        "optional": true
+      },
+      {
         "name": "location_ids",
         "type": "int32[]",
         "facet": true

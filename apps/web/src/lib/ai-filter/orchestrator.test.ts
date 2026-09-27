@@ -8,7 +8,7 @@ import type {
   AiFilterExecutionRepository,
   AiFilterResolution,
 } from "./orchestrator";
-import { executeAiFilterSegment } from "./orchestrator";
+import { AiFilterMiningPolicyError, executeAiFilterSegment } from "./orchestrator";
 import { JevClientError } from "./jev-client";
 import { JEV_MAX_CALL_RESERVATION_NANODOLLARS } from "./policy";
 
@@ -81,6 +81,7 @@ describe("AI filter segment orchestrator", () => {
     }));
     const classifier = { classify: vi.fn() };
     const result = await executeAiFilterSegment({
+      assertMiningAllowed: async () => undefined,
       context,
       candidates,
       hmacSecret,
@@ -108,6 +109,7 @@ describe("AI filter segment orchestrator", () => {
     }));
     const classifier = { classify: vi.fn() };
     const result = await executeAiFilterSegment({
+      assertMiningAllowed: async () => undefined,
       context,
       candidates,
       hmacSecret,
@@ -147,6 +149,7 @@ describe("AI filter segment orchestrator", () => {
       }),
     };
     const result = await executeAiFilterSegment({
+      assertMiningAllowed: async () => undefined,
       context,
       candidates,
       hmacSecret,
@@ -186,6 +189,7 @@ describe("AI filter segment orchestrator", () => {
         },
       );
       await executeAiFilterSegment({
+      assertMiningAllowed: async () => undefined,
         context: { ...context, leaseOwner },
         candidates,
         hmacSecret,
@@ -213,6 +217,7 @@ describe("AI filter segment orchestrator", () => {
     vi.mocked(repo.reserveBudget).mockResolvedValue({ status: "denied", scope: "user" });
     const classifier = { classify: vi.fn() };
     const result = await executeAiFilterSegment({
+      assertMiningAllowed: async () => undefined,
       context,
       candidates,
       hmacSecret,
@@ -238,6 +243,7 @@ describe("AI filter segment orchestrator", () => {
     }));
     const classifier = { classify: vi.fn() };
     const result = await executeAiFilterSegment({
+      assertMiningAllowed: async () => undefined,
       context,
       candidates,
       hmacSecret,
@@ -268,6 +274,7 @@ describe("AI filter segment orchestrator", () => {
     };
 
     const result = await executeAiFilterSegment({
+      assertMiningAllowed: async () => undefined,
       context,
       candidates,
       hmacSecret,
@@ -282,5 +289,34 @@ describe("AI filter segment orchestrator", () => {
       uncertain: true,
       ambiguousAttempts: 1,
     }));
+  });
+});
+
+
+describe("TDM restrictions on retained classifier inputs", () => {
+  it("blocks cache reuse when an already loaded candidate becomes reserved", async () => {
+    const repo = repository(bindings => ({ persistedDecisionCount: 0, cacheHits: [{ binding: bindings[0]!, decision: "accepted" }], claims: [], waitingCacheKeys: [] }));
+    const classifier = { classify: vi.fn() };
+    const result = await executeAiFilterSegment({
+      context, candidates: [candidate(1)], hmacSecret, repository: repo, classifier, executionEnabled: true,
+      assertMiningAllowed: async () => { throw new AiFilterMiningPolicyError("tdm_reserved"); },
+    });
+    expect(result.status).toBe("paused_provider");
+    expect(repo.resolve).not.toHaveBeenCalled();
+    expect(repo.materializeCacheHits).not.toHaveBeenCalled();
+    expect(classifier.classify).not.toHaveBeenCalled();
+  });
+  it("rechecks after budget reservation and never sends newly restricted text", async () => {
+    const repo = repository(bindings => ({ persistedDecisionCount: 0, cacheHits: [], claims: bindings, waitingCacheKeys: [] }));
+    const check = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new AiFilterMiningPolicyError("tdm_reserved"));
+    const classifier = { classify: vi.fn() };
+    const result = await executeAiFilterSegment({
+      context, candidates: [candidate(1)], hmacSecret, repository: repo, classifier, executionEnabled: true,
+      assertMiningAllowed: check,
+    });
+    expect(result.status).toBe("paused_provider");
+    expect(repo.reserveBudget).toHaveBeenCalledTimes(1);
+    expect(classifier.classify).not.toHaveBeenCalled();
+    expect(repo.failProviderBatch).toHaveBeenCalledWith(expect.objectContaining({ code: "tdm_reserved", uncertain: false, providerAttempts: 0 }));
   });
 });

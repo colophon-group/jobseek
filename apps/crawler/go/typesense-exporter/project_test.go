@@ -68,3 +68,14 @@ func TestProjectRichAndInactive(t *testing.T) {
 		t.Fatal("inactive projection mismatch")
 	}
 }
+
+func TestMiningReservationDoesNotDelist(t *testing.T) {
+	row := Row{ID: "00000000-0000-0000-0000-000000000001", CompanyID: "00000000-0000-0000-0000-000000000002", Titles: []string{"Engineer"}, IsActive: true, TDMReserved: true, DescriptionR2Hash: ptr(int64(42))}
+	doc, err := project(row, Maps{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc["tdm_reserved"] != true || doc["is_active"] != true || doc["has_content"] != true {
+		t.Fatalf("reservation changed listing visibility: %#v", doc)
+	}
+}

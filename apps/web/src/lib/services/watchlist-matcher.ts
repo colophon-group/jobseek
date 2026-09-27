@@ -461,7 +461,7 @@ export async function readWatchlistCandidatesByIds(
         .search({
           q: "*",
           query_by: "title",
-          filter_by: `${POSTING_BASE_FILTER} && id:[${ids.join(",")}]`,
+          filter_by: `${POSTING_BASE_FILTER} && tdm_reserved:!=true && id:[${ids.join(",")}]`,
           per_page: ids.length,
         }, { abortSignal }),
     { label: "readWatchlistCandidatesByIds", abortSignal },
@@ -490,6 +490,7 @@ export async function readWatchlistCandidates(params: {
   requireStableOrder?: boolean;
   /** Server-only classifier projection; omitted from ordinary product reads. */
   includeClassifierMetadata?: boolean;
+  excludeTdmReserved?: boolean;
   abortSignal?: AbortSignal;
 }): Promise<{ postings: WatchlistPostingEntry[]; total: number }> {
   const order = params.order ?? "interactive";
@@ -514,6 +515,7 @@ export async function readWatchlistCandidates(params: {
       window: params.window,
       order,
       stableNewestReady,
+      excludeTdmReserved: params.excludeTdmReserved,
     });
   const searchParams = buildParams(params.filters);
   const buildWindowSearchParams = (
@@ -532,6 +534,7 @@ export async function readWatchlistCandidates(params: {
       window: params.window,
       order,
       stableNewestReady,
+      excludeTdmReserved: params.excludeTdmReserved,
     });
     return { ...candidateSearchParams, offset, limit };
   };
@@ -568,6 +571,7 @@ export async function readWatchlistCandidates(params: {
                 window: params.window,
                 order,
                 stableNewestReady,
+                excludeTdmReserved: params.excludeTdmReserved,
               }), field),
               { abortSignal: params.abortSignal },
             ),
@@ -626,6 +630,7 @@ export async function readWatchlistCandidates(params: {
               window: params.window,
               order,
               stableNewestReady,
+              excludeTdmReserved: params.excludeTdmReserved,
             }),
             { abortSignal: params.abortSignal },
           ),

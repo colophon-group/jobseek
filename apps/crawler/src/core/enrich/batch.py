@@ -35,6 +35,7 @@ WHERE id IN (
     SELECT id FROM job_posting
     WHERE is_active = true
       AND to_be_enriched = true
+      AND NOT tdm_reserved
       AND description_r2_hash IS NOT NULL
     ORDER BY first_seen_at DESC
     LIMIT $1
@@ -115,6 +116,16 @@ async def submit_batch(
     posting_ids: list[str],
 ) -> str:
     """Submit batch to provider and record in DB."""
+    # The batch may have waited after prepare_batch loaded the descriptions.
+    # Refuse the whole pending submission if any included copy became reserved.
+    if (
+        await pool.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM job_posting WHERE id = ANY($1::uuid[]) AND tdm_reserved)",
+            [request.custom_id for request in requests],
+        )
+        is True
+    ):
+        raise RuntimeError("TDM reservation prevents enrichment submission")
     schema = EnrichmentResult.model_json_schema()
     batch_id = await provider.submit_batch(requests, schema)
 

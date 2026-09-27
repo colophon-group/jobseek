@@ -31,6 +31,7 @@ SAMPLE_CANDIDATES_SQL = """
     FROM job_posting p
     WHERE p.first_seen_at >= $1 AND p.first_seen_at < $2
       AND p.is_active = true
+      AND NOT p.tdm_reserved
     ORDER BY p.first_seen_at DESC, p.id
     LIMIT $3
 """

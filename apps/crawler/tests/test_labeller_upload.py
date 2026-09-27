@@ -49,6 +49,9 @@ def stub_hf(monkeypatch: pytest.MonkeyPatch) -> dict:
     and tests that assert on README contents need a stable handle.
     """
     calls: dict = {"upload_folder": [], "remote_files": {}}
+    monkeypatch.setattr(
+        "src.labeller.upload.assert_mining_allowed", lambda ids: calls.setdefault("mining_ids", ids)
+    )
 
     class _Stub:
         def __init__(self, token: str | None = None):
@@ -373,3 +376,18 @@ def test_mixed_rights_notice_staged(tmp_path, monkeypatch, stub_hf):
     assert "license: other" in snapshot["README.md"]
     assert "verbatim passages" in snapshot["LICENSE"]
     assert "LICENSE" in stub_hf["upload_folder"][0]["allow_patterns"]
+
+
+def test_live_upload_rechecks_reserved_retained_row_before_hf(data_root, stub_hf, monkeypatch):
+    from src.labeller.mining_guard import MiningGuardError
+
+    _write_posting(data_root, "2026-04-25", "job-1", verdict="accepted")
+
+    def reserved(ids):
+        assert ids == ["job-1"]
+        raise MiningGuardError("Reserved source")
+
+    monkeypatch.setattr("src.labeller.upload.assert_mining_allowed", reserved)
+    with pytest.raises(UploadGuardError, match="Reserved source"):
+        push_to_hub(run_date="2026-04-25")
+    assert stub_hf["upload_folder"] == []

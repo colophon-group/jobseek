@@ -53,7 +53,7 @@ CREATE TABLE job_posting (
  titles text[], locales text[], location_ids int[], location_types text[], employment_type text,
  salary_min bigint, salary_max bigint, salary_currency text, salary_period text, salary_eur bigint,
  experience_min numeric, experience_max numeric, occupation_id int, seniority_id int, technology_ids int[],
- description_r2_hash bigint, first_seen_at timestamptz, last_seen_at timestamptz, updated_at timestamptz
+ tdm_reserved boolean NOT NULL DEFAULT false, description_r2_hash bigint, first_seen_at timestamptz, last_seen_at timestamptz, updated_at timestamptz
 );
 INSERT INTO company VALUES ('00000000-0000-0000-0000-000000000010','Fixture Co','fixture-co',NULL);
 INSERT INTO job_posting (id,company_id,source_url,is_active,titles,updated_at)
