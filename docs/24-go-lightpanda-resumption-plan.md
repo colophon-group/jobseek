@@ -6,6 +6,62 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — Go configuration sync v0.13.873
+
+PR #10096 merged as `1f37e47ef036c1b08a5ca45dfca94cd9d7e3dbf6`.
+[Deployment 36332710204](https://github.com/colophon-group/jobseek/actions/runs/36332710204)
+succeeded. **Go now owns production configuration sync end to end:** CSV
+preparation, taxonomy/company/description and board database transactions,
+pending taxonomy resolution, Redis publication, dead-letter inspection and
+Typesense publication. The Python CLI execs Go before opening runtime pools;
+retained Python implementations are comparison/rollback references.
+
+The actual release committed **7,879 boards** at 16:28:41 UTC, published
+**7,879 schedules** and removed **133 retired-board queue entries** at
+16:28:43 UTC. Dead-letter inspection found 24 records and zero unresolved.
+Typesense taxonomy publication included 37,526 locations, 562 occupations,
+36 seniorities and 186 technologies; the complete 6,013-company/7,879-board
+sync finished at 16:29:23 UTC. Local mode-0600 deployment evidence is
+`/tmp/jobseek-go-registry-deploy-36332710204.log`.
+
+Read-only before/after identity digests match for all **6,039 database
+companies and 8,013 database boards**, including retained historical rows.
+All **7,879 enabled board configurations** in Redis match PostgreSQL URL, crawler
+type, company ID, throttle domain and monitor/detail browser flags, with
+zero mismatches. The sanitized record, including exact hashes and selector
+values, is [the release evidence](evidence/go-registry-production-2026-09-27.json).
+
+Required CI, installed-image parity and the exact-head deployment gate passed.
+The first image check exposed a changed missing-mount diagnostic; the fix
+preserves that contract and adds an installed Go dry-run with staged read-only
+CSV data. Before promotion, supported c1 rollback retired epoch 78 at 79,
+restored all five schedules, and left zero drops/write fences. Scheduled Go
+reconciliation first completed 16 partitions and 356,179 local/remote rows
+with zero differences; its live process was allowed to finish. All old 23
+selectors were then cleared under the host mutation lock.
+
+The new 24-selector set was staged against the exact promoted revision,
+adding the existing strict `WORKABLE_GO_PERCENT=25` route after all four
+explicit Workable boards completed natural Go runs with exact database URL
+parity and zero failures. Its current union covers 15 boards, adding 11.
+C1 is active at **epoch 80**, with accepted/audit_ok conservation: five ready
+records, zero inflight or dead, and all services healthy. An exporter snapshot
+reported 194 successful documents, zero errors and zero lag. The current
+monitor route census is **2,950 Go / 4,929 Python** out of 7,879 enabled
+boards, with zero route-resolution errors. Broader natural Workable runs are
+pending; no due times were forced.
+Use `/tmp/jobseek-post-go-registry-selectors.py` for subsequent cleanup;
+the older 23-selector helper no longer matches the live environment. Before
+any later crawler deployment or selector mutation, supported `rollback c1`
+must finish first. Then use the new helper in `clear` mode under
+`/run/lock/jobseek-crawler-mutation.lock`, against the current full deployed
+revision above and `https://kandou.bamboohr.com/careers/310`. Stage only
+after successful promotion at the new revision, then reactivate c1.
+
+The full #7966 gate remains open: Python workers and remaining extraction,
+enrichment, persistence and browser profiles still own production work;
+whole-lane resource/cost comparison and final retirement are unfinished.
+
 ## Production checkpoint: 2026-09-27 — Go queue sync v0.13.871
 
 PR #10093 merged as `ce5dfd821ca6e6b95d0b79a9eb534c26ddd486ec`.
@@ -43,8 +99,8 @@ Natural Go Workable monitor cycles remain pending. The active selector helper re
 back, then clear all 23 selectors under the mutation lock against the actual
 current revision. Never reuse the older 22-selector helper.
 
-CSV preparation and the local PostgreSQL transaction are still Python in
-production. The implementation checkpoint below advances their Go replacement;
+At the v0.13.871 checkpoint, CSV preparation and the local PostgreSQL
+transaction were still Python. The v0.13.873 release above replaces them;
 workers, remaining extraction profiles and final whole-lane evidence remain
 open under #7966.
 
@@ -106,12 +162,12 @@ A 1,001-board case covers the batch boundary and stops later batches/removals
 on failure. This implementation is deployed in v0.13.871. CSV/local PostgreSQL sync,
 workers and remaining extraction/profile stages still require Go migration.
 
-## Release candidate: Go configuration sync v0.13.873
+## Implementation record: Go configuration sync v0.13.873
 
 The next configuration-sync port is on `fix-crawler/go-registry-sync`, created
 from then-latest main `334f5631d` in an isolated worktree and subsequently
 integrated with #10093 and latest main `012191b81` (#10095). The candidate
-is implemented but not deployed. Both `crawler sync` and the standalone
+was subsequently deployed by #10096 as recorded above. Both `crawler sync` and the standalone
 `python -m src.sync` entrypoint exec `go-typesense-exporter --sync-registry`.
 
 Go now reads CSVs while preserving Python/Polars null versus quoted-empty
@@ -148,9 +204,8 @@ technology-miss query uses explicit integer casts to avoid ambiguous array
 inference; existing populated fields and technology arrays remain intact.
 
 The module race suite, vet and focused CLI tests passed. Required CI and the
-installed-image checks precede supported rollout. Python remains the retained
-oracle and still owns the deployed local sync until this candidate is
-promoted. The latest main #10095 crawler deployment 36330596574 was correctly
+installed-image checks passed before the supported rollout above. Python
+remains the retained oracle; Go owns deployed local sync. The latest main #10095 crawler deployment 36330596574 was correctly
 held by the active B0 receipt; production remains the healthy v0.13.871
 checkpoint above. This candidate includes #10095 and must use the normal
 cold rollback and exact 23-selector sequence. Do not bypass that guard.
