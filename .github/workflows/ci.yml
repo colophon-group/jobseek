@@ -922,6 +922,28 @@ jobs:
               raise AssertionError("/app/data must be mounted read-only")
           PY
 
+          registry_output="$(
+            docker run --rm \
+              --platform linux/amd64 \
+              --read-only \
+              --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+              --mount "type=bind,source=$staged_data,target=/app/data,readonly" \
+              --workdir /tmp \
+              -e PYTHONDONTWRITEBYTECODE=1 \
+              --entrypoint /app/.venv/bin/python \
+              jobseek-crawler-slim-ci:pr -m src.sync --dry-run
+          )"
+          REGISTRY_OUTPUT="$registry_output" python - <<'PY'
+          import json
+          import os
+
+          events = [json.loads(line) for line in os.environ["REGISTRY_OUTPUT"].splitlines()]
+          dry_run = next(event for event in events if event.get("msg") == "sync.registry.dry_run")
+          assert dry_run["engine"] == "go"
+          assert dry_run["companies"] == 1
+          assert dry_run["boards"] == 1
+          PY
+
           if missing_output="$(
             docker run --rm \
               --platform linux/amd64 \

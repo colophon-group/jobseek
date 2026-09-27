@@ -60,8 +60,11 @@ responses (2,698 and 3,316 response bytes). The subsequent database readback
 matched every active URL hash and count, recorded the corresponding natural
 success time, and showed zero consecutive failures for both enabled boards.
 
-Unit8 and Hack The Box still awaited their normal Go runs at that readback;
-their previous database counts/hashes remained stable and failure counts zero.
+Unit8 then completed its natural Go run at **15:57:36 UTC**, returning all
+14 URLs with the exact hash above, six requests/responses and 5,742 response
+bytes. Database readback recorded success at 15:57:36.557 UTC, the same active
+URL set, and zero failures. Hack The Box still awaited its normal Go run;
+its previous database count/hash remained stable and its failure count zero.
 The production release is `ce5dfd821ca6e6b95d0b79a9eb534c26ddd486ec`, with
 all four selectors restored at c1 epoch 78. This is actual output evidence for
-the first two boards, not a whole-lane resource comparison.
+the first three boards, not a whole-lane resource comparison.

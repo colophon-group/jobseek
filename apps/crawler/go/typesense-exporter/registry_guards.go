@@ -55,11 +55,11 @@ func registryDataDirectory(source string) (string, error) {
 	const directory = "/app/data"
 	info, err := os.Stat(directory)
 	if err != nil || !info.IsDir() {
-		return "", errors.New("installed registry sync requires /app/data")
+		return "", errors.New("installed crawler sync requires /app/data to be a separate read-only mount")
 	}
 	body, err := os.ReadFile("/proc/self/mountinfo")
 	if err != nil || !registryReadonlyMount(directory, string(body)) {
-		return "", errors.New("installed registry sync requires a separate read-only /app/data mount")
+		return "", errors.New("installed crawler sync requires /app/data to be a separate read-only mount")
 	}
 	return directory, nil
 }
