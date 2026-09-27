@@ -3966,7 +3966,7 @@ msgstr "Sonstige"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.assurances.i2.body"
-msgstr "Unser Crawler liest <0>robots.txt</0> zur Sitemap-Erkennung; die Durchsetzung von Disallow-Regeln ist noch nicht aktiv. Anfragen verwenden einen stabilen, browserkompatiblen <1>User-Agent</1>, wobei quellenspezifische Pfade einen identifizierenden Job-Seek-UA verwenden. Wir respektieren den W3C-<2>TDM-Reservation</2>-Header — wenn eine Seite eine Reservation signalisiert, überspringen wir sie."
+msgstr "Anfragen verwenden einen stabilen, browserkompatiblen <0>User-Agent</0>, wobei quellenspezifische Pfade einen identifizierenden Job-Seek-UA verwenden. Unterstützte Abrufpfade prüfen <1>TDM-Reservation</1>-Header und HTML-Metadaten und überspringen Antworten mit Rechtevorbehalt. Die Abdeckung ist nicht für alle Abrufpfade und bereits gespeicherten Inhalte vollständig. Kontaktieren Sie uns, um eine quellenspezifische Einschränkung oder Entfernung anzufordern."
 
 #. TOC: Our stance on automation
 #. js-lingui-explicit-id
@@ -4748,7 +4748,7 @@ msgstr "Dieser Feed wird geprüft…"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.assurances.i2.title"
-msgstr "Robots-Erkennung, Anfrageidentität und TDM-Reservation."
+msgstr "Anfragenidentität und Inhaltsbeschränkungen."
 
 #. Label for role/occupation filter in advanced search
 #. js-lingui-explicit-id

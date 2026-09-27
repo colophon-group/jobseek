@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -52,6 +53,9 @@ def stub_hf(monkeypatch: pytest.MonkeyPatch) -> dict:
     class _Stub:
         def __init__(self, token: str | None = None):
             calls["init_token"] = token
+
+        def repo_info(self, **kwargs):
+            return SimpleNamespace(private=calls.get("private", True))
 
         def list_repo_files(self, **kwargs):
             calls.setdefault("list_repo_files", []).append(kwargs)
@@ -349,3 +353,23 @@ def test_scoped_run_preserves_remote_counts_when_local_history_absent(
     assert "2026-05-10: 1" in readme
     assert "2026-05-09: 1" in readme
     assert "2026-04-24: 2" in readme
+
+
+def test_public_dataset_rejected_before_upload(tmp_path, monkeypatch, stub_hf):
+    monkeypatch.setenv("LABELLER_DATA_ROOT", str(tmp_path))
+    _write_posting(tmp_path, "2026-04-25", "p1", verdict="accepted")
+    stub_hf["private"] = False
+    with pytest.raises(RuntimeError, match="must be private"):
+        push_to_hub(run_date="2026-04-25")
+    assert stub_hf["upload_folder"] == []
+    assert "list_repo_files" not in stub_hf
+
+
+def test_mixed_rights_notice_staged(tmp_path, monkeypatch, stub_hf):
+    monkeypatch.setenv("LABELLER_DATA_ROOT", str(tmp_path))
+    _write_posting(tmp_path, "2026-04-25", "p1", verdict="accepted")
+    push_to_hub(run_date="2026-04-25")
+    snapshot = stub_hf["upload_folder"][0]["_snapshot"]
+    assert "license: other" in snapshot["README.md"]
+    assert "verbatim passages" in snapshot["LICENSE"]
+    assert "LICENSE" in stub_hf["upload_folder"][0]["allow_patterns"]

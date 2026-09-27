@@ -16,6 +16,21 @@ The actionable record is [tracker #10084](https://github.com/colophon-group/jobs
 | [#10082](https://github.com/colophon-group/jobseek/issues/10082) | Update privacy disclosures |
 | [#10083](https://github.com/colophon-group/jobseek/issues/10083) | Publish the final offer and prepare the domain-review packet |
 
+## Publication follow-up (same day)
+
+Policies and the Narrowed offer are now published. #10087 merged as
+`334f5631d61e7f48eb0b52dad6fdc2c2bc2f68e3`, and production deployment
+[36326666570](https://github.com/colophon-group/jobseek/actions/runs/36326666570)
+passed. All eight Terms/Privacy locale routes were checked anonymously in
+Chromium: full text matches the canonical files, the Swiss address is present,
+refund links work, and desktop/mobile checks pass. #10082 is closed.
+
+The earlier findings below are historical. For current status and the remaining
+blocker tally use the [domain packet](paddle-domain-review-packet.md). The owner
+has deferred complete cross-system takedown implementation until the first
+request; that work is not a pre-verification condition. Robots implementation
+details are being removed from public indexing copy at the owner's request.
+
 ## Scope and evidence
 
 - Worktree: `/Users/Viktor/.codex/worktrees/paddle-verification-readiness/jobseek`.

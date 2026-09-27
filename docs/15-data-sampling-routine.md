@@ -233,7 +233,7 @@ ordering.
 
 ## PII and legal posture (public repo)
 
-We store the description as it was publicly posted. No regex scrub. Takedown-on-contact documented in `README.md` on the HF repo. This is the same standard a public-web search index applies; our scale is tiny by comparison.
+Descriptions remain third-party material; public availability and collection scale do not establish reuse rights. The Job Seek datasets are private. Every upload must confirm private visibility, and the dataset card must distinguish original annotations from descriptions and verbatim labels. See [dataset retention and removal](audits/dataset-retention-and-removal.md) for the source/use inventory, opt-outs and historical removal procedure.
 
 ## Operational
 

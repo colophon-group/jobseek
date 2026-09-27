@@ -3966,7 +3966,7 @@ msgstr "Altro"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.assurances.i2.body"
-msgstr "Il nostro crawler legge <0>robots.txt</0> per rilevare le sitemap; l'applicazione delle regole Disallow non è ancora attiva. Le richieste usano uno <1>User-Agent</1> stabile e compatibile con i browser, mentre alcuni percorsi specifici per una fonte usano uno UA Job Seek identificabile. Rispettiamo l'header W3C <2>TDM-Reservation</2> — se una pagina segnala una riserva, la saltiamo."
+msgstr "Le richieste usano uno <0>User-Agent</0> stabile e compatibile con i browser, mentre alcuni percorsi specifici per una fonte usano uno UA Job Seek identificabile. I percorsi di raccolta supportati verificano gli header <1>TDM-Reservation</1> e i metadati HTML e saltano le risposte che riservano i diritti. La copertura resta incompleta per alcuni percorsi di raccolta e per i contenuti già archiviati. Contattateci per richiedere una restrizione o una rimozione relativa a una fonte."
 
 #. TOC: Our stance on automation
 #. js-lingui-explicit-id
@@ -4748,7 +4748,7 @@ msgstr "Analisi di questo feed…"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.assurances.i2.title"
-msgstr "Rilevamento robots, identità delle richieste e riserva TDM."
+msgstr "Identificazione delle richieste e restrizioni sui contenuti."
 
 #. Label for role/occupation filter in advanced search
 #. js-lingui-explicit-id

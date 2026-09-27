@@ -357,6 +357,9 @@ def test_single_upload_replaces_run_directory_and_validates_commit(
         return str(destination)
 
     monkeypatch.setattr("src.workspace.trace_backfill._hf_token", lambda: "token")
+    monkeypatch.setattr(
+        "huggingface_hub.HfApi.repo_info", lambda *a, **kw: SimpleNamespace(private=True)
+    )
     monkeypatch.setattr("huggingface_hub.HfApi.upload_folder", fake_upload_folder)
     monkeypatch.setattr("huggingface_hub.hf_hub_download", fake_download)
 

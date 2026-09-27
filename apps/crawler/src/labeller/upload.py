@@ -7,7 +7,7 @@ Layout on HF:
     README.md                dataset card with `configs:` frontmatter enabling
                              `datasets.load_dataset("viktoroo/jobseek-postings-labelled")`
 
-HF repo: ``viktoroo/jobseek-postings-labelled`` (public dataset). Auth via
+HF repo: ``viktoroo/jobseek-postings-labelled`` (private dataset). Auth via
 ``HF_TOKEN`` (auto-loaded from ``apps/crawler/.env.local``) or the local
 HuggingFace token cache.
 
@@ -22,9 +22,31 @@ import os
 import tempfile
 from pathlib import Path
 
+from src.shared.hf_private import require_private_dataset
+
 from .paths import data_root, optout_file, schemas_dir
 
 HF_REPO = "viktoroo/jobseek-postings-labelled"
+
+DATASET_LICENSE = """Mixed rights — private Job Seek working corpus
+
+Original Job Seek annotations and schemas: Creative Commons Attribution 4.0
+International (https://creativecommons.org/licenses/by/4.0/), only to the
+extent Job Seek owns copyright in those contributions. Attribute Job Seek
+and https://github.com/colophon-group/jobseek.
+
+Excluded: employer descriptions, logos, verbatim passages in annotations,
+and all other third-party material. Rights remain with their respective
+rightsholders. No permission for those materials is granted by this notice.
+Facts are not claimed as exclusive property. A source-specific permission
+or applicable exception is needed for uses of protected source material.
+
+Private access does not establish a right to retain, process or redistribute
+the corpus. Product development includes commercial use; this is not a
+non-commercial-research-only release. Public release requires a documented
+redistribution basis and a new owner instruction. Previously valid grants
+in Job Seek-owned material are not revoked by the visibility change.
+"""
 
 _COUNTS_PLACEHOLDER = "__COUNTS_LINE__"
 
@@ -67,7 +89,8 @@ language:
   - da
   - fi
   - pt
-license: cc-by-4.0
+license: other
+license_name: mixed-rights-see-license
 pretty_name: Jobseek postings labelled
 size_categories:
   - n<1K
@@ -197,22 +220,29 @@ English-normalised free-text `profession`; English free-text
   fields (`profession`, skills, tools, perks, etc.) are English-
   normalised when a canonical English form exists.
 
-## Licensing
+## Licensing and access
 
-- **Labels and schemas**: CC-BY 4.0 (freely reusable with attribution).
-- **Descriptions**: original copyright belongs to each issuing
-  employer. Captured as publicly posted on their career pages, at
-  small scale and intended for non-commercial research and improvement
-  of public job-search infrastructure.
+This is a private working corpus used to develop Job Seek, including its
+commercial job-search features. Private access is not permission to reuse
+source material. See [LICENSE](LICENSE) for the scope of rights.
+
+Original Job Seek annotations and schemas are offered under CC-BY 4.0 only
+to the extent Job Seek owns copyright in them. Employer descriptions, logos,
+verbatim passages within labels and other third-party material are excluded.
+Their rights remain with the relevant rightsholders; no blanket licence for
+the mixed corpus is granted. Facts are not claimed as exclusive property.
+
+Previously valid grants in Job Seek-owned material are not revoked by making
+the repository private. Any future public release requires a documented
+redistribution basis for included source material and a new owner instruction.
 
 ## Takedown
 
-If you are the owner of content in a posting and wish it removed, open
-an issue at https://github.com/colophon-group/jobseek/issues with the
-posting ID (the `id` field). We will remove the row and add the company
-slug to the opt-out list at
+For rights or removal requests, contact business@colophon-group.org with
+the posting ID (the `id` field) or source URL and the affected material.
+Accepted company opt-outs are recorded in
 [`apps/crawler/data/labeller_optout.txt`](https://github.com/colophon-group/jobseek/blob/main/apps/crawler/data/labeller_optout.txt)
-so future runs do not re-publish postings from that company.
+to exclude those companies from future sampling and uploads.
 
 ## Data-quality gatekeeping
 
@@ -419,8 +449,9 @@ def push_to_hub(
     plus any stale JSONLs from a previous failed run that happen to still
     sit under the wrong root (see the tempdir-staging hardening below).
 
-    Safety guards (live runs only — ``--dry-run`` skips both):
+    Safety guards (live runs only — ``--dry-run`` does not contact Hugging Face):
 
+    - Authenticated repository metadata must confirm private visibility.
     - An unscoped run (no ``run_date``) must be acknowledged with
       ``confirm=True``. Catches the operator-typing-by-mistake case where
       the orchestrator's normal ``--date $RUN_DATE`` invocation is
@@ -476,6 +507,7 @@ def push_to_hub(
         from huggingface_hub import HfApi
 
         api = HfApi(token=token)
+        require_private_dataset(api, HF_REPO)
 
         # README counts cover every JSONL that will exist on HF after this
         # upload. Start from remote truth, then overlay only the staged dates.
@@ -483,6 +515,7 @@ def push_to_hub(
         # dates from the public dataset card.
         counts_by_date = _readme_counts_for_upload(api, by_date)
         (stage / "README.md").write_text(_readme_text(counts_by_date))
+        (stage / "LICENSE").write_text(DATASET_LICENSE)
 
         local_schemas = stage / "schemas"
         local_schemas.mkdir(parents=True)
@@ -497,7 +530,7 @@ def push_to_hub(
             allow_patterns.append(f"data/{run_date}.jsonl")
         else:
             allow_patterns.append("data/*.jsonl")
-        allow_patterns.extend(["schemas/**/*.json", "README.md"])
+        allow_patterns.extend(["schemas/**/*.json", "README.md", "LICENSE"])
 
         api.upload_folder(
             folder_path=str(stage),

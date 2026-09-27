@@ -3966,7 +3966,7 @@ msgstr "Autre"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.assurances.i2.body"
-msgstr "Notre robot lit <0>robots.txt</0> pour découvrir les sitemaps ; l'application des règles Disallow n'est pas encore active. Les requêtes utilisent un <1>User-Agent</1> stable et compatible avec les navigateurs, tandis que certains chemins propres à une source utilisent un UA Job Seek identifiable. Nous respectons l'en-tête W3C <2>TDM-Reservation</2> — si une page signale une réservation, nous la passons."
+msgstr "Les requêtes utilisent un <0>User-Agent</0> stable et compatible avec les navigateurs, tandis que certains chemins propres à une source utilisent un UA Job Seek identifiable. Les chemins de collecte pris en charge vérifient les en-têtes <1>TDM-Reservation</1> et les métadonnées HTML et ignorent les réponses signalant une réservation des droits. La couverture reste incomplète pour certains chemins de collecte et les contenus déjà stockés. Contactez-nous pour demander une restriction ou un retrait concernant une source."
 
 #. TOC: Our stance on automation
 #. js-lingui-explicit-id
@@ -4748,7 +4748,7 @@ msgstr "Examen de ce flux…"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.assurances.i2.title"
-msgstr "Découverte robots, identité des requêtes et réservation TDM."
+msgstr "Identification des requêtes et restrictions sur les contenus."
 
 #. Label for role/occupation filter in advanced search
 #. js-lingui-explicit-id

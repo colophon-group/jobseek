@@ -68,9 +68,12 @@ remaining sources; do not apply a single employer's permission to every board.
   TDM reservation signals. Code evidence is not proof that every transport/path
   enforces every signal; any rights assessment relying on complete coverage
   should identify and test that requirement.
-- Removal requires an operational procedure covering source re-ingestion,
-  database/index copies, R2 content, logos, caches and ancillary datasets. A
-  contact address alone is not evidence of an end-to-end takedown guarantee.
+- Owner decision, 27 September 2026: implement the full cross-system removal
+  procedure upon the first request. This is deferred operational work, not a
+  prerequisite to starting Paddle verification. The affected scope may include
+  re-ingestion, database/index copies, R2 content, logos, caches and datasets.
+  Public wording provides a request channel without claiming an already tested
+  end-to-end takedown guarantee.
 - The old blanket fair-use/fair-dealing explanation has been removed from the
   proposed Terms. This corrects the assertion, not the unresolved legal basis.
 
