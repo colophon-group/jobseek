@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { aiFilterConfiguration, aiFilterDecision, aiFilterQueryVersion, subscription } from "@/db/schema";
 import { matchCompiledWatchlistsInWindow, type WatchlistWindowMatchResult } from "./watchlist-matcher";
 import type { CompiledWatchlistMatcher } from "@/lib/watchlist-matcher-contract";
-import { NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST } from "@/lib/notifications/scheduler-policy";
+import { getNotificationSearchWindow, NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST } from "@/lib/notifications/scheduler-policy";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Reader = Pick<Transaction, "select" | "selectDistinctOn">;
@@ -55,6 +55,8 @@ export async function matchNarrowedNotificationWatchlist(input: {
     window: { windowStart: windowStart.toISOString(), windowEnd: windowEnd.toISOString(), boundary: "[windowStart, windowEnd)" },
     postings: [], watchlists: [{ id: compiled.watchlistId, label: compiled.watchlistLabel, total: 0, returned: 0, truncated: false }],
   };
+  const searchWindow = getNotificationSearchWindow({ windowStart, windowEnd });
+  if (!searchWindow) return result;
   // Disabled/deleted prompts or lost entitlement never broaden the email.
   if (!resource) return result;
   // Do not close a weekly window before evaluation has finished: late accepted
@@ -74,7 +76,7 @@ export async function matchNarrowedNotificationWatchlist(input: {
     const ids = rows.slice(offset, Math.min(offset + 50, cap)).map(row => row.id);
     const page = await matchCompiledWatchlistsInWindow({
       watchlists: [{ ...compiled, candidateFilters: { ...compiled.candidateFilters, postingIds: ids } }],
-      windowStart, windowEnd, limitPerWatchlist: 50,
+      ...searchWindow, limitPerWatchlist: 50,
     });
     result.postings.push(...page.postings.map(posting => ({ ...posting,
       matchedWatchlists: posting.matchedWatchlists.map(label => ({ ...label, narrowedQueryVersionId: resource.queryVersionId })),

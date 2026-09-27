@@ -9,10 +9,16 @@ import type { WebhookEventPayload } from "resend";
 const mocks = vi.hoisted(() => ({ client: null as Sql | null, send: vi.fn(), match: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/notifications/provider", () => ({ sendNotificationEmail: mocks.send }));
-vi.mock("@/lib/services/watchlist-matcher", () => ({
+vi.mock("@/lib/services/watchlist-matcher", async () => {
+  const { buildWatchlistCandidateWindowFilter } = await import("@/lib/search/watchlist-candidate-query");
+  return ({
   compileWatchlistMatcherSources: async (sources: { watchlistId: string; watchlistLabel: string }[]) => sources.map(s => ({ ...s, candidateFilters: { anyCompany: true, companyIds: [] } })),
-  matchCompiledWatchlistsInWindow: mocks.match,
-}));
+  matchCompiledWatchlistsInWindow: (input: { windowStart: Date; windowEnd: Date }) => {
+    buildWatchlistCandidateWindowFilter(input);
+    return mocks.match(input);
+  },
+});
+});
 vi.mock("@/db", async () => {
   const { default: postgres } = await import("postgres");
   const { drizzle } = await import("drizzle-orm/postgres-js");
