@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
-import { Check, Crown } from "lucide-react";
+import { ArrowRight, Check, SlidersHorizontal } from "lucide-react";
+import { FreeAccessNote, ProPitch } from "@/components/pro/ProPitch";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
@@ -27,71 +28,6 @@ type PlanInfo = {
   periodEnd?: string | null;
   cancellationScheduled?: boolean;
 };
-
-function LoginPrompt({ returnPath }: { returnPath: string | null }) {
-  const { t } = useLingui();
-  const lp = useLocalePath();
-  return (
-    <div className="flex flex-col items-center gap-4 py-12 text-center">
-      <p className="text-muted">
-        <Trans id="settings.billing.loginRequired" comment="Message when user must log in to see billing settings">
-          Please log in to manage your billing settings.
-        </Trans>
-      </p>
-      <Button
-        href={withAuthReturnPath(lp("/sign-in"), returnPath)}
-        variant="primary"
-        size="md"
-      >
-        {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
-      </Button>
-    </div>
-  );
-}
-
-function PlanCard({
-  name,
-  price,
-  features,
-  isCurrent,
-  highlighted,
-}: {
-  name: string;
-  price: string;
-  features: string[];
-  isCurrent: boolean;
-  highlighted?: boolean;
-}) {
-  const { t } = useLingui();
-  return (
-    <div
-      className={`rounded-lg border p-5 ${
-        highlighted
-          ? "border-primary bg-primary/5"
-          : "border-border-soft"
-      } ${isCurrent ? "ring-2 ring-primary" : ""}`}
-    >
-      <div className="mb-3 flex items-center gap-2">
-        {highlighted && <Crown size={16} className="text-primary" />}
-        <h3 className="text-base font-semibold">{name}</h3>
-        {isCurrent && (
-          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-            {t({ id: "settings.billing.currentPlan", comment: "Badge on current plan card", message: "Current" })}
-          </span>
-        )}
-      </div>
-      <p className="mb-4 text-2xl font-bold">{price}</p>
-      <ul className="space-y-2">
-        {features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm text-muted">
-            <Check size={14} className="mt-0.5 shrink-0 text-success" />
-            {f}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const { t, i18n } = useLingui();
@@ -120,22 +56,19 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
     }
   }, [isLoggedIn, planInfo.plan, returnPath, router]);
 
-  if (!isLoggedIn) return <LoginPrompt returnPath={returnPath} />;
-
   const isFree = planInfo.plan === "free";
 
-  const freePlanFeatures = [
-    t({ id: "settings.billing.free.f0", comment: "Free plan feature: universal watchlist limit", message: "Up to 10 watchlists" }),
-    t({ id: "settings.billing.free.f1", comment: "Free plan feature: star companies", message: "Star companies" }),
-    t({ id: "settings.billing.free.f2", comment: "Free plan feature: search", message: "Full job search" }),
-    t({ id: "settings.billing.free.alerts", comment: "Email alerts available to everyone", message: "Email alerts for matching jobs" }),
-    t({ id: "settings.billing.free.f3", comment: "Free plan feature: save jobs", message: "Save jobs" }),
-  ];
-
-  const proPlanFeatures = [
-    t({ id: "settings.billing.pro.f2", comment: "Pro plan feature: everything free", message: "Everything in Free" }),
-    t({ id: "settings.billing.pro.filtering", comment: "Pro unlocks AI filtering only", message: "AI filtering for your watchlists" }),
-  ];
+  const hasAccess = !isFree;
+  const canPurchase = isFree && (!planInfo.status || planInfo.status === "canceled");
+  const trialEligible = planInfo.trialEligible !== false;
+  const needsPayment = planInfo.status === "past_due";
+  const isPaused = planInfo.status === "paused";
+  const ended = planInfo.status === "canceled";
+  const periodEnd = planInfo.periodEnd
+    ? new Intl.DateTimeFormat(i18n.locale, { dateStyle: "long" }).format(new Date(planInfo.periodEnd))
+    : null;
+  const billingReturnPath = withAuthReturnPath(lp("/settings/billing"), returnPath);
+  const loginPath = withAuthReturnPath(lp("/sign-in"), billingReturnPath);
 
   async function handleCheckout() {
     setError("");
@@ -177,90 +110,115 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
     }
   }
 
+  const manageButton = (
+    <Button variant="outline" size="sm" onClick={handleManage} disabled={loading !== null}>
+      {loading === "portal"
+        ? t({ id: "settings.billing.managing", comment: "Manage subscription button loading state", message: "Loading…" })
+        : t({ id: "settings.billing.manage", comment: "Manage subscription button label", message: "Manage subscription" })}
+    </Button>
+  );
+
   return (
-    <div className="space-y-10">
-      {/* Plan overview */}
-      <section>
-        <h2 className="mb-1 text-lg font-semibold">
-          <Trans id="settings.billing.plan.title" comment="Plan section heading in billing settings">
-            Plan
-          </Trans>
-        </h2>
-        <p className="mb-4 text-sm text-muted">
-          <Trans id="settings.billing.plan.description" comment="Plan section description">
-            Choose the plan that works for you.
-          </Trans>
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <PlanCard
-            name={t({ id: "settings.billing.plan.free", comment: "Free plan name", message: "Free" })}
-            price={t({ id: "settings.billing.plan.freePrice", comment: "Free plan price display", message: "$0 / month" })}
-            features={freePlanFeatures}
-            isCurrent={isFree}
-          />
-          <PlanCard
-            name={t({ id: "settings.billing.plan.pro", comment: "Pro plan name", message: "Pro" })}
-            price={t({ id: "settings.billing.plan.proPrice", comment: "Pro plan price display", message: "$10 / month" })}
-            features={proPlanFeatures}
-            isCurrent={!isFree}
-            highlighted
-          />
+    <div className="space-y-8 pb-8">
+      {error && <ErrorAlert message={error} focusOnRender />}
+      {checkoutComplete && !hasAccess && (
+        <div className="rounded-xl border border-border-soft bg-surface p-5" role="status">
+          <p className="font-semibold"><Trans id="pro.billing.confirming" comment="Heading after checkout while the webhook is pending">Confirming your subscription</Trans></p>
+          <p className="mt-2 text-sm text-muted"><Trans id="settings.billing.processing" comment="Shown after checkout while waiting for verified subscription activation">We’re confirming your subscription. If your plan hasn’t updated yet, refresh shortly.</Trans></p>
         </div>
+      )}
 
-        {error && <div className="mt-4"><ErrorAlert message={error} focusOnRender /></div>}
-
-        {checkoutComplete && isFree && (
-          <p className="mt-4 text-sm text-muted" role="status">
-            <Trans id="settings.billing.processing" comment="Shown after checkout while waiting for verified subscription activation">
-              We’re confirming your subscription. If your plan hasn’t updated yet, refresh shortly.
-            </Trans>
-          </p>
-        )}
-
-        {planInfo.status === "trialing" && planInfo.periodEnd && (
-          <p className="mt-4 text-sm" role="status">
-            <Trans id="settings.billing.trialEnds" comment="Trial end date in billing settings">
-              Your free trial ends on {new Intl.DateTimeFormat(i18n.locale).format(new Date(planInfo.periodEnd))}.
-            </Trans>
-          </p>
-        )}
-        {planInfo.cancellationScheduled && (
-          <p className="mt-4 text-sm text-muted">
-            <Trans id="settings.billing.cancellationScheduled" comment="Subscription canceled at the end of the current billing period">
-              Your subscription will end after the current period. You can manage it in the billing portal.
-            </Trans>
-          </p>
-        )}
-
-        {isFree && planInfo.checkoutEnabled && (!planInfo.status || planInfo.status === "canceled") && (
-          <div className="mt-4 space-y-3">
-            <Button onClick={handleCheckout} disabled={loading !== null}>
-              {planInfo.trialEligible !== false
-                ? t({ id: "settings.billing.startTrial", comment: "Button opening Paddle checkout for a seven-day trial", message: "Start 7-day free trial" })
-                : t({ id: "settings.billing.subscribe", comment: "Subscribe again without another trial", message: "Subscribe to Pro" })}
-            </Button>
-            <p className="text-sm text-muted">
-              {planInfo.trialEligible !== false && <Trans id="settings.billing.trialTerms" comment="Trial renewal disclosure next to checkout button">7 days free, then US$10 per month. Payment method required. Cancel before the trial ends to avoid being charged.</Trans>}
-              {" "}<Trans id="settings.billing.paddleSeller" comment="Merchant of record and tax disclosure">Paddle handles payments and applicable taxes. Your final total is shown at checkout.</Trans>
+      {hasAccess || needsPayment || isPaused ? (
+        <section className="overflow-hidden rounded-2xl border border-border-soft">
+          <div className="border-b border-divider bg-surface p-6 sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="inline-flex items-center gap-2 text-sm"><SlidersHorizontal size={16} aria-hidden="true" /> Job Seek Pro</p>
+              <span className="rounded-full border border-border-soft px-3 py-1 text-xs">
+                {needsPayment ? t({ id: "pro.status.payment", comment: "Past-due subscription status", message: "Payment needs attention" })
+                  : isPaused ? t({ id: "pro.status.paused", comment: "Paused subscription status", message: "Paused" })
+                  : planInfo.cancellationScheduled ? t({ id: "pro.status.ending", comment: "Scheduled cancellation status", message: "Ending soon" })
+                  : planInfo.status === "trialing" ? t({ id: "pro.status.trial", comment: "Trial subscription status", message: "Free trial" })
+                  : t({ id: "pro.status.active", comment: "Active subscription status", message: "Active" })}
+              </span>
+            </div>
+            <h2 className="mt-7 text-2xl font-semibold tracking-tight">
+              {hasAccess
+                ? t({ id: "pro.billing.ready", comment: "Headline for a subscribed user", message: "Your watchlists, with a little more focus." })
+                : t({ id: "pro.billing.interrupted", comment: "Headline when Narrowed access is paused or past due", message: "Let’s get your filtering back." })}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              {needsPayment || isPaused
+                ? t({ id: "pro.billing.recover", comment: "Explains how to restore an interrupted subscription", message: "Open subscription management to review your billing and restore Narrowed results. Your free features are still available." })
+                : t({ id: "pro.billing.use", comment: "Explains where subscribed users can use Pro", message: "Open a watchlist and choose Narrow results. Add your criteria, then browse the matches." })}
             </p>
+            {hasAccess && <Button href={lp("/watchlists")} className="mt-5 gap-2">
+              {t({ id: "pro.billing.watchlists", comment: "Subscriber CTA to use the filtering feature", message: "Go to your watchlists" })}<ArrowRight size={15} aria-hidden="true" />
+            </Button>}
           </div>
-        )}
-
-        {(planInfo.hasBillingAccount || !isFree) && (
-          <div className="mt-4">
-            <Button
-              variant="outline"
-              size="md"
-              onClick={handleManage}
-              disabled={loading !== null}
-            >
-              {loading === "portal"
-                ? t({ id: "settings.billing.managing", comment: "Manage subscription button loading state", message: "Loading…" })
-                : t({ id: "settings.billing.manage", comment: "Manage subscription button label", message: "Manage subscription" })}
-            </Button>
+          <div className="flex flex-col items-start justify-between gap-4 p-6 sm:flex-row sm:items-center sm:px-8">
+            <div className="text-sm leading-6" role="status">
+              {periodEnd ? (
+                <>
+                  <p className="text-muted">{planInfo.cancellationScheduled
+                    ? t({ id: "pro.billing.accessUntil", comment: "Label for last day of Pro access after cancellation", message: "Pro access until" })
+                    : planInfo.status === "trialing"
+                      ? t({ id: "pro.billing.trialUntil", comment: "Label for the trial end date", message: "Your free trial ends" })
+                      : t({ id: "pro.billing.renews", comment: "Label for the next billing period", message: "Next renewal" })}</p>
+                  <p className="font-medium">{periodEnd}</p>
+                  {planInfo.status === "trialing" && !planInfo.cancellationScheduled && <p className="mt-1 text-xs text-muted"><Trans id="pro.billing.trialRenewal" comment="Renewal disclosure during an active trial">Then US$10/month, with applicable taxes shown in your billing portal.</Trans></p>}
+                </>
+              ) : <p className="text-muted"><Trans id="pro.billing.manageHelp" comment="What users can do in the portal">Payment details, invoices, and cancellation</Trans></p>}
+            </div>
+            {(planInfo.hasBillingAccount || hasAccess) && manageButton}
           </div>
-        )}
-      </section>
+        </section>
+      ) : checkoutComplete ? null : (
+        <>
+          {ended && <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border-soft p-5">
+            <div>
+              <h2 className="text-sm font-semibold"><Trans id="pro.billing.ended" comment="Subscription has ended and access is now free">Your Pro subscription has ended.</Trans></h2>
+              <p className="mt-1 text-xs text-muted"><Trans id="pro.billing.saved" comment="Reassures users that cancellation keeps their free data and features">Your watchlists, saved jobs, and email alerts are still here.</Trans></p>
+            </div>
+            {planInfo.hasBillingAccount && manageButton}
+          </div>}
+          <ProPitch />
+          <section id="pro-offer" className="scroll-mt-36 rounded-2xl border border-border-soft bg-surface p-6 sm:p-7">
+            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+              <div>
+                <h3 className="text-2xl font-semibold">{trialEligible
+                  ? t({ id: "pro.offer.trial", comment: "Trial offer headline", message: "7 days free" })
+                  : t({ id: "pro.offer.monthly", comment: "Returning subscriber price with explicit currency", message: "US$10 / month" })}</h3>
+                <p className="mt-2 text-sm text-muted">{trialEligible
+                  ? t({ id: "pro.offer.afterTrial", comment: "Price immediately below trial offer", message: "Then US$10 per month. Cancel anytime." })
+                  : t({ id: "pro.offer.returning", comment: "Returning customers do not receive another trial", message: "Pick up where you left off. Billed monthly." })}</p>
+              </div>
+              {canPurchase && planInfo.checkoutEnabled && !checkoutComplete && (
+                isLoggedIn ? <Button onClick={handleCheckout} disabled={loading !== null} className="gap-2 self-start sm:self-auto">
+                  {loading === "checkout"
+                    ? t({ id: "pro.offer.opening", comment: "Loading state while preparing secure checkout", message: "Opening checkout…" })
+                    : trialEligible
+                      ? t({ id: "settings.billing.startTrial", comment: "Button opening Paddle checkout for a seven-day trial", message: "Start 7-day free trial" })
+                      : t({ id: "settings.billing.subscribe", comment: "Subscribe again without another trial", message: "Subscribe to Pro" })}
+                  <ArrowRight size={16} aria-hidden="true" />
+                </Button> : <Button href={loginPath} className="gap-2 self-start sm:self-auto">
+                  {t({ id: "settings.billing.startTrial", comment: "Button opening Paddle checkout for a seven-day trial", message: "Start 7-day free trial" })}<ArrowRight size={16} aria-hidden="true" />
+                </Button>
+              )}
+              {!planInfo.checkoutEnabled && <span className="text-sm text-muted"><Trans id="pro.offer.unavailable" comment="Honest availability notice when checkout is disabled">Trial signup isn’t open yet.</Trans></span>}
+            </div>
+            <div className="mt-5 space-y-2 border-t border-divider pt-4 text-xs leading-5 text-muted">
+              {trialEligible ? <p><Trans id="pro.offer.paymentTerms" comment="Payment method and cancellation disclosure next to trial CTA">Payment method required. Cancel before your trial ends to avoid being charged.</Trans></p>
+                : <p><Trans id="pro.offer.repeatTerms" comment="Renewal disclosure for returning customers">Renews monthly until canceled. A new free trial is not included.</Trans></p>}
+              <p><Trans id="pro.offer.paddle" comment="Merchant of record and final price disclosure">Secure checkout with Paddle. Your final total, including applicable taxes, is shown before you confirm.</Trans></p>
+              {!isLoggedIn && planInfo.checkoutEnabled && <p><Trans id="pro.offer.signIn" comment="Explains that anonymous visitors sign in before checkout">You’ll sign in first, then continue to checkout.</Trans></p>}
+            </div>
+          </section>
+        </>
+      )}
+      <FreeAccessNote />
+      {canPurchase && <a className="inline-flex items-center gap-2 text-xs text-muted underline underline-offset-4 hover:text-foreground" href={returnPath ?? lp("/explore")}>
+        <Check size={13} aria-hidden="true" /><Trans id="pro.offer.stayFree" comment="Low-pressure alternative to purchasing Pro">Keep searching for free</Trans>
+      </a>}
     </div>
   );
 }

@@ -151,7 +151,7 @@ export default async function LocaleLayout({ children, params }: Props) {
                   description: i18n._({
                     id: "app.schema.offer.pro",
                     comment: "WebApplication JSON-LD offer description for the Pro plan.",
-                    message: "AI filtering for watchlists",
+                    message: "Narrowed results for watchlists",
                   }),
                 },
               ],

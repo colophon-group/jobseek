@@ -22,14 +22,14 @@ describe("public Pro-plan availability claims", () => {
     );
   });
 
-  it("describes AI filtering as the paid benefit", () => {
+  it("describes Narrowed as the paid benefit", () => {
     const faq = readFileSync(
       "app/[lang]/(public)/faq/page.tsx",
       "utf8",
     );
 
     expect(faq).toContain(
-      "Pro adds AI filtering for your watchlists.",
+      "Pro adds Narrowed results for your watchlists.",
     );
   });
 });

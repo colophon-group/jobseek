@@ -254,6 +254,235 @@ msgstr ""
 #~ msgid "watchlists.pending.cloneDetail"
 #~ msgstr "Shared copy saved in this browser"
 
+#. Free tier price displayed prominently on the home pricing card. Source is USD ($0); translators may render the symbol+number per locale convention (e.g. German '0 $').
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.price"
+#~ msgstr "$0"
+
+#. Free plan price display
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.plan.freePrice"
+#~ msgstr "$0 / month"
+
+#. Pro tier price displayed prominently on the home pricing card. Source is USD ($10/month); translators may render the symbol+number per locale convention (e.g. German '10 $').
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.pro.price"
+#~ msgstr "$10"
+
+#. Pro plan price display
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.plan.proPrice"
+#~ msgstr "$10 / month"
+
+#. Trial renewal disclosure next to checkout button
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.trialTerms"
+#~ msgstr "7 days free, then US$10 per month. Payment method required. Cancel before the trial ends to avoid being charged."
+
+#. Free feature: application tracker
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.f3"
+#~ msgstr "Application tracker with interview log"
+
+#. Plan section description
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.plan.description"
+#~ msgstr "Choose the plan that works for you."
+
+#. Pricing section heading
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.title"
+#~ msgstr "Choose the right plan for you"
+
+#. Pro tier CTA — disabled until subscriptions launch
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.pro.cta"
+#~ msgstr "Coming soon"
+
+#. Badge on current plan card
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.currentPlan"
+#~ msgstr "Current"
+
+#. Email alerts available to everyone
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.free.alerts"
+#~ msgstr "Email alerts for matching jobs"
+
+#. Email alerts available to everyone
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.alerts"
+#~ msgstr "Email alerts on new matches"
+
+#. Pro feature: includes free
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.pro.f0"
+#~ msgstr "Everything in Free"
+
+#. Pro plan feature: everything free
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.pro.f2"
+#~ msgstr "Everything in Free"
+
+#. Free tier period
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.period"
+#~ msgstr "Forever"
+
+#. Free tier name
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.name"
+#~ msgstr "Free"
+
+#. Free plan name
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.plan.free"
+#~ msgstr "Free"
+
+#. Free plan feature: search
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.free.f2"
+#~ msgstr "Full job search"
+
+#. Free tier description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.description"
+#~ msgstr "Full search, up to 10 watchlists, and a built-in application tracker to manage your pipeline."
+
+#. Merchant of record and tax disclosure
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.paddleSeller"
+#~ msgstr "Paddle handles payments and applicable taxes. Your final total is shown at checkout."
+
+#. Pro tier period
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.pro.period"
+#~ msgstr "per month"
+
+#. Plan section heading in billing settings
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.plan.title"
+#~ msgstr "Plan"
+
+#. Message when user must log in to see billing settings
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.loginRequired"
+#~ msgstr "Please log in to manage your billing settings."
+
+#. Pricing section eyebrow
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.eyebrow"
+#~ msgstr "Pricing"
+
+#. Pro tier name
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.pro.name"
+#~ msgstr "Pro"
+
+#. Pro plan name
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.plan.pro"
+#~ msgstr "Pro"
+
+#. Free plan feature: save jobs
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.free.f3"
+#~ msgstr "Save jobs"
+
+#. Free feature: full search
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.f1"
+#~ msgstr "Search across all companies and filters"
+
+#. Pricing section description
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.description"
+#~ msgstr "Simple, transparent pricing. Start for free and upgrade when you get serious about your job search."
+
+#. Free plan feature: star companies
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.free.f1"
+#~ msgstr "Star companies"
+
+#. Free tier CTA
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.cta"
+#~ msgstr "Start for free"
+
+#. Free feature: watchlist limit
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#~ msgid "home.pricing.free.f2"
+#~ msgstr "Up to 10 watchlists"
+
+#. Free plan feature: universal watchlist limit
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.free.f0"
+#~ msgstr "Up to 10 watchlists"
+
+#. Trial end date in billing settings
+#. placeholder {0}: new Intl.DateTimeFormat(i18n.locale).format(new Date(planInfo.periodEnd))
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.trialEnds"
+#~ msgstr "Your free trial ends on {0}."
+
+#. Subscription canceled at the end of the current billing period
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+#~ msgid "settings.billing.cancellationScheduled"
+#~ msgstr "Your subscription will end after the current period. You can manage it in the billing portal."
+
+#. Clarifies that example jobs are illustrative and users should check originals
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+#~ msgid "pro.example.note"
+#~ msgstr "Illustrative example. Always check the original posting."
+
+#. Fictional excerpt illustrating a match
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.matchText"
+msgstr "“Build Python APIs. No on-call duties.”"
+
+#. Fictional excerpt illustrating an exclusion
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.excludedText"
+msgstr "“Python services. Join the on-call rotation.”"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -377,30 +606,6 @@ msgstr "{range} employees"
 msgid "search.aiFilter.compactMatchCount"
 msgstr "{safeNarrowedResultCount, plural, one {# match} other {# matches}}"
 
-#. Free tier price displayed prominently on the home pricing card. Source is USD ($0); translators may render the symbol+number per locale convention (e.g. German '0 $').
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.price"
-msgstr "$0"
-
-#. Free plan price display
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.plan.freePrice"
-msgstr "$0 / month"
-
-#. Pro tier price displayed prominently on the home pricing card. Source is USD ($10/month); translators may render the symbol+number per locale convention (e.g. German '10 $').
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.price"
-msgstr "$10"
-
-#. Pro plan price display
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.plan.proPrice"
-msgstr "$10 / month"
-
 #. Heading for the 'install the Murmur MCP server' step on the agent-prompt success card
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -413,11 +618,17 @@ msgstr "1. Install MCP"
 msgid "app.home.request.agent.run_heading"
 msgstr "2. Run the prompt"
 
-#. Trial renewal disclosure next to checkout button
+#. Trial offer headline
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.trialTerms"
-msgstr "7 days free, then US$10 per month. Payment method required. Cancel before the trial ends to avoid being charged."
+msgid "pro.offer.trial"
+msgstr "7 days free"
+
+#. Public Pro pricing offer
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+msgid "pro.discovery.trial"
+msgstr "7 days to try Pro."
 
 #. FAQ answer explaining private-by-default saved-search watchlists and unlisted sharing.
 #. js-lingui-explicit-id
@@ -463,6 +674,12 @@ msgstr "Account"
 #: src/components/AppHeader.tsx
 msgid "app.header.avatar.label"
 msgstr "Account menu"
+
+#. Active subscription status
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.status.active"
+msgstr "Active"
 
 #. Title for add companies modal
 #. js-lingui-explicit-id
@@ -536,24 +753,6 @@ msgstr "Adjust the current filters until at least one job matches."
 msgid "app.home.request.agent.promptRegionLabel"
 msgstr "Agent prompt"
 
-#. WebApplication JSON-LD offer description for the Pro plan.
-#. js-lingui-explicit-id
-#: app/[lang]/layout.tsx
-msgid "app.schema.offer.pro"
-msgstr "AI filtering for watchlists"
-
-#. Pro feature: AI filtering
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.f1"
-msgstr "AI filtering for your watchlists"
-
-#. Pro unlocks AI filtering only
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.pro.filtering"
-msgstr "AI filtering for your watchlists"
-
 #. Footer shown after all paged countries have been loaded into the location modal
 #. js-lingui-explicit-id
 #: src/components/search/location-search-modal.tsx
@@ -613,6 +812,12 @@ msgstr "Already have an account? <0>Sign in</0>"
 #: src/components/settings/account/UsernameSection.tsx
 msgid "settings.account.username.taken"
 msgstr "Already taken"
+
+#. Labels the fictional Narrowed demonstration
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.label"
+msgstr "An example"
 
 #. SEO description for the public FAQ page.
 #. js-lingui-explicit-id
@@ -679,12 +884,6 @@ msgstr "Application Stats"
 #: src/components/search/job-detail-dialog.tsx
 msgid "search.detail.applicationTracker"
 msgstr "Application tracker"
-
-#. Free feature: application tracker
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.f3"
-msgstr "Application tracker with interview log"
 
 #. Subtitle showing total applications in past year
 #. js-lingui-explicit-id
@@ -806,6 +1005,19 @@ msgstr "Back to sign in"
 #: src/components/ui/back-to-top.tsx
 msgid "common.backToTop"
 msgstr "Back to top"
+
+#. Fictional role in the Pro illustration
+#. Fictional role in the Pro illustration
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.role"
+msgstr "Backend engineer"
+
+#. Fictional example requirements for Narrowed
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.request"
+msgstr "Backend roles using Python, without an on-call rotation."
 
 #. Interview type label: behavioral interview
 #. js-lingui-explicit-id
@@ -983,6 +1195,12 @@ msgstr "Check your email"
 msgid "auth.verify.checkEmail.title"
 msgstr "Check your email"
 
+#. Describes the example matching step
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.check"
+msgstr "Checked against the job description"
+
 #. Status while precise-matching account access is being checked
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -1025,18 +1243,6 @@ msgstr "Choose how Job Seek looks to you."
 #: src/components/settings/GeneralSettings.tsx
 msgid "settings.general.salary.description"
 msgstr "Choose how salaries are shown across the site."
-
-#. Plan section description
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.plan.description"
-msgstr "Choose the plan that works for you."
-
-#. Pricing section heading
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.title"
-msgstr "Choose the right plan for you"
 
 #. Job languages settings description
 #. js-lingui-explicit-id
@@ -1247,12 +1453,6 @@ msgstr "Combine seniority, technologies, salary, location, and job language in a
 msgid "home.features.s3.p1.description"
 msgstr "Combine specific companies with role filters to zero in on exactly the positions you want."
 
-#. Pro tier CTA — disabled until subscriptions launch
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.cta"
-msgstr "Coming soon"
-
 #. Plural active company count on a watchlist card
 #. Plural active company count on a watchlist card
 #. js-lingui-explicit-id
@@ -1337,6 +1537,12 @@ msgstr "Confirm deletion"
 #: app/[lang]/reset-password/page.tsx
 msgid "auth.resetPassword.confirmPassword"
 msgstr "Confirm password"
+
+#. Heading after checkout while the webhook is pending
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.confirming"
+msgstr "Confirming your subscription"
 
 #. Connect social account button
 #. js-lingui-explicit-id
@@ -1629,12 +1835,6 @@ msgstr "Currency"
 msgid "myJobs.detail.salary.currency"
 msgstr "Currency"
 
-#. Badge on current plan card
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.currentPlan"
-msgstr "Current"
-
 #. Salary period suffix shown after the amount, e.g. '300 EUR / daily'
 #. js-lingui-explicit-id
 #: src/components/providers/SalaryDisplayProvider.tsx
@@ -1764,6 +1964,18 @@ msgstr "Describe this watchlist..."
 msgid "search.aiFilter.reminder.body"
 msgstr "Describe what matters and focus this feed."
 
+#. Explains the Narrowed benefit
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.pitch.body"
+msgstr "Describe what matters beyond job titles. Narrowed checks the postings in your watchlist against your criteria, so you can focus on the matches."
+
+#. Copy explaining the Pro-only AI search filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.subscription.body"
+msgstr "Describe what matters beyond the usual filters. Narrowed checks the postings in this watchlist against your criteria. Included with Pro."
+
 #. Cookie banner details button
 #. js-lingui-explicit-id
 #: src/components/CookieBanner.tsx
@@ -1869,18 +2081,6 @@ msgstr "Edit request"
 msgid "auth.field.email"
 msgstr "Email"
 
-#. Email alerts available to everyone
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.free.alerts"
-msgstr "Email alerts for matching jobs"
-
-#. Email alerts available to everyone
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.alerts"
-msgstr "Email alerts on new matches"
-
 #. Email or username input label for sign-in
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx
@@ -1905,6 +2105,12 @@ msgstr "Employment type"
 msgid "watchlists.actions.enableAlerts"
 msgstr "Enable alerts"
 
+#. Scheduled cancellation status
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.status.ending"
+msgstr "Ending soon"
+
 #. Forgot password page subtitle
 #. js-lingui-explicit-id
 #: app/[lang]/(auth)/forgot-password/page.tsx
@@ -1917,24 +2123,6 @@ msgstr "Enter your email and we'll send you a reset link."
 msgid "auth.resetPassword.subtitle"
 msgstr "Enter your new password below."
 
-#. Compact Pro teaser shown after sustained result scrolling
-#. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.reminder.proBody"
-msgstr "Evaluate every posting against what matters to you."
-
-#. Compact Pro teaser explaining precise matching on a watchlist
-#. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.compactSubscriptionBody"
-msgstr "Evaluate every posting against your request."
-
-#. Compact explanation of precise matching on a watchlist
-#. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.compactBody"
-msgstr "Evaluate every posting against your request."
-
 #. Feature section 1 heading
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
@@ -1946,18 +2134,6 @@ msgstr "Every filter a job seeker actually needs"
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.assurances.i1.body"
 msgstr "Every retry window uses exponential backoff so we never hammer an origin, and we bail if a host keeps timing out."
-
-#. Pro feature: includes free
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.f0"
-msgstr "Everything in Free"
-
-#. Pro plan feature: everything free
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.pro.f2"
-msgstr "Everything in Free"
 
 #. FAQ page description
 #. js-lingui-explicit-id
@@ -2010,11 +2186,23 @@ msgstr "Explore Jobs"
 msgid "explore.meta.title"
 msgstr "Explore Jobs"
 
+#. Link to the Pro explanation and subscription offer
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+msgid "pro.discovery.cta"
+msgstr "Explore Pro"
+
 #. Short link to the Pro subscription from the compact watchlist control
 #. Short link to the Pro subscription from the compact watchlist control
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.subscription.cta.short"
+msgstr "Explore Pro"
+
+#. Link to subscription settings from the AI filter
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.subscription.cta"
 msgstr "Explore Pro"
 
 #. Generic email change error
@@ -2126,6 +2314,12 @@ msgstr "Filter industries..."
 msgid "search.technologyModal.searchPlaceholder"
 msgstr "Filter technologies..."
 
+#. Example excluded result
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.excluded"
+msgstr "Filtered out"
+
 #. Section title for filters in watchlist view
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
@@ -2143,6 +2337,12 @@ msgstr "Filters"
 #: src/components/settings/GeneralSettings.tsx
 msgid "settings.general.jobLanguages.findMore"
 msgstr "Find more"
+
+#. Heading explaining AI filter subscription requirement
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.subscription.title"
+msgstr "Find your focus with Narrowed"
 
 #. Feature: focused search title
 #. js-lingui-explicit-id
@@ -2168,12 +2368,6 @@ msgstr "Footer"
 msgid "home.hero.eyebrow"
 msgstr "For job seekers who already know where they want to work."
 
-#. Free tier period
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.period"
-msgstr "Forever"
-
 #. Forgot password link on sign-in page
 #. js-lingui-explicit-id
 #: src/components/AuthForm.tsx
@@ -2198,23 +2392,17 @@ msgstr "founded {year}"
 msgid "company.head.founded"
 msgstr "Founded {year}"
 
-#. Free tier name
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.name"
-msgstr "Free"
-
-#. Free plan name
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.plan.free"
-msgstr "Free"
-
 #. FAQ answer summarizing Free and the upcoming Pro plan.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.freeVsPro"
-msgstr "Free includes full search, up to 10 watchlists, email alerts, and the application tracker. Pro adds AI filtering for your watchlists."
+msgstr "Free includes full search, up to 10 watchlists, email alerts, and the application tracker. Pro adds Narrowed results for your watchlists."
+
+#. Trial subscription status
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.status.trial"
+msgstr "Free trial"
 
 #. FAQ page heading
 #. js-lingui-explicit-id
@@ -2234,17 +2422,11 @@ msgstr "From"
 msgid "home.features.s2.title"
 msgstr "From saved role to signed offer, all in one place"
 
-#. Free plan feature: search
+#. Features everyone has, independent of Pro
 #. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.free.f2"
-msgstr "Full job search"
-
-#. Free tier description
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.description"
-msgstr "Full search, up to 10 watchlists, and a built-in application tracker to manage your pipeline."
+#: src/components/pro/ProPitch.tsx
+msgid "pro.free.body"
+msgstr "Full search, up to 10 watchlists, email alerts, and application tracking. Pro adds Narrowed results."
 
 #. WebApplication JSON-LD offer description for the Free plan.
 #. js-lingui-explicit-id
@@ -2297,6 +2479,12 @@ msgstr "GitHub"
 #: app/[lang]/not-found-content.tsx
 msgid "notFound.goHome"
 msgstr "Go home"
+
+#. Subscriber CTA to use the filtering feature
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.watchlists"
+msgstr "Go to your watchlists"
 
 #. Dismiss upgrade modal
 #. js-lingui-explicit-id
@@ -2693,6 +2881,12 @@ msgstr "Jobs at {name}"
 msgid "search.bar.keepAsKeywords"
 msgstr "Keep \"{0}\" as keywords"
 
+#. Low-pressure alternative to purchasing Pro
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.stayFree"
+msgstr "Keep searching for free"
+
 #. Add keyword filter
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-filter-editor.tsx
@@ -2746,6 +2940,12 @@ msgstr "Last week"
 #: src/components/Hero.tsx
 msgid "home.hero.secondaryCta"
 msgstr "Learn more"
+
+#. Headline when Narrowed access is paused or past due
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.interrupted"
+msgstr "Let’s get your filtering back."
 
 #. Label for seniority/level filter in advanced search
 #. js-lingui-explicit-id
@@ -2900,12 +3100,10 @@ msgstr "Locations"
 #. Login button label
 #. Login button label
 #. Login button label
-#. Login button label
 #. js-lingui-explicit-id
 #: src/components/AppHeader.tsx
 #: src/components/search/ai-search-filter.tsx
 #: src/components/settings/account/LoginPrompt.tsx
-#: src/components/settings/BillingSettings.tsx
 msgid "common.auth.login"
 msgstr "Log in"
 
@@ -2958,6 +3156,12 @@ msgstr "Mark offer"
 #: src/components/my-jobs/quick-actions.tsx
 msgid "myJobs.action.markRejected"
 msgstr "Mark rejected"
+
+#. Example matching result
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.match"
+msgstr "Match"
 
 #. Header for the server-side search-results cluster shown when the user types in the location modal search box
 #. js-lingui-explicit-id
@@ -3158,11 +3362,11 @@ msgstr "Narrow the search first"
 msgid "search.aiFilter.reminder.title"
 msgstr "Narrow these results"
 
-#. Pro tier description
+#. Name of the Pro feature; keep the product name Narrowed
 #. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.description"
-msgstr "Narrow your watchlists with AI filtering."
+#: src/components/pro/ProPitch.tsx
+msgid "pro.pitch.feature"
+msgstr "Narrowed"
 
 #. State-neutral title of the scroll reminder for an already-narrowed watchlist
 #. js-lingui-explicit-id
@@ -3181,6 +3385,12 @@ msgstr "Narrowed results"
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.resultsTitle"
 msgstr "Narrowed results"
+
+#. WebApplication JSON-LD offer description for the Pro plan.
+#. js-lingui-explicit-id
+#: app/[lang]/layout.tsx
+msgid "app.schema.offer.pro"
+msgstr "Narrowed results for watchlists"
 
 #. Heading asking the viewer to sign in before creating a precisely matched watchlist
 #. js-lingui-explicit-id
@@ -3223,6 +3433,12 @@ msgstr "New password"
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.defaultTitle"
 msgstr "New watchlist"
+
+#. Label for the next billing period
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.renews"
+msgstr "Next renewal"
 
 #. Empty-state message when a company has no active job postings
 #. js-lingui-explicit-id
@@ -3468,6 +3684,12 @@ msgstr "Onsite"
 msgid "search.unavailable.heading"
 msgstr "Oops, something went wrong."
 
+#. Explains where subscribed users can use Pro
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.use"
+msgstr "Open a watchlist and choose Narrow results. Add your criteria, then browse the matches."
+
 #. Aria label for the row open-posting button when the posting title is missing
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-job-list.tsx
@@ -3494,6 +3716,12 @@ msgstr "Open main menu"
 msgid "company.meta.openPositions"
 msgstr "Open positions"
 
+#. Explains how to restore an interrupted subscription
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.recover"
+msgstr "Open subscription management to review your billing and restore Narrowed results. Your free features are still available."
+
 #. TOC: Open-source crawlers
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -3505,6 +3733,12 @@ msgstr "Open-source crawlers"
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.oss.title"
 msgstr "Open-source crawlers"
+
+#. Loading state while preparing secure checkout
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.opening"
+msgstr "Opening checkout…"
 
 #. TOC: Opt-out or questions
 #. js-lingui-explicit-id
@@ -3577,12 +3811,6 @@ msgstr "Overview"
 #: src/components/LicenseContent.tsx
 msgid "license.toc.overview"
 msgstr "Overview"
-
-#. Merchant of record and tax disclosure
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.paddleSeller"
-msgstr "Paddle handles payments and applicable taxes. Your final total is shown at checkout."
 
 #. Table of contents aria label
 #. js-lingui-explicit-id
@@ -3659,23 +3887,41 @@ msgstr "Passwords do not match"
 msgid "app.home.request.description"
 msgstr "Paste a careers page URL for best results, or just type a company name."
 
+#. Paused subscription status
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.status.paused"
+msgstr "Paused"
+
 #. Label for pay period selector
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx
 msgid "settings.general.salary.periodLabel"
 msgstr "Pay period"
 
+#. What users can do in the portal
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.manageHelp"
+msgstr "Payment details, invoices, and cancellation"
+
+#. Payment method and cancellation disclosure next to trial CTA
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.paymentTerms"
+msgstr "Payment method required. Cancel before your trial ends to avoid being charged."
+
+#. Past-due subscription status
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.status.payment"
+msgstr "Payment needs attention"
+
 #. Billing error when checkout is not configured yet
 #. js-lingui-explicit-id
 #: src/lib/action-error-messages.ts
 msgid "actions.error.paymentsUnavailable"
 msgstr "Payments are not available yet."
-
-#. Pro tier period
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.period"
-msgstr "per month"
 
 #. Assurance 3 title
 #. js-lingui-explicit-id
@@ -3714,11 +3960,11 @@ msgstr "Phone Screen"
 msgid "home.features.s3.description"
 msgstr "Pick the companies you care about, set your filters, and get a private live feed of matching roles."
 
-#. Plan section heading in billing settings
+#. Returning customers do not receive another trial
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.plan.title"
-msgstr "Plan"
+msgid "pro.offer.returning"
+msgstr "Pick up where you left off. Billed monthly."
 
 #. Error when company request input is empty
 #. Error when company request input is empty
@@ -3786,12 +4032,6 @@ msgstr "Please log in and try again."
 msgid "settings.account.loginRequired"
 msgstr "Please log in to manage your account settings."
 
-#. Message when user must log in to see billing settings
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.loginRequired"
-msgstr "Please log in to manage your billing settings."
-
 #. Posting not found message
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx
@@ -3810,12 +4050,6 @@ msgstr "Posting not found."
 msgid "search.aiFilter.controlPanel"
 msgstr "Precise matching"
 
-#. Heading explaining AI filter subscription requirement
-#. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.subscription.title"
-msgstr "Precise matching is included with Pro"
-
 #. Heading shown when exact AI candidate eligibility cannot be established
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -3828,12 +4062,6 @@ msgstr "Precise matching is temporarily unavailable"
 #: src/components/Header.tsx
 #: src/components/MobileMenu.tsx
 msgid "common.nav.pricing"
-msgstr "Pricing"
-
-#. Pricing section eyebrow
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.eyebrow"
 msgstr "Pricing"
 
 #. Footer link to privacy policy page
@@ -3867,18 +4095,6 @@ msgstr "Privacy Policy"
 msgid "home.features.s3.p3.title"
 msgstr "Private to your account"
 
-#. Pro tier name
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.pro.name"
-msgstr "Pro"
-
-#. Pro plan name
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.plan.pro"
-msgstr "Pro"
-
 #. Short Pro subscription badge
 #. Short Pro subscription badge
 #. Short Pro subscription badge
@@ -3886,6 +4102,12 @@ msgstr "Pro"
 #: src/components/search/ai-search-filter.tsx
 msgid "common.plan.pro"
 msgstr "Pro"
+
+#. Label for last day of Pro access after cancellation
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.accessUntil"
+msgstr "Pro access until"
 
 #. Fallback credit text for public domain artwork
 #. js-lingui-explicit-id
@@ -4154,6 +4376,12 @@ msgstr "Remove salary filter"
 msgid "search.filters.removeSalary"
 msgstr "Remove salary filter"
 
+#. Renewal disclosure for returning customers
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.repeatTerms"
+msgstr "Renews monthly until canceled. A new free trial is not included."
+
 #. Synthetic dropdown row that lets the user request a company that's not in the catalog
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
@@ -4328,12 +4556,6 @@ msgstr "Save job"
 msgid "search.save.save"
 msgstr "Save job"
 
-#. Free plan feature: save jobs
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.free.f3"
-msgstr "Save jobs"
-
 #. Empty state for stats
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/my-jobs/stats/stats-page.tsx
@@ -4399,12 +4621,6 @@ msgstr "Saving..."
 #: src/components/settings/account/UsernameSection.tsx
 msgid "settings.account.username.saving"
 msgstr "Saving..."
-
-#. Free feature: full search
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.f1"
-msgstr "Search across all companies and filters"
 
 #. Feature section 1 description
 #. js-lingui-explicit-id
@@ -4514,6 +4730,18 @@ msgstr "Search..."
 #: src/components/PaddlePaymentLink.tsx
 msgid "checkout.title"
 msgstr "Secure checkout"
+
+#. Merchant of record and final price disclosure
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.paddle"
+msgstr "Secure checkout with Paddle. Your final total, including applicable taxes, is shown before you confirm."
+
+#. Mobile shortcut from product explanation to pricing
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.pitch.pricingLink"
+msgstr "See pricing"
 
 #. Feature: application stats description
 #. js-lingui-explicit-id
@@ -4759,12 +4987,6 @@ msgstr "Signing in..."
 msgid "company.similar.heading"
 msgstr "Similar companies"
 
-#. Pricing section description
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.description"
-msgstr "Simple, transparent pricing. Start for free and upgrade when you get serious about your job search."
-
 #. Step 1 title
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -4813,12 +5035,6 @@ msgstr "Sorry, {name} isn't in our catalog yet. Want us to add it?"
 msgid "search.card.star"
 msgstr "Star"
 
-#. Free plan feature: star companies
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.free.f1"
-msgstr "Star companies"
-
 #. Starred state label for star button on company card
 #. js-lingui-explicit-id
 #: src/components/search/star-button.tsx
@@ -4826,16 +5042,11 @@ msgid "search.card.starred"
 msgstr "Starred"
 
 #. Button opening Paddle checkout for a seven-day trial
+#. Button opening Paddle checkout for a seven-day trial
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
 msgid "settings.billing.startTrial"
 msgstr "Start 7-day free trial"
-
-#. Free tier CTA
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.cta"
-msgstr "Start for free"
 
 #. Heading prompting the user to use normal filters before AI
 #. js-lingui-explicit-id
@@ -5073,6 +5284,24 @@ msgstr "The short version"
 msgid "settings.general.theme.title"
 msgstr "Theme"
 
+#. Public monthly price after trial
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+msgid "pro.discovery.price"
+msgstr "Then US$10 per month. Cancel anytime."
+
+#. Price immediately below trial offer
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.afterTrial"
+msgstr "Then US$10 per month. Cancel anytime."
+
+#. Renewal disclosure during an active trial
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.trialRenewal"
+msgstr "Then US$10/month, with applicable taxes shown in your billing portal."
+
 #. Message when reset token is missing
 #. js-lingui-explicit-id
 #: app/[lang]/reset-password/page.tsx
@@ -5160,6 +5389,12 @@ msgstr "Transparency matters, so the code for our job link collection service an
 msgid "about.transparency.title"
 msgstr "Transparent by default"
 
+#. Honest availability notice when checkout is disabled
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.unavailable"
+msgstr "Trial signup isn’t open yet."
+
 #. Button to retry loading the page after an error
 #. js-lingui-explicit-id
 #: app/[lang]/error.tsx
@@ -5226,18 +5461,6 @@ msgstr "Unsave job"
 msgid "search.save.unsave"
 msgstr "Unsave job"
 
-#. Free feature: watchlist limit
-#. js-lingui-explicit-id
-#: src/components/Pricing.tsx
-msgid "home.pricing.free.f2"
-msgstr "Up to 10 watchlists"
-
-#. Free plan feature: universal watchlist limit
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.free.f0"
-msgstr "Up to 10 watchlists"
-
 #. Email save button
 #. js-lingui-explicit-id
 #: src/components/settings/account/ChangeEmailSection.tsx
@@ -5268,11 +5491,11 @@ msgstr "Upgrade"
 msgid "upgrade.modal.title"
 msgstr "Upgrade required"
 
-#. Copy explaining the Pro-only AI search filter
+#. Returning subscriber price with explicit currency
 #. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.subscription.body"
-msgstr "Upgrade to evaluate a focused job feed against the criteria that matter to you."
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.monthly"
+msgstr "US$10 / month"
 
 #. FAQ answer explaining how to request a missing company from the Explore page.
 #. js-lingui-explicit-id
@@ -5364,12 +5587,6 @@ msgstr "View"
 #: src/components/search/job-detail-dialog.tsx
 msgid "search.detail.viewPosting"
 msgstr "View posting"
-
-#. Link to subscription settings from the AI filter
-#. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-msgid "search.aiFilter.subscription.cta"
-msgstr "View Pro plan"
 
 #. Employment type: volunteer
 #. js-lingui-explicit-id
@@ -5631,6 +5848,12 @@ msgstr "Work mode"
 msgid "search.workModeModal.title"
 msgstr "Work mode"
 
+#. Explains that Narrowed adds to standard search rather than replacing it
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.pitch.scope"
+msgstr "Works with your watchlists and usual filters."
+
 #. Salary period suffix shown after the amount, e.g. '50k EUR / yearly'
 #. js-lingui-explicit-id
 #: src/components/providers/SalaryDisplayProvider.tsx
@@ -5741,6 +5964,12 @@ msgstr "You signed in with a social account. Set a password to enable email chan
 msgid "app.home.request.agent.token_caveat"
 msgstr "You'll need a token from the jobseek team — replace <token-from-jobseek-team> before running the install command."
 
+#. Explains that anonymous visitors sign in before checkout
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.signIn"
+msgstr "You’ll sign in first, then continue to checkout."
+
 #. Message shown when the user has hit the per-hour limit on triggering Murmur company-add runs
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -5777,18 +6006,53 @@ msgstr "Your companies, your rules"
 msgid "watchlists.clone.narrowedFree.description"
 msgstr "Your copy will keep the standard filters. On Free, you won’t be able to set up or view its narrowed feed."
 
+#. Label for the example natural-language filter
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.requestLabel"
+msgstr "Your criteria"
+
+#. Compact Pro teaser shown after sustained result scrolling
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.reminder.proBody"
+msgstr "Your criteria. A shorter list with Narrowed."
+
+#. Compact Pro teaser explaining precise matching on a watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.compactSubscriptionBody"
+msgstr "Your criteria. A shorter list with Narrowed."
+
+#. Compact explanation of precise matching on a watchlist
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+msgid "search.aiFilter.compactBody"
+msgstr "Evaluate every posting against your request."
+
+#. Pro headline: personal criteria lead to fewer, more relevant jobs
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.pitch.title"
+msgstr "Your criteria.<0/>A shorter list."
+
 #. Description after successful email verification
 #. js-lingui-explicit-id
 #: app/[lang]/verify-email/page.tsx
 msgid "auth.verify.success.description"
 msgstr "Your email has been verified."
 
-#. Trial end date in billing settings
+#. Label for the trial end date
 #. js-lingui-explicit-id
-#. placeholder {0}: new Intl.DateTimeFormat(i18n.locale).format(new Date(planInfo.periodEnd))
 #: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.trialEnds"
-msgstr "Your free trial ends on {0}."
+msgid "pro.billing.trialUntil"
+msgstr "Your free trial ends"
+
+#. Reassures that core job search features stay free
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.free.title"
+msgstr "Your job search stays free."
 
 #. Description after successful password reset
 #. js-lingui-explicit-id
@@ -5796,17 +6060,17 @@ msgstr "Your free trial ends on {0}."
 msgid "auth.resetPassword.success.description"
 msgstr "Your password has been reset. You can now sign in with your new password."
 
+#. Subscription has ended and access is now free
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.ended"
+msgstr "Your Pro subscription has ended."
+
 #. Your rights section title
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.title"
 msgstr "Your rights"
-
-#. Subscription canceled at the end of the current billing period
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "settings.billing.cancellationScheduled"
-msgstr "Your subscription will end after the current period. You can manage it in the billing portal."
 
 #. Username section description without retired public-profile wording
 #. js-lingui-explicit-id
@@ -5819,3 +6083,15 @@ msgstr "Your unique handle for your Job Seek account."
 #: src/components/Features.tsx
 msgid "home.features.s3.p3.description"
 msgstr "Your watchlists are private by default. Share an unlisted link only when you choose; only you can manage the list."
+
+#. Reassures users that cancellation keeps their free data and features
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.saved"
+msgstr "Your watchlists, saved jobs, and email alerts are still here."
+
+#. Headline for a subscribed user
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.ready"
+msgstr "Your watchlists, with a little more focus."

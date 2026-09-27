@@ -2,7 +2,7 @@
 
 ## Product and account configuration (27 September 2026)
 
-Pro unlocks **AI filtering for watchlists only**. Standard search, up to ten
+Pro unlocks **Narrowed results for watchlists only**. Standard search, up to ten
 watchlists, email alerts, and application tracking are available to everyone.
 The historical internal `unlimited` plan name represents Pro; it does not
 remove the account-wide watchlist limit.
@@ -102,6 +102,13 @@ and an unexpired period grant AI access. Scheduled cancellation retains access
 until the period ends. Past due, paused, canceled, and expired subscriptions do
 not grant AI access. All AI configuration/execution and bootstrap readers share
 this rule. Email alerts have no paid-plan restriction.
+
+Public pricing and subscription settings share the Narrowed example and describe
+the outcome, without marketing AI. Anonymous visitors can inspect the offer before
+signing in; sign-in preserves both the billing page and the original search return
+path. Subscribers see status, dates, and a watchlist entry point instead of the
+purchase pitch. Interrupted subscribers are sent to billing management, and
+returning subscribers see the monthly price without another trial.
 
 The billing portal remains available after access expires. Account deletion
 first records deletion intent (blocking concurrent checkout), cancels pending

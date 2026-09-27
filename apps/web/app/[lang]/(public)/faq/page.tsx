@@ -67,7 +67,7 @@ export default async function FaqPage({ params }: Props) {
     },
     {
       q: i18n._({ id: "faq.q.freeVsPro", comment: "FAQ question comparing the Free and Pro plans.", message: "What's the difference between Free and Pro?" }),
-      a: i18n._({ id: "faq.a.freeVsPro", comment: "FAQ answer summarizing Free and the upcoming Pro plan.", message: "Free includes full search, up to 10 watchlists, email alerts, and the application tracker. Pro adds AI filtering for your watchlists." }),
+      a: i18n._({ id: "faq.a.freeVsPro", comment: "FAQ answer summarizing Free and the upcoming Pro plan.", message: "Free includes full search, up to 10 watchlists, email alerts, and the application tracker. Pro adds Narrowed results for your watchlists." }),
     },
     {
       q: i18n._({ id: "faq.q.whatIsWatchlist", comment: "FAQ question defining a watchlist.", message: "What is a watchlist?" }),
