@@ -6,6 +6,35 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation slice: 2026-09-27 — Go reconciliation
+
+The next release adds `go-typesense-exporter --reconcile`, replaces the
+Python CLI runtime through `exec`, and invokes Go directly in the full
+backfill maintenance chain. It retains the existing reconciliation ledger,
+256-partition cursor, shared exporter fence, exact payload comparisons,
+bounded complete-stream retries, repair/readback/source-stability checks,
+legacy bucket cleanup, and durable candidate-order readiness receipts.
+Bootstrap cleanup also holds the shared exporter fence through its local
+absence checks and verification. No CDC cursor or exporter owner is changed.
+
+The integration tests execute the actual state migrations against isolated
+PostgreSQL schemas and exercise real HTTP imports/exports and cursor locks.
+They prove that an ambiguous acknowledgement leaves the partition unadvanced,
+a resumed repair converges, the full 256-partition cycle persists its evidence,
+orphans are removed, cancellation records interruption, and competing owners
+or stale in-memory receipts cannot establish a successful proof. Local
+PostgreSQL 18, Go race/vet checks, the CLI/deployment tests, and workflow tests
+passed. Production reconciliation remains on the previous runtime until this
+release is deployed and its normal bounded run is observed.
+
+The systemd wrapper has a separate installed SHA contract. Keep its current
+`crawler reconcile` launcher for this image rollout; the new CLI immediately
+execs Go. After this image is live, change the wrapper to invoke Go directly
+through the supported reconciliation-host deployment. Installing that direct
+wrapper before the binary exists would break the previous image. Taxonomy
+verification, configuration sync, and other Python-owned stages remain on the
+full migration backlog. The full #7966 gate is still open.
+
 ## Production checkpoint: 2026-09-27 — Go Typesense backfill
 
 [PR #10069](https://github.com/colophon-group/jobseek/pull/10069) merged as
