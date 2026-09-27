@@ -65,14 +65,48 @@ A 1,001-board case covers the batch boundary and stops later batches/removals
 on failure. This implementation is not deployed. CSV/local PostgreSQL sync,
 workers and remaining extraction/profile stages still require Go migration.
 
-## Unified release candidate: Go maintenance v0.13.870
+## Implementation checkpoint: Go local registry preparation
+
+The next configuration-sync port is on `fix-crawler/go-registry-sync`, created
+from then-latest main `334f5631d` in an isolated worktree and subsequently
+integrated with #10093's merged revision. It is not a production command yet.
+
+Go now reads CSVs while preserving Python/Polars null versus quoted-empty
+cells, BOMs and multiline CRLF; prepares canonical taxonomy, company and
+description SQL arguments; computes board metadata and monitor fingerprints;
+and reproduces browser/fallback routing and provider throttle hosts. The
+retained Python functions generate the comparison evidence without publisher
+traffic. Canonical SQL and registered route facts are embedded contracts.
+
+Actual repository comparisons passed with the race detector:
+
+- 6,013 companies and 5,876 descriptions, plus taxonomy tables: all CSV cells
+  and all 14 prepared SQL calls match.
+- 7,879 boards: metadata, fingerprints, monitor/detail browser decisions and
+  throttle keys match. An additional 493 synthetic cases exercise registered
+  types, fallback chains, numeric/Unicode settings, malformed configuration,
+  and provider metadata/URL identity boundaries.
+
+Local mode-0600 oracle artifacts are
+`/tmp/jobseek-go-registry-repository-fixture.json` and
+`/tmp/jobseek-go-registry-board-fixture.json`. Run the Go preparation tests with
+`REGISTRY_TEST_FIXTURE` and `REGISTRY_BOARD_TEST_FIXTURE`, respectively.
+These comparisons prove preparation only. Next implement local transaction
+execution, exact board identity/rehome/recovery effects, pending taxonomy
+misses, installed read-only data-mount checks, and the orchestrator's
+commit-before-Redis/Typesense boundary. Exercise real PostgreSQL rollback and
+identity preservation before wiring the production CLI. Python still owns
+that local transaction; no full configuration-sync migration is claimed.
+
+## Historical release candidate: Go maintenance v0.13.870
 
 The completed implementations from #10072, #10074, #10076, #10077, #10085 and
 #10088 are assembled on `fix-crawler/go-maintenance-transition`, created from
 latest main `52e8c7b6a`. The individual sections below record implementation
 history; the unified candidate supersedes their separate release order.
-**This candidate is not deployed.** Its combined CI and production evidence
-must pass before the source PRs are retired.
+This candidate was delivered by #10089 as recorded in the production checkpoint
+above; the six source PRs have been retired. The following describes its
+original release order, not another outstanding validation gate.
 
 One crawler image now includes Go reconciliation, exact taxonomy verification,
 schema setup, taxonomy/company publication and posting rename updates,
