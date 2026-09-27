@@ -1,4 +1,4 @@
-"""Default-off exclusive Go monitor for Teamtailor's existing RSS preset."""
+"""Exclusive Go monitor for Teamtailor's existing RSS preset."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import json
 import os
 import re
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from time import monotonic
 from urllib.parse import urlparse
 
@@ -43,6 +44,8 @@ _BOOKKEEPING = {
 }
 _DOWNSTREAM = {"url_allowlist", "url_transform", "url", "job_filter"}
 log = structlog.get_logger()
+_MAX_OUTPUT_BYTES = 160_000_000
+_CHILD_STOP_SECONDS = 5
 
 
 def _eligible(board_url: str, monitor_type: str, config: dict | None, pw: object | None) -> str:
@@ -84,7 +87,7 @@ def _eligible(board_url: str, monitor_type: str, config: dict | None, pw: object
 
 
 def percentage_selected(board_id: str, board_url: str, config: dict | None) -> bool:
-    raw = os.environ.get("TEAMTAILOR_RSS_GO_PERCENT", "0")
+    raw = os.environ.get("TEAMTAILOR_RSS_GO_PERCENT", "100")
     if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw):
         return False
     percent = int(raw)
@@ -93,13 +96,6 @@ def percentage_selected(board_id: str, board_url: str, config: dict | None) -> b
     try:
         _eligible(board_url, "rss", config, None)
     except ValueError:
-        return False
-    recent = (config or {}).get("recent_discovered_counts")
-    if (
-        not isinstance(recent, list)
-        or len(recent) < 3
-        or not all(type(count) is int and 1 <= count <= 500 for count in recent[-3:])
-    ):
         return False
     bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
     return bucket < percent * 100
@@ -137,12 +133,21 @@ class GoTeamtailorRSSMonitorRuntime:
                 "--feed-url",
                 feed_url,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
             )
-            stdout, stderr = await proc.communicate()
-            if len(stdout) > 160_000_000:
-                raise ValueError("Go Teamtailor output exceeded its selected RSS bound")
-            payload = json.loads(stdout)
+            # Bound retention during reads, including a misbehaving child. Errors
+            # are in the JSON envelope; stderr must not become an unbounded buffer.
+            assert proc.stdout is not None
+            chunks = []
+            size = 0
+            while chunk := await proc.stdout.read(min(1 << 20, _MAX_OUTPUT_BYTES + 1 - size)):
+                size += len(chunk)
+                if size > _MAX_OUTPUT_BYTES:
+                    raise ValueError("Go Teamtailor output exceeded its selected RSS bound")
+                chunks.append(chunk)
+            await proc.wait()
+            payload = json.loads(b"".join(chunks))
+            del chunks
             if not isinstance(payload, dict):
                 raise ValueError("invalid Go Teamtailor response")
             attempts = payload.get("requests")
@@ -183,7 +188,7 @@ class GoTeamtailorRSSMonitorRuntime:
                     )
                 if responses:
                     mark_external_response(feed_url, status)
-                detail = payload.get("error") or stderr.decode(errors="replace")[:300]
+                detail = payload.get("error") or f"child exited with status {proc.returncode}"
                 if status and status != 200:
                     request = httpx.Request("GET", feed_url)
                     response = httpx.Response(status, request=request)
@@ -235,16 +240,31 @@ class GoTeamtailorRSSMonitorRuntime:
                     for offset in range(0, len(jobs), 200):
                         yield jobs[offset : offset + 200]
 
+            canonical_urls: set[str] = set()
             async for result in postprocess_monitor_stream(raw_batches(), monitor_config or {}):
+                canonical_urls.update(result.urls)
                 yield result
+            log.info(
+                "go_teamtailor_rss.monitor_postprocessed",
+                board_id=self.board_id,
+                urls=len(canonical_urls),
+                url_sha256=hashlib.sha256("\n".join(sorted(canonical_urls)).encode()).hexdigest(),
+                truncated=truncated,
+            )
             outcome = "success"
         except asyncio.CancelledError:
             outcome = "cancelled"
             raise
         finally:
             if proc is not None and proc.returncode is None:
-                proc.terminate()
-                await proc.wait()
+                with suppress(ProcessLookupError):
+                    proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), _CHILD_STOP_SECONDS)
+                except TimeoutError:
+                    with suppress(ProcessLookupError):
+                        proc.kill()
+                    await proc.wait()
             runtime_execution_duration_seconds.labels(
                 stage="monitor", implementation=self.implementation
             ).observe(monotonic() - started)

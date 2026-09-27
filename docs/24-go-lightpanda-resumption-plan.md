@@ -6,6 +6,35 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: complete Teamtailor RSS routing v0.13.878
+
+The Teamtailor RSS runtime now defaults to Go for every supported direct feed,
+without the pilot's requirement for three recent nonzero counts below 501.
+A read-only production census found 162 enabled Teamtailor RSS boards, all with
+supported configurations; five have no history or active rows. The pre-release
+baseline covers 3,178 active postings. This change moves the 161 remaining
+Python Teamtailor RSS monitors to the existing native fetch/parser path.
+
+Transport/configuration validation, 100-item pagination, 50,000-job truncation,
+TDM handling and shared downstream filtering/URL identity/writer policies are
+preserved. The bridge bounds stdout while reading and reaps a stuck child after
+a bounded terminate/kill sequence, including cancellation. A new
+`go_teamtailor_rss.monitor_postprocessed` event records the canonical URL set
+hash after filtering and transformations, for exact database comparisons.
+
+Replaying the retained 69,210-byte Sellpy feed through current Python and Go
+matched all seven rich fields for 11 jobs (canonical field SHA-256
+`3e156cb0a84a47f5c2d64307d6626e079694e033b9aa871c0c56bf6028accbb5`).
+No publisher traffic was generated. Production deployment and newly admitted
+natural-run evidence are pending; the authoritative live release/selector
+instructions remain in the production checkpoint below.
+
+For percentage rollback set `TEAMTAILOR_RSS_GO_PERCENT=0` through the supported
+cold configuration procedure. Explicit `TEAMTAILOR_RSS_GO_BOARD_IDS` still take
+precedence, so remove those too for full provider reversal, or restore the
+previous release for the existing Sellpy-only route. This is monitor ownership;
+Python worker/writer stages and the full retirement/resource gates remain open.
+
 ## Production checkpoint: 2026-09-27 — complete Ashby monitor routing v0.13.877
 
 PR #10107 merged as `0893bd935b629601714dde3b828bcd3c8088dfe9`.
