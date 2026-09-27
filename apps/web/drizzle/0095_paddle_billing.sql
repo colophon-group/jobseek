@@ -28,3 +28,15 @@ CREATE TABLE "paddle_subscription" (
 );
 --> statement-breakpoint
 CREATE INDEX "idx_paddle_subscription_account" ON "paddle_subscription" ("account_id");
+--> statement-breakpoint
+-- Billing is managed by server actions and verified webhooks, never the Data API.
+ALTER TABLE public.paddle_account ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.paddle_subscription ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON TABLE public.paddle_account, public.paddle_subscription FROM PUBLIC;
+DO $$
+DECLARE browser_role text;
+BEGIN
+  FOR browser_role IN SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated') LOOP
+    EXECUTE format('REVOKE ALL ON TABLE public.paddle_account, public.paddle_subscription FROM %I', browser_role);
+  END LOOP;
+END $$;

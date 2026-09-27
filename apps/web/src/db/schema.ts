@@ -403,7 +403,7 @@ export const paddleAccount = pgTable("paddle_account", {
   uniqueIndex("idx_paddle_account_user_environment").on(table.userId, table.environment),
   uniqueIndex("idx_paddle_account_customer_environment").on(table.customerId, table.environment),
   uniqueIndex("idx_paddle_account_transaction").on(table.pendingTransactionId),
-]);
+]).enableRLS();
 
 export const paddleSubscription = pgTable("paddle_subscription", {
   id: text("id").primaryKey(),
@@ -417,7 +417,7 @@ export const paddleSubscription = pgTable("paddle_subscription", {
   // Preserve provider microseconds when comparing out-of-order deliveries.
   eventOccurredAt: timestamp("event_occurred_at", { withTimezone: true, mode: "string" }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("idx_paddle_subscription_account").on(table.accountId)]);
+}, (table) => [index("idx_paddle_subscription_account").on(table.accountId)]).enableRLS();
 
 export const industry = pgTable("industry", {
   id: smallint("id").primaryKey(),

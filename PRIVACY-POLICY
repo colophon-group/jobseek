@@ -95,11 +95,11 @@ Email: business@colophon-group.org
      anonymous, cookie-free page-view data. Vercel's privacy policy:
      https://vercel.com/legal/privacy-policy
 
-  c. Neon (database)
+  c. Supabase (database)
      Your account and usage data is stored in a managed PostgreSQL
-     database provided by Neon. Data is encrypted at rest. Neon's
+     database provided by Supabase. Data is encrypted at rest. Supabase's
      privacy policy:
-     https://neon.tech/privacy-policy
+     https://supabase.com/privacy
 
   d. Paddle (payments and merchant of record)
      Paddle acts as the reseller and merchant of record for Pro purchases
@@ -113,7 +113,7 @@ Email: business@colophon-group.org
 6. DATA STORAGE AND SECURITY
 
   - All data in transit is encrypted via HTTPS / TLS.
-  - Data at rest is encrypted by the database provider (Neon).
+  - Data at rest is encrypted by the database provider (Supabase).
   - We do not store your OAuth provider password.
   - Access to production systems is restricted to authorised
     personnel.
@@ -176,7 +176,7 @@ Email: business@colophon-group.org
 10. INTERNATIONAL TRANSFERS
 
   Your data may be processed on servers located in the United States
-  (Vercel, Neon). Where data is transferred outside the EEA, we rely
+  (Vercel, Supabase). Where data is transferred outside the EEA, we rely
   on the processor's Standard Contractual Clauses or other lawful
   transfer mechanisms.
 

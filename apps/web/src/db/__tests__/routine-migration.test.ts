@@ -12,7 +12,7 @@ const migrationFolder = resolve(process.cwd(), "drizzle");
 const target = {
   tag: "0095_paddle_billing",
   createdAt: 1_790_510_322_209,
-  hash: "4fdb75c949aadc24f99c0a2e3f7cdc1f31384b79b56b8dcc6917b145f7cf2e3e",
+  hash: "6dc583e104d9ecb8a200e2215882098dd90ef43133b159685dcf0936f75abc28",
 };
 const environment = {
   MIGRATION_REQUIRE_UNPOOLED: "true",

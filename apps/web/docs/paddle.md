@@ -65,7 +65,12 @@ workflow and bind its confirmation to the reviewed commit and SQL hash.
 `paddle_account` separates users/customers by environment and stores the pending
 transaction, selected price, and consumed trial. `paddle_subscription` stores
 provider state, exact expected price, entitlement, and event time. Existing
-manually granted subscriptions remain valid.
+manually granted subscriptions remain valid. Both Paddle tables enable row-level
+security without browser policies and revoke all table privileges from PUBLIC,
+`anon`, and `authenticated`; only trusted server database access manages billing.
+A disposable PostgreSQL harness applies the actual SQL under Supabase-style
+default grants and proves browser roles cannot read, modify, or truncate these
+tables while the server owner retains access.
 
 Authenticated server checkout selects the price and serializes against the
 account row. Repeated clicks reuse the same pending checkout. Completed
