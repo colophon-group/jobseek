@@ -1,0 +1,130 @@
+{
+  "release": "0.13.879",
+  "revision": "265d7e8b8f12beabff3d5e7e131f2e8eb168903d",
+  "pull_request": 10100,
+  "crawler_deployment_run": 36349867411,
+  "web_deployment_run": 36349867352,
+  "verification": {
+    "reviewed_head": "afd0ffb878f20ac8d56ede84369e68cf1f773b2c",
+    "reviewed_base": "9c127906aa75d1940e81c2ed4b5f5a600a2f11ed",
+    "required_ci_run": 36349080396,
+    "runtime_contracts_run": 36349080325,
+    "deploy_gate_run": 36349791827,
+    "crawler_tests_passed": 13507,
+    "crawler_tests_skipped": 44,
+    "focused_processing_runtime_tests_passed": 476
+  },
+  "prerequisites": {
+    "migration": "0034",
+    "reservation_columns_verified": 4,
+    "typesense_field": "tdm_reserved",
+    "type": "bool",
+    "optional": true,
+    "indexed": true,
+    "existing_unreserved_document_remained_eligible": true,
+    "schema_patch_timeout": "Observed server-side completion after client timeout; no blind replay."
+  },
+  "supported_rollback": {
+    "from_epoch": 90,
+    "retired_epoch": 91,
+    "restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "cleared_exact_selectors": 25
+  },
+  "selector_helper": {
+    "path": "/tmp/jobseek-post-go-experience-selectors.py",
+    "sha256": "d3a8aa77fc1f21ebdb42754113c75f7cd26d321aead2f57aecd878de67a7842e",
+    "count": 25,
+    "unchanged_values_from": "docs/evidence/go-teamtailor-production-2026-09-27.json"
+  },
+  "remaining": [
+    "Origin-file reservation detection and remaining active fetch-path coverage",
+    "Historical trace-bundle reservation provenance",
+    "Synthetic production reservation rehearsal through downstream mining consumers"
+  ],
+  "status": "crawler and web deployed; c1 restored and verified",
+  "post_activation": {
+    "revision": "265d7e8b8f12beabff3d5e7e131f2e8eb168903d",
+    "pilot": {
+      "state": "active",
+      "cohort": "c1",
+      "routing_epoch": "92",
+      "deploy_revision": "265d7e8b8f12beabff3d5e7e131f2e8eb168903d"
+    },
+    "services": [
+      {
+        "name": "deploy-lightpanda-claimant-1",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "name": "deploy-browser-1-1",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "name": "deploy-worker-3-1",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "name": "deploy-worker-1-1",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "name": "deploy-worker-2-1",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "name": "deploy-lightpanda-executor-1",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "name": "deploy-drain-1",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "name": "deploy-lightpanda-producer-1",
+        "running": true,
+        "health": "healthy"
+      },
+      {
+        "name": "deploy-alloy-1",
+        "running": true,
+        "health": "no_healthcheck"
+      },
+      {
+        "name": "deploy-exporter-1",
+        "running": true,
+        "health": "no_healthcheck"
+      },
+      {
+        "name": "deploy-redis-1",
+        "running": true,
+        "health": "healthy"
+      }
+    ],
+    "queue_audit": {
+      "accepted": true,
+      "reason": "audit_ok",
+      "records": 5,
+      "secondary": 0,
+      "counts": {
+        "ready": 5,
+        "inflight": 0,
+        "dead": 0
+      }
+    },
+    "exporter_metrics": [
+      "crawler_typesense_export_docs_total{status=\"success\"} 136",
+      "crawler_typesense_export_docs_total{status=\"error\"} 0",
+      "crawler_typesense_export_lag 0",
+      "crawler_typesense_healthy 1"
+    ]
+  }
+}
