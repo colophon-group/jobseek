@@ -6,6 +6,38 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: SuccessFactors RSS feed routing v0.13.879
+
+Go now defaults to all supported direct SuccessFactors feeds, including explicit
+`variant=feed`, configured cross-domain Google feeds, the category RSS endpoint,
+and shared URL filters/transforms and writer identity-migration metadata. The
+pilot-only recent-count requirement is removed. A read-only replay of all 227
+current configurations selects **216 Go monitors**, up from one. Eleven remain
+Python: three legacy HTML, one legacy XML, three RMK, and four profiles with
+inline detail-field or job-invite identity requests. None are disabled.
+
+Native parsing now matches Python's Unicode case folding, whitespace, exact
+XML namespaces, first repeated field, and text before nested child elements.
+Entity-decoded description whitespace is preserved. Thirty-two frozen Python
+parser cases pass in Go; CI also replays them through the installed binary with
+networking disabled. The retained 482,801-byte Mobiliar feed matches all 71 rich
+jobs exactly, including all descriptions, locations and metadata. Its source
+SHA-256 is `0a65c6e9d7fbe329d95fa59e126d0cbe72770033897a27a6ed2ba79d7c228ff4`.
+
+Verification passed 227 focused runtime/RSS/shared monitor tests, Go race/vet,
+Ruff/Pyright and the offline native verifier. Streamed output, HTTP/TDM failure
+classification and downstream writer/drop policy remain in place. The bridge
+now reaps cancelled/stuck children after bounded termination and records a
+postprocessed canonical URL hash for DB comparison. No extra publisher requests
+were made. Deployment and natural output readback are pending; use the v0.13.878
+production selector/epoch instructions below until a new release is promoted.
+
+For reversal, restore the previous release or use the supported cold
+configuration procedure with `SUCCESSFACTORS_RSS_GO_PERCENT=0`; explicit
+`SUCCESSFACTORS_RSS_GO_BOARD_IDS` still take precedence and must also be cleared
+for full provider reversal. This slice does not establish complete provider or
+Python/browser retirement, or whole-lane resource efficiency.
+
 ## Production checkpoint: 2026-09-27 — complete Teamtailor RSS routing v0.13.878
 
 PR #10109 merged as `ca3d0c244b6e8288227276c0151f80edc1c3d988`.

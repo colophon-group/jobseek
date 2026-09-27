@@ -72,3 +72,28 @@ func TestFetchRejectsReservedTDMAndUnsafeAddresses(t *testing.T) {
 		}
 	}
 }
+
+func TestConfiguredCategoryFeedRequest(t *testing.T) {
+	feedURL := "https://jobs.example.com/services/rss/category/?catid=2842101"
+	summary, err := Fetch(context.Background(), doFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.String() != feedURL {
+			t.Fatalf("changed feed request: %s", req.URL)
+		}
+		return response(req, 200, `<rss><item><link>https://jobs.example.com/1</link></item></rss>`), nil
+	}), feedURL, func(Job) error { return nil })
+	if err != nil || summary.Jobs != 1 {
+		t.Fatalf("%+v %v", summary, err)
+	}
+	for _, raw := range []string{
+		"https://jobs.example.com/services/rss/category/?catid=2842101&offset=1",
+		"https://jobs.example.com/services/rss/category/?catid=abc",
+		"https://jobs.example.com/services/rss/category/?catid=0",
+		"https://jobs.example.com/googlefeed.xml?locale=en",
+		"http://jobs.example.com/googlefeed.xml",
+		"https://user@jobs.example.com/googlefeed.xml",
+	} {
+		if _, err := validFeedURL(raw); err == nil {
+			t.Errorf("accepted %s", raw)
+		}
+	}
+}

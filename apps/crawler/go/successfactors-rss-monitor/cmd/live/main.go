@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,11 +16,32 @@ import (
 
 func main() {
 	var feedURL string
+	var parseStdin bool
 	flag.StringVar(&feedURL, "feed-url", "", "configured SuccessFactors RSS feed")
+	flag.BoolVar(&parseStdin, "parse-stdin", false, "parse a retained RSS feed offline")
 	flag.Parse()
 	if flag.NArg() != 0 {
 		fmt.Fprintln(os.Stderr, "unexpected positional argument")
 		os.Exit(2)
+	}
+	if parseStdin {
+		if feedURL != "" {
+			fmt.Fprintln(os.Stderr, "parse-stdin cannot fetch a feed")
+			os.Exit(2)
+		}
+		jobs, items, err := successfactorsrss.ParseReader(io.LimitReader(os.Stdin, (256<<20)+1))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(struct {
+			Jobs  []successfactorsrss.Job `json:"jobs"`
+			Items int                     `json:"items"`
+		}{jobs, items}); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
 	}
 	parent, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

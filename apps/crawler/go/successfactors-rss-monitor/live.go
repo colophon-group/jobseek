@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -91,10 +92,17 @@ func publicDialContext(ctx context.Context, network, address string) (net.Conn, 
 	return nil, errors.New("SuccessFactors feed host has no reachable public address")
 }
 
+var categoryQuery = regexp.MustCompile(`^catid=[1-9][0-9]{0,15}$`)
+
 func validFeedURL(raw string) (*url.URL, error) {
 	parsed, err := url.Parse(raw)
-	if err != nil || parsed == nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil || parsed.Fragment != "" || parsed.RawQuery != "" || parsed.Port() != "" && parsed.Port() != "443" || !strings.EqualFold(strings.TrimRight(parsed.Path, "/"), "/googlefeed.xml") {
+	if err != nil || parsed == nil || parsed.Scheme != "https" || parsed.Hostname() == "" || parsed.User != nil || parsed.Fragment != "" || parsed.Port() != "" && parsed.Port() != "443" {
 		return nil, errors.New("SuccessFactors feed URL is not canonical HTTPS /googlefeed.xml")
+	}
+	googleFeed := parsed.RawQuery == "" && strings.EqualFold(strings.TrimRight(parsed.Path, "/"), "/googlefeed.xml")
+	categoryFeed := parsed.Path == "/services/rss/category/" && categoryQuery.MatchString(parsed.RawQuery)
+	if !googleFeed && !categoryFeed {
+		return nil, errors.New("SuccessFactors feed URL is not a Google or category RSS feed")
 	}
 	return parsed, nil
 }
