@@ -20,16 +20,18 @@ describe("public indexing-policy copy", () => {
     expect(howWeIndex).not.toContain("one request per site per minute");
   });
 
-  it("describes current robots and User-Agent behavior without false guarantees", () => {
+  it("describes request identity without disclosing robots implementation details or false guarantees", () => {
     for (const source of [howWeIndex, faq, about]) {
       expect(source).not.toContain("identifies itself via");
       expect(source).not.toContain("All requests identify themselves");
       expect(source).not.toContain("We respect robots.txt");
     }
 
-    expect(howWeIndex).toContain("Disallow enforcement is not yet active");
+    expect(howWeIndex).not.toContain("Disallow");
+    expect(howWeIndex).not.toContain("robots.txt");
     expect(howWeIndex).toContain("stable browser-compatible");
-    expect(faq).toContain("Disallow enforcement is not yet active");
+    expect(faq).not.toContain("Disallow");
+    expect(faq).not.toContain("robots.txt");
   });
 
   it("removes the fictional identifying UA from every translated blog post", () => {
@@ -41,7 +43,9 @@ describe("public indexing-policy copy", () => {
     ]) {
       const post = readFileSync(file, "utf8");
       expect(post).not.toContain("Job-Seek-Crawler/X.Y");
-      expect(post).toContain("issues/2841");
+      expect(post).not.toContain("Disallow");
+      expect(post).not.toContain("robots.txt");
+      expect(post).toContain("/how-we-index");
     }
   });
 });

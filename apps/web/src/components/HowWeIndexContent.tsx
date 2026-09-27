@@ -66,10 +66,10 @@ export function HowWeIndexContent() {
                       <p className="text-muted"><Trans id="indexing.assurances.i1.body" comment="Assurance 1 body">Every retry window uses exponential backoff so we never hammer an origin, and we bail if a host keeps timing out.</Trans></p>
                     </li>
                     <li>
-                      <p className="font-semibold"><Trans id="indexing.assurances.i2.title" comment="Assurance 2 title">Robots discovery, request identity, and TDM reservation.</Trans></p>
+                      <p className="font-semibold"><Trans id="indexing.assurances.i2.title" comment="Assurance 2 title">Request identity and content restrictions.</Trans></p>
                       <p className="text-muted">
                         <Trans id="indexing.assurances.i2.body" comment="Assurance 2 body">
-                          Our crawler reads <code>robots.txt</code> for sitemap discovery; Disallow enforcement is not yet active. Requests use a stable browser-compatible <code>User-Agent</code>, with an identifying Job Seek UA on source-specific paths. We respect the W3C <code>TDM-Reservation</code> header{"\u2014"}if a page signals reservation, we skip it.
+                          Requests use a stable browser-compatible <code>User-Agent</code>, with an identifying Job Seek UA on source-specific paths. Supported fetch paths check <code>TDM-Reservation</code> headers and HTML metadata and skip reserved responses. Coverage is incomplete across fetch paths and previously stored content. Contact us to request a source-specific restriction or removal.
                         </Trans>
                       </p>
                     </li>
@@ -111,7 +111,7 @@ export function HowWeIndexContent() {
                   <span className="font-semibold"><Trans id="indexing.ingestion.s1.title" comment="Step 1 title">Sitemap first.</Trans></span>{" "}
                   <span className="text-muted">
                     <Trans id="indexing.ingestion.s1.body" comment="Step 1 body">
-                      We look for a sitemap that already lists every careers or job detail page{"\u2014"}ideally linked from <code>robots.txt</code>{"\u2014"}and rely on it whenever possible.
+                      We look for a sitemap that already lists every careers or job detail page and rely on it whenever possible.
                     </Trans>
                   </span>
                 </li>

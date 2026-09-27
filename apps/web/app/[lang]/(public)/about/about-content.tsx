@@ -52,7 +52,7 @@ export function AboutContent({ contactEmail, ossRepoUrl }: AboutContentProps) {
               <div className="mt-4 flex flex-col gap-6 text-muted">
                 <p>
                   <Trans id="about.transparency.p1" comment="About transparency paragraph">
-                    The crawler code is open source so anyone can audit how we collect data. We inspect robots.txt for sitemap discovery, honor TDM-Reservation headers, and pace requests per rate-limit domain. Every outbound link includes utm_source=jobseek so employers know where their traffic comes from.
+                    The crawler code is open source so anyone can audit how we collect data. We pace requests per rate-limit domain. Our Job Indexing page describes current content-restriction handling and how to contact us. Every outbound link includes utm_source=jobseek so employers know where their traffic comes from.
                   </Trans>
                 </p>
               </div>

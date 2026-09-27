@@ -1,42 +1,17 @@
-"""TDM-Reservation respect — W3C Text-and-Data-Mining opt-out (#2842).
+"""Resource-level TDM header/meta checks (not complete TDMRep coverage).
 
-Every shared fetch helper in :mod:`src.shared.http_retry` and the
-per-monitor retry helpers (workday, lever, smartrecruiters, hirehive, hireology,
-api_sniffer, accenture, umantis, dom-browser-page) inspect each upstream
-response for two TDM-Reservation signals:
+HTML metadata supersedes headers in TDMRep section 6.7. When only headers
+are available, a reservation is rejected immediately; callers may therefore
+conservatively skip before reading a later HTML opt-in. Origin-file policies,
+other reservation methods and downstream use of stored copies need separate
+controls. See issue #10090.
 
-- HTTP response header ``tdm-reservation: 1`` (case-insensitive name).
-- HTML ``<meta name="tdm-reservation" content="1">`` in the response
-  body — fallback for static hosts/CDNs that can't set headers.
-
-A ``=1`` value (per W3C TDM Reservation Protocol §3.1, integer values
-``0``/``1`` are conformant) raises :exc:`TDMReservedError`. The exception
-is **not** retried — it's a publisher policy declaration, not a transient
-failure — and propagates up to ``_process_one_board_streaming`` where it
-is caught, logged, and counter-incremented separately from the
-``_RECORD_FAILURE`` path. The board run is treated as a clean skip
-(no tombstoning, no consecutive_failures bump).
-
-Spec: https://www.w3.org/TR/tdmrep/. Header values are integer ``0``
-(allowed) or ``1`` (reserved/disallowed). Values outside the spec
-(non-integer strings, multi-value comma-separated lists, ``true``/``false``
-strings) are treated leniently as **absent** rather than reserved —
-defensive parsing per the spec's "implementation-defined" clause for
-non-conformant values.
-
-Blast radius (issue #2842 comment): 0 of 4709 active boards / 0 of 881
-distinct origins emit any TDM-Reservation signal as of 2026-05-09. The
-hook is enforce-direct (no shadow-mode flag) — there is nothing to
-shadow. The check exists so that future emissions on currently-loadbearing
-hosts (e.g. ``boards.greenhouse.io``, ``jobs.ashbyhq.com``,
-``jobs.lever.co`` — any one of which would skip thousands of boards at
-once) are honored from day one of emission, without waiting for a code
-deploy.
+https://w3c.github.io/cg-reports/tdmrep/CG-FINAL-tdmrep-20240510/
 """
 
 from __future__ import annotations
 
-import re
+from html.parser import HTMLParser
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -50,80 +25,47 @@ __all__ = [
 ]
 
 
-# ``<meta name="tdm-reservation" content="1">`` — attribute order is not
-# fixed by HTML spec, so the regex matches both
-# ``name="tdm-reservation" ... content="1"`` and the reverse. Quotes may
-# be double, single, or absent; the pattern accepts all three. Whitespace
-# inside the attribute value is conservatively rejected — the spec only
-# admits the bare integer ``1``.
-#
-# Anchored with ``<meta`` and ``>`` to avoid spuriously matching inside a
-# script/style payload that happens to contain the substring. The body
-# excerpt we receive in :func:`check_response` is bounded by
-# ``fetch_with_retry``'s ``max_chars`` truncation — typically 64 KB or
-# less — so the regex cost is negligible.
-_META_TDM_RESERVATION_RE = re.compile(
-    r"""<meta\s+
-        (?:
-            name\s*=\s*["']?tdm-reservation["']?\s+
-            content\s*=\s*["']?1["']?
-        |
-            content\s*=\s*["']?1["']?\s+
-            name\s*=\s*["']?tdm-reservation["']?
-        )
-        \s*/?\s*>""",
-    re.IGNORECASE | re.VERBOSE,
-)
+# Match within the same bounded head excerpt used by fetch helpers. A fast
+# keyword check avoids parsing the normal no-signal response.
+_META_MAX_CHARS = 65_536
+
+
+class _ReservationParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.reservation: int | None = None
+        self.policy_url: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag != "meta":
+            return
+        values = dict(attrs)
+        name = (values.get("name") or "").lower()
+        if name == "tdm-reservation":
+            parsed = _parse_reservation_value(values.get("content"))
+            if parsed is not None:
+                self.reservation = parsed
+        elif name == "tdm-policy":
+            self.policy_url = values.get("content") or None
 
 
 def _parse_reservation_value(raw: object) -> int | None:
-    """Parse a ``tdm-reservation`` value. Returns ``0``/``1`` or ``None``.
-
-    Defensive (issue #2842): values that aren't strict integers are
-    treated as absent. The spec (W3C TDMRep §3.1) admits ``0`` and ``1``
-    as conformant; anything else is implementation-defined. We choose the
-    permissive interpretation (no enforcement on garbage) over the
-    conservative one (enforce on garbage) because false positives here
-    cost real boards while the spec gives us no obligation either way.
-
-    The ``raw`` parameter is typed ``object`` rather than ``str | None``
-    because callers may pass a value extracted from a partial-mock
-    response in tests, where ``headers.get(...)`` can return a
-    ``MagicMock``. We treat any non-string as absent rather than
-    crash-loud — the production callers (httpx + Playwright) always
-    yield strings on real header lookups.
-    """
+    """Return the protocol's literal 0/1 values, treating others as unset."""
     if raw is None or not isinstance(raw, str):
         return None
-    s = raw.strip()
-    if not s:
-        return None
-    # Reject multi-value headers (``"0, 1"``, ``"1; foo"``) outright —
-    # the spec does not define multi-value semantics, and a comma in the
-    # value is a malformed publisher signal we shouldn't second-guess.
-    if "," in s or ";" in s:
-        return None
-    try:
-        v = int(s)
-    except ValueError:
-        return None
-    if v == 0 or v == 1:
-        return v
-    return None
+    value = raw.strip()
+    return int(value) if value in {"0", "1"} else None
 
 
-def _extract_meta_reservation(body_excerpt: str | None) -> bool:
-    """Return ``True`` iff *body_excerpt* contains ``<meta tdm-reservation=1>``.
-
-    Lightweight regex scan rather than a full HTML parse — the cost
-    matters because every fetched page on every paginating monitor goes
-    through this. Anchored at ``<meta`` to avoid script-body false
-    positives. ``content="0"`` is *not* matched here (an explicit opt-in
-    declaration shouldn't accidentally trigger enforcement).
-    """
+def _extract_meta(body_excerpt: str | None) -> tuple[int | None, str | None]:
     if not body_excerpt:
-        return False
-    return _META_TDM_RESERVATION_RE.search(body_excerpt) is not None
+        return None, None
+    excerpt = body_excerpt[:_META_MAX_CHARS]
+    if "tdm-" not in excerpt.lower():
+        return None, None
+    parser = _ReservationParser()
+    parser.feed(excerpt)
+    return parser.reservation, parser.policy_url
 
 
 class TDMReservedError(Exception):
@@ -169,42 +111,19 @@ def check_response(
     *,
     body_excerpt: str | None = None,
 ) -> None:
-    """Inspect an httpx response for TDM-Reservation signals.
-
-    Raises:
-        :class:`TDMReservedError` if the upstream declares
-        ``tdm-reservation: 1`` via header or (when *body_excerpt* is
-        provided and the header is absent) via HTML meta tag.
-
-    Returns:
-        ``None`` (no-op) when no reservation is declared, including the
-        case where the header explicitly says ``0`` (which takes
-        precedence over any conflicting body meta — the header is the
-        canonical signal per spec §3.2).
-
-    Header lookup is case-insensitive (httpx handles this natively).
-    The ``tdm-policy`` companion header is captured into the raised
-    exception's ``policy_url`` attribute when present, but absence does
-    not affect the enforcement decision.
-    """
-    header_raw = resp.headers.get("tdm-reservation")
-    parsed = _parse_reservation_value(header_raw)
+    """Check available resource signals; parsed HTML metadata wins over headers."""
+    parsed = _parse_reservation_value(resp.headers.get("tdm-reservation"))
     policy_url = resp.headers.get("tdm-policy") or None
-    url = str(resp.request.url) if resp.request is not None else "<unknown>"
-
+    meta, meta_policy = _extract_meta(body_excerpt)
+    if meta is not None:
+        parsed = meta
     if parsed == 1:
-        raise TDMReservedError(url, source="header", policy_url=policy_url)
-    if parsed == 0:
-        # Explicit opt-in. Header is canonical — don't fall through to
-        # the body-meta scan. Per the issue spec: "Header takes precedence
-        # over meta (= 0 wins even if meta = 1, per spec since header is
-        # canonical)".
-        return
-    # Header is absent (or non-integer / multi-value gibberish that we
-    # parsed as absent). Fall through to the body-meta scan if we have
-    # a body excerpt to scan.
-    if _extract_meta_reservation(body_excerpt):
-        raise TDMReservedError(url, source="meta", policy_url=policy_url)
+        url = str(resp.request.url)
+        raise TDMReservedError(
+            url,
+            source="meta" if meta is not None else "header",
+            policy_url=meta_policy or policy_url,
+        )
 
 
 def check_browser_response(
@@ -236,9 +155,12 @@ def check_browser_response(
                 policy_url = v or None
 
     parsed = _parse_reservation_value(header_raw)
+    meta, meta_policy = _extract_meta(html)
+    if meta is not None:
+        parsed = meta
     if parsed == 1:
-        raise TDMReservedError(url, source="header", policy_url=policy_url)
-    if parsed == 0:
-        return
-    if _extract_meta_reservation(html):
-        raise TDMReservedError(url, source="meta", policy_url=policy_url)
+        raise TDMReservedError(
+            url,
+            source="meta" if meta is not None else "header",
+            policy_url=meta_policy or policy_url,
+        )

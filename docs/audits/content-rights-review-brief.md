@@ -61,16 +61,19 @@ remaining sources; do not apply a single employer's permission to every board.
 
 - Source and employer attribution, original application links, and a public
   contact/removal route exist. Inspect a live posting as part of review.
-- `HowWeIndexContent.tsx` explicitly says `robots.txt` is used for discovery and
-  Disallow enforcement is not active. Do not represent robots compliance as
-  implemented or treat robots permission as an IP licence.
+- Source-access controls remain tracked internally in #2841. At the owner's
+  request, robots.txt/Disallow implementation details are removed from public
+  indexing copy. No new compliance or content-licensing claim is made.
 - `apps/crawler/src/shared/tdm.py`, HTTP retry helpers and several adapters check
   TDM reservation signals. Code evidence is not proof that every transport/path
   enforces every signal; any rights assessment relying on complete coverage
   should identify and test that requirement.
-- Removal requires an operational procedure covering source re-ingestion,
-  database/index copies, R2 content, logos, caches and ancillary datasets. A
-  contact address alone is not evidence of an end-to-end takedown guarantee.
+- Owner decision, 27 September 2026: implement the full cross-system removal
+  procedure upon the first request. This is deferred operational work, not a
+  prerequisite to starting Paddle verification. The affected scope may include
+  re-ingestion, database/index copies, R2 content, logos, caches and datasets.
+  Public wording provides a request channel without claiming an already tested
+  end-to-end takedown guarantee.
 - The old blanket fair-use/fair-dealing explanation has been removed from the
   proposed Terms. This corrects the assertion, not the unresolved legal basis.
 

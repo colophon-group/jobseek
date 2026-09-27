@@ -1,0 +1,14 @@
+{
+  "results": [
+    "en/terms: HTTP 200, complete canonical document, localized footer, no overflow",
+    "en/privacy-policy: HTTP 200, complete canonical document, localized footer, no overflow",
+    "de/terms: HTTP 200, complete canonical document, localized footer, no overflow",
+    "de/privacy-policy: HTTP 200, complete canonical document, localized footer, no overflow",
+    "fr/terms: HTTP 200, complete canonical document, localized footer, no overflow",
+    "fr/privacy-policy: HTTP 200, complete canonical document, localized footer, no overflow",
+    "it/terms: HTTP 200, complete canonical document, localized footer, no overflow",
+    "it/privacy-policy: HTTP 200, complete canonical document, localized footer, no overflow"
+  ],
+  "mobile": "390px checks passed",
+  "pageErrors": []
+}

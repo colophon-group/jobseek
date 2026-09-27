@@ -79,7 +79,7 @@ export default async function FaqPage({ params }: Props) {
     },
     {
       q: i18n._({ id: "faq.q.crawlingPolicy", comment: "FAQ question for company operators about crawler behavior.", message: "How does the crawler behave on my company's website?" }),
-      a: i18n._({ id: "faq.a.crawlingPolicy", comment: "FAQ answer accurately summarizing robots handling, request identity, pacing, and TDM policy.", message: "We inspect robots.txt for sitemap discovery; Disallow enforcement is not yet active. We respect TDM-Reservation headers, pace requests per rate-limit domain, and use exponential backoff. Most requests use a stable browser-compatible User-Agent, while source-specific paths may use an identifying Job Seek UA. See our Job Indexing page for full details." }),
+      a: i18n._({ id: "faq.a.crawlingPolicy", comment: "FAQ answer summarizing request identity, pacing, and the indexing-policy contact route.", message: "We pace requests per rate-limit domain and use exponential backoff. Most requests use a stable browser-compatible User-Agent, while source-specific paths may use an identifying Job Seek UA. See our Job Indexing page for current content-restriction handling and contact details." }),
     },
     {
       q: i18n._({ id: "faq.q.optOut", comment: "FAQ question about company opt-out from indexing.", message: "Can I opt out of Jobseek indexing my company?" }),

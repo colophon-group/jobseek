@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -44,6 +45,9 @@ class StubHfApi:
         self.calls: list[tuple[str, dict]] = []
 
     # -- API surface used by scrub --------------------------------------
+
+    def repo_info(self, **kwargs):
+        return SimpleNamespace(private=True)
 
     def list_repo_files(self, *, repo_id: str, repo_type: str) -> list[str]:
         self.calls.append(("list_repo_files", {"repo_id": repo_id, "repo_type": repo_type}))
@@ -265,7 +269,9 @@ def test_scrub_date_filter_limits_files_processed() -> None:
     )
     scrub(ScrubFilter(slug="acme", dates=frozenset({"2026-04-25"})), api=api)
     downloaded = {c[1]["filename"] for c in api.calls if c[0] == "hf_hub_download"}
-    assert downloaded == {"data/2026-04-25.jsonl"}
+    assert downloaded == {"data/2026-04-25.jsonl", "data/2026-04-26.jsonl"}
+    # The remaining date is read for the card count, never rewritten.
+    assert "2026-04-26: 1" in api.extras["README.md"]
     # untouched
     assert api.files["data/2026-04-26.jsonl"] == [_row("p2", "acme")]
 
@@ -365,14 +371,21 @@ def test_live_scrub_refreshes_readme(tmp_path: Path, monkeypatch: pytest.MonkeyP
             }
         )
     )
-    api = StubHfApi({"data/2026-04-25.jsonl": [_row("p1", "acme")]})
+    api = StubHfApi(
+        {
+            "data/2026-04-25.jsonl": [_row("p1", "acme")],
+            "data/2026-04-27.jsonl": [_row("p3", "remote-only")],
+        }
+    )
     scrub(ScrubFilter(slug="acme"), api=api)
 
     readme_uploads = [
         c for c in api.calls if c[0] == "upload_file" and c[1]["path_in_repo"] == "README.md"
     ]
     assert len(readme_uploads) == 1
-    assert "2026-04-26: 1" in api.extras["README.md"]
+    assert "2026-04-27: 1" in api.extras["README.md"]
+    assert "2026-04-26: 1" not in api.extras["README.md"]
+    assert "data/2026-04-25.jsonl" not in api.files
 
 
 def test_no_change_skips_readme_refresh() -> None:

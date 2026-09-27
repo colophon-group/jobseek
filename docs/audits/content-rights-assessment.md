@@ -228,8 +228,9 @@ all API evidence as mere technical availability.
    A TDM reservation is not automatically a demand to erase every factual field:
    suspend the uses relying on that exception and evaluate the scope.
 5. **Robots enforcement remains open.**
-   The public indexing page accurately discloses that Disallow enforcement is
-   inactive; reuse [#2841](https://github.com/colophon-group/jobseek/issues/2841).
+   Disallow enforcement remains inactive; reuse
+   [#2841](https://github.com/colophon-group/jobseek/issues/2841). The owner asked
+   to remove robots.txt/Disallow implementation details from public copy.
    Its completion is useful for source compliance but is not a copyright licence.
    Do not bypass access restrictions or treat a refused request as an invitation
    to rotate identity. Inventory the impact before applying broad source changes.
@@ -270,7 +271,7 @@ claimed to have been imposed by Paddle.
 | Enforce the decided scope | Separate capabilities for public description, internal matching, logos and dataset export. Unknown public-text rights can fall back to independently expressed facts and original links; collection/analysis still need their own basis. Product approval is needed before materially reducing source coverage or changing default full-text display. |
 | [#10090 — repair TDM controls](https://github.com/colophon-group/jobseek/issues/10090) | Header/meta fixtures through real monitor entry points; valid HTML variations; browser/Go parity as applicable; persistent source/use restriction and matching/export checks. Retention review for stored copies affected by a reservation; no accidental broad job-deletion fallback. Correct the public claim until verified. |
 | [#10091 — resolve dataset redistribution](https://github.com/colophon-group/jobseek/issues/10091) | Private visibility is applied and verified for both Job Seek datasets. Inventory existing rows and historical releases, gate any future public export on a recorded redistribution basis, distinguish own contributions in the card, cover empty-date deletion and remote history. Do not claim that making a repo private recalls copies already downloaded. |
-| Verify a complete rights-removal procedure | One owner and contact route; verify claimant/scope; stop re-ingestion; apply scoped suppression/deletion to crawler DB, published DB/search index, R2 descriptions/logos, caches, matching copies and datasets; backups must not restore removed public content. Record a synthetic rehearsal and honest retention limits. |
+| Deferred: complete rights-removal procedure on first request | Owner expressly deferred implementation on 27 September. Not a pre-verification blocker. At that point cover claimant/scope, re-ingestion, database/index copies, R2 descriptions/logos, caches, matching copies, datasets and restoration handling. Do not claim a previously tested end-to-end guarantee. |
 | Publish accurate policies and final evidence | Merge/reconcile #10087 with billing #10073, verify actual source links/attribution and removal path, and keep the rights register consistent with Terms, licence and indexing statements. Record the final permitted source/content model for Paddle. |
 
 **Recommended owner decision:** preserve Narrowed and factual search; authorise a
@@ -295,3 +296,23 @@ all uses as fair use. We will provide the final content model after those action
 This paragraph is prepared for the owner, not sent. [Paddle's AUP](https://www.paddle.com/help/start/intro-to-paddle/what-am-i-not-allowed-to-sell-on-paddle)
 and its independent category decision remain relevant. The assessment deliverable
 is complete; #10079 remains open for implementation and operational evidence.
+
+## Implementation follow-up, 27 September
+
+- Full Terms/Privacy publication was verified after #10087 deployment; see the
+  [domain packet](paddle-domain-review-packet.md) for live evidence and the tally.
+- Follow-up code blocks reserved Ashby/Greenhouse API responses before capture,
+  parses valid extra HTML attributes and applies available HTML metadata before
+  headers. The earlier header-precedence claim was incorrect under
+  [TDMRep section 6.7](https://w3c.github.io/cg-reports/tdmrep/CG-FINAL-tdmrep-20240510/).
+  [Fetch-path inventory](tdm-fetch-path-inventory.md) records remaining coverage.
+- Both private Job Seek HF cards and LICENSE notices were corrected in live
+  commits `34aba31d62a9a97ce46e15af1262c7c90ad23fbb` (labelled postings) and
+  `1fd91fc79abe079f0641f986d0878bb4baa7bfd8` (traces). Source rows were unchanged;
+  both repositories still report private visibility. Historical blanket metadata
+  described above is no longer the current card. Original CC-BY/MIT grants are
+  scoped to owned contributions, excluding third-party content.
+- Upload guards and synthetic removal tests are included in the follow-up.
+  Existing dated-file scrub support is distinct from the complete cross-system
+  procedure, which the owner deferred until the first request. That deferral is
+  not a representation that a contact address proves tested removal coverage.

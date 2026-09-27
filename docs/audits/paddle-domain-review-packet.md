@@ -1,112 +1,120 @@
-# Paddle domain-review preparation packet
+# Paddle domain-review packet
 
-Prepared 27 September 2026. Tracks
-[#10083](https://github.com/colophon-group/jobseek/issues/10083) under
-[#10084](https://github.com/colophon-group/jobseek/issues/10084).
-**Preparation only: do not submit this as an approved or complete application.**
+Updated 27 September 2026. Tracker [#10084](https://github.com/colophon-group/jobseek/issues/10084).
+Preparation evidence; no application, identity submission or live charge was
+made by this task. The owner already sent the separate category inquiry.
 
-## Seller and product
+## Seller and offer
 
-- Supplier/operator: Viktor Shcherbakov, an individual based in Switzerland.
-- Product brand: Job Seek. Public address confirmed by the owner:
-  Route d'Oron 5, 1010 Lausanne, Switzerland.
-- Product/support contact: business@colophon-group.org.
-- Paid feature: Pro provides Narrowed filtering of job postings against a
-  job seeker's criteria. It does not rank candidates or provide employer-paid
-  listings. Price: US$10/month; proposed billing PR includes a seven-day
-  payment-method-required trial for eligible first-time subscribers, automatic
-  monthly renewal, and cancellation before the first charge.
+- Viktor Shcherbakov, individual operator in Switzerland; product **Job Seek**.
+- Public contact: Route d'Oron 5, 1010 Lausanne, Switzerland;
+  business@colophon-group.org. The owner confirmed on 27 September that the
+  inbox is working; operational support confirmation is complete.
+- **US$10/month for Narrowed filtering only**, plus applicable tax. Eligible new
+  subscribers get seven days with a payment method required, followed by monthly
+  renewal unless cancelled. Returning subscribers have no repeat trial.
 - Standard search, up to ten watchlists, email alerts and application tracking
-  are intended to remain free. [#10073](https://github.com/colophon-group/jobseek/pull/10073)
-  merged at `52e8c7b6af58c777d4895e31753331b9d44eac75`. The owner reports production
-  deployment, billing migration, verified live webhook and four-language policy
-  publication; these production actions were performed outside this task.
+  remain free. No employer-paid listing/advertising product is offered.
+- Billing #10073 merged at `52e8c7b6af58c777d4895e31753331b9d44eac75`.
+  Owner reports migration applied, live webhook activated/verified, CI and
+  deployment passed. These customer-flow actions were performed outside this task.
 
-## Website evidence to capture after merge/deployment
+## Production publication verified
 
-| Surface | Intended URL | Evidence still needed |
+Policy PR [#10087](https://github.com/colophon-group/jobseek/pull/10087) merged at
+`334f5631d61e7f48eb0b52dad6fdc2c2bc2f68e3`; deployment
+[36326666570](https://github.com/colophon-group/jobseek/actions/runs/36326666570)
+completed successfully on 27 September 2026.
+
+| Surface | Public URL | Verified evidence |
 | --- | --- | --- |
-| Offer | https://jseek.co/en | Final Narrowed-only offer; no old one/unlimited-watchlist or paid-email copy; price/trial/tax/renewal agreement across locales |
-| Terms | https://jseek.co/en/terms | Complete text on-site, seller address, current date and no sign-in dependency |
-| Refunds | https://jseek.co/en/terms#refund-policy | Visible policy linked from footer/offer and working Paddle support paths; a separate route is unnecessary |
-| Privacy | https://jseek.co/en/privacy-policy | Complete current notice, actual providers/countries and backup retention |
-| Checkout | https://jseek.co/en/checkout | #10073 is merged/deployed per owner; verify actual account/domain approval and checkout-enable state before claiming buyer checkout is ready |
-| Product demonstration | Authenticated watchlist Narrowed flow | Real reviewer-accessible feature, available entitlements/flags and representative matching results; no credentials in this repository |
+| Offer | https://jseek.co/en#pricing | Narrowed-only, US$10/month after seven days; ten free watchlists and free alerts/tracking |
+| Terms | https://jseek.co/en/terms | Complete canonical text, proprietor/address, Swiss law with mandatory consumer rights, billing/cancellation terms |
+| Refunds | https://jseek.co/en/terms#refund-policy | Public policy and working localized footer anchor; Paddle support/receipt request paths |
+| Privacy | https://jseek.co/en/privacy-policy | Complete canonical notice, actual data flows/providers/retention, Swiss controller |
+| Checkout host | `jseek.co` | Planned payment page https://jseek.co/en/checkout; checkout remains disabled pending approval |
 
-Repeat the public checks for `/de`, `/fr` and `/it`. Full canonical documents
-are English and explicitly labelled; summaries and navigation are localized.
-Record deployed commit, UTC check time, screenshots and anonymous HTTPS results.
-Use private test-access handoff if Paddle requests it. A pricing screenshot is
-allowed by [Paddle domain guidance](https://www.paddle.com/help/start/account-verification/what-is-domain-verification);
-a functional live charge is not required to prepare a domain review.
+Anonymous Chromium checks passed for Terms and Privacy in **en/de/fr/it**.
+Rendered complete documents exactly matched repository files after whitespace
+normalization. All routes returned HTTP 200; seller address and refund links
+were present. Desktop and 390px mobile checks found no overflow or browser errors.
+Full canonical documents are English and labelled; navigation and summaries
+are translated. [Machine-readable results](paddle-evidence/policy-smoke-results.json).
 
-Checkout host inventory currently contains only `jseek.co`; add any additional
-hosts if actually used. Local/preview smoke checks are not production evidence.
-Public support MX records exist, but the owner still needs a working, monitored
-support inbox; DNS is not proof that a customer can get a response.
+All four live offer pages were also read and captured:
+[English](paddle-evidence/offer-en.png), [German](paddle-evidence/offer-de.png),
+[French](paddle-evidence/offer-fr.png), [Italian](paddle-evidence/offer-it.png).
+[Offer text](paddle-evidence/offer-evidence.json) records the observed copy.
+The pictured matching example is marketing illustration, not a production test.
 
-## Decision register
+## Live Paddle/configuration observations
 
-| Issue | Status / next acceptance evidence |
-| --- | --- |
-| #10078 — eligibility | Owner reports inquiry sent on 27 September. Await written Paddle response and satisfy any conditions. |
-| #10079 — content rights | Codex completed the owner's requested review: [assessment](content-rights-assessment.md). Conditional basis for factual search/analysis; unresolved full-text uses, TDM defects and public dataset redistribution require decisions/remediation. Assessment complete; content readiness remains open. |
-| #10080 — seller/Terms | Public name/address and revised Terms prepared. Publication and owner's applicable Swiss administrative steps remain open. |
-| #10081 — refunds | #10073 merged; all four live Terms pages return HTTP 200 and include the refund anchor. Owner reports billing migration/webhook verification. Retain actual cancellation/deletion and refund-flow evidence before closure. |
-| #10082 — privacy | Production evidence recorded in `production-privacy-evidence.md`; revised notice prepared. Reconcile/publicly verify on deployment and retain applicable agreements privately. |
-| #10083 — domain packet | #10073 deployment reported by owner. Final screenshots, updated complete policies from #10087 and actual reviewer-access demonstration remain open. |
+Read-only checks on 27 September:
 
-Do not close issues solely because a draft document or pull request exists.
+- Onboarding `in_progress`; domain, business-identification, identity and final
+  review returned `pending`. A generic business-identification status does not
+  override Paddle's sole-trader exemption.
+- No checkout domain returned for `jseek.co`; no approval established.
+- Active monthly USD 10 prices exist for the seven-day payment-method-required
+  trial and the returning-subscriber no-trial offer; tax mode is location-based.
+- An active platform webhook targets `https://jseek.co/api/paddle/webhook` with
+  the expected subscription lifecycle events. Its presence is not category approval.
+- Vercel production configuration reports `PADDLE_ENVIRONMENT=production` and
+  `PADDLE_CHECKOUT_ENABLED=false`. Narrowed switches are configured as sensitive
+  and redacted by the CLI; their values were not established by that read.
 
-## Swiss individual-business preparation
+[Paddle domain guidance](https://www.paddle.com/help/start/account-verification/what-is-domain-verification)
+permits pricing screenshots. A successful live charge, dedicated /pricing route
+or search-engine indexing is not a stated domain-review prerequisite. If Paddle
+requests product access, supply a private entitled account or a recorded real
+Narrowed demonstration; confirm production flags/entitlements at that point.
+Never put account credentials in this repository.
 
-Paddle's [account-verification guidance](https://www.paddle.com/help/start/account-verification/what-is-account-verification)
-says sole traders do not undergo its business-verification stage; this does not
-settle Swiss administrative obligations. The owner reports no Swiss authority
-filing yet. Use the [Swiss sole-proprietorship guidance](https://www.kmu.admin.ch/en/legal-form-sole-proprietorships)
-to determine the actual AVS/AHV self-employment recognition, commercial-register
-and tax/VAT steps for the activity and turnover. Record the decision privately;
-absence of a registry entry is not by itself an instruction to incorporate.
-Do not invent a UID, VAT registration, company certificate or registration date.
+## Remaining pre-submission work: two groups
 
-Enter any requested identity/address/bank evidence through Paddle's own process.
-Keep documents, date of birth, account references and private correspondence out
-of this public repository. The public contact address is not proof that any
-particular identity document has been accepted.
+1. **Product eligibility — Paddle/owner, #10078.** Await the written decision on
+   seeker-paid filtering in view of the job-board advertising restriction.
+   The owner sent the inquiry; no reply has been supplied. This is the audit's
+   recommended category gate, not a claim that Paddle requires a legal-opinion form.
+2. **Content-use decision and controls — owner/Codex, #10079 and #10090.** The
+   assessment is complete, but blanket fair use does not establish every source
+   use. Decide source-dependent full text versus factual summaries/links, and
+   document the collection/display/AI grounds. Follow-up repairs cover Ashby and
+   Greenhouse API reservations and HTML parsing; complete active-path coverage,
+   origin-file signals and restrictions on further use of affected stored content
+   remain open. No production-wide exclusions were applied without the source
+   policy decision. Full removal implementation is expressly deferred below.
 
-## Submission versus launch
+These are readiness judgments, not additional forms imposed by Paddle.
+Paddle's actual domain/identity/final review still occurs during its application
+process. The product access evidence noted above is a conditional handoff, not
+an invented universal prerequisite for submitting the website.
 
-Resolve the linked readiness decisions and obtain the owner's instruction to
-start verification before submitting. The category inquiry already sent is
-separate from formal verification. For later live billing, follow #10073's
-migration/webhook/entitlement/cancellation/account-deletion checks and activation
-runbook. In particular, reconcile migration numbering against the merged
-notification migration. This preparation task has performed no deployment, migration, Paddle
-submission, charge, refund, government filing or live-checkout activation.
-The owner subsequently reported #10073 production deployment and live webhook
-activation; this does not by itself establish Paddle category/domain approval.
+## Other remaining or deferred work (not counted twice)
 
-## Production publication follow-up
-
-After the owner reported deployment, anonymous HTTPS checks returned HTTP 200
-for Terms and Privacy in all four locales, with refund anchors on each Terms
-page. The fetched pages did not yet include the Lausanne postal address or the
-complete-document sections prepared in #10087. Policy pages are published;
-publication of this PR's additional seller/privacy/full-text corrections remains
-open. No production customer billing action was performed for this check.
-
-## Local implementation validation
-
-- Production build and TypeScript completed successfully in the isolated worktree
-  without production service credentials. Optional Redis/auth warnings on the
-  first build were environment configuration, not legal-page failures; the final
-  build used a local-only auth secret and URL.
-- Targeted ESLint and repository i18n coverage/compiled-catalog checks passed.
-- Anonymous Chromium checks against the standalone production package returned
-  HTTP 200 for Terms and Privacy in en/de/fr/it. Rendered complete-document text
-  matched the canonical files exactly after whitespace normalization.
-- Localized footer links reached the refund section. Desktop and 390px mobile
-  checks found no horizontal overflow; no browser page errors were recorded.
-- Next.js standalone tracing included both canonical documents. No production
-  database, checkout, cancellation, refund or message-delivery flow was exercised
-  by these local legal-page checks.
+- **Swiss administration, #10080:** owner has not yet raised the activity with
+  Swiss authorities. Privately determine AVS/AHV self-employment recognition and
+  applicable registration/tax duties. Paddle
+  [exempts sole traders from business verification](https://www.paddle.com/help/start/account-verification/what-is-account-verification);
+  that does not settle Swiss administration. Use the
+  [Swiss SME guide](https://www.kmu.admin.ch/en/legal-form-sole-proprietorships),
+  without inventing a UID, VAT number, certificate or incorporation requirement.
+  Public identity/Terms publication is complete. Refund-policy issue #10081
+  is complete with the owner's support-inbox confirmation.
+- **Removal procedure:** owner expressly chose implementation upon the first
+  request. Not a pre-verification blocker. Existing dataset scrub support covers
+  dated JSONLs only; no tested cross-system takedown guarantee is claimed.
+- **Dataset retention, #10091:** both Job Seek datasets are private. Scoped notices
+  distinguish owned contributions from source text; upload guards fail closed
+  on non-private visibility. See [retention register](dataset-retention-and-removal.md).
+  Remaining source-use grounds are counted under #10079; historical removal is
+  part of the deferred first-request work.
+- **Robots, #2841:** technical enforcement remains tracked internally. Public
+  robots.txt/Disallow implementation details are removed at the owner's request.
+- **Live billing launch:** after approval, retain real entitlement, cancellation,
+  account-deletion and refund-delivery evidence and explicitly activate checkout.
+  Policy-page tests do not establish successful customer payment flows.
+- **Unrelated Hugging Face quota:** nine of ten personal datasets were made
+  private. WildChat-1M-sampled-for-message-classification could not be made private
+  because the account's private storage limit would be exceeded. This is separate
+  from Job Seek's verification readiness; no purchase or deletion was authorized.
