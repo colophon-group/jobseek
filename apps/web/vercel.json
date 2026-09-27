@@ -5,5 +5,11 @@
     "deploymentEnabled": {
       "main": false
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/internal/job-alerts",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

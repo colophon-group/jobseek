@@ -24,6 +24,8 @@ export type WatchlistFilters = {
 export type WatchlistCandidateFilters = {
   /** Candidate readers treat company membership as immutable input. */
   companyIds: readonly string[];
+  /** Server-only narrowing intersection; an empty list must match nothing. */
+  postingIds?: readonly string[];
   anyCompany?: boolean;
   keywords?: string[];
   locationIds?: number[];
@@ -92,6 +94,8 @@ export type CompiledWatchlistMatcher = {
 };
 
 export type MatchedWatchlistLabel = {
+  /** Fences narrowed notification plans to the exact saved prompt revision. */
+  narrowedQueryVersionId?: string;
   id: string;
   label: string;
 };

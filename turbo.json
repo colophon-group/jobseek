@@ -2,8 +2,14 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ],
       "env": [
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
@@ -39,12 +45,25 @@
         "AI_FILTER_CACHE_HMAC_SECRET",
         "AI_FILTER_MAX_SEGMENTS_PER_USER",
         "AI_FILTER_MAX_SEGMENTS_PROJECT",
-        "TYPESAFE_AI_TOKEN"
+        "TYPESAFE_AI_TOKEN",
+        "CRON_SECRET",
+        "JOB_ALERTS_MODE",
+        "JOB_ALERTS_DAILY_CAP",
+        "JOB_ALERTS_MONTHLY_CAP",
+        "JOB_ALERTS_INTERNAL_USER_IDS",
+        "JOB_ALERTS_UNSUBSCRIBE_SECRET",
+        "RESEND_WEBHOOK_SECRET"
       ]
     },
     "@jobseek/web#build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ],
       "env": [
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
@@ -80,7 +99,14 @@
         "AI_FILTER_CACHE_HMAC_SECRET",
         "AI_FILTER_MAX_SEGMENTS_PER_USER",
         "AI_FILTER_MAX_SEGMENTS_PROJECT",
-        "TYPESAFE_AI_TOKEN"
+        "TYPESAFE_AI_TOKEN",
+        "CRON_SECRET",
+        "JOB_ALERTS_MODE",
+        "JOB_ALERTS_DAILY_CAP",
+        "JOB_ALERTS_MONTHLY_CAP",
+        "JOB_ALERTS_INTERNAL_USER_IDS",
+        "JOB_ALERTS_UNSUBSCRIBE_SECRET",
+        "RESEND_WEBHOOK_SECRET"
       ],
       "inputs": [
         "$TURBO_DEFAULT$",
@@ -92,10 +118,14 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build"
+      ],
       "outputs": []
     }
   }

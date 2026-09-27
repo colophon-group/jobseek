@@ -43,10 +43,12 @@ import { WatchlistActionBar } from "../watchlist-action-bar";
 function renderActionBar({
   alertsEnabled = false,
   accountRequired = false,
+  notificationsPaused = false,
   onDelete,
 }: {
   alertsEnabled?: boolean;
   accountRequired?: boolean;
+  notificationsPaused?: boolean;
   onDelete?: () => void | Promise<void>;
 } = {}) {
   return render(
@@ -54,6 +56,7 @@ function renderActionBar({
       watchlistId="watchlist-1"
       alertsEnabled={alertsEnabled}
       accountRequired={accountRequired}
+      notificationsPaused={notificationsPaused}
       onDelete={onDelete}
     />,
   );
@@ -182,7 +185,7 @@ describe("WatchlistActionBar delete focus", () => {
     const user = userEvent.setup();
     renderActionBar();
 
-    const alertButton = screen.getByRole("button", { name: "Enable alerts" });
+    const alertButton = screen.getByRole("button", { name: "Enable weekly email notifications" });
     await user.click(alertButton);
 
     expect(mocks.toggleWatchlistAlerts).toHaveBeenCalledWith("watchlist-1");
@@ -197,24 +200,32 @@ describe("WatchlistActionBar delete focus", () => {
     await waitFor(() => {
       expect(mocks.refresh).toHaveBeenCalledTimes(1);
       expect(alertButton.getAttribute("aria-busy")).toBeNull();
-      expect(screen.getByRole("button", { name: "Disable alerts" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Disable weekly email notifications" })).toBeTruthy();
     });
   });
 
-  it("keeps the alert control in place and reports a resolved mutation error", async () => {
+  it("shows the pause explanation for a concurrent global pause", async () => {
     mocks.toggleWatchlistAlerts.mockResolvedValueOnce({ error: "notifications_paused" });
     const user = userEvent.setup();
     renderActionBar();
-
-    await user.click(screen.getByRole("button", { name: "Enable alerts" }));
-
-    const errorStatus = await screen.findByRole("status");
-    expect(errorStatus.textContent).toBe("Could not update alerts");
-    expect(errorStatus.parentElement?.className).toContain("bg-warning-bg");
-    expect(screen.getByRole("button", { name: "Could not update alerts" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Enable weekly email notifications" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByRole("link", { name: "Open notification settings" }).getAttribute("href")).toBe("/en/settings#notifications");
+    await user.click(within(dialog).getByRole("button", { name: "Keep paused" }));
     expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps paused choices inert and restores keyboard focus after the warning", async () => {
+    const user = userEvent.setup();
+    renderActionBar({ notificationsPaused: true, alertsEnabled: true });
+    const trigger = screen.getByRole("button", { name: "Email notifications are paused. Resume them in Settings." });
+    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    await user.click(trigger);
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.className).toContain("inset-0");
+    expect(mocks.toggleWatchlistAlerts).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Keep paused" }));
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
   it("reports a rejected alert mutation without unmounting the controls", async () => {
@@ -222,7 +233,7 @@ describe("WatchlistActionBar delete focus", () => {
     const user = userEvent.setup();
     renderActionBar();
 
-    await user.click(screen.getByRole("button", { name: "Enable alerts" }));
+    await user.click(screen.getByRole("button", { name: "Enable weekly email notifications" }));
 
     expect((await screen.findByRole("status")).textContent).toBe("Could not update alerts");
     expect(screen.getByRole("button", { name: "Share" })).toBeTruthy();
@@ -235,11 +246,11 @@ describe("WatchlistActionBar delete focus", () => {
     const user = userEvent.setup();
     renderActionBar({ alertsEnabled: true });
 
-    const disableButton = screen.getByRole("button", { name: "Disable alerts" });
+    const disableButton = screen.getByRole("button", { name: "Disable weekly email notifications" });
     expect(disableButton.getAttribute("aria-disabled")).toBeNull();
     await user.click(disableButton);
 
     expect(mocks.toggleWatchlistAlerts).toHaveBeenCalledWith("watchlist-1");
-    expect(await screen.findByRole("button", { name: "Enable alerts" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Enable weekly email notifications" })).toBeTruthy();
   });
 });
