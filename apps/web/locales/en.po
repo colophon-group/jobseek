@@ -6218,7 +6218,7 @@ msgstr "This notice does not restrict factual information or exceptions availabl
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.intro"
-msgstr "Swiss data protection law and, where applicable, the EU or UK GDPR give you rights over your data. Account deletion removes active account records; recovery backups and records held by providers have separate retention periods, explained below."
+msgstr "Swiss data protection law and, where applicable, the EU or UK GDPR give you rights over your data. Account deletion removes active account records; recovery backups and records held by providers have separate retention periods, explained in the full policy linked below."
 
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
@@ -6405,19 +6405,6 @@ msgstr "Your watchlists, saved jobs, and email alerts are still here."
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.ready"
 msgstr "Your watchlists, with a little more focus."
-
-
-#. Heading identifying the full English legal document below the translated summary
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.complete.title"
-msgstr "Complete Privacy Policy (English)"
-
-#. Heading identifying the full English legal document below the translated summary
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.complete.title"
-msgstr "Complete Terms of Service (English)"
 
 #. Country in the public seller and controller address
 #. Country in the public seller and controller address

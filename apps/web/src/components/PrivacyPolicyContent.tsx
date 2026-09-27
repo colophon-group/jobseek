@@ -1,12 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { Trans } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ContentPageHero } from "@/components/ContentPageHero";
 import { sectionScrollMarginClass as sectionScroll } from "@/lib/styles";
 
-export function PrivacyPolicyContent({ children }: { children: ReactNode }) {
+export function PrivacyPolicyContent() {
   const contactEmail = siteConfig.indexing.contactEmail;
   const lastUpdated = siteConfig.privacy.lastUpdated;
   const fullPolicyLink = `${siteConfig.repoUrl}/blob/main/PRIVACY-POLICY`;
@@ -57,7 +56,7 @@ export function PrivacyPolicyContent({ children }: { children: ReactNode }) {
             </h2>
             <p className="mt-2 text-muted">
               <Trans id="privacy.rights.intro" comment="Your rights intro">
-                Swiss data protection law and, where applicable, the EU or UK GDPR give you rights over your data. Account deletion removes active account records; recovery backups and records held by providers have separate retention periods, explained below.
+                Swiss data protection law and, where applicable, the EU or UK GDPR give you rights over your data. Account deletion removes active account records; recovery backups and records held by providers have separate retention periods, explained in the full policy linked below.
               </Trans>
             </p>
           </div>
@@ -67,11 +66,6 @@ export function PrivacyPolicyContent({ children }: { children: ReactNode }) {
             <p><Trans id="privacy.payments.data" comment="Data exchanged with Paddle and stored by Job Seek">Your email is provided to Paddle at checkout. Paddle collects payment details, billing address, and tax information directly. We store customer and subscription references, trial usage, status, and billing dates to manage your Pro access. We do not store full card numbers or security codes.</Trans></p>
             <p><Trans id="privacy.payments.controller" comment="Paddle independently handles buyer data">As merchant of record, Paddle processes buyer data for payments, taxes, fraud prevention, billing support, and refunds under its own privacy notice. Deleting your Job Seek account does not erase records Paddle must retain.</Trans></p>
             <a href="https://www.paddle.com/legal/privacy" className="inline-block text-primary underline"><Trans id="privacy.payments.notice" comment="Link to Paddle privacy notice">Paddle Privacy Notice</Trans></a>
-          </section>
-
-          <section id="full-privacy" className={`w-full max-w-[840px] space-y-4 ${sectionScroll}`}>
-            <h2 className="text-lg font-bold"><Trans id="privacy.complete.title" comment="Heading identifying the full English legal document below the translated summary">Complete Privacy Policy (English)</Trans></h2>
-            {children}
           </section>
 
           {/* Contact + full policy link */}

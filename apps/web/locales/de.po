@@ -6218,7 +6218,7 @@ msgstr "Dieser Hinweis schränkt weder die Nutzung von Fakten noch gesetzliche A
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.intro"
-msgstr "Das Schweizer Datenschutzrecht und gegebenenfalls die DSGVO der EU oder des Vereinigten Königreichs geben dir Rechte an deinen Daten. Das Löschen des Kontos entfernt aktive Kontodatensätze; Wiederherstellungssicherungen und bei Anbietern gespeicherte Daten haben eigene Aufbewahrungsfristen, die unten erläutert werden."
+msgstr "Das Schweizer Datenschutzrecht und gegebenenfalls die DSGVO der EU oder des Vereinigten Königreichs geben dir Rechte an deinen Daten. Das Löschen des Kontos entfernt aktive Kontodatensätze; Wiederherstellungssicherungen und bei Anbietern gespeicherte Daten haben eigene Aufbewahrungsfristen, die in der unten verlinkten vollständigen Datenschutzerklärung erläutert werden."
 
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
@@ -6405,19 +6405,6 @@ msgstr "Deine Watchlists, gespeicherten Stellen und E-Mail-Benachrichtigungen bl
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.ready"
 msgstr "Deine Watchlists, etwas gezielter."
-
-
-#. Heading identifying the full English legal document below the translated summary
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.complete.title"
-msgstr "Vollständige Datenschutzerklärung (Englisch)"
-
-#. Heading identifying the full English legal document below the translated summary
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.complete.title"
-msgstr "Vollständige Nutzungsbedingungen (Englisch)"
 
 #. Country in the public seller and controller address
 #. Country in the public seller and controller address
