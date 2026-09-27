@@ -130,7 +130,7 @@ describe("production migration safety", () => {
       ".github/workflows/crawler-scheduled-maintenance.yml",
     );
     expect(maintenance).toContain(
-      "crawler reconcile --repair --full --fresh-cycle --target typesense",
+      "go-typesense-exporter --reconcile --repair --full --fresh-cycle --target typesense",
     );
     expect(maintenance).toContain("crawler verify-typesense-taxonomies");
     expect(maintenance).toContain(

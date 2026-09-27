@@ -61,7 +61,7 @@ cycle, and `--repair --full --fresh-cycle` establishes a new complete proof.
   deletion consumer. Unbucketed candidates retain the 50,000-ID/16 MiB limits.
 - Repairs frozen candidates under the exporter fence, rereads local rows,
   verifies index output, and proves source stability. It allows two candidate
-  reads and three partition attempts before retaining the failed checkpoint.
+  repair attempts and three partition attempts before retaining the failed checkpoint.
   Deletes are bounded to 20 concurrent requests and finish before fence release.
 - Final legacy bucket cleanup also holds the exporter fence, refuses to delete
   any candidate present locally, and requires a second complete export before
