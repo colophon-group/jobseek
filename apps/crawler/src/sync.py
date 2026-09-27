@@ -3494,7 +3494,7 @@ async def _sync_typesense_python_reference(
 
 
 async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> None:
-    """Sync CSV state with local Postgres as the transaction authority.
+    """Retained Python oracle for the Go-owned installed sync commands.
 
     ``legacy_mirror`` is an explicit transition mode. It is never inferred
     from the mere presence of ``DATABASE_URL`` and refuses to start when that
@@ -3621,6 +3621,8 @@ def main():
     # The standalone entrypoint must export the same dotenv values as crawler
     # CLI before spawning the Go runtime (settings alone reads, but does not
     # export, values from its env files).
+    import os
+
     import dotenv
 
     dotenv.load_dotenv(".env.local")
@@ -3628,7 +3630,12 @@ def main():
     parser = argparse.ArgumentParser(description="Sync CSV config to database")
     parser.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     args = parser.parse_args()
-    asyncio.run(run_sync(dry_run=args.dry_run))
+    command = ["go-typesense-exporter", "--sync-registry"]
+    if is_source_checkout():
+        command.extend(["--source-data-dir", str(get_data_dir())])
+    if args.dry_run:
+        command.append("--dry-run")
+    os.execvp(command[0], command)
 
 
 if __name__ == "__main__":

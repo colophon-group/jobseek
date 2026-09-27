@@ -119,8 +119,12 @@ func publishSyncTaxonomies(ctx context.Context, publisher taxonomyPublisher, doc
 	return nil
 }
 func runSyncTaxonomies(before ...renameNameMaps) (runErr error) {
+	return syncTaxonomiesContext(context.Background(), before...)
+}
+
+func syncTaxonomiesContext(parent context.Context, before ...renameNameMaps) (runErr error) {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()

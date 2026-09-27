@@ -6,6 +6,48 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — Go queue sync v0.13.871
+
+PR #10093 merged as `ce5dfd821ca6e6b95d0b79a9eb534c26ddd486ec`.
+[Crawler deployment 36328634446](https://github.com/colophon-group/jobseek/actions/runs/36328634446)
+and [host launcher deployment 36328634440](https://github.com/colophon-group/jobseek/actions/runs/36328634440)
+both succeeded. Production configuration sync now publishes committed board
+queues in Go. Its actual deployment log records **7,879 schedules enqueued
+and 133 retired-board queue entries removed**, followed by dead-letter
+inspection with zero unresolved entries. Go taxonomy/company publication
+completed at 15:23:05 UTC. The mode-0600 evidence log is
+`/tmp/jobseek-go-board-queues-deploy-36328634446.log`.
+
+Required CI and installed-image parity passed before merge; Crawler Deploy
+Gate was green on the exact ready head. Supported c1 rollback retired epoch
+76 at 77, restored five schedules, and left zero terminal drops or write
+fences. A scheduled Go reconciliation held the host mutation lock afterward;
+it finished with service exit zero before all 23 selectors were cleared.
+Image promotion occurred only after that cleanup. The host wrapper is now
+attested at the merged revision and invokes Go directly. Source draft #10092
+is superseded by this deployment.
+
+All four workers started Go reapers on the new image. An initial exporter
+snapshot reported 129 successful document exports, zero errors and zero lag.
+The 23 selectors were staged against the exact new full revision above.
+Supported c1 activation reached **epoch 78**, with all services healthy. Its
+conservation audit returned accepted/audit_ok: five ready records, zero
+inflight or dead. A read-only comparison of all **7,879 enabled boards**
+found zero differences in Redis versus PostgreSQL board URL, crawler type,
+company ID, domain and monitor/detail browser flags. The helper is
+`/tmp/jobseek-go-queue-db-proof.py`; it performs no mutations or origin calls.
+A later exporter snapshot reported 230 successes, zero errors and zero lag.
+Natural Go Workable monitor cycles remain pending. The active selector helper remains
+`/tmp/jobseek-post-go-maintenance-selectors.py`, with Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Before the next deployment, roll c1
+back, then clear all 23 selectors under the mutation lock against the actual
+current revision. Never reuse the older 22-selector helper.
+
+CSV preparation and the local PostgreSQL transaction are still Python in
+production. The implementation checkpoint below advances their Go replacement;
+workers, remaining extraction profiles and final whole-lane evidence remain
+open under #7966.
+
 ## Production checkpoint: 2026-09-27 — Go maintenance v0.13.870
 
 PR #10089 merged as `ec892dc2899228e3a72526eb7d2f4cd5820445f3` and
@@ -40,14 +82,13 @@ reapers without errors. The six original maintenance drafts were closed as
 superseded by deployed #10089. Natural Go Workable cycles remain pending;
 do not force them.
 
-Before any further image/selector mutation, use supported `rollback c1`, then
-clear **23** selectors under the host lock with
+For that v0.13.870 release, mutation required supported `rollback c1`, then
+clearing **23** selectors under the host lock with
 `/tmp/jobseek-post-go-maintenance-selectors.py clear`, the actual deployed
 full revision above, and `https://kandou.bamboohr.com/careers/310`. The older
-22-selector helper no longer matches the live set. PR #10093 contains the
-next Go board-queue publisher, the direct host launcher from #10092, and the
-reaper pool-limit/budget correction. Keep it draft until its required checks
-and the live release proof pass. The full #7966 migration remains open.
+22-selector helper no longer matches the live set. PR #10093 subsequently delivered the Go board-queue publisher, direct host
+launcher and reaper pool-limit/budget correction; see the newer checkpoint
+above. The full #7966 migration remains open.
 
 ## Implementation checkpoint: Go board sync queue publication
 
@@ -62,17 +103,67 @@ The Redis fixture compares every stored key against the Python publisher,
 including repeated execution, both worker types, first-time/recurring work,
 existing leases, repair deadlines, rate/rotation floors, and corrupt state.
 A 1,001-board case covers the batch boundary and stops later batches/removals
-on failure. This implementation is not deployed. CSV/local PostgreSQL sync,
+on failure. This implementation is deployed in v0.13.871. CSV/local PostgreSQL sync,
 workers and remaining extraction/profile stages still require Go migration.
 
-## Unified release candidate: Go maintenance v0.13.870
+## Release candidate: Go configuration sync v0.13.873
+
+The next configuration-sync port is on `fix-crawler/go-registry-sync`, created
+from then-latest main `334f5631d` in an isolated worktree and subsequently
+integrated with #10093 and latest main `012191b81` (#10095). The candidate
+is implemented but not deployed. Both `crawler sync` and the standalone
+`python -m src.sync` entrypoint exec `go-typesense-exporter --sync-registry`.
+
+Go now reads CSVs while preserving Python/Polars null versus quoted-empty
+cells, BOMs and multiline CRLF; prepares canonical taxonomy, company and
+description SQL arguments; computes board metadata and monitor fingerprints;
+and reproduces browser/fallback routing and provider throttle hosts. The
+retained Python functions generate the comparison evidence without publisher
+traffic. Canonical SQL and registered route facts are embedded contracts.
+
+Actual repository comparisons passed with the race detector:
+
+- 6,013 companies and 5,876 descriptions, plus taxonomy tables: all CSV cells
+  and all 14 prepared SQL calls match.
+- 7,879 boards: metadata, fingerprints, monitor/detail browser decisions and
+  throttle keys match. An additional 493 synthetic cases exercise registered
+  types, fallback chains, numeric/Unicode settings, malformed configuration,
+  and provider metadata/URL identity boundaries.
+
+Local mode-0600 oracle artifacts are
+`/tmp/jobseek-go-registry-repository-fixture.json` and
+`/tmp/jobseek-go-registry-board-fixture.json`. Run the Go preparation tests with
+`REGISTRY_TEST_FIXTURE` and `REGISTRY_BOARD_TEST_FIXTURE`, respectively.
+The complete local transaction, board identity/rehome/recovery effects,
+pending taxonomy resolution, installed read-only data-mount checks and
+post-commit Redis/Typesense orchestration are now implemented in Go. Real
+PostgreSQL fixtures verify stable IDs, recovery deadlines, runtime metadata,
+posting rehomes, removal/reappearance, transaction rollback and ambiguous
+commit acknowledgements. A real Redis fixture verifies no queue effects on
+local failure. Index tests repair the covering index and prove lock release.
+All 6,013 companies and 7,879 boards also committed successfully from the
+actual repository into an isolated local PostgreSQL fixture, with no external
+publication. Go matches 5,915 Python occupation-resolution samples. The
+technology-miss query uses explicit integer casts to avoid ambiguous array
+inference; existing populated fields and technology arrays remain intact.
+
+The module race suite, vet and focused CLI tests passed. Required CI and the
+installed-image checks precede supported rollout. Python remains the retained
+oracle and still owns the deployed local sync until this candidate is
+promoted. The latest main #10095 crawler deployment 36330596574 was correctly
+held by the active B0 receipt; production remains the healthy v0.13.871
+checkpoint above. This candidate includes #10095 and must use the normal
+cold rollback and exact 23-selector sequence. Do not bypass that guard.
+
+## Historical release candidate: Go maintenance v0.13.870
 
 The completed implementations from #10072, #10074, #10076, #10077, #10085 and
 #10088 are assembled on `fix-crawler/go-maintenance-transition`, created from
 latest main `52e8c7b6a`. The individual sections below record implementation
 history; the unified candidate supersedes their separate release order.
-**This candidate is not deployed.** Its combined CI and production evidence
-must pass before the source PRs are retired.
+This candidate was delivered by #10089 as recorded in the production checkpoint
+above; the six source PRs have been retired. The following describes its
+original release order, not another outstanding validation gate.
 
 One crawler image now includes Go reconciliation, exact taxonomy verification,
 schema setup, taxonomy/company publication and posting rename updates,
