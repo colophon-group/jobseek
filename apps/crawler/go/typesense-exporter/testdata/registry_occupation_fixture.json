@@ -1,0 +1,868 @@
+{
+  "table": {
+    "columns": [
+      "slug",
+      "parent",
+      "domain",
+      "en",
+      "fr",
+      "de",
+      "sv",
+      "aliases"
+    ],
+    "rows": [
+      {
+        "slug": "software-engineer",
+        "parent": null,
+        "domain": null,
+        "en": "Software Engineer",
+        "fr": "Développeur",
+        "de": "Softwareentwickler",
+        "sv": "Utvecklare",
+        "aliases": "Software Developer"
+      },
+      {
+        "slug": "engineer",
+        "parent": null,
+        "domain": null,
+        "en": "Engineer",
+        "fr": "Ingénieur",
+        "de": "Ingenieur",
+        "sv": null,
+        "aliases": null
+      },
+      {
+        "slug": "technician",
+        "parent": null,
+        "domain": null,
+        "en": "Technician",
+        "fr": "Technicien",
+        "de": "Techniker",
+        "sv": null,
+        "aliases": "Technicien/ne"
+      },
+      {
+        "slug": "supervisor",
+        "parent": null,
+        "domain": null,
+        "en": "Supervisor",
+        "fr": "Superviseur",
+        "de": "Leiter",
+        "sv": null,
+        "aliases": "Superviseur/euse"
+      },
+      {
+        "slug": "manager",
+        "parent": null,
+        "domain": null,
+        "en": "Health and Safety Manager",
+        "fr": null,
+        "de": null,
+        "sv": null,
+        "aliases": "Health Safety Environment Manager"
+      },
+      {
+        "slug": "data-manager",
+        "parent": null,
+        "domain": null,
+        "en": "Data Center Manager",
+        "fr": null,
+        "de": null,
+        "sv": null,
+        "aliases": null
+      },
+      {
+        "slug": "first",
+        "parent": null,
+        "domain": null,
+        "en": "Collision",
+        "fr": null,
+        "de": null,
+        "sv": "Σίσυφος",
+        "aliases": "Shared Alias|a b c d"
+      },
+      {
+        "slug": "second",
+        "parent": null,
+        "domain": null,
+        "en": "Collision",
+        "fr": null,
+        "de": null,
+        "sv": null,
+        "aliases": "Shared Alias|d c b a"
+      },
+      {
+        "slug": "boundary",
+        "parent": null,
+        "domain": null,
+        "en": "Sales",
+        "fr": null,
+        "de": null,
+        "sv": "Säljare",
+        "aliases": null
+      }
+    ]
+  },
+  "samples": [
+    {
+      "raw": "",
+      "normalized": "",
+      "slug": null
+    },
+    {
+      "raw": "A B C D (H/F/X)",
+      "normalized": "a b c d",
+      "slug": "first"
+    },
+    {
+      "raw": "BOUNDARY (H/F/X)",
+      "normalized": "boundary",
+      "slug": "boundary"
+    },
+    {
+      "raw": "COLLISION (H/F/X)",
+      "normalized": "collision",
+      "slug": "second"
+    },
+    {
+      "raw": "D C B A (H/F/X)",
+      "normalized": "d c b a",
+      "slug": "second"
+    },
+    {
+      "raw": "DATA CENTER MANAGER (H/F/X)",
+      "normalized": "data center manager",
+      "slug": "data-manager"
+    },
+    {
+      "raw": "DATA MANAGER (H/F/X)",
+      "normalized": "data manager",
+      "slug": "data-manager"
+    },
+    {
+      "raw": "DEVELOPPEUR (H/F/X)",
+      "normalized": "developpeur",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "ENGINEER (H/F/X)",
+      "normalized": "engineer",
+      "slug": "engineer"
+    },
+    {
+      "raw": "FIRST (H/F/X)",
+      "normalized": "first",
+      "slug": "first"
+    },
+    {
+      "raw": "HEALTH AND SAFETY MANAGER (H/F/X)",
+      "normalized": "health and safety manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "HEALTH SAFETY ENVIRONMENT MANAGER (H/F/X)",
+      "normalized": "health safety environment manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "INGENIEUR (H/F/X)",
+      "normalized": "ingenieur",
+      "slug": "engineer"
+    },
+    {
+      "raw": "LEITER (H/F/X)",
+      "normalized": "leiter",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "MANAGER (H/F/X)",
+      "normalized": "manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "SALES (H/F/X)",
+      "normalized": "sales",
+      "slug": "boundary"
+    },
+    {
+      "raw": "SALJARE (H/F/X)",
+      "normalized": "saljare",
+      "slug": "boundary"
+    },
+    {
+      "raw": "SECOND (H/F/X)",
+      "normalized": "second",
+      "slug": "second"
+    },
+    {
+      "raw": "SHARED ALIAS (H/F/X)",
+      "normalized": "shared alias",
+      "slug": "second"
+    },
+    {
+      "raw": "SOFTWARE DEVELOPER (H/F/X)",
+      "normalized": "software developer",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "SOFTWARE ENGINEER (H/F/X)",
+      "normalized": "software engineer",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "SOFTWAREENTWICKLER (H/F/X)",
+      "normalized": "softwareentwickler",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "SUPERVISEUR (H/F/X)",
+      "normalized": "superviseur",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "SUPERVISOR (H/F/X)",
+      "normalized": "supervisor",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "Senior a b c d (m/f/d)",
+      "normalized": "senior a b c d",
+      "slug": "first"
+    },
+    {
+      "raw": "Senior boundary (m/f/d)",
+      "normalized": "senior boundary",
+      "slug": "boundary"
+    },
+    {
+      "raw": "Senior collision (m/f/d)",
+      "normalized": "senior collision",
+      "slug": "second"
+    },
+    {
+      "raw": "Senior d c b a (m/f/d)",
+      "normalized": "senior d c b a",
+      "slug": "second"
+    },
+    {
+      "raw": "Senior data center manager (m/f/d)",
+      "normalized": "senior data center manager",
+      "slug": "data-manager"
+    },
+    {
+      "raw": "Senior data manager (m/f/d)",
+      "normalized": "senior data manager",
+      "slug": "data-manager"
+    },
+    {
+      "raw": "Senior developpeur (m/f/d)",
+      "normalized": "senior developpeur",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "Senior engineer (m/f/d)",
+      "normalized": "senior engineer",
+      "slug": "engineer"
+    },
+    {
+      "raw": "Senior first (m/f/d)",
+      "normalized": "senior first",
+      "slug": "first"
+    },
+    {
+      "raw": "Senior health and safety manager (m/f/d)",
+      "normalized": "senior health and safety manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "Senior health safety environment manager (m/f/d)",
+      "normalized": "senior health safety environment manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "Senior ingenieur (m/f/d)",
+      "normalized": "senior ingenieur",
+      "slug": "engineer"
+    },
+    {
+      "raw": "Senior leiter (m/f/d)",
+      "normalized": "senior leiter",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "Senior manager (m/f/d)",
+      "normalized": "senior manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "Senior sales (m/f/d)",
+      "normalized": "senior sales",
+      "slug": "boundary"
+    },
+    {
+      "raw": "Senior saljare (m/f/d)",
+      "normalized": "senior saljare",
+      "slug": "boundary"
+    },
+    {
+      "raw": "Senior second (m/f/d)",
+      "normalized": "senior second",
+      "slug": "second"
+    },
+    {
+      "raw": "Senior shared alias (m/f/d)",
+      "normalized": "senior shared alias",
+      "slug": "second"
+    },
+    {
+      "raw": "Senior software developer (m/f/d)",
+      "normalized": "senior software developer",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "Senior software engineer (m/f/d)",
+      "normalized": "senior software engineer",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "Senior softwareentwickler (m/f/d)",
+      "normalized": "senior softwareentwickler",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "Senior superviseur (m/f/d)",
+      "normalized": "senior superviseur",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "Senior supervisor (m/f/d)",
+      "normalized": "senior supervisor",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "Senior technician (m/f/d)",
+      "normalized": "senior technician",
+      "slug": "technician"
+    },
+    {
+      "raw": "Senior technicien (m/f/d)",
+      "normalized": "senior technicien",
+      "slug": "technician"
+    },
+    {
+      "raw": "Senior techniker (m/f/d)",
+      "normalized": "senior techniker",
+      "slug": "technician"
+    },
+    {
+      "raw": "Senior utvecklare (m/f/d)",
+      "normalized": "senior utvecklare",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "Senior σισυφος (m/f/d)",
+      "normalized": "senior σισυφος",
+      "slug": "first"
+    },
+    {
+      "raw": "Superviseur/euse",
+      "normalized": "superviseur",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "TECHNICIAN (H/F/X)",
+      "normalized": "technician",
+      "slug": "technician"
+    },
+    {
+      "raw": "TECHNICIEN (H/F/X)",
+      "normalized": "technicien",
+      "slug": "technician"
+    },
+    {
+      "raw": "TECHNIKER (H/F/X)",
+      "normalized": "techniker",
+      "slug": "technician"
+    },
+    {
+      "raw": "Technicien/ne",
+      "normalized": "technicien",
+      "slug": "technician"
+    },
+    {
+      "raw": "UTVECKLARE (H/F/X)",
+      "normalized": "utvecklare",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "a b c d",
+      "normalized": "a b c d",
+      "slug": "first"
+    },
+    {
+      "raw": "alias shared",
+      "normalized": "alias shared",
+      "slug": null
+    },
+    {
+      "raw": "boundary",
+      "normalized": "boundary",
+      "slug": "boundary"
+    },
+    {
+      "raw": "collision",
+      "normalized": "collision",
+      "slug": "second"
+    },
+    {
+      "raw": "d c b a",
+      "normalized": "d c b a",
+      "slug": "second"
+    },
+    {
+      "raw": "data center manager",
+      "normalized": "data center manager",
+      "slug": "data-manager"
+    },
+    {
+      "raw": "data manager",
+      "normalized": "data manager",
+      "slug": "data-manager"
+    },
+    {
+      "raw": "developer software",
+      "normalized": "developer software",
+      "slug": null
+    },
+    {
+      "raw": "developpeur",
+      "normalized": "developpeur",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "engineer",
+      "normalized": "engineer",
+      "slug": "engineer"
+    },
+    {
+      "raw": "engineer software",
+      "normalized": "engineer software",
+      "slug": "engineer"
+    },
+    {
+      "raw": "first",
+      "normalized": "first",
+      "slug": "first"
+    },
+    {
+      "raw": "health and safety manager",
+      "normalized": "health and safety manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "health safety environment manager",
+      "normalized": "health safety environment manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "ingenieur",
+      "normalized": "ingenieur",
+      "slug": "engineer"
+    },
+    {
+      "raw": "leiter",
+      "normalized": "leiter",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "manager",
+      "normalized": "manager",
+      "slug": "manager"
+    },
+    {
+      "raw": "manager center data",
+      "normalized": "manager center data",
+      "slug": "manager"
+    },
+    {
+      "raw": "manager data",
+      "normalized": "manager data",
+      "slug": "manager"
+    },
+    {
+      "raw": "manager environment safety health",
+      "normalized": "manager environment safety health",
+      "slug": "manager"
+    },
+    {
+      "raw": "manager safety and health",
+      "normalized": "manager safety and health",
+      "slug": "manager"
+    },
+    {
+      "raw": "preSalespost",
+      "normalized": "presalespost",
+      "slug": null
+    },
+    {
+      "raw": "prea b c dpost",
+      "normalized": "prea b c dpost",
+      "slug": null
+    },
+    {
+      "raw": "preboundarypost",
+      "normalized": "preboundarypost",
+      "slug": null
+    },
+    {
+      "raw": "precollisionpost",
+      "normalized": "precollisionpost",
+      "slug": null
+    },
+    {
+      "raw": "pred c b apost",
+      "normalized": "pred c b apost",
+      "slug": null
+    },
+    {
+      "raw": "predata center managerpost",
+      "normalized": "predata center managerpost",
+      "slug": null
+    },
+    {
+      "raw": "predata managerpost",
+      "normalized": "predata managerpost",
+      "slug": null
+    },
+    {
+      "raw": "predeveloppeurpost",
+      "normalized": "predeveloppeurpost",
+      "slug": null
+    },
+    {
+      "raw": "preengineerpost",
+      "normalized": "preengineerpost",
+      "slug": null
+    },
+    {
+      "raw": "prefirstpost",
+      "normalized": "prefirstpost",
+      "slug": null
+    },
+    {
+      "raw": "prefix(a b c d)suffix",
+      "normalized": "prefix(a b c d)suffix",
+      "slug": "first"
+    },
+    {
+      "raw": "prefix(boundary)suffix",
+      "normalized": "prefix(boundary)suffix",
+      "slug": "boundary"
+    },
+    {
+      "raw": "prefix(collision)suffix",
+      "normalized": "prefix(collision)suffix",
+      "slug": "second"
+    },
+    {
+      "raw": "prefix(d c b a)suffix",
+      "normalized": "prefix(d c b a)suffix",
+      "slug": "second"
+    },
+    {
+      "raw": "prefix(data center manager)suffix",
+      "normalized": "prefix(data center manager)suffix",
+      "slug": "data-manager"
+    },
+    {
+      "raw": "prefix(data manager)suffix",
+      "normalized": "prefix(data manager)suffix",
+      "slug": "data-manager"
+    },
+    {
+      "raw": "prefix(developpeur)suffix",
+      "normalized": "prefix(developpeur)suffix",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "prefix(engineer)suffix",
+      "normalized": "prefix(engineer)suffix",
+      "slug": "engineer"
+    },
+    {
+      "raw": "prefix(first)suffix",
+      "normalized": "prefix(first)suffix",
+      "slug": "first"
+    },
+    {
+      "raw": "prefix(health and safety manager)suffix",
+      "normalized": "prefix(health and safety manager)suffix",
+      "slug": "manager"
+    },
+    {
+      "raw": "prefix(health safety environment manager)suffix",
+      "normalized": "prefix(health safety environment manager)suffix",
+      "slug": "manager"
+    },
+    {
+      "raw": "prefix(ingenieur)suffix",
+      "normalized": "prefix(ingenieur)suffix",
+      "slug": "engineer"
+    },
+    {
+      "raw": "prefix(leiter)suffix",
+      "normalized": "prefix(leiter)suffix",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "prefix(manager)suffix",
+      "normalized": "prefix(manager)suffix",
+      "slug": "manager"
+    },
+    {
+      "raw": "prefix(sales)suffix",
+      "normalized": "prefix(sales)suffix",
+      "slug": "boundary"
+    },
+    {
+      "raw": "prefix(saljare)suffix",
+      "normalized": "prefix(saljare)suffix",
+      "slug": "boundary"
+    },
+    {
+      "raw": "prefix(second)suffix",
+      "normalized": "prefix(second)suffix",
+      "slug": "second"
+    },
+    {
+      "raw": "prefix(shared alias)suffix",
+      "normalized": "prefix(shared alias)suffix",
+      "slug": "second"
+    },
+    {
+      "raw": "prefix(software developer)suffix",
+      "normalized": "prefix(software developer)suffix",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "prefix(software engineer)suffix",
+      "normalized": "prefix(software engineer)suffix",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "prefix(softwareentwickler)suffix",
+      "normalized": "prefix(softwareentwickler)suffix",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "prefix(superviseur)suffix",
+      "normalized": "prefix(superviseur)suffix",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "prefix(supervisor)suffix",
+      "normalized": "prefix(supervisor)suffix",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "prefix(technician)suffix",
+      "normalized": "prefix(technician)suffix",
+      "slug": "technician"
+    },
+    {
+      "raw": "prefix(technicien)suffix",
+      "normalized": "prefix(technicien)suffix",
+      "slug": "technician"
+    },
+    {
+      "raw": "prefix(techniker)suffix",
+      "normalized": "prefix(techniker)suffix",
+      "slug": "technician"
+    },
+    {
+      "raw": "prefix(utvecklare)suffix",
+      "normalized": "prefix(utvecklare)suffix",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "prefix(σισυφος)suffix",
+      "normalized": "prefix(σισυφος)suffix",
+      "slug": "first"
+    },
+    {
+      "raw": "prehealth and safety managerpost",
+      "normalized": "prehealth and safety managerpost",
+      "slug": null
+    },
+    {
+      "raw": "prehealth safety environment managerpost",
+      "normalized": "prehealth safety environment managerpost",
+      "slug": null
+    },
+    {
+      "raw": "preingenieurpost",
+      "normalized": "preingenieurpost",
+      "slug": null
+    },
+    {
+      "raw": "preleiterpost",
+      "normalized": "preleiterpost",
+      "slug": null
+    },
+    {
+      "raw": "premanagerpost",
+      "normalized": "premanagerpost",
+      "slug": null
+    },
+    {
+      "raw": "presalespost",
+      "normalized": "presalespost",
+      "slug": null
+    },
+    {
+      "raw": "presaljarepost",
+      "normalized": "presaljarepost",
+      "slug": null
+    },
+    {
+      "raw": "presecondpost",
+      "normalized": "presecondpost",
+      "slug": null
+    },
+    {
+      "raw": "preshared aliaspost",
+      "normalized": "preshared aliaspost",
+      "slug": null
+    },
+    {
+      "raw": "presoftware developerpost",
+      "normalized": "presoftware developerpost",
+      "slug": null
+    },
+    {
+      "raw": "presoftware engineerpost",
+      "normalized": "presoftware engineerpost",
+      "slug": null
+    },
+    {
+      "raw": "presoftwareentwicklerpost",
+      "normalized": "presoftwareentwicklerpost",
+      "slug": null
+    },
+    {
+      "raw": "presuperviseurpost",
+      "normalized": "presuperviseurpost",
+      "slug": null
+    },
+    {
+      "raw": "presupervisorpost",
+      "normalized": "presupervisorpost",
+      "slug": null
+    },
+    {
+      "raw": "pretechnicianpost",
+      "normalized": "pretechnicianpost",
+      "slug": null
+    },
+    {
+      "raw": "pretechnicienpost",
+      "normalized": "pretechnicienpost",
+      "slug": null
+    },
+    {
+      "raw": "pretechnikerpost",
+      "normalized": "pretechnikerpost",
+      "slug": null
+    },
+    {
+      "raw": "preutvecklarepost",
+      "normalized": "preutvecklarepost",
+      "slug": null
+    },
+    {
+      "raw": "preσισυφοςpost",
+      "normalized": "preσισυφοςpost",
+      "slug": null
+    },
+    {
+      "raw": "sales",
+      "normalized": "sales",
+      "slug": "boundary"
+    },
+    {
+      "raw": "saljare",
+      "normalized": "saljare",
+      "slug": "boundary"
+    },
+    {
+      "raw": "second",
+      "normalized": "second",
+      "slug": "second"
+    },
+    {
+      "raw": "shared alias",
+      "normalized": "shared alias",
+      "slug": "second"
+    },
+    {
+      "raw": "software developer",
+      "normalized": "software developer",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "software engineer",
+      "normalized": "software engineer",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "softwareentwickler",
+      "normalized": "softwareentwickler",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "superviseur",
+      "normalized": "superviseur",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "supervisor",
+      "normalized": "supervisor",
+      "slug": "supervisor"
+    },
+    {
+      "raw": "technician",
+      "normalized": "technician",
+      "slug": "technician"
+    },
+    {
+      "raw": "technicien",
+      "normalized": "technicien",
+      "slug": "technician"
+    },
+    {
+      "raw": "techniker",
+      "normalized": "techniker",
+      "slug": "technician"
+    },
+    {
+      "raw": "unmatched occupation",
+      "normalized": "unmatched occupation",
+      "slug": null
+    },
+    {
+      "raw": "utvecklare",
+      "normalized": "utvecklare",
+      "slug": "software-engineer"
+    },
+    {
+      "raw": "ΣΙΣΥΦΟΣ (H/F/X)",
+      "normalized": "σισυφος",
+      "slug": "first"
+    },
+    {
+      "raw": "σισυφος",
+      "normalized": "σισυφος",
+      "slug": "first"
+    }
+  ]
+}

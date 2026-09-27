@@ -19,6 +19,16 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "--sync-registry" {
+		if err := runRegistry(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			if errors.Is(err, context.Canceled) {
+				os.Exit(130)
+			}
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) == 2 && os.Args[1] == "--sync-board-queues" {
 		if err := runBoardSync(); err != nil {
 			fmt.Fprintln(os.Stderr, err)

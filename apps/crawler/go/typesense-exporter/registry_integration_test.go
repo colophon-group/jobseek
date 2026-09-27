@@ -264,3 +264,45 @@ func TestRegistryRedisMetadataPreservesPythonEncoding(t *testing.T) {
 		t.Fatalf("%s != %s (%v)", got, want, err)
 	}
 }
+
+func TestRegistryPostgresActualRepository(t *testing.T) {
+	directory := os.Getenv("REGISTRY_TEST_DATA_DIR")
+	if directory == "" {
+		t.Skip("REGISTRY_TEST_DATA_DIR is not set")
+	}
+	ctx, conn, _ := registryTestDatabase(t)
+	tables, err := loadRegistryTables(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := registryTaxonomyPlan(tables)
+	if err != nil {
+		t.Fatal(err)
+	}
+	companies, err := registryCompanyPlan(tables["companies"], tables["company_descriptions"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	boards, err := prepareRegistryBoards(tables["boards"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	effects, err := commitRegistry(ctx, conn, tables, append(plan, companies...), boards)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(effects.Schedules) != len(tables["boards"].Rows) {
+		t.Fatalf("repository board rows omitted: %d != %d", len(effects.Schedules), len(tables["boards"].Rows))
+	}
+	var companiesCount, boardsCount int
+	if err = conn.QueryRow(ctx, "SELECT count(*) FROM company").Scan(&companiesCount); err != nil {
+		t.Fatal(err)
+	}
+	if err = conn.QueryRow(ctx, "SELECT count(*) FROM job_board WHERE is_enabled").Scan(&boardsCount); err != nil {
+		t.Fatal(err)
+	}
+	if companiesCount != len(tables["companies"].Rows) || boardsCount != len(boards) {
+		t.Fatalf("repository population mismatch: %d companies, %d boards", companiesCount, boardsCount)
+	}
+	t.Logf("committed %d companies and %d boards from actual repository; no external publication", companiesCount, boardsCount)
+}

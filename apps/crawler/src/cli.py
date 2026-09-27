@@ -34,7 +34,7 @@ from src.db import (  # noqa: E402
     create_web_pool,
 )
 from src.metrics import start_metrics_server  # noqa: E402
-from src.shared.constants import get_data_dir  # noqa: E402
+from src.shared.constants import get_data_dir, is_source_checkout  # noqa: E402
 from src.shared.http import create_http_client  # noqa: E402
 from src.shared.logging import setup_logging  # noqa: E402
 from src.shared.output import tty_message  # noqa: E402
@@ -781,6 +781,11 @@ def parse_args() -> argparse.Namespace:
 
 async def run() -> None:
     args = parse_args()
+    if args.command == "sync":
+        command = ["go-typesense-exporter", "--sync-registry"]
+        if is_source_checkout():
+            command.extend(["--source-data-dir", str(get_data_dir())])
+        os.execvp(command[0], command)
     if args.command == "backfill-typesense":
         # Preserve the operator command while replacing its runtime. Dotenv
         # has already populated the environment; exec forwards signals/status
@@ -875,14 +880,6 @@ async def run() -> None:
             from src.workers.r2_drain import r2_drain_loop
 
             await r2_drain_loop(local_pool, shutdown_event)
-
-        elif args.command == "sync":
-            from src.sync import run_sync
-
-            sync_task = asyncio.create_task(run_sync())
-            await _await_task_or_shutdown(sync_task, shutdown_event)
-            if sync_task.cancelled():
-                raise SystemExit(130)
 
         elif args.command == "proxy-audit":
             from src.proxy_audit import ProxyAuditError, audit_webshare
