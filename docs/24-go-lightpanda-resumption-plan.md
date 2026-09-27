@@ -6,6 +6,52 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — SuccessFactors RSS routing v0.13.880
+
+PR #10111 merged as `aa9b5e4f046c8964bb557220cbd23ec750909bc5`.
+[Deployment 36352086220](https://github.com/colophon-group/jobseek/actions/runs/36352086220)
+succeeded. **216 of 227 enabled SuccessFactors RSS monitors now select Go**, up
+from one. The live census is **4,058 Go / 3,821 Python** of 7,879 enabled monitors,
+with zero route errors. The remaining eleven SuccessFactors profiles use legacy
+HTML/XML, RMK, or inline enrichment requests. No boards were disabled.
+
+Required CI and installed-image parity passed. Go configuration sync completed
+6,013 companies and 7,879 boards at 21:44:00 UTC. The read-only baseline covers
+216 boards and 236,664 active postings; it includes ten already quarantined and
+ten suspect boards. No consecutive-failure count increased in the first
+post-activation readback.
+
+Newly admitted Honda Asia & Oceania returned 20 jobs at 21:47:34 UTC and Ferrara
+returned 88 at 21:47:54 UTC. Both natural Go canonical URL hashes match their
+active database rows exactly. Posting IDs and description hashes also match
+the pre-deploy baseline; both boards have zero consecutive failures. A third
+natural Go feed completed with 91 URLs. No due times or publisher requests
+were forced. Large-feed production observation remains ongoing; the greater
+than 256 MiB fixture and retained Mobiliar replay are bounded parser evidence.
+
+Supported rollback retired epoch 92 at 93, restored all five schedules, and
+left zero terminal drops or write fences. The unchanged **25 selectors** were
+cleared under lock and restaged at the promoted revision. C1 is active at
+**epoch 94**, accepted/audit_ok, with five ready records and zero inflight/dead.
+All configured service health checks pass; C2 remains dark. The exporter
+snapshot reports 220 successful exports, zero errors, zero lag and healthy
+Typesense status. See the sanitized
+[production evidence](evidence/go-successfactors-production-2026-09-27.json).
+
+Before another crawler deployment or selector mutation, complete supported
+`rollback c1`, then clear all 25 selectors with
+`/tmp/jobseek-post-go-experience-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`aa9b5e4f046c8964bb557220cbd23ec750909bc5` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision, then reactivate c1. SuccessFactors' percentage is now a release
+default of 100, not an additional host selector. These instructions supersede
+the historical release/epoch checkpoints below.
+
+The full transition remains active: Python still owns 3,821 monitors, worker
+and writer stages, remaining CPU/detail/browser work. Whole-lane actual-workload
+CPU/RAM/density/cost proof and final retirement/cutover remain outstanding.
+
 ## Implementation checkpoint: SuccessFactors RSS feed routing v0.13.880
 
 Go now defaults to all supported direct SuccessFactors feeds, including explicit
@@ -36,12 +82,12 @@ retry boundaries are covered. Streamed output, HTTP/TDM failure
 classification and downstream writer/drop policy remain in place. The bridge
 now reaps cancelled/stuck children after bounded termination and records a
 postprocessed canonical URL hash for DB comparison. No extra publisher requests
-were made. Deployment and natural output readback are pending. This slice incorporates
+were made. Deployment and natural output readback are recorded above. This slice incorporates
 PR #10100 (v0.13.879), including its authoritative TDM reservation check before
 Go dispatch. The TDM deployment and documentation checkpoint are complete:
 promoted revision `265d7e8b8f12beabff3d5e7e131f2e8eb168903d`, c1 epoch 92,
-with the unchanged 25 selectors. Use the production checkpoint immediately
-below for supported cold rollback before this release.
+with the unchanged 25 selectors. That checkpoint was the rollback source for
+this release; current operating instructions are in the production section above.
 
 For reversal, restore the previous release or use the supported cold
 configuration procedure with `SUCCESSFACTORS_RSS_GO_PERCENT=0`; explicit
