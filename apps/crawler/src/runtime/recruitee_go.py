@@ -203,7 +203,7 @@ class GoRecruiteeMonitorRuntime:
                 if responses:
                     mark_external_response(api_url, status)
                 detail = payload.get("error") or "native process failed"
-                if status and status != 200:
+                if responses == attempts and status != 200:
                     request = httpx.Request("GET", api_url)
                     response = httpx.Response(status, request=request)
                     raise httpx.HTTPStatusError(str(detail), request=request, response=response)
