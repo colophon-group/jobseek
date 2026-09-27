@@ -63,8 +63,35 @@ success time, and showed zero consecutive failures for both enabled boards.
 Unit8 then completed its natural Go run at **15:57:36 UTC**, returning all
 14 URLs with the exact hash above, six requests/responses and 5,742 response
 bytes. Database readback recorded success at 15:57:36.557 UTC, the same active
-URL set, and zero failures. Hack The Box still awaited its normal Go run;
-its previous database count/hash remained stable and its failure count zero.
+URL set, and zero failures. Hack The Box completed at **16:07:54 UTC**,
+returning all 23 URLs with the exact comparison hash, six requests/responses
+and 8,041 response bytes. Database success at 16:07:54.234 UTC retained the
+same active URL set and zero failures. Thus all four selected boards have
+actual natural Go output and database parity. The mode-0600 readback is
+`/tmp/jobseek-workable-four-natural-db-20260927.jsonl`.
 The production release is `ce5dfd821ca6e6b95d0b79a9eb534c26ddd486ec`, with
 all four selectors restored at c1 epoch 78. This is actual output evidence for
-the first three boards, not a whole-lane resource comparison.
+all four boards, not a whole-lane resource comparison.
+
+## Broader strict route: active on v0.13.873
+
+The read-only census in `/tmp/jobseek-workable-route-census-20260927.jsonl`
+found 77 enabled Workable boards. The existing strict `WORKABLE_GO_PERCENT=25`
+selector admits 12; its union with the four explicit selectors is 15 boards.
+All 12 had stable recent counts, active status and zero failures. At 100%,
+the same eligibility rules would admit 52; this is coverage information, not
+authorization to classify the other 25 as migrated. The initial expanded
+readback for 15 boards is `/tmp/jobseek-workable-expanded-db-before.jsonl`.
+
+The mode-0600 helper `/tmp/jobseek-post-go-registry-selectors.py`
+preserves all previous 23 selectors and adds `WORKABLE_GO_PERCENT=25`. It
+was staged after successful v0.13.873 deployment at full revision
+`1f37e47ef036c1b08a5ca45dfca94cd9d7e3dbf6`, with c1 cold. Supported
+reactivation reached epoch 80 with five ready schedules, zero inflight/dead
+and all services healthy. The live worker route census confirms 15
+`go-workable` boards. Subsequent natural output for the 11 newly admitted
+boards is still pending. For the next deployment, finish supported c1
+rollback, then clear all **24** selectors with this helper under the host
+mutation lock against that full revision. The older 23-selector helper is
+insufficient. Exact selector values are retained in
+[the release evidence](evidence/go-registry-production-2026-09-27.json).

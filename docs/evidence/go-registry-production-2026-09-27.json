@@ -1,0 +1,163 @@
+{
+  "schema": "jobseek.go-registry-release-evidence/v1",
+  "revision": "1f37e47ef036c1b08a5ca45dfca94cd9d7e3dbf6",
+  "deployment_run": 36332710204,
+  "status": "deployed_c1_active",
+  "prior_release_workable_natural_readback": [
+    {
+      "slug": "pix4d",
+      "id": "06e7e8f2-4741-49b2-a135-96cfeb3bcfdd",
+      "board_url": "https://apply.workable.com/pix4d/",
+      "crawler_type": "workable",
+      "is_enabled": true,
+      "board_status": "active",
+      "consecutive_failures": 0,
+      "last_success_at": "2026-09-27 15:37:59.261344+00:00",
+      "next_check_at": "2026-09-27 16:37:59.261344+00:00",
+      "active": 4,
+      "url_sha256": "d89eb14092702fa22172c30257f0e8a5eff0988f309b2a0971a467d7d1b23486"
+    },
+    {
+      "slug": "debiopharm",
+      "id": "631e7fce-366e-409d-b372-4ee4870e74c1",
+      "board_url": "https://apply.workable.com/debiopharm/",
+      "crawler_type": "workable",
+      "is_enabled": true,
+      "board_status": "active",
+      "consecutive_failures": 0,
+      "last_success_at": "2026-09-27 15:45:59.071607+00:00",
+      "next_check_at": "2026-09-27 16:45:59.071607+00:00",
+      "active": 7,
+      "url_sha256": "bafa8297dffe909e2bcbc26345a2d57aced2e1f643e58c2782e9e1f9a27711b4"
+    },
+    {
+      "slug": "unit8",
+      "id": "acecf5fd-3252-420d-a098-542cb1c0fc77",
+      "board_url": "https://apply.workable.com/unit8/",
+      "crawler_type": "workable",
+      "is_enabled": true,
+      "board_status": "active",
+      "consecutive_failures": 0,
+      "last_success_at": "2026-09-27 15:57:36.557199+00:00",
+      "next_check_at": "2026-09-27 16:57:36.557199+00:00",
+      "active": 14,
+      "url_sha256": "df29af80eaf266026689f43c5384b63c9918dc892361567953d886adff842461"
+    },
+    {
+      "slug": "hack-the-box-ltd",
+      "id": "08c21917-9457-4b19-b0e6-40d0280a36c4",
+      "board_url": "https://apply.workable.com/hack-the-box-ltd",
+      "crawler_type": "workable",
+      "is_enabled": true,
+      "board_status": "active",
+      "consecutive_failures": 0,
+      "last_success_at": "2026-09-27 16:07:54.234211+00:00",
+      "next_check_at": "2026-09-27 17:07:54.234211+00:00",
+      "active": 23,
+      "url_sha256": "f7a605f9725854ce623555397c345b8587d0c6318e803f721791a6185adb5e95"
+    }
+  ],
+  "pre_sync_identity_digest": [
+    {
+      "kind": "companies",
+      "rows": 6039,
+      "identity_sha256": "7e0e2053e132e2320e5c683d9b9657d6037856021496041a6b82dffc36797e94"
+    },
+    {
+      "kind": "boards",
+      "rows": 8013,
+      "identity_sha256": "db9a62756c6a9650a320f395d6f61536b8a6c4dff7850d18f36b29e1e47f4726"
+    }
+  ],
+  "version": "0.13.873",
+  "local_commit": {
+    "time_utc": "2026-09-27T16:28:41.272294897Z",
+    "boards": 7879,
+    "resolved_misses": 0
+  },
+  "redis_publication": {
+    "schedules": 7879,
+    "retired_board_entries_removed": 133
+  },
+  "deadletters": {
+    "total": 24,
+    "unresolved": 0
+  },
+  "sync_complete_utc": "2026-09-27T16:29:23.201229499Z",
+  "post_sync_identity_digest": [
+    {
+      "kind": "companies",
+      "rows": 6039,
+      "identity_sha256": "7e0e2053e132e2320e5c683d9b9657d6037856021496041a6b82dffc36797e94"
+    },
+    {
+      "kind": "boards",
+      "rows": 8013,
+      "identity_sha256": "db9a62756c6a9650a320f395d6f61536b8a6c4dff7850d18f36b29e1e47f4726"
+    }
+  ],
+  "queue_readback": {
+    "enabled_boards_checked": 7879,
+    "mismatches": 0,
+    "first_mismatches": []
+  },
+  "active_selectors": {
+    "WORKDAY_REPLAY_CAPTURE_BOARD_ID": "02ff01a5-d8ec-4696-8a45-17e3c8d6483c",
+    "JOIN_CAPTURE_SLUGS": "agentur-kuehnende,stellantisandyou,lebensmittel-knupferde",
+    "RECRUITEE_CAPTURE_TENANTS": "gorgias",
+    "KANDOU_JSONLD_CAPTURE_URL": "https://kandou.bamboohr.com/careers/310",
+    "WORKDAY_DETAIL_CAPTURE_HOST": "freseniusglobal.wd3.myworkdayjobs.com",
+    "PINPOINT_CAPTURE_TENANTS": "accelercomm,includedhealth,penumbrainc,reply",
+    "ASHBY_CAPTURE_TOKENS": "megazone,bounce,tenex",
+    "WORKDAY_GO_BOARD_IDS": "20eae165-5251-40d4-b9a0-0254f4bd1ab3",
+    "WORKDAY_GO_PERCENT": "5",
+    "RECRUITEE_GO_BOARD_IDS": "0f1c7be6-42f6-4706-952c-0d304f8011ba,d3df984c-5f08-47ff-a299-c54a700f5eee,e43481a7-561a-4f29-ab36-df8c5ddaca9f",
+    "PINPOINT_GO_BOARD_IDS": "0ef903fe-82c9-4610-bdfc-0360f9d4226a",
+    "BOOKING_GO_BOARD_ID": "d9730d93-3a2a-4003-a99e-4a8f0830aa2b",
+    "TEAMTAILOR_RSS_GO_BOARD_IDS": "72d8d377-2242-4203-9270-c7447b4a3b56",
+    "GREENHOUSE_GO_PERCENT": "100",
+    "ASHBY_GO_PERCENT": "25",
+    "SUCCESSFACTORS_RSS_GO_BOARD_IDS": "35461192-d877-4146-8f0d-31c97f14fedd",
+    "PERSONIO_GO_BOARD_IDS": "fdbe61f8-4615-49e6-8970-7e5e76452e24",
+    "PERSONIO_GO_PERCENT": "5",
+    "WORKABLE_CAPTURE_SLUGS": "pix4d,debiopharm,unit8,hack-the-box-ltd",
+    "WORKABLE_DETAIL_CAPTURE_JOBS": "lucidya/4733C5B44F,lucidya/E258A7CDA9,unit8/2FA384D52A,unit8/ACABC868E8",
+    "WORKABLE_GO_DETAIL_BOARD_IDS": "aef95fd2-55ea-43cd-9aa6-9bd541c2bc4e",
+    "WORKABLE_GO_PERCENT": "25",
+    "WORKABLE_GO_BOARD_IDS": "06e7e8f2-4741-49b2-a135-96cfeb3bcfdd,631e7fce-366e-409d-b372-4ee4870e74c1,acecf5fd-3252-420d-a098-542cb1c0fc77,08c21917-9457-4b19-b0e6-40d0280a36c4",
+    "SITEMAP_GO_BOARD_IDS": "c4779214-ef92-4261-98fb-ae64f264fd23"
+  },
+  "c1": {
+    "routing_epoch": 80,
+    "engine_owner": "go",
+    "decision": "accepted",
+    "reason": "audit_ok",
+    "ready": 5,
+    "inflight": 0,
+    "dead": 0
+  },
+  "exporter_snapshot": {
+    "successful_documents": 194,
+    "errors": 0,
+    "lag": 0
+  },
+  "monitor_route_census": {
+    "enabled": 7879,
+    "routes": {
+      "go-ashby": 209,
+      "go-booking-api": 1,
+      "go-greenhouse": 2520,
+      "go-lever": 194,
+      "go-personio": 2,
+      "go-pinpoint": 1,
+      "go-recruitee": 3,
+      "go-sitemap": 1,
+      "go-successfactors-rss": 1,
+      "go-teamtailor-rss": 1,
+      "go-workable": 15,
+      "go-workday": 2,
+      "python": 4929
+    },
+    "errors": []
+  }
+}
