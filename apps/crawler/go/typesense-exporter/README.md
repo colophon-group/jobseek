@@ -182,3 +182,67 @@ acknowledgements stop the rename stage and are reported without posting values.
 The ordinary full sync then publishes the taxonomies and companies. A real
 PostgreSQL fixture covers 1,001 affected postings, a retained unaffected row,
 null technology IDs, fence ownership, and ambiguous-acknowledgement release.
+
+## Dead-letter lifecycle inspection and recovery
+
+`go-typesense-exporter --inspect-deadletters` reads both Redis dead-letter
+lanes, joins monitor IDs to a read-only repeatable-read PostgreSQL snapshot,
+and checks the current Redis board hashes. It emits the same complete JSON
+report as `crawler deadletters inspect`, which now execs this command before
+opening Python pools. Configuration uses `LOCAL_DATABASE_URL` and `REDIS_URL`;
+no Typesense credential or exporter ownership flag is required.
+
+The shared Python classifier adapter invokes the same Go process for worker
+lifecycle gauges, post-commit config sync, and retry/prune preflight. It has a
+50-second timeout and drains/reaps the child on cancellation. The Go operation
+has a 45-second deadline and batches database/config reads at 1,000 IDs.
+Descriptors are read with one ZRANGE per lane to avoid pagination skips during
+concurrent reaping. The join is observational, not a cross-store transaction.
+
+`go-typesense-exporter --deadletters inspect|retry|prune [--entry REF] [--apply]`
+also owns explicit recovery. The operator CLI execs Go for all three actions.
+No mutation occurs without an exact selector and `--apply`. Inspection remains
+read-only and failures have no Python fallback. Legacy Python recovery code
+is retained solely as an offline test oracle.
+
+Applied recovery rechecks PostgreSQL authority under a shared row lock, then
+performs one guarded Redis script: verify the exact descriptor score/config,
+ensure a single current schedule, remove an eligible obsolete route, and
+remove the selected parked descriptor. Existing first-time, recurring and
+inflight deadlines remain unchanged. An obsolete inflight route or changed
+config/authority fails before the transition. New schedules use Redis time
+and the existing domain throttle policy. The embedded canonical enqueue Lua
+and ATS domain policy are checked against their retained source in CI.
+
+Redis transport retries are disabled: after a lost acknowledgement, inspect
+again before selecting another operation. Noncanonical UUID descriptors are
+reported with historical inspection semantics but rejected for recovery;
+the legacy raw-ID lookup is insufficient retirement evidence for mutation.
+`testdata/deadletter_fixture.json` is the retained Python oracle; regenerate
+from `apps/crawler` with `PYTHONPATH=. python
+go/typesense-exporter/testdata/generate_deadletter_fixture.py`.
+
+## Expired-lease recovery loop
+
+`go-typesense-exporter --reap-leases` is the worker's supervised Go recovery
+process. Go owns the interval, both simple/browser sweeps, depth reads, and
+dead-letter lifecycle join. Python's worker host only forwards config, exports
+the existing metrics from Go's NDJSON events, and terminates/reaps the process
+on shutdown. An unexpected child exit fails the existing pipeline supervisor;
+there is no Python recovery fallback.
+
+The loop waits `REAPER_INTERVAL_SECONDS` (default 30, minimum 1) before each
+tick, retaining the existing one-loop-per-worker, both-lanes-per-tick behavior.
+`REAPER_BATCH_SIZE` defaults to 200 and `REAPER_MAX_STRIKES` to 5. Each sweep
+uses Redis time and the canonical `reap_expired.lua`, checked byte-for-byte
+against its retained source. Publisher throttle/ready tiers, existing scores,
+repair deadlines, strike limits, missing-config behavior and B0 ownership
+quarantine are preserved. Failed lane sweeps and failed lifecycle observation
+are reported independently; a database outage cannot prevent later recovery
+ticks. Redis mutations are not automatically replayed on transport errors.
+
+Credentials are the existing worker `REDIS_URL` and `LOCAL_DATABASE_URL`.
+No Typesense access or additional service port is required. Read-only lifecycle
+work uses one database connection; per-operation deadlines and signal handling
+bound shutdown. This is a scheduler-stage port, not the final Go worker runtime
+or a claim of whole-lane resource improvement.

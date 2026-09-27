@@ -122,6 +122,55 @@ cancellation. The embedded schema is compared with the retained Python source;
 setup/readiness evidence are pending. CSV/configuration/taxonomy sync remains
 Python and full #7966 completion remains open.
 
+## Implemented next: Go expired-lease recovery (not deployed)
+
+The scheduler's reaper loop now runs in a supervised Go process. It owns the
+interval, both Redis lane sweeps and the dead-letter lifecycle join. The
+remaining Python worker is a process/metrics adapter for this stage; it no
+longer decides when or how expired leases recover. The canonical Lua and
+publisher/queue policy are preserved. The frozen Python fixture checks exact
+Redis state across 16 cases and three consecutive sweeps per case, including
+batch bounds, unchanged due times, poison strikes, repair deadlines, missing
+configs, ready tiers/rotation and the Lightpanda ownership guard. Real Redis
+and PostgreSQL also exercise the complete sweep/dead-letter/classification
+tick. Child cancellation, early exit, force-kill fallback and metric labels
+are covered at the Python supervisor boundary.
+
+This release remains queued behind the full maintenance proof and earlier Go
+maintenance PRs. Do not deploy over the running mutation lock or claim this
+completes worker scheduling, the full pipeline or #7966.
+
+## Progress: 2026-09-27 13:40 UTC — backfill complete, proof running
+
+The Go phase of [maintenance 36317322087](https://github.com/colophon-group/jobseek/actions/runs/36317322087)
+finished at 13:27:38 UTC: **5,669,012 acknowledged documents in 5,472.035 seconds**.
+The existing fresh full Python reconciliation then started in the same
+container under the same mutation lock. At 13:36:35 UTC it had completed
+partition `1f`, with zero unresolved differences in that partition. The full
+256-partition proof and following taxonomy verification are still pending;
+do not deploy over this process or declare final parity yet.
+
+The final Go-phase cgroup sample at 13:27:37 UTC recorded 784.207 CPU-seconds,
+79,636 KiB process RSS and 108,976 KiB process high-water RSS. Across 346
+successful Go-phase samples the maximum sampled cgroup memory was 100,868,096
+bytes. Sampling began after process startup and cgroup memory.peak is unavailable.
+These numbers describe this maintenance container only; they do not prove
+whole-lane efficiency or a comparison against the Python backfill.
+
+Implementation PRs #10072 (reconciliation), #10074 (taxonomy verification),
+#10076 (schema setup), and #10077 (taxonomy/company sync and posting rename
+updates) are queued behind this proof. They are not deployed. The next
+configuration-sync substage now implemented in Go is the read-only dead-letter
+lifecycle join shared by sync, worker metrics and operator inspection. Its
+Python-oracle fixtures and real PostgreSQL/read-only Redis integration cover
+classification, batch boundaries, corrupt authority and membership preservation.
+The same PR now implements explicit retry/prune in Go, including an atomic
+Redis transition and a PostgreSQL row lock across the mutation boundary.
+Tests prove due-time preservation, schedule deduplication, changed-config and
+changed-authority refusal, superseded-inflight protection, and exact-member
+replay refusal. These changes are not deployed. CSV/local transaction sync,
+remaining scheduler/worker stages, and fleet-wide profile migration remain.
+
 ## Production checkpoint: 2026-09-27 — Go Typesense backfill
 
 [PR #10069](https://github.com/colophon-group/jobseek/pull/10069) merged as

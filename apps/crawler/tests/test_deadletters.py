@@ -13,6 +13,14 @@ import src.redis_queue as redis_queue
 
 @pytest.fixture
 def fake_redis(monkeypatch):
+    # Keep the legacy operator recovery tests as the offline oracle. Production
+    # classification uses the Go process, covered in test_go_deadletters.py.
+    monkeypatch.setattr(
+        deadletters, "classify_deadletters", deadletters._classify_deadletters_python_reference
+    )
+    monkeypatch.setattr(
+        deadletters, "resolve_deadletters", deadletters._resolve_deadletters_python_reference
+    )
     fake = fakeredis.aioredis.FakeRedis(
         decode_responses=True,
         protocol=2,

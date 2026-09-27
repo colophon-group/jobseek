@@ -32,11 +32,7 @@ from src.metrics import (
     host_circuit_opened_total,
     host_circuit_skipped_total,
     host_circuit_state,
-    inflight_deadletter_depth,
-    inflight_depth,
     inflight_heartbeat_total,
-    inflight_reaped_total,
-    monitor_deadletter_lifecycle_depth,
     monitor_duration_seconds,
     monitor_failed_per_board_total,
     scrape_duration_seconds,
@@ -54,13 +50,10 @@ from src.redis_queue import (
     complete_task,
     enqueue_monitor,
     enqueue_scrape,
-    get_deadletter_depth,
     get_host_circuit_open_until,
-    get_inflight_depth,
     get_provider_circuit_open_until,
     heartbeat_task,
     normalize_egress_host,
-    reap_expired,
     record_host_failure,
     record_host_success,
     record_provider_circuit_success,
@@ -645,83 +638,10 @@ async def _reaper_loop(
     browser: bool,
     local_pool: asyncpg.Pool,
 ) -> None:
-    """Periodically sweep expired inflight leases back to per-domain queues.
+    """Supervise the Go-owned sweep loop; local_pool is retained for callers."""
+    from src.workers.go_reaper import run_go_reaper
 
-    Runs once per pipeline (not per worker) to avoid stampedes on the
-    Lua reaper. Sweeps both worker types' inflight ZSETs every tick so
-    a simple/browser worker doing the sweep covers the cross-type case
-    (e.g. a slim worker reaping a browser task that's been orphaned by
-    a Playwright OOM, and vice-versa).
-    """
-    interval = max(1.0, float(settings.reaper_interval_seconds))
-    reaper_log = log.bind(component="reaper", browser=browser)
-    reaper_log.info("pipeline.reaper.started")
-    try:
-        while not shutdown_event.is_set():
-            with contextlib.suppress(TimeoutError):
-                await asyncio.wait_for(shutdown_event.wait(), timeout=interval)
-            if shutdown_event.is_set():
-                break
-            for wtype, is_browser in (("simple", False), ("browser", True)):
-                try:
-                    result = await reap_expired(browser=is_browser)
-                except Exception:
-                    reaper_log.warning("pipeline.reaper.error", wtype=wtype, exc_info=True)
-                    continue
-                if result["reenqueued"]:
-                    inflight_reaped_total.labels(wtype=wtype, outcome="reenqueued").inc(
-                        result["reenqueued"]
-                    )
-                if result["dead_lettered"]:
-                    inflight_reaped_total.labels(wtype=wtype, outcome="dead_lettered").inc(
-                        result["dead_lettered"]
-                    )
-                if result["missing_config"]:
-                    inflight_reaped_total.labels(wtype=wtype, outcome="missing_config").inc(
-                        result["missing_config"]
-                    )
-                if result["reenqueued"] or result["dead_lettered"] or result["missing_config"]:
-                    reaper_log.info(
-                        "pipeline.reaper.swept",
-                        wtype=wtype,
-                        **result,
-                    )
-                # Refresh observability gauges every tick.
-                try:
-                    inflight_depth.labels(wtype=wtype).set(
-                        await get_inflight_depth(browser=is_browser)
-                    )
-                    inflight_deadletter_depth.labels(wtype=wtype).set(
-                        await get_deadletter_depth(browser=is_browser)
-                    )
-                except Exception:
-                    # Gauge refresh is best-effort; the reaper must keep sweeping leases.
-                    pass
-            # The raw ZCARD gauge above remains useful for queue accounting,
-            # while this local-Postgres join tells alerts whether a monitor is
-            # actionable or only historical residue from a retired route.
-            try:
-                from src.deadletters import (
-                    DEADLETTER_LIFECYCLES,
-                    DEADLETTER_WORKER_TYPES,
-                    classify_deadletters,
-                    lifecycle_counts,
-                )
-
-                deadletters = await classify_deadletters(local_pool)
-                counts = lifecycle_counts(deadletters)
-                for metric_wtype in DEADLETTER_WORKER_TYPES:
-                    for lifecycle in DEADLETTER_LIFECYCLES:
-                        monitor_deadletter_lifecycle_depth.labels(
-                            wtype=metric_wtype,
-                            lifecycle=lifecycle,
-                        ).set(counts[metric_wtype][lifecycle])
-            except Exception:
-                # Classification is best-effort observability and must never
-                # interfere with lease recovery.
-                reaper_log.warning("pipeline.deadletters.classification_failed", exc_info=True)
-    finally:
-        reaper_log.info("pipeline.reaper.stopped")
+    await run_go_reaper(shutdown_event, browser=browser)
 
 
 def _pipeline_watchdog(
