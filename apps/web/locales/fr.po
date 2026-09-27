@@ -6218,7 +6218,7 @@ msgstr "Cet avis ne restreint ni les informations factuelles ni les exceptions p
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.intro"
-msgstr "Le droit suisse de la protection des données et, le cas échéant, le RGPD de l’UE ou du Royaume-Uni vous donnent des droits sur vos données. La suppression du compte efface les données actives du compte ; les sauvegardes et les données conservées par les prestataires ont des durées de conservation distinctes, expliquées ci-dessous."
+msgstr "Le droit suisse de la protection des données et, le cas échéant, le RGPD de l’UE ou du Royaume-Uni vous donnent des droits sur vos données. La suppression du compte efface les données actives du compte ; les sauvegardes et les données conservées par les prestataires ont des durées de conservation distinctes, expliquées dans la politique complète accessible via le lien ci-dessous."
 
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
@@ -6405,19 +6405,6 @@ msgstr "Vos watchlists, offres enregistrées et alertes e-mail sont toujours là
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.ready"
 msgstr "Vos watchlists, un peu plus ciblées."
-
-
-#. Heading identifying the full English legal document below the translated summary
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.complete.title"
-msgstr "Politique de confidentialité complète (en anglais)"
-
-#. Heading identifying the full English legal document below the translated summary
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.complete.title"
-msgstr "Conditions d’utilisation complètes (en anglais)"
 
 #. Country in the public seller and controller address
 #. Country in the public seller and controller address

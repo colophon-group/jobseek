@@ -1,4 +1,3 @@
-import { LegalDocument } from "@/components/LegalDocument";
 import type { Metadata } from "next";
 import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
@@ -68,7 +67,7 @@ export default async function PrivacyPolicyPage({ params }: Props) {
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
         lastReviewed: siteConfig.privacy.lastUpdated,
       }} />
-      <PrivacyPolicyContent><LegalDocument document="privacy" /></PrivacyPolicyContent>
+      <PrivacyPolicyContent />
     </>
   );
 }

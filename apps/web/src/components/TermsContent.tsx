@@ -1,13 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { Trans } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ContentPageHero } from "@/components/ContentPageHero";
 import { sectionScrollMarginClass as sectionScroll } from "@/lib/styles";
 import { useLocalePath } from "@/lib/useLocalePath";
 
-export function TermsContent({ children }: { children: ReactNode }) {
+export function TermsContent() {
   const lp = useLocalePath();
   const contactEmail = siteConfig.indexing.contactEmail;
   const lastUpdated = siteConfig.terms.lastUpdated;
@@ -63,11 +62,6 @@ export function TermsContent({ children }: { children: ReactNode }) {
             <p><Trans id="terms.refunds.request" comment="Refund request process without restricting statutory rights">Request a refund or exercise an applicable withdrawal right through Paddle support or the support link in your receipt. Paddle assesses and processes requests under its Refund Policy. Your mandatory consumer rights are unaffected.</Trans></p>
             <p><Trans id="terms.refunds.cancel" comment="Explains cancellation is separate from requesting a refund">Canceling a subscription stops future renewals; it does not automatically request a refund. For a problem with Job Seek, contact us at the email below so we can help.</Trans></p>
             <p><a href="https://paddle.net" className="text-primary underline"><Trans id="terms.refunds.support" comment="Link to Paddle buyer support and refunds">Paddle support and refunds</Trans></a>{" · "}<a href="https://www.paddle.com/legal/refund-policy" className="text-primary underline"><Trans id="terms.refunds.policy" comment="Link to Paddle refund policy">Paddle Refund Policy</Trans></a></p>
-          </section>
-
-          <section id="full-terms" className={`w-full max-w-[840px] space-y-4 ${sectionScroll}`}>
-            <h2 className="text-lg font-bold"><Trans id="terms.complete.title" comment="Heading identifying the full English legal document below the translated summary">Complete Terms of Service (English)</Trans></h2>
-            {children}
           </section>
 
           {/* Contact + full terms link */}

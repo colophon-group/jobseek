@@ -4,6 +4,23 @@ Updated 27 September 2026. Tracker [#10084](https://github.com/colophon-group/jo
 Preparation evidence; no application, identity submission or live charge was
 made by this task. The owner already sent the separate category inquiry.
 
+## Current owner decisions (supersede the earlier publication snapshot)
+
+The full Terms and Privacy documents are published on GitHub and linked from
+translated summaries on the site. The owner requested removal of the embedded
+full English documents; seller/contact information, payment/refund summaries and
+footer links remain on-site. The earlier full-text rendering checks below record
+historical publication, not the current presentation. GitHub-only full-document
+hosting has not been individually approved by Paddle; no categorical prohibition
+or acceptance was established by its public guidance.
+
+The owner also chose to retain descriptions as-is and declined a per-source
+rights register or description-transformation requirement. These are settled
+product decisions, not a blanket finding of rights clearance. Scoped TDM
+reservation handling remains engineering follow-up under #10090; it is not an
+express Paddle application checklist item. The current decision and deployment
+status are maintained in #10084 and supersede the older readiness tally below.
+
 ## Seller and offer
 
 - Viktor Shcherbakov, individual operator in Switzerland; product **Job Seek**.
