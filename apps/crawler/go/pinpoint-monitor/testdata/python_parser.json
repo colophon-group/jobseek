@@ -5121,5 +5121,37 @@
       ]
     },
     "error": true
+  },
+  {
+    "name": "hidden-nontext-frequency",
+    "body": {
+      "data": [
+        {
+          "status": "published",
+          "careers_url": "https://example.com/job",
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "compensation_minimum": 1,
+          "compensation_frequency": 5,
+          "compensation_visible": null
+        }
+      ]
+    },
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://example.com/job",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "metadata": null
+        }
+      ],
+      "truncated": false
+    }
   }
 ]

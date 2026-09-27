@@ -19,9 +19,9 @@ in place. Both provider percentages default to 100 without pilot history/count
 requirements. Explicit board selectors still take precedence for reversal.
 
 Verification maps all 219 current configurations to frozen Python request
-endpoints and checks 230 frozen Python parser cases, including tolerant fields,
+endpoints and checks 231 frozen Python parser cases, including tolerant fields,
 normalization, rich metadata and errors. Six retained actual API responses
-match all nine rich fields for 58 jobs. Go race/vet and 443 focused provider,
+match all nine rich fields for 58 jobs. Go race/vet and 445 focused provider,
 runtime, processing and policy tests passed (the two new allowlist test cases
 were corrected to use the shared full-match contract and then passed). CI also
 runs the parser cases through the installed binaries with networking disabled.

@@ -87,6 +87,12 @@ if PROVIDER == "pinpoint":
         add(f"visible-{value!r}", compensation_minimum=1, compensation_visible=value)
     add("nontext-location-name", location={"name": 7, "city": "Paris"})
     add("nontext-frequency", compensation_minimum=1, compensation_frequency=5)
+    add(
+        "hidden-nontext-frequency",
+        compensation_minimum=1,
+        compensation_frequency=5,
+        compensation_visible=None,
+    )
 else:
     add("draft", status="draft")
     add("remote-priority", remote=False, hybrid=True, on_site=True)

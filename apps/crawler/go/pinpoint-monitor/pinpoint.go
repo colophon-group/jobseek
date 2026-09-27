@@ -316,7 +316,8 @@ func parseJob(posting map[string]any) (Job, bool, error) {
 			return Job{}, false, errors.New("Pinpoint workplace type must be text")
 		}
 	}
-	if (posting["compensation_minimum"] != nil || posting["compensation_maximum"] != nil) && (posting["compensation_visible"] == nil || truthy(posting["compensation_visible"])) {
+	visible, hasVisibility := posting["compensation_visible"]
+	if (posting["compensation_minimum"] != nil || posting["compensation_maximum"] != nil) && (!hasVisibility || truthy(visible)) {
 		if v := posting["compensation_frequency"]; v != nil {
 			if _, ok := v.(string); !ok {
 				return Job{}, false, errors.New("Pinpoint compensation frequency must be text")

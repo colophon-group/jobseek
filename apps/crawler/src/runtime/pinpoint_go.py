@@ -135,6 +135,7 @@ class GoPinpointMonitorRuntime:
                 or not 1 <= attempts <= 21
                 or type(responses) is not int
                 or not 0 <= responses <= attempts
+                or attempts - responses > 1
                 or type(body_bytes) is not int
                 or not 0 <= body_bytes <= (64 << 20) + 1
                 or (responses == 0 and body_bytes != 0)
@@ -160,6 +161,7 @@ class GoPinpointMonitorRuntime:
                 or final.password is not None
                 or final.port not in (None, 443)
                 or final.fragment
+                or (responses == 1 and final_url != api_url)
                 or status == 0
             ):
                 raise ValueError("Go Pinpoint returned an unexpected endpoint")
@@ -181,7 +183,7 @@ class GoPinpointMonitorRuntime:
                     response = httpx.Response(status, request=request)
                     raise httpx.HTTPStatusError(str(detail), request=request, response=response)
                 raise RuntimeError(f"Go Pinpoint inventory failed: {detail}")
-            if status != 200 or responses < 1:
+            if status != 200 or responses != attempts:
                 raise ValueError("Go Pinpoint success had no HTTP 200 response")
             raw_jobs = payload.get("jobs")
             truncated = payload.get("truncated")

@@ -146,3 +146,35 @@ async def test_child_bound_and_reaping(name, module, runtime_type, tmp_path, mon
                 await task
     with pytest.raises(ProcessLookupError):
         os.kill(int(pid_file.read_text()), 0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,module,runtime_type", PROVIDERS)
+async def test_transport_failure_after_redirect_is_not_an_http_error(
+    name, module, runtime_type, tmp_path
+):
+    domain = "recruitee.com" if name == "recruitee" else "pinpointhq.com"
+    endpoint = f"https://acme.{domain}/" + (
+        "api/offers" if name == "recruitee" else "postings.json"
+    )
+    payload = {
+        "jobs": [],
+        "truncated": False,
+        "requests": 2,
+        "responses": 1,
+        "bytes": 0,
+        "status": 302,
+        "final_url": endpoint,
+        "error": "transport failed",
+    }
+    binary = tmp_path / "native"
+    binary.write_text(
+        "#!/usr/bin/env python3\nimport json,sys\nprint(json.dumps("
+        + repr(payload)
+        + "))\nsys.exit(1)\n"
+    )
+    binary.chmod(0o755)
+    runtime = runtime_type(str(binary), board_id="board")
+    with pytest.raises(RuntimeError, match="transport failed"):
+        async for _ in runtime.stream(f"https://acme.{domain}", name, {}, None):
+            pass
