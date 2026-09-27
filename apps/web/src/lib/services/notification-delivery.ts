@@ -12,6 +12,8 @@ import { createUnsubscribeToken } from "@/lib/notifications/unsubscribe-token";
 import { renderNotificationEmail } from "@/lib/notifications/render-email";
 import { sendNotificationEmail } from "@/lib/notifications/provider";
 
+import { validateNarrowedNotificationPostings } from "./notification-narrowing";
+
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 async function recipientForPlan(tx: Transaction, plan: NotificationDeliveryPlan, config: JobAlertsConfig) {
@@ -29,12 +31,26 @@ async function recipientForPlan(tx: Transaction, plan: NotificationDeliveryPlan,
   // Lock the current choices through submission; concurrent filter edits cannot
   // race the final check. Toggle/pause/unsubscribe share the policy lock too.
   const choices = await tx.select({ id: watchlist.id, enabled: watchlist.alertsEnabled,
-    enabledAt: watchlist.alertsEnabledAt, updatedAt: watchlist.updatedAt,
+    enabledAt: watchlist.alertsEnabledAt, updatedAt: watchlist.updatedAt, narrowedOnly: watchlist.alertsNarrowedOnly,
   }).from(watchlist).where(eq(watchlist.userId, plan.userId)).for("update");
   if (choices.some(w => w.updatedAt > plan.plannedAt || (w.enabledAt && w.enabledAt > plan.plannedAt))) return null;
   const enabled = new Set(choices.filter(w => w.enabled && w.enabledAt).map(w => w.id));
   if (!plan.displayPostings.length || plan.displayPostings.some(p =>
     p.matchedWatchlists.some(w => !enabled.has(w.id)))) return null;
+  for (const choice of choices) {
+    const postings = plan.displayPostings.filter(p => p.matchedWatchlists.some(w => w.id === choice.id));
+    if (!postings.length) continue;
+    const labels = postings.map(p => p.matchedWatchlists.find(w => w.id === choice.id)!);
+    if (!choice.narrowedOnly) {
+      if (labels.some(label => label.narrowedQueryVersionId)) return null;
+      continue;
+    }
+    const version = labels[0]!.narrowedQueryVersionId;
+    if (!version || labels.some(label => label.narrowedQueryVersionId !== version) ||
+      !await validateNarrowedNotificationPostings(tx, { ownerId: plan.userId, watchlistId: choice.id,
+        queryVersionId: version, postingIds: postings.map(p => p.id), plannedAt: plan.plannedAt,
+      })) return null;
+  }
   return recipient;
 }
 

@@ -4,7 +4,25 @@ The implementation of [#8317](https://github.com/colophon-group/jobseek/issues/8
 uses the existing Resend account and sender. Alerts are opt-in and available
 without a subscription. Only verified owners receive mail. One weekly digest
 combines enabled watchlists, deduplicates postings and shows at most 20 roles.
-Matching uses current structured watchlist filters, independently of Jev results.
+Each watchlist contributes either all current structured matches or only its
+narrowed matches, chosen through visible icon-labelled controls in Settings.
+Each row includes a compact filter preview and keeps the full saved narrowing
+prompt visible regardless of the selected mode. Filter names are resolved in batches in the interface language.
+There is still exactly one delivery per owner and period, never one per
+watchlist. Existing opt-ins default to all results; narrowing is an explicit
+choice. Editing a notification scope begins a fresh matching interval.
+
+Narrowed contributions use the latest unexpired, accepted Jev decisions for the
+current prompt revision, including user overrides, intersected with current
+structured filters and active postings before the search cap. They require an
+enabled prompt and the existing narrowing subscription; ordinary alerts remain
+available without a subscription. Disabled/deleted prompts or expired entitlement
+contribute nothing and never fall back to broad matches. If evaluation has not
+finished the period, the whole consolidated digest waits for the next runner
+attempt instead of advancing past late matches. The mail runner does not invoke
+Jev or consume AI budget. Prompt revisions and acceptance are checked again
+under locks immediately before submission. Settings links to the watchlist to
+preview narrowed jobs or edit the prompt; it has no share or delete controls.
 
 Settings provides a global pause. It preserves per-watchlist choices, blocks
 changes to those choices while paused, and establishes a new matching floor on
@@ -15,7 +33,8 @@ warning on mobile, with a link to Settings and focus restoration on dismissal.
 ## Runtime and activation
 
 Apply `0095_notification_delivery_quota` using the reviewed routine migration
-workflow before enabling the runner. It adds server-only UTC quota buckets and
+workflow before enabling the runner. It adds the per-watchlist
+`alerts_narrowed_only` preference (default false), server-only UTC quota buckets and
 lets an unsent, definitively rejected delivery later finish as an empty window
 without erasing its attempt history. The existing `0088` migration is required.
 

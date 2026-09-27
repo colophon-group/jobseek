@@ -33,6 +33,8 @@ import { canonicalStringCompare } from "@/lib/sort";
 export type EligibleNotificationWatchlist = Readonly<{
   source: WatchlistMatcherSource;
   alertsEnabledAt: Date;
+  narrowedOnly?: boolean;
+  ownerId?: string;
 }>;
 
 export type OpenNotificationDelivery = Readonly<{

@@ -12,7 +12,7 @@ const migrationFolder = resolve(process.cwd(), "drizzle");
 const target = {
   tag: "0095_notification_delivery_quota",
   createdAt: 1_790_467_200_000,
-  hash: "2835356929d47c9785e11d42316c24315dc261c913da50602676908fc266f33a",
+  hash: "a04c5f02531284cc6286ce40e52d586982b91f6bd9433229e7d04c57addd503f",
 };
 const environment = {
   MIGRATION_REQUIRE_UNPOOLED: "true",

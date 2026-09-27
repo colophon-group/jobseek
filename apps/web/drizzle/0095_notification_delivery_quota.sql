@@ -17,3 +17,7 @@ ALTER TABLE public.notification_delivery ADD CONSTRAINT notification_delivery_sk
       OR (provider_attempt_count > 0 AND last_provider_attempt_at IS NOT NULL))
   )
 );
+
+--> statement-breakpoint
+-- Existing opt-ins keep their broad result scope until the owner chooses otherwise.
+ALTER TABLE public.watchlist ADD COLUMN alerts_narrowed_only boolean NOT NULL DEFAULT false;

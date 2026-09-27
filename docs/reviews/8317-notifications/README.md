@@ -10,11 +10,24 @@ reported a generic save error. The proposed behavior is shown below.
 
 ## Settings
 
+Each watchlist contributes all matching results, narrowed results only, or no
+results. Every saved narrowing prompt stays fully visible, including when all
+results or no emails are selected. The title and selector share one desktop
+row, using the existing Settings control styles and familiar
+watchlist/notification/narrowing icons. All three radio choices remain visible. Compact filter chips expand to show all filters;
+explanations are under “How weekly emails work”. There are no share or
+delete controls here. The email remains one consolidated message across all
+enabled watchlists, with duplicate jobs shown once.
+
 ![Weekly notification settings](settings.png)
 
-## Paused watchlist: keyboard-focus tooltip
+## Paused settings
 
-![Paused notification tooltip](paused-tooltip.png)
+![Paused notification settings](paused.png)
+
+## Mobile settings and saved prompt
+
+![German mobile notification settings](settings-mobile-de.png)
 
 ## Mobile pause warning
 

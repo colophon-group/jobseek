@@ -6,12 +6,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import type { NotificationDeliveryPlan } from "@/lib/notifications/scheduler-core";
 import type { WebhookEventPayload } from "resend";
 
-const mocks = vi.hoisted(() => ({ client: null as Sql | null, send: vi.fn() }));
+const mocks = vi.hoisted(() => ({ client: null as Sql | null, send: vi.fn(), match: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/notifications/provider", () => ({ sendNotificationEmail: mocks.send }));
 vi.mock("@/lib/services/watchlist-matcher", () => ({
-  compileWatchlistMatcherSources: async (sources: unknown[]) => sources,
-  matchCompiledWatchlistsInWindow: async () => ({ postings: [], watchlists: [{ total: 0, truncated: false }] }),
+  compileWatchlistMatcherSources: async (sources: { watchlistId: string; watchlistLabel: string }[]) => sources.map(s => ({ ...s, candidateFilters: { anyCompany: true, companyIds: [] } })),
+  matchCompiledWatchlistsInWindow: mocks.match,
 }));
 vi.mock("@/db", async () => {
   const { default: postgres } = await import("postgres");
@@ -24,12 +24,14 @@ vi.mock("@/db", async () => {
   mocks.client = postgres(url, { max: 10, prepare: false, onnotice: () => {} });
   return { db: drizzle(mocks.client, { schema }) };
 });
-import { notificationSchedulerRepository, runNotificationScheduler } from "../notification-scheduler";
+import { notificationSchedulerRepository, runNotificationScheduler, matchNotificationWatchlists } from "../notification-scheduler";
 import { deliverNotificationPlan } from "../notification-delivery";
 import { setNotificationsPausedForUser } from "../notification-preferences";
 import { unsubscribeNotification } from "../notification-unsubscribe";
 import { reconcileNotificationWebhook } from "../notification-webhook";
 import { createUnsubscribeToken } from "@/lib/notifications/unsubscribe-token";
+import { getNotificationWatchlistsForUser, setWatchlistNotificationModeForUser } from "../notification-watchlist-settings";
+import { matchNarrowedNotificationWatchlist } from "../notification-narrowing";
 const config = { mode: "live" as const, dailyCap: 75, monthlyCap: 2400, internalUserIds: [] };
 const secret = "fixture-secret-not-production-32-characters";
 const getSql = () => mocks.client!;
@@ -56,8 +58,8 @@ async function row(plan: NotificationDeliveryPlan) {
   return (await getSql()`SELECT * FROM notification_delivery WHERE id=${plan.deliveryId}`)[0]!;
 }
 
-describe.skipIf(!process.env.NOTIFICATION_TEST_DATABASE_URL)("notification delivery with PostgreSQL", () => {
-  beforeAll(async () => {
+beforeAll(async () => {
+    if (!process.env.NOTIFICATION_TEST_DATABASE_URL) return;
     vi.stubEnv("JOB_ALERTS_UNSUBSCRIBE_SECRET", secret);
     const sql = getSql();
     await sql.unsafe(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;
@@ -65,17 +67,24 @@ describe.skipIf(!process.env.NOTIFICATION_TEST_DATABASE_URL)("notification deliv
       DO $$ BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       CREATE TABLE "user" (id text PRIMARY KEY, name text NOT NULL, email text NOT NULL, email_verified boolean, updated_at timestamptz NOT NULL);
       CREATE TABLE user_preferences (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id text UNIQUE NOT NULL REFERENCES "user"(id) ON DELETE CASCADE, locale text NOT NULL DEFAULT 'en', theme text, job_languages text[] DEFAULT '{}', display_currency text, salary_period text, cookie_consent jsonb, dismissed_banners text[], theme_updated_at timestamptz, locale_updated_at timestamptz, last_password_reset_at timestamptz, updated_at timestamptz NOT NULL DEFAULT now());
-      CREATE TABLE watchlist (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE, alerts_enabled boolean NOT NULL DEFAULT false, title text DEFAULT 'Fixture', filters jsonb DEFAULT '{"anyCompany":true}', updated_at timestamptz NOT NULL DEFAULT now());`);
+      CREATE TABLE watchlist (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE, alerts_enabled boolean NOT NULL DEFAULT false, title text DEFAULT 'Fixture', filters jsonb DEFAULT '{"anyCompany":true}', updated_at timestamptz NOT NULL DEFAULT now());
+      CREATE TABLE subscription (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id text REFERENCES "user"(id) ON DELETE CASCADE, plan text, status text, ends_at timestamptz);
+      CREATE TABLE ai_filter_configuration (id uuid PRIMARY KEY, owner_id text REFERENCES "user"(id) ON DELETE CASCADE, watchlist_id uuid REFERENCES watchlist(id) ON DELETE CASCADE, status text, current_revision integer, updated_at timestamptz, last_caught_up_at timestamptz);
+      CREATE TABLE ai_filter_query_version (id uuid PRIMARY KEY, configuration_id uuid REFERENCES ai_filter_configuration(id) ON DELETE CASCADE, revision integer, query_text text);
+      CREATE TABLE ai_filter_decision (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id text REFERENCES "user"(id) ON DELETE CASCADE, watchlist_id uuid REFERENCES watchlist(id) ON DELETE CASCADE, query_version_id uuid REFERENCES ai_filter_query_version(id) ON DELETE CASCADE, candidate_id uuid, model_decision text, user_override text, expires_at timestamptz, posting_first_seen_at timestamptz, decided_at timestamptz DEFAULT now());`);
     for (const file of ["0088_notification_policy_foundation.sql", "0095_notification_delivery_quota.sql"]) {
       const migration = await readFile(`drizzle/${file}`, "utf8");
       for (const statement of migration.split("--> statement-breakpoint").filter(s => s.trim())) await sql.unsafe(statement);
     }
   });
+
+describe.skipIf(!process.env.NOTIFICATION_TEST_DATABASE_URL)("notification delivery with PostgreSQL", () => {
   beforeEach(async () => {
     await getSql().unsafe('TRUNCATE "user", notification_quota CASCADE');
+    mocks.match.mockReset().mockResolvedValue({ postings: [], watchlists: [{ total: 0, truncated: false }] });
     mocks.send.mockReset().mockResolvedValue({ status: "sent", messageId: "provider-message" });
   });
-  afterAll(async () => { vi.unstubAllEnvs(); await mocks.client?.end(); });
+
 
   it("maps the completed-window aggregate to a Date rather than losing the no-backlog floor", async () => {
     const plan = await fixture();
@@ -191,3 +200,95 @@ describe.skipIf(!process.env.NOTIFICATION_TEST_DATABASE_URL)("notification deliv
     expect(mocks.send).not.toHaveBeenCalled();
   });
 });
+
+async function narrowedFixture() {
+  const plan = await fixture();
+  const sql = getSql();
+  const label = plan.displayPostings[0]!.matchedWatchlists[0]!;
+  const configurationId = randomUUID();
+  const queryId = randomUUID();
+  const prompt = "Senior backend roles with distributed systems";
+  const before = new Date(plan.plannedAt.getTime() - 1000).toISOString();
+  await sql`INSERT INTO subscription (user_id, plan, status) VALUES (${plan.userId}, 'unlimited', 'active')`;
+  await sql`UPDATE watchlist SET alerts_narrowed_only=true WHERE id=${label.id}`;
+  await sql`INSERT INTO ai_filter_configuration (id, owner_id, watchlist_id, status, current_revision, updated_at, last_caught_up_at)
+    VALUES (${configurationId}, ${plan.userId}, ${label.id}, 'enabled', 1, ${before}, ${plan.windowEnd.toISOString()})`;
+  await sql`INSERT INTO ai_filter_query_version (id, configuration_id, revision, query_text) VALUES (${queryId}, ${configurationId}, 1, ${prompt})`;
+  await sql`INSERT INTO ai_filter_decision (owner_id, watchlist_id, query_version_id, candidate_id, model_decision, expires_at, posting_first_seen_at)
+    VALUES (${plan.userId}, ${label.id}, ${queryId}, ${plan.displayPostings[0]!.id}, 'accepted', ${new Date(Date.now()+86400000).toISOString()}, ${before})`;
+  label.narrowedQueryVersionId = queryId;
+  const input = { ownerId: plan.userId, compiled: { watchlistId: label.id, watchlistLabel: label.label, candidateFilters: { anyCompany: true, companyIds: [] } },
+    windowStart: new Date(Math.floor(plan.windowStart.getTime()/1000)*1000), windowEnd: plan.windowEnd };
+  return { plan, configurationId, queryId, prompt, input };
+}
+
+describe.skipIf(!process.env.NOTIFICATION_TEST_DATABASE_URL)("narrowed notification settings and delivery", () => {
+
+  beforeEach(async () => {
+    await getSql().unsafe('TRUNCATE "user", notification_quota CASCADE');
+    mocks.send.mockReset().mockResolvedValue({ status: "sent", messageId: "provider-message" });
+    mocks.match.mockReset().mockResolvedValue({ postings: [], watchlists: [{ total: 0, truncated: false }] });
+  });
+  it("persists each list's scope, exposes its prompt and enforces owner and pause boundaries", async () => {
+    const { plan, prompt, input } = await narrowedFixture();
+    expect((await getNotificationWatchlistsForUser(plan.userId))[0]).toMatchObject({ mode: "narrowed", prompt, narrowingAvailable: true });
+    expect(await setWatchlistNotificationModeForUser("other-owner", input.compiled.watchlistId, "all")).toEqual({ error: "not_found" });
+    expect(await setWatchlistNotificationModeForUser(plan.userId, input.compiled.watchlistId, "all")).toEqual({ mode: "all" });
+    const [updated] = await getSql()`SELECT alerts_enabled_at FROM watchlist WHERE id=${input.compiled.watchlistId}`;
+    expect(new Date(updated!.alerts_enabled_at).getTime()).toBeGreaterThan(plan.windowStart.getTime());
+    await setNotificationsPausedForUser(plan.userId, true);
+    expect(await setWatchlistNotificationModeForUser(plan.userId, input.compiled.watchlistId, "narrowed")).toEqual({ error: "notifications_paused" });
+  });
+  it("rejects narrowed opt-in without an enabled entitled prompt", async () => {
+    const { plan, input } = await narrowedFixture();
+    await getSql()`UPDATE subscription SET status='expired' WHERE user_id=${plan.userId}`;
+    expect(await setWatchlistNotificationModeForUser(plan.userId, input.compiled.watchlistId, "narrowed")).toEqual({ error: "narrowing_unavailable" });
+    expect((await matchNarrowedNotificationWatchlist(input)).postings).toEqual([]);
+    expect(mocks.match).not.toHaveBeenCalled();
+  });
+  it("holds incomplete evaluation for retry without closing or broadening the period", async () => {
+    const { input, configurationId } = await narrowedFixture();
+    await getSql()`UPDATE ai_filter_configuration SET last_caught_up_at=NULL WHERE id=${configurationId}`;
+    await expect(matchNarrowedNotificationWatchlist(input)).rejects.toThrow(/still being evaluated/);
+    expect(mocks.match).not.toHaveBeenCalled();
+  });
+  it("intersects accepted decisions before search and uses the latest rejection instead of an older acceptance", async () => {
+    const { plan, input, queryId } = await narrowedFixture();
+    await matchNarrowedNotificationWatchlist(input);
+    expect(mocks.match.mock.calls[0]![0].watchlists[0].candidateFilters.postingIds).toEqual([plan.displayPostings[0]!.id]);
+    mocks.match.mockClear();
+    await getSql()`INSERT INTO ai_filter_decision (owner_id, watchlist_id, query_version_id, candidate_id, model_decision, expires_at, posting_first_seen_at, decided_at)
+      VALUES (${plan.userId}, ${input.compiled.watchlistId}, ${queryId}, ${plan.displayPostings[0]!.id}, 'rejected', ${new Date(Date.now()+86400000).toISOString()}, ${plan.windowStart.toISOString()}, ${new Date(Date.now()+1000).toISOString()})`;
+    expect((await matchNarrowedNotificationWatchlist(input)).postings).toEqual([]);
+    expect(mocks.match).not.toHaveBeenCalled();
+  });
+  it("sends accepted narrowed results and cancels stale prompts or newly rejected jobs", async () => {
+    const accepted = await narrowedFixture();
+    expect(await deliverNotificationPlan(accepted.plan, config)).toBe("sent");
+    const changed = await narrowedFixture();
+    await getSql()`UPDATE ai_filter_configuration SET current_revision=2 WHERE id=${changed.configurationId}`;
+    expect(await deliverNotificationPlan(changed.plan, config)).toBe("cancelled");
+    const rejected = await narrowedFixture();
+    await getSql()`UPDATE ai_filter_decision SET user_override='rejected' WHERE query_version_id=${rejected.queryId}`;
+    expect(await deliverNotificationPlan(rejected.plan, config)).toBe("cancelled");
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+  });
+  it("combines broad and narrowed watchlists, deduplicating jobs with both contributing labels", async () => {
+    const { plan, input } = await narrowedFixture();
+    const broadId = randomUUID();
+    mocks.match.mockImplementation(async ({ watchlists }) => ({
+      postings: [{ ...plan.displayPostings[0], matchedWatchlists: watchlists.map((w: { watchlistId: string; watchlistLabel: string }) => ({ id: w.watchlistId, label: w.watchlistLabel })) }],
+      watchlists: watchlists.map((w: { watchlistId: string }) => ({ id: w.watchlistId, total: 1, truncated: false })),
+    }));
+    const source = { watchlistId: input.compiled.watchlistId, watchlistLabel: "Narrowed", filters: { anyCompany: true }, companyIds: [], locale: "en", jobLanguages: [] };
+    const result = await matchNotificationWatchlists({ windowEnd: input.windowEnd, watchlists: [
+      { source, ownerId: plan.userId, narrowedOnly: true, alertsEnabledAt: input.windowStart, windowStart: input.windowStart },
+      { source: { ...source, watchlistId: broadId, watchlistLabel: "Broad" }, alertsEnabledAt: input.windowStart, windowStart: input.windowStart },
+    ] });
+    expect(result.postings).toHaveLength(1);
+    expect(result.uniqueMatchCount).toBe(1);
+    expect(result.postings[0]!.matchedWatchlists.map(w => w.id).sort()).toEqual([source.watchlistId, broadId].sort());
+  });
+});
+
+afterAll(async () => { vi.unstubAllEnvs(); await mocks.client?.end(); });

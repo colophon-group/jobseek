@@ -254,6 +254,36 @@ msgstr ""
 #~ msgid "watchlists.pending.cloneDetail"
 #~ msgstr "Copie partagée enregistrée dans ce navigateur"
 
+#. Label for a watchlist's contribution to the consolidated weekly email
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.include"
+#~ msgstr "Inclure dans mon e-mail hebdomadaire"
+
+#. Open watchlist to inspect narrowed jobs and edit its prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.preview"
+#~ msgstr "Voir les résultats et modifier la consigne"
+
+#. Explain how to make narrowed-only emails available
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.noPrompt"
+#~ msgstr "Ajoute une consigne d’affinage à cette liste pour ne recevoir que les résultats affinés par e-mail."
+
+#. Preview label for the saved narrow-results prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.prompt"
+#~ msgstr "Ta consigne pour affiner les résultats"
+
+#. Link below expanded saved prompt to inspect results and edit prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+#~ msgid "settings.notifications.editPrompt"
+#~ msgstr "Voir les résultats / modifier"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -554,12 +584,6 @@ msgstr "Toutes les données sont chiffrées en transit et au repos."
 msgid "watchlists.companyModal.allIndustries"
 msgstr "Tous les secteurs"
 
-#. Paused notification state and resume behavior
-#. js-lingui-explicit-id
-#: src/components/settings/NotificationSettings.tsx
-msgid "settings.notifications.paused"
-msgstr "Tous les e-mails d’emploi sont suspendus. Désactivez la pause pour reprendre vos choix de listes. Les offres parues pendant la pause ne seront pas envoyées."
-
 #. All languages option
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx
@@ -583,6 +607,12 @@ msgstr "Tous les lieux"
 #: src/components/search/location-modal.tsx
 msgid "company.locationModal.title"
 msgstr "Tous les lieux"
+
+#. Include all jobs matching the structured watchlist filters
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.all"
+msgstr "Tous les résultats"
 
 #. Button that closes narrowed results and returns to the broad watchlist feed
 #. js-lingui-explicit-id
@@ -1495,8 +1525,10 @@ msgid "watchlists.updateFailed"
 msgstr "Impossible d’enregistrer vos modifications."
 
 #. Pause setting save failure
+#. Pause setting save failure
 #. js-lingui-explicit-id
 #: src/components/settings/NotificationSettings.tsx
+#: src/components/settings/NotificationWatchlistChoices.tsx
 msgid "settings.notifications.error"
 msgstr "Impossible d’enregistrer votre préférence. Veuillez réessayer."
 
@@ -1574,6 +1606,12 @@ msgstr "Créez un compte gratuit pour parcourir tous les résultats, enregistrer
 #: src/components/search/save-search-button.tsx
 msgid "search.saveSearch.tooltip"
 msgstr "Créer une liste de suivi à partir de vos filtres actuels"
+
+#. Empty notification settings link to watchlists
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.addWatchlist"
+msgstr "Crée une liste pour choisir les offres à recevoir."
 
 #. Sign-up page heading
 #. js-lingui-explicit-id
@@ -1812,6 +1850,12 @@ msgstr "Pas encore de compte ? <0>S'inscrire</0>"
 msgid "terms.short.r3"
 msgstr "Pas de scraping, pas de candidatures automatisées, pas d'abus de la plateforme."
 
+#. Expanded explanation of combined delivery and pause behavior
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.deliveryHelp"
+msgstr "Chaque offre apparaît une seule fois. Aucun résultat, aucun e-mail. La reprise repart de zéro, sans les offres de la période de pause."
+
 #. Example natural-language criteria for Jev
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -1893,11 +1937,17 @@ msgstr "E-mail vérifié"
 msgid "search.employmentTypeModal.title"
 msgstr "Type d'emploi"
 
-#. Explain consolidated weekly opt-in job emails
+#. Narrowed emails stay quiet until narrowing is re-enabled
 #. js-lingui-explicit-id
-#: src/components/settings/NotificationSettings.tsx
-msgid "settings.notifications.description"
-msgstr "Activez les notifications d’une liste pour recevoir un e-mail hebdomadaire avec les nouvelles offres correspondantes. Aucun e-mail n’est envoyé sans nouvelle offre."
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.inactivePrompt"
+msgstr "Active l’affinage pour reprendre cette liste."
+
+#. Save failure when narrowing is disabled or the subscription has expired
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.unavailable"
+msgstr "Active l’affinage avec un abonnement actif pour cette liste, puis réessaie."
 
 #. Enable alerts tooltip
 #. js-lingui-explicit-id
@@ -2395,6 +2445,12 @@ msgstr "Comment nous trouvons et traitons les offres d'emploi"
 #: app/[lang]/(public)/how-we-index/page.tsx
 msgid "indexing.meta.title"
 msgstr "Comment nous indexons"
+
+#. Collapsed explanation of weekly email behavior
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.how"
+msgstr "Comment fonctionnent les e-mails"
 
 #. Work mode: hybrid (mixed onsite/remote)
 #. Work mode: hybrid (mixed onsite/remote)
@@ -3164,6 +3220,12 @@ msgstr "Affinez d’abord la recherche"
 msgid "search.aiFilter.reminder.title"
 msgstr "Affiner ces résultats"
 
+#. Include only accepted results from the saved prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.narrowed"
+msgstr "Affinés"
+
 #. State-neutral title of the scroll reminder for an already-narrowed watchlist
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -3181,6 +3243,12 @@ msgstr "Résultats affinés"
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.resultsTitle"
 msgstr "Résultats affinés"
+
+#. Expanded explanation of narrowed email selection
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.narrowedHelp"
+msgstr "Les résultats affinés suivent ta consigne enregistrée. L’e-mail attend la fin de l’évaluation. Si l’affinage est indisponible, cette liste reste silencieuse."
 
 #. Heading asking the viewer to sign in before creating a precisely matched watchlist
 #. js-lingui-explicit-id
@@ -3393,8 +3461,10 @@ msgid "app.home.request.issueWarning"
 msgstr "Remarque : Nous n'avons pas pu créer un ticket de suivi, mais votre demande a été enregistrée."
 
 #. Pause setting save confirmation
+#. Pause setting save confirmation
 #. js-lingui-explicit-id
 #: src/components/settings/NotificationSettings.tsx
+#: src/components/settings/NotificationWatchlistChoices.tsx
 msgid "settings.notifications.saved"
 msgstr "Préférence de notification enregistrée."
 
@@ -3403,6 +3473,12 @@ msgstr "Préférence de notification enregistrée."
 #: src/components/watchlist/watchlist-filter-editor.tsx
 msgid "watchlists.filters.occupation"
 msgstr "Métier"
+
+#. Exclude this watchlist from the weekly email
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.off"
+msgstr "Désactivé"
 
 #. Application tracker status: offer
 #. js-lingui-explicit-id
@@ -3455,6 +3531,12 @@ msgstr "Sur site"
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.ingestion.s4.body"
 msgstr "Une fois qu'une offre individuelle est récupérée, nous ne stockons que les métadonnées propres au poste (intitulé, description du rôle, localisation, informations de rémunération, URL de l'offre et horodatages) ainsi que les champs structurés extraits. Nous n'archivons pas les contenus du site sans rapport avec les offres d'emploi."
+
+#. Explain consolidated weekly opt-in job emails
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.description"
+msgstr "Un seul e-mail avec les résultats de toutes tes listes activées."
 
 #. Username invalid characters hint
 #. js-lingui-explicit-id
@@ -3578,12 +3660,6 @@ msgstr "Notre position sur l'automatisation"
 msgid "indexing.automation.title"
 msgstr "Notre position sur l'automatisation"
 
-#. Global pause preserves individual watchlist settings and excludes account emails
-#. js-lingui-explicit-id
-#: src/components/settings/NotificationSettings.tsx
-msgid "settings.notifications.override"
-msgstr "S’applique à toutes les listes sans modifier vos choix. Les e-mails de vérification et de réinitialisation du mot de passe continuent d’arriver."
-
 #. TOC: Overview
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -3675,7 +3751,19 @@ msgstr "Entrez un nom d'entreprise ou l'URL d'une page carrières et nous commen
 #. js-lingui-explicit-id
 #: src/components/settings/NotificationSettings.tsx
 msgid "settings.notifications.pause"
-msgstr "Suspendre toutes les notifications par e-mail"
+msgstr "Tout suspendre"
+
+#. Paused notification state and resume behavior
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.paused"
+msgstr "En pause. Tes choix par liste sont conservés."
+
+#. Expanded explanation of global pause and account emails
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationSettings.tsx
+msgid "settings.notifications.override"
+msgstr "La pause conserve tes choix. Les e-mails de vérification et de réinitialisation du mot de passe arrivent toujours."
 
 #. Label for pay period selector
 #. js-lingui-explicit-id
@@ -4262,6 +4350,12 @@ msgstr "Réinitialisation…"
 msgid "indexing.assurances.i1.title"
 msgstr "Rythme respectueux."
 
+#. Global pause prevents changes to individual watchlist choices
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.resumeFirst"
+msgstr "Réactive les notifications par e-mail ci-dessus pour modifier tes choix par liste."
+
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
@@ -4629,6 +4723,12 @@ msgstr "Définir le mot de passe"
 msgid "search.aiFilter.setup"
 msgstr "Configurer"
 
+#. Link to add a saved narrow-results prompt
+#. js-lingui-explicit-id
+#: src/components/settings/NotificationWatchlistChoices.tsx
+msgid "settings.notifications.setupPrompt"
+msgstr "Configurer l’affinage"
+
 #. Set password button while loading
 #. js-lingui-explicit-id
 #: src/components/settings/account/PasswordSection.tsx
@@ -4662,6 +4762,18 @@ msgstr "Partager"
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.pending.cloneTitle"
 msgstr "Copie de la liste de suivi partagée"
+
+#. Expand all filters in a compact preview
+#. js-lingui-explicit-id
+#: src/components/search/filter-pills-readonly.tsx
+msgid "search.filters.showAll"
+msgstr "Afficher tous les filtres"
+
+#. Collapse a compact filter preview
+#. js-lingui-explicit-id
+#: src/components/search/filter-pills-readonly.tsx
+msgid "search.filters.showFewer"
+msgstr "Afficher moins de filtres"
 
 #. Action shown when fresher Explore results are available without interrupting the current feed
 #. js-lingui-explicit-id
@@ -5569,7 +5681,7 @@ msgstr "Nous travaillons à ajouter"
 #. js-lingui-explicit-id
 #: src/components/settings/NotificationSettings.tsx
 msgid "settings.notifications.title"
-msgstr "Notifications hebdomadaires par e-mail"
+msgstr "E-mail hebdomadaire"
 
 #. Sign-in page subtitle
 #. js-lingui-explicit-id

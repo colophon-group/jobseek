@@ -57,12 +57,12 @@ export async function SettingsLoader({ locale }: { locale: string }) {
     getViewerJobLanguages(),
     getAvailableJobLanguages(),
     getCurrencyRates(),
-    session ? getNotificationPreferences() : Promise.resolve(null),
+    session ? getNotificationPreferences(locale) : Promise.resolve(null),
   ]);
 
   return (
     <div className="space-y-8">
-    {notifications && session && <NotificationSettings paused={notifications.notificationsPaused} verified={session.user.emailVerified} />}
+    {notifications && session && <NotificationSettings paused={notifications.notificationsPaused} verified={session.user.emailVerified} watchlists={notifications.watchlists} />}
     <GeneralSettings
       savedJobLanguages={jobLanguages}
       savedDisplayCurrency={prefs?.displayCurrency ?? "EUR"}

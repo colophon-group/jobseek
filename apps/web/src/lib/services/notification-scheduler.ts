@@ -54,6 +54,8 @@ import type {
   WatchlistFilters,
 } from "@/lib/watchlist-matcher-contract";
 
+import { matchNarrowedNotificationWatchlist } from "./notification-narrowing";
+
 const COMPLETED_STATUSES: NotificationDeliveryStatus[] = ["sent", "skipped"];
 
 function identityKey(userId: string, cadence: NotificationCadence): string {
@@ -179,6 +181,7 @@ async function loadEligibleWatchlistSegment(input: Parameters<
     watchlistLabel: watchlist.title,
     filters: watchlist.filters,
     alertsEnabledAt: watchlist.alertsEnabledAt,
+    narrowedOnly: watchlist.alertsNarrowedOnly,
   }).from(watchlist)
     .innerJoin(userPreferences, eq(userPreferences.userId, watchlist.userId))
     .innerJoin(user, eq(user.id, watchlist.userId))
@@ -232,6 +235,8 @@ async function loadEligibleWatchlistSegment(input: Parameters<
   return {
     watchlist: {
       alertsEnabledAt: row.alertsEnabledAt,
+      narrowedOnly: row.narrowedOnly,
+      ownerId: input.userId,
       source: {
         watchlistId: row.watchlistId,
         watchlistLabel: row.watchlistLabel,
@@ -396,7 +401,15 @@ export async function matchNotificationWatchlists(input: {
   );
   const compiledById = new Map(compiled.map((entry) => [entry.watchlistId, entry]));
   const groups = new Map<string, typeof compiled>();
+  const narrowedResults = [];
   for (const entry of input.watchlists) {
+    if (entry.narrowedOnly) {
+      narrowedResults.push(await matchNarrowedNotificationWatchlist({
+        ownerId: entry.ownerId!, compiled: compiledById.get(entry.source.watchlistId)!,
+        windowStart: entry.windowStart, windowEnd: input.windowEnd,
+      }));
+      continue;
+    }
     const key = entry.windowStart.toISOString();
     const group = groups.get(key) ?? [];
     group.push(compiledById.get(entry.source.watchlistId)!);
@@ -406,13 +419,16 @@ export async function matchNotificationWatchlists(input: {
   const postings = new Map<string, MatchedWatchlistPosting>();
   let watchlistMatchCount = 0;
   let truncated = false;
+  const results = [...narrowedResults];
   for (const [windowStart, watchlists] of groups) {
-    const result = await matchCompiledWatchlistsInWindow({
+    results.push(await matchCompiledWatchlistsInWindow({
       watchlists,
       windowStart: new Date(windowStart),
       windowEnd: input.windowEnd,
       limitPerWatchlist: NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST,
-    });
+    }));
+  }
+  for (const result of results) {
     for (const stats of result.watchlists) {
       watchlistMatchCount += stats.total;
       truncated ||= stats.truncated;

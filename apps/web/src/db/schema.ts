@@ -747,6 +747,7 @@ export const watchlist = pgTable(
     shareEnabled: boolean("share_enabled").default(false).notNull(),
     alertsEnabled: boolean("alerts_enabled").default(false).notNull(),
     alertsEnabledAt: timestamp("alerts_enabled_at", { withTimezone: true }),
+    alertsNarrowedOnly: boolean("alerts_narrowed_only").default(false).notNull(),
     filters: jsonb("filters").default({}).notNull(),
     sourceWatchlistId: uuid("source_watchlist_id").references((): AnyPgColumn => watchlist.id, {
       onDelete: "set null",
