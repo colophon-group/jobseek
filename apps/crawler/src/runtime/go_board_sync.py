@@ -7,10 +7,10 @@ import contextlib
 import json
 import os
 
-from src.config import settings
-
 
 async def publish_board_queues(effects: dict) -> None:
+    from src.config import settings
+
     payload = json.dumps(effects, allow_nan=False).encode()
     if len(payload) > 128 << 20:
         raise RuntimeError("Go board sync input exceeds limit")

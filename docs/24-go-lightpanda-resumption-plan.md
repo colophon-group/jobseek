@@ -6,6 +6,44 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — Go maintenance v0.13.870
+
+PR #10089 merged as `ec892dc2899228e3a72526eb7d2f4cd5820445f3` and
+[deploy 36326098454](https://github.com/colophon-group/jobseek/actions/runs/36326098454)
+succeeded. Go schema setup and taxonomy/company sync completed in the actual
+deploy: 37,526 location, 562 occupation, 36 seniority, 186 technology, and
+6,039 company documents; zero company deletions. Go dead-letter inspection
+reported 23 entries (20 actionable, three superseded, zero unresolved).
+
+[Go taxonomy proof 36326995545](https://github.com/colophon-group/jobseek/actions/runs/36326995545)
+passed with every static document and all active collection schemas matching.
+The completed full backfill proof and resource limits are recorded in
+[the production evidence](26-go-typesense-backfill-production-evidence.md).
+
+Supported c1 rollback retired epoch 74 at epoch 75, restored all five
+schedules, and left zero drops or write fences. The old 22 selectors were
+cleared before merge. After deployment, 23 selectors were staged against the
+new full revision, adding the four captured Workable boards documented in
+[their evidence record](25-go-workable-production-evidence.md). Supported c1
+activation reached epoch 76; all services are healthy. The conservation audit
+returned accepted/audit_ok: five ready records, zero inflight or dead. Workers
+run the Go lease-reaper child. A point-in-time exporter read reported 5,151
+exported documents, zero document errors, and zero lag.
+
+The first bounded Go reconciliation slice is running through the existing
+attested host launcher, which execs Go via the compatibility CLI. Its local
+log is `/tmp/jobseek-go-reconciliation-ec892dc2.log`; final results remain
+pending. Natural Go Workable cycles also remain pending; do not force them.
+
+Before any further image/selector mutation, use supported `rollback c1`, then
+clear **23** selectors under the host lock with
+`/tmp/jobseek-post-go-maintenance-selectors.py clear`, the actual deployed
+full revision above, and `https://kandou.bamboohr.com/careers/310`. The older
+22-selector helper no longer matches the live set. PR #10093 contains the
+next Go board-queue publisher, the direct host launcher from #10092, and the
+reaper pool-limit/budget correction. Keep it draft until its required checks
+and the live release proof pass. The full #7966 migration remains open.
+
 ## Implementation checkpoint: Go board sync queue publication
 
 The next slice routes configuration sync's committed board schedules and
