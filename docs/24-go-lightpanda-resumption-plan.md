@@ -57,7 +57,7 @@ follow-up observations, not a claim of all-board success.
 Full Python/Chromium retirement and same-actual-workload whole-lane
 CPU/RAM/density/cost proof remain open.
 
-## Implementation checkpoint: SmartRecruiters and Personio broad routes
+## Implementation checkpoint: SmartRecruiters and Personio broad routes v0.13.882
 
 The existing Go SmartRecruiters and Personio monitor binaries and Compose
 environment now have default 100% routes for their supported configurations.
