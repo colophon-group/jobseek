@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "deployment": {
+    "id": "dpl_Acz8SwgKcvu5XjeFgWhzwA7XeEyz",
+    "sha": "e65fb972e4fbb349d10ed66dc9418b1d271f52ca",
+    "readyAt": "2026-09-26T13:06:20.750Z",
+    "promotionVerifiedAt": "2026-09-26T13:07:38.4192087Z",
+    "ownedWorkflow": 36243899839
+  },
+  "window": {
+    "start": "2026-09-26T23:10:00Z",
+    "end": "2026-09-27T11:10:00Z"
+  },
+  "totals": {
+    "invocations": 1042,
+    "visibleActiveCpuSeconds": 160.99,
+    "activeCpuP75Ms": 310,
+    "cpuThrottleP75Pct": 10.1,
+    "errorRatePct": 0,
+    "timeoutRatePct": 0,
+    "typesenseCalls": null,
+    "upstashCalls": null
+  },
+  "routes": {
+    "companyOg": {
+      "invocations": 0,
+      "activeCpuSeconds": 0
+    },
+    "companyPages": {
+      "invocations": 427,
+      "activeCpuSeconds": 106
+    },
+    "watchlistRoutes": {
+      "invocations": 33,
+      "activeCpuSeconds": 2.54
+    },
+    "explore": {
+      "invocations": 47,
+      "activeCpuSeconds": 11
+    },
+    "other": {
+      "invocations": 535,
+      "activeCpuSeconds": 41.45
+    }
+  },
+  "cache": {
+    "pprShellHits": 391,
+    "pprShellMisses": 317
+  },
+  "traffic": {
+    "recognizedBotRequests": 1,
+    "longTailUniqueKeys": 17,
+    "sourceIncludesAllTraffic": false,
+    "source": "Retained dashboard request-log rows; deduplicated; 10:19:50\u201311:08:59 UTC only; bot names are user-agent claims",
+    "samplingRatePct": null
+  },
+  "functionality": {
+    "home": true,
+    "explore": true,
+    "companyPage": true,
+    "companyOgDirect": true,
+    "companyOgLegacyRedirect": true,
+    "ownedWatchlist": true,
+    "sharedWatchlist": true,
+    "privateWatchlistAnonymousDenied": true,
+    "privateWatchlistCrossOwnerDenied": true,
+    "legacyWatchlistAnonymousDenied": true,
+    "legacyWatchlistCrossOwnerDenied": true,
+    "legacyWatchlistOwnerRedirects": true,
+    "authentication": true
+  },
+  "unavailableFields": [
+    "Dashboard CPU values are rounded; all 23 route rows captured on page 1 of 1.",
+    "Billed Functions CPU and visible route CPU do not reconcile; neither is substituted for the other.",
+    "Baseline route data expired from Hobby retention.",
+    "Typesense and Upstash labels are rounded; exact counts remain unknown.",
+    "Retained natural logs cover less than one hour and cannot establish all-traffic coverage.",
+    "PPR overall dynamic count 312 differs from zero route breakdown.",
+    "The dashboard request-source sampling contract is unverified."
+  ]
+}
