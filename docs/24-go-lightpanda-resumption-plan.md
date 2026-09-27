@@ -24,10 +24,13 @@ post-activation readback.
 Newly admitted Honda Asia & Oceania returned 20 jobs at 21:47:34 UTC and Ferrara
 returned 88 at 21:47:54 UTC. Both natural Go canonical URL hashes match their
 active database rows exactly. Posting IDs and description hashes also match
-the pre-deploy baseline; both boards have zero consecutive failures. A third
-natural Go feed completed with 91 URLs. No due times or publisher requests
-were forced. Large-feed production observation remains ongoing; the greater
-than 256 MiB fixture and retained Mobiliar replay are bounded parser evidence.
+the pre-deploy baseline; both boards have zero consecutive failures. ZF then
+completed a natural 814-job run at 21:50:48 UTC from a 4,016,882-byte feed.
+All 814 URLs match active DB rows, with unchanged posting IDs/description hashes
+and zero failures. This exceeds the old 500-job pilot ceiling. Five natural
+Go cycles have completed. No due times or publisher requests were forced.
+The greater than 256 MiB fixture and retained Mobiliar replay remain bounded
+parser evidence, not whole-lane resource measurements.
 
 Supported rollback retired epoch 92 at 93, restored all five schedules, and
 left zero terminal drops or write fences. The unchanged **25 selectors** were
