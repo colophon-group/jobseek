@@ -322,7 +322,7 @@ def test_taxonomy_verification_dispatch_does_not_backfill_or_reconcile() -> None
 def test_backfill_proof_is_one_locked_fail_closed_chain() -> None:
     maintenance = MAINTENANCE.read_text(encoding="utf-8")
     chain = (
-        "uv run --no-sync crawler backfill-typesense && "
+        "go-typesense-exporter --backfill && "
         "uv run --no-sync crawler reconcile --repair --full --fresh-cycle "
         "--target typesense && "
         "uv run --no-sync crawler verify-typesense-taxonomies"
