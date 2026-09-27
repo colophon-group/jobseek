@@ -1,10 +1,12 @@
 # Job Seek: focused content-rights review brief
 
-Prepared 27 September 2026 for owner-arranged legal review. Tracks
+Prepared 27 September 2026 as the factual scope for content-rights review. Tracks
 [#10079](https://github.com/colophon-group/jobseek/issues/10079).
-This is a factual brief and list of questions, not a legal clearance.
-The owner selected review of the current model, rather than a change to
-metadata-only or licensed-only content. No lawyer has been instructed by this task.
+The owner subsequently instructed Codex to conduct the review itself. The
+[completed assessment](content-rights-assessment.md) answers this brief and
+records source decisions, verified defects and recommended changes. This brief
+remains the scope record, not a legal clearance. No external lawyer was engaged
+or made a prerequisite to completing the assessment.
 
 ## Decision requested
 
@@ -92,8 +94,9 @@ remaining sources; do not apply a single employer's permission to every board.
 
 Please return a source/use matrix recording **permitted / permitted subject to
 conditions / unresolved / exclude**, its legal basis, evidence and next action.
-Keep opinions, contracts and identity documents private. Record only the approved
-non-sensitive outcome and resulting implementation work in #10079.
+Keep confidential correspondence, contracts and identity documents private. The
+assessment uses public sources and non-sensitive implementation evidence;
+resulting work is tracked in #10079.
 
 ## Reference frame
 

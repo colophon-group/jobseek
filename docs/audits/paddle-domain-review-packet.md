@@ -17,8 +17,10 @@ Prepared 27 September 2026. Tracks
   payment-method-required trial for eligible first-time subscribers, automatic
   monthly renewal, and cancellation before the first charge.
 - Standard search, up to ten watchlists, email alerts and application tracking
-  are intended to remain free. Offer deployment is owned by
-  [#10073](https://github.com/colophon-group/jobseek/pull/10073).
+  are intended to remain free. [#10073](https://github.com/colophon-group/jobseek/pull/10073)
+  merged at `52e8c7b6af58c777d4895e31753331b9d44eac75`. The owner reports production
+  deployment, billing migration, verified live webhook and four-language policy
+  publication; these production actions were performed outside this task.
 
 ## Website evidence to capture after merge/deployment
 
@@ -48,7 +50,7 @@ support inbox; DNS is not proof that a customer can get a response.
 | Issue | Status / next acceptance evidence |
 | --- | --- |
 | #10078 — eligibility | Owner reports inquiry sent on 27 September. Await written Paddle response and satisfy any conditions. |
-| #10079 — content rights | Owner selected a focused legal review of the current model. Brief: `content-rights-review-brief.md`. Assessment and resulting changes remain open. |
+| #10079 — content rights | Codex completed the owner's requested review: [assessment](content-rights-assessment.md). Conditional basis for factual search/analysis; unresolved full-text uses, TDM defects and public dataset redistribution require decisions/remediation. Assessment complete; content readiness remains open. |
 | #10080 — seller/Terms | Public name/address and revised Terms prepared. Publication and owner's applicable Swiss administrative steps remain open. |
 | #10081 — refunds | Wording and footer section prepared, aligned with #10073. Verify deployed links and implemented cancellation/deletion behavior after integration. |
 | #10082 — privacy | Production evidence recorded in `production-privacy-evidence.md`; revised notice prepared. Reconcile/publicly verify on deployment and retain applicable agreements privately. |

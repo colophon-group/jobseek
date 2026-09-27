@@ -105,4 +105,11 @@ See the [rights-review brief](content-rights-review-brief.md),
 [production privacy evidence](production-privacy-evidence.md), and
 [domain-review packet and decision register](paddle-domain-review-packet.md).
 The issues remain open until their acceptance evidence exists, including
-publication, Paddle's decision, and the content-rights assessment.
+publication, Paddle's decision, and content-rights remediation.
+
+At the owner's subsequent direction, Codex conducted the review itself. The
+[completed content-rights assessment](content-rights-assessment.md) distinguishes
+the defensible conditional filtering model from unsupported blanket full-text
+reuse, records live public-dataset evidence and reproduces TDM enforcement gaps.
+No external reviewer is required by this task. #10079 remains open for the
+documented source decisions, implementation and operational evidence.
