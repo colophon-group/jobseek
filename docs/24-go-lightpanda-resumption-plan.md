@@ -6,6 +6,57 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — SmartRecruiters v0.13.874
+
+PR #10099 merged as `2be9bd9d2465043a271c44722f2394ba23a9b00e`.
+[Deployment 36336660636](https://github.com/colophon-group/jobseek/actions/runs/36336660636)
+succeeded. The new Go binary owns selected SmartRecruiters monitor and
+scheduled detail extraction. All three configured localized identity modes
+are implemented; the initial routes select ordinary Lonza, Gousto and
+Dailymotion monitors plus Swiss Medical Network's `job-location-v1` monitor.
+Detail routes select Lonza, Gousto, Dailymotion, Domino's and Northwestern
+Medicine. The last two already have work in the normal detail queue; no due
+times or origin traffic were forced. **Natural Go output and database/content
+proof for these newly selected routes remain pending.**
+
+Required CI and installed-image parity passed on the exact reviewed head.
+The focused suite passed 123 tests; the native binary matches 60 offline
+Python monitor cases and 26 detail cases. During the actual deployment, Go
+configuration sync committed and published 7,879 boards, completed 6,013 CSV
+companies at 17:33:05 UTC, and reported zero unresolved dead letters.
+
+Supported c1 rollback retired epoch 80 at 81, restored all five schedules,
+and left zero drops/write fences. The prior 24 selectors were cleared under
+the host mutation lock. After promotion, the new **26-selector** set was
+staged at the exact full revision above. Supported activation restored c1 at
+**epoch 82**; its conservation audit is accepted/audit_ok with five ready
+records, zero inflight/dead, and all services healthy. The exporter snapshot
+reported 94 successful documents, zero errors, zero lag and healthy Typesense.
+The live monitor route census is **2,956 Go / 4,923 Python** of 7,879 enabled
+boards, with zero route-resolution errors. This census measures monitor
+routing, not complete worker/runtime ownership.
+
+Two normal Python Pinpoint captures also passed same-byte comparison across
+all nine rich fields: Accelercomm (12 jobs, 73,926 bytes) and Penumbra
+(three jobs, 26,305 bytes). Their active database URL hashes match exactly,
+with zero failures. Their existing Go routes are now selected alongside
+Bright Network; their first natural Go run is pending. In the existing
+Workable 25% rollout, Bjak naturally returned 10 jobs in Go at 17:13:34 UTC,
+with exact database URL parity and zero failures. Sanitized hashes, baseline
+identities, selector values and evidence are in
+[the release record](evidence/go-smartrecruiters-production-2026-09-27.json).
+Raw passive captures remain local mode-0600 files.
+
+Before the next crawler deployment or selector mutation, complete supported
+`rollback c1`. Then clear all **26** exact selectors with
+`/tmp/jobseek-post-smartrecruiters-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, against the actual deployed full
+revision above and `https://kandou.bamboohr.com/careers/310`. The old 24-selector
+helper no longer matches production. Stage only at the next promoted
+revision, then reactivate c1. C2 remains dark. The full #7966 gate remains
+open for other extraction/browser profiles, Python runtime ownership,
+actual-workload whole-lane resource evidence, and final cutover/reversal.
+
 ## Implementation: SmartRecruiters monitor and detail, v0.13.874
 
 The Go SmartRecruiters binary now implements ordinary publication discovery,
@@ -22,13 +73,10 @@ and reaps the child on cancellation or overflow. Scheduled details retain a
 single request and empty content on non-200; Go additionally applies the
 monitor's 1 MiB bound and TDM header/meta protections.
 
-This is implementation evidence, **not a deployed production claim**. After
-the release gates pass, cold-rollback c1 and clear the current 24 selectors
-using the v0.13.873 procedure below. Deploy first, then stage a new exact
-selector set against the promoted full revision. Admit ordinary monitor and
-detail work on natural schedules, compare database/content/failure evidence,
-and retain localized profile and whole-lane resource proof as explicit work.
-No production due times should be changed for admission.
+The production checkpoint above records the subsequent release and activation.
+These offline fixtures remain implementation evidence; they do not establish
+natural production content or whole-lane resource parity. Continue natural
+monitor/detail and database/content/failure readback without changing due times.
 
 ## Production checkpoint: 2026-09-27 — Go configuration sync v0.13.873
 
