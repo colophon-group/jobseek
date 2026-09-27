@@ -6218,7 +6218,7 @@ msgstr "Questo avviso non limita le informazioni fattuali né le eccezioni previ
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.rights.intro"
-msgstr "La legge svizzera sulla protezione dei dati e, ove applicabili, il GDPR dell’UE o del Regno Unito ti conferiscono diritti sui tuoi dati. La cancellazione dell’account rimuove i dati attivi; i backup e i dati conservati dai fornitori hanno periodi di conservazione separati, spiegati di seguito."
+msgstr "La legge svizzera sulla protezione dei dati e, ove applicabili, il GDPR dell’UE o del Regno Unito ti conferiscono diritti sui tuoi dati. La cancellazione dell’account rimuove i dati attivi; i backup e i dati conservati dai fornitori hanno periodi di conservazione separati, spiegati nell’informativa completa disponibile al link qui sotto."
 
 #. Body of the agent-prompt success card
 #. js-lingui-explicit-id
@@ -6405,19 +6405,6 @@ msgstr "Le tue watchlist, le offerte salvate e gli avvisi email sono ancora qui.
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.ready"
 msgstr "Le tue watchlist, un po’ più mirate."
-
-
-#. Heading identifying the full English legal document below the translated summary
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.complete.title"
-msgstr "Informativa sulla privacy completa (in inglese)"
-
-#. Heading identifying the full English legal document below the translated summary
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.complete.title"
-msgstr "Termini di servizio completi (in inglese)"
 
 #. Country in the public seller and controller address
 #. Country in the public seller and controller address
