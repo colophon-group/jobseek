@@ -37,7 +37,7 @@ import { unsubscribeNotification } from "../notification-unsubscribe";
 import { reconcileNotificationWebhook } from "../notification-webhook";
 import { createUnsubscribeToken } from "@/lib/notifications/unsubscribe-token";
 import { getNotificationWatchlistsForUser, setWatchlistNotificationModeForUser } from "../notification-watchlist-settings";
-import { matchNarrowedNotificationWatchlist } from "../notification-narrowing";
+import { getNotificationNarrowing, matchNarrowedNotificationWatchlist } from "../notification-narrowing";
 const config = { mode: "live" as const, dailyCap: 75, monthlyCap: 2400, internalUserIds: [] };
 const secret = "fixture-secret-not-production-32-characters";
 const getSql = () => mocks.client!;
@@ -78,7 +78,7 @@ beforeAll(async () => {
       CREATE TABLE ai_filter_configuration (id uuid PRIMARY KEY, owner_id text REFERENCES "user"(id) ON DELETE CASCADE, watchlist_id uuid REFERENCES watchlist(id) ON DELETE CASCADE, status text, current_revision integer, updated_at timestamptz, last_caught_up_at timestamptz);
       CREATE TABLE ai_filter_query_version (id uuid PRIMARY KEY, configuration_id uuid REFERENCES ai_filter_configuration(id) ON DELETE CASCADE, revision integer, query_text text);
       CREATE TABLE ai_filter_decision (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id text REFERENCES "user"(id) ON DELETE CASCADE, watchlist_id uuid REFERENCES watchlist(id) ON DELETE CASCADE, query_version_id uuid REFERENCES ai_filter_query_version(id) ON DELETE CASCADE, candidate_id uuid, model_decision text, user_override text, expires_at timestamptz, posting_first_seen_at timestamptz, decided_at timestamptz DEFAULT now());`);
-    for (const file of ["0088_notification_policy_foundation.sql", "0095_notification_delivery_quota.sql"]) {
+    for (const file of ["0088_notification_policy_foundation.sql", "0095_notification_delivery_quota.sql", "0096_paddle_billing.sql"]) {
       const migration = await readFile(`drizzle/${file}`, "utf8");
       for (const statement of migration.split("--> statement-breakpoint").filter(s => s.trim())) await sql.unsafe(statement);
     }
@@ -234,6 +234,27 @@ describe.skipIf(!process.env.NOTIFICATION_TEST_DATABASE_URL)("narrowed notificat
     await getSql().unsafe('TRUNCATE "user", notification_quota CASCADE');
     mocks.send.mockReset().mockResolvedValue({ status: "sent", messageId: "provider-message" });
     mocks.match.mockReset().mockResolvedValue({ postings: [], watchlists: [{ total: 0, truncated: false }] });
+  });
+  it("uses Paddle trial access for narrowed emails and stops after cancellation or expiry", async () => {
+    vi.stubEnv("PADDLE_ENVIRONMENT", "sandbox");
+    const { plan, input } = await narrowedFixture();
+    const sql = getSql();
+    await sql`DELETE FROM subscription WHERE user_id=${plan.userId}`;
+    const [account] = await sql`INSERT INTO paddle_account (user_id, environment) VALUES (${plan.userId}, 'sandbox') RETURNING id`;
+    const subscriptionId = `sub_${randomUUID()}`;
+    await sql`INSERT INTO paddle_subscription (id, account_id, status, expected_price_id, entitled, current_period_end, event_occurred_at)
+      VALUES (${subscriptionId}, ${account!.id}, 'trialing', 'fixture-price', true, ${new Date(Date.now()+86400000).toISOString()}, now())`;
+    expect(await getNotificationNarrowing(plan.userId, input.compiled.watchlistId)).not.toBeNull();
+    expect(await deliverNotificationPlan(plan, config)).toBe("sent");
+    await sql`UPDATE paddle_subscription SET status='canceled' WHERE id=${subscriptionId}`;
+    expect((await matchNarrowedNotificationWatchlist(input)).postings).toEqual([]);
+    expect(await getNotificationNarrowing(plan.userId, input.compiled.watchlistId)).toBeNull();
+    await sql`UPDATE paddle_subscription SET status='active', current_period_end=now()-interval '1 second' WHERE id=${subscriptionId}`;
+    expect(await getNotificationNarrowing(plan.userId, input.compiled.watchlistId)).toBeNull();
+    vi.stubEnv("PADDLE_ENVIRONMENT", "production");
+    await sql`UPDATE paddle_subscription SET current_period_end=now()+interval '1 day' WHERE id=${subscriptionId}`;
+    expect(await getNotificationNarrowing(plan.userId, input.compiled.watchlistId)).toBeNull();
+    vi.stubEnv("PADDLE_ENVIRONMENT", "sandbox");
   });
   it("persists each list's scope, exposes its prompt and enforces owner and pause boundaries", async () => {
     const { plan, prompt, input } = await narrowedFixture();

@@ -57,7 +57,7 @@ vi.mock("@/components/settings/BillingSettings", () => ({
   BillingSettings: ({
     planInfo,
   }: {
-    planInfo: { plan: string; canReceiveAlerts: boolean };
+    planInfo: { plan: string };
   }) => <div data-testid="billing-page" data-plan={planInfo.plan} />,
 }));
 
@@ -140,7 +140,7 @@ describe("authenticated route initial server reads (#7201)", () => {
       hasPassword: false,
       username: "viewer",
     });
-    mocks.getPlanInfo.mockResolvedValue({ plan: "pro", canReceiveAlerts: true });
+    mocks.getPlanInfo.mockResolvedValue({ plan: "pro" });
 
     render(await AccountLoader({ locale: "en" }));
     render(await BillingLoader({ locale: "en" }));

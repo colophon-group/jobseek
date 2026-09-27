@@ -1,15 +1,15 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { hasPaidEntitlement } from "@/lib/paid-entitlement";
 import {
   aiFilterConfiguration,
   aiFilterEvent,
   aiFilterQueryVersion,
   aiFilterSegment,
-  subscription,
 } from "@/db/schema";
 import { loadAiFilterCandidatePage, AiFilterCandidateLoadError } from "./candidate-loader";
 import { JevClient } from "./jev-client";
@@ -38,17 +38,7 @@ export type AiFilterCatchupStepResult = Readonly<{
 }>;
 
 async function entitled(ownerId: string, now: Date): Promise<boolean> {
-  const [row] = await db
-    .select({ id: subscription.id })
-    .from(subscription)
-    .where(and(
-      eq(subscription.userId, ownerId),
-      eq(subscription.status, "active"),
-      eq(subscription.plan, "unlimited"),
-      or(isNull(subscription.endsAt), gt(subscription.endsAt, now)),
-    ))
-    .limit(1);
-  return Boolean(row);
+  return hasPaidEntitlement(db, ownerId, now);
 }
 
 async function pauseSegment(input: {

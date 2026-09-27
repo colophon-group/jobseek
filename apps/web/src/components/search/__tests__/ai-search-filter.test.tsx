@@ -300,7 +300,7 @@ describe("AiSearchFilter", () => {
     expect(reminder.textContent).toContain("Narrow these results");
     expect(reminder.textContent).toContain("Pro");
     expect(reminder.textContent).toContain(
-      "Evaluate every posting against what matters to you.",
+      "Your criteria. A shorter list with Narrowed.",
     );
 
     fireEvent.click(within(reminder).getByRole("button", { name: "Explore Pro" }));
@@ -371,7 +371,7 @@ describe("AiSearchFilter", () => {
     const teaser = screen.getByRole("complementary", { name: "Precise matching" });
     expect(teaser.textContent).toContain("Narrow results precisely");
     expect(teaser.textContent).toContain("Pro");
-    expect(teaser.textContent).toContain("Evaluate every posting against your request.");
+    expect(teaser.textContent).toContain("Your criteria. A shorter list with Narrowed.");
     expect(screen.queryByLabelText("What should make a job a match?")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Explore Pro" }));
@@ -390,9 +390,9 @@ describe("AiSearchFilter", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Narrow down search" }));
-    expect(screen.getByText("Precise matching is included with Pro")).toBeTruthy();
+    expect(screen.getByText("Find your focus with Narrowed")).toBeTruthy();
     expect(screen.queryByLabelText("What should make a job a match?")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "View Pro plan" }));
+    fireEvent.click(screen.getByRole("button", { name: "Explore Pro" }));
     expect(mocks.push).toHaveBeenCalledWith(
       "/en/settings/billing?next=%2Fen%2Fexplore%3Fq%3Dengineer%26narrow%3D1",
     );

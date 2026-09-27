@@ -16,6 +16,8 @@ const actionErrorMessages = {
   not_authenticated: msg({ id: "actions.error.notAuthenticated", comment: "Generic server-action error shown when a user is not logged in", message: "Please log in and try again." }),
   not_found: msg({ id: "actions.error.notFound", comment: "Generic server-action error shown when an item cannot be found", message: "Not found." }),
   payments_unavailable: msg({ id: "actions.error.paymentsUnavailable", comment: "Billing error when checkout is not configured yet", message: "Payments are not available yet." }),
+  billing_already_subscribed: msg({ id: "actions.error.billingAlreadySubscribed", comment: "Checkout blocked because an account already has a subscription", message: "You already have a subscription. Use Manage subscription to make changes." }),
+  billing_processing: msg({ id: "actions.error.billingProcessing", comment: "Checkout completed but subscription webhook is still processing", message: "Your checkout is still processing. Please refresh this page shortly." }),
   billing_account_not_found: msg({ id: "actions.error.billingAccountNotFound", comment: "Billing error when the user has no billing account", message: "No billing account found." }),
   billing_portal_unavailable: msg({ id: "actions.error.billingPortalUnavailable", comment: "Billing error when the portal is not configured yet", message: "Billing portal is not available yet." }),
   password_set_failed: msg({ id: "actions.error.passwordSetFailed", comment: "Generic error when setting an account password fails", message: "Failed to set password." }),

@@ -4,8 +4,10 @@ import { Trans } from "@lingui/react/macro";
 import { siteConfig } from "@/content/config";
 import { ContentPageHero } from "@/components/ContentPageHero";
 import { sectionScrollMarginClass as sectionScroll } from "@/lib/styles";
+import { useLocalePath } from "@/lib/useLocalePath";
 
 export function TermsContent() {
+  const lp = useLocalePath();
   const contactEmail = siteConfig.indexing.contactEmail;
   const lastUpdated = siteConfig.terms.lastUpdated;
   const fullTermsLink = `${siteConfig.repoUrl}/blob/main/TERMS-OF-SERVICE`;
@@ -46,6 +48,20 @@ export function TermsContent() {
               <li><Trans id="terms.short.r5" comment="Account deletion">You can delete your account at any time.</Trans></li>
             </ul>
           </div>
+
+          <section className={`w-full max-w-[840px] space-y-4 ${sectionScroll}`}>
+            <h2 className="text-lg font-bold"><Trans id="terms.billing.title" comment="Paid subscription terms heading">Pro subscriptions and payments</Trans></h2>
+            <p><Trans id="terms.billing.seller" comment="Identifies the service operator and merchant of record">Job Seek is operated by Viktor Shcherbakov, trading as Colophon Group. Paddle is our authorised reseller and merchant of record for Pro purchases, handling payments, applicable taxes, billing support, and refunds.</Trans></p>
+            <p><Trans id="terms.billing.offer" comment="Subscription scope and recurring trial terms">Pro adds Narrowed results for watchlists. Eligible accounts receive seven days free, then pay US$10 per month plus applicable taxes shown at checkout. A payment method is required. Subscriptions renew automatically until canceled; returning subscribers do not receive another trial.</Trans></p>
+            <p><Trans id="terms.billing.cancel" comment="How and when subscription cancellation takes effect">Cancel before the trial ends to avoid the first charge. Use Settings → Subscription → Manage subscription, the link in your receipt, or Paddle support. Normal cancellation preserves access until the end shown in your subscription settings. Deleting your account cancels billing and ends access immediately.</Trans></p>
+            <p><a href={lp("/settings/billing")} className="text-primary underline"><Trans id="settings.billing.manage" comment="Manage subscription button label">Manage subscription</Trans></a>{" · "}<a href="https://www.paddle.com/legal/buyer-terms" className="text-primary underline"><Trans id="terms.billing.buyerTerms" comment="Link to Paddle buyer terms">Paddle Buyer Terms</Trans></a></p>
+          </section>
+          <section id="refund-policy" className={`w-full max-w-[840px] space-y-4 ${sectionScroll}`}>
+            <h2 className="text-lg font-bold"><Trans id="terms.refunds.title" comment="Public refund policy heading">Refund policy</Trans></h2>
+            <p><Trans id="terms.refunds.request" comment="Refund request process without restricting statutory rights">Request a refund or exercise an applicable withdrawal right through Paddle support or the support link in your receipt. Paddle assesses and processes requests under its Refund Policy. Your mandatory consumer rights are unaffected.</Trans></p>
+            <p><Trans id="terms.refunds.cancel" comment="Explains cancellation is separate from requesting a refund">Canceling a subscription stops future renewals; it does not automatically request a refund. For a problem with Job Seek, contact us at the email below so we can help.</Trans></p>
+            <p><a href="https://paddle.net" className="text-primary underline"><Trans id="terms.refunds.support" comment="Link to Paddle buyer support and refunds">Paddle support and refunds</Trans></a>{" · "}<a href="https://www.paddle.com/legal/refund-policy" className="text-primary underline"><Trans id="terms.refunds.policy" comment="Link to Paddle refund policy">Paddle Refund Policy</Trans></a></p>
+          </section>
 
           {/* Contact + full terms link */}
           <div className={`w-full max-w-[840px] ${sectionScroll}`}>

@@ -22,14 +22,14 @@ describe("public Pro-plan availability claims", () => {
     );
   });
 
-  it("tells human readers that Pro is coming soon", () => {
+  it("describes Narrowed as the paid benefit", () => {
     const faq = readFileSync(
       "app/[lang]/(public)/faq/page.tsx",
       "utf8",
     );
 
     expect(faq).toContain(
-      "Pro is coming soon and will add unlimited watchlists",
+      "Pro adds Narrowed results for your watchlists.",
     );
   });
 });

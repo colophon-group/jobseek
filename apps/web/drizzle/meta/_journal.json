@@ -589,6 +589,13 @@
       "when": 1790467200000,
       "tag": "0095_notification_delivery_quota",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1790510322209,
+      "tag": "0096_paddle_billing",
+      "breakpoints": true
     }
   ]
 }

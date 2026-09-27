@@ -93,7 +93,7 @@ vi.mock("@/lib/viewer", () => ({
 vi.mock("@/lib/plans", () => ({
   canCreateWatchlist: mocks.canCreateWatchlist,
   getUserPlan: mocks.getUserPlan,
-  PLAN_LIMITS: { free: { canReceiveAlerts: false }, paid: { canReceiveAlerts: true } },
+  PLAN_LIMITS: { free: {}, paid: {} },
 }));
 vi.mock("@/lib/watchlist-limit", () => ({
   createWithinWatchlistLimit: async (

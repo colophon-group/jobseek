@@ -174,7 +174,7 @@ function ScrollNarrowingReminder({
             ? t({
                 id: "search.aiFilter.reminder.proBody",
                 comment: "Compact Pro teaser shown after sustained result scrolling",
-                message: "Evaluate every posting against what matters to you.",
+                message: "Your criteria. A shorter list with Narrowed.",
               })
             : hasNarrowedResults
               ? (
@@ -623,7 +623,7 @@ export function AiSearchFilter({
                   {t({
                     id: "search.aiFilter.compactSubscriptionBody",
                     comment: "Compact Pro teaser explaining precise matching on a watchlist",
-                    message: "Evaluate every posting against your request.",
+                    message: "Your criteria. A shorter list with Narrowed.",
                   })}
                 </span>
               </>
@@ -642,7 +642,7 @@ export function AiSearchFilter({
                 {t({
                   id: "search.aiFilter.compactBody",
                   comment: "Compact explanation of precise matching on a watchlist",
-                  message: "Evaluate every posting against your request.",
+                  message: "Your criteria. A shorter list with Narrowed.",
                 })}
               </span>
             ) : null}
@@ -948,14 +948,14 @@ export function AiSearchFilter({
                 {t({
                   id: "search.aiFilter.subscription.title",
                   comment: "Heading explaining AI filter subscription requirement",
-                  message: "Precise matching is included with Pro",
+                  message: "Find your focus with Narrowed",
                 })}
               </div>
               <p className="mt-1 text-xs leading-relaxed text-muted">
                 {t({
                   id: "search.aiFilter.subscription.body",
                   comment: "Copy explaining the Pro-only AI search filter",
-                  message: "Upgrade to evaluate a focused job feed against the criteria that matter to you.",
+                  message: "Describe what matters beyond the usual filters. Narrowed checks the postings in this watchlist against your criteria. Included with Pro.",
                 })}
               </p>
               <button
@@ -966,7 +966,7 @@ export function AiSearchFilter({
                 {t({
                   id: "search.aiFilter.subscription.cta",
                   comment: "Link to subscription settings from the AI filter",
-                  message: "View Pro plan",
+                  message: "Explore Pro",
                 })}
               </button>
             </div>

@@ -154,7 +154,7 @@ export const siteConfig = {
   },
 
   privacy: {
-    lastUpdated: "2026-02-22",
+    lastUpdated: "2026-09-27",
     hero: {
       art: {
         assetKey: "the_advocate" as const,
@@ -164,7 +164,7 @@ export const siteConfig = {
   },
 
   terms: {
-    lastUpdated: "2026-02-22",
+    lastUpdated: "2026-09-27",
     hero: {
       art: {
         assetKey: "the_king" as const,
@@ -195,6 +195,8 @@ export const siteConfig = {
       "/api/auth/",
       "/api/admin/",
       "/api/stripe/",
+      "/api/paddle/",
+      "/checkout",
       "/settings",
       "/watchlists",
       "/my-jobs",
@@ -236,6 +238,7 @@ export const siteConfig = {
       license: { href: "/license", external: false },
       privacy: { href: "/privacy-policy", external: false },
       terms: { href: "/terms", external: false },
+      refunds: { href: "/terms#refund-policy", external: false },
     },
   },
 

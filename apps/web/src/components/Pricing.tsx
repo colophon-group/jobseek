@@ -1,130 +1,30 @@
 "use client";
 
-import { Trans } from "@lingui/react/macro";
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { ArrowRight } from "lucide-react";
 import { siteConfig } from "@/content/config";
 import { useLocalePath } from "@/lib/useLocalePath";
-import { eyebrowClass, sectionHeadingClass, sectionScrollMarginClass } from "@/lib/styles";
+import { sectionScrollMarginClass } from "@/lib/styles";
 import { Button } from "@/components/ui/Button";
-import { CircleCheck } from "lucide-react";
-
-function FeatureItem({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex items-center gap-2">
-      <CircleCheck size={18} className="shrink-0 text-primary" />
-      <span>{children}</span>
-    </li>
-  );
-}
-
-function FreeTier() {
-  const { t } = useLingui();
-  const lp = useLocalePath();
-  const cfg = siteConfig.pricing.free;
-  const ctaHref = lp(cfg.href);
-  const ctaLabel = t({ id: "home.pricing.free.cta", comment: "Free tier CTA", message: "Start for free" });
-  const priceLabel = t({
-    id: "home.pricing.free.price",
-    comment:
-      "Free tier price displayed prominently on the home pricing card. Source is USD ($0); translators may render the symbol+number per locale convention (e.g. German '0 $').",
-    message: "$0",
-  });
-
-  return (
-    <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
-      <div className="flex w-full flex-col rounded-lg border border-border-soft bg-surface">
-        <div className="flex flex-1 flex-col p-6">
-          <p className="text-sm font-medium text-muted">
-            <Trans id="home.pricing.free.name" comment="Free tier name">Free</Trans>
-          </p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-bold">{priceLabel}</span>
-            <span className="text-muted">
-              <Trans id="home.pricing.free.period" comment="Free tier period">Forever</Trans>
-            </span>
-          </div>
-          <p className="mt-2 text-muted">
-            <Trans id="home.pricing.free.description" comment="Free tier description">Full search, one watchlist, and a built-in application tracker to manage your pipeline.</Trans>
-          </p>
-          <ul className="mt-4 flex-1 space-y-2">
-            <FeatureItem><Trans id="home.pricing.free.f1" comment="Free feature: full search">Search across all companies and filters</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.free.f2" comment="Free feature: one watchlist">1 watchlist</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.free.f3" comment="Free feature: application tracker">Application tracker with interview log</Trans></FeatureItem>
-          </ul>
-        </div>
-        <div className="px-6 pb-6">
-          <Button href={ctaHref} variant="outline" className="w-full text-center">
-            {ctaLabel}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProTier() {
-  const { t } = useLingui();
-  const ctaLabel = t({ id: "home.pricing.pro.cta", comment: "Pro tier CTA — disabled until subscriptions launch", message: "Coming soon" });
-  const priceLabel = t({
-    id: "home.pricing.pro.price",
-    comment:
-      "Pro tier price displayed prominently on the home pricing card. Source is USD ($10/month); translators may render the symbol+number per locale convention (e.g. German '10 $').",
-    message: "$10",
-  });
-
-  return (
-    <div className="mx-auto flex w-full max-w-[500px] md:mx-0 md:max-w-[360px] md:flex-[1_1_320px]">
-      <div className="flex w-full flex-col rounded-lg border-2 border-primary bg-surface shadow-md">
-        <div className="flex flex-1 flex-col p-6">
-          <p className="text-sm font-medium text-muted">
-            <Trans id="home.pricing.pro.name" comment="Pro tier name">Pro</Trans>
-          </p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-bold">{priceLabel}</span>
-            <span className="text-muted">
-              <Trans id="home.pricing.pro.period" comment="Pro tier period">per month</Trans>
-            </span>
-          </div>
-          <p className="mt-2 text-muted">
-            <Trans id="home.pricing.pro.description" comment="Pro tier description">Unlimited watchlists with email alerts so you never miss an opening.</Trans>
-          </p>
-          <ul className="mt-4 flex-1 space-y-2">
-            <FeatureItem><Trans id="home.pricing.pro.f0" comment="Pro feature: includes free">Everything in Free</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f1" comment="Pro feature: unlimited watchlists">Unlimited watchlists</Trans></FeatureItem>
-            <FeatureItem><Trans id="home.pricing.pro.f2" comment="Pro feature: email alerts">Email alerts on new matches</Trans></FeatureItem>
-          </ul>
-        </div>
-        <div className="px-6 pb-6">
-          <Button disabled className="w-full text-center">
-            {ctaLabel}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { FreeAccessNote, ProPitch } from "@/components/pro/ProPitch";
 
 export function Pricing() {
+  const { t } = useLingui();
+  const lp = useLocalePath();
   return (
-    <section
-      id={siteConfig.pricing.anchorId}
-      className={`mx-auto max-w-[1200px] px-4 py-12 md:py-20 ${sectionScrollMarginClass}`}
-    >
-      <div className="mx-auto flex max-w-[640px] flex-col gap-4 text-center">
-        <span className={eyebrowClass}>
-          <Trans id="home.pricing.eyebrow" comment="Pricing section eyebrow">Pricing</Trans>
-        </span>
-        <h2 className={sectionHeadingClass}>
-          <Trans id="home.pricing.title" comment="Pricing section heading">Choose the right plan for you</Trans>
-        </h2>
-        <p className="text-muted">
-          <Trans id="home.pricing.description" comment="Pricing section description">Simple, transparent pricing. Start for free and upgrade when you get serious about your job search.</Trans>
-        </p>
-      </div>
-
-      <div className="mt-8 flex flex-col flex-wrap items-center justify-center gap-6 md:mt-12 md:flex-row md:items-stretch">
-        <FreeTier />
-        <ProTier />
+    <section id={siteConfig.pricing.anchorId} className={`mx-auto max-w-[1200px] px-4 py-16 md:py-24 ${sectionScrollMarginClass}`}>
+      <div className="mx-auto max-w-5xl">
+        <ProPitch />
+        <div id="pro-offer" className="scroll-mt-36 my-8 flex flex-col gap-5 rounded-xl border border-border-soft px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold"><Trans id="pro.discovery.trial" comment="Public Pro pricing offer">7 days to try Pro.</Trans></p>
+            <p className="mt-1 text-sm text-muted"><Trans id="pro.discovery.price" comment="Public monthly price after trial">Then US$10 per month. Cancel anytime.</Trans></p>
+          </div>
+          <Button href={lp("/settings/billing")} className="gap-2 self-start sm:self-auto">
+            {t({ id: "pro.discovery.cta", comment: "Link to the Pro explanation and subscription offer", message: "Explore Pro" })}<ArrowRight size={16} aria-hidden="true" />
+          </Button>
+        </div>
+        <FreeAccessNote />
       </div>
     </section>
   );

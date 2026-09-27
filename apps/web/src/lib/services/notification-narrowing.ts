@@ -1,13 +1,14 @@
 import "server-only";
-import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { aiFilterConfiguration, aiFilterDecision, aiFilterQueryVersion, subscription } from "@/db/schema";
+import { hasPaidEntitlement } from "@/lib/paid-entitlement";
+import { aiFilterConfiguration, aiFilterDecision, aiFilterQueryVersion } from "@/db/schema";
 import { matchCompiledWatchlistsInWindow, type WatchlistWindowMatchResult } from "./watchlist-matcher";
 import type { CompiledWatchlistMatcher } from "@/lib/watchlist-matcher-contract";
 import { getNotificationSearchWindow, NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST } from "@/lib/notifications/scheduler-policy";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type Reader = Pick<Transaction, "select" | "selectDistinctOn">;
+type Reader = Pick<Transaction, "select" | "selectDistinctOn" | "execute">;
 
 /** Never invoke the classifier or spend AI budget while preparing an email. */
 export async function getNotificationNarrowing(ownerId: string, watchlistId: string, reader: Reader = db) {
@@ -25,11 +26,7 @@ export async function getNotificationNarrowing(ownerId: string, watchlistId: str
     eq(aiFilterConfiguration.status, "enabled"),
   )).for("share", { of: aiFilterConfiguration }).limit(1);
   if (!resource) return null;
-  const entitled = await reader.select({ id: subscription.id }).from(subscription).where(and(
-    eq(subscription.userId, ownerId), eq(subscription.plan, "unlimited"), eq(subscription.status, "active"),
-    or(isNull(subscription.endsAt), gt(subscription.endsAt, now)),
-  )).limit(1);
-  return entitled.length ? resource : null;
+  return await hasPaidEntitlement(reader, ownerId, now) ? resource : null;
 }
 
 /** Latest decision wins even when a candidate has several content revisions. */
