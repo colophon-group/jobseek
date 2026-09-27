@@ -6,6 +6,25 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation slice: 2026-09-27
+
+Read-only inspection confirms that production already runs the Go Typesense
+posting exporter, despite the older exporter section below. The host remains
+at `f4520232f1f8c0905a68586dbfe4b736b7f17e79` with c1 epoch 72 active and
+healthy. Scheduled count refreshes also invoke Go. The next runtime slice
+ports full posting backfill to `go-typesense-exporter --backfill` and routes
+both the operator CLI and maintenance workflow through it. It preserves the
+shared cursor fence, commit-safe cutoff, full posting/company projection,
+per-document acknowledgements, bounded retries, and cursor monotonicity.
+The follow-on full reconciliation and taxonomy verification remain Python.
+
+The backfill slice is not yet deployed or proven on production output. Its
+real PostgreSQL fixture exercises fence exclusion, ambiguous acknowledgements,
+restart/replay, and final cursor persistence. Before deploying, use the
+supported c1 rollback and exact 22-selector cleanup described in the production
+checkpoint below; restage and reactivate only against the promoted revision.
+See the [Go Typesense runtime commands](../apps/crawler/go/typesense-exporter/README.md).
+
 ## Production checkpoint: 2026-09-25 20:22 UTC
 
 This section supersedes the earlier pending Verity observation below.
