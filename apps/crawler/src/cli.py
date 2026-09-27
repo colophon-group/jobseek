@@ -786,10 +786,13 @@ async def run() -> None:
         # has already populated the environment; exec forwards signals/status
         # directly and opens no Python database pools or metrics server.
         os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--backfill"])
-    if args.command == "deadletters" and args.action == "inspect":
+    if args.command == "deadletters":
+        go_args = ["go-typesense-exporter", "--deadletters", args.action]
+        for ref in args.entry or []:
+            go_args.extend(["--entry", ref])
         if args.apply:
-            raise ValueError("inspect is always read-only; omit --apply")
-        os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--inspect-deadletters"])
+            go_args.append("--apply")
+        os.execvp("go-typesense-exporter", go_args)
     setup_logging(settings.log_level)
 
     log.info("cli.starting", command=args.command, worker_id=WORKER_ID)
@@ -1477,26 +1480,6 @@ async def run() -> None:
                 dry_run=args.dry_run,
             )
             log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
-
-        elif args.command == "deadletters":
-            local_pool = await create_local_pool()
-            from src.deadletters import resolve_deadletters
-
-            result = await resolve_deadletters(
-                local_pool,
-                action=args.action,
-                selected_refs=args.entry,
-                apply=args.apply,
-            )
-            output = json.dumps(result, indent=2, sort_keys=True)
-            log.info(
-                "deadletters.complete",
-                action=args.action,
-                dry_run=not args.apply,
-                selected=result["selected"],
-                counts=result["counts"],
-            )
-            tty_message(output)
 
         elif args.command == "redis-capacity":
             from src.redis_capacity import (

@@ -164,34 +164,17 @@ def _config_state(config: dict[str, str], row: Any) -> str:
     return "valid"
 
 
-async def classify_deadletters(
-    db: asyncpg.Pool | asyncpg.Connection,
-) -> list[DeadletterEntry]:
-    """Read the Go-owned lifecycle join; the pool is a compatibility argument.
-
-    No credentials are passed in argv. A bounded child lifetime prevents an
-    unavailable authority from delaying lease recovery indefinitely.
-    """
+async def _run_deadletter_go(*args: str) -> dict[str, Any]:
+    """Run one bounded Go operation and drain/reap it on cancellation."""
     process = await asyncio.create_subprocess_exec(
-        "go-typesense-exporter", "--inspect-deadletters", stdout=asyncio.subprocess.PIPE
+        "go-typesense-exporter", *args, stdout=asyncio.subprocess.PIPE
     )
     try:
         output, _ = await asyncio.wait_for(process.communicate(), timeout=50)
         if process.returncode != 0:
-            raise RuntimeError("Go deadletter inspection failed")
+            raise RuntimeError("Go deadletter operation failed")
         report = json.loads(output)
-        fields = DeadletterEntry.__dataclass_fields__
-        entries = [
-            DeadletterEntry(**{key: value for key, value in row.items() if key in fields})
-            for row in report["entries"]
-        ]
-        if (
-            report["action"] != "inspect"
-            or not report["dry_run"]
-            or report["total"] != len(entries)
-        ):
-            raise RuntimeError("Invalid Go deadletter inspection report")
-        return entries
+        return report
     finally:
         if process.returncode is None:
             with suppress(ProcessLookupError):
@@ -202,6 +185,37 @@ async def classify_deadletters(
                 with suppress(ProcessLookupError):
                     process.kill()
                 await process.communicate()
+
+
+async def classify_deadletters(
+    db: asyncpg.Pool | asyncpg.Connection,
+) -> list[DeadletterEntry]:
+    """Read the Go-owned lifecycle join; the pool is a compatibility argument."""
+    report = await _run_deadletter_go("--inspect-deadletters")
+    fields = DeadletterEntry.__dataclass_fields__
+    entries = [
+        DeadletterEntry(**{key: value for key, value in row.items() if key in fields})
+        for row in report["entries"]
+    ]
+    if report["action"] != "inspect" or not report["dry_run"] or report["total"] != len(entries):
+        raise RuntimeError("Invalid Go deadletter inspection report")
+    return entries
+
+
+async def resolve_deadletters(
+    db: asyncpg.Pool | asyncpg.Connection,
+    *,
+    action: Literal["inspect", "retry", "prune"],
+    selected_refs: list[str] | None = None,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Compatibility adapter; Go owns inspection and exact recovery mutations."""
+    args = ["--deadletters", action]
+    for ref in selected_refs or []:
+        args.extend(["--entry", ref])
+    if apply:
+        args.append("--apply")
+    return await _run_deadletter_go(*args)
 
 
 async def _classify_deadletters_python_reference(
@@ -400,7 +414,7 @@ async def _remove_superseded_route(entry: DeadletterEntry) -> None:
     await pipe.execute()
 
 
-async def resolve_deadletters(
+async def _resolve_deadletters_python_reference(
     db: asyncpg.Pool | asyncpg.Connection,
     *,
     action: Literal["inspect", "retry", "prune"],

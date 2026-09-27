@@ -30,8 +30,12 @@ configuration-sync substage now implemented in Go is the read-only dead-letter
 lifecycle join shared by sync, worker metrics and operator inspection. Its
 Python-oracle fixtures and real PostgreSQL/read-only Redis integration cover
 classification, batch boundaries, corrupt authority and membership preservation.
-Explicit retry/prune mutations, CSV/local transaction sync, remaining scheduler
-and worker stages, and fleet-wide profile migration remain to complete.
+The same PR now implements explicit retry/prune in Go, including an atomic
+Redis transition and a PostgreSQL row lock across the mutation boundary.
+Tests prove due-time preservation, schedule deduplication, changed-config and
+changed-authority refusal, superseded-inflight protection, and exact-member
+replay refusal. These changes are not deployed. CSV/local transaction sync,
+remaining scheduler/worker stages, and fleet-wide profile migration remain.
 
 ## Production checkpoint: 2026-09-27 — Go Typesense backfill
 

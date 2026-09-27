@@ -42,7 +42,7 @@ replay, cancellation, and cursor monotonicity. Set
 `GO_TYPESENSE_TEST_DATABASE_URL` to an isolated PostgreSQL instance to include
 the real SQL/fence/import/restart fixture; CI always runs that fixture.
 
-## Dead-letter inspection
+## Dead-letter lifecycle inspection and recovery
 
 `go-typesense-exporter --inspect-deadletters` reads both Redis dead-letter
 lanes, joins monitor IDs to a read-only repeatable-read PostgreSQL snapshot,
@@ -58,9 +58,25 @@ has a 45-second deadline and batches database/config reads at 1,000 IDs.
 Descriptors are read with one ZRANGE per lane to avoid pagination skips during
 concurrent reaping. The join is observational, not a cross-store transaction.
 
-Explicit retry/prune queue mutations remain in Python for this slice. The Go
-inspector never retries, prunes, reschedules, changes due times, or clears
-poison evidence. Read errors fail inspection; there is no Python fallback.
+`go-typesense-exporter --deadletters inspect|retry|prune [--entry REF] [--apply]`
+also owns explicit recovery. The operator CLI execs Go for all three actions.
+No mutation occurs without an exact selector and `--apply`. Inspection remains
+read-only and failures have no Python fallback. Legacy Python recovery code
+is retained solely as an offline test oracle.
+
+Applied recovery rechecks PostgreSQL authority under a shared row lock, then
+performs one guarded Redis script: verify the exact descriptor score/config,
+ensure a single current schedule, remove an eligible obsolete route, and
+remove the selected parked descriptor. Existing first-time, recurring and
+inflight deadlines remain unchanged. An obsolete inflight route or changed
+config/authority fails before the transition. New schedules use Redis time
+and the existing domain throttle policy. The embedded canonical enqueue Lua
+and ATS domain policy are checked against their retained source in CI.
+
+Redis transport retries are disabled: after a lost acknowledgement, inspect
+again before selecting another operation. Noncanonical UUID descriptors are
+reported with historical inspection semantics but rejected for recovery;
+the legacy raw-ID lookup is insufficient retirement evidence for mutation.
 `testdata/deadletter_fixture.json` is the retained Python oracle; regenerate
 from `apps/crawler` with `PYTHONPATH=. python
 go/typesense-exporter/testdata/generate_deadletter_fixture.py`.

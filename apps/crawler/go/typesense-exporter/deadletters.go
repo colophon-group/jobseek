@@ -303,7 +303,15 @@ func readDeadletterSnapshot(ctx context.Context, pool *pgxpool.Pool, client *red
 	return snapshot, nil
 }
 
-func inspectDeadletters() error {
+func runDeadletters(args []string) error {
+	option, err := parseDeadletterOptions(args)
+	if err != nil {
+		return err
+	}
+	delays, err := loadDeadletterDelays()
+	if err != nil {
+		return err
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
@@ -318,8 +326,9 @@ func inspectDeadletters() error {
 	}
 	config.MaxConns = 1
 	config.ConnConfig.ConnectTimeout = 5 * time.Second
-	config.ConnConfig.RuntimeParams["application_name"] = "jobseek:crawler:deadletters|inspect:local"
+	config.ConnConfig.RuntimeParams["application_name"] = "jobseek:crawler:deadletters|" + option.Action + ":local"
 	config.ConnConfig.RuntimeParams["statement_timeout"] = "15000"
+	config.ConnConfig.RuntimeParams["lock_timeout"] = "5000"
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return errors.New("open local database pool failed")
@@ -336,13 +345,11 @@ func inspectDeadletters() error {
 	options.DialTimeout = 5 * time.Second
 	options.ReadTimeout = 10 * time.Second
 	options.ContextTimeoutEnabled = true
+	// A lost write acknowledgement must never be retried automatically.
+	options.MaxRetries = -1
 	client := redis.NewClient(options)
 	defer client.Close()
-	snapshot, err := readDeadletterSnapshot(ctx, pool, client)
-	if err != nil {
-		return err
-	}
-	report, err := classifyDeadletterSnapshot(snapshot)
+	report, err := resolveDeadletters(ctx, pool, client, option, delays)
 	if err != nil {
 		return err
 	}

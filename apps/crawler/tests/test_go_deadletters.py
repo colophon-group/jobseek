@@ -50,7 +50,7 @@ async def test_go_classifier_failure_has_no_python_fallback(monkeypatch):
     process.communicate = AsyncMock(return_value=(b"", None))
     monkeypatch.setattr(asyncio, "create_subprocess_exec", AsyncMock(return_value=process))
     db = AsyncMock()
-    with pytest.raises(RuntimeError, match="Go deadletter inspection failed"):
+    with pytest.raises(RuntimeError, match="Go deadletter operation failed"):
         await deadletters.classify_deadletters(db)
     db.fetch.assert_not_awaited()
 
@@ -92,10 +92,37 @@ async def test_inspect_cli_execs_before_python_pools(monkeypatch):
     def execute(binary, args):
         assert (binary, args) == (
             "go-typesense-exporter",
-            ["go-typesense-exporter", "--inspect-deadletters"],
+            ["go-typesense-exporter", "--deadletters", "inspect"],
         )
         raise ExecComplete
 
     monkeypatch.setattr(cli.os, "execvp", execute)
     with pytest.raises(ExecComplete):
         await cli.run()
+
+
+def test_embedded_queue_contract_is_current():
+    import src.redis_queue as queue
+
+    directory = ROOT / "go/typesense-exporter"
+    assert (directory / "deadletter_enqueue.lua").read_bytes() == (
+        ROOT / "src/lua/enqueue_task.lua"
+    ).read_bytes()
+    contract = json.loads((directory / "deadletter_delay.json").read_text())
+    assert contract["_KNOWN_ATS_DOMAINS"] == sorted(queue._KNOWN_ATS_DOMAINS)
+    assert contract["_KNOWN_ATS_DOMAIN_SUFFIXES"] == sorted(queue._KNOWN_ATS_DOMAIN_SUFFIXES)
+
+
+async def test_recovery_adapter_preserves_explicit_selectors(monkeypatch):
+    result = {"action": "prune", "dry_run": False}
+    run = AsyncMock(return_value=result)
+    monkeypatch.setattr(deadletters, "_run_deadletter_go", run)
+    assert (
+        await deadletters.resolve_deadletters(
+            Mock(), action="prune", selected_refs=["simple:monitor|example.test|id"], apply=True
+        )
+        == result
+    )
+    run.assert_awaited_once_with(
+        "--deadletters", "prune", "--entry", "simple:monitor|example.test|id", "--apply"
+    )
