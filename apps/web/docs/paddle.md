@@ -94,8 +94,10 @@ subscription.canceled
 
 Use `traffic_source=platform` for live. Configure the returned endpoint secret
 on the matching deployment before enabling checkout. The local test secret is
-not a registered Paddle notification secret. No production notification
-endpoint has been created yet.
+not a registered Paddle notification secret. The production destination `ntfset_01m3hftn9gn84nsnwqd5gfeb8m` is registered
+for `https://jseek.co/api/paddle/webhook`; its signing secret is configured in
+Vercel. It is paused until the production handler is deployed. Checkout is
+disabled in the staged production configuration.
 
 Only active/trialing subscriptions with the configured price, quantity one,
 and an unexpired period grant AI access. Scheduled cancellation retains access
@@ -137,9 +139,20 @@ A real sandbox Paddle.js checkout completed with Paddle's test card:
 `txn_01m3hcfb9wx7qw52gg5a1f53ry`, subscription
 `sub_01m3hcyfjwyjdrss4whg0jn43s`. Paddle reported `trialing` with a seven-day
 period, 27 September–4 October 2026. The provider's events were retrieved via API
-and replayed through the local HTTP webhook with a local test signature. This
-The trial events granted access and the cancellation events revoked it; an authenticated sandbox customer portal session was also created. The operator confirmed receipt of both trial and cancellation emails. This checks actual payload compatibility and persistence; it does **not** attest
-public HTTPS webhook delivery, which needs a deployed endpoint.
+and replayed through the local HTTP webhook with a local test signature. The trial events granted access and the cancellation events revoked it; an authenticated sandbox customer portal session was also created. The operator confirmed receipt of both trial and cancellation emails. This first test checked actual payload compatibility and persistence.
+
+On 27 September, Paddle also delivered seven signed simulator events over public
+HTTPS through a temporary webhook-only tunnel to the local fixture. Creation,
+trialing, activation, past-due, recovery, scheduled cancellation, and final
+cancellation all completed with HTTP 200 and the expected persisted access state.
+The temporary sandbox destination (`ntfset_01m3hg0ptsskke6x6zkv4nrdvk`) was disabled
+after verification. This proves Paddle-origin signature and delivery compatibility;
+production destination health still needs verification after deployment.
+
+The launch preparation updates the public terms, refund section, checkout policy
+links, privacy disclosures, and all four locales. Production-build browser checks
+confirmed the policy pages and links render in each locale. The migration fixture
+count and routine-migration test now bind the reviewed 0095 head.
 
 ## Remaining launch work
 
@@ -149,16 +162,14 @@ operator must complete these with the actual seller details in Paddle.
 
 Before launch:
 
-1. Review the public terms, privacy disclosures, and refund policy for Paddle.
-   Existing documents still predate billing (including a blanket nonrefundable
-   clause and privacy descriptions that omit payments). Publish accurate policies
-   and submit `jseek.co` for Paddle domain approval.
+1. Deploy the updated public terms, privacy disclosures, and refund section
+   at `/en/terms#refund-policy`, then submit `jseek.co` for Paddle domain approval.
 2. Deploy the reviewed code and migration, install scoped live credentials, and
    set the live default payment link to `https://jseek.co/en/checkout`.
-3. Register `https://jseek.co/api/paddle/webhook`, store its real endpoint secret,
-   and verify public delivery/retries on a sandbox preview before enabling live.
-4. Enable `PADDLE_CHECKOUT_ENABLED=true` only after verification. Update the
-   homepage's coming-soon CTA and structured offer availability as part of launch.
+3. Activate the registered production webhook after deployment and verify
+   delivery and signature handling at the deployed endpoint.
+4. Enable `PADDLE_CHECKOUT_ENABLED=true` only after verification. Update structured offer availability as part of launch; the homepage already
+   links to the new Pro offer.
 
 ## References
 
