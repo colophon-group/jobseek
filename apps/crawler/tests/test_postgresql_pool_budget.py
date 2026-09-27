@@ -214,7 +214,7 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
     )
     runbook = RUNBOOK.read_text(encoding="utf-8")
     assert "aggregate maximum remains exactly 2" in runbook
-    assert "55 connections" in runbook
+    assert "59 connections" in runbook
 
 
 def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> None:
@@ -234,12 +234,12 @@ def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> No
     # Migration uses one NullPool connection; sync uses a four-slot local pool.
     # Those phases are serial, and the paused Murmur integration owns no slots.
     deploy_clients = (1, 4)
-    assert max(*(clients + independent for clients in deploy_clients), 41 + independent) == 47
+    assert max(*(clients + independent for clients in deploy_clients), 41 + 4 + independent) == 51
 
     runbook = RUNBOOK.read_text(encoding="utf-8")
-    assert "absolute deployment maximum is therefore 47 connections" in runbook
-    assert "| enabled Go B0 stack healthy | 41 | 0 | 6 | **47** |" in runbook
-    assert "| base or rolled-back stack healthy | 40 | 0 | 6 | **46** |" in runbook
+    assert "absolute deployment maximum is therefore 51 connections" in runbook
+    assert "| enabled Go B0 stack healthy | 45 | 0 | 6 | **51** |" in runbook
+    assert "| base or rolled-back stack healthy | 44 | 0 | 6 | **50** |" in runbook
 
 
 def test_exact_pre_budget_base_archive_is_bounded_by_rollback_override() -> None:
@@ -309,10 +309,10 @@ def test_host_capacity_keeps_server_and_operator_reserve_explicit() -> None:
         assert "max_connections=101" not in source
 
     runbook = RUNBOOK.read_text(encoding="utf-8")
-    assert "**40**" in runbook
-    assert "55 connections" in runbook
-    assert "allocated ceiling is 65/100" in runbook
-    assert "leaving 35" in runbook
+    assert "**44**" in runbook
+    assert "59 connections" in runbook
+    assert "allocated ceiling is 69/100" in runbook
+    assert "leaving 31" in runbook
 
 
 def test_owner_metrics_are_bounded_and_seven_day_gate_is_documented() -> None:
@@ -343,3 +343,13 @@ def test_owner_metrics_are_bounded_and_seven_day_gate_is_documented() -> None:
     assert "[7d:1m]" in runbook
     assert ") < 0.70" in runbook
     assert ") < 0.80" in runbook
+
+
+def test_go_reaper_children_have_separate_fixed_pool_budgets() -> None:
+    source = (CRAWLER / "go/typesense-exporter/lease_reaper.go").read_text()
+    assert "config.MinConns = 0" in source
+    assert "config.MaxConns = 1" in source
+    assert "config.MaxConnIdleTime = time.Minute" in source
+    assert 'RuntimeParams["idle_in_transaction_session_timeout"] = "60000"' in source
+    assert "| Go lease-reaper children | 4 | 0 | 1 | 4 |" in RUNBOOK.read_text()
+    assert 40 + 4 + 1 + 8 + 2 + 2 + 1 + 1 + 10 == 69
