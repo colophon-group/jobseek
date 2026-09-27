@@ -35,6 +35,43 @@ wrapper before the binary exists would break the previous image. Taxonomy
 verification, configuration sync, and other Python-owned stages remain on the
 full migration backlog. The full #7966 gate is still open.
 
+## Implementation checkpoint: 2026-09-27 — Go Typesense sync
+
+`fix-crawler/go-typesense-taxonomy-sync` builds on taxonomy verification #10074
+and implements the post-commit Typesense publication stage in Go. It is
+implemented and locally verified, **not deployed**; release after the pending
+reconciliation, verification, and schema-setup slices. The live protected
+backfill proof still owns the host mutation lock.
+
+The Go stage publishes complete location, occupation, seniority, technology,
+and company documents from one static database snapshot. Company details
+include all localized descriptions and industry names. Imports are bounded
+to 1,000 documents. Exact company censuses preserve the acknowledgement,
+missing-ID, duplicate/pagination, 50-document/1% deletion-budget, and final
+convergence gates. Normal active/year counts come from the same Typesense
+facets as the web and final refresh, avoiding initial seniority/technology
+posting scans; local taxonomy counts remain bootstrap fallbacks. The final
+Go refresh and typeahead invalidation are retained. Parent cancellation reaps
+the Go child, and nonzero exit prevents a successful sync result.
+
+Complete document parity matches the retained Python producer. A real
+PostgreSQL + HTTP fixture executes the Go runtime through five full imports,
+five count updates, twelve facet reads, and both company censuses. It has no
+posting table, so passing proves that normal count reads stay in Typesense.
+Prune-budget/failure, exact-pagination, import-bound, and child-lifecycle tests
+also pass locally. CI and real production output/resource evidence remain
+pending. Python still owns CSV/local transaction writes, Redis board effects, and
+deadletter reporting; #7966 remains open.
+
+The same sync slice now also owns pre-transaction name snapshots and posting
+rename updates in Go. The before-map travels over a bounded stdin JSON handoff;
+Go re-reads names under the exporter fence and processes affected postings in
+1,000-row UUID keyset batches. Technology-name order/duplicates and existing
+per-document rejection behavior are preserved. It never changes CDC cursor or
+owner. The real PostgreSQL test covers 1,001 affected postings, an unaffected
+row, null technology IDs, and fence release after ambiguous acknowledgement.
+The Python snapshot/rename implementations remain offline references only.
+
 ## Implementation checkpoint: 2026-09-27 — Go taxonomy verification
 
 The next release slice on `fix-crawler/go-typesense-taxonomy-verification`

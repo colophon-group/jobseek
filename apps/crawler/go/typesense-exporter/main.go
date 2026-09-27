@@ -19,6 +19,37 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--snapshot-taxonomy-names" {
+		if err := snapshotRenameNames(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
+	if len(os.Args) >= 2 && os.Args[1] == "--sync-taxonomies" {
+		var before renameNameMaps
+		if len(os.Args) > 3 || len(os.Args) == 3 && os.Args[2] != "--rename-input" {
+			fmt.Fprintln(os.Stderr, "usage: --sync-taxonomies [--rename-input]")
+			os.Exit(2)
+		}
+		if len(os.Args) == 3 {
+			var err error
+			before, err = decodeRenameInput(os.Stdin)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(2)
+			}
+		}
+		if err := runSyncTaxonomies(before); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			if errors.Is(err, context.Canceled) {
+				os.Exit(130)
+			}
+			os.Exit(1)
+		}
+		return
+	}
+
 	if len(os.Args) >= 2 && os.Args[1] == "--setup-schemas" {
 		if len(os.Args) > 3 || len(os.Args) == 3 && os.Args[2] != "--force" {
 			fmt.Fprintln(os.Stderr, "usage: go-typesense-exporter --setup-schemas [--force]")
@@ -118,7 +149,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--backfill|--reconcile [options]|--verify-taxonomies|--setup-schemas [--force]|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
+		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--backfill|--reconcile [options]|--verify-taxonomies|--setup-schemas [--force]|--sync-taxonomies [--rename-input]|--snapshot-taxonomy-names|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
 		os.Exit(2)
 	}
 	var input struct {

@@ -139,3 +139,46 @@ the alias and its conventional `_v1` collection, then recreate. Deployment does
 not pass it. Production proof is the ordinary successful setup phase of the
 reviewed crawler deployment, followed by exact taxonomy verification. The
 previous image/deployment script remains the cold rollback route.
+
+## Post-commit taxonomy and company publication
+
+`go-typesense-exporter --sync-taxonomies` owns the Typesense stage after the
+Python CSV/local transaction commits. The parent waits for Go and propagates
+failure; shutdown terminates and reaps the child. There is no Python runtime
+fallback. CSV parsing/local writes, Redis board effects, and deadletter reporting
+remain to migrate.
+
+Go reads one static authority snapshot for all five collections, including
+full localized company details. It preserves producer strings and unordered
+alias semantics. All active/year counts use the existing Typesense facet
+filters; local taxonomy count queries remain bootstrap fallbacks. This also
+avoids the initial seniority/technology PostgreSQL posting scans during normal
+operation: the final published values match the existing count-refresh stage.
+A final Go count refresh and typeahead invalidation preserve freshness.
+
+Imports have at most 1,000 documents. Company publication requires every
+acknowledgement before an exact 250-document-page census. No company may be
+pruned unless every authoritative ID is present; deletion is limited to both
+50 documents and 1% of the remote set, followed by an exact second census.
+Other collection import failures remain logged as in the existing producer;
+authority/count-read failures and company convergence failures stop the stage.
+
+Tests compare complete producer documents with the retained Python oracle,
+exercise prune failures/budgets and pagination invariants, and run the Go
+orchestrator against real PostgreSQL plus an HTTP Typesense fixture. That
+fixture intentionally has no posting table, proving the normal count path
+uses Typesense. Actual production output/resources remain to measure after
+release through the supported crawler deployment procedure.
+
+The pre-transaction name snapshot now runs with `--snapshot-taxonomy-names`.
+Python passes it over stdin to `--sync-taxonomies --rename-input`; the JSON
+handoff is bounded to 8 MiB and accepts only the three name-map kinds. Go
+re-reads current names under the shared exporter cursor fence and streams
+affected posting IDs in 1,000-row UUID keyset batches. Technology arrays retain
+order and duplicates while omitting unknown/null/empty names. Posting updates
+remain partial `update` operations: no CDC cursor or ownership is changed.
+Existing per-document rejection semantics remain best-effort; ambiguous import
+acknowledgements stop the rename stage and are reported without posting values.
+The ordinary full sync then publishes the taxonomies and companies. A real
+PostgreSQL fixture covers 1,001 affected postings, a retained unaffected row,
+null technology IDs, fence ownership, and ambiguous-acknowledgement release.
