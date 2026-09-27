@@ -78,6 +78,11 @@ func registryTaxonomyPlan(tables map[string]registryTable) (registryPlan, error)
 		if len(table.Rows) == 0 {
 			continue
 		}
+		for _, row := range table.Rows {
+			if row["slug"] == nil {
+				return nil, fmt.Errorf("%s contains a null or missing slug", kind)
+			}
+		}
 		locales := fixedLocales
 		if kind == "occupations" {
 			locales = []string{}
@@ -242,7 +247,7 @@ func registryCompanyPlan(companies, descriptions registryTable) (registryPlan, e
 		}
 		plan.add("_UPSERT_COMPANIES", columns[0], columns[1], columns[2], columns[3], columns[4], columns[5], ints[0], ints[1], ints[2], extras)
 	}
-	slugs, locales, values := []string{}, []string{}, []string{}
+	slugs, locales, values := []*string{}, []string{}, []string{}
 	for _, row := range descriptions.Rows {
 		for _, locale := range descriptions.Columns {
 			if locale == "slug" {
@@ -250,7 +255,7 @@ func registryCompanyPlan(companies, descriptions registryTable) (registryPlan, e
 			}
 			value := registryTrim(registryText(row, locale))
 			if value != "" {
-				slugs = append(slugs, registryText(row, "slug"))
+				slugs = append(slugs, row["slug"])
 				locales = append(locales, locale)
 				values = append(values, value)
 			}

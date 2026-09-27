@@ -74,3 +74,24 @@ func TestRegistryCSVRejectsInvalidInput(t *testing.T) {
 		}
 	}
 }
+
+func TestRegistryNullSlugsCannotBecomeEmptyIdentities(t *testing.T) {
+	table, err := parseRegistryCSV([]byte("slug,en\n,Orphan\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, kind := range []string{"occupation_domains", "occupations", "seniority"} {
+		if _, err := registryTaxonomyPlan(map[string]registryTable{kind: table}); err == nil {
+			t.Fatalf("accepted null %s identity", kind)
+		}
+	}
+	plan, err := registryCompanyPlan(registryTable{}, table)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The Python description join ignores NULL slugs. Never redirect these
+	// descriptions onto a company whose (distinct) natural key is empty text.
+	if len(plan) != 1 || plan[0].Args[0].([]*string)[0] != nil {
+		t.Fatalf("description null identity was rewritten: %#v", plan)
+	}
+}
