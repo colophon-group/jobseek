@@ -1,0 +1,4398 @@
+{
+  "release": "0.13.878",
+  "revision": "ca3d0c244b6e8288227276c0151f80edc1c3d988",
+  "pull_request": 10109,
+  "deployment_run": 36347539962,
+  "status": "deployed; all 162 enabled Teamtailor RSS monitors select Go; two newly admitted natural runs verified; c1 active",
+  "scope": "All currently enabled Teamtailor RSS monitor configurations; Python worker/writer and other provider/browser ownership remain.",
+  "verification": {
+    "focused_runtime_rss_monitor_tests": 217,
+    "go_race_and_vet": "passed",
+    "ruff_pyright": "passed",
+    "required_ci_run": 36346692468,
+    "installed_image_parity_run": 36346692497,
+    "crawler_deploy_gate_run": 36346692530
+  },
+  "retained_actual_feed_replay": {
+    "provider": "Sellpy",
+    "bytes": 69210,
+    "sha256": "9e48ce99cd9a1ee6154ea6f12d8db7706e495e0aafee75b52553f565b826a662",
+    "jobs": 11,
+    "fields": [
+      "url",
+      "title",
+      "description",
+      "locations",
+      "job_location_type",
+      "date_posted",
+      "metadata"
+    ],
+    "python_go_exact": true,
+    "canonical_fields_sha256": "3e156cb0a84a47f5c2d64307d6626e079694e033b9aa871c0c56bf6028accbb5"
+  },
+  "supported_rollback": {
+    "from_epoch": 88,
+    "retired_epoch": 89,
+    "restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "cleared_exact_selectors": 25
+  },
+  "selectors": {
+    "SMARTRECRUITERS_GO_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,0f2fad9a-c102-49c9-9233-21bc6785a74e",
+    "SMARTRECRUITERS_GO_DETAIL_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,628cc519-cf15-43df-8ee0-0be4431326c6,143b8a70-441d-41c5-8001-0876d6e570e4",
+    "WORKDAY_REPLAY_CAPTURE_BOARD_ID": "02ff01a5-d8ec-4696-8a45-17e3c8d6483c",
+    "JOIN_CAPTURE_SLUGS": "agentur-kuehnende,stellantisandyou,lebensmittel-knupferde",
+    "RECRUITEE_CAPTURE_TENANTS": "gorgias",
+    "KANDOU_JSONLD_CAPTURE_URL": "https://kandou.bamboohr.com/careers/310",
+    "WORKDAY_DETAIL_CAPTURE_HOST": "freseniusglobal.wd3.myworkdayjobs.com",
+    "PINPOINT_CAPTURE_TENANTS": "accelercomm,includedhealth,penumbrainc,reply",
+    "WORKDAY_GO_BOARD_IDS": "20eae165-5251-40d4-b9a0-0254f4bd1ab3",
+    "WORKDAY_GO_PERCENT": "5",
+    "RECRUITEE_GO_BOARD_IDS": "0f1c7be6-42f6-4706-952c-0d304f8011ba,d3df984c-5f08-47ff-a299-c54a700f5eee,e43481a7-561a-4f29-ab36-df8c5ddaca9f",
+    "PINPOINT_GO_BOARD_IDS": "0ef903fe-82c9-4610-bdfc-0360f9d4226a,b2ce0b69-5896-4df3-8b12-5a6dce9a85d7,ef5d7575-4a45-44d7-8826-ce86a85085c2",
+    "BOOKING_GO_BOARD_ID": "d9730d93-3a2a-4003-a99e-4a8f0830aa2b",
+    "TEAMTAILOR_RSS_GO_BOARD_IDS": "72d8d377-2242-4203-9270-c7447b4a3b56",
+    "GREENHOUSE_GO_PERCENT": "100",
+    "ASHBY_GO_PERCENT": "100",
+    "SUCCESSFACTORS_RSS_GO_BOARD_IDS": "35461192-d877-4146-8f0d-31c97f14fedd",
+    "PERSONIO_GO_BOARD_IDS": "fdbe61f8-4615-49e6-8970-7e5e76452e24",
+    "PERSONIO_GO_PERCENT": "5",
+    "WORKABLE_CAPTURE_SLUGS": "pix4d,debiopharm,unit8,hack-the-box-ltd",
+    "WORKABLE_DETAIL_CAPTURE_JOBS": "lucidya/4733C5B44F,lucidya/E258A7CDA9,unit8/2FA384D52A,unit8/ACABC868E8",
+    "WORKABLE_GO_DETAIL_BOARD_IDS": "aef95fd2-55ea-43cd-9aa6-9bd541c2bc4e",
+    "WORKABLE_GO_PERCENT": "25",
+    "WORKABLE_GO_BOARD_IDS": "06e7e8f2-4741-49b2-a135-96cfeb3bcfdd,631e7fce-366e-409d-b372-4ee4870e74c1,acecf5fd-3252-420d-a098-542cb1c0fc77,08c21917-9457-4b19-b0e6-40d0280a36c4",
+    "SITEMAP_GO_BOARD_IDS": "c4779214-ef92-4261-98fb-ae64f264fd23"
+  },
+  "selector_helper": {
+    "path": "/tmp/jobseek-post-go-experience-selectors.py",
+    "sha256": "d3a8aa77fc1f21ebdb42754113c75f7cd26d321aead2f57aecd878de67a7842e",
+    "count": 25
+  },
+  "read_only_preview": {
+    "enabled_teamtailor_rss": 162,
+    "eligible": 162,
+    "go_before": 1,
+    "go_after_expected": 162,
+    "without_history": 5
+  },
+  "before_deployment_baseline": {
+    "boards": 162,
+    "active_postings": 3178,
+    "zero_failure_boards": 158,
+    "preexisting_quarantined_boards": 4,
+    "rows": [
+      {
+        "board": {
+          "id": "cc4c1b64-01c2-4239-af5f-c9320cf073a0",
+          "board_url": "https://careers.phyron.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 12:01:53.042171+00:00",
+          "next_check_at": "2026-09-27 13:01:53.042171+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "3a87a887e87b4b921a3f2dec62dbb2e040c3e8d54e807080e6c0810566a2c5dd",
+        "content_sha256": "b4ce32a6bf61d288f739deacfaffda9a78065605544bbf5ed1fcb4b7f3e89712"
+      },
+      {
+        "board": {
+          "id": "0fde69b6-abe2-49b3-90a3-85d13c324f02",
+          "board_url": "https://careers.mkspamp.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 14:10:58.511480+00:00",
+          "next_check_at": "2026-09-27 15:10:58.511480+00:00"
+        },
+        "recent_discovered_counts": [
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "active": 11,
+        "url_sha256": "eb0bd6d5f459ae9f19c38d5e2d40b1e2381cb25ab92c579c99c648ec54e12bc4",
+        "content_sha256": "210487a06c45de93e9004fa2b2b0a4f412a68a5bdfcc03c8a258223278f52105"
+      },
+      {
+        "board": {
+          "id": "27c697fa-5d10-49c7-b0fd-602598a1723b",
+          "board_url": "https://jobs-ukie.loccitane.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 14:26:54.697586+00:00",
+          "next_check_at": "2026-09-27 15:26:54.697586+00:00"
+        },
+        "recent_discovered_counts": [
+          21,
+          21,
+          21,
+          21,
+          21
+        ],
+        "active": 21,
+        "url_sha256": "cd205a5281eaa204c3beef4137292b4d214d307728daafc630e4701fb72dfde1",
+        "content_sha256": "a68a8d014b0e7ec56fb3f52f128f75ea8085add7a02b9dada924d0ba2051959f"
+      },
+      {
+        "board": {
+          "id": "39b66f8d-aa73-4e2c-85f6-24c106002cd2",
+          "board_url": "https://careers.reorbit.space/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 14:29:08.685467+00:00",
+          "next_check_at": "2026-09-27 15:29:08.685467+00:00"
+        },
+        "recent_discovered_counts": [
+          28,
+          28,
+          28,
+          28,
+          28
+        ],
+        "active": 28,
+        "url_sha256": "9e5f8b698966f2b1956cc457bc9177105d60e481784135fa18977ee14d850fe4",
+        "content_sha256": "36047f57e8005a69054768b7ed681259082edf2394e6a6566715295248c8ff77"
+      },
+      {
+        "board": {
+          "id": "67e59974-ffb3-40e9-a0ed-25df0820d054",
+          "board_url": "https://jobs.digital.orange-business.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 14:29:18.426261+00:00",
+          "next_check_at": "2026-09-27 15:29:18.426261+00:00"
+        },
+        "recent_discovered_counts": [
+          33,
+          33,
+          33,
+          33,
+          33
+        ],
+        "active": 33,
+        "url_sha256": "284a58ee5bd1f7f14054ed5673821b85a6295cadbf28e1d37dda09d4f4ab50e7",
+        "content_sha256": "80a9125c5adcd06a8d16ce5d4e2e7f8d5236dadb7e6f3ed64285f5725c62491f"
+      },
+      {
+        "board": {
+          "id": "035e2d64-e6cd-4a7d-b8dc-500ffdcc8b20",
+          "board_url": "https://careers.kognic.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:07:51.481631+00:00",
+          "next_check_at": "2026-09-27 16:07:51.481631+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "f4f589da-d791-4141-b2db-57c63f355e4d",
+          "board_url": "https://ebujobs.teamtailor.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:18:16.275765+00:00",
+          "next_check_at": "2026-09-27 16:18:16.275765+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "3bcc343c43f850c43e22b33be20846905dc4ed0a601e2bdf42c805179d348c10",
+        "content_sha256": "0357aa0dc37c857cf0fe5ce79a7aa3b55945bf91b7af2d113506888d297ffdc2"
+      },
+      {
+        "board": {
+          "id": "e99fbf1d-290f-4f78-922b-2f4a97bff3c9",
+          "board_url": "https://careers.stoik.io",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:20:46.176724+00:00",
+          "next_check_at": "2026-09-27 16:20:46.176724+00:00"
+        },
+        "recent_discovered_counts": [
+          13,
+          13,
+          13,
+          13,
+          13
+        ],
+        "active": 13,
+        "url_sha256": "98a2e6d93329c60c5150a33c8e842856494538705be9e5f264003b6b552cd805",
+        "content_sha256": "d679f1c8b71e4c108ed3c9eeea9b17b14ff8a810963cbbbb473ccb1abf58e619"
+      },
+      {
+        "board": {
+          "id": "8d1621f2-7ce1-44b7-9178-9d5149c010b9",
+          "board_url": "https://careers.go-electra.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:41:58.649172+00:00",
+          "next_check_at": "2026-09-27 16:41:58.649172+00:00"
+        },
+        "recent_discovered_counts": [
+          45,
+          45,
+          45,
+          45,
+          45
+        ],
+        "active": 45,
+        "url_sha256": "7201d2802206be3a48e3102c786bc1f4182f5295b453d1172077aab88a6153c8",
+        "content_sha256": "cdd93e50433a0a0679038aee1522a55d6dc5709cc621b61d2159af60bdffa137"
+      },
+      {
+        "board": {
+          "id": "765fe7b1-1413-4ca4-b71f-bc6ec70b73f9",
+          "board_url": "https://career.anyfin.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:43:13.469057+00:00",
+          "next_check_at": "2026-09-27 16:43:13.469057+00:00"
+        },
+        "recent_discovered_counts": [
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "active": 11,
+        "url_sha256": "21995ee7757dfcfaa318b80a4d7c06a1212061a9c2d90c5cdd8af6c1eb1b3a43",
+        "content_sha256": "36261782a3380bb31a2aeed5e19e907aac72d8d96073ca5b8fb00f3b7f18f47f"
+      },
+      {
+        "board": {
+          "id": "cda6cf38-494a-4513-b8a1-f5b55cedd3d9",
+          "board_url": "https://talents.snf.ch/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:50:44.165639+00:00",
+          "next_check_at": "2026-09-27 16:50:44.165639+00:00"
+        },
+        "recent_discovered_counts": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "active": 4,
+        "url_sha256": "46ce3f5c285c86481b482cc3387248a4d127719f32970dc93102b769675c2016",
+        "content_sha256": "5bd516a7da48e50020b9e188d45dc28359f4c93da74ce49df799d6119bb5ad49"
+      },
+      {
+        "board": {
+          "id": "ea1236fb-e34d-4dda-a5c0-6c978a33d68c",
+          "board_url": "https://jobs.renfusion.eu/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:53:40.308621+00:00",
+          "next_check_at": "2026-09-27 16:53:40.308621+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "88b4f326cac48254fa64656df4088ee2daad40f88b1b6bbde922530156656689",
+        "content_sha256": "d7a3c10459ac4d7eb4be9f8dfd8dc4e8b459d8858fdac357e9a972cb342e812b"
+      },
+      {
+        "board": {
+          "id": "62480f5e-0bef-428e-9ba2-fbb56502a82a",
+          "board_url": "https://jobs.bokio.se/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:53:56.257421+00:00",
+          "next_check_at": "2026-09-27 16:53:56.257421+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "fb01b69ee1db2a1fc216c8690f1d771fda956d6e54c86851ba07f633c74d2394",
+        "content_sha256": "9ca56d84fa7b09f7861f4a2558c0e4eb5244af2f7daec2185aaa1f4257ad8035"
+      },
+      {
+        "board": {
+          "id": "7e053c37-6a78-47cd-adb6-ac4019eb232c",
+          "board_url": "https://envidansweden.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:54:23.345927+00:00",
+          "next_check_at": "2026-09-27 16:54:23.345927+00:00"
+        },
+        "recent_discovered_counts": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "active": 4,
+        "url_sha256": "4f189253bf5d56ec3eed3a17cc9eca1717b20e7d2f54e4d4dbf648ccd3024b2a",
+        "content_sha256": "f50ad6efcbf7d697abe2a8ed8db32cc0dc81324b1042d8de0db409d1ca7b2adf"
+      },
+      {
+        "board": {
+          "id": "73c0f106-a312-49de-9133-e3733ee02d33",
+          "board_url": "https://polestar.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:55:11.784759+00:00",
+          "next_check_at": "2026-09-27 16:55:11.784759+00:00"
+        },
+        "recent_discovered_counts": [
+          25,
+          25,
+          25,
+          25,
+          25
+        ],
+        "active": 25,
+        "url_sha256": "2e2ff1323d303e40aa2c9787dae22b2edc0d042f982e9b2365ed648851482b00",
+        "content_sha256": "5e01ede4b8bf19f93757d9f8c737b69809c91f0f79d1a948430cbb91cb85a6b7"
+      },
+      {
+        "board": {
+          "id": "67353966-03e1-4fb5-920d-b8c74c1ef9a0",
+          "board_url": "https://bearingpointindia.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:55:49.795055+00:00",
+          "next_check_at": "2026-09-27 16:55:49.795055+00:00"
+        },
+        "recent_discovered_counts": [
+          7,
+          7,
+          7,
+          7,
+          7
+        ],
+        "active": 7,
+        "url_sha256": "888c4899a33ee5f6a464814c3be900f36a23887e2968886067f5a94cfc0edb4a",
+        "content_sha256": "7cc522c1c54603e8a099b16dd9f3ec6a8706c917c97e50d545e360c6bec073fd"
+      },
+      {
+        "board": {
+          "id": "cf0e1e6e-d215-4e40-8959-316cb52bdb63",
+          "board_url": "https://sparrowquantum-1750238140.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 15:58:32.663957+00:00",
+          "next_check_at": "2026-09-27 16:58:32.663957+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 2,
+        "url_sha256": "4e02ba380f082324a2caca63486f507ef33d2fe4ce2bd0f8f447e4f7d2850a84",
+        "content_sha256": "87656589f027ce5def56102ec98f6523d4b720805a7dbe1fe15ff6d1744ccd23"
+      },
+      {
+        "board": {
+          "id": "7ec42fad-ff59-4ca1-82f4-69cd6e46f6d9",
+          "board_url": "https://jobs.volumental.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:05:36.512981+00:00",
+          "next_check_at": "2026-09-27 17:05:36.512981+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "07996f50f87b90048deaaa28f25b9f71bdd1337e14b409dc4675ad75d5afaf63",
+        "content_sha256": "57e586f7ca3baf40ab951484ecb62a47601efbfa2dff2e35f23460a5ad7ad630"
+      },
+      {
+        "board": {
+          "id": "fad23d4e-2e1e-43c6-ba9a-2a2524ffabb5",
+          "board_url": "https://huaweifinlandrnd.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:08:33.415973+00:00",
+          "next_check_at": "2026-09-27 17:08:33.415973+00:00"
+        },
+        "recent_discovered_counts": [
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "active": 15,
+        "url_sha256": "053d0a3f34bc4119ac4b72c89d3d3c5137cffda2586ae309508341b49a87bf71",
+        "content_sha256": "64d634d25896841b2813788a8a356a7a8829301e836b9456ec25764181c9c43d"
+      },
+      {
+        "board": {
+          "id": "7dcbe331-3b98-4d96-b4dc-a8d69ca4b84a",
+          "board_url": "https://doconomy.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:12:22.160057+00:00",
+          "next_check_at": "2026-09-27 17:12:22.160057+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "681dad73e8f208188079a826308b7aa10380dc46eed3b021adfca233bccb4fe2",
+        "content_sha256": "f0ca1f05142961c3de15f11defe2e2c3f84b2a843f1c766a290c90d45beac3f8"
+      },
+      {
+        "board": {
+          "id": "d740a600-c9ce-47e5-858b-4eee0f599296",
+          "board_url": "https://careers.bits.bi/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:14:44.648376+00:00",
+          "next_check_at": "2026-09-27 17:14:44.648376+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "5ed0cbba10dd49bfc1e3893225f24c1b535a77b67fb41c2b267cf9b28fac17f4",
+        "content_sha256": "e7f1c65c0f0c76412f2588c6d3918b7c053d98890d302d5f9cd51fb57d2224d1"
+      },
+      {
+        "board": {
+          "id": "95e1d270-748c-4172-b7bb-5ccd5d2e89ab",
+          "board_url": "https://careers.norsepower.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:15:12.577066+00:00",
+          "next_check_at": "2026-09-27 17:15:12.577066+00:00"
+        },
+        "recent_discovered_counts": null,
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "924dadf1-0100-4550-97ad-547c93a0d2dc",
+          "board_url": "https://bearingpointusa.na.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:17:20.374798+00:00",
+          "next_check_at": "2026-09-27 17:17:20.374798+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "f6e3c33ac54b4d9687efaf96979bd7f6eebfa619ff536ae2cc34b4cf438f15ef",
+        "content_sha256": "a37bafa41db6ccee07821f12e03ffc6009d709ae5b27080e75f3da3015096fb2"
+      },
+      {
+        "board": {
+          "id": "a38b8be0-c1ce-4429-879c-38e66484df18",
+          "board_url": "https://career.doctrin.se/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:21:11.019651+00:00",
+          "next_check_at": "2026-09-27 17:21:11.019651+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "90546cc9c833a6b2a33a689f9e2819df9f95fb3d98eb6ae06c6746033fe22f23",
+        "content_sha256": "bbad8a71404143e8b0695552cb5df50e1c0c3b2e0b5fca203742dd164a697bf9"
+      },
+      {
+        "board": {
+          "id": "e5b81f06-d299-416a-a4ef-fc42cabc0c80",
+          "board_url": "https://eujobs.legendsglobal.com",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:22:16.700685+00:00",
+          "next_check_at": "2026-09-27 17:22:16.700685+00:00"
+        },
+        "recent_discovered_counts": [
+          123,
+          123,
+          123,
+          123,
+          123
+        ],
+        "active": 123,
+        "url_sha256": "9968cce476659ce1ca6fec0df412b2e323c65a164e83e1426e8970fe53ad35c2",
+        "content_sha256": "077678f3d481efe5dab202eec9727d3712c6d4c2477b29efbed097e202c0862c"
+      },
+      {
+        "board": {
+          "id": "c7086aeb-b9fb-44f4-a11e-ba97d426a2a9",
+          "board_url": "https://career.mynt.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:24:36.549408+00:00",
+          "next_check_at": "2026-09-27 17:24:36.549408+00:00"
+        },
+        "recent_discovered_counts": [
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "active": 11,
+        "url_sha256": "9d09805b7a5b9a50aac3046bc082d61223d9f0b5ee6afd1bb23ce730af3d6d24",
+        "content_sha256": "90867b8f637c941a527e80ea01f85661f4a9d0551cf0875b9a0d3e8f913b1b46"
+      },
+      {
+        "board": {
+          "id": "cb80db70-d5f9-40a6-9b81-1da8f7f08357",
+          "board_url": "https://careersitaly.bearingpoint.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:28:00.310661+00:00",
+          "next_check_at": "2026-09-27 17:28:00.310661+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 5,
+        "url_sha256": "0120ae0544741f7e74775790804eeb41cd9f19a361831a92c4007f1ba9a3e2ca",
+        "content_sha256": "930da0adb2bf034854dbcd6510270d3d474431f45a55913bf6601d4777b582f2"
+      },
+      {
+        "board": {
+          "id": "c4c3713c-7e0f-482c-acf3-87f2f24e890e",
+          "board_url": "https://career.irisity.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:28:16.156935+00:00",
+          "next_check_at": "2026-09-27 17:28:16.156935+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "e1264a86-5eb8-4daa-9355-075461a24821",
+          "board_url": "https://careers.voi.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:34:44.324940+00:00",
+          "next_check_at": "2026-09-27 17:34:44.324940+00:00"
+        },
+        "recent_discovered_counts": [
+          59,
+          59,
+          59,
+          59,
+          59
+        ],
+        "active": 59,
+        "url_sha256": "efa68d010ac03fd4b3bfe61cf56e0da37d64c4958e1b24900864d4bc78d3b068",
+        "content_sha256": "63379e69dbd9f76fa59860da99f7d260afdadea6df718ad23df2cc709290af30"
+      },
+      {
+        "board": {
+          "id": "f71a10aa-9f23-43b1-ac3e-1dfdd7e87b2c",
+          "board_url": "https://careers.northmill.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:35:31.276493+00:00",
+          "next_check_at": "2026-09-27 17:35:31.276493+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "d88d2f6e849b238db474a4b750250a3e03e35ee3b29a59e44af60cedbf2947a1",
+        "content_sha256": "bf180ef10d9c278a3b509346c329b140398dd47cdcd6f78925e4401bd0a800fa"
+      },
+      {
+        "board": {
+          "id": "e3665dca-bfc7-445f-ace2-fa81ad5972f1",
+          "board_url": "https://huaweiuk.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:38:35.432461+00:00",
+          "next_check_at": "2026-09-27 17:38:35.432461+00:00"
+        },
+        "recent_discovered_counts": [
+          57,
+          57,
+          57,
+          57,
+          57
+        ],
+        "active": 57,
+        "url_sha256": "c0b7ff70b472fb4f807748a6c2d78224c5b299d0f5a929038e9c6b6f4cd6326d",
+        "content_sha256": "dcae8112245680fdfa905a8b1c67bfc573fa33d7dd1726ad1e7260001f5e462c"
+      },
+      {
+        "board": {
+          "id": "fc9aabe0-4545-43bf-b6af-e743ea783b06",
+          "board_url": "https://hadean.teamtailor.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:38:53.789111+00:00",
+          "next_check_at": "2026-09-27 17:38:53.789111+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "9a87162f71d161eaf527006031d9d726d59890f5dd7725cb77bd464211ca1995",
+        "content_sha256": "fcd8faf308c56fe199e8db885696e30217a03e1e2281106aa5ab17dda1291e79"
+      },
+      {
+        "board": {
+          "id": "fe7fc03a-9454-4a01-acaa-45789aed2624",
+          "board_url": "https://careers.synapse-medicine.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:39:13.582550+00:00",
+          "next_check_at": "2026-09-27 17:39:13.582550+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "d288218f-8a3b-42d7-924c-12dff95e4ce5",
+          "board_url": "https://azqoresa.teamtailor.com/en/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:39:30.563439+00:00",
+          "next_check_at": "2026-09-27 17:39:30.563439+00:00"
+        },
+        "recent_discovered_counts": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "active": 8,
+        "url_sha256": "39f6cf58f8b988581b08e9f0869b9675db962a1a19436eb4438fd60746bd8d34",
+        "content_sha256": "29a9fb8189125579cbfbf1fc5dd7678693ef124f769a92cbcb155b53763e6c99"
+      },
+      {
+        "board": {
+          "id": "d4087189-b4a2-4737-8d85-d2ea8e09d716",
+          "board_url": "https://huaweiresearchcentergermanyaustria.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:40:15.707202+00:00",
+          "next_check_at": "2026-09-27 17:40:15.707202+00:00"
+        },
+        "recent_discovered_counts": [
+          97,
+          97,
+          97,
+          97,
+          97
+        ],
+        "active": 97,
+        "url_sha256": "dcd31d9d0f239a3fbea397970e527c2899dc28c1f4b05634ffecc4994c4c1b67",
+        "content_sha256": "262b4dbcaa55de9e668da920a61cafaf6d3a7ad95b6ba36de9bd394b28d6c593"
+      },
+      {
+        "board": {
+          "id": "914d866b-774a-4bc1-83b1-bd81e7448d01",
+          "board_url": "https://huaweifinland.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:40:25.254206+00:00",
+          "next_check_at": "2026-09-27 17:40:25.254206+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 2,
+        "url_sha256": "d919fca4bb174916f861d098df663c238be0978922b8fd55c73faba1218543e5",
+        "content_sha256": "070b3ea19956012725b789bc60d74c6cfd9c9cc62f3b7ae1f68d7e8c353735a4"
+      },
+      {
+        "board": {
+          "id": "88cc983a-6288-473a-ba13-e1acbc64833f",
+          "board_url": "https://career.apco-technologies.eu/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:41:00.959727+00:00",
+          "next_check_at": "2026-09-27 17:41:00.959727+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "9f9429bf0d41c90a97e1a2a383e153ac8176c66f14fdcef12c8b897b598deaba",
+        "content_sha256": "a8c551b096345a2fc156d5c110b428a253f83ba8a3e0c2bdf31425f092068595"
+      },
+      {
+        "board": {
+          "id": "b1fa33fd-55c6-4e97-b90b-7d8098bf965d",
+          "board_url": "https://careers.quantadt.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:41:20.739128+00:00",
+          "next_check_at": "2026-09-27 17:41:20.739128+00:00"
+        },
+        "recent_discovered_counts": null,
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "504f64d8-f249-4d74-9c0d-236db66d6bca",
+          "board_url": "https://careers.evestiaclinical.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:43:32.561178+00:00",
+          "next_check_at": "2026-09-27 17:43:32.561178+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "9aadcd8f7064893a64cdbf9c758b33c569bf1d049864881ca8cd27461a417958",
+        "content_sha256": "0917ca35e1a9b7c70227ea717b922c6db31cd5eab0f1ae07f7defa5896ba8e61"
+      },
+      {
+        "board": {
+          "id": "9aa60f06-e68a-4df6-925d-3ccde5b59e09",
+          "board_url": "https://bearingpointunitedkingdom-1739287252.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:43:46.102502+00:00",
+          "next_check_at": "2026-09-27 17:43:46.102502+00:00"
+        },
+        "recent_discovered_counts": [
+          10,
+          10,
+          10,
+          10,
+          10
+        ],
+        "active": 10,
+        "url_sha256": "2fa143018026ecd88d1d1e12d5fe286416c88c945ffd9a3a4382b45cc5b04fd3",
+        "content_sha256": "7e70b96a5dcb0fa7ae0889727222493c7c2f8f13b7c288c5c4ecf68d353b8b92"
+      },
+      {
+        "board": {
+          "id": "ef664bd5-26e3-4f5f-b1ff-0ac276a51d26",
+          "board_url": "https://bearingpointportugal.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:45:09.404029+00:00",
+          "next_check_at": "2026-09-27 17:45:09.404029+00:00"
+        },
+        "recent_discovered_counts": [
+          7,
+          7,
+          7,
+          7,
+          7
+        ],
+        "active": 7,
+        "url_sha256": "a1661c63779b633b76287a48456858618149bd5b389faf1f9244b6558adf9b06",
+        "content_sha256": "9c484c295bf4cac47a05f371e6f07a180b12a0c9d4561380adda2680f1f3ee09"
+      },
+      {
+        "board": {
+          "id": "fe70d584-85d9-419a-ac6b-f490b0f5e99b",
+          "board_url": "https://careers.trine.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:45:52.979815+00:00",
+          "next_check_at": "2026-09-27 17:45:52.979815+00:00"
+        },
+        "recent_discovered_counts": null,
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "dd833327-dfc8-4080-b844-07d011d0a481",
+          "board_url": "https://envidandenmark.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:46:18.284085+00:00",
+          "next_check_at": "2026-09-27 17:46:18.284085+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "252538aceef5cae28af700edde57939fb93670b62e294416c13ecbe438540368",
+        "content_sha256": "040cf4ca164a9a87c2b86e49c86c42fd02b88c580d4c97fe30333a183b51bc99"
+      },
+      {
+        "board": {
+          "id": "fe5f8d6a-3ee0-4893-b92a-0e5421b6f496",
+          "board_url": "https://tt.playgoals.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:47:15.917993+00:00",
+          "next_check_at": "2026-09-27 17:47:15.917993+00:00"
+        },
+        "recent_discovered_counts": null,
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "edc00d09-b109-4f05-a32e-d1bd35680707",
+          "board_url": "https://careers.open-cosmos.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:47:55.725445+00:00",
+          "next_check_at": "2026-09-27 17:47:55.725445+00:00"
+        },
+        "recent_discovered_counts": [
+          62,
+          62,
+          62,
+          62,
+          62
+        ],
+        "active": 62,
+        "url_sha256": "07b339b937d4fcbe3a356b3f2a656d0324a28fe95227f866e5bc79744dcec57c",
+        "content_sha256": "080c0b936c419249d69f9dc9a174073eccf656460e72733c6b5536f3270fa3f3"
+      },
+      {
+        "board": {
+          "id": "627aac7c-619b-4771-962a-2e7af7b9d3df",
+          "board_url": "https://careers.tacton.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:50:21.440155+00:00",
+          "next_check_at": "2026-09-27 17:50:21.440155+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "38924413fc4a8eba8067b5ea0dced39bcbaebeebe787b53fd20ebfa10ef16bdd",
+        "content_sha256": "d41d3065b56f2e17573d77217b7ab344b9d75521764272f7d330ca2b1fadc683"
+      },
+      {
+        "board": {
+          "id": "ef0e364f-7b91-4eba-b4a9-add13d77efd0",
+          "board_url": "https://careers.tekever.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:50:46.622668+00:00",
+          "next_check_at": "2026-09-27 17:50:46.622668+00:00"
+        },
+        "recent_discovered_counts": [
+          110,
+          110,
+          110,
+          110,
+          110
+        ],
+        "active": 110,
+        "url_sha256": "bfb90afa21e7b5f78b945784979afc640e7c8c558d94d4ace2c28db894321b3a",
+        "content_sha256": "f5b424a4149914bbe2ece93f777cd94c771d3df8e63324d0e1f586d80f661534"
+      },
+      {
+        "board": {
+          "id": "d7e97cba-3635-4187-9548-54d83d04c489",
+          "board_url": "https://denmarkcareers.bearingpoint.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:52:24.715536+00:00",
+          "next_check_at": "2026-09-27 17:52:24.715536+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 5,
+        "url_sha256": "46ea2c65ce1e99e1851029b7793473d08e441fd0d199c4257020659154d9cff5",
+        "content_sha256": "9a7d8c238c78b88d5529e567a355d9de72fba091c8b81ff0a75b48e595fef0e6"
+      },
+      {
+        "board": {
+          "id": "1403b0cf-fa91-4738-94b7-5a6c928f5ecd",
+          "board_url": "https://rebtel.teamtailor.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:54:15.475721+00:00",
+          "next_check_at": "2026-09-27 17:54:15.475721+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "ba85951847421c5fa556415bfadf65463788e8b9a589592e7d716a779ab7f8a7",
+        "content_sha256": "3d7a316cd2e3e5056cd8630f4036c95a66c99ad805237d28209966644d2aa2f4"
+      },
+      {
+        "board": {
+          "id": "69270d77-5278-434e-8dee-e7b7d06960b4",
+          "board_url": "https://career.spendesk.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:57:54.786095+00:00",
+          "next_check_at": "2026-09-27 17:57:54.786095+00:00"
+        },
+        "recent_discovered_counts": [
+          21,
+          21,
+          21,
+          21,
+          21
+        ],
+        "active": 21,
+        "url_sha256": "83bff648900b0c0fcb11f0f1586f9a0594eb3c4fc5ee567e2f0c67f5943e8f79",
+        "content_sha256": "bef0011aa3644a112bbf277302364fa1382b06b62644d2f8f110e35af672c498"
+      },
+      {
+        "board": {
+          "id": "69ee36d7-1819-4f0d-856e-9150549d1672",
+          "board_url": "https://huaweidenmark.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:58:44.341706+00:00",
+          "next_check_at": "2026-09-27 17:58:44.341706+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 2,
+        "url_sha256": "93011ed3511e4d090e9238427129846e8c5fc68cddb9e49c3ef8b0db937fd48b",
+        "content_sha256": "d8b121a549514e5b7cf214a3ccad9823a870d56248209b06a51c59a99fcbb23f"
+      },
+      {
+        "board": {
+          "id": "3a70b301-3a4d-4e8a-a818-a63416c4ac2f",
+          "board_url": "https://jobs.lumera.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 16:59:27.529192+00:00",
+          "next_check_at": "2026-09-27 17:59:27.529192+00:00"
+        },
+        "recent_discovered_counts": [
+          9,
+          9,
+          9,
+          9,
+          9
+        ],
+        "active": 9,
+        "url_sha256": "c69f0245122be64fb17eca3a87f9646965c888da1b2deca69f67702fbc48d806",
+        "content_sha256": "15c76ebe8ee0b44dbf567f2dd830e3aafcc988dfe9e49b86609331230d978835"
+      },
+      {
+        "board": {
+          "id": "c3bf5e3a-93c5-4d15-8124-3f442a1df4dc",
+          "board_url": "https://bearingpointczechrepublic.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:00:53.059410+00:00",
+          "next_check_at": "2026-09-27 18:00:53.059410+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "49288cf5afd06ed1353b8d8d45cde097e5e90f01a52fb9eb58331e1cf7587706",
+        "content_sha256": "1802b269f30ac512ced17e30eb2cbe007d4aa8f14a3e8311c85ef2f748af7a77"
+      },
+      {
+        "board": {
+          "id": "010fc44b-8470-4b9a-9e74-5cabd6637f41",
+          "board_url": "https://huaweiireland.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:01:14.758982+00:00",
+          "next_check_at": "2026-09-27 18:01:14.758982+00:00"
+        },
+        "recent_discovered_counts": [
+          13,
+          13,
+          13,
+          13,
+          13
+        ],
+        "active": 13,
+        "url_sha256": "c2cb15d47e6b13524bb43273c22de1090f85432289e11d5e8c578e006266511a",
+        "content_sha256": "9da479323851f01e439b399dc7614460deada805e14677402e40baf62dd18e7a"
+      },
+      {
+        "board": {
+          "id": "432e93e9-a125-4e15-bfb2-6a7601c1eca5",
+          "board_url": "https://careers.manomano.jobs/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:03:41.952320+00:00",
+          "next_check_at": "2026-09-27 18:03:41.952320+00:00"
+        },
+        "recent_discovered_counts": [
+          9,
+          9,
+          9,
+          9,
+          9
+        ],
+        "active": 9,
+        "url_sha256": "aed5f7eddfa9f4ff7fecd343750ad7925bc5a0859611b2363bc98add2d5f43c0",
+        "content_sha256": "c78d6b65bc03b626721cfec8703a47690a6750a1dc8e8d5fd2d2e10422ce87cd"
+      },
+      {
+        "board": {
+          "id": "ec1369a6-6df2-4345-aff3-2fab35eb965d",
+          "board_url": "https://careers.prophesee.ai/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:03:59.819246+00:00",
+          "next_check_at": "2026-09-27 18:03:59.819246+00:00"
+        },
+        "recent_discovered_counts": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "active": 8,
+        "url_sha256": "95af2bb9bdbbd0b491734154ca377327b6a1f95d96986880040496603dab60f5",
+        "content_sha256": "47019054d48abe2fe612172d5815fd6169432d3154fd3e434dc0f6884e426510"
+      },
+      {
+        "board": {
+          "id": "891e5bcc-d232-4e22-a887-8d846108e672",
+          "board_url": "https://vicarius.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:07:42.374562+00:00",
+          "next_check_at": "2026-09-27 18:07:42.374562+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "0616c50f81533732467958eb2cc3bf0b4c25e9101d80561e54e718fd66db3912",
+        "content_sha256": "8388b90782d43338b4449e4523ec980f263238fd10b7525506d573bb591fb575"
+      },
+      {
+        "board": {
+          "id": "a74da811-b371-453b-a827-69b110c9b44e",
+          "board_url": "https://huaweinorway.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:08:13.675689+00:00",
+          "next_check_at": "2026-09-27 18:08:13.675689+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 2,
+        "url_sha256": "24ac07a9d5e4cfd12ba6583e1fa6b3c8ce17013dc24041d4bc8cd2bdf3c04215",
+        "content_sha256": "48237f955a89409910a8a9dd2977689e10f0f77d43cbd207e88cb3825ca33d5d"
+      },
+      {
+        "board": {
+          "id": "d60d8fe7-0447-4871-a925-013c8101c27e",
+          "board_url": "https://bryter.teamtailor.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:09:36.383938+00:00",
+          "next_check_at": "2026-09-27 18:09:36.383938+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "e9e87bc9bf99712627a74c25a1c4c987db1f557e9f8eb5d14c33475af4a88f19",
+        "content_sha256": "0f91f45e22d7e5c3dc6c25bceccb398e0995f65614c0c257af6c7251c3d3555e"
+      },
+      {
+        "board": {
+          "id": "48ec9398-bbb3-4d53-9959-60cae05f7b11",
+          "board_url": "https://careers.syncron.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:11:07.308064+00:00",
+          "next_check_at": "2026-09-27 18:11:07.308064+00:00"
+        },
+        "recent_discovered_counts": [
+          19,
+          19,
+          19,
+          19,
+          19
+        ],
+        "active": 19,
+        "url_sha256": "8c643c903f5497bccc661d5c803a8b62fb7f663413246a205a055f728b37b6f9",
+        "content_sha256": "1e54b32674e3ebc221950e31d753a9be3e790e636cc5a913fe602ccd2b40cbaf"
+      },
+      {
+        "board": {
+          "id": "8a4cbda6-07cf-402b-9ab7-6680a4b31cbc",
+          "board_url": "https://job.lumapps.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:12:23.586105+00:00",
+          "next_check_at": "2026-09-27 18:12:23.586105+00:00"
+        },
+        "recent_discovered_counts": [
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "active": 24,
+        "url_sha256": "74e5c261e2979463d4f7fa140602250bbd5222a8a8f5dd4fd4008f1e7a04d521",
+        "content_sha256": "5f8bf8e3852be0a68667fa80681061eef5b6245e7623643ec99ecc6ae9b14270"
+      },
+      {
+        "board": {
+          "id": "2d2c4f18-78e6-41e8-a1b5-f529d68b4e07",
+          "board_url": "https://careers.xensam.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:12:50.170254+00:00",
+          "next_check_at": "2026-09-27 18:12:50.170254+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "f1848bb6bb7c7d1c1a7107c23743e556fb26ab0e03c6a6c576d9e01e69269995",
+        "content_sha256": "41914b907870ba485b6705dc09ef837e601874462f72d265fee3d9033b5808a7"
+      },
+      {
+        "board": {
+          "id": "5441a1b3-2fd8-4a80-8147-2bdd339beee3",
+          "board_url": "https://huaweidusseldorf-1719303222.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:14:49.728539+00:00",
+          "next_check_at": "2026-09-27 18:14:49.728539+00:00"
+        },
+        "recent_discovered_counts": [
+          227,
+          227,
+          227,
+          227,
+          227
+        ],
+        "active": 227,
+        "url_sha256": "e0393c8c3c987c7ca67ed946b554de7639fcd5ca7d77c2e3fd2032237a611245",
+        "content_sha256": "a31ddba112fc9171819639c991af02cdc4afff51a9bc63c4f5be1fde5bd671cc"
+      },
+      {
+        "board": {
+          "id": "9cf9afc2-ed73-475f-a99a-4c311efaabaf",
+          "board_url": "https://careers.hystar.com/",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:17:37.318287+00:00",
+          "next_check_at": "2026-09-27 18:17:37.318287+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "e4da3476-2712-447b-afd8-4c80f0d759ab",
+          "board_url": "https://careers.huaweirc.ch/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:18:23.122667+00:00",
+          "next_check_at": "2026-09-27 18:18:23.122667+00:00"
+        },
+        "recent_discovered_counts": [
+          20,
+          20,
+          20,
+          20,
+          20
+        ],
+        "active": 20,
+        "url_sha256": "694d9509b4f4f8dc518ca3e7e31cc61e6a36db5721b19c178948b960c4bab974",
+        "content_sha256": "652441721b89e1b99bb7461d04f0ccf0d453c80f8f9143e116b3da48cb23327b"
+      },
+      {
+        "board": {
+          "id": "9ee3f96b-354a-4c47-bb3d-06a63fd9a2ff",
+          "board_url": "https://careers.frankenburg.tech/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:21:44.301609+00:00",
+          "next_check_at": "2026-09-27 18:21:44.301609+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "2be3560d9f470d3f1746765335869c8ad3f0af1ee801292b04ad17c6d67425f9",
+        "content_sha256": "93e6ae69f837d6d3f05cdf1e9d121fecaaa8c9368a7053daa0163822c9b73f3d"
+      },
+      {
+        "board": {
+          "id": "c888141c-f616-47c7-b0d8-169ee28b8782",
+          "board_url": "https://thales.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:22:24.481308+00:00",
+          "next_check_at": "2026-09-27 18:22:24.481308+00:00"
+        },
+        "recent_discovered_counts": [
+          21,
+          21,
+          21,
+          21,
+          21
+        ],
+        "active": 21,
+        "url_sha256": "57f82b1e1e96ed35520ba2d2b56e4a0add1bcf4ff2906dab4f763481508098fc",
+        "content_sha256": "fabf71b8a11670c9d9d566ddc333707c05056446669fd819581ea21f43a35a5b"
+      },
+      {
+        "board": {
+          "id": "2864e224-4e46-4c97-afef-c567ffdaad7e",
+          "board_url": "https://careersbelgium.bearingpoint.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:23:09.464532+00:00",
+          "next_check_at": "2026-09-27 18:23:09.464532+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 2,
+        "url_sha256": "284d29e9cd0026ab8f102bd86f9129ed2ef8934e09ba88fd3bfe6c5cc2110e35",
+        "content_sha256": "96b0b6225a8a776fe04a3fcaec72fdd997d096fa6a7ee54cbcaf0c6b94883562"
+      },
+      {
+        "board": {
+          "id": "a2148c22-7522-4189-a237-16996f50acda",
+          "board_url": "https://careers.quatt.io/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:27:08.496804+00:00",
+          "next_check_at": "2026-09-27 18:27:08.496804+00:00"
+        },
+        "recent_discovered_counts": [
+          46,
+          46,
+          46,
+          46,
+          46
+        ],
+        "active": 46,
+        "url_sha256": "284846691777274c138ad401442f7072e923516f41d89e461010381b6293dec0",
+        "content_sha256": "cddd0aec931a191f39103c11a47c3b59a2698d0db11f3e50a3655154060afded"
+      },
+      {
+        "board": {
+          "id": "5175f319-26c4-4557-aa33-91e8c10c7e78",
+          "board_url": "https://careers.gilion.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:28:04.518906+00:00",
+          "next_check_at": "2026-09-27 18:28:04.518906+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 5,
+        "url_sha256": "a299bc8c418f662b4902566d65fb2dc574df9c1b3d8e3b4e3f86854cfeb9aa33",
+        "content_sha256": "bf3067b910b3b22b5b1d0f0ab2b2bae552111ee35713f2352aaf2daa1aaccab1"
+      },
+      {
+        "board": {
+          "id": "21b19dc1-26c7-466c-854a-76d7e9670f43",
+          "board_url": "https://careers.britepayments.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:28:47.207501+00:00",
+          "next_check_at": "2026-09-27 18:28:47.207501+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "61b64444691354587d0df2e87c19edca8307d9f6de68a365b4b45e4907a63bdf",
+        "content_sha256": "de61be887435e906ab8e88a16afb9184996b2a19518e64e3aa5ff6e2c5908369"
+      },
+      {
+        "board": {
+          "id": "eadf692d-dc74-4108-a42f-9b52ca998ef1",
+          "board_url": "https://join.froda.se/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:31:59.698878+00:00",
+          "next_check_at": "2026-09-27 18:31:59.698878+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "c571d6843f7f4a73e56fdca9ccfe67f595c47c90df9cc1daaa2ebc38b7f5536a",
+        "content_sha256": "55c730ebc21fc32214adc8b3dc071c57de2f3cdcfd09a03cb216a724397b1746"
+      },
+      {
+        "board": {
+          "id": "ecb2c11a-15cc-458d-a790-c29e1ac92770",
+          "board_url": "https://careers.insurely.com/",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:33:30.876143+00:00",
+          "next_check_at": "2026-09-27 18:33:30.876143+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "fd26eca2-2cdc-49f4-ba1f-2182d6f6987f",
+          "board_url": "https://efta.teamtailor.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:36:30.939751+00:00",
+          "next_check_at": "2026-09-27 18:36:30.939751+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 1,
+        "url_sha256": "4f2af2485b9a9c836900413a494d90c1052c4587cb2d4fcefd7bd789ede975c1",
+        "content_sha256": "213e952c498840f83533f0b3117fb931adeb191e819d4547ecd16fd8b92952c9"
+      },
+      {
+        "board": {
+          "id": "5528ea1c-4c6d-4399-99d2-98e6faf5cdd1",
+          "board_url": "https://careers.doodle.com/",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:36:43.969090+00:00",
+          "next_check_at": "2026-09-27 18:36:43.969090+00:00"
+        },
+        "recent_discovered_counts": [
+          7,
+          7,
+          7,
+          7,
+          7
+        ],
+        "active": 7,
+        "url_sha256": "03eaa496c4178b4e599ff27aa7ba7467dc678bbdd29cf8bb3611518a7b58ee38",
+        "content_sha256": "fd9b0388ba1fe4232c3062261d0dddeb47b7a5f175d0eb0f08207072ead5ab00"
+      },
+      {
+        "board": {
+          "id": "013dabdc-3b3f-4120-91d8-e34480c9cd16",
+          "board_url": "https://careers.pasqal.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:37:16.270500+00:00",
+          "next_check_at": "2026-09-27 18:37:16.270500+00:00"
+        },
+        "recent_discovered_counts": [
+          32,
+          32,
+          32,
+          32,
+          32
+        ],
+        "active": 32,
+        "url_sha256": "ef86f00eaf2559dcea0c196d31a1c5e221478824b0d621627765a7beb9957825",
+        "content_sha256": "0e0a71f218154fbf1db75223bd9549b5ed4db59b38857f7c70703e9654ac222a"
+      },
+      {
+        "board": {
+          "id": "02156dd8-f373-45b6-bbaa-a5ea45cff4e1",
+          "board_url": "https://careers.bearingpoint-sweden.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:37:43.631855+00:00",
+          "next_check_at": "2026-09-27 18:37:43.631855+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "228d040fdae3fa8f35826fe507e71345434089e35161afc7ab57c608d7c05866",
+        "content_sha256": "09f0b42eb64d1a087b1d1644756c46948e47d7800acd3b5fd90535141c5f5ec2"
+      },
+      {
+        "board": {
+          "id": "5d967517-4661-4f53-b190-301122dabb73",
+          "board_url": "https://lexly1.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:38:46.778812+00:00",
+          "next_check_at": "2026-09-27 18:38:46.778812+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "948662bde17f822d9f839ca1dcf4cf0bc48fb667a1e7ce3c5353b0d385c09bbe",
+        "content_sha256": "27dcb46463e558f7941ac99200bc5cd7507f1f6dc7641ab1ecfa5a70bbc25845"
+      },
+      {
+        "board": {
+          "id": "2ca27bde-6743-4443-ab49-8290871ed1b4",
+          "board_url": "https://carriere.lesfermesdebout.fr/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:42:26.491559+00:00",
+          "next_check_at": "2026-09-27 18:42:26.491559+00:00"
+        },
+        "recent_discovered_counts": [
+          21,
+          21,
+          21,
+          21,
+          21
+        ],
+        "active": 21,
+        "url_sha256": "86fd031a668fbc60e5000163c8c3079e0582ea385647ae7fcb9b52b7030e0183",
+        "content_sha256": "bdb26bab0d295f6e7aefa214f0ad7ddc5f16dfcc3c3fd86aa85c9ce1c67e3b0f"
+      },
+      {
+        "board": {
+          "id": "1798c92b-3625-40c4-af1a-3e3f982c2f0f",
+          "board_url": "https://jobs.tx.group/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:42:49.670916+00:00",
+          "next_check_at": "2026-09-27 18:42:49.670916+00:00"
+        },
+        "recent_discovered_counts": [
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "active": 11,
+        "url_sha256": "6ad862912e4384c6945d22f42313a5fe25374727f2557ac7cb22dc35f6b2e023",
+        "content_sha256": "67afd90d413a734e379838a2c5994ee6c8d5a0937b79270900fbf0c48aae7b9e"
+      },
+      {
+        "board": {
+          "id": "05bedb53-21b2-4fb6-b014-5b57c3a99cc2",
+          "board_url": "https://careers.automata.tech/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:44:42.553384+00:00",
+          "next_check_at": "2026-09-27 18:44:42.553384+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 5,
+        "url_sha256": "76679da77b9ffa88de119d65efbccd6e13efe4b980bbcdab7735f1731d1ac6ce",
+        "content_sha256": "4155a5f7b1adff5ea15939c528af6d9aa18882a1265535adc39a73fbcf19baf7"
+      },
+      {
+        "board": {
+          "id": "22d8a6d3-d083-4375-bcfa-3c86c5d3b743",
+          "board_url": "https://hedvig.teamtailor.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:49:25.754857+00:00",
+          "next_check_at": "2026-09-27 18:49:25.754857+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 5,
+        "url_sha256": "e5aa8946eaa6550b2587333167ed960556792253272905f02d0f240fe17dca79",
+        "content_sha256": "d4df5344f862ac2ff667c8312baa881abb905a2e05c31e4347dd97a1e8958b26"
+      },
+      {
+        "board": {
+          "id": "72d8d377-2242-4203-9270-c7447b4a3b56",
+          "board_url": "https://career.sellpy.se/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:49:28.881954+00:00",
+          "next_check_at": "2026-09-27 18:49:28.881954+00:00"
+        },
+        "recent_discovered_counts": [
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "active": 11,
+        "url_sha256": "a9d9ef90230d91b12cd6cd346535ffabb2648cd5c8b0098f0418ad9f9c24d2b3",
+        "content_sha256": "38aa10b675a8f646695da37a1bd50edd2bbca7da61a9bef41bcb7588ff9c7ed8"
+      },
+      {
+        "board": {
+          "id": "80704dbf-c5a1-4105-ba14-4c8f3f1db1fd",
+          "board_url": "https://careers.mitigram.com/",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:49:51.838849+00:00",
+          "next_check_at": "2026-09-27 18:49:51.838849+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 4,
+        "url_sha256": "81dad7a9f479deeb91c9b4abe8eea671852f67eeb423822cb4a18522ee6cad97",
+        "content_sha256": "ea18c8dec646b7dcc0f1c1cf49d287eee2070390f295e4866a9e8c22a126f313"
+      },
+      {
+        "board": {
+          "id": "56d4a92b-b9cb-48fa-a493-4566ee99015c",
+          "board_url": "https://career.billogram.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:50:03.694717+00:00",
+          "next_check_at": "2026-09-27 18:50:03.694717+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "10692aa2b24ac208e9e07792be3a1c771b7b86f26ddde73cdfd2d7db198e02d3",
+        "content_sha256": "f9083ab443cb3cf5e70a5c326510d68866c2f748123ecadad9e648eaf026f10a"
+      },
+      {
+        "board": {
+          "id": "fbf05109-139e-4339-aadd-34ba21144232",
+          "board_url": "https://careers.quartr.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:51:10.789071+00:00",
+          "next_check_at": "2026-09-27 18:51:10.789071+00:00"
+        },
+        "recent_discovered_counts": [
+          13,
+          13,
+          13,
+          13,
+          13
+        ],
+        "active": 13,
+        "url_sha256": "28d8d67a4c97e0f62115d9a3986077632d2a822ad5472b1aca63ffbf3d179910",
+        "content_sha256": "a951288b2c919f5054e2d183f76bb1f06befa625c3776649ec3b36c5dd0b1bb9"
+      },
+      {
+        "board": {
+          "id": "df366870-47b3-447d-a233-a20ba12b60b5",
+          "board_url": "https://careers.southpole.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:56:37.960863+00:00",
+          "next_check_at": "2026-09-27 18:56:37.960863+00:00"
+        },
+        "recent_discovered_counts": [
+          16,
+          16,
+          16,
+          16,
+          16
+        ],
+        "active": 16,
+        "url_sha256": "b4a68acfe41a909fde2e81651e90d6e2dd44b8294fa906c82f4489301ded3c25",
+        "content_sha256": "933017ec0bc77beb7f2619bf3e8e36ae0aa1d4e839dc501cc5fb31da000f083e"
+      },
+      {
+        "board": {
+          "id": "abeb3f7b-553a-4de5-8310-2d0e12df6dc6",
+          "board_url": "https://veesionvf.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:58:58.177672+00:00",
+          "next_check_at": "2026-09-27 18:58:58.177672+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 5,
+        "url_sha256": "610f67bd8c0c4a8abd8cae028864b9a1bacc2c35cfb3d76225022db23596ddb3",
+        "content_sha256": "10e5909fba61f074266ba750b647dca8ab132f2834c83dd7ae2f98f50248bde7"
+      },
+      {
+        "board": {
+          "id": "f7908ec6-cff1-4c5d-b992-22eb6fed86d5",
+          "board_url": "https://career.hemnet.se/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 17:59:22.916012+00:00",
+          "next_check_at": "2026-09-27 18:59:22.916012+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "b9ab1e05-4e33-4f1d-85b4-e53eb1a5d008",
+          "board_url": "https://careers.corpoweroceanjobs.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:00:46.731938+00:00",
+          "next_check_at": "2026-09-27 19:00:46.731938+00:00"
+        },
+        "recent_discovered_counts": [
+          18,
+          18,
+          18,
+          18,
+          18
+        ],
+        "active": 18,
+        "url_sha256": "7aba5f2c428a91d97565a80bfda9622915550ab0872111416c44648b077803f4",
+        "content_sha256": "749e226c360a8a989925e008d4601b9b57d18ae291d7563aafd69831be0c7cb9"
+      },
+      {
+        "board": {
+          "id": "98ca4ca2-5075-4c79-9c7f-e7fce274ebc1",
+          "board_url": "https://bearingpointgmbh.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:01:05.365206+00:00",
+          "next_check_at": "2026-09-27 19:01:05.365206+00:00"
+        },
+        "recent_discovered_counts": [
+          18,
+          18,
+          18,
+          18,
+          18
+        ],
+        "active": 18,
+        "url_sha256": "8bab901f032b6ba593d28526db526fae751e79b4ab7fdff6d4339e4de5f3d58a",
+        "content_sha256": "97176c1fe3e0522f62b5b051b50773f9ea183e76bf86a6f97560358de0b10d0d"
+      },
+      {
+        "board": {
+          "id": "79c18a1d-901a-4d64-a371-97672684b4d7",
+          "board_url": "https://careers.sitoo.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:01:38.384865+00:00",
+          "next_check_at": "2026-09-27 19:01:38.384865+00:00"
+        },
+        "recent_discovered_counts": [
+          7,
+          7,
+          7,
+          7,
+          7
+        ],
+        "active": 7,
+        "url_sha256": "e65e9ce4e9336327a57afe8e00b270aa93462faf56fab2fa8228bace091682f6",
+        "content_sha256": "ae05f4f7d4558700e6d8be03f185028700fcaf8232a2de45915c4264d967a824"
+      },
+      {
+        "board": {
+          "id": "c764939d-3d54-49db-8661-7a87379e4139",
+          "board_url": "https://career.airahome.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:01:56.960118+00:00",
+          "next_check_at": "2026-09-27 19:01:56.960118+00:00"
+        },
+        "recent_discovered_counts": [
+          114,
+          114,
+          114,
+          114,
+          114
+        ],
+        "active": 114,
+        "url_sha256": "81aab1d1413a33400fd100c408300ec56bae2dd271b725303985df3976ec9ade",
+        "content_sha256": "b089c07d2db4276f404ae7f575770a25bdee37af17e85d4ba63f81713bfeead0"
+      },
+      {
+        "board": {
+          "id": "076ed878-8913-46dc-9810-9238e4e4a73f",
+          "board_url": "https://qubitpharmaceuticals.teamtailor.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:02:30.275570+00:00",
+          "next_check_at": "2026-09-27 19:02:30.275570+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "8617b47a9949d9f77829ea905eca5628596f0445250a341f88ed1fe30f2fafb8",
+        "content_sha256": "903223df1a5cb9933d6dcfc486903f061768222a37325cf074dc60f92d309748"
+      },
+      {
+        "board": {
+          "id": "f563cb1f-2bbc-4484-9ff0-acf2053f0130",
+          "board_url": "https://bearingpointag.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:07:24.063846+00:00",
+          "next_check_at": "2026-09-27 19:07:24.063846+00:00"
+        },
+        "recent_discovered_counts": [
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "active": 11,
+        "url_sha256": "fe352e8bbcc19895c77d5755f4f98ca6eb42c0e7bee375eedbf541c19e2ff2b7",
+        "content_sha256": "c42003fd0118a34aa2980a8426b1210fbaef918278f0c8f0c8f9ffcd2c41828d"
+      },
+      {
+        "board": {
+          "id": "655af73c-f1a9-4d20-9d11-218594550f44",
+          "board_url": "https://careers.sekoia.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:11:21.430283+00:00",
+          "next_check_at": "2026-09-27 19:11:21.430283+00:00"
+        },
+        "recent_discovered_counts": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "active": 4,
+        "url_sha256": "a96231bfc47a78df0c76db052e959656e077080f8a70a16167c1fdbf277dc92d",
+        "content_sha256": "eb3c90f7e5a60f7bc6863b4eb0e6aa3f13d42a1e2b6eb22fa048435469e6b92e"
+      },
+      {
+        "board": {
+          "id": "ca490041-d9a1-4d79-9cc6-1264669117f7",
+          "board_url": "https://iqm.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:18:49.148000+00:00",
+          "next_check_at": "2026-09-27 19:18:49.148000+00:00"
+        },
+        "recent_discovered_counts": [
+          27,
+          27,
+          27,
+          27,
+          27
+        ],
+        "active": 27,
+        "url_sha256": "fe17ff2148c36ddb67788023e604aea1eddae719f39de31e4f6abd0b7b591113",
+        "content_sha256": "488d591eceb7abdfee7d1f7abe0e90ea71a2a71bd8295f4e068cf2dbed4c45b1"
+      },
+      {
+        "board": {
+          "id": "6b65210e-52e3-4780-80e6-fdaa4b50da89",
+          "board_url": "https://axmed.teamtailor.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:19:35.486165+00:00",
+          "next_check_at": "2026-09-27 19:19:35.486165+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 5,
+        "url_sha256": "9b1490a8ef1e77191e65959ec7281e95f0cae42093a31fa0f5acc17757da24a2",
+        "content_sha256": "6e27903fbbc25fa99ae45b837ced22a4795271e76c6f704b6fb7f6883a53610f"
+      },
+      {
+        "board": {
+          "id": "6ebac519-45bb-4580-84d8-652207f60b74",
+          "board_url": "https://callenlenz.teamtailor.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:26:30.910840+00:00",
+          "next_check_at": "2026-09-27 19:26:30.910840+00:00"
+        },
+        "recent_discovered_counts": [
+          17,
+          17,
+          17,
+          17,
+          17
+        ],
+        "active": 17,
+        "url_sha256": "b61d31b7a134193f59ce58c781e4a858d86cf90252cf931c2d754c7964fee988",
+        "content_sha256": "b6d3d658f872b065b52442c70bc09f183836ce2c38327d9b7dead7a3336b1653"
+      },
+      {
+        "board": {
+          "id": "b2e7ee83-83b0-450a-906f-442b6338499c",
+          "board_url": "https://bearingpointnetherlands.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:27:30.134580+00:00",
+          "next_check_at": "2026-09-27 19:27:30.134580+00:00"
+        },
+        "recent_discovered_counts": [
+          18,
+          18,
+          18,
+          18,
+          18
+        ],
+        "active": 18,
+        "url_sha256": "e42a1cf1310f31196e5a82da6876f7211a995bb29861e4daf225de3456072368",
+        "content_sha256": "18177b0d25f8d2c9a60b1620939c8589573f32761953bd25cbb9fcef4bbf8347"
+      },
+      {
+        "board": {
+          "id": "ff4b56c9-f0d4-41c5-8790-bd7ca621a3d1",
+          "board_url": "https://careers.zenobe.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:27:38.686127+00:00",
+          "next_check_at": "2026-09-27 19:27:38.686127+00:00"
+        },
+        "recent_discovered_counts": [
+          13,
+          13,
+          13,
+          13,
+          13
+        ],
+        "active": 13,
+        "url_sha256": "cda6a29cc2d2bda1096bb2a089cb4182b2a93341e6c3c9c3e256c940240f1897",
+        "content_sha256": "3b014ab276db2f41557d74969840dbfa13317d55ef6aee812c1f2449a021461e"
+      },
+      {
+        "board": {
+          "id": "89c04cce-022d-4d59-a1c7-534d94a73888",
+          "board_url": "https://careers.blykalla.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:30:48.966480+00:00",
+          "next_check_at": "2026-09-27 19:30:48.966480+00:00"
+        },
+        "recent_discovered_counts": [
+          27,
+          27,
+          27,
+          27,
+          27
+        ],
+        "active": 27,
+        "url_sha256": "58401290574d951598a77dc75de8c7f0c58279f7d96cd45e2092c64dcf149271",
+        "content_sha256": "85a1908f9bb627644ea2ff32b1b963c6e47af7b09e1f59bb0dddb287c33ca15f"
+      },
+      {
+        "board": {
+          "id": "0f54cd6b-964c-4a63-a3f6-004115465946",
+          "board_url": "https://huaweisweden.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:31:25.982043+00:00",
+          "next_check_at": "2026-09-27 19:31:25.982043+00:00"
+        },
+        "recent_discovered_counts": [
+          19,
+          19,
+          19,
+          19,
+          19
+        ],
+        "active": 19,
+        "url_sha256": "20eba86fdb89b48bcc6bd24e9e92ac0bf720ab5919d028b7fe8265728f4de758",
+        "content_sha256": "a9b44263ab082aa04c3921e1f93964f3325b29bd56c9536fc69f1b83942cd78f"
+      },
+      {
+        "board": {
+          "id": "c7974d2c-f457-427d-a64b-33c05d6f5a44",
+          "board_url": "https://bearingpointag.teamtailor.com/en/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:31:41.003538+00:00",
+          "next_check_at": "2026-09-27 19:31:41.003538+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "8ab2fee5a6de1e28b5c23f22fa984df635b2ffc8a1484304424af65ac167d3b8",
+        "content_sha256": "bfc6fb7f3163d0031e632ca9faf07a0e5deb2fecccb5b56188ff5f598d77299d"
+      },
+      {
+        "board": {
+          "id": "7b10413d-e7a9-486f-879b-bae48bedbd8f",
+          "board_url": "https://careers.sateliot.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:33:15.145699+00:00",
+          "next_check_at": "2026-09-27 19:33:15.145699+00:00"
+        },
+        "recent_discovered_counts": [
+          29,
+          29,
+          29,
+          29,
+          29
+        ],
+        "active": 29,
+        "url_sha256": "6d453f5b881cbe1092091630efded5f9202294d3b4afa96c73ef0b219f1f3cf3",
+        "content_sha256": "6fca5168b954b0eb6012b69f192959ac4f3dbc1542d9e4cdcfe69731fcedf9d7"
+      },
+      {
+        "board": {
+          "id": "ddf9cf99-3651-48a4-a8d4-8b61e4633112",
+          "board_url": "https://baseloadcap.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:37:07.738471+00:00",
+          "next_check_at": "2026-09-27 19:37:07.738471+00:00"
+        },
+        "recent_discovered_counts": null,
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "5f81bd3e-9f2b-4105-a5e4-c0777ef639fb",
+          "board_url": "https://envidannorway.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:37:23.739007+00:00",
+          "next_check_at": "2026-09-27 19:37:23.739007+00:00"
+        },
+        "recent_discovered_counts": [
+          5,
+          5,
+          5,
+          5,
+          5
+        ],
+        "active": 5,
+        "url_sha256": "dea953fb05bd9a3264c705026fae21a25a60021e9d50d1f57d3629955357fe08",
+        "content_sha256": "d2728de4cd9744e3043da38c54b36a7254b64705159cd615295250a4d87a4ac7"
+      },
+      {
+        "board": {
+          "id": "2be6eca5-cd45-4629-bacc-5acc18cdd890",
+          "board_url": "https://careers.d-edge.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:38:48.862713+00:00",
+          "next_check_at": "2026-09-27 19:38:48.862713+00:00"
+        },
+        "recent_discovered_counts": [
+          25,
+          25,
+          25,
+          25,
+          25
+        ],
+        "active": 25,
+        "url_sha256": "e95b361e95b27d4d62efc22c2950c7588f17080f7df6ef339d9ee314c1e82c9a",
+        "content_sha256": "6194e80b313057e54a8530a5d6fa5c8c3ce139c1138a3a9ebca5b407a1991e5a"
+      },
+      {
+        "board": {
+          "id": "78a2ca06-3741-4e9a-aa5f-f599fc24a497",
+          "board_url": "https://careers.airforestry.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:40:33.153971+00:00",
+          "next_check_at": "2026-09-27 19:40:33.153971+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "f01734f362d2275c2bbbde50eb1a6cc80d066ae926bfc56acacf7a95f7edef90",
+        "content_sha256": "1a50051a9e5bdc9ec2f41cde69118d97d1b6c15026e624f4a0f10c112a3cce63"
+      },
+      {
+        "board": {
+          "id": "6caa5ccd-b14d-4c73-902b-8cb72334cfbe",
+          "board_url": "https://careers.osapiens.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:41:01.223229+00:00",
+          "next_check_at": "2026-09-27 19:41:01.223229+00:00"
+        },
+        "recent_discovered_counts": [
+          49,
+          49,
+          49,
+          49,
+          49
+        ],
+        "active": 49,
+        "url_sha256": "3ffdeab5b0406bf012fd81fca13c83e11e8cdf194da80f70fd63c41a93456c87",
+        "content_sha256": "3948eedc7926b8e88ff9de53052b705098f9a96779acb40bace4f33989db669c"
+      },
+      {
+        "board": {
+          "id": "595d8bc7-ae55-4c04-ae50-78d7898d5ba4",
+          "board_url": "https://career.stegra.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:42:01.058907+00:00",
+          "next_check_at": "2026-09-27 19:42:01.058907+00:00"
+        },
+        "recent_discovered_counts": [
+          27,
+          27,
+          27,
+          27,
+          27
+        ],
+        "active": 27,
+        "url_sha256": "e2742e552c2019368b31cd15f2fa770cf951f6673bcbb4a51a5d342a8bda6034",
+        "content_sha256": "f77cbedd801e87f109b59d31471e8888919b16894f30a0799ed47af4e4b3d421"
+      },
+      {
+        "board": {
+          "id": "d9a7563a-080b-40da-89cf-84e9b012de6d",
+          "board_url": "https://careers.sensofusion.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:42:25.215851+00:00",
+          "next_check_at": "2026-09-27 19:42:25.215851+00:00"
+        },
+        "recent_discovered_counts": [
+          15,
+          15,
+          15,
+          15,
+          15
+        ],
+        "active": 15,
+        "url_sha256": "8fa9f603b248eb8671df10fb11bafe99478d8b9cf93bd53126d0effd44d36e1a",
+        "content_sha256": "601e9e10db6568d736fe8ac2ebdee534dfac5545ae5ef7f4747268f9f22ca9ce"
+      },
+      {
+        "board": {
+          "id": "31ee72f7-04c5-4077-aacc-eef1d392fbb3",
+          "board_url": "https://careers.compass-group.be/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:42:59.024963+00:00",
+          "next_check_at": "2026-09-27 19:42:59.024963+00:00"
+        },
+        "recent_discovered_counts": [
+          45,
+          45,
+          45,
+          45,
+          45
+        ],
+        "active": 45,
+        "url_sha256": "083915f3fe78890c647120329547ab828afecd6160c3b6274d4a35ad79061bd6",
+        "content_sha256": "19ca4ed8ce0abeb8ab9e21b4efcb6c7fadc07df332e5264e70477e1108f01db4"
+      },
+      {
+        "board": {
+          "id": "35a08961-9554-49e2-97d6-3c6fa0f94410",
+          "board_url": "https://career.savr.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:44:19.668821+00:00",
+          "next_check_at": "2026-09-27 19:44:19.668821+00:00"
+        },
+        "recent_discovered_counts": [
+          9,
+          9,
+          9,
+          9,
+          9
+        ],
+        "active": 9,
+        "url_sha256": "e355fc04b7ad0fed5e1d85deb487110c07d3a36807bf1e93e3fce9f91b397536",
+        "content_sha256": "61ae6d0a52546dd245c71b46974619e01d738c007f6d275a0fac057031722be2"
+      },
+      {
+        "board": {
+          "id": "3f93db12-05fd-4188-82c0-71ab66923ea2",
+          "board_url": "https://careers.axpo.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:45:34.616206+00:00",
+          "next_check_at": "2026-09-27 19:45:34.616206+00:00"
+        },
+        "recent_discovered_counts": [
+          451,
+          451,
+          451,
+          451,
+          451
+        ],
+        "active": 451,
+        "url_sha256": "ff04dd45b30e7cf0ceb2d92d67c2d1972b9a4bae39075fa9d59a3f66ffeeefde",
+        "content_sha256": "a4351c153b70f58be964b565382c00833adec59eeda9327be540ed8feaccefb6"
+      },
+      {
+        "board": {
+          "id": "f9e86930-6057-458c-9c3b-a9f666c20b33",
+          "board_url": "https://career.teleperformancecareer.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:47:48.432659+00:00",
+          "next_check_at": "2026-09-27 19:47:48.432659+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "1957cd617ca0a88b8caaabef966aa3a795200b28b8bd4e412f1f4ff4663d703e",
+        "content_sha256": "a9dd9511b361958f4b7c291b04994f9772315aceb56debbcf1ad7021ab755b18"
+      },
+      {
+        "board": {
+          "id": "3af33afc-01cf-4612-a475-783bbfe23d51",
+          "board_url": "https://careers.gitguardian.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:49:19.617145+00:00",
+          "next_check_at": "2026-09-27 19:49:19.617145+00:00"
+        },
+        "recent_discovered_counts": [
+          30,
+          30,
+          30,
+          30,
+          30
+        ],
+        "active": 30,
+        "url_sha256": "87bb3e1f97ae2d2238a5aabcf328cb49ce6692fb48ad3cddeaffc3bcef26d3e0",
+        "content_sha256": "3e44f58dc10107daa2ab2f6170e99d6a3476b8e2b7a0be2a993f7b7f6aea07c6"
+      },
+      {
+        "board": {
+          "id": "5686909c-5632-43ce-8cce-d9caedf83c11",
+          "board_url": "https://bearingpointromania.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:54:59.589629+00:00",
+          "next_check_at": "2026-09-27 19:54:59.589629+00:00"
+        },
+        "recent_discovered_counts": [
+          28,
+          28,
+          28,
+          28,
+          28
+        ],
+        "active": 28,
+        "url_sha256": "fa620c9916668658e2fefa6e57e0c64419c20ec0af9a3020fcafc7f29402e837",
+        "content_sha256": "743b1232a0ee4fde89a64d960efe00c6b529bd66fcf8b603688fa6227c1fcd16"
+      },
+      {
+        "board": {
+          "id": "1bc6c939-55bb-47da-b436-c794be0b7742",
+          "board_url": "https://finlandcareers.bearingpoint.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:56:21.741086+00:00",
+          "next_check_at": "2026-09-27 19:56:21.741086+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "8b4ebe04bf41d62057bd850a036c9eb5c1f253ee675eb6a9bfb0f1b0a0a100d6",
+        "content_sha256": "72ab5260bfba96867dae300845604bd66fb44bd9f403050a0db3cfef4f9c7583"
+      },
+      {
+        "board": {
+          "id": "9772c4c0-c0e1-4457-855b-4c2233bf9cfc",
+          "board_url": "https://careers.pit.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:56:43.471147+00:00",
+          "next_check_at": "2026-09-27 19:56:43.471147+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "1821cc5e-d1d7-4550-aaa0-4e32487396f1",
+          "board_url": "https://careers.exotrail.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:58:18.812046+00:00",
+          "next_check_at": "2026-09-27 19:58:18.812046+00:00"
+        },
+        "recent_discovered_counts": [
+          34,
+          34,
+          34,
+          34,
+          34
+        ],
+        "active": 34,
+        "url_sha256": "b54337fec0abb222953dcfbd55598a934809b8131428209d383d6bf2339cd541",
+        "content_sha256": "f8a108e5103686a277b8cc3d6de8be4e402d6943cfb3e01485aea541a7d7c693"
+      },
+      {
+        "board": {
+          "id": "6c2d3d86-cf27-448d-9c15-203fdfedcd93",
+          "board_url": "https://careers.blueprintgenetics.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:58:32.742192+00:00",
+          "next_check_at": "2026-09-27 19:58:32.742192+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 2,
+        "url_sha256": "6a2f2faec51fe630c2f0a4ed8b8e87826bcddc4d527c7a2c58325c19a54fc3c2",
+        "content_sha256": "3d4144d2373c8db1a7334c5f54d805a11adacc8c6b07feab64da56704e62b9fc"
+      },
+      {
+        "board": {
+          "id": "e913f943-96d5-4913-be1a-da60e3b23c26",
+          "board_url": "https://jobs.qred.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:59:01.565088+00:00",
+          "next_check_at": "2026-09-27 19:59:01.565088+00:00"
+        },
+        "recent_discovered_counts": [
+          18,
+          18,
+          18,
+          18,
+          18
+        ],
+        "active": 18,
+        "url_sha256": "090d069bd313634aac615741a8aa88cc22414eb71392d745000234295becb562",
+        "content_sha256": "ec49d33b67d6c83179496a16f2256220a9403ca5344a3f73ec1e0ba320fa0002"
+      },
+      {
+        "board": {
+          "id": "9e80420a-fbfe-4705-941b-1a78d26a5c71",
+          "board_url": "https://careers.medik8.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:59:28.407277+00:00",
+          "next_check_at": "2026-09-27 19:59:28.407277+00:00"
+        },
+        "recent_discovered_counts": [
+          9,
+          9,
+          9,
+          9,
+          9
+        ],
+        "active": 9,
+        "url_sha256": "52977fb7a93096993512426163bdbcd914c07d4ebc5a1dc1fc3389485735b087",
+        "content_sha256": "cbd1749791f022918e89df85bbda72b8fc7a8d0f7c289280f68419c82d1cfc6d"
+      },
+      {
+        "board": {
+          "id": "50900399-1948-4641-9d29-ce7148ff5ead",
+          "board_url": "https://carrieresfrance.bearingpoint.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 18:59:38.594873+00:00",
+          "next_check_at": "2026-09-27 19:59:38.594873+00:00"
+        },
+        "recent_discovered_counts": [
+          131,
+          131,
+          131,
+          131,
+          131
+        ],
+        "active": 131,
+        "url_sha256": "02020a88e3267ec61485e551873ea20f7ce80795a8523d2938f1b7c88932a225",
+        "content_sha256": "3673823127515025abab2445d7e3d942b3c9e03da26469ea5f82e9a5439f26fb"
+      },
+      {
+        "board": {
+          "id": "05106ab4-9ce3-4e5e-8ba9-02afc0185abb",
+          "board_url": "https://delair.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:00:23.535924+00:00",
+          "next_check_at": "2026-09-27 20:00:23.535924+00:00"
+        },
+        "recent_discovered_counts": [
+          17,
+          17,
+          17,
+          17,
+          17
+        ],
+        "active": 17,
+        "url_sha256": "8dc9ab41bf8a12c20e36dadc26bc757ad41debf70ff6140a3560080f96fa032f",
+        "content_sha256": "452b2843a86817e6281434d963efcb236a3fec9c2e2750cb0b0cf7761115f455"
+      },
+      {
+        "board": {
+          "id": "60fc6349-6e5f-4e0f-bf97-ed72c8d1f838",
+          "board_url": "https://careers.insurello.se/",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:01:06.880793+00:00",
+          "next_check_at": "2026-09-27 20:01:06.880793+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "6fd8ee9b-523e-49f6-94e7-7b5ffbcc3dd5",
+          "board_url": "https://nordiccareers.bearingpoint.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:01:18.155162+00:00",
+          "next_check_at": "2026-09-27 20:01:18.155162+00:00"
+        },
+        "recent_discovered_counts": [
+          18,
+          18,
+          18,
+          18,
+          18
+        ],
+        "active": 18,
+        "url_sha256": "aad1f0f66deb8b8b7548518254c96add729597f90a97b1baf309e9946c95475f",
+        "content_sha256": "b00ecf513535daab6b00fc72223881c54dc9e6d89632b8753e2af71422363734"
+      },
+      {
+        "board": {
+          "id": "e33c2071-e4dd-4a86-8756-9584ad64c416",
+          "board_url": "https://career.altris.se/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:02:04.060350+00:00",
+          "next_check_at": "2026-09-27 20:02:04.060350+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "44375bb1-c4b7-4699-92ca-9c954d9a65f0",
+          "board_url": "https://careers.lysa.se/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:04:21.144880+00:00",
+          "next_check_at": "2026-09-27 20:04:21.144880+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 10,
+        "url_sha256": "2d12a6311e988498aa046a4c94f44c97c4e6635e107b5714a9097619c7aa8d0f",
+        "content_sha256": "e14fe0166da71b9e8c97a0826e6d2b04f719db04d4cf542af020ba32959b29c7"
+      },
+      {
+        "board": {
+          "id": "1e5f7096-0f31-4474-8f4b-b93fa36a1eef",
+          "board_url": "https://dema.teamtailor.com/",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:06:11.402110+00:00",
+          "next_check_at": "2026-09-27 20:06:11.402110+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 4,
+        "url_sha256": "d8cd452c8967173cc6be504fe56513226f838c93708e0331519bc3c7e1c04b4a",
+        "content_sha256": "436adbe0ee4ae11820c65d25e7e1aa2bb39045876d25ce3aed94200c9ffb6ab7"
+      },
+      {
+        "board": {
+          "id": "51bf0d46-a0e3-491d-8879-609e334fad4a",
+          "board_url": "https://tradingview.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:07:55.680603+00:00",
+          "next_check_at": "2026-09-27 20:07:55.680603+00:00"
+        },
+        "recent_discovered_counts": [
+          30,
+          30,
+          30,
+          30,
+          30
+        ],
+        "active": 30,
+        "url_sha256": "8a6fce0b0299d584ad152c01d42c333f0a36112b71b3b2e6392f9f37bab00f35",
+        "content_sha256": "5eb9dccdd2b2c40dac45110c14390cb247fe89dab54323504c8fc795486c690b"
+      },
+      {
+        "board": {
+          "id": "b07908ef-142f-4af0-b28c-15a5645c9e84",
+          "board_url": "https://ecomtradinggroup.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:08:57.780783+00:00",
+          "next_check_at": "2026-09-27 20:08:57.780783+00:00"
+        },
+        "recent_discovered_counts": [
+          48,
+          48,
+          48,
+          48,
+          48
+        ],
+        "active": 48,
+        "url_sha256": "3d0628f96cef79d660a6013a682a27dcb3a43faca544f110f2b3edead02ee129",
+        "content_sha256": "52e0108e34a8fc68302c56373c7153ce145ea84191c633ba80164e68812e7b0a"
+      },
+      {
+        "board": {
+          "id": "7f647421-ecaa-4a38-9b49-9983b618cfd8",
+          "board_url": "https://luzia.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:11:41.384102+00:00",
+          "next_check_at": "2026-09-27 20:11:41.384102+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "90ac2c52807f86ca8bf009b33acb8bf23e5a4389192df72b5a21178664ec94ad",
+        "content_sha256": "e1dd84bcb76600367fb7cd28b0ead80787c54cc857e5847451a8b4c4ebc0c7b4"
+      },
+      {
+        "board": {
+          "id": "7a778857-b2f6-49fe-b8b5-ef1a6227e739",
+          "board_url": "https://aspiredefenceserviceslimited-1747731241.teamtailor.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:11:45.971000+00:00",
+          "next_check_at": "2026-09-27 20:11:45.971000+00:00"
+        },
+        "recent_discovered_counts": [
+          22,
+          22,
+          22,
+          22,
+          22
+        ],
+        "active": 22,
+        "url_sha256": "a6e23f7fefae253af068f57132f508d022aa6fb3dd9b2000d417ad55e9fccb60",
+        "content_sha256": "28e9942b90b744aecd67cae06a72cb65dec24102bb9bd23dc591ce0aaac21307"
+      },
+      {
+        "board": {
+          "id": "d78f3a59-0215-4e49-a660-0dce37597b67",
+          "board_url": "https://carrieresluxembourg.bearingpoint.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:12:31.884097+00:00",
+          "next_check_at": "2026-09-27 20:12:31.884097+00:00"
+        },
+        "recent_discovered_counts": [
+          14,
+          14,
+          14,
+          14,
+          14
+        ],
+        "active": 25,
+        "url_sha256": "c71a400c147e0b1ba52ff7fa0635427323d8c7de5f114234af53c65eb58b074b",
+        "content_sha256": "02822f63a085bad08f69f234f6a4ce3ca1fdb64e88bc3f49d57364c7e23172c0"
+      },
+      {
+        "board": {
+          "id": "bea7cd57-97fc-4493-8d11-a3c5f191d50c",
+          "board_url": "https://careers.dbt.se/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:12:49.314600+00:00",
+          "next_check_at": "2026-09-27 20:12:49.314600+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      {
+        "board": {
+          "id": "a15e9abb-f887-404f-aec9-8f1afdbfea76",
+          "board_url": "https://careers.keepit.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:13:04.245638+00:00",
+          "next_check_at": "2026-09-27 20:13:04.245638+00:00"
+        },
+        "recent_discovered_counts": [
+          18,
+          18,
+          18,
+          18,
+          18
+        ],
+        "active": 18,
+        "url_sha256": "96ef5fe763820b6c8f57cdf34a540f0b738a2f94ec143a0e269ddb53ca256e71",
+        "content_sha256": "43fbbdb8dcb66cee08edda4c66a7180f78d3bcc92f71e0686f5b1df798e1c1e5"
+      },
+      {
+        "board": {
+          "id": "237949d3-daa3-46ad-b4ec-76d5509beebd",
+          "board_url": "https://careers.cloudsmith.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:16:46.186232+00:00",
+          "next_check_at": "2026-09-27 20:16:46.186232+00:00"
+        },
+        "recent_discovered_counts": [
+          12,
+          12,
+          12,
+          12,
+          12
+        ],
+        "active": 12,
+        "url_sha256": "5895544dde3061e12ab150c883d320522a64c14669d4472ff4f5da65250918db",
+        "content_sha256": "44f2f2fd285c41d036588db439d8c5dfd0f4bd0189ba0916d8bac1226773718c"
+      },
+      {
+        "board": {
+          "id": "056063ef-d562-48f4-b73f-70fa9a2317b9",
+          "board_url": "https://multiversecomputing.teamtailor.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:16:50.019526+00:00",
+          "next_check_at": "2026-09-27 20:16:50.019526+00:00"
+        },
+        "recent_discovered_counts": [
+          9,
+          9,
+          9,
+          9,
+          8
+        ],
+        "active": 8,
+        "url_sha256": "b8db8bfacf796b886a03d7eab6124e8e37e7f275e328b67bae7f17aa089ffc8e",
+        "content_sha256": "7e66056a028ac27adc6a88eb74a3a56b5dd963ac3b38e7bf869c9c44dba47e23"
+      },
+      {
+        "board": {
+          "id": "086a9155-47f1-423e-a6e7-ed4417ed07ff",
+          "board_url": "https://hoistspain.teamtailor.com/",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:19:00.883630+00:00",
+          "next_check_at": "2026-09-27 20:19:00.883630+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 4,
+        "url_sha256": "3eaae98b9e2f7e6892d645cca99e8fb3295cb93f38b5b6d08bed8c99fbac30a7",
+        "content_sha256": "e01f3d6684e8ecadc9d3b56c5a6f467fbc433f413ed50863c8be050ddd8582b6"
+      },
+      {
+        "board": {
+          "id": "0953468a-c6be-415d-bef2-717cbdbd53a5",
+          "board_url": "https://career.novatronfusion.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:19:09.981909+00:00",
+          "next_check_at": "2026-09-27 20:19:09.981909+00:00"
+        },
+        "recent_discovered_counts": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "active": 2,
+        "url_sha256": "049d592d5935d0d6040d58470e87ce164bcc2d26ed27ef3cbead5d009b78cf2e",
+        "content_sha256": "c1ed446c379d5f6bd341f6a69c1d9ee6e00198d53299f0e40fa3cc0cdf0c7c84"
+      },
+      {
+        "board": {
+          "id": "6361c6b6-3f8d-4200-90f7-99061389ab1b",
+          "board_url": "https://sinclair.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:22:51.794706+00:00",
+          "next_check_at": "2026-09-27 20:22:51.794706+00:00"
+        },
+        "recent_discovered_counts": [
+          45,
+          45,
+          45,
+          45,
+          45
+        ],
+        "active": 45,
+        "url_sha256": "0ddd8807243b662fcf6c438c3a2e522d72d0b2197c648292b75d616412659356",
+        "content_sha256": "4d28a57a2ea94e11512cfedaa857921657e8f029eae61c075346529498135d98"
+      },
+      {
+        "board": {
+          "id": "141c10a6-8990-49d4-a0a2-b72a17984896",
+          "board_url": "https://careers.juni.co/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:23:26.340981+00:00",
+          "next_check_at": "2026-09-27 20:23:26.340981+00:00"
+        },
+        "recent_discovered_counts": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "active": 4,
+        "url_sha256": "c8a2afc4b1ec4ef1db5b1c6e953e0694ab4d18e62049f3ddc91f2f551d93c247",
+        "content_sha256": "3540eb89213568b17b7ea1ee8bef592ed810c2f987ce53961b47644a6f2904ed"
+      },
+      {
+        "board": {
+          "id": "8187d1df-d0fc-4dfe-a828-4bd3a531e36b",
+          "board_url": "https://careers.corintis.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:24:24.528719+00:00",
+          "next_check_at": "2026-09-27 20:24:24.528719+00:00"
+        },
+        "recent_discovered_counts": [
+          9,
+          9,
+          9,
+          9,
+          9
+        ],
+        "active": 9,
+        "url_sha256": "e90d4261c0c4444d37d95354a191fb661d4f3106311ddf2644a389b2e4fafa50",
+        "content_sha256": "760eef58d0954921467efd9cdea0da0e950b87eeaa207c1c1db1bf20a41803fa"
+      },
+      {
+        "board": {
+          "id": "acf5a803-6bd6-49b0-b9b3-abfa5424712d",
+          "board_url": "https://careers.payfit.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:33:08.995192+00:00",
+          "next_check_at": "2026-09-27 20:33:08.995192+00:00"
+        },
+        "recent_discovered_counts": [
+          12,
+          12,
+          12,
+          12,
+          12
+        ],
+        "active": 12,
+        "url_sha256": "8eebff276f8cf1d3a78a0439ad35b40e7ca0b6edeb3386a823c06b8a9c335a8e",
+        "content_sha256": "c3327c0808fa2f92b828a09007f7bd30313ae58e9d6cdd04caa96931f7193f09"
+      },
+      {
+        "board": {
+          "id": "1da8b13a-eb76-48f5-aebc-d89c9d57e4b0",
+          "board_url": "https://karriere.bearingpoint.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:33:51.638097+00:00",
+          "next_check_at": "2026-09-27 20:33:51.638097+00:00"
+        },
+        "recent_discovered_counts": [
+          65,
+          65,
+          65,
+          65,
+          65
+        ],
+        "active": 65,
+        "url_sha256": "9f4c8ac65ec98bc3426a0a236afd5681802690fc078566516702c16fd3503e9d",
+        "content_sha256": "370c6b90d2951f1db457d99d5c8f715e6ab8d59448ee71424dcc5e6d0c2dc0bf"
+      },
+      {
+        "board": {
+          "id": "2c8cbda2-f447-4b40-b09d-4b8918b999e6",
+          "board_url": "https://huawei.teamtailor.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:35:44.069511+00:00",
+          "next_check_at": "2026-09-27 20:35:44.069511+00:00"
+        },
+        "recent_discovered_counts": [
+          10,
+          10,
+          10,
+          10,
+          10
+        ],
+        "active": 10,
+        "url_sha256": "32021868fb406d774ec54a1fdc313368cc118feebbd0f491d0f0861a237b1e56",
+        "content_sha256": "74bb98346d30d23f3fc478da2bea39d9710110fae083998a45e0db2b07a71f8c"
+      },
+      {
+        "board": {
+          "id": "2c1adda2-8f53-4c51-929b-82bbf9b6cba0",
+          "board_url": "https://iqvia.iqvia.teamtailor-enterprise.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:35:56.534049+00:00",
+          "next_check_at": "2026-09-27 20:35:56.534049+00:00"
+        },
+        "recent_discovered_counts": [
+          49,
+          49,
+          49,
+          49,
+          49
+        ],
+        "active": 49,
+        "url_sha256": "209b3ddbd67eea55867a52b3e8e346a4e4c9be354d5ebd35d3c651bc7a7566fe",
+        "content_sha256": "eefe1ca99d56015cbdd94dda5be9e134f725f976b7b70477b46e06fffd0d6255"
+      },
+      {
+        "board": {
+          "id": "99aeb617-d6fa-4d7e-a204-db78b21426f7",
+          "board_url": "https://aignostics.teamtailor.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:37:58.507765+00:00",
+          "next_check_at": "2026-09-27 20:37:58.507765+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "4cece373f19d5bf0eacc0fa539a8a4d2199917f7ac0d7acfcabf82ea5eee5ccb",
+        "content_sha256": "24b5926e887a2ee59400dade82eb6d5284bb243b7d3cc243de317e2d9d1cf46b"
+      },
+      {
+        "board": {
+          "id": "22e22b60-752d-47a0-a6bd-3a583167ac27",
+          "board_url": "https://jobs.goldbach.com/jobs",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:42:21.756845+00:00",
+          "next_check_at": "2026-09-27 20:42:21.756845+00:00"
+        },
+        "recent_discovered_counts": [
+          3,
+          3,
+          3,
+          3,
+          3
+        ],
+        "active": 3,
+        "url_sha256": "4088a01ba9da17b5498cbde054bcb54aa3e9d4cde7803768e622c32e6476d710",
+        "content_sha256": "9f3bd3567ac5804d57923e63f9ae8c0eb49f245d37fa7df145d55df5a340593a"
+      },
+      {
+        "board": {
+          "id": "105442a8-a060-4c9f-93ef-79a0d8774221",
+          "board_url": "https://careers.nestai.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:45:07.083486+00:00",
+          "next_check_at": "2026-09-27 20:45:07.083486+00:00"
+        },
+        "recent_discovered_counts": [
+          23,
+          23,
+          23,
+          23,
+          23
+        ],
+        "active": 23,
+        "url_sha256": "8580501eb7eb61e40b986ed5cc8c549903e704252f20ba7ac55df32334747c42",
+        "content_sha256": "ad5cc5ddbf70af6c6fbfc82640a9ccc32a2d15ed8a093770dc307174120b8c1a"
+      },
+      {
+        "board": {
+          "id": "41f86e7e-8945-4c87-b2f4-ed86f9a0702c",
+          "board_url": "https://careers.specitec.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:52:06.007495+00:00",
+          "next_check_at": "2026-09-27 20:52:06.007495+00:00"
+        },
+        "recent_discovered_counts": [
+          12,
+          12,
+          12,
+          12,
+          12
+        ],
+        "active": 12,
+        "url_sha256": "83b4e9dd206e07aa8091b863d1d1214216419afcfb961d7311b84c72b6e89a10",
+        "content_sha256": "921d4f3a96fde9a8427fd6c534607acbfdd698d22b544b2afb129c3579565f93"
+      },
+      {
+        "board": {
+          "id": "47ef1a92-ede9-4ee2-ae3c-6d42daa6c7fb",
+          "board_url": "https://careers.emhartglass.com/",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:54:16.598443+00:00",
+          "next_check_at": "2026-09-27 20:54:16.598443+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "6824bb35f0a3e7693f43512b572ed33b352c61eb6251641bf228499b8c5c0aaf",
+        "content_sha256": "ba26c4585c299ea82607011060aa4d6f5ed98db736e1eff2dbc0d3351589382c"
+      },
+      {
+        "board": {
+          "id": "2fb29e47-4124-46b8-b4de-c689b911adb3",
+          "board_url": "https://jobs.kaiko.ai/",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:55:59.808385+00:00",
+          "next_check_at": "2026-09-27 20:55:59.808385+00:00"
+        },
+        "recent_discovered_counts": [
+          17,
+          17,
+          17,
+          17,
+          17
+        ],
+        "active": 17,
+        "url_sha256": "68fbf5cfb161a4edd0cbd64b6309ba151e95404d0980674c7aec9776187386ad",
+        "content_sha256": "9c3ea4b851ff592dc784573832f4b79562075ec92b3ca02350339a19157b94e4"
+      },
+      {
+        "board": {
+          "id": "c2110db3-4802-4da5-a23c-336b737bfb6e",
+          "board_url": "https://career.apco-technologies.eu/fr/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:56:19.700514+00:00",
+          "next_check_at": "2026-09-27 20:56:19.700514+00:00"
+        },
+        "recent_discovered_counts": [
+          14,
+          14,
+          14,
+          14,
+          14
+        ],
+        "active": 14,
+        "url_sha256": "0a219e254b9d682a69db905b4fb36c9f795b7f8ad73cbc08543550feee2c6c94",
+        "content_sha256": "7ced4ea5834c148be9087645d7faf64e85afbdb148299dadd05d2ff19ccca43d"
+      },
+      {
+        "board": {
+          "id": "467b3272-3980-46c5-ad6c-58c73e69d41f",
+          "board_url": "https://careers.getbux.com/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:57:19.901993+00:00",
+          "next_check_at": "2026-09-27 20:57:19.901993+00:00"
+        },
+        "recent_discovered_counts": [
+          6,
+          6,
+          6,
+          6,
+          6
+        ],
+        "active": 6,
+        "url_sha256": "feae6994b8e3ada34df0b71f1e055acef70b0840a12bf3a18a9b4571a18f3ae3",
+        "content_sha256": "e948b73ae025fe230718ec4f83f6d292a7e32f40f12b52b19a43f55798de1267"
+      },
+      {
+        "board": {
+          "id": "29c928c6-3659-49e5-9f82-77915230101b",
+          "board_url": "https://jobb.compass-group.no/jobs",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:58:25.679423+00:00",
+          "next_check_at": "2026-09-27 20:58:25.679423+00:00"
+        },
+        "recent_discovered_counts": [
+          24,
+          24,
+          24,
+          24,
+          24
+        ],
+        "active": 24,
+        "url_sha256": "5680115c93782aea05ef19dcd9f12d10669526501db423f4ef77e96d4d69256f",
+        "content_sha256": "ba479cc9d516445d5cf086c3fbfc31581d0305c2feb578bf9834e754768989f3"
+      },
+      {
+        "board": {
+          "id": "55d0f1bd-2107-466c-bf99-3975feff539e",
+          "board_url": "https://careers.nicollcurtin.com/jobs",
+          "board_status": "quarantined",
+          "consecutive_failures": 31,
+          "last_success_at": "2026-08-31 00:01:21.795993+00:00",
+          "next_check_at": "2026-09-28 03:17:11.732241+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "840200b85bf6f6ad6ba97c1c3c3e810134ed24b7f4cdcfe8fa94028f8f82c1c1",
+        "content_sha256": "6e6e087582b5ff9f8e1a570bdffbe70068625f796fa491e63b71a1cf1c5365f9"
+      },
+      {
+        "board": {
+          "id": "2a0d059d-b5a0-4874-a841-331b2673f7fa",
+          "board_url": "https://career.treyd.io/jobs",
+          "board_status": "quarantined",
+          "consecutive_failures": 23,
+          "last_success_at": "2026-09-08 14:15:27.891511+00:00",
+          "next_check_at": "2026-09-28 06:02:22.369703+00:00"
+        },
+        "recent_discovered_counts": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "active": 1,
+        "url_sha256": "12cabd42853a08c296b867357c6154fda2303d529589bff01d31ac1b6bcd6a6f",
+        "content_sha256": "2408db799b33a4549700d0254d7218bb1ed1ff666766a0b0a94a62f889591494"
+      },
+      {
+        "board": {
+          "id": "ba832366-11c1-4a0f-b47f-e771d65b3101",
+          "board_url": "https://palta.teamtailor.com/jobs",
+          "board_status": "quarantined",
+          "consecutive_failures": 30,
+          "last_success_at": "2026-09-01 06:29:34.308827+00:00",
+          "next_check_at": "2026-09-28 14:06:26.779003+00:00"
+        },
+        "recent_discovered_counts": [
+          11,
+          11,
+          11,
+          11,
+          11
+        ],
+        "active": 11,
+        "url_sha256": "c0bafb3e17dcae170ee6ab2300c95f548935742316585f3de111a0c9bc8bac59",
+        "content_sha256": "b9ec7f955e076204bb1f34c2a0c7120c1fe7a5ad927e9bebffe7f03edf75071b"
+      },
+      {
+        "board": {
+          "id": "b309c081-c917-4b39-8441-43235c05d055",
+          "board_url": "https://jobs.validio.io/jobs",
+          "board_status": "quarantined",
+          "consecutive_failures": 28,
+          "last_success_at": "2026-09-02 10:59:39.358060+00:00",
+          "next_check_at": "2026-09-28 14:09:38.207779+00:00"
+        },
+        "recent_discovered_counts": [
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "active": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "content_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ]
+  },
+  "limitations": [
+    "No full Python/Chromium retirement claim.",
+    "Same-byte retained replay is parser evidence, not whole-lane CPU/RAM/density/cost proof.",
+    "Natural production runs are not forced and due scores are unchanged."
+  ],
+  "deployment_conclusion": "success",
+  "configuration_sync": {
+    "engine": "go",
+    "companies": 6013,
+    "boards": 7879,
+    "completed_at": "2026-09-27T20:27:50.773764406Z"
+  },
+  "natural_teamtailor_logs": [
+    {
+      "board_id": "fad23d4e-2e1e-43c6-ba9a-2a2524ffabb5",
+      "urls": 15,
+      "url_sha256": "053d0a3f34bc4119ac4b72c89d3d3c5137cffda2586ae309508341b49a87bf71",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 107335,
+      "event": "go_teamtailor_rss.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T20:28:15.422770Z"
+    },
+    {
+      "board_id": "fad23d4e-2e1e-43c6-ba9a-2a2524ffabb5",
+      "urls": 15,
+      "url_sha256": "053d0a3f34bc4119ac4b72c89d3d3c5137cffda2586ae309508341b49a87bf71",
+      "truncated": false,
+      "event": "go_teamtailor_rss.monitor_postprocessed",
+      "level": "info",
+      "timestamp": "2026-09-27T20:28:17.114788Z"
+    },
+    {
+      "board_id": "7dcbe331-3b98-4d96-b4dc-a8d69ca4b84a",
+      "urls": 1,
+      "url_sha256": "681dad73e8f208188079a826308b7aa10380dc46eed3b021adfca233bccb4fe2",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 5467,
+      "event": "go_teamtailor_rss.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T20:31:41.323519Z"
+    },
+    {
+      "board_id": "7dcbe331-3b98-4d96-b4dc-a8d69ca4b84a",
+      "urls": 1,
+      "url_sha256": "681dad73e8f208188079a826308b7aa10380dc46eed3b021adfca233bccb4fe2",
+      "truncated": false,
+      "event": "go_teamtailor_rss.monitor_postprocessed",
+      "level": "info",
+      "timestamp": "2026-09-27T20:31:41.397854Z"
+    }
+  ],
+  "first_natural_readback": {
+    "board": {
+      "id": "fad23d4e-2e1e-43c6-ba9a-2a2524ffabb5",
+      "board_url": "https://huaweifinlandrnd.teamtailor.com/jobs",
+      "board_status": "active",
+      "consecutive_failures": 0,
+      "last_success_at": "2026-09-27 20:28:17.116108+00:00",
+      "next_check_at": "2026-09-27 21:28:17.116108+00:00"
+    },
+    "active": 15,
+    "url_sha256": "053d0a3f34bc4119ac4b72c89d3d3c5137cffda2586ae309508341b49a87bf71",
+    "rows": [
+      {
+        "id": "39c22271-6ed2-4022-a49f-ae213e852d1b",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/7240510-lead-mobile-threat-researcher-engineer",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 4070552467927527352
+      },
+      {
+        "id": "9a769a83-f8f1-4f26-b455-7a6ab7a237e1",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/7292967-principal-research-scientist-trust-safety-alignment",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 5602169278149343577
+      },
+      {
+        "id": "125f7a28-1a50-4af8-a3d2-8f4052ae94ea",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/7499575-phd-internship-and-visiting-scholars-program-for-2026",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": -4274862147846852334
+      },
+      {
+        "id": "c7c43cbc-54e9-4e9b-ad82-168a50544275",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/7578863-senior-researcher-neurosymbolic-reasoning",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 2221737373392355517
+      },
+      {
+        "id": "78611e0a-3031-4f84-bfe0-933362a30319",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/7782535-senior-researcher-neurosymbolic-reasoning",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": -8831749810316523143
+      },
+      {
+        "id": "31f12f81-7ec3-4668-ad29-783cd2eae1aa",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/7790446-camera-optical-design-engineer",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 8633018978259637493
+      },
+      {
+        "id": "e8c30e04-d86a-4b57-a243-04ed379e4f37",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/7837493-intern-computer-vision-multimodal",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 7248573147611599022
+      },
+      {
+        "id": "97cbe83a-f3c0-41cb-8b9e-61cbef508b16",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/7893622-2027-huawei-competition-talent-program",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 4243566308221771160
+      },
+      {
+        "id": "360c7b60-4122-4509-b482-5f855a532319",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/8099653-color-imaging-ai-research-engineer",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": -6551638667075420782
+      },
+      {
+        "id": "c886c643-a06a-47a6-ab46-e71f24cfcb43",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/8357561-open-application",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": -1351910084175309139
+      },
+      {
+        "id": "fc079a0f-1bff-4fc7-a019-a06b2b7c96ca",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/8367318-senior-principal-web-platform-engineer",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 2085448565901105973
+      },
+      {
+        "id": "43a6d164-98ab-404e-9b3f-d0c0cf55cfba",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/8380281-research-intern-enclaves-secure-hypervisor-agentic-and-llm-workloads",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": -4399150273426105099
+      },
+      {
+        "id": "d9fe8b5a-d1dc-407b-849b-83d748c1fd84",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/8380469-research-intern-compiler-instrumentation-with-hardware-assistance-for-morphing",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 9139876375038765314
+      },
+      {
+        "id": "bd9ea186-2ecb-467e-b918-89e192c28962",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/8381333-senior-researcher-machine-learning-and-system-security",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 8286267499432062476
+      },
+      {
+        "id": "deb6008f-89c2-4b22-ace0-cf88213bb034",
+        "source_url": "https://huaweifinlandrnd.teamtailor.com/jobs/8400569-senior-researcher-expert-mobile-operating-system-security",
+        "last_seen_at": "2026-09-27 20:28:16.044293+00:00",
+        "description_r2_hash": 152768401959964303
+      }
+    ],
+    "content_sha256": "64d634d25896841b2813788a8a356a7a8829301e836b9456ec25764181c9c43d",
+    "content_matches_baseline": true
+  },
+  "additional_ashby_v877_proof": {
+    "readback": {
+      "board": {
+        "id": "e9ef3412-34d8-454e-b4c4-093d4bae9d24",
+        "board_url": "https://smallpdf.com/careers",
+        "board_status": "active",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 19:55:42.070086+00:00",
+        "next_check_at": "2026-09-27 20:55:42.070086+00:00"
+      },
+      "active": 3,
+      "url_sha256": "fdd084db90e93d266d645b17d4d89fb76a15b92c642ea3af2aada2c86f695bd7",
+      "rows": [
+        {
+          "id": "6a1516ed-9e8f-409b-a5bc-bd1cb5c1182a",
+          "source_url": "https://jobs.ashbyhq.com/smallpdf/24d10c67-2bd8-4649-9337-b94dfbfaaa86",
+          "last_seen_at": "2026-09-27 19:55:41.705694+00:00",
+          "description_r2_hash": 7998672530382687947
+        },
+        {
+          "id": "bd47828e-7476-4601-a487-c059fbf68f0a",
+          "source_url": "https://jobs.ashbyhq.com/smallpdf/dbb2d75c-6e82-46f3-bcaf-bc8b417db535",
+          "last_seen_at": "2026-09-27 19:55:41.705694+00:00",
+          "description_r2_hash": 7484270040470879771
+        },
+        {
+          "id": "8a974b2b-34dd-44f0-adbf-254194c10da5",
+          "source_url": "https://jobs.ashbyhq.com/smallpdf/fd1674ee-0316-4bbd-95a7-559dbb8eaa92",
+          "last_seen_at": "2026-09-27 19:55:41.705694+00:00",
+          "description_r2_hash": -306007714073371388
+        }
+      ]
+    },
+    "event": {
+      "board_id": "e9ef3412-34d8-454e-b4c4-093d4bae9d24",
+      "urls": 3,
+      "url_sha256": "fdd084db90e93d266d645b17d4d89fb76a15b92c642ea3af2aada2c86f695bd7",
+      "requests": 1,
+      "responses": 1,
+      "response_bytes": 62046,
+      "event": "go_ashby.monitor_complete",
+      "level": "info",
+      "timestamp": "2026-09-27T19:55:41.693165Z"
+    }
+  },
+  "observed_at": "2026-09-27T20:33:44.981186+00:00",
+  "route_census": {
+    "enabled": 7879,
+    "routes": {
+      "go-ashby": 935,
+      "go-booking-api": 1,
+      "go-greenhouse": 2520,
+      "go-lever": 194,
+      "go-personio": 2,
+      "go-pinpoint": 3,
+      "go-recruitee": 3,
+      "go-sitemap": 1,
+      "go-smartrecruiters": 4,
+      "go-successfactors-rss": 1,
+      "go-teamtailor-rss": 162,
+      "go-workable": 15,
+      "go-workday": 2,
+      "python": 4036
+    },
+    "errors": [],
+    "python_monitor_types": {
+      "dom": 837,
+      "workday": 494,
+      "api_sniffer": 324,
+      "sitemap": 313,
+      "join": 276,
+      "rss": 244,
+      "oracle_hcm": 134,
+      "inline": 125,
+      "smartrecruiters": 125,
+      "icims": 118,
+      "recruitee": 112,
+      "pinpoint": 101,
+      "workable": 62,
+      "nextdata": 54,
+      "personio": 53,
+      "greenhouse": 50,
+      "gupy": 36,
+      "phenom": 31,
+      "linkedin": 31,
+      "eightfold": 30,
+      "jobylon": 28,
+      "beisen": 24,
+      "almacareer": 23,
+      "mokahr": 22,
+      "jazzhr": 20,
+      "ukg": 16,
+      "paycom": 16,
+      "softgarden": 15,
+      "adp": 14,
+      "recruiter_co_kr": 14,
+      "breezy": 13,
+      "gem": 13,
+      "accenture": 12,
+      "cornerstone": 12,
+      "jobs_ch": 11,
+      "computrabajo": 11,
+      "bamboohr": 10,
+      "dayforce": 10,
+      "rippling": 10,
+      "paylocity": 9,
+      "comeet": 9,
+      "umantis": 9,
+      "jobvite": 9,
+      "unifr": 9,
+      "talentbrew": 8,
+      "notion": 8,
+      "avature": 7,
+      "seek": 6,
+      "hrmos": 6,
+      "recruiterbox": 6,
+      "manatal": 5,
+      "darwinbox": 5,
+      "taleo": 4,
+      "jobbank104": 4,
+      "brassring": 4,
+      "practicematch": 4,
+      "hibob": 4,
+      "ycombinator": 4,
+      "bytedance": 3,
+      "pageup": 3,
+      "typify": 3,
+      "intervieweb": 3,
+      "earcu": 3,
+      "welcometothejungle": 3,
+      "traffit": 3,
+      "woowa": 3,
+      "jobstreet": 3,
+      "deel": 3,
+      "johdi": 2,
+      "paynet": 2,
+      "cvwarehouse": 2,
+      "jobdiva": 2,
+      "fenbi": 2,
+      "talentreef": 2,
+      "headhunter": 2,
+      "talemetry": 2,
+      "job51": 2,
+      "infor": 1,
+      "jobconvo": 1,
+      "amazon": 1,
+      "curately": 1,
+      "njoyn": 1,
+      "seamlesshiring": 1,
+      "wecruit": 1,
+      "inploi": 1,
+      "peoplesoft": 1,
+      "cnstaff": 1,
+      "infoniqa": 1,
+      "turbohire": 1,
+      "candidatus": 1,
+      "nowhiring": 1,
+      "beehire": 1,
+      "papa_johns": 1,
+      "jarvi": 1,
+      "keka": 1,
+      "hirehive": 1,
+      "kipt": 1,
+      "universia": 1,
+      "prospective": 1,
+      "unisante": 1,
+      "lever": 1
+    }
+  },
+  "activation": {
+    "cohort": "c1",
+    "routing_epoch": 90,
+    "exact_selectors_staged": 25,
+    "c2": "dark",
+    "audit": [
+      {
+        "route": {
+          "shard_id": "lightpanda-b0",
+          "routing_epoch": 90,
+          "engine_owner": "go"
+        },
+        "decision": "accepted",
+        "reason": "audit_ok",
+        "records": 5,
+        "inflight": 0
+      },
+      {
+        "states": {
+          "ready": 5
+        },
+        "record_count": 5
+      }
+    ]
+  },
+  "health": [
+    "deploy-lightpanda-claimant-1 Up 45 seconds (healthy)",
+    "deploy-browser-1-1 Up 50 seconds (healthy)",
+    "deploy-worker-3-1 Up 50 seconds (healthy)",
+    "deploy-worker-1-1 Up 50 seconds (healthy)",
+    "deploy-worker-2-1 Up 50 seconds (healthy)",
+    "deploy-lightpanda-executor-1 Up 51 seconds (healthy)",
+    "deploy-drain-1 Up 51 seconds (healthy)",
+    "deploy-lightpanda-producer-1 Up About a minute (healthy)",
+    "deploy-alloy-1 Up 3 minutes",
+    "deploy-exporter-1 Up 3 minutes",
+    "deploy-redis-1 Up 13 days (healthy)"
+  ],
+  "runtime_metrics": [
+    "crawler_runtime_executions_total{implementation=\"go-teamtailor-rss\",outcome=\"success\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"0.01\",stage=\"monitor\"} 0.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"0.05\",stage=\"monitor\"} 0.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"0.1\",stage=\"monitor\"} 0.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"0.25\",stage=\"monitor\"} 0.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"0.5\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"1.0\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"2.0\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"5.0\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"10.0\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"30.0\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"60.0\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"120.0\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"300.0\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_bucket{implementation=\"go-teamtailor-rss\",le=\"+Inf\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_count{implementation=\"go-teamtailor-rss\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_execution_duration_seconds_sum{implementation=\"go-teamtailor-rss\",stage=\"monitor\"} 0.46120368130505085",
+    "crawler_runtime_output_items_total{implementation=\"go-teamtailor-rss\",stage=\"monitor\"} 1.0",
+    "crawler_runtime_capability_executions_total{capability=\"rss\",implementation=\"go-teamtailor-rss\",outcome=\"success\",stage=\"monitor\"} 1.0"
+  ],
+  "typesense_metrics": [
+    "crawler_typesense_export_docs_total{status=\"success\"} 121",
+    "crawler_typesense_export_docs_total{status=\"error\"} 0",
+    "crawler_typesense_export_lag 0",
+    "crawler_typesense_healthy 1"
+  ],
+  "failure_readback": {
+    "boards": 162,
+    "increases": [],
+    "counts": [
+      {
+        "id": "0fde69b6-abe2-49b3-90a3-85d13c324f02",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "27c697fa-5d10-49c7-b0fd-602598a1723b",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "39b66f8d-aa73-4e2c-85f6-24c106002cd2",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "67e59974-ffb3-40e9-a0ed-25df0820d054",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "035e2d64-e6cd-4a7d-b8dc-500ffdcc8b20",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "f4f589da-d791-4141-b2db-57c63f355e4d",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "e99fbf1d-290f-4f78-922b-2f4a97bff3c9",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "d740a600-c9ce-47e5-858b-4eee0f599296",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "95e1d270-748c-4172-b7bb-5ccd5d2e89ab",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "924dadf1-0100-4550-97ad-547c93a0d2dc",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "a38b8be0-c1ce-4429-879c-38e66484df18",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "e5b81f06-d299-416a-a4ef-fc42cabc0c80",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "c7086aeb-b9fb-44f4-a11e-ba97d426a2a9",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "cb80db70-d5f9-40a6-9b81-1da8f7f08357",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "c4c3713c-7e0f-482c-acf3-87f2f24e890e",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "e1264a86-5eb8-4daa-9355-075461a24821",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "f71a10aa-9f23-43b1-ac3e-1dfdd7e87b2c",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "e3665dca-bfc7-445f-ace2-fa81ad5972f1",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "fc9aabe0-4545-43bf-b6af-e743ea783b06",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "fe7fc03a-9454-4a01-acaa-45789aed2624",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "d288218f-8a3b-42d7-924c-12dff95e4ce5",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "d4087189-b4a2-4737-8d85-d2ea8e09d716",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "914d866b-774a-4bc1-83b1-bd81e7448d01",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "88cc983a-6288-473a-ba13-e1acbc64833f",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "b1fa33fd-55c6-4e97-b90b-7d8098bf965d",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "504f64d8-f249-4d74-9c0d-236db66d6bca",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "9aa60f06-e68a-4df6-925d-3ccde5b59e09",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "ef664bd5-26e3-4f5f-b1ff-0ac276a51d26",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "fe70d584-85d9-419a-ac6b-f490b0f5e99b",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "dd833327-dfc8-4080-b844-07d011d0a481",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "fe5f8d6a-3ee0-4893-b92a-0e5421b6f496",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "edc00d09-b109-4f05-a32e-d1bd35680707",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "627aac7c-619b-4771-962a-2e7af7b9d3df",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "ef0e364f-7b91-4eba-b4a9-add13d77efd0",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "d7e97cba-3635-4187-9548-54d83d04c489",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "1403b0cf-fa91-4738-94b7-5a6c928f5ecd",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "69270d77-5278-434e-8dee-e7b7d06960b4",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "69ee36d7-1819-4f0d-856e-9150549d1672",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "3a70b301-3a4d-4e8a-a818-a63416c4ac2f",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "c3bf5e3a-93c5-4d15-8124-3f442a1df4dc",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "010fc44b-8470-4b9a-9e74-5cabd6637f41",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "432e93e9-a125-4e15-bfb2-6a7601c1eca5",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "ec1369a6-6df2-4345-aff3-2fab35eb965d",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "891e5bcc-d232-4e22-a887-8d846108e672",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "a74da811-b371-453b-a827-69b110c9b44e",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "d60d8fe7-0447-4871-a925-013c8101c27e",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "48ec9398-bbb3-4d53-9959-60cae05f7b11",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "8a4cbda6-07cf-402b-9ab7-6680a4b31cbc",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "2d2c4f18-78e6-41e8-a1b5-f529d68b4e07",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "5441a1b3-2fd8-4a80-8147-2bdd339beee3",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "9cf9afc2-ed73-475f-a99a-4c311efaabaf",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "e4da3476-2712-447b-afd8-4c80f0d759ab",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "9ee3f96b-354a-4c47-bb3d-06a63fd9a2ff",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "c888141c-f616-47c7-b0d8-169ee28b8782",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "2864e224-4e46-4c97-afef-c567ffdaad7e",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "a2148c22-7522-4189-a237-16996f50acda",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "5175f319-26c4-4557-aa33-91e8c10c7e78",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "21b19dc1-26c7-466c-854a-76d7e9670f43",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "eadf692d-dc74-4108-a42f-9b52ca998ef1",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "ecb2c11a-15cc-458d-a790-c29e1ac92770",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "fd26eca2-2cdc-49f4-ba1f-2182d6f6987f",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "5528ea1c-4c6d-4399-99d2-98e6faf5cdd1",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "013dabdc-3b3f-4120-91d8-e34480c9cd16",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "02156dd8-f373-45b6-bbaa-a5ea45cff4e1",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "5d967517-4661-4f53-b190-301122dabb73",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "2ca27bde-6743-4443-ab49-8290871ed1b4",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "1798c92b-3625-40c4-af1a-3e3f982c2f0f",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "05bedb53-21b2-4fb6-b014-5b57c3a99cc2",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "22d8a6d3-d083-4375-bcfa-3c86c5d3b743",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "72d8d377-2242-4203-9270-c7447b4a3b56",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "80704dbf-c5a1-4105-ba14-4c8f3f1db1fd",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "56d4a92b-b9cb-48fa-a493-4566ee99015c",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "fbf05109-139e-4339-aadd-34ba21144232",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "df366870-47b3-447d-a233-a20ba12b60b5",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "abeb3f7b-553a-4de5-8310-2d0e12df6dc6",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "f7908ec6-cff1-4c5d-b992-22eb6fed86d5",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "b9ab1e05-4e33-4f1d-85b4-e53eb1a5d008",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "98ca4ca2-5075-4c79-9c7f-e7fce274ebc1",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "79c18a1d-901a-4d64-a371-97672684b4d7",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "c764939d-3d54-49db-8661-7a87379e4139",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "076ed878-8913-46dc-9810-9238e4e4a73f",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "f563cb1f-2bbc-4484-9ff0-acf2053f0130",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "655af73c-f1a9-4d20-9d11-218594550f44",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "ca490041-d9a1-4d79-9cc6-1264669117f7",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "6b65210e-52e3-4780-80e6-fdaa4b50da89",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "6ebac519-45bb-4580-84d8-652207f60b74",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "b2e7ee83-83b0-450a-906f-442b6338499c",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "ff4b56c9-f0d4-41c5-8790-bd7ca621a3d1",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "89c04cce-022d-4d59-a1c7-534d94a73888",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "0f54cd6b-964c-4a63-a3f6-004115465946",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "c7974d2c-f457-427d-a64b-33c05d6f5a44",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "7b10413d-e7a9-486f-879b-bae48bedbd8f",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "ddf9cf99-3651-48a4-a8d4-8b61e4633112",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "5f81bd3e-9f2b-4105-a5e4-c0777ef639fb",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "2be6eca5-cd45-4629-bacc-5acc18cdd890",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "78a2ca06-3741-4e9a-aa5f-f599fc24a497",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "6caa5ccd-b14d-4c73-902b-8cb72334cfbe",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "595d8bc7-ae55-4c04-ae50-78d7898d5ba4",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "d9a7563a-080b-40da-89cf-84e9b012de6d",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "31ee72f7-04c5-4077-aacc-eef1d392fbb3",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "35a08961-9554-49e2-97d6-3c6fa0f94410",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "3f93db12-05fd-4188-82c0-71ab66923ea2",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "f9e86930-6057-458c-9c3b-a9f666c20b33",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "3af33afc-01cf-4612-a475-783bbfe23d51",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "5686909c-5632-43ce-8cce-d9caedf83c11",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "1bc6c939-55bb-47da-b436-c794be0b7742",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "9772c4c0-c0e1-4457-855b-4c2233bf9cfc",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "1821cc5e-d1d7-4550-aaa0-4e32487396f1",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "6c2d3d86-cf27-448d-9c15-203fdfedcd93",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "e913f943-96d5-4913-be1a-da60e3b23c26",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "9e80420a-fbfe-4705-941b-1a78d26a5c71",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "50900399-1948-4641-9d29-ce7148ff5ead",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "05106ab4-9ce3-4e5e-8ba9-02afc0185abb",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "60fc6349-6e5f-4e0f-bf97-ed72c8d1f838",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "6fd8ee9b-523e-49f6-94e7-7b5ffbcc3dd5",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "e33c2071-e4dd-4a86-8756-9584ad64c416",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "44375bb1-c4b7-4699-92ca-9c954d9a65f0",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "1e5f7096-0f31-4474-8f4b-b93fa36a1eef",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "51bf0d46-a0e3-491d-8879-609e334fad4a",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "b07908ef-142f-4af0-b28c-15a5645c9e84",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "7f647421-ecaa-4a38-9b49-9983b618cfd8",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "7a778857-b2f6-49fe-b8b5-ef1a6227e739",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "d78f3a59-0215-4e49-a660-0dce37597b67",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "bea7cd57-97fc-4493-8d11-a3c5f191d50c",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "a15e9abb-f887-404f-aec9-8f1afdbfea76",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "237949d3-daa3-46ad-b4ec-76d5509beebd",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "056063ef-d562-48f4-b73f-70fa9a2317b9",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "086a9155-47f1-423e-a6e7-ed4417ed07ff",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "0953468a-c6be-415d-bef2-717cbdbd53a5",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "6361c6b6-3f8d-4200-90f7-99061389ab1b",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "141c10a6-8990-49d4-a0a2-b72a17984896",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "8187d1df-d0fc-4dfe-a828-4bd3a531e36b",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "acf5a803-6bd6-49b0-b9b3-abfa5424712d",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "1da8b13a-eb76-48f5-aebc-d89c9d57e4b0",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "2c8cbda2-f447-4b40-b09d-4b8918b999e6",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "2c1adda2-8f53-4c51-929b-82bbf9b6cba0",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "99aeb617-d6fa-4d7e-a204-db78b21426f7",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "22e22b60-752d-47a0-a6bd-3a583167ac27",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "105442a8-a060-4c9f-93ef-79a0d8774221",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "41f86e7e-8945-4c87-b2f4-ed86f9a0702c",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "47ef1a92-ede9-4ee2-ae3c-6d42daa6c7fb",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "2fb29e47-4124-46b8-b4de-c689b911adb3",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "c2110db3-4802-4da5-a23c-336b737bfb6e",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "467b3272-3980-46c5-ad6c-58c73e69d41f",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "29c928c6-3659-49e5-9f82-77915230101b",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "cc4c1b64-01c2-4239-af5f-c9320cf073a0",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "8d1621f2-7ce1-44b7-9178-9d5149c010b9",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "765fe7b1-1413-4ca4-b71f-bc6ec70b73f9",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "cda6cf38-494a-4513-b8a1-f5b55cedd3d9",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "62480f5e-0bef-428e-9ba2-fbb56502a82a",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "ea1236fb-e34d-4dda-a5c0-6c978a33d68c",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "7e053c37-6a78-47cd-adb6-ac4019eb232c",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "73c0f106-a312-49de-9133-e3733ee02d33",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "67353966-03e1-4fb5-920d-b8c74c1ef9a0",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "cf0e1e6e-d215-4e40-8959-316cb52bdb63",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "7ec42fad-ff59-4ca1-82f4-69cd6e46f6d9",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "fad23d4e-2e1e-43c6-ba9a-2a2524ffabb5",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "7dcbe331-3b98-4d96-b4dc-a8d69ca4b84a",
+        "consecutive_failures": 0
+      },
+      {
+        "id": "55d0f1bd-2107-466c-bf99-3975feff539e",
+        "consecutive_failures": 31
+      },
+      {
+        "id": "2a0d059d-b5a0-4874-a841-331b2673f7fa",
+        "consecutive_failures": 23
+      },
+      {
+        "id": "ba832366-11c1-4a0f-b47f-e771d65b3101",
+        "consecutive_failures": 30
+      },
+      {
+        "id": "b309c081-c917-4b39-8441-43235c05d055",
+        "consecutive_failures": 28
+      }
+    ]
+  },
+  "natural_run_readbacks": [
+    {
+      "board": {
+        "id": "fad23d4e-2e1e-43c6-ba9a-2a2524ffabb5",
+        "board_url": "https://huaweifinlandrnd.teamtailor.com/jobs",
+        "board_status": "active",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 20:28:17.116108+00:00",
+        "next_check_at": "2026-09-27 21:28:17.116108+00:00"
+      },
+      "recent_discovered_counts": [
+        15,
+        15,
+        15,
+        15,
+        15
+      ],
+      "active": 15,
+      "url_sha256": "053d0a3f34bc4119ac4b72c89d3d3c5137cffda2586ae309508341b49a87bf71",
+      "content_sha256": "64d634d25896841b2813788a8a356a7a8829301e836b9456ec25764181c9c43d",
+      "content_matches_baseline": true
+    },
+    {
+      "board": {
+        "id": "7dcbe331-3b98-4d96-b4dc-a8d69ca4b84a",
+        "board_url": "https://doconomy.teamtailor.com/jobs",
+        "board_status": "active",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 20:31:41.399410+00:00",
+        "next_check_at": "2026-09-27 21:31:41.399410+00:00"
+      },
+      "recent_discovered_counts": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "active": 1,
+      "url_sha256": "681dad73e8f208188079a826308b7aa10380dc46eed3b021adfca233bccb4fe2",
+      "content_sha256": "f0ca1f05142961c3de15f11defe2e2c3f84b2a843f1c766a290c90d45beac3f8",
+      "content_matches_baseline": true
+    }
+  ],
+  "effective_release_defaults": {
+    "TEAMTAILOR_RSS_GO_PERCENT": "100"
+  },
+  "next_successfactors_inventory": {
+    "enabled": 227,
+    "eligible_current_go": 188,
+    "require_profile_work": 39
+  }
+}
