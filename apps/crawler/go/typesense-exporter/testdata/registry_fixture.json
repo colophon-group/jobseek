@@ -1,0 +1,681 @@
+[
+  {
+    "csv": {
+      "companies": "slug,name,website,logo_url,icon_url,logo_type,industry,employee_count_range,founded_year,extras\nacme,Åcme,https://acme.test,,https://acme.test/icon,icon,7, +2 ,2_000,\"{\"\"x\"\":1}\"\nother,Other,,,,,invalid,,١٩٩٩,bad-json\n",
+      "company_descriptions": "slug,en,ja\nacme,\" First\nline \", 説明 \n",
+      "industries": "id,en,de,fr,it\n7,Software, Software ,Logiciel,\n",
+      "occupation_domains": "slug,en,de,fr,it\ntech, Technology ,Technik,,Tecnologia\n",
+      "occupations": "slug,parent,domain,en,de,fr,it,es,aliases\nengineer,,tech,Engineer,Ingenieur,,,Ingeniero, Dev | Developer |\nbackend, engineer , tech ,Backend,,,,,Server\n",
+      "seniority": "slug,en,de,fr,it,aliases\nsenior,Senior,Senior,,,Experienced| Sr \n",
+      "technologies": "slug,name,category\npython,Python,language\nblank,\"\",\"\"\nmissing,,"
+    },
+    "name": "all_tables",
+    "plan": [
+      {
+        "args": [
+          [
+            "tech"
+          ]
+        ],
+        "key": "_UPSERT_OCCUPATION_DOMAINS"
+      },
+      {
+        "args": [
+          [
+            "tech",
+            "tech",
+            "tech"
+          ],
+          [
+            "en",
+            "de",
+            "it"
+          ],
+          [
+            "Technology",
+            "Technik",
+            "Tecnologia"
+          ],
+          [
+            true,
+            true,
+            true
+          ]
+        ],
+        "key": "_UPSERT_OCCUPATION_DOMAIN_NAMES"
+      },
+      {
+        "args": [
+          [
+            "engineer",
+            "backend"
+          ]
+        ],
+        "key": "_UPSERT_OCCUPATIONS"
+      },
+      {
+        "args": [
+          [
+            "engineer",
+            "engineer",
+            "engineer",
+            "engineer",
+            "engineer",
+            "backend",
+            "backend"
+          ],
+          [
+            "en",
+            "de",
+            "es",
+            "*",
+            "*",
+            "en",
+            "*"
+          ],
+          [
+            "Engineer",
+            "Ingenieur",
+            "Ingeniero",
+            "Dev",
+            "Developer",
+            "Backend",
+            "Server"
+          ],
+          [
+            true,
+            true,
+            true,
+            false,
+            false,
+            true,
+            false
+          ]
+        ],
+        "key": "_UPSERT_OCCUPATION_NAMES"
+      },
+      {
+        "args": [
+          [
+            "engineer",
+            "engineer",
+            "engineer",
+            "engineer",
+            "engineer",
+            "backend",
+            "backend"
+          ],
+          [
+            "en",
+            "de",
+            "es",
+            "*",
+            "*",
+            "en",
+            "*"
+          ],
+          [
+            "Engineer",
+            "Ingenieur",
+            "Ingeniero",
+            "Dev",
+            "Developer",
+            "Backend",
+            "Server"
+          ]
+        ],
+        "key": "_DELETE_STALE_OCCUPATION_NAMES"
+      },
+      {
+        "args": [
+          [
+            "backend"
+          ],
+          [
+            "engineer"
+          ]
+        ],
+        "key": "_SET_OCCUPATION_PARENTS"
+      },
+      {
+        "args": [
+          [
+            "backend"
+          ]
+        ],
+        "key": "_CLEAR_OCCUPATION_PARENTS"
+      },
+      {
+        "args": [
+          [
+            "engineer",
+            "backend"
+          ],
+          [
+            "tech",
+            "tech"
+          ]
+        ],
+        "key": "_SET_OCCUPATION_DOMAINS"
+      },
+      {
+        "args": [
+          [
+            "senior"
+          ]
+        ],
+        "key": "_UPSERT_SENIORITY"
+      },
+      {
+        "args": [
+          [
+            "senior",
+            "senior",
+            "senior",
+            "senior"
+          ],
+          [
+            "en",
+            "de",
+            "*",
+            "*"
+          ],
+          [
+            "Senior",
+            "Senior",
+            "Experienced",
+            "Sr"
+          ],
+          [
+            true,
+            true,
+            false,
+            false
+          ]
+        ],
+        "key": "_UPSERT_SENIORITY_NAMES"
+      },
+      {
+        "args": [
+          [
+            "python",
+            "blank",
+            "missing"
+          ],
+          [
+            "Python",
+            "",
+            null
+          ],
+          [
+            "language",
+            "",
+            null
+          ]
+        ],
+        "key": "_UPSERT_TECHNOLOGIES"
+      },
+      {
+        "args": [
+          [
+            7
+          ],
+          [
+            "Software"
+          ]
+        ],
+        "key": "_UPSERT_INDUSTRIES"
+      },
+      {
+        "args": [
+          [
+            7,
+            7,
+            7
+          ],
+          [
+            "en",
+            "de",
+            "fr"
+          ],
+          [
+            "Software",
+            "Software",
+            "Logiciel"
+          ],
+          [
+            true,
+            true,
+            true
+          ]
+        ],
+        "key": "_UPSERT_INDUSTRY_NAMES"
+      },
+      {
+        "args": [
+          [
+            "acme",
+            "other"
+          ],
+          [
+            "Åcme",
+            "Other"
+          ],
+          [
+            "https://acme.test",
+            null
+          ],
+          [
+            null,
+            null
+          ],
+          [
+            "https://acme.test/icon",
+            null
+          ],
+          [
+            "icon",
+            null
+          ],
+          [
+            7,
+            null
+          ],
+          [
+            2,
+            null
+          ],
+          [
+            2000,
+            1999
+          ],
+          [
+            "{\"x\":1}",
+            null
+          ]
+        ],
+        "key": "_UPSERT_COMPANIES"
+      },
+      {
+        "args": [
+          [
+            "acme",
+            "acme"
+          ],
+          [
+            "en",
+            "ja"
+          ],
+          [
+            "First\nline",
+            "説明"
+          ]
+        ],
+        "key": "_UPSERT_COMPANY_DESCRIPTIONS"
+      }
+    ],
+    "tables": {
+      "companies": {
+        "columns": [
+          "slug",
+          "name",
+          "website",
+          "logo_url",
+          "icon_url",
+          "logo_type",
+          "industry",
+          "employee_count_range",
+          "founded_year",
+          "extras"
+        ],
+        "rows": [
+          {
+            "employee_count_range": " +2 ",
+            "extras": "{\"x\":1}",
+            "founded_year": "2_000",
+            "icon_url": "https://acme.test/icon",
+            "industry": "7",
+            "logo_type": "icon",
+            "logo_url": null,
+            "name": "Åcme",
+            "slug": "acme",
+            "website": "https://acme.test"
+          },
+          {
+            "employee_count_range": null,
+            "extras": "bad-json",
+            "founded_year": "١٩٩٩",
+            "icon_url": null,
+            "industry": "invalid",
+            "logo_type": null,
+            "logo_url": null,
+            "name": "Other",
+            "slug": "other",
+            "website": null
+          }
+        ]
+      },
+      "company_descriptions": {
+        "columns": [
+          "slug",
+          "en",
+          "ja"
+        ],
+        "rows": [
+          {
+            "en": " First\nline ",
+            "ja": " 説明 ",
+            "slug": "acme"
+          }
+        ]
+      },
+      "industries": {
+        "columns": [
+          "id",
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "rows": [
+          {
+            "de": " Software ",
+            "en": "Software",
+            "fr": "Logiciel",
+            "id": "7",
+            "it": null
+          }
+        ]
+      },
+      "occupation_domains": {
+        "columns": [
+          "slug",
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "rows": [
+          {
+            "de": "Technik",
+            "en": " Technology ",
+            "fr": null,
+            "it": "Tecnologia",
+            "slug": "tech"
+          }
+        ]
+      },
+      "occupations": {
+        "columns": [
+          "slug",
+          "parent",
+          "domain",
+          "en",
+          "de",
+          "fr",
+          "it",
+          "es",
+          "aliases"
+        ],
+        "rows": [
+          {
+            "aliases": " Dev | Developer |",
+            "de": "Ingenieur",
+            "domain": "tech",
+            "en": "Engineer",
+            "es": "Ingeniero",
+            "fr": null,
+            "it": null,
+            "parent": null,
+            "slug": "engineer"
+          },
+          {
+            "aliases": "Server",
+            "de": null,
+            "domain": " tech ",
+            "en": "Backend",
+            "es": null,
+            "fr": null,
+            "it": null,
+            "parent": " engineer ",
+            "slug": "backend"
+          }
+        ]
+      },
+      "seniority": {
+        "columns": [
+          "slug",
+          "en",
+          "de",
+          "fr",
+          "it",
+          "aliases"
+        ],
+        "rows": [
+          {
+            "aliases": "Experienced| Sr ",
+            "de": "Senior",
+            "en": "Senior",
+            "fr": null,
+            "it": null,
+            "slug": "senior"
+          }
+        ]
+      },
+      "technologies": {
+        "columns": [
+          "slug",
+          "name",
+          "category"
+        ],
+        "rows": [
+          {
+            "category": "language",
+            "name": "Python",
+            "slug": "python"
+          },
+          {
+            "category": "",
+            "name": "",
+            "slug": "blank"
+          },
+          {
+            "category": null,
+            "name": null,
+            "slug": "missing"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "csv": {
+      "occupations": "slug,en,parent\nengineer,Engineer,\n"
+    },
+    "name": "clear_parents",
+    "plan": [
+      {
+        "args": [
+          [
+            "engineer"
+          ]
+        ],
+        "key": "_UPSERT_OCCUPATIONS"
+      },
+      {
+        "args": [
+          [
+            "engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            "Engineer"
+          ],
+          [
+            true
+          ]
+        ],
+        "key": "_UPSERT_OCCUPATION_NAMES"
+      },
+      {
+        "args": [
+          [
+            "engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            "Engineer"
+          ]
+        ],
+        "key": "_DELETE_STALE_OCCUPATION_NAMES"
+      },
+      {
+        "args": [],
+        "key": "clear_all_occupation_parents"
+      }
+    ],
+    "tables": {
+      "occupations": {
+        "columns": [
+          "slug",
+          "en",
+          "parent"
+        ],
+        "rows": [
+          {
+            "en": "Engineer",
+            "parent": null,
+            "slug": "engineer"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "csv": {
+      "occupations": "slug,en,parent\nengineer,,\n",
+      "technologies": "slug\ncustom\n"
+    },
+    "name": "no_names",
+    "plan": [
+      {
+        "args": [
+          [
+            "engineer"
+          ]
+        ],
+        "key": "_UPSERT_OCCUPATIONS"
+      },
+      {
+        "args": [],
+        "key": "clear_all_occupation_parents"
+      },
+      {
+        "args": [
+          [
+            "custom"
+          ],
+          [
+            null
+          ],
+          [
+            null
+          ]
+        ],
+        "key": "_UPSERT_TECHNOLOGIES"
+      }
+    ],
+    "tables": {
+      "occupations": {
+        "columns": [
+          "slug",
+          "en",
+          "parent"
+        ],
+        "rows": [
+          {
+            "en": null,
+            "parent": null,
+            "slug": "engineer"
+          }
+        ]
+      },
+      "technologies": {
+        "columns": [
+          "slug"
+        ],
+        "rows": [
+          {
+            "slug": "custom"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "csv": {
+      "companies": "slug,name\n",
+      "occupations": "slug,en\n"
+    },
+    "name": "empty",
+    "plan": [],
+    "tables": {
+      "companies": {
+        "columns": [
+          "slug",
+          "name"
+        ],
+        "rows": []
+      },
+      "occupations": {
+        "columns": [
+          "slug",
+          "en"
+        ],
+        "rows": []
+      }
+    }
+  },
+  {
+    "csv": {
+      "company_descriptions": "﻿slug,en,fr\r\nacme,\" multi\r\nline \",\"\"\r\n"
+    },
+    "name": "bom_crlf",
+    "plan": [
+      {
+        "args": [
+          [
+            "acme"
+          ],
+          [
+            "en"
+          ],
+          [
+            "multi\r\nline"
+          ]
+        ],
+        "key": "_UPSERT_COMPANY_DESCRIPTIONS"
+      }
+    ],
+    "tables": {
+      "company_descriptions": {
+        "columns": [
+          "slug",
+          "en",
+          "fr"
+        ],
+        "rows": [
+          {
+            "en": " multi\r\nline ",
+            "fr": "",
+            "slug": "acme"
+          }
+        ]
+      }
+    }
+  }
+]
