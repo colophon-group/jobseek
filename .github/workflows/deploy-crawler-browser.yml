@@ -234,7 +234,7 @@ jobs:
               -e TYPESENSE_PROTOCOL=http \
               -e TYPESENSE_OPERATIONS_KEY=smoke \
               "$IMAGE" \
-              uv run --no-sync crawler setup-typesense
+              go-typesense-exporter --setup-schemas
           done
 
   deploy:

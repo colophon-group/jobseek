@@ -411,24 +411,21 @@ def test_crawler_cli_exposes_taxonomy_readiness_gate(monkeypatch) -> None:
     assert args.command == "verify-typesense-taxonomies"
 
 
-async def test_cli_dispatch_uses_local_pool_and_fails_closed(monkeypatch) -> None:
-    local_pool = object()
-    typesense_client = object()
-    verify = AsyncMock(return_value=1)
+async def test_cli_dispatch_execs_go_before_opening_pool(monkeypatch) -> None:
+    local_pool = AsyncMock()
     monkeypatch.setattr(
         cli,
         "parse_args",
         lambda: argparse.Namespace(command="verify-typesense-taxonomies"),
     )
-    monkeypatch.setattr(cli, "create_local_pool", AsyncMock(return_value=local_pool))
-    monkeypatch.setattr(cli, "close_all_pools", AsyncMock())
-
+    monkeypatch.setattr(cli, "create_local_pool", local_pool)
     with (
-        patch("src.taxonomy_readiness.run_cli", new=verify),
-        patch("src.typesense_client.get_typesense_client", return_value=typesense_client),
+        patch("src.cli.os.execvp", side_effect=SystemExit(1)) as execute,
         pytest.raises(SystemExit) as exc_info,
     ):
         await cli.run()
-
     assert exc_info.value.code == 1
-    verify.assert_awaited_once_with(local_pool, typesense_client)
+    execute.assert_called_once_with(
+        "go-typesense-exporter", ["go-typesense-exporter", "--verify-taxonomies"]
+    )
+    local_pool.assert_not_awaited()

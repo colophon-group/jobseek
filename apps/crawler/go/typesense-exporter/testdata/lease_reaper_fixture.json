@@ -1,0 +1,1877 @@
+[
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "expired_monitor",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      },
+      "ratelimit:example.test": {
+        "type": "string",
+        "value": "1050"
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 1
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ratelimit:example.test": {
+            "type": "string",
+            "value": "1050"
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1050.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ratelimit:example.test": {
+            "type": "string",
+            "value": "1050"
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1050.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ratelimit:example.test": {
+            "type": "string",
+            "value": "1050"
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1050.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "fresh_lease",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 1100
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 1100.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 1100.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 1100.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "poison",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      },
+      "inflight_strikes:simple": {
+        "type": "hash",
+        "value": {
+          "monitor|example.test|board": "4"
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 1,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "deadletter:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "deadletter:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "deadletter:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 1000.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "existing_schedule",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      },
+      "monitors_simple:example.test": {
+        "type": "zset",
+        "value": {
+          "board": 800
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 1
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 800.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 800.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 800.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 800.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 800.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 800.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "repair_precedes_poison",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      },
+      "inflight_strikes:simple": {
+        "type": "hash",
+        "value": {
+          "monitor|example.test|board": "4"
+        }
+      },
+      "monitor_repair_due:simple": {
+        "type": "hash",
+        "value": {
+          "monitor|example.test|board": "950"
+        }
+      },
+      "monitors_simple:example.test": {
+        "type": "zset",
+        "value": {
+          "board": 980
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 1
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 950.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 950.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 950.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 950.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 950.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 950.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "first_time_priority",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "ft_scrapes_simple:example.test": {
+        "type": "zset",
+        "value": {
+          "other": 700
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 1
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "ft_scrapes_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "other": 700.0
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ready:simple:0": {
+            "type": "zset",
+            "value": {
+              "example.test": 700.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "ft_scrapes_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "other": 700.0
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ready:simple:0": {
+            "type": "zset",
+            "value": {
+              "example.test": 700.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "ft_scrapes_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "other": 700.0
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ready:simple:0": {
+            "type": "zset",
+            "value": {
+              "example.test": 700.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "cross_lane_isolation",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:browser": {
+        "type": "zset",
+        "value": {
+          "monitor|other.test|other": 800
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 1
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:browser": {
+            "type": "zset",
+            "value": {
+              "monitor|other.test|other": 800.0
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:browser": {
+            "type": "zset",
+            "value": {
+              "monitor|other.test|other": 800.0
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:browser": {
+            "type": "zset",
+            "value": {
+              "monitor|other.test|other": 800.0
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1000.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "missing_config",
+    "now": 1000,
+    "seed": {
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 1,
+          "reenqueued": 0
+        },
+        "state": {}
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {}
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {}
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "browser_scrape",
+    "now": 1000,
+    "seed": {
+      "inflight:browser": {
+        "type": "zset",
+        "value": {
+          "scrape|example.test|posting": 900
+        }
+      },
+      "scrape:posting": {
+        "type": "hash",
+        "value": {
+          "url": "https://example.test/job"
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 1
+        },
+        "state": {
+          "inflight_strikes:browser": {
+            "type": "hash",
+            "value": {
+              "scrape|example.test|posting": "1"
+            }
+          },
+          "ready:browser:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          },
+          "scrapes_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "posting": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "inflight_strikes:browser": {
+            "type": "hash",
+            "value": {
+              "scrape|example.test|posting": "1"
+            }
+          },
+          "ready:browser:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          },
+          "scrapes_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "posting": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "inflight_strikes:browser": {
+            "type": "hash",
+            "value": {
+              "scrape|example.test|posting": "1"
+            }
+          },
+          "ready:browser:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          },
+          "scrapes_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "posting": 1000.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "browser"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "go_guard",
+    "now": 1000,
+    "seed": {
+      "inflight:browser": {
+        "type": "zset",
+        "value": {
+          "scrape|example.test|posting": 900
+        }
+      },
+      "inflight_strikes:browser": {
+        "type": "hash",
+        "value": {
+          "scrape|example.test|posting": "4"
+        }
+      },
+      "lightpanda-b0:legacy-guard": {
+        "type": "hash",
+        "value": {
+          "posting": "epoch"
+        }
+      },
+      "scrape:posting": {
+        "type": "hash",
+        "value": {
+          "url": "https://example.test/job"
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "lightpanda-b0:legacy-guard": {
+            "type": "hash",
+            "value": {
+              "posting": "epoch"
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "lightpanda-b0:legacy-guard": {
+            "type": "hash",
+            "value": {
+              "posting": "epoch"
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "lightpanda-b0:legacy-guard": {
+            "type": "hash",
+            "value": {
+              "posting": "epoch"
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "browser"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "rotation_floor",
+    "now": 1000,
+    "seed": {
+      "inflight:browser": {
+        "type": "zset",
+        "value": {
+          "scrape|example.test|posting": 900
+        }
+      },
+      "ready:rotation:browser": {
+        "type": "zset",
+        "value": {
+          "example.test": 2000
+        }
+      },
+      "scrape:posting": {
+        "type": "hash",
+        "value": {
+          "url": "https://example.test/job"
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 1
+        },
+        "state": {
+          "inflight_strikes:browser": {
+            "type": "hash",
+            "value": {
+              "scrape|example.test|posting": "1"
+            }
+          },
+          "ready:browser:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 2000.0
+            }
+          },
+          "ready:rotation:browser": {
+            "type": "zset",
+            "value": {
+              "example.test": 2000.0
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          },
+          "scrapes_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "posting": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "inflight_strikes:browser": {
+            "type": "hash",
+            "value": {
+              "scrape|example.test|posting": "1"
+            }
+          },
+          "ready:browser:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 2000.0
+            }
+          },
+          "ready:rotation:browser": {
+            "type": "zset",
+            "value": {
+              "example.test": 2000.0
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          },
+          "scrapes_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "posting": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {
+          "inflight_strikes:browser": {
+            "type": "hash",
+            "value": {
+              "scrape|example.test|posting": "1"
+            }
+          },
+          "ready:browser:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 2000.0
+            }
+          },
+          "ready:rotation:browser": {
+            "type": "zset",
+            "value": {
+              "example.test": 2000.0
+            }
+          },
+          "scrape:posting": {
+            "type": "hash",
+            "value": {
+              "url": "https://example.test/job"
+            }
+          },
+          "scrapes_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "posting": 1000.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "browser"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "malformed",
+    "now": 1000,
+    "seed": {
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "missing": 900,
+          "one|separator": 900
+        }
+      },
+      "inflight_strikes:simple": {
+        "type": "hash",
+        "value": {
+          "missing": "3",
+          "one|separator": "4"
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {}
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {}
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 0
+        },
+        "state": {}
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 2,
+    "max_strikes": 5,
+    "name": "bounded_batches",
+    "now": 1000,
+    "seed": {
+      "board:board0": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "board:board1": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "board:board2": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "board:board3": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "board:board4": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board0": 900,
+          "monitor|example.test|board1": 901,
+          "monitor|example.test|board2": 902,
+          "monitor|example.test|board3": 903,
+          "monitor|example.test|board4": 904
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 2
+        },
+        "state": {
+          "board:board0": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board1": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board2": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board3": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board4": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board2": 902.0,
+              "monitor|example.test|board3": 903.0,
+              "monitor|example.test|board4": 904.0
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board0": "1",
+              "monitor|example.test|board1": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board0": 1000.0,
+              "board1": 1000.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 2
+        },
+        "state": {
+          "board:board0": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board1": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board2": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board3": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board4": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board4": 904.0
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board0": "1",
+              "monitor|example.test|board1": "1",
+              "monitor|example.test|board2": "1",
+              "monitor|example.test|board3": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board0": 1000.0,
+              "board1": 1000.0,
+              "board2": 1000.0,
+              "board3": 1000.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "result": {
+          "dead_lettered": 0,
+          "missing_config": 0,
+          "reenqueued": 1
+        },
+        "state": {
+          "board:board0": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board1": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board2": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board3": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "board:board4": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight_strikes:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board0": "1",
+              "monitor|example.test|board1": "1",
+              "monitor|example.test|board2": "1",
+              "monitor|example.test|board3": "1",
+              "monitor|example.test|board4": "1"
+            }
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board0": 1000.0,
+              "board1": 1000.0,
+              "board2": 1000.0,
+              "board3": 1000.0,
+              "board4": 1000.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "corrupt_lightpanda-b0:legacy-guard",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      },
+      "lightpanda-b0:legacy-guard": {
+        "type": "string",
+        "value": "wrong-type"
+      }
+    },
+    "steps": [
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "lightpanda-b0:legacy-guard": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      },
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "lightpanda-b0:legacy-guard": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      },
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "lightpanda-b0:legacy-guard": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "corrupt_ready:rotation:simple",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      },
+      "ready:rotation:simple": {
+        "type": "string",
+        "value": "wrong-type"
+      }
+    },
+    "steps": [
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "ready:rotation:simple": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      },
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "ready:rotation:simple": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      },
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "ready:rotation:simple": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  },
+  {
+    "batch": 200,
+    "max_strikes": 5,
+    "name": "corrupt_monitor_repair_due:simple",
+    "now": 1000,
+    "seed": {
+      "board:board": {
+        "type": "hash",
+        "value": {
+          "crawler_type": "dom"
+        }
+      },
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 900
+        }
+      },
+      "monitor_repair_due:simple": {
+        "type": "string",
+        "value": "wrong-type"
+      }
+    },
+    "steps": [
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "monitor_repair_due:simple": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      },
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "monitor_repair_due:simple": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      },
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "crawler_type": "dom"
+            }
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 900.0
+            }
+          },
+          "monitor_repair_due:simple": {
+            "type": "string",
+            "value": "wrong-type"
+          }
+        }
+      }
+    ],
+    "wtype": "simple"
+  }
+]

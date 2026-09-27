@@ -1,7 +1,7 @@
 """Create / update Typesense collections and aliases for jobseek.
 
-Thin wrapper around ``src.typesense_schema``. The same logic is exposed
-in the crawler image as ``crawler setup-typesense`` (called by deploy.sh).
+Thin compatibility wrapper that execs the Go schema setup runtime. The
+crawler deployment invokes the same executable directly.
 
 Run from the crawler directory so that ``src.config`` resolves:
 
@@ -14,12 +14,15 @@ Flags:
 from __future__ import annotations
 
 import argparse
+import os
 
-from src.typesense_schema import run_setup
+import dotenv
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Set up Typesense collections for jobseek")
+    parser = argparse.ArgumentParser(
+        description="Set up Typesense collections for jobseek"
+    )
     parser.add_argument(
         "--force",
         action="store_true",
@@ -27,7 +30,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    run_setup(force=args.force)
+    dotenv.load_dotenv(".env.local")
+    dotenv.load_dotenv(".env")
+    command = ["go-typesense-exporter", "--setup-schemas"]
+    if args.force:
+        command.append("--force")
+    os.execvp(command[0], command)
 
 
 if __name__ == "__main__":
