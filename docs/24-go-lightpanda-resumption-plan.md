@@ -6,6 +6,57 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — Recruitee and Pinpoint routing v0.13.881
+
+PR #10114 merged as `ae518d09610b3570b706c67bb7862ee18cb7f267`.
+[Deployment 36355148463](https://github.com/colophon-group/jobseek/actions/runs/36355148463)
+succeeded. All **115 enabled Recruitee and 104 enabled Pinpoint monitors** now
+select Go, including 29 configurations excluded by the old direct-host rule.
+The live census is **4,271 Go / 3,608 Python** of 7,879 enabled monitors, with
+zero route errors. The pre-deploy baseline covers 219 boards and 4,791 active
+postings. No board was disabled.
+
+Required CI and installed-image parity passed. The release's Go configuration
+sync completed 6,013 companies and 7,879 boards at 22:35:17 UTC. Retained
+actual responses matched all nine rich fields for 58 jobs without origin
+traffic. The first four natural Go cycles include both providers: Teya returned
+three jobs, Adarga four, Smarsh four, and Spark a verified empty inventory.
+A newly admitted custom-domain board, Dronamics, returned 16 jobs from a
+300,938-byte response at 22:41:49 UTC. Tether returned 180 and Rowden
+Technologies 35. All seven readbacks match their active DB canonical URL sets
+and their pre-deploy posting-ID/description-hash digests, including the
+custom-domain board. Ten natural Go cycles completed in the first observation.
+No selected board's failure count increased in the final 219-board readback.
+No due scores or publisher requests were forced.
+
+Supported rollback retired c1 epoch 94 at 95, restored all five schedules and
+left zero terminal drops/write fences. All **25 selectors** were cleared under
+lock and restaged at the promoted revision. C1 is active at **epoch 96**,
+accepted/audit_ok with five ready and zero inflight/dead records. All configured
+service health checks pass; c2 remains dark. Typesense reported 109 successful
+exports, zero errors, zero lag and healthy status in the initial snapshot. See
+[sanitized production evidence](evidence/go-recruitee-pinpoint-production-2026-09-28.json).
+
+Before another crawler deployment or selector mutation, complete supported
+`rollback c1`, then clear the same 25 selectors under
+`/run/lock/jobseek-crawler-mutation.lock` using
+`/tmp/jobseek-post-go-experience-selectors.py` against full revision
+`ae518d09610b3570b706c67bb7862ee18cb7f267` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision, then reactivate c1. Recruitee/Pinpoint percentages are release
+defaults of 100, not extra host selectors. These instructions supersede the
+historical checkpoints below.
+
+A later readback of the preceding SuccessFactors release found 26 natural Go
+cycles and two already-failing boards with one additional failure each:
+Kaufland's connection reset after 41 streamed batches and Vibrant M's redirect
+limit. Their active URL and posting-content hashes remained unchanged (8,704
+and 878 rows respectively); neither failure caused deletions. These are
+follow-up observations, not a claim of all-board success.
+
+Full Python/Chromium retirement and same-actual-workload whole-lane
+CPU/RAM/density/cost proof remain open.
+
 ## Implementation checkpoint: Recruitee and Pinpoint routing v0.13.881
 
 The native runtimes now cover all **115 Recruitee and 104 Pinpoint** configurations
@@ -29,11 +80,8 @@ The read-only baseline covers 219 enabled boards and 4,791 active postings;
 all have zero consecutive failures, including 13 already marked gone and 25
 suspect. No board is disabled and no extra origin request is issued.
 
-Deployment and natural-run readback are pending. Before deploying, use the
-v0.13.880 production checkpoint below: supported c1 rollback from epoch 94,
-then clear the unchanged 25 selectors under lock at the actual promoted revision
-`aa9b5e4f046c8964bb557220cbd23ec750909bc5`. Restage only at the new successfully
-promoted revision, then reactivate c1. These new percentages are release
+Deployment and natural-run readback are recorded above. The v0.13.880
+checkpoint below was the supported rollback source for this release. These new percentages are release
 defaults, not additional host selectors. Supported percentage reversal sets
 both `RECRUITEE_GO_PERCENT` and `PINPOINT_GO_PERCENT` to zero and removes their
 explicit board-ID selectors, or restores the prior release.
