@@ -104,7 +104,6 @@ timeout --foreground --signal=TERM --kill-after=90s 50m docker run --rm \
   --pids-limit 256 \
   --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
-  -e PYTHONDONTWRITEBYTECODE=1 \
   --label com.docker.compose.project=deploy \
   --label com.docker.compose.service=cross-store-reconciliation \
   --label com.docker.compose.container-number=1 \
@@ -114,4 +113,4 @@ timeout --foreground --signal=TERM --kill-after=90s 50m docker run --rm \
   --label "jobseek.maintenance.revision=${revision}" \
   --label jobseek.maintenance.budget-seconds=3000 \
   "$image" \
-  /app/.venv/bin/crawler reconcile "${reconciliation_args[@]}"
+  go-typesense-exporter --reconcile "${reconciliation_args[@]}"

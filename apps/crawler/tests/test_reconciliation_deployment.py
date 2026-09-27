@@ -117,7 +117,7 @@ def test_runner_is_bounded_immutable_and_fail_closed() -> None:
     assert '"--full"' in source
     assert "reconciliation_args=(--repair --full --target typesense)" in source
     assert "supabase" not in source.lower()
-    assert '/app/.venv/bin/crawler reconcile "${reconciliation_args[@]}"' in source
+    assert 'go-typesense-exporter --reconcile "${reconciliation_args[@]}"' in source
     assert "uv run" not in source
     assert "jobseek-crawler-mutation.lock" in source
     assert "flock -w 7200" in source
