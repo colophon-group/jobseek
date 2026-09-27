@@ -54,6 +54,8 @@ import type {
   WatchlistFilters,
 } from "@/lib/watchlist-matcher-contract";
 
+import { matchNarrowedNotificationWatchlist } from "./notification-narrowing";
+
 const COMPLETED_STATUSES: NotificationDeliveryStatus[] = ["sent", "skipped"];
 
 function identityKey(userId: string, cadence: NotificationCadence): string {
@@ -63,7 +65,7 @@ function identityKey(userId: string, cadence: NotificationCadence): string {
 async function listEligibleUserCandidatesPage(input: {
   afterUserId: string | null;
   limit: number;
-}) {
+}, internalUserIds?: readonly string[]) {
   if (input.limit < 1 || input.limit > NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE) {
     throw new RangeError("eligible owner page exceeds the scheduler batch cap");
   }
@@ -78,6 +80,7 @@ async function listEligibleUserCandidatesPage(input: {
     .innerJoin(userPreferences, eq(userPreferences.userId, user.id))
     .where(and(
       eq(user.emailVerified, true),
+      internalUserIds ? inArray(user.id, [...internalUserIds]) : undefined,
       eq(userPreferences.notificationsPaused, false),
       input.afterUserId ? gt(user.id, input.afterUserId) : undefined,
       sql`EXISTS (
@@ -100,7 +103,7 @@ async function listEligibleUserCandidatesPage(input: {
       .select({
         userId: notificationDelivery.userId,
         cadence: notificationDelivery.cadence,
-        windowEnd: sql<Date>`max(${notificationDelivery.windowEnd})`,
+        windowEnd: sql<Date>`max(${notificationDelivery.windowEnd})`.mapWith(notificationDelivery.windowEnd),
       })
       .from(notificationDelivery)
       .where(and(
@@ -178,6 +181,7 @@ async function loadEligibleWatchlistSegment(input: Parameters<
     watchlistLabel: watchlist.title,
     filters: watchlist.filters,
     alertsEnabledAt: watchlist.alertsEnabledAt,
+    narrowedOnly: watchlist.alertsNarrowedOnly,
   }).from(watchlist)
     .innerJoin(userPreferences, eq(userPreferences.userId, watchlist.userId))
     .innerJoin(user, eq(user.id, watchlist.userId))
@@ -231,6 +235,8 @@ async function loadEligibleWatchlistSegment(input: Parameters<
   return {
     watchlist: {
       alertsEnabledAt: row.alertsEnabledAt,
+      narrowedOnly: row.narrowedOnly,
+      ownerId: input.userId,
       source: {
         watchlistId: row.watchlistId,
         watchlistLabel: row.watchlistLabel,
@@ -347,7 +353,7 @@ function pendingLease(claim: NotificationDeliveryClaim) {
   );
 }
 
-const repository: NotificationSchedulerRepository = {
+export const notificationSchedulerRepository: NotificationSchedulerRepository = {
   listEligibleUserCandidatesPage,
   loadEligibleWatchlistSegment,
   claim,
@@ -386,7 +392,7 @@ const repository: NotificationSchedulerRepository = {
   },
 };
 
-async function match(input: {
+export async function matchNotificationWatchlists(input: {
   watchlists: readonly (EligibleNotificationWatchlist & { windowStart: Date })[];
   windowEnd: Date;
 }): Promise<NotificationMatchSummary> {
@@ -395,7 +401,15 @@ async function match(input: {
   );
   const compiledById = new Map(compiled.map((entry) => [entry.watchlistId, entry]));
   const groups = new Map<string, typeof compiled>();
+  const narrowedResults = [];
   for (const entry of input.watchlists) {
+    if (entry.narrowedOnly) {
+      narrowedResults.push(await matchNarrowedNotificationWatchlist({
+        ownerId: entry.ownerId!, compiled: compiledById.get(entry.source.watchlistId)!,
+        windowStart: entry.windowStart, windowEnd: input.windowEnd,
+      }));
+      continue;
+    }
     const key = entry.windowStart.toISOString();
     const group = groups.get(key) ?? [];
     group.push(compiledById.get(entry.source.watchlistId)!);
@@ -405,13 +419,16 @@ async function match(input: {
   const postings = new Map<string, MatchedWatchlistPosting>();
   let watchlistMatchCount = 0;
   let truncated = false;
+  const results = [...narrowedResults];
   for (const [windowStart, watchlists] of groups) {
-    const result = await matchCompiledWatchlistsInWindow({
+    results.push(await matchCompiledWatchlistsInWindow({
       watchlists,
       windowStart: new Date(windowStart),
       windowEnd: input.windowEnd,
       limitPerWatchlist: NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST,
-    });
+    }));
+  }
+  for (const result of results) {
     for (const stats of result.watchlists) {
       watchlistMatchCount += stats.total;
       truncated ||= stats.truncated;
@@ -443,13 +460,22 @@ async function match(input: {
   };
 }
 
-/** Providerless entry point; no route or runtime configuration invokes it. */
+/** Providerless planner used by the protected notification runner. */
 export async function runNotificationScheduler(input: {
   mode?: NotificationExecutionMode;
   sweep: UtcWindow;
   quota: NotificationQuotaState;
   concurrency: number;
   cursor?: string | null;
+  pageSize?: number;
+  internalUserIds?: readonly string[];
 }) {
-  return runNotificationSchedulerCore(input, { repository, match });
+  const repository = input.internalUserIds ? {
+    ...notificationSchedulerRepository,
+    async listEligibleUserCandidatesPage(page: { afterUserId: string | null; limit: number }) {
+      const result = await listEligibleUserCandidatesPage(page, input.internalUserIds);
+      return result;
+    },
+  } : notificationSchedulerRepository;
+  return runNotificationSchedulerCore(input, { repository, match: matchNotificationWatchlists });
 }

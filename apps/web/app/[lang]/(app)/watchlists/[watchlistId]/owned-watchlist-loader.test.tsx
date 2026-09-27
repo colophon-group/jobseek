@@ -1,3 +1,4 @@
+vi.mock("@/lib/services/notification-preferences", () => ({ getNotificationPreferencesForUser: vi.fn(async () => ({ notificationsPaused: false })) }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import "@/test-utils/lingui-mock";

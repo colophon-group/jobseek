@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { MapPin, Briefcase, BarChart3, Code2, DollarSign, Clock, Home, CalendarDays, X } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import type { WatchlistFilters } from "@/lib/actions/watchlists";
@@ -52,7 +52,11 @@ export function FilterPillsReadOnly({
   onRemoveSalary,
   onRemoveExperience,
   onClearAll,
+  compact = false,
+  maxVisible,
 }: {
+  compact?: boolean;
+  maxVisible?: number;
   filters: WatchlistFilters;
   locations?: SelectedLocation[];
   occupations?: TaxonomyItem[];
@@ -89,6 +93,7 @@ export function FilterPillsReadOnly({
   onClearAll?: () => void;
 }) {
   const { t } = useLingui();
+  const [expanded, setExpanded] = useState(false);
   const pills: FilterPill[] = [];
   const removeFilterLabel = (name: string) => t({
     id: "search.filters.removeFilter",
@@ -301,15 +306,17 @@ export function FilterPillsReadOnly({
 
   if (pills.length === 0) return null;
 
+  const hasOverflow = maxVisible !== undefined && pills.length > maxVisible;
+  const visible = hasOverflow && !expanded ? pills.slice(0, maxVisible) : pills;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {pills.map((pill) => (
+    <div className={`flex flex-wrap items-center ${compact ? "gap-1" : "gap-2"}`}>
+      {visible.map((pill) => (
         <span
           key={pill.key}
-          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+          className={`inline-flex max-w-full items-center gap-1 rounded-full ${compact ? "bg-border-soft px-2 py-0.5 text-xs text-muted" : "bg-primary/10 px-3 py-1 text-sm text-primary"}`}
         >
           {pill.icon && <span className="shrink-0">{pill.icon}</span>}
-          <span className={pill.labelClassName}>{pill.label}</span>
+          <span className={`min-w-0 break-words ${pill.labelClassName ?? ""}`}>{pill.label}</span>
           {pill.onRemove && pill.removeLabel && (
             <button
               type="button"
@@ -322,6 +329,13 @@ export function FilterPillsReadOnly({
           )}
         </span>
       ))}
+      {hasOverflow && <button type="button" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}
+        aria-label={expanded
+          ? t({ id: "search.filters.showFewer", comment: "Collapse a compact filter preview", message: "Show fewer filters" })
+          : t({ id: "search.filters.showAll", comment: "Expand all filters in a compact preview", message: "Show all filters" })}
+        className="cursor-pointer rounded-full px-2 py-0.5 text-xs text-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+        {expanded ? "−" : `+${pills.length - maxVisible!}`}
+      </button>}
       {onClearAll && (
         <button
           type="button"
