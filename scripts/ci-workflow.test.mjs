@@ -2388,7 +2388,7 @@ test("taxonomy verification dispatch is exact-revision and verification-only", (
   assert.ok(verificationBranch);
   assert.match(
     verificationBranch[0],
-    /operation_command=\(uv run --no-sync crawler verify-typesense-taxonomies\)/,
+    /operation_command=\(go-typesense-exporter --verify-taxonomies\)/,
   );
   assert.doesNotMatch(verificationBranch[0], /crawler backfill-typesense/);
   assert.doesNotMatch(verificationBranch[0], /crawler reconcile/);
@@ -3286,6 +3286,8 @@ test("CI runs Typesense E2E suites against a service container", () => {
     crawlerJob,
     /name: Wait for Typesense[\s\S]*curl -fsS http:\/\/localhost:8108\/health/,
   );
+  assert.match(crawlerJob, /name: Build Go Typesense schema runtime/);
+  assert.match(crawlerJob, /go build -trimpath -o "\$RUNNER_TEMP\/jobseek-go-bin\/go-typesense-exporter" \./);
   assert.match(crawlerJob, /uv run python \.\.\/\.\.\/scripts\/typesense-setup\.py --force/);
   assert.match(crawlerJob, /uv run pytest tests\/e2e\/test_typesense_indexing\.py -v/);
 });

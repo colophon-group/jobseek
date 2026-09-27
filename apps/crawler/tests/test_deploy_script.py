@@ -246,7 +246,7 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     quiesce = script.index("docker compose stop --timeout 60")
     migrate = script.index("alembic -c src/migrations/alembic.ini upgrade head")
     migration_cutover = script.index("MIGRATION_CUTOVER_REACHED=1", migrate)
-    typesense_schema = script.index("uv run --no-sync crawler setup-typesense")
+    typesense_schema = script.index("go-typesense-exporter --setup-schemas")
     sync = script.index("uv run --no-sync crawler sync", typesense_schema)
     nw_cutover = script.index("uv run --no-sync crawler repair-nw-provider-cutover")
     umantis_cutover = script.index(

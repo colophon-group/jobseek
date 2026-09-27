@@ -6,6 +6,204 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Unified release candidate: Go maintenance v0.13.870
+
+The completed implementations from #10072, #10074, #10076, #10077, #10085 and
+#10088 are assembled on `fix-crawler/go-maintenance-transition`, created from
+latest main `52e8c7b6a`. The individual sections below record implementation
+history; the unified candidate supersedes their separate release order.
+**This candidate is not deployed.** Its combined CI and production evidence
+must pass before the source PRs are retired.
+
+One crawler image now includes Go reconciliation, exact taxonomy verification,
+schema setup, taxonomy/company publication and posting rename updates,
+dead-letter inspection/recovery, and the supervised expired-lease loop. Shared
+CLI conflicts retain every command. The protected maintenance chain invokes
+Go backfill, Go reconciliation, then Go taxonomy verification under its existing
+host lock; schema setup remains part of deployment and sync remains post-commit.
+This keeps the existing completed backfill implementation and cold rollback
+image, queue guards, cursor fences, credential scopes and publisher policies.
+
+Release only after the already-running production proof 36317322087 finishes.
+Then re-read live revision/receipt and exact PR checks, use supported c1
+rollback, clear all 22 selectors under the mutation lock, promote the combined
+candidate, stage at the new full revision and reactivate c1. Record normal
+worker/reaper health, zero queue loss, Go schema/sync output, taxonomy parity,
+CDC catch-up and the next bounded scheduled Go reconciliation result. The
+systemd wrapper's separately attested direct-Go launcher follows **after** the
+new binary is deployed; its current compatibility CLI already execs Go in the
+candidate image.
+
+CSV/local transaction sync, Redis board setup, worker claims/heartbeats and
+processing, remaining monitor/detail/browser profiles, final whole-lane
+resource/cost proof and retirement remain open under #7966. Do not equate this
+maintenance release with completion of the full migration.
+
+## Implementation slice: 2026-09-27 — Go reconciliation
+
+The next release adds `go-typesense-exporter --reconcile`, replaces the
+Python CLI runtime through `exec`, and invokes Go directly in the full
+backfill maintenance chain. It retains the existing reconciliation ledger,
+256-partition cursor, shared exporter fence, exact payload comparisons,
+bounded complete-stream retries, repair/readback/source-stability checks,
+legacy bucket cleanup, and durable candidate-order readiness receipts.
+Bootstrap cleanup also holds the shared exporter fence through its local
+absence checks and verification. No CDC cursor or exporter owner is changed.
+
+The integration tests execute the actual state migrations against isolated
+PostgreSQL schemas and exercise real HTTP imports/exports and cursor locks.
+They prove that an ambiguous acknowledgement leaves the partition unadvanced,
+a resumed repair converges, the full 256-partition cycle persists its evidence,
+orphans are removed, cancellation records interruption, and competing owners
+or stale in-memory receipts cannot establish a successful proof. Local
+PostgreSQL 18, Go race/vet checks, the CLI/deployment tests, and workflow tests
+passed. Production reconciliation remains on the previous runtime until this
+release is deployed and its normal bounded run is observed.
+
+The systemd wrapper has a separate installed SHA contract. Keep its current
+`crawler reconcile` launcher for this image rollout; the new CLI immediately
+execs Go. After this image is live, change the wrapper to invoke Go directly
+through the supported reconciliation-host deployment. Installing that direct
+wrapper before the binary exists would break the previous image. Taxonomy
+verification, configuration sync, and other Python-owned stages remain on the
+full migration backlog. The full #7966 gate is still open.
+
+## Implementation checkpoint: 2026-09-27 — Go Typesense sync
+
+`fix-crawler/go-typesense-taxonomy-sync` builds on taxonomy verification #10074
+and implements the post-commit Typesense publication stage in Go. It is
+implemented and locally verified, **not deployed**; release after the pending
+reconciliation, verification, and schema-setup slices. The live protected
+backfill proof still owns the host mutation lock.
+
+The Go stage publishes complete location, occupation, seniority, technology,
+and company documents from one static database snapshot. Company details
+include all localized descriptions and industry names. Imports are bounded
+to 1,000 documents. Exact company censuses preserve the acknowledgement,
+missing-ID, duplicate/pagination, 50-document/1% deletion-budget, and final
+convergence gates. Normal active/year counts come from the same Typesense
+facets as the web and final refresh, avoiding initial seniority/technology
+posting scans; local taxonomy counts remain bootstrap fallbacks. The final
+Go refresh and typeahead invalidation are retained. Parent cancellation reaps
+the Go child, and nonzero exit prevents a successful sync result.
+
+Complete document parity matches the retained Python producer. A real
+PostgreSQL + HTTP fixture executes the Go runtime through five full imports,
+five count updates, twelve facet reads, and both company censuses. It has no
+posting table, so passing proves that normal count reads stay in Typesense.
+Prune-budget/failure, exact-pagination, import-bound, and child-lifecycle tests
+also pass locally. CI and real production output/resource evidence remain
+pending. Python still owns CSV/local transaction writes, Redis board effects, and
+deadletter reporting; #7966 remains open.
+
+The same sync slice now also owns pre-transaction name snapshots and posting
+rename updates in Go. The before-map travels over a bounded stdin JSON handoff;
+Go re-reads names under the exporter fence and processes affected postings in
+1,000-row UUID keyset batches. Technology-name order/duplicates and existing
+per-document rejection behavior are preserved. It never changes CDC cursor or
+owner. The real PostgreSQL test covers 1,001 affected postings, an unaffected
+row, null technology IDs, and fence release after ambiguous acknowledgement.
+The Python snapshot/rename implementations remain offline references only.
+
+## Implementation checkpoint: 2026-09-27 — Go taxonomy verification
+
+The next release slice on `fix-crawler/go-typesense-taxonomy-verification`
+ports `verify-typesense-taxonomies` to Go. It is implemented and locally
+verified; **it has not been deployed or proven against production yet**.
+Release it after reconciliation PR #10072 and after the active protected
+backfill proof releases the host mutation lock.
+
+The new runtime reads all five static taxonomy/company contracts in one
+read-only repeatable-read PostgreSQL snapshot, checks six live schemas, and
+compares every remote document with pages bounded to 250. It preserves exact
+Python evidence hashes, missing versus null fields, localized aliases,
+hierarchy membership, and redacted mismatch details. It fails on incomplete
+or repeating pagination and emits one JSON record. Both the compatibility
+CLI and protected maintenance route to Go; no Python verifier fallback is
+used. Retained Python code is an offline oracle/cold-rollback reference.
+
+Tests compare complete Go/Python evidence for ready and drifted collections;
+exercise malformed/count-changing pagination, ambiguous numeric values,
+hierarchy failures, schema differences, cancellation and error redaction;
+and execute all nine SQL queries against PostgreSQL while another connection
+commits a taxonomy update between reads. All Go race tests, nine focused
+Python tests, 90 workflow tests, and seven web safety assertions pass locally.
+CI, production verification, and resource evidence remain pending.
+Configuration/taxonomy sync and schema setup are still Python production
+work, so this slice does not satisfy the complete #7966 gate.
+
+## Implementation checkpoint: 2026-09-27 — Go Typesense schema setup
+
+`fix-crawler/go-typesense-schema-setup` implements the next deploy-time Python
+owner in Go, intended after reconciliation #10072 and taxonomy verification
+#10074. **This branch has not been deployed.** The production backfill proof
+still holds the mutation lock; do not interrupt it to release this slice.
+
+Deployment invokes `go-typesense-exporter --setup-schemas` directly using the
+same Typesense-only credential scope and maintenance provenance. CLI/operator
+wrappers exec Go. All seven collection definitions, aliases, search token
+configuration, one-field index rebuilds, missing-field additions, explicit
+force behavior, and memory-delta evidence are preserved. Ambiguous synchronous
+PATCH timeouts are observed and re-read before retry; schema requests retain
+the one-hour timeout and two-hour per-collection repair deadline.
+
+Local Go race/vet tests pass, including existing-alias preservation,
+concurrent collection creation, timeout-after-apply without replay,
+busy-operation observation, missing status endpoint fallback, and bounded
+cancellation. The embedded schema is compared with the retained Python source;
+94 Python/schema/deployment tests and 90 workflow tests pass. CI and production
+setup/readiness evidence are pending. CSV/configuration/taxonomy sync remains
+Python and full #7966 completion remains open.
+
+## Implemented next: Go expired-lease recovery (not deployed)
+
+The scheduler's reaper loop now runs in a supervised Go process. It owns the
+interval, both Redis lane sweeps and the dead-letter lifecycle join. The
+remaining Python worker is a process/metrics adapter for this stage; it no
+longer decides when or how expired leases recover. The canonical Lua and
+publisher/queue policy are preserved. The frozen Python fixture checks exact
+Redis state across 16 cases and three consecutive sweeps per case, including
+batch bounds, unchanged due times, poison strikes, repair deadlines, missing
+configs, ready tiers/rotation and the Lightpanda ownership guard. Real Redis
+and PostgreSQL also exercise the complete sweep/dead-letter/classification
+tick. Child cancellation, early exit, force-kill fallback and metric labels
+are covered at the Python supervisor boundary.
+
+This release remains queued behind the full maintenance proof and earlier Go
+maintenance PRs. Do not deploy over the running mutation lock or claim this
+completes worker scheduling, the full pipeline or #7966.
+
+## Progress: 2026-09-27 13:40 UTC — backfill complete, proof running
+
+The Go phase of [maintenance 36317322087](https://github.com/colophon-group/jobseek/actions/runs/36317322087)
+finished at 13:27:38 UTC: **5,669,012 acknowledged documents in 5,472.035 seconds**.
+The existing fresh full Python reconciliation then started in the same
+container under the same mutation lock. At 13:36:35 UTC it had completed
+partition `1f`, with zero unresolved differences in that partition. The full
+256-partition proof and following taxonomy verification are still pending;
+do not deploy over this process or declare final parity yet.
+
+The final Go-phase cgroup sample at 13:27:37 UTC recorded 784.207 CPU-seconds,
+79,636 KiB process RSS and 108,976 KiB process high-water RSS. Across 346
+successful Go-phase samples the maximum sampled cgroup memory was 100,868,096
+bytes. Sampling began after process startup and cgroup memory.peak is unavailable.
+These numbers describe this maintenance container only; they do not prove
+whole-lane efficiency or a comparison against the Python backfill.
+
+Implementation PRs #10072 (reconciliation), #10074 (taxonomy verification),
+#10076 (schema setup), and #10077 (taxonomy/company sync and posting rename
+updates) are queued behind this proof. They are not deployed. The next
+configuration-sync substage now implemented in Go is the read-only dead-letter
+lifecycle join shared by sync, worker metrics and operator inspection. Its
+Python-oracle fixtures and real PostgreSQL/read-only Redis integration cover
+classification, batch boundaries, corrupt authority and membership preservation.
+The same PR now implements explicit retry/prune in Go, including an atomic
+Redis transition and a PostgreSQL row lock across the mutation boundary.
+Tests prove due-time preservation, schedule deduplication, changed-config and
+changed-authority refusal, superseded-inflight protection, and exact-member
+replay refusal. These changes are not deployed. CSV/local transaction sync,
+remaining scheduler/worker stages, and fleet-wide profile migration remain.
+
 ## Production checkpoint: 2026-09-27 — Go Typesense backfill
 
 [PR #10069](https://github.com/colophon-group/jobseek/pull/10069) merged as

@@ -786,6 +786,46 @@ async def run() -> None:
         # has already populated the environment; exec forwards signals/status
         # directly and opens no Python database pools or metrics server.
         os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--backfill"])
+    if args.command == "reconcile":
+        command = [
+            "go-typesense-exporter",
+            "--reconcile",
+            "--max-partitions",
+            str(args.max_partitions),
+            "--start-partition",
+            str(args.start_partition),
+            "--target",
+            args.target,
+        ]
+        for enabled, option in (
+            (args.repair, "--repair"),
+            (args.full, "--full"),
+            (args.fresh_cycle, "--fresh-cycle"),
+        ):
+            if enabled:
+                command.append(option)
+        if args.candidate_order_benchmark_sha256 is not None:
+            command.extend(
+                ["--candidate-order-benchmark-sha256", args.candidate_order_benchmark_sha256]
+            )
+        os.execvp(command[0], command)
+
+    if args.command == "verify-typesense-taxonomies":
+        os.execvp("go-typesense-exporter", ["go-typesense-exporter", "--verify-taxonomies"])
+
+    if args.command == "setup-typesense":
+        command = ["go-typesense-exporter", "--setup-schemas"]
+        if args.force:
+            command.append("--force")
+        os.execvp(command[0], command)
+
+    if args.command == "deadletters":
+        go_args = ["go-typesense-exporter", "--deadletters", args.action]
+        for ref in args.entry or []:
+            go_args.extend(["--entry", ref])
+        if args.apply:
+            go_args.append("--apply")
+        os.execvp("go-typesense-exporter", go_args)
     setup_logging(settings.log_level)
 
     log.info("cli.starting", command=args.command, worker_id=WORKER_ID)
@@ -839,7 +879,10 @@ async def run() -> None:
         elif args.command == "sync":
             from src.sync import run_sync
 
-            await run_sync()
+            sync_task = asyncio.create_task(run_sync())
+            await _await_task_or_shutdown(sync_task, shutdown_event)
+            if sync_task.cancelled():
+                raise SystemExit(130)
 
         elif args.command == "proxy-audit":
             from src.proxy_audit import ProxyAuditError, audit_webshare
@@ -1277,15 +1320,6 @@ async def run() -> None:
                     board_slugs=args.board_slug,
                 )
 
-        elif args.command == "verify-typesense-taxonomies":
-            local_pool = await create_local_pool()
-            from src.taxonomy_readiness import run_cli
-            from src.typesense_client import get_typesense_client
-
-            exit_code = await run_cli(local_pool, get_typesense_client())
-            if exit_code != 0:
-                raise SystemExit(exit_code)
-
         elif args.command == "refresh-typesense":
             from src.cron_metrics import cron_run
 
@@ -1340,11 +1374,6 @@ async def run() -> None:
                     count=result.count,
                 )
 
-        elif args.command == "setup-typesense":
-            from src.typesense_schema import run_setup
-
-            run_setup(force=args.force)
-
         elif args.command == "notify-indexnow":
             start_metrics_server(settings.metrics_port)
             local_pool = await create_local_pool()
@@ -1397,46 +1426,6 @@ async def run() -> None:
                 if not summary.dry_run:
                     await refresh_derived_surfaces(local_pool)
 
-        elif args.command == "reconcile":
-            local_pool = await create_local_pool()
-            from src.reconciliation import (
-                issue_candidate_order_readiness_receipt,
-                run_reconciliation,
-            )
-
-            summary = await _await_task_or_shutdown(
-                asyncio.create_task(
-                    run_reconciliation(
-                        local_pool,
-                        None,
-                        repair=args.repair,
-                        full=args.full,
-                        fresh_cycle=args.fresh_cycle,
-                        max_partitions=args.max_partitions,
-                        start_partition=args.start_partition,
-                        target_scope=args.target,
-                    )
-                ),
-                shutdown_event,
-            )
-            if summary is None:
-                raise SystemExit(130)
-            benchmark_sha256 = getattr(args, "candidate_order_benchmark_sha256", None)
-            if benchmark_sha256 is not None:
-                receipt = await issue_candidate_order_readiness_receipt(
-                    local_pool,
-                    summary,
-                    benchmark_sha256=benchmark_sha256,
-                )
-                sys.stdout.write(
-                    json.dumps(
-                        {"candidate_order_readiness_receipt": receipt},
-                        sort_keys=True,
-                    )
-                    + "\n"
-                )
-                sys.stdout.flush()
-
         elif args.command == "board":
             local_pool = await create_local_pool()
             http = create_http_client()
@@ -1473,26 +1462,6 @@ async def run() -> None:
                 dry_run=args.dry_run,
             )
             log.info("prune.scrape_queues.done", dry_run=args.dry_run, **result)
-
-        elif args.command == "deadletters":
-            local_pool = await create_local_pool()
-            from src.deadletters import resolve_deadletters
-
-            result = await resolve_deadletters(
-                local_pool,
-                action=args.action,
-                selected_refs=args.entry,
-                apply=args.apply,
-            )
-            output = json.dumps(result, indent=2, sort_keys=True)
-            log.info(
-                "deadletters.complete",
-                action=args.action,
-                dry_run=not args.apply,
-                selected=result["selected"],
-                counts=result["counts"],
-            )
-            tty_message(output)
 
         elif args.command == "redis-capacity":
             from src.redis_capacity import (

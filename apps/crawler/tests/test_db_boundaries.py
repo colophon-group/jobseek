@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -76,75 +75,58 @@ async def test_export_command_never_opens_or_passes_the_crawler_mirror(monkeypat
     assert run_exporter.await_args.args[1] is None
 
 
-async def test_reconcile_command_always_passes_no_mirror_pool(monkeypatch) -> None:
-    local_pool = object()
-    run_reconciliation = AsyncMock()
-    monkeypatch.setattr(
-        cli,
-        "parse_args",
-        lambda: argparse.Namespace(
-            command="reconcile",
-            repair=True,
-            full=False,
-            fresh_cycle=False,
-            max_partitions=16,
-            start_partition=0,
-            target="typesense",
-        ),
-    )
-    monkeypatch.setattr(cli, "create_local_pool", AsyncMock(return_value=local_pool))
-    monkeypatch.setattr(cli, "close_all_pools", AsyncMock())
+async def test_reconcile_command_execs_go_without_opening_python_pools(monkeypatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["crawler", "reconcile", "--repair"])
+    local_pool = AsyncMock()
+    monkeypatch.setattr(cli, "create_local_pool", local_pool)
     monkeypatch.setattr(cli.settings, "database_url", "postgresql://must-not-open.invalid/mirror")
 
-    with patch("src.reconciliation.run_reconciliation", new=run_reconciliation):
-        await cli.run()
-
-    run_reconciliation.assert_awaited_once()
-    assert run_reconciliation.await_args.args == (local_pool, None)
-    assert run_reconciliation.await_args.kwargs["target_scope"] == "typesense"
-
-
-async def test_interrupted_reconcile_exits_nonzero_and_cannot_issue_receipt(
-    monkeypatch,
-) -> None:
-    local_pool = object()
-    issue_receipt = AsyncMock()
-
-    async def interrupted(task, _shutdown_event):
-        task.cancel()
-        await asyncio.gather(task, return_exceptions=True)
-        return None
-
-    monkeypatch.setattr(
-        cli,
-        "parse_args",
-        lambda: argparse.Namespace(
-            command="reconcile",
-            repair=True,
-            full=True,
-            fresh_cycle=True,
-            max_partitions=16,
-            start_partition=0,
-            target="typesense",
-            candidate_order_benchmark_sha256="a" * 64,
-        ),
-    )
-    monkeypatch.setattr(cli, "create_local_pool", AsyncMock(return_value=local_pool))
-    monkeypatch.setattr(cli, "close_all_pools", AsyncMock())
-    monkeypatch.setattr(cli, "_await_task_or_shutdown", interrupted)
-
     with (
-        patch("src.reconciliation.run_reconciliation", new=AsyncMock()),
-        patch(
-            "src.reconciliation.issue_candidate_order_readiness_receipt",
-            new=issue_receipt,
-        ),
-        pytest.raises(SystemExit) as exc_info,
+        patch("src.cli.os.execvp", side_effect=SystemExit(0)) as execute,
+        patch("src.db.create_pool", new_callable=AsyncMock) as mirror_pool,
+        patch("src.reconciliation.run_reconciliation", new_callable=AsyncMock) as python_run,
+        pytest.raises(SystemExit),
     ):
         await cli.run()
 
-    assert exc_info.value.code == 130
-    issue_receipt.assert_not_awaited()
+    assert execute.call_args.args[0] == "go-typesense-exporter"
+    command = execute.call_args.args[1]
+    assert "--reconcile" in command
+    assert command[command.index("--target") + 1] == "typesense"
+    local_pool.assert_not_awaited()
+    mirror_pool.assert_not_awaited()
+    python_run.assert_not_awaited()
+
+
+async def test_failed_go_reconcile_exec_cannot_issue_python_receipt(monkeypatch) -> None:
+    # Runtime cancellation/ledger safety is covered by the real PostgreSQL Go
+    # integration test. The shim must never fall back to Python after exec fails.
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "crawler",
+            "reconcile",
+            "--repair",
+            "--full",
+            "--fresh-cycle",
+            "--candidate-order-benchmark-sha256",
+            "a" * 64,
+        ],
+    )
+    local_pool = AsyncMock()
+    monkeypatch.setattr(cli, "create_local_pool", local_pool)
+    with (
+        patch("src.cli.os.execvp", side_effect=FileNotFoundError("missing Go executable")),
+        patch(
+            "src.reconciliation.issue_candidate_order_readiness_receipt", new_callable=AsyncMock
+        ) as receipt,
+        pytest.raises(FileNotFoundError),
+    ):
+        await cli.run()
+
+    local_pool.assert_not_awaited()
+    receipt.assert_not_awaited()
 
 
 def test_relisted_supabase_repair_is_not_a_crawler_command(monkeypatch) -> None:
