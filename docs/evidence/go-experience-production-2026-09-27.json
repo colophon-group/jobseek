@@ -1,0 +1,696 @@
+{
+  "release": "0.13.876",
+  "revision": "7da64809897c5e9d3ca13d2537318c707effc9a0",
+  "pull_request": 10104,
+  "deployment_run": 36342254765,
+  "status": "deployed, active; natural experience persistence and newly admitted Ashby output verified",
+  "verification": {
+    "required_ci_run": 36341443740,
+    "installed_runtime_contracts_run": 36341443683,
+    "crawler_deploy_gate_run": 36341443968,
+    "installed_image_parity": "passed",
+    "focused_tests": 43,
+    "frozen_experience_cases": 1967,
+    "stored_posting_replay": "go-experience-replay-2026-09-27.json"
+  },
+  "scope": "Native experience extraction in shared monitor/detail CPU helpers and supported Ashby monitor route expansion. Remaining Python workers and browser profiles remain in scope.",
+  "supported_rollback": {
+    "from_epoch": 84,
+    "retired_epoch": 85,
+    "restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "cleared_exact_selectors": 26
+  },
+  "selector_helper": {
+    "path": "/tmp/jobseek-post-go-experience-selectors.py",
+    "sha256": "d3a8aa77fc1f21ebdb42754113c75f7cd26d321aead2f57aecd878de67a7842e",
+    "count": 25
+  },
+  "selectors": {
+    "SMARTRECRUITERS_GO_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,0f2fad9a-c102-49c9-9233-21bc6785a74e",
+    "SMARTRECRUITERS_GO_DETAIL_BOARD_IDS": "4fd07c26-62bb-46af-a705-8533c074e28d,d87bd096-8b45-4b97-bf70-bcd3c10f62fc,868edd45-75dc-4174-adab-ffa2831957c1,628cc519-cf15-43df-8ee0-0be4431326c6,143b8a70-441d-41c5-8001-0876d6e570e4",
+    "WORKDAY_REPLAY_CAPTURE_BOARD_ID": "02ff01a5-d8ec-4696-8a45-17e3c8d6483c",
+    "JOIN_CAPTURE_SLUGS": "agentur-kuehnende,stellantisandyou,lebensmittel-knupferde",
+    "RECRUITEE_CAPTURE_TENANTS": "gorgias",
+    "KANDOU_JSONLD_CAPTURE_URL": "https://kandou.bamboohr.com/careers/310",
+    "WORKDAY_DETAIL_CAPTURE_HOST": "freseniusglobal.wd3.myworkdayjobs.com",
+    "PINPOINT_CAPTURE_TENANTS": "accelercomm,includedhealth,penumbrainc,reply",
+    "WORKDAY_GO_BOARD_IDS": "20eae165-5251-40d4-b9a0-0254f4bd1ab3",
+    "WORKDAY_GO_PERCENT": "5",
+    "RECRUITEE_GO_BOARD_IDS": "0f1c7be6-42f6-4706-952c-0d304f8011ba,d3df984c-5f08-47ff-a299-c54a700f5eee,e43481a7-561a-4f29-ab36-df8c5ddaca9f",
+    "PINPOINT_GO_BOARD_IDS": "0ef903fe-82c9-4610-bdfc-0360f9d4226a,b2ce0b69-5896-4df3-8b12-5a6dce9a85d7,ef5d7575-4a45-44d7-8826-ce86a85085c2",
+    "BOOKING_GO_BOARD_ID": "d9730d93-3a2a-4003-a99e-4a8f0830aa2b",
+    "TEAMTAILOR_RSS_GO_BOARD_IDS": "72d8d377-2242-4203-9270-c7447b4a3b56",
+    "GREENHOUSE_GO_PERCENT": "100",
+    "ASHBY_GO_PERCENT": "100",
+    "SUCCESSFACTORS_RSS_GO_BOARD_IDS": "35461192-d877-4146-8f0d-31c97f14fedd",
+    "PERSONIO_GO_BOARD_IDS": "fdbe61f8-4615-49e6-8970-7e5e76452e24",
+    "PERSONIO_GO_PERCENT": "5",
+    "WORKABLE_CAPTURE_SLUGS": "pix4d,debiopharm,unit8,hack-the-box-ltd",
+    "WORKABLE_DETAIL_CAPTURE_JOBS": "lucidya/4733C5B44F,lucidya/E258A7CDA9,unit8/2FA384D52A,unit8/ACABC868E8",
+    "WORKABLE_GO_DETAIL_BOARD_IDS": "aef95fd2-55ea-43cd-9aa6-9bd541c2bc4e",
+    "WORKABLE_GO_PERCENT": "25",
+    "WORKABLE_GO_BOARD_IDS": "06e7e8f2-4741-49b2-a135-96cfeb3bcfdd,631e7fce-366e-409d-b372-4ee4870e74c1,acecf5fd-3252-420d-a098-542cb1c0fc77,08c21917-9457-4b19-b0e6-40d0280a36c4",
+    "SITEMAP_GO_BOARD_IDS": "c4779214-ef92-4261-98fb-ae64f264fd23"
+  },
+  "ashby_before_expansion": {
+    "active_database_readback": [
+      {
+        "board_id": "9b818f47-eb6c-4d48-aedd-1c2304cdcd99",
+        "board_url": "https://jobs.ashbyhq.com/blueberrypediatrics",
+        "active": 9,
+        "url_sha256": "89ff5bb47f5281e1cb4c68c8799ee19c02c8bd33c0966967fb7c0dd04728fa51",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 18:34:02.784650+00:00"
+      },
+      {
+        "board_id": "7f88fe96-d7c5-4b80-9f2e-515cc33f3e11",
+        "board_url": "https://jobs.ashbyhq.com/mural",
+        "active": 13,
+        "url_sha256": "848fd534c066a3cf368ea426b2ce1623c44640fbfb72019d77c0c92415c85c01",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 18:38:04.319772+00:00"
+      },
+      {
+        "board_id": "535c0de3-e2c2-4a5e-b0e6-a104bcd6ea84",
+        "board_url": "https://jobs.ashbyhq.com/tako",
+        "active": 15,
+        "url_sha256": "778fd535512a153561ad8321ca897e20b2eefaaf1bff0921181da6affa863aaf",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 18:40:31.352319+00:00"
+      },
+      {
+        "board_id": "96e32627-0adf-4f42-ab54-5faaa9d838e6",
+        "board_url": "https://jobs.ashbyhq.com/mydr",
+        "active": 3,
+        "url_sha256": "44efa78cf4f04c7f39e3f07f0e451e2b856fb27407f9f3d8bc9baf7f28898a0f",
+        "consecutive_failures": 0,
+        "last_success_at": "2026-09-27 18:33:35.693692+00:00"
+      }
+    ],
+    "mydr_retention": "Two newly seen URLs match Go output. Existing drop guard retains a third row last seen 2026-08-28; not a new Go-created row and not confirmed-drop acceptance."
+  },
+  "limitations": [
+    "No forced due times or duplicate publisher requests.",
+    "Stage-specific local CPU replay is not whole-lane CPU/RAM/density/cost evidence.",
+    "Issue #7966 was closed by its owner on 2026-09-27; its documented full-retirement requirements are still unmet."
+  ],
+  "deployment_conclusion": "success",
+  "configuration_sync": {
+    "engine": "go",
+    "companies": 6013,
+    "boards": 7879,
+    "completed_at": "2026-09-27T19:03:56.373659872Z"
+  },
+  "initial_experience_readback": {
+    "since": "2026-09-27T19:04:00+00:00",
+    "sample_size": 52,
+    "populated_predictions": 6,
+    "mismatches": 0,
+    "populated_rows": [
+      {
+        "id": "ff657d05-1ebb-4802-b9c6-69b54c95be8c",
+        "board_id": "46b3c109-05ce-4082-816f-2e10d2f8d7eb",
+        "first_seen_at": "2026-09-21 00:02:20.985154+00:00",
+        "last_scraped_at": "2026-09-27 19:05:10.622799+00:00",
+        "description_sha256": "f7e9d79046e4457e6a9bf7093f5615e1ed50219153496109c2e800017961074c",
+        "description_updated_at": "2026-09-21 00:04:45.113007+00:00",
+        "expected": [
+          3.0,
+          null
+        ],
+        "stored": [
+          3.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "d5c003eb-6156-4474-a775-982efe3fef34",
+        "board_id": "42878ef4-f81f-4fe1-9835-a0ede88c93c2",
+        "first_seen_at": "2026-08-11 15:50:18.904127+00:00",
+        "last_scraped_at": "2026-09-27 19:04:46.226094+00:00",
+        "description_sha256": "51d1056e595a2d0f185fcc0ef3fd316879d666eca4dac97e6c4abd80c51f8167",
+        "description_updated_at": "2026-08-11 15:51:00.811552+00:00",
+        "expected": [
+          3.0,
+          null
+        ],
+        "stored": [
+          3.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "402fb4b3-b25a-4dfe-811f-ca8a40bf42dc",
+        "board_id": "dd1ab9e3-2c28-444b-996d-6d08f34f924c",
+        "first_seen_at": "2026-08-20 18:12:51.201205+00:00",
+        "last_scraped_at": "2026-09-27 19:04:37.325693+00:00",
+        "description_sha256": "777390aace1fe83e6c7e12221848b3c1ac4a4a5a52cb173982c12c0a5c19273c",
+        "description_updated_at": "2026-08-20 18:12:57.700803+00:00",
+        "expected": [
+          5.0,
+          null
+        ],
+        "stored": [
+          5.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "6a732e26-e714-4fe6-9202-78f15c8938bd",
+        "board_id": "aa70f7e1-390a-4f79-b597-a3717b474680",
+        "first_seen_at": "2026-09-03 14:42:28.601149+00:00",
+        "last_scraped_at": "2026-09-27 19:04:34.701627+00:00",
+        "description_sha256": "fb15338a81a6a170b979f156b695b516674915e1a6ef70e290917ed2a9c0c68a",
+        "description_updated_at": "2026-09-03 14:42:32.038462+00:00",
+        "expected": [
+          1.0,
+          3.0
+        ],
+        "stored": [
+          1.0,
+          3.0
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "9dd35e6d-b87e-4ad9-881e-0c81ff07cca3",
+        "board_id": "119bd655-ae31-4765-9510-e3caf6a29d9f",
+        "first_seen_at": "2026-09-27 19:02:20.923604+00:00",
+        "last_scraped_at": "2026-09-27 19:04:28.054002+00:00",
+        "description_sha256": "f509ece2935af35d9f50ebd2338fac57c598cfb1043a94c9384bf26e3bbb9f03",
+        "description_updated_at": "2026-09-27 19:04:29.630497+00:00",
+        "expected": [
+          0.5,
+          null
+        ],
+        "stored": [
+          0.5,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "03bffaad-b534-40a8-a31a-5bd26f525110",
+        "board_id": "774aadbd-3d33-48ec-af43-24228e311a0b",
+        "first_seen_at": "2026-08-20 06:59:42.835886+00:00",
+        "last_scraped_at": "2026-09-27 19:04:25.173636+00:00",
+        "description_sha256": "5f16bd7934668a247593754e3441ce7f3f9413357e0c22990237cd577323b7bd",
+        "description_updated_at": "2026-08-20 06:59:44.048049+00:00",
+        "expected": [
+          3.0,
+          null
+        ],
+        "stored": [
+          3.0,
+          null
+        ],
+        "populated_fields_match": true
+      }
+    ],
+    "null_retention_note": "Null predictions do not require clearing previously stored values; writer COALESCE semantics are unchanged."
+  },
+  "activation": {
+    "epoch": 86,
+    "owner": "go",
+    "audit": "accepted/audit_ok",
+    "ready": 5,
+    "inflight": 0,
+    "dead": 0,
+    "exact_selectors_restaged": 25
+  },
+  "route_census": {
+    "enabled": 7879,
+    "routes": {
+      "go-ashby": 878,
+      "go-booking-api": 1,
+      "go-greenhouse": 2520,
+      "go-lever": 194,
+      "go-personio": 2,
+      "go-pinpoint": 3,
+      "go-recruitee": 3,
+      "go-sitemap": 1,
+      "go-smartrecruiters": 4,
+      "go-successfactors-rss": 1,
+      "go-teamtailor-rss": 1,
+      "go-workable": 15,
+      "go-workday": 2,
+      "python": 4254
+    },
+    "errors": [],
+    "python_monitor_types": {
+      "dom": 837,
+      "workday": 494,
+      "rss": 405,
+      "api_sniffer": 324,
+      "sitemap": 313,
+      "join": 276,
+      "oracle_hcm": 134,
+      "inline": 125,
+      "smartrecruiters": 125,
+      "icims": 118,
+      "recruitee": 112,
+      "pinpoint": 101,
+      "workable": 62,
+      "ashby": 57,
+      "nextdata": 54,
+      "personio": 53,
+      "greenhouse": 50,
+      "gupy": 36,
+      "phenom": 31,
+      "linkedin": 31,
+      "eightfold": 30,
+      "jobylon": 28,
+      "beisen": 24,
+      "almacareer": 23,
+      "mokahr": 22,
+      "jazzhr": 20,
+      "ukg": 16,
+      "paycom": 16,
+      "softgarden": 15,
+      "adp": 14,
+      "recruiter_co_kr": 14,
+      "breezy": 13,
+      "gem": 13,
+      "accenture": 12,
+      "cornerstone": 12,
+      "computrabajo": 11,
+      "jobs_ch": 11,
+      "bamboohr": 10,
+      "dayforce": 10,
+      "rippling": 10,
+      "umantis": 9,
+      "comeet": 9,
+      "paylocity": 9,
+      "jobvite": 9,
+      "unifr": 9,
+      "talentbrew": 8,
+      "notion": 8,
+      "avature": 7,
+      "hrmos": 6,
+      "recruiterbox": 6,
+      "seek": 6,
+      "manatal": 5,
+      "darwinbox": 5,
+      "taleo": 4,
+      "jobbank104": 4,
+      "brassring": 4,
+      "practicematch": 4,
+      "ycombinator": 4,
+      "hibob": 4,
+      "pageup": 3,
+      "bytedance": 3,
+      "typify": 3,
+      "earcu": 3,
+      "welcometothejungle": 3,
+      "traffit": 3,
+      "intervieweb": 3,
+      "woowa": 3,
+      "jobstreet": 3,
+      "deel": 3,
+      "johdi": 2,
+      "paynet": 2,
+      "cvwarehouse": 2,
+      "fenbi": 2,
+      "talentreef": 2,
+      "headhunter": 2,
+      "jobdiva": 2,
+      "talemetry": 2,
+      "job51": 2,
+      "amazon": 1,
+      "curately": 1,
+      "jobconvo": 1,
+      "njoyn": 1,
+      "seamlesshiring": 1,
+      "wecruit": 1,
+      "inploi": 1,
+      "peoplesoft": 1,
+      "cnstaff": 1,
+      "infoniqa": 1,
+      "turbohire": 1,
+      "candidatus": 1,
+      "nowhiring": 1,
+      "beehire": 1,
+      "jarvi": 1,
+      "keka": 1,
+      "hirehive": 1,
+      "infor": 1,
+      "kipt": 1,
+      "papa_johns": 1,
+      "universia": 1,
+      "unisante": 1,
+      "prospective": 1,
+      "lever": 1
+    }
+  },
+  "observed_at": "2026-09-27T19:08:47.140446+00:00",
+  "health": [
+    "deploy-lightpanda-claimant-1 Up About a minute (healthy)",
+    "deploy-browser-1-1 Up About a minute (healthy)",
+    "deploy-worker-1-1 Up About a minute (healthy)",
+    "deploy-worker-2-1 Up About a minute (healthy)",
+    "deploy-worker-3-1 Up About a minute (healthy)",
+    "deploy-lightpanda-executor-1 Up About a minute (healthy)",
+    "deploy-drain-1 Up About a minute (healthy)",
+    "deploy-lightpanda-producer-1 Up About a minute (healthy)",
+    "deploy-alloy-1 Up 4 minutes",
+    "deploy-exporter-1 Up 4 minutes",
+    "deploy-redis-1 Up 13 days (healthy)"
+  ],
+  "natural_enrichment": {
+    "experience_successes": 2744.0,
+    "execution_errors": 0,
+    "metrics": [
+      "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 3982.0",
+      "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1110.0",
+      "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1762.0",
+      "crawler_runtime_capability_executions_total{capability=\"experience\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1110.0",
+      "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 853.0",
+      "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 257.0",
+      "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 339.0",
+      "crawler_runtime_capability_executions_total{capability=\"experience\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 257.0",
+      "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 3201.0",
+      "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 817.0",
+      "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1569.0",
+      "crawler_runtime_capability_executions_total{capability=\"experience\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 817.0",
+      "crawler_runtime_executions_total{implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 1678.0",
+      "crawler_runtime_capability_executions_total{capability=\"technology\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 560.0",
+      "crawler_runtime_capability_executions_total{capability=\"experience\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 560.0",
+      "crawler_runtime_capability_executions_total{capability=\"occupation_seniority\",implementation=\"go-job-enrichment\",outcome=\"success\",stage=\"enrichment\"} 558.0"
+    ],
+    "note": "Counters are sampled independently while work proceeds, not an atomic conservation sample."
+  },
+  "typesense_metrics": [
+    "crawler_typesense_export_docs_total{status=\"success\"} 101",
+    "crawler_typesense_export_docs_total{status=\"error\"} 0",
+    "crawler_typesense_export_lag 0",
+    "crawler_typesense_healthy 1"
+  ],
+  "post_activation_experience_readback": {
+    "since": "2026-09-27T19:08:00+00:00",
+    "sample_size": 48,
+    "populated_predictions": 11,
+    "mismatches": 0,
+    "populated_rows": [
+      {
+        "id": "76f5c4e5-dffc-4cc6-b7ab-ab8b49973d39",
+        "board_id": "01498593-fce2-4b1c-be13-ceb6ccde27b1",
+        "first_seen_at": "2026-07-23 00:12:16.416249+00:00",
+        "last_scraped_at": "2026-09-27 19:09:16.383935+00:00",
+        "description_sha256": "ef6c81e59840f4d6cc0e2982b23b14e464b9945b07c2442591910e3a303108fe",
+        "description_updated_at": "2026-07-23 01:03:24.997835+00:00",
+        "expected": [
+          4.0,
+          null
+        ],
+        "stored": [
+          4.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "6ff44e8f-a35f-44a1-99ad-1bb3921aef9f",
+        "board_id": "b4a2c7d8-2aae-469f-abb3-15440cd43db9",
+        "first_seen_at": "2026-08-17 21:36:48.613330+00:00",
+        "last_scraped_at": "2026-09-27 19:09:13.101215+00:00",
+        "description_sha256": "c9b7b2fb89ffdb6e951918050d41dadf11bc01317096204d926736a0292cd9ea",
+        "description_updated_at": "2026-08-17 21:37:01.077852+00:00",
+        "expected": [
+          3.0,
+          7.0
+        ],
+        "stored": [
+          3.0,
+          7.0
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "ff1a7dff-cc32-4b35-9af5-b5890f82a345",
+        "board_id": "298f34cc-d2e0-4275-aa0e-58f720ab3cf1",
+        "first_seen_at": "2026-09-20 09:56:48.324030+00:00",
+        "last_scraped_at": "2026-09-27 19:09:12.785388+00:00",
+        "description_sha256": "113bc68e528fedf058bfa376b86a69496e10bb15bbf8a635dcd94d1d7cd3a0e1",
+        "description_updated_at": "2026-09-20 10:00:00.573318+00:00",
+        "expected": [
+          3.0,
+          null
+        ],
+        "stored": [
+          3.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "1225ad36-1c67-4d56-9b20-7616c825151c",
+        "board_id": "00a5f815-636e-4ce7-8b3f-cbc2da768230",
+        "first_seen_at": "2026-09-07 15:59:38.854308+00:00",
+        "last_scraped_at": "2026-09-27 19:08:46.831486+00:00",
+        "description_sha256": "c9774869454782a1ad78b84cfb35729779a5ea51f53b1e6e7eba731a7c9a205a",
+        "description_updated_at": "2026-09-07 16:01:30.290827+00:00",
+        "expected": [
+          2.0,
+          null
+        ],
+        "stored": [
+          2.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "39e7fc94-a663-4036-88f5-380def015ae7",
+        "board_id": "f12bd285-400c-416b-9921-bac5320ef903",
+        "first_seen_at": "2026-08-28 13:53:15.027249+00:00",
+        "last_scraped_at": "2026-09-27 19:08:30.004368+00:00",
+        "description_sha256": "4057019b803c1d71c1a6609c1744d9ef9b55f7da07669b832555be75f518ea02",
+        "description_updated_at": "2026-08-28 13:53:32.900656+00:00",
+        "expected": [
+          4.0,
+          null
+        ],
+        "stored": [
+          4.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "0df83029-ce68-40f0-984e-7363bd188b2e",
+        "board_id": "152a9144-0fd0-40aa-9f3b-08df02ea5536",
+        "first_seen_at": "2026-08-31 20:39:16.662412+00:00",
+        "last_scraped_at": "2026-09-27 19:08:26.240077+00:00",
+        "description_sha256": "420a2bbf764b94599c35a479b2b09c7a38ab7db8460bfeb1cbbf6735858ec092",
+        "description_updated_at": "2026-08-31 20:43:07.968116+00:00",
+        "expected": [
+          10.0,
+          null
+        ],
+        "stored": [
+          10.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "cb9bbf1f-0cbf-4bf2-8f95-b38a8db493c6",
+        "board_id": "dd1ab9e3-2c28-444b-996d-6d08f34f924c",
+        "first_seen_at": "2026-09-14 17:18:36.350446+00:00",
+        "last_scraped_at": "2026-09-27 19:08:24.331098+00:00",
+        "description_sha256": "545e9d868d6fb0b33e8d7d5d82950472f5038a74b97ea77b16c16a6f76de0f03",
+        "description_updated_at": "2026-09-14 17:19:47.796340+00:00",
+        "expected": [
+          5.0,
+          null
+        ],
+        "stored": [
+          5.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "1763000c-b57f-45ca-aee7-8e21c8dc8cbd",
+        "board_id": "1d504202-e39e-4ad0-a1d0-fd326c997eb2",
+        "first_seen_at": "2026-09-14 16:01:06.191700+00:00",
+        "last_scraped_at": "2026-09-27 19:08:24.215872+00:00",
+        "description_sha256": "60062bf0ddfdbd47091f68cd861ad5ee4935941b37f94bdc01a0a376a6b35fe9",
+        "description_updated_at": "2026-09-14 16:04:45.157953+00:00",
+        "expected": [
+          12.0,
+          null
+        ],
+        "stored": [
+          12.0,
+          null
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "afb4126b-83df-4d9f-a682-9bbcf71e4257",
+        "board_id": "aa70f7e1-390a-4f79-b597-a3717b474680",
+        "first_seen_at": "2026-09-15 19:48:26.403125+00:00",
+        "last_scraped_at": "2026-09-27 19:08:22.104652+00:00",
+        "description_sha256": "9086a8b5f0032b436818c16c25e73c28ce8c06b0cc5d6cac237536884fbb4d31",
+        "description_updated_at": "2026-09-15 19:48:30.853881+00:00",
+        "expected": [
+          2.0,
+          5.0
+        ],
+        "stored": [
+          2.0,
+          5.0
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "3bc7a77d-4eca-4e7f-8883-865cd48f551c",
+        "board_id": "225531b0-ebd8-4d0f-be38-f4a92dd89e2d",
+        "first_seen_at": "2026-09-03 08:59:28.202885+00:00",
+        "last_scraped_at": "2026-09-27 19:08:14.430467+00:00",
+        "description_sha256": "c7e6e0b84e0578adddd73c920a4a7dd17ece9102c561441e376f307f6d3462cf",
+        "description_updated_at": "2026-09-03 08:59:33.022071+00:00",
+        "expected": [
+          2.0,
+          3.0
+        ],
+        "stored": [
+          2.0,
+          3.0
+        ],
+        "populated_fields_match": true
+      },
+      {
+        "id": "c78b09d3-1215-4458-bf37-81b5e1d8c90b",
+        "board_id": "3f399f83-34c9-4c1c-8d55-c54d39ee5493",
+        "first_seen_at": "2026-09-21 12:55:39.123404+00:00",
+        "last_scraped_at": "2026-09-27 19:08:03.129449+00:00",
+        "description_sha256": "735ae44c7c7904ad57e47ba520d50e79e6f57bda8fbfd5705940ac6d6cd2a9df",
+        "description_updated_at": "2026-09-21 12:55:43.615025+00:00",
+        "expected": [
+          0.0,
+          1.0
+        ],
+        "stored": [
+          0.0,
+          1.0
+        ],
+        "populated_fields_match": true
+      }
+    ],
+    "null_predictions_with_retained_values": 0
+  },
+  "newly_admitted_ashby": [
+    {
+      "go_event": {
+        "board_id": "a2ed61ae-abd5-4bae-bbc4-bb9a0775ac80",
+        "urls": 4,
+        "url_sha256": "ef36f10fbfc7edccbbed265db39960590d94ede50dea20e4a130e0b39db79353",
+        "requests": 1,
+        "responses": 1,
+        "response_bytes": 64646,
+        "event": "go_ashby.monitor_complete",
+        "level": "info",
+        "timestamp": "2026-09-27T19:08:45.784599Z"
+      },
+      "previous_25_percent_bucket": 5366,
+      "database": {
+        "board": {
+          "id": "a2ed61ae-abd5-4bae-bbc4-bb9a0775ac80",
+          "board_url": "https://jobs.ashbyhq.com/spekit",
+          "board_status": "suspect",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:08:46.115585+00:00",
+          "next_check_at": "2026-09-27 20:08:46.115585+00:00"
+        },
+        "active": 10,
+        "url_sha256": "beb691d0136f7a71bf073a0072267e2ac371c8cf3381eef5bfc7cbf56b62d6d2"
+      },
+      "fresh_count": 4,
+      "fresh_url_sha256": "ef36f10fbfc7edccbbed265db39960590d94ede50dea20e4a130e0b39db79353",
+      "retained_count": 6,
+      "retained_last_seen": [
+        "2026-09-11 09:21:44.483899+00:00",
+        "2026-09-11 09:21:44.483899+00:00",
+        "2026-07-09 23:36:26.515526+00:00",
+        "2026-08-03 15:54:10.740402+00:00",
+        "2026-07-31 16:40:45.936980+00:00",
+        "2026-07-31 16:40:45.936980+00:00"
+      ]
+    },
+    {
+      "go_event": {
+        "board_id": "b9f0ff75-09bd-4c2f-ab39-a76b40f01172",
+        "urls": 25,
+        "url_sha256": "6f081e72d17d06c0dd438b5056a4336ab02ed966e49ea5d24fd9fa280a393937",
+        "requests": 1,
+        "responses": 1,
+        "response_bytes": 314381,
+        "event": "go_ashby.monitor_complete",
+        "level": "info",
+        "timestamp": "2026-09-27T19:09:05.407296Z"
+      },
+      "previous_25_percent_bucket": 3860,
+      "database": {
+        "board": {
+          "id": "b9f0ff75-09bd-4c2f-ab39-a76b40f01172",
+          "board_url": "https://jobs.ashbyhq.com/orb",
+          "board_status": "active",
+          "consecutive_failures": 0,
+          "last_success_at": "2026-09-27 19:09:06.866437+00:00",
+          "next_check_at": "2026-09-27 20:09:06.866437+00:00"
+        },
+        "active": 25,
+        "url_sha256": "6f081e72d17d06c0dd438b5056a4336ab02ed966e49ea5d24fd9fa280a393937"
+      },
+      "fresh_count": 25,
+      "fresh_url_sha256": "6f081e72d17d06c0dd438b5056a4336ab02ed966e49ea5d24fd9fa280a393937",
+      "retained_count": 0,
+      "retained_last_seen": []
+    }
+  ],
+  "spekit_retention_events": [
+    {
+      "board_id": "a2ed61ae-abd5-4bae-bbc4-bb9a0775ac80",
+      "board_url": "https://jobs.ashbyhq.com/spekit",
+      "crawler_type": "ashby",
+      "discovered": 4,
+      "expected": 8,
+      "drop_threshold": 0.3,
+      "history": [
+        8,
+        8,
+        8,
+        8,
+        8
+      ],
+      "streak": 1181,
+      "event": "batch.monitor.suspect_drop",
+      "level": "warning",
+      "timestamp": "2026-09-27T19:08:46.117725Z"
+    },
+    {
+      "board_id": "a2ed61ae-abd5-4bae-bbc4-bb9a0775ac80",
+      "board_url": "https://jobs.ashbyhq.com/spekit",
+      "crawler_type": "ashby",
+      "discovered": 4,
+      "processed": 4,
+      "new": 0,
+      "relisted": 0,
+      "gone": 0,
+      "gone_skipped_reason": "drop",
+      "truncated": false,
+      "batches": 1,
+      "duration_s": 0.58,
+      "event": "batch.monitor.success",
+      "level": "info",
+      "timestamp": "2026-09-27T19:08:46.126740Z"
+    }
+  ]
+}
