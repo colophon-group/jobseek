@@ -6,6 +6,55 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — SmartRecruiters and Personio v0.13.882
+
+PR #10116 merged as `5eb32570ddb4b6561f3a2e14347b0c1c32315367`.
+[Deployment 36357998180](https://github.com/colophon-group/jobseek/actions/runs/36357998180)
+succeeded. All **129 enabled SmartRecruiters and 55 enabled Personio monitors**
+now select Go, moving 178 more monitors from Python. The live census is
+**4,449 Go / 3,430 Python** of 7,879 enabled monitors, with zero route errors.
+Both provider percentages are release defaults of 100 in Compose and the
+runtime. The old Personio 5% overlay pin was removed. No board was disabled.
+
+Required CI, installed-image parity and the crawler deploy gate passed. Go
+configuration sync completed 6,013 companies and 7,879 boards at 23:23:53 UTC.
+The refreshed pre-deploy baseline contains 184 boards and 113,171 active postings,
+including Domino's 24,825 rows. Nine natural Go cycles have exact active DB URL
+readbacks and unchanged posting-ID/description-hash digests: AUTO1 588, ASML 17,
+Endava 173, Louis Dreyfus 430 and Syngenta 543 SmartRecruiters jobs; Cylib 9,
+Eraneos 21, NVision 12 and Ohpen 14 Personio jobs. AUTO1 and Syngenta are custom
+career domains and exceed the former 500-posting route ceiling. No failure
+count increased across the final 184-board readback; ARX was already quarantined
+with 19 failures. No due score or duplicate publisher request was forced.
+
+Supported cold rollback retired c1 epoch 96 at 97 and restored all five
+schedules with zero terminal drops/write fences. The previous **25 selectors**
+cleared under the host lock. The reduced **24-selector** overlay was staged
+against the promoted full revision and c1 reactivated at **epoch 98**. Its
+queue audit is accepted/audit_ok, with five ready and zero inflight/dead records.
+All configured service health checks pass; c2 remains dark. An initial Typesense
+snapshot reports 539 successful exports, zero errors, zero lag and healthy
+status. See [sanitized production evidence](evidence/go-smart-personio-production-2026-09-28.json).
+
+Before another crawler deploy or selector mutation, complete supported
+`rollback c1`, then clear all **24** selectors under
+`/run/lock/jobseek-crawler-mutation.lock` with
+`/tmp/jobseek-post-smart-personio-selectors.py` against full revision
+`5eb32570ddb4b6561f3a2e14347b0c1c32315367` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision, then reactivate c1. The helper SHA-256 is
+`07f3dca2e8d0c0185b12817f76ab9e1e8e6775d2df128f9f123abdc803cb97a5`.
+These instructions supersede the historical 25-selector checkpoints below.
+To reverse the two broad routes, set their percentages to zero and remove their
+exact monitor board selectors through the supported cold mutation procedure,
+or restore the previous release.
+
+This checkpoint covers monitor fetch/parser ownership and observed persistence.
+The largest boards and the newly admitted Personio custom-URL configurations
+still need natural output observation. Remaining Python/detail/browser work,
+same-actual-workload whole-lane CPU/RAM/density/cost proof and final retirement
+remain open; the full migration goal stays active.
+
 ## Production checkpoint: 2026-09-28 — Recruitee and Pinpoint routing v0.13.881
 
 PR #10114 merged as `ae518d09610b3570b706c67bb7862ee18cb7f267`.
@@ -84,9 +133,13 @@ repository at `/tmp/jobseek-smartrecruiters-personio-baseline.json` with SHA-256
 `7a1ea55f6c8f2a72ab70671d62525952eb12f2ced3c73a19468a8161fdd049d3`.
 Twelve focused runtime tests and both native modules' tests pass locally, with
 the Personio race detector and the SmartRecruiters race detector in its runtime
-test. Production deploy and natural Go output/database readback are still
-required before this slice counts as a production checkpoint. No publisher
-request was added for this verification.
+test. The successful production deploy and nine natural Go output/database
+readbacks are recorded in the latest checkpoint above. The refreshed pre-deploy
+baseline is retained mode 0600 at `/tmp/jobseek-smartrecruiters-personio-predeploy.json`,
+SHA-256 `8f1b3a3e90702b3729aed755ca60fff6acdec9d7d9b36fb456e71e793f5b6766`.
+No publisher request was added for this verification. Native per-mode posting
+limits remain 50,000 for ordinary/localized discovery and 500 for canonical
+job-location discovery.
 
 ## Implementation checkpoint: Recruitee and Pinpoint routing v0.13.881
 
