@@ -6,6 +6,65 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — Go maintenance v0.13.870
+
+PR #10089 merged as `ec892dc2899228e3a72526eb7d2f4cd5820445f3` and
+[deploy 36326098454](https://github.com/colophon-group/jobseek/actions/runs/36326098454)
+succeeded. Go schema setup and taxonomy/company sync completed in the actual
+deploy: 37,526 location, 562 occupation, 36 seniority, 186 technology, and
+6,039 company documents; zero company deletions. Go dead-letter inspection
+reported 23 entries (20 actionable, three superseded, zero unresolved).
+
+[Go taxonomy proof 36326995545](https://github.com/colophon-group/jobseek/actions/runs/36326995545)
+passed with every static document and all active collection schemas matching.
+The completed full backfill proof and resource limits are recorded in
+[the production evidence](26-go-typesense-backfill-production-evidence.md).
+
+Supported c1 rollback retired epoch 74 at epoch 75, restored all five
+schedules, and left zero drops or write fences. The old 22 selectors were
+cleared before merge. After deployment, 23 selectors were staged against the
+new full revision, adding the four captured Workable boards documented in
+[their evidence record](25-go-workable-production-evidence.md). Supported c1
+activation reached epoch 76; all services are healthy. The conservation audit
+returned accepted/audit_ok: five ready records, zero inflight or dead. Workers
+run the Go lease-reaper child. A point-in-time exporter read reported 5,151
+exported documents, zero document errors, and zero lag.
+
+The first bounded Go reconciliation slice completed at 14:50:48 UTC through
+the existing attested host launcher, which execs Go via the compatibility
+CLI. Run `6f0ca3ad-8671-4291-b998-7f33f33eb8b9` checked 355,623 local and
+remote rows across 16 partitions, repaired one difference, and left zero
+unresolved. The launcher exited zero; its mode-0600 local log is
+`/tmp/jobseek-go-reconciliation-ec892dc2.log`. All four workers reported Go
+reapers without errors. The six original maintenance drafts were closed as
+superseded by deployed #10089. Natural Go Workable cycles remain pending;
+do not force them.
+
+Before any further image/selector mutation, use supported `rollback c1`, then
+clear **23** selectors under the host lock with
+`/tmp/jobseek-post-go-maintenance-selectors.py clear`, the actual deployed
+full revision above, and `https://kandou.bamboohr.com/careers/310`. The older
+22-selector helper no longer matches the live set. PR #10093 contains the
+next Go board-queue publisher, the direct host launcher from #10092, and the
+reaper pool-limit/budget correction. Keep it draft until its required checks
+and the live release proof pass. The full #7966 migration remains open.
+
+## Implementation checkpoint: Go board sync queue publication
+
+The next slice routes configuration sync's committed board schedules and
+retired-board cleanup to `go-typesense-exporter --sync-board-queues`. Go owns
+the existing Lua calls, board hash writes, provider delay keys, and bounded
+1,000-board pipelines. No Redis publication occurs before the local database
+transaction commits. Redis errors abort sync; ambiguous transport writes are
+not automatically replayed. The child is bounded and reaped on cancellation.
+
+The Redis fixture compares every stored key against the Python publisher,
+including repeated execution, both worker types, first-time/recurring work,
+existing leases, repair deadlines, rate/rotation floors, and corrupt state.
+A 1,001-board case covers the batch boundary and stops later batches/removals
+on failure. This implementation is not deployed. CSV/local PostgreSQL sync,
+workers and remaining extraction/profile stages still require Go migration.
+
 ## Unified release candidate: Go maintenance v0.13.870
 
 The completed implementations from #10072, #10074, #10076, #10077, #10085 and

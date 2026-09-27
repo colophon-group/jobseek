@@ -49,6 +49,11 @@ Status tags:
   `[proposal]` - current bounded migration sequence, parity and resource gates,
   cohort admission, and final legacy retirement criteria.
 
+- [25 - Workable Go Production Evidence](25-go-workable-production-evidence.md)
+  `[runbook]` - captured-response parity, exact board selectors, and activation evidence.
+- [26 - Go Typesense Backfill Production Evidence](26-go-typesense-backfill-production-evidence.md)
+  `[runbook]` - completed full backfill/reconciliation proof and measured resource limits.
+
 ## Search, SEO, And Web Read Paths
 
 - [11 - Typesense](11-typesense.md) `[reference]` - Typesense deployment,

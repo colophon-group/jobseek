@@ -260,3 +260,13 @@ func exerciseLiveLeaseReaper(t *testing.T, ctx context.Context, pool *pgxpool.Po
 		t.Fatalf("live recovery and lifecycle join: %+v", events)
 	}
 }
+
+func TestLeaseReaperPoolBudgetOverridesDSN(t *testing.T) {
+	config, err := leaseReaperPoolConfig("postgres://localhost/postgres?pool_min_conns=4&pool_max_conns=8&pool_max_conn_idle_time=30m&idle_in_transaction_session_timeout=0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.MinConns != 0 || config.MaxConns != 1 || config.MaxConnIdleTime != time.Minute || config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] != "60000" {
+		t.Fatal("lease reaper pool escaped its fixed budget")
+	}
+}

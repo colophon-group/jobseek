@@ -1,0 +1,1101 @@
+[
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "new",
+    "seed": {},
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1100.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1100.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": true,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": true,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "browser_first",
+    "seed": {},
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "ft_monitors_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:browser:0": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "ft_monitors_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:browser:0": {
+            "type": "zset",
+            "value": {
+              "example.test": 1000.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "apply.workable.com",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "ats_delay",
+    "seed": {},
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "apply.workable.com",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:apply.workable.com": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:apply.workable.com": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "apply.workable.com": 1100.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "apply.workable.com",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:apply.workable.com": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:apply.workable.com": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "apply.workable.com": 1100.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {},
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "empty_config",
+    "seed": {},
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1100.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1100.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {},
+    "name": "no_work",
+    "seed": {},
+    "steps": [
+      {
+        "failed": false,
+        "state": {}
+      },
+      {
+        "failed": false,
+        "state": {}
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "existing_due",
+    "seed": {
+      "monitors_simple:example.test": {
+        "type": "zset",
+        "value": {
+          "board": 1200
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1100.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1100.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "inflight",
+    "seed": {
+      "inflight:simple": {
+        "type": "zset",
+        "value": {
+          "monitor|example.test|board": 1200
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 1200.0
+            }
+          },
+          "monitor_repair_due:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1100"
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "inflight:simple": {
+            "type": "zset",
+            "value": {
+              "monitor|example.test|board": 1200.0
+            }
+          },
+          "monitor_repair_due:simple": {
+            "type": "hash",
+            "value": {
+              "monitor|example.test|board": "1100"
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "repair_due",
+    "seed": {
+      "monitor_repair_due:simple": {
+        "type": "hash",
+        "value": {
+          "monitor|example.test|board": "1150"
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1100.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1100.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "rate_floor",
+    "seed": {
+      "ratelimit:example.test": {
+        "type": "string",
+        "value": "1400"
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ratelimit:example.test": {
+            "type": "string",
+            "value": "1400"
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1400.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "board": 1100.0
+            }
+          },
+          "ratelimit:example.test": {
+            "type": "string",
+            "value": "1400"
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 1400.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "corrupt_guard",
+    "seed": {
+      "lightpanda-b0:legacy-guard": {
+        "type": "string",
+        "value": "corrupt"
+      }
+    },
+    "steps": [
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "lightpanda-b0:legacy-guard": {
+            "type": "string",
+            "value": "corrupt"
+          }
+        }
+      },
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "lightpanda-b0:legacy-guard": {
+            "type": "string",
+            "value": "corrupt"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "corrupt_rotation",
+    "seed": {
+      "ready:rotation:simple": {
+        "type": "string",
+        "value": "corrupt"
+      }
+    },
+    "steps": [
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "ready:rotation:simple": {
+            "type": "string",
+            "value": "corrupt"
+          }
+        }
+      },
+      {
+        "failed": true,
+        "state": {
+          "board:board": {
+            "type": "hash",
+            "value": {
+              "board_url": "https://example.test/jobs",
+              "domain": "example.test",
+              "metadata": "{\"token\":\"\u00fc\"}"
+            }
+          },
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          },
+          "ready:rotation:simple": {
+            "type": "string",
+            "value": "corrupt"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "orphans": [
+        [
+          "example.test",
+          "old"
+        ]
+      ]
+    },
+    "name": "remove_simple",
+    "seed": {
+      "board:old": {
+        "type": "hash",
+        "value": {
+          "domain": "example.test"
+        }
+      },
+      "ft_monitors_simple:example.test": {
+        "type": "zset",
+        "value": {
+          "old": 0
+        }
+      },
+      "monitor_repair_due:simple": {
+        "type": "hash",
+        "value": {
+          "monitor|example.test|old": "600"
+        }
+      },
+      "monitors_simple:example.test": {
+        "type": "zset",
+        "value": {
+          "old": 700,
+          "other": 900
+        }
+      },
+      "ready:rotation:simple": {
+        "type": "zset",
+        "value": {
+          "example.test": 1500
+        }
+      },
+      "ready:simple:0": {
+        "type": "zset",
+        "value": {
+          "example.test": 0
+        }
+      },
+      "scrapes_simple:example.test": {
+        "type": "zset",
+        "value": {
+          "job": 600
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "other": 900.0
+            }
+          },
+          "ready:rotation:simple": {
+            "type": "zset",
+            "value": {
+              "example.test": 1500.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 900.0
+            }
+          },
+          "ready:simple:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 1500.0
+            }
+          },
+          "scrapes_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "job": 600.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "monitors_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "other": 900.0
+            }
+          },
+          "ready:rotation:simple": {
+            "type": "zset",
+            "value": {
+              "example.test": 1500.0
+            }
+          },
+          "ready:simple:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 900.0
+            }
+          },
+          "ready:simple:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 1500.0
+            }
+          },
+          "scrapes_simple:example.test": {
+            "type": "zset",
+            "value": {
+              "job": 600.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "orphans": [
+        [
+          "example.test",
+          "old"
+        ]
+      ]
+    },
+    "name": "remove_browser",
+    "seed": {
+      "board:old": {
+        "type": "hash",
+        "value": {
+          "domain": "example.test"
+        }
+      },
+      "ft_monitors_browser:example.test": {
+        "type": "zset",
+        "value": {
+          "old": 0
+        }
+      },
+      "monitor_repair_due:browser": {
+        "type": "hash",
+        "value": {
+          "monitor|example.test|old": "600"
+        }
+      },
+      "monitors_browser:example.test": {
+        "type": "zset",
+        "value": {
+          "old": 700,
+          "other": 900
+        }
+      },
+      "ready:browser:0": {
+        "type": "zset",
+        "value": {
+          "example.test": 0
+        }
+      },
+      "ready:rotation:browser": {
+        "type": "zset",
+        "value": {
+          "example.test": 1500
+        }
+      },
+      "scrapes_browser:example.test": {
+        "type": "zset",
+        "value": {
+          "job": 600
+        }
+      }
+    },
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "monitors_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "other": 900.0
+            }
+          },
+          "ready:browser:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 900.0
+            }
+          },
+          "ready:browser:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 1500.0
+            }
+          },
+          "ready:rotation:browser": {
+            "type": "zset",
+            "value": {
+              "example.test": 1500.0
+            }
+          },
+          "scrapes_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "job": 600.0
+            }
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "monitors_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "other": 900.0
+            }
+          },
+          "ready:browser:1": {
+            "type": "zset",
+            "value": {
+              "example.test": 900.0
+            }
+          },
+          "ready:browser:2": {
+            "type": "zset",
+            "value": {
+              "example.test": 1500.0
+            }
+          },
+          "ready:rotation:browser": {
+            "type": "zset",
+            "value": {
+              "example.test": 1500.0
+            }
+          },
+          "scrapes_browser:example.test": {
+            "type": "zset",
+            "value": {
+              "job": 600.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "input": {
+      "orphans": [
+        [
+          "example.test",
+          "board"
+        ]
+      ],
+      "schedules": [
+        {
+          "board_id": "board",
+          "browser": false,
+          "config": {
+            "board_url": "https://example.test/jobs",
+            "metadata": "{\"token\":\"\u00fc\"}"
+          },
+          "domain": "example.test",
+          "first_time": false,
+          "next_check_at": 1100
+        }
+      ]
+    },
+    "name": "upsert_then_retire",
+    "seed": {},
+    "steps": [
+      {
+        "failed": false,
+        "state": {
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          }
+        }
+      },
+      {
+        "failed": false,
+        "state": {
+          "delay:example.test": {
+            "type": "string",
+            "value": "2.0"
+          }
+        }
+      }
+    ]
+  }
+]
