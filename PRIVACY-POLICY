@@ -1,6 +1,6 @@
 PRIVACY POLICY
 
-Last updated: 22 February 2026
+Last updated: 27 September 2026
 
 This Privacy Policy describes how Viktor Shcherbakov, operating as
 Colophon Group ("we", "us", "our"), collects, uses, stores, and
@@ -40,12 +40,20 @@ Email: business@colophon-group.org
      Vercel Analytics. This data contains no personal identifiers and
      does not use cookies.
 
+  d. Subscription and payment data
+     For Pro, we store Paddle customer, transaction, subscription and
+     price identifiers, trial usage, subscription status, and billing
+     period dates to manage access and prevent repeated trials. Your
+     email address is provided to Paddle at checkout. Paddle collects
+     payment details, billing address and any tax information directly;
+     we do not store full payment-card numbers or security codes.
+
 
 3. LEGAL BASIS FOR PROCESSING (GDPR Art. 6)
 
   We process personal data on the following bases:
     - Contract (Art. 6(1)(b)):  to provide and maintain the Service
-      you signed up for.
+      you signed up for, including subscription checkout and access.
     - Consent (Art. 6(1)(a)):   where you have given consent, e.g. by
       opting in to job-alert notifications.
     - Legitimate interest (Art. 6(1)(f)):  to improve, secure, and
@@ -58,6 +66,7 @@ Email: business@colophon-group.org
     - authenticate your identity,
     - provide the core features of the Service (saved companies, saved
       job postings, job-search alerts),
+    - manage Pro access, subscription changes and billing support,
     - send you job-alert notifications you have opted in to, and
     - understand usage patterns and improve the Service (anonymous
       analytics only).
@@ -72,7 +81,7 @@ Email: business@colophon-group.org
 
 5. THIRD-PARTY SERVICES
 
-  The Service relies on the following third-party processors. Each
+  The Service relies on the following third-party services. Their roles vary, and each
   operates under its own privacy policy.
 
   a. OAuth providers (authentication)
@@ -92,6 +101,14 @@ Email: business@colophon-group.org
      privacy policy:
      https://neon.tech/privacy-policy
 
+  d. Paddle (payments and merchant of record)
+     Paddle acts as the reseller and merchant of record for Pro purchases
+     and processes buyer data for payments, tax compliance, fraud
+     prevention, billing support and refunds under its own privacy notice:
+     https://www.paddle.com/legal/privacy
+     We exchange account references and subscription information with
+     Paddle to fulfil the purchase and keep your access up to date.
+
 
 6. DATA STORAGE AND SECURITY
 
@@ -109,6 +126,9 @@ Email: business@colophon-group.org
   The Service uses only strictly necessary cookies for session
   management and authentication. We do not use advertising, tracking,
   or analytics cookies. Vercel Analytics operates without cookies.
+  Opening Paddle checkout also loads Paddle and its payment services;
+  their use of cookies and similar technologies is described in Paddle's
+  privacy notice linked above.
 
 
 8. YOUR RIGHTS (GDPR)
@@ -146,6 +166,11 @@ Email: business@colophon-group.org
   permanently removed from our database within 30 days. Anonymous
   analytics data that cannot be linked back to you may be retained
   indefinitely.
+  Deleting your Job Seek account cancels recurring billing but does not
+  erase Paddle's independent transaction records. Paddle retains records
+  as described in its privacy notice, including where required for tax,
+  accounting, fraud prevention or other legal obligations. Contact Paddle
+  to exercise rights relating to records it controls.
 
 
 10. INTERNATIONAL TRANSFERS

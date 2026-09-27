@@ -2,6 +2,16 @@
 
 import { Trans } from "@lingui/react/macro";
 import { ArrowDown, Check, SlidersHorizontal, X } from "lucide-react";
+import { useLocalePath } from "@/lib/useLocalePath";
+
+export function BillingPolicyLinks() {
+  const lp = useLocalePath();
+  return <p className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted">
+    <a href={lp("/terms")} className="underline underline-offset-4"><Trans id="common.footer.termsLink" comment="Footer link to terms of service page">Terms</Trans></a>
+    <a href={lp("/privacy-policy")} className="underline underline-offset-4"><Trans id="common.footer.privacyLink" comment="Footer link to privacy policy page">Privacy</Trans></a>
+    <a href={lp("/terms#refund-policy")} className="underline underline-offset-4"><Trans id="common.footer.refundsLink" comment="Footer link to refund policy">Refunds</Trans></a>
+  </p>;
+}
 
 /** A clearly labeled example of the product, shared by discovery and billing. */
 export function ProPitch() {

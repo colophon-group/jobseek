@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { ArrowRight, Check, SlidersHorizontal } from "lucide-react";
-import { FreeAccessNote, ProPitch } from "@/components/pro/ProPitch";
+import { BillingPolicyLinks, FreeAccessNote, ProPitch } from "@/components/pro/ProPitch";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
@@ -211,6 +211,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
                 : <p><Trans id="pro.offer.repeatTerms" comment="Renewal disclosure for returning customers">Renews monthly until canceled. A new free trial is not included.</Trans></p>}
               <p><Trans id="pro.offer.paddle" comment="Merchant of record and final price disclosure">Secure checkout with Paddle. Your final total, including applicable taxes, is shown before you confirm.</Trans></p>
               {!isLoggedIn && planInfo.checkoutEnabled && <p><Trans id="pro.offer.signIn" comment="Explains that anonymous visitors sign in before checkout">You’ll sign in first, then continue to checkout.</Trans></p>}
+              <BillingPolicyLinks />
             </div>
           </section>
         </>
