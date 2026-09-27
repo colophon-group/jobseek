@@ -6,6 +6,34 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: 2026-09-27 — Go Typesense sync
+
+`fix-crawler/go-typesense-taxonomy-sync` builds on taxonomy verification #10074
+and implements the post-commit Typesense publication stage in Go. It is
+implemented and locally verified, **not deployed**; release after the pending
+reconciliation, verification, and schema-setup slices. The live protected
+backfill proof still owns the host mutation lock.
+
+The Go stage publishes complete location, occupation, seniority, technology,
+and company documents from one static database snapshot. Company details
+include all localized descriptions and industry names. Imports are bounded
+to 1,000 documents. Exact company censuses preserve the acknowledgement,
+missing-ID, duplicate/pagination, 50-document/1% deletion-budget, and final
+convergence gates. Normal active/year counts come from the same Typesense
+facets as the web and final refresh, avoiding initial seniority/technology
+posting scans; local taxonomy counts remain bootstrap fallbacks. The final
+Go refresh and typeahead invalidation are retained. Parent cancellation reaps
+the Go child, and nonzero exit prevents a successful sync result.
+
+Complete document parity matches the retained Python producer. A real
+PostgreSQL + HTTP fixture executes the Go runtime through five full imports,
+five count updates, twelve facet reads, and both company censuses. It has no
+posting table, so passing proves that normal count reads stay in Typesense.
+Prune-budget/failure, exact-pagination, import-bound, and child-lifecycle tests
+also pass locally. CI and real production output/resource evidence remain
+pending. Python still owns CSV/local transaction writes, taxonomy rename
+handling, Redis board effects, and deadletter reporting; #7966 remains open.
+
 ## Implementation checkpoint: 2026-09-27 — Go taxonomy verification
 
 The next release slice on `fix-crawler/go-typesense-taxonomy-verification`

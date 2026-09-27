@@ -130,6 +130,23 @@ INSERT INTO industry_name VALUES(1,'de','Vorher',true);
 	if conn.PgConn().TxStatus() != 'I' {
 		t.Fatal("snapshot transaction was not released")
 	}
+	if _, err := observer.Exec(ctx, `
+ALTER TABLE company ADD COLUMN name text DEFAULT 'Fixture Company', ADD COLUMN slug text DEFAULT 'fixture-company',
+ ADD COLUMN icon text, ADD COLUMN logo text, ADD COLUMN website text,
+ ADD COLUMN employee_count_range int, ADD COLUMN founded_year int;
+CREATE TABLE company_description (company_id uuid,locale text,description text);
+INSERT INTO company_description VALUES('00000000-0000-0000-0000-000000000001','fr','<p>Bonjour</p>');
+`); err != nil {
+		t.Fatal(err)
+	}
+	fullDocs, err := loadSyncTaxonomySnapshot(ctx, conn, contract)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fullDocs["company"][0]["description_fr"] != "<p>Bonjour</p>" || fullDocs["company"][0]["name"] != "Fixture Company" {
+		t.Fatal("company detail authority omitted fields")
+	}
+	testSyncRuntimeFixture(t, dsn, strings.Trim(schema, "\""))
 	// Authority failures must also roll the snapshot back.
 	if _, err := observer.Exec(ctx, "UPDATE location SET parent_id=2 WHERE id=1"); err != nil {
 		t.Fatal(err)

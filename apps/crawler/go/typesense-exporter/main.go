@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash"
 	"net/http"
@@ -18,6 +19,17 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--sync-taxonomies" {
+		if err := runSyncTaxonomies(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			if errors.Is(err, context.Canceled) {
+				os.Exit(130)
+			}
+			os.Exit(1)
+		}
+		return
+	}
+
 	if len(os.Args) == 2 && os.Args[1] == "--verify-taxonomies" {
 		os.Exit(runTaxonomyCLI())
 	}
@@ -92,7 +104,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--backfill|--verify-taxonomies|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
+		fmt.Fprintln(os.Stderr, "usage: typesense-exporter [--run|--backfill|--verify-taxonomies|--sync-taxonomies|--owner|--healthcheck|--check-maps|--shadow-batch|--project-batch|--refresh-counts|--shadow-refresh-counts|--project-refresh-counts|--transfer-owner python go|--transfer-owner go python]")
 		os.Exit(2)
 	}
 	var input struct {

@@ -89,32 +89,8 @@ func loadTaxonomySnapshot(ctx context.Context, conn *pgx.Conn, contract taxonomy
 		return nil, err
 	}
 	defer tx.Rollback(context.Background())
-	var input taxonomyInputs
-	if input.Locations, err = readTaxonomyRows[taxonomyLocationRow](ctx, tx, contract.Queries["location_rows"]); err != nil {
-		return nil, err
-	}
-	if input.LocationNames, err = readTaxonomyRows[taxonomyNameRow](ctx, tx, contract.Queries["location_names"]); err != nil {
-		return nil, err
-	}
-	if input.Macros, err = readTaxonomyRows[taxonomyMacroRow](ctx, tx, contract.Queries["location_macros"]); err != nil {
-		return nil, err
-	}
-	if input.Occupations, err = readTaxonomyRows[taxonomyNamedRow](ctx, tx, contract.Queries["occupation_rows"]); err != nil {
-		return nil, err
-	}
-	if input.DomainNames, err = readTaxonomyRows[taxonomyNameRow](ctx, tx, contract.Queries["occupation_domain_names"]); err != nil {
-		return nil, err
-	}
-	if input.Seniorities, err = readTaxonomyRows[taxonomyNamedRow](ctx, tx, contract.Queries["seniority_rows"]); err != nil {
-		return nil, err
-	}
-	if input.Technologies, err = readTaxonomyRows[taxonomyNamedRow](ctx, tx, contract.Queries["technology_rows"]); err != nil {
-		return nil, err
-	}
-	if input.Companies, err = readTaxonomyRows[taxonomyCompanyRow](ctx, tx, contract.Queries["company_rows"]); err != nil {
-		return nil, err
-	}
-	if input.IndustryNames, err = readTaxonomyRows[taxonomyNameRow](ctx, tx, contract.Queries["industry_names"]); err != nil {
+	input, err := loadTaxonomyInputs(ctx, tx, contract)
+	if err != nil {
 		return nil, err
 	}
 	result, err := buildTaxonomyDocuments(input, contract)
@@ -125,6 +101,39 @@ func loadTaxonomySnapshot(ctx context.Context, conn *pgx.Conn, contract taxonomy
 		return nil, err
 	}
 	return result, nil
+}
+
+func loadTaxonomyInputs(ctx context.Context, tx pgx.Tx, contract taxonomyContract) (taxonomyInputs, error) {
+	var input taxonomyInputs
+	var err error
+	if input.Locations, err = readTaxonomyRows[taxonomyLocationRow](ctx, tx, contract.Queries["location_rows"]); err != nil {
+		return input, err
+	}
+	if input.LocationNames, err = readTaxonomyRows[taxonomyNameRow](ctx, tx, contract.Queries["location_names"]); err != nil {
+		return input, err
+	}
+	if input.Macros, err = readTaxonomyRows[taxonomyMacroRow](ctx, tx, contract.Queries["location_macros"]); err != nil {
+		return input, err
+	}
+	if input.Occupations, err = readTaxonomyRows[taxonomyNamedRow](ctx, tx, contract.Queries["occupation_rows"]); err != nil {
+		return input, err
+	}
+	if input.DomainNames, err = readTaxonomyRows[taxonomyNameRow](ctx, tx, contract.Queries["occupation_domain_names"]); err != nil {
+		return input, err
+	}
+	if input.Seniorities, err = readTaxonomyRows[taxonomyNamedRow](ctx, tx, contract.Queries["seniority_rows"]); err != nil {
+		return input, err
+	}
+	if input.Technologies, err = readTaxonomyRows[taxonomyNamedRow](ctx, tx, contract.Queries["technology_rows"]); err != nil {
+		return input, err
+	}
+	if input.Companies, err = readTaxonomyRows[taxonomyCompanyRow](ctx, tx, contract.Queries["company_rows"]); err != nil {
+		return input, err
+	}
+	if input.IndustryNames, err = readTaxonomyRows[taxonomyNameRow](ctx, tx, contract.Queries["industry_names"]); err != nil {
+		return input, err
+	}
+	return input, nil
 }
 
 func taxonomySlug(raw string) (string, error) {

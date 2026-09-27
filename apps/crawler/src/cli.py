@@ -841,7 +841,10 @@ async def run() -> None:
         elif args.command == "sync":
             from src.sync import run_sync
 
-            await run_sync()
+            sync_task = asyncio.create_task(run_sync())
+            await _await_task_or_shutdown(sync_task, shutdown_event)
+            if sync_task.cancelled():
+                raise SystemExit(130)
 
         elif args.command == "proxy-audit":
             from src.proxy_audit import ProxyAuditError, audit_webshare

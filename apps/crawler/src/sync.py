@@ -20,6 +20,7 @@ import hashlib
 import json
 import time
 from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
@@ -3346,6 +3347,37 @@ async def _apply_taxonomy_renames(
 
 
 async def sync_typesense(
+    local_conn: asyncpg.Connection,
+    client: typesense.Client,
+) -> None:
+    """Publish the committed local snapshot through the Go runtime.
+
+    Keep the signature while the CSV transaction/rename stage is migrated.
+    The child inherits the existing scoped environment and owns all taxonomy
+    writes, exact company pruning, count refresh, and cache invalidation.
+    """
+    try:
+        process = await asyncio.create_subprocess_exec("go-typesense-exporter", "--sync-taxonomies")
+    except OSError:
+        raise CompanyTypesenseSyncError("Go Typesense sync could not start") from None
+    try:
+        result = await asyncio.wait_for(process.wait(), timeout=1830)
+    except (asyncio.CancelledError, TimeoutError):
+        if process.returncode is None:
+            with suppress(ProcessLookupError):
+                process.terminate()
+            try:
+                await asyncio.wait_for(process.wait(), timeout=20)
+            except TimeoutError:
+                with suppress(ProcessLookupError):
+                    process.kill()
+                await asyncio.wait_for(process.wait(), timeout=10)
+        raise
+    if result != 0:
+        raise CompanyTypesenseSyncError("Go Typesense company exact sync failed")
+
+
+async def _sync_typesense_python_reference(
     local_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:

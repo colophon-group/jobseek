@@ -36,6 +36,7 @@ from src.sync import (
     _monitor_config_fingerprint,
     _one_year_ago_epoch,
     _require_installed_sync_data_mount,
+    _sync_typesense_python_reference,
     _ts_bulk_upsert,
     apply_board_redis_effects,
     ensure_location_name_lookup_index,
@@ -50,7 +51,6 @@ from src.sync import (
     sync_occupation_domains,
     sync_occupations,
     sync_occupations_typesense,
-    sync_typesense,
 )
 
 _COMPANY_COLS = ["slug", "name", "website", "logo_url", "icon_url", "logo_type"]
@@ -3173,7 +3173,7 @@ class TestSyncCompaniesTypesense:
             ),
             pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
         ):
-            await sync_typesense(local_conn, client)
+            await _sync_typesense_python_reference(local_conn, client)
 
     async def test_empty_authority_propagates_from_typesense_orchestrator(self):
         client, collection, _remote_ids, _deleted_ids = _company_typesense_client({"co-stale"})
@@ -3186,7 +3186,7 @@ class TestSyncCompaniesTypesense:
             patch("src.sync.sync_technologies_typesense", new_callable=AsyncMock),
             pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
         ):
-            await sync_typesense(local_conn, client)
+            await _sync_typesense_python_reference(local_conn, client)
 
         collection.retrieve.assert_not_called()
         collection.documents.search.assert_not_called()
