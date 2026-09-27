@@ -1,0 +1,68 @@
+{
+  "scope": "Offline shared classification stage replay, not whole-lane production cost or RAM evidence",
+  "platform": "macOS-14.4-arm64-arm-64bit-Mach-O",
+  "sample": {
+    "postings": 256,
+    "boards": 128,
+    "locales": [
+      "de",
+      "en",
+      "es",
+      "fr",
+      "it",
+      "nl",
+      "pt",
+      "zh"
+    ],
+    "bytes": 1290880,
+    "input_sha256": "35c1773f4a5c99cf448df7fb063565057c99bcdbb7868250a62dd5d73d004bf1",
+    "one_pass_output_sha256": "66c5380189dcf19ac38ca867858d5b305527a96ad5e2913465601cb69f717967",
+    "source": "Read-only PostgreSQL descriptions TABLESAMPLE SYSTEM (0.1) REPEATABLE (927), join active postings, limit 256; mode0600 local capture; no publisher requests",
+    "all_fields_match": true
+  },
+  "rounds": [
+    {
+      "engine": "python",
+      "rows": 2560,
+      "wall_seconds": 4.962463375006337,
+      "cpu_seconds": 4.9585799999999995,
+      "parent_peak_rss_bytes": 78413824,
+      "child_peak_rss_bytes": 0,
+      "output_sha256": "684d8f8d4dee402a074a053eb5f3fed344122f598aba5fbf3be468ff54f5c39e"
+    },
+    {
+      "engine": "go",
+      "rows": 2560,
+      "wall_seconds": 2.6062573329982115,
+      "cpu_seconds": 2.7567190000000004,
+      "parent_peak_rss_bytes": 71843840,
+      "child_peak_rss_bytes": 16842752,
+      "output_sha256": "684d8f8d4dee402a074a053eb5f3fed344122f598aba5fbf3be468ff54f5c39e"
+    },
+    {
+      "engine": "go",
+      "rows": 2560,
+      "wall_seconds": 2.616383082990069,
+      "cpu_seconds": 2.767274,
+      "parent_peak_rss_bytes": 71254016,
+      "child_peak_rss_bytes": 16744448,
+      "output_sha256": "684d8f8d4dee402a074a053eb5f3fed344122f598aba5fbf3be468ff54f5c39e"
+    },
+    {
+      "engine": "python",
+      "rows": 2560,
+      "wall_seconds": 4.913454584006104,
+      "cpu_seconds": 4.911501,
+      "parent_peak_rss_bytes": 78446592,
+      "child_peak_rss_bytes": 0,
+      "output_sha256": "684d8f8d4dee402a074a053eb5f3fed344122f598aba5fbf3be468ff54f5c39e"
+    }
+  ],
+  "interpretation": {
+    "cpu_reduction_percent_approx": 44,
+    "wall_reduction_percent_approx": 47,
+    "rss": "Go adds 16.7\u201316.8 MB child peak RSS; parent/child maxima are separate, not simultaneous whole-lane memory. No RAM reduction claimed.",
+    "production_cutover": "pending",
+    "full_migration": "incomplete"
+  }
+}

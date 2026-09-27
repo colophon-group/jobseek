@@ -6,6 +6,28 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation: shared Go classification, v0.13.875 candidate
+
+The resident `job-enrichment` binary replaces occupation, seniority and
+technology matching in both monitor and detail CPU processing. Compose selects
+Go; Python is an explicit cold rollback option. Requests are bounded and
+serialized, failures reap the native child, and there is no hidden Python
+fallback. The remaining CPU helpers and Python worker/scheduling/persistence
+ownership remain in scope for #7966.
+
+Verification: 336 focused tests, Go race/vet/module checks, all 1,568 frozen
+title cases and 2,056 technology cases. A read-only sample of 256 actual stored
+postings from 128 boards and eight locales matched every classification field.
+No new publisher requests were made. Same-byte local replay (2,560 completions
+per arm, Python/Go/Go/Python) used approximately 44% less classification CPU
+including the resident child and bridge. The Go child added roughly 16.8 MB
+peak RSS; parent/child peaks are separate and this does not prove a whole-lane
+RAM or cost improvement. See
+[`evidence/go-job-enrichment-replay-2026-09-27.json`](evidence/go-job-enrichment-replay-2026-09-27.json).
+Installed-image CI and production cutover/readback remain pending. Preserve the
+current 26 selectors through supported c1 cold rollback, exact clear, release,
+restage and reactivation; do not force due work.
+
 ## Production checkpoint: 2026-09-27 — SmartRecruiters v0.13.874
 
 PR #10099 merged as `2be9bd9d2465043a271c44722f2394ba23a9b00e`.

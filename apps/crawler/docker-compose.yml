@@ -8,6 +8,8 @@ x-common-env: &common-env
   LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
   REDIS_URL: redis://localhost:6379/0
   WORKER_ID_PREFIX: hetzner
+  # Shared classification stage; Python remains an explicit cold rollback option.
+  JOB_ENRICHMENT_ENGINE: ${JOB_ENRICHMENT_ENGINE:-go}
   LOG_LEVEL: INFO
   # Python Prometheus counters/histograms otherwise mirror every bounded
   # family with an unused `_created` series, consuming ~2,463 tenant series.

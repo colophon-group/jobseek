@@ -18,10 +18,11 @@ from prometheus_client import Counter
 EGRESS_STAGES = frozenset({"monitor", "detail"})
 EXECUTION_CLASSES = frozenset({"http", "browser"})
 EGRESS_ROUTES = frozenset({"direct", "proxy"})
-RUNTIME_STAGES = frozenset({"monitor", "scrape"})
+RUNTIME_STAGES = frozenset({"monitor", "scrape", "enrichment"})
 RUNTIME_OUTCOMES = {
     "monitor": ("success", "cancelled", "error", "incomplete"),
     "scrape": ("success", "cancelled", "error"),
+    "enrichment": ("success", "error"),
 }
 UNKNOWN_CAPABILITY = "_unknown"
 
@@ -46,7 +47,7 @@ response_body_bytes_total = Counter(
 
 capability_executions_total = Counter(
     "crawler_runtime_capability_executions_total",
-    "Extraction runtime executions by registry-bounded capability and outcome",
+    "Extraction and enrichment executions by bounded capability and outcome",
     ["stage", "implementation", "capability", "outcome"],
 )
 
