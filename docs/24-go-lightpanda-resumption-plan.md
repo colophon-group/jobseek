@@ -6,6 +6,22 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: Go board sync queue publication
+
+The next slice routes configuration sync's committed board schedules and
+retired-board cleanup to `go-typesense-exporter --sync-board-queues`. Go owns
+the existing Lua calls, board hash writes, provider delay keys, and bounded
+1,000-board pipelines. No Redis publication occurs before the local database
+transaction commits. Redis errors abort sync; ambiguous transport writes are
+not automatically replayed. The child is bounded and reaped on cancellation.
+
+The Redis fixture compares every stored key against the Python publisher,
+including repeated execution, both worker types, first-time/recurring work,
+existing leases, repair deadlines, rate/rotation floors, and corrupt state.
+A 1,001-board case covers the batch boundary and stops later batches/removals
+on failure. This implementation is not deployed. CSV/local PostgreSQL sync,
+workers and remaining extraction/profile stages still require Go migration.
+
 ## Unified release candidate: Go maintenance v0.13.870
 
 The completed implementations from #10072, #10074, #10076, #10077, #10085 and

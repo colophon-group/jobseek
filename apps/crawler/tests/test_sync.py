@@ -38,7 +38,6 @@ from src.sync import (
     _require_installed_sync_data_mount,
     _sync_typesense_python_reference,
     _ts_bulk_upsert,
-    apply_board_redis_effects,
     ensure_location_name_lookup_index,
     purge_retired_watchlist_index,
     refresh_typesense_counts,
@@ -51,6 +50,9 @@ from src.sync import (
     sync_occupation_domains,
     sync_occupations,
     sync_occupations_typesense,
+)
+from src.sync import (
+    _apply_board_redis_effects_python_reference as apply_board_redis_effects,
 )
 
 _COMPANY_COLS = ["slug", "name", "website", "logo_url", "icon_url", "logo_type"]
