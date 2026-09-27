@@ -231,12 +231,12 @@ jobs:
                 operation_budget=14400
                 operation_command=(
                   sh -ceu
-                  'go-typesense-exporter --backfill && uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense && uv run --no-sync crawler verify-typesense-taxonomies'
+                  'go-typesense-exporter --backfill && uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense && go-typesense-exporter --verify-taxonomies'
                 )
               elif [[ "$TASK" == verify-typesense-taxonomies ]]; then
                 # Verification-only dispatch: prove the live taxonomy state
                 # without repeating a posting backfill or reconciliation.
-                operation_command=(uv run --no-sync crawler verify-typesense-taxonomies)
+                operation_command=(go-typesense-exporter --verify-taxonomies)
               fi
               timeout --foreground --signal=TERM --kill-after=90s "$operation_budget" docker run --rm \
                 --name "$NAME" \
