@@ -96,7 +96,7 @@ vi.mock("@/lib/viewer", () => ({
 vi.mock("@/lib/plans", () => ({
   canCreateWatchlist: vi.fn().mockResolvedValue({ allowed: true }),
   getUserPlan: vi.fn().mockResolvedValue("free"),
-  PLAN_LIMITS: { free: { canReceiveAlerts: false }, paid: { canReceiveAlerts: true } },
+  PLAN_LIMITS: { free: {}, paid: {} },
 }));
 
 vi.mock("@/lib/indexnow", () => ({

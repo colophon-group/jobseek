@@ -1564,6 +1564,12 @@ jobs:
           scripts/test-notification-policy-pg17.ts
           --database-url "$NOTIFICATION_FIXTURE_DATABASE_URL"
 
+      - name: Execute Paddle billing isolation migration against PostgreSQL 17
+        run: >-
+          pnpm --filter @jobseek/web exec tsx
+          scripts/test-paddle-billing-pg.ts
+          --database-url postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
+
   web-smoke:
     name: Web Build Smoke
     needs: changes

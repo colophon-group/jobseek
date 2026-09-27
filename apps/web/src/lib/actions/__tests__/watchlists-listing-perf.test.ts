@@ -169,7 +169,7 @@ vi.mock("@/lib/services/search", () => ({
 vi.mock("@/lib/plans", () => ({
   canCreateWatchlist: mocks.canCreateWatchlist,
   getUserPlan: vi.fn().mockResolvedValue("free"),
-  PLAN_LIMITS: { free: { canReceiveAlerts: false }, paid: { canReceiveAlerts: true } },
+  PLAN_LIMITS: { free: {}, paid: {} },
 }));
 
 vi.mock("@/lib/indexnow", () => ({ notifyIndexNow: mocks.notifyIndexNow }));

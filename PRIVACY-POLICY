@@ -40,8 +40,8 @@ data you include. Please keep it about the work you are seeking and avoid
 sensitive personal information or confidential information about others.
 
 Billing, when you purchase Pro: email, internal account reference, Paddle
-customer/subscription identifiers, subscription status, billing dates, and
-trial usage. Paddle collects payment and billing details through its own
+customer, transaction, subscription and price identifiers, subscription
+status, billing dates, and trial usage. Paddle collects payment and billing details through its own
 checkout. We do not store full payment-card details.
 
 Technical and support information: network and device information needed

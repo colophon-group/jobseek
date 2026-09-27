@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm";
 
 import { db } from "@/db";
+import { paidEntitlementCondition } from "@/lib/paid-entitlement";
 import {
   aiFilterBudgetAccount,
   aiFilterConfiguration,
@@ -23,7 +24,6 @@ import {
   aiFilterSegment,
   aiFilterUsageLedger,
   aiFilterQueryVersion,
-  subscription,
   watchlist,
 } from "@/db/schema";
 import {
@@ -86,15 +86,6 @@ async function assertSpendAuthorized(
     .select({ id: watchlist.id })
     .from(watchlist)
     .innerJoin(
-      subscription,
-      and(
-        eq(subscription.userId, watchlist.userId),
-        eq(subscription.status, "active"),
-        eq(subscription.plan, "unlimited"),
-        or(isNull(subscription.endsAt), gt(subscription.endsAt, input.now)),
-      ),
-    )
-    .innerJoin(
       aiFilterConfiguration,
       and(
         eq(aiFilterConfiguration.watchlistId, watchlist.id),
@@ -113,6 +104,7 @@ async function assertSpendAuthorized(
       and(
         eq(watchlist.id, input.watchlistId),
         eq(watchlist.userId, input.ownerId),
+        paidEntitlementCondition(watchlist.userId, input.now),
         eq(aiFilterQueryVersion.id, input.queryVersionId),
       ),
     )

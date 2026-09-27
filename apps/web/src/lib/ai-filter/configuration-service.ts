@@ -6,13 +6,12 @@ import {
   desc,
   eq,
   gt,
-  isNull,
   lte,
-  or,
   sql,
 } from "drizzle-orm";
 
 import { db } from "@/db";
+import { hasPaidEntitlement, paidEntitlementCondition } from "@/lib/paid-entitlement";
 import {
   aiFilterBudgetAccount,
   aiFilterConfiguration,
@@ -20,7 +19,6 @@ import {
   aiFilterEvent,
   aiFilterQueryVersion,
   aiFilterSegment,
-  subscription,
   userPreferences,
   watchlist,
   watchlistCompany,
@@ -170,17 +168,7 @@ async function activeEntitlement(
   ownerId: string,
   now: Date,
 ): Promise<boolean> {
-  const [row] = await tx
-    .select({ id: subscription.id })
-    .from(subscription)
-    .where(and(
-      eq(subscription.userId, ownerId),
-      eq(subscription.status, "active"),
-      eq(subscription.plan, "unlimited"),
-      or(isNull(subscription.endsAt), gt(subscription.endsAt, now)),
-    ))
-    .limit(1);
-  return Boolean(row);
+  return hasPaidEntitlement(tx, ownerId, now);
 }
 
 /** Reject ineligible mutations before running the external candidate count. */
@@ -635,13 +623,10 @@ export async function getSharedAiFilterOwnerId(input: {
         eq(aiFilterConfiguration.status, "enabled"),
       ),
     )
-    .innerJoin(subscription, eq(subscription.userId, watchlist.userId))
     .where(and(
       eq(watchlist.id, input.watchlistId),
       eq(watchlist.shareEnabled, true),
-      eq(subscription.status, "active"),
-      eq(subscription.plan, "unlimited"),
-      or(isNull(subscription.endsAt), gt(subscription.endsAt, now)),
+      paidEntitlementCondition(watchlist.userId, now),
     ))
     .limit(1);
   if (!shared) throw new AiFilterNotFoundError();

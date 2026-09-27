@@ -1,13 +1,14 @@
 import "server-only";
-import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { aiFilterConfiguration, aiFilterDecision, aiFilterQueryVersion, subscription } from "@/db/schema";
+import { hasPaidEntitlement } from "@/lib/paid-entitlement";
+import { aiFilterConfiguration, aiFilterDecision, aiFilterQueryVersion } from "@/db/schema";
 import { matchCompiledWatchlistsInWindow, type WatchlistWindowMatchResult } from "./watchlist-matcher";
 import type { CompiledWatchlistMatcher } from "@/lib/watchlist-matcher-contract";
-import { NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST } from "@/lib/notifications/scheduler-policy";
+import { getNotificationSearchWindow, NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST } from "@/lib/notifications/scheduler-policy";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type Reader = Pick<Transaction, "select" | "selectDistinctOn">;
+type Reader = Pick<Transaction, "select" | "selectDistinctOn" | "execute">;
 
 /** Never invoke the classifier or spend AI budget while preparing an email. */
 export async function getNotificationNarrowing(ownerId: string, watchlistId: string, reader: Reader = db) {
@@ -25,11 +26,7 @@ export async function getNotificationNarrowing(ownerId: string, watchlistId: str
     eq(aiFilterConfiguration.status, "enabled"),
   )).for("share", { of: aiFilterConfiguration }).limit(1);
   if (!resource) return null;
-  const entitled = await reader.select({ id: subscription.id }).from(subscription).where(and(
-    eq(subscription.userId, ownerId), eq(subscription.plan, "unlimited"), eq(subscription.status, "active"),
-    or(isNull(subscription.endsAt), gt(subscription.endsAt, now)),
-  )).limit(1);
-  return entitled.length ? resource : null;
+  return await hasPaidEntitlement(reader, ownerId, now) ? resource : null;
 }
 
 /** Latest decision wins even when a candidate has several content revisions. */
@@ -55,6 +52,8 @@ export async function matchNarrowedNotificationWatchlist(input: {
     window: { windowStart: windowStart.toISOString(), windowEnd: windowEnd.toISOString(), boundary: "[windowStart, windowEnd)" },
     postings: [], watchlists: [{ id: compiled.watchlistId, label: compiled.watchlistLabel, total: 0, returned: 0, truncated: false }],
   };
+  const searchWindow = getNotificationSearchWindow({ windowStart, windowEnd });
+  if (!searchWindow) return result;
   // Disabled/deleted prompts or lost entitlement never broaden the email.
   if (!resource) return result;
   // Do not close a weekly window before evaluation has finished: late accepted
@@ -74,7 +73,7 @@ export async function matchNarrowedNotificationWatchlist(input: {
     const ids = rows.slice(offset, Math.min(offset + 50, cap)).map(row => row.id);
     const page = await matchCompiledWatchlistsInWindow({
       watchlists: [{ ...compiled, candidateFilters: { ...compiled.candidateFilters, postingIds: ids } }],
-      windowStart, windowEnd, limitPerWatchlist: 50,
+      ...searchWindow, limitPerWatchlist: 50,
     });
     result.postings.push(...page.postings.map(posting => ({ ...posting,
       matchedWatchlists: posting.matchedWatchlists.map(label => ({ ...label, narrowedQueryVersionId: resource.queryVersionId })),

@@ -38,7 +38,7 @@ describe("DeleteAccountSection confirmation focus", () => {
     expect(descriptionId).toBeTruthy();
     expect(document.getElementById(descriptionId!)).toHaveProperty(
       "textContent",
-      "Permanently delete your account and all associated data. This action cannot be undone.",
+      "Permanently delete your account and all associated data, and cancel any subscription immediately. This action cannot be undone.",
     );
     await waitFor(() => {
       expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Cancel" }));

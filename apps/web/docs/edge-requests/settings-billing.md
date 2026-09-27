@@ -1,58 +1,29 @@
-# Billing Settings Page (`/:lang/settings/billing`)
+# Billing settings (`/:lang/settings/billing`)
 
-**Route group:** `(app)` | **Rendering:** Dynamic (`force-dynamic` on app layout)
+The `(app)` layout supplies the shared application shell. The billing page
+loads authenticated plan information on the server. See
+[the Paddle runbook](../paddle.md) for configuration and rollout.
 
-## Edge requests on first visit
+`getPlanInfo()` reads the shared paid-entitlement rule, the environment-specific
+Paddle account, and its latest subscription. It returns checkout availability,
+trial eligibility, period end, and scheduled cancellation state. These reads
+are user-specific and must not be placed in a shared public cache.
 
-| # | Request | Type | Source |
-|---|---------|------|--------|
-| 1 | `/:lang/settings/billing` HTML document | SSR | Serverless function — fetches plan info |
-| 2 | Middleware redirect | Edge function | Only if visiting without locale prefix |
-| 3-6 | JS chunks | Static (CDN) | Framework + BillingSettings + settings layout |
-| 7 | CSS bundle | Static (CDN) | Tailwind |
-| 8 | `/fonts/JetBrainsMono-Regular.woff2` | Static (CDN) | Primary font |
-| 9 | `/js_wide_logo_black.svg` or `_white.svg` | Static (CDN) | AppHeader logo |
-| 10 | `/favicon.ico` | Static (CDN) | Browser |
-| 11 | Vercel Analytics script | Static (CDN) | `@vercel/analytics` |
-| 12 | Vercel Speed Insights script | Static (CDN) | `@vercel/speed-insights` |
-| 13 | Analytics beacon POST | Edge | Post-load telemetry |
+## User interactions
 
-## Server-side data fetching (during SSR)
+- Starting a trial invokes an authenticated server action. It creates or reuses
+  a Paddle transaction while holding the account row lock. The server selects
+  the trial or returning-customer price.
+- Paddle.js is lazy-loaded only when checkout is needed. It opens an overlay
+  using that transaction ID. Payment details go to Paddle.
+- Checkout completion returns to billing settings, which refreshes up to 15
+  times at two-second intervals while waiting for verified webhook state.
+  Browser completion alone never grants AI-filter access.
+- Manage subscription creates an authenticated Paddle portal session and
+  navigates to its returned URL. Expired/canceled customers retain this action.
+- `/:lang/checkout?_ptxn=...` initializes Paddle.js for public payment links.
+  Paddle.js automatically opens the referenced transaction.
 
-- App layout: `getSession()`, `getPreferences()`, `getSavedJobStatuses()`, `getStarredCompanyIds()`
-- `getPlanInfo()` — current plan, subscription status, Stripe customer info
-
-## Client-side requests (user interaction)
-
-| Request | Type | Trigger |
-|---------|------|---------|
-| Server action: create Stripe checkout session | Serverless function | Upgrade to Pro |
-| Server action: create Stripe portal session | Serverless function | Manage subscription |
-| Redirect to `checkout.stripe.com` | External | Stripe-hosted checkout page |
-
-## Notes
-
-- Form-based page. Stripe checkout happens via external redirect, not embedded.
-- No images beyond header logo.
-
-## Fluid compute (serverless function duration)
-
-### SSR render
-
-| Step | Queries | Pattern | Cache | Est. duration |
-|------|---------|---------|-------|---------------|
-| `getSession()` | 1 | — | Redis 5min | 5-90ms |
-| `getPreferences()` | 1 | parallel | None | 10-30ms |
-| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
-| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `getPlanInfo()` | 1 | — | None | 10-25ms |
-
-**Total DB queries:** 5
-**Estimated function duration:** 40-100ms (warm instance)
-
-Lightweight. Single extra query for subscription/plan data.
-
-## Estimated edge requests
-
-**First visit (cold cache):** ~13
-**Subsequent visit (warm cache):** ~2
+Paddle sends lifecycle events to `/api/paddle/webhook`. Signature verification
+and durable database processing finish before acknowledgement. This is a
+separate server request from the browser checkout.

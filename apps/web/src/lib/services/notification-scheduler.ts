@@ -36,6 +36,7 @@ import {
   type NotificationSchedulerRepository,
 } from "@/lib/notifications/scheduler-core";
 import {
+  getNotificationSearchWindow,
   NOTIFICATION_CLAIM_LEASE_MS,
   NOTIFICATION_COMPANY_MEMBERSHIP_SEGMENT_SIZE,
   NOTIFICATION_ELIGIBLE_OWNER_PAGE_SIZE,
@@ -396,13 +397,16 @@ export async function matchNotificationWatchlists(input: {
   watchlists: readonly (EligibleNotificationWatchlist & { windowStart: Date })[];
   windowEnd: Date;
 }): Promise<NotificationMatchSummary> {
+  const watchlists = input.watchlists.filter(entry => getNotificationSearchWindow({
+    windowStart: entry.windowStart, windowEnd: input.windowEnd,
+  }) !== null);
   const compiled = await compileWatchlistMatcherSources(
-    input.watchlists.map((entry) => entry.source),
+    watchlists.map((entry) => entry.source),
   );
   const compiledById = new Map(compiled.map((entry) => [entry.watchlistId, entry]));
   const groups = new Map<string, typeof compiled>();
   const narrowedResults = [];
-  for (const entry of input.watchlists) {
+  for (const entry of watchlists) {
     if (entry.narrowedOnly) {
       narrowedResults.push(await matchNarrowedNotificationWatchlist({
         ownerId: entry.ownerId!, compiled: compiledById.get(entry.source.watchlistId)!,
@@ -410,7 +414,7 @@ export async function matchNotificationWatchlists(input: {
       }));
       continue;
     }
-    const key = entry.windowStart.toISOString();
+    const key = getNotificationSearchWindow({ windowStart: entry.windowStart, windowEnd: input.windowEnd })!.windowStart.toISOString();
     const group = groups.get(key) ?? [];
     group.push(compiledById.get(entry.source.watchlistId)!);
     groups.set(key, group);
@@ -423,8 +427,7 @@ export async function matchNotificationWatchlists(input: {
   for (const [windowStart, watchlists] of groups) {
     results.push(await matchCompiledWatchlistsInWindow({
       watchlists,
-      windowStart: new Date(windowStart),
-      windowEnd: input.windowEnd,
+      ...getNotificationSearchWindow({ windowStart: new Date(windowStart), windowEnd: input.windowEnd })!,
       limitPerWatchlist: NOTIFICATION_MATCH_LIMIT_PER_WATCHLIST,
     }));
   }

@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,7 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
+  isLoggedIn: true,
   createPortalSession: vi.fn(),
+  createCheckoutSession: vi.fn(),
+  open: vi.fn(),
   replace: vi.fn(),
   searchParams: new URLSearchParams(),
 }));
@@ -19,7 +20,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({
-    isLoggedIn: true,
+    isLoggedIn: mocks.isLoggedIn,
   }),
 }));
 
@@ -29,13 +30,17 @@ vi.mock("@/lib/useLocalePath", () => ({
 
 vi.mock("@/lib/actions/billing", () => ({
   createPortalSession: mocks.createPortalSession,
+  createCheckoutSession: mocks.createCheckoutSession,
 }));
+
+vi.mock("@/lib/paddle/browser", () => ({ loadPaddle: async () => ({ Checkout: { open: mocks.open } }) }));
 
 import { BillingSettings } from "../BillingSettings";
 
 describe("BillingSettings action errors", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.isLoggedIn = true;
     mocks.searchParams = new URLSearchParams();
     mocks.createPortalSession.mockResolvedValue({ url: null });
   });
@@ -47,7 +52,7 @@ describe("BillingSettings action errors", () => {
 
     render(
       <BillingSettings
-        planInfo={{ plan: "unlimited", canReceiveAlerts: true }}
+        planInfo={{ plan: "unlimited" }}
       />,
     );
 
@@ -58,28 +63,64 @@ describe("BillingSettings action errors", () => {
     });
   });
 
+  it("opens the server transaction and preserves the return destination", async () => {
+    mocks.searchParams = new URLSearchParams({ next: "/en/explore?q=engineer" });
+    mocks.createCheckoutSession.mockResolvedValue({ transactionId: "txn_verified", email: "test@example.com" });
+    render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true }} />);
+    await userEvent.click(screen.getByRole("button", { name: "Start 7-day free trial" }));
+    await waitFor(() => expect(mocks.open).toHaveBeenCalledWith(expect.objectContaining({ transactionId: "txn_verified" })));
+    const url = new URL(mocks.open.mock.calls[0][0].settings.successUrl);
+    expect(url.searchParams.get("next")).toBe("/en/explore?q=engineer");
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("retains the portal for an expired subscriber and offers no repeat trial", () => {
+    render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true, hasBillingAccount: true, trialEligible: false, status: "canceled" }} />);
+    expect(screen.getByRole("button", { name: "Manage subscription" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Subscribe to Pro" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start 7-day free trial" })).toBeNull();
+  });
+
   it("offers no purchase action while Pro billing is unavailable", () => {
     render(
       <BillingSettings
-        planInfo={{ plan: "free", canReceiveAlerts: false }}
+        planInfo={{ plan: "free" }}
       />,
     );
 
-    expect(screen.getByText("Plan details coming soon")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /Your criteria.*A shorter list/ })).toBeTruthy();
+    expect(screen.getByText("Trial signup isn’t open yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Upgrade to Pro" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
   });
 
-  it.each([
-    ["de", "Bis zu 10 Watchlists", "Unternehmen favorisieren", "Tarifdetails folgen", "Alles aus dem kostenlosen Tarif"],
-    ["fr", "Jusqu’à 10 watchlists", "Ajouter des entreprises aux favoris", "Détails du forfait à venir", "Tout ce qui est inclus dans l’offre gratuite"],
-    ["it", "Fino a 10 watchlist", "Aggiungi aziende ai preferiti", "Dettagli del piano in arrivo", "Tutto ciò che è incluso nel piano Free"],
-  ])("keeps the %s billing catalog free of retired restrictions", (locale, limit, star, details, included) => {
-    const catalog = readFileSync(join(process.cwd(), "locales", `${locale}.po`), "utf8");
-    expect(catalog).toContain(`msgid "settings.billing.free.f0"\nmsgstr "${limit}"`);
-    expect(catalog).toContain(`msgid "settings.billing.free.f1"\nmsgstr "${star}"`);
-    expect(catalog).toContain(`msgid "settings.billing.pro.f1"\nmsgstr "${details}"`);
-    expect(catalog).toContain(`msgid "settings.billing.pro.f2"\nmsgstr "${included}"`);
+  it("explains Narrowed before sign-in and preserves the checkout and search return paths", () => {
+    mocks.isLoggedIn = false;
+    mocks.searchParams = new URLSearchParams({ next: "/en/explore?q=python&narrow=1" });
+    render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true }} />);
+    expect(screen.getByRole("heading", { name: /Your criteria.*A shorter list/ })).toBeTruthy();
+    const link = screen.getByRole("link", { name: "Start 7-day free trial" });
+    const login = new URL(link.getAttribute("href")!, "https://jseek.co");
+    expect(login.pathname).toBe("/en/sign-in");
+    const billing = new URL(login.searchParams.get("next")!, "https://jseek.co");
+    expect(billing.pathname).toBe("/en/settings/billing");
+    expect(billing.searchParams.get("next")).toBe("/en/explore?q=python&narrow=1");
+  });
+
+  it("gives subscribers a usable next step and an unambiguous end date instead of another pitch", () => {
+    render(<BillingSettings planInfo={{ plan: "unlimited", status: "trialing", periodEnd: "2026-10-04T12:00:00Z", hasBillingAccount: true }} />);
+    expect(screen.getByText("Free trial")).toBeTruthy();
+    expect(screen.getByText("October 4, 2026")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Go to your watchlists" }).getAttribute("href")).toBe("/en/watchlists");
+    expect(screen.queryByText("An example")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Start 7-day free trial" })).toBeNull();
+  });
+
+  it("directs a past-due subscriber to billing rather than another purchase", () => {
+    render(<BillingSettings planInfo={{ plan: "free", status: "past_due", hasBillingAccount: true, checkoutEnabled: true }} />);
+    expect(screen.getByText("Payment needs attention")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Manage subscription" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start 7-day free trial" })).toBeNull();
   });
 
   it("translates portal error codes before rendering them", async () => {
@@ -90,7 +131,7 @@ describe("BillingSettings action errors", () => {
 
     render(
       <BillingSettings
-        planInfo={{ plan: "unlimited", canReceiveAlerts: true }}
+        planInfo={{ plan: "unlimited" }}
       />,
     );
 

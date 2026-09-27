@@ -30,7 +30,7 @@ Prepared 27 September 2026. Tracks
 | Terms | https://jseek.co/en/terms | Complete text on-site, seller address, current date and no sign-in dependency |
 | Refunds | https://jseek.co/en/terms#refund-policy | Visible policy linked from footer/offer and working Paddle support paths; a separate route is unnecessary |
 | Privacy | https://jseek.co/en/privacy-policy | Complete current notice, actual providers/countries and backup retention |
-| Checkout | https://jseek.co/en/checkout | Planned payment page from #10073; checkout remains disabled until separately approved for launch |
+| Checkout | https://jseek.co/en/checkout | #10073 is merged/deployed per owner; verify actual account/domain approval and checkout-enable state before claiming buyer checkout is ready |
 | Product demonstration | Authenticated watchlist Narrowed flow | Real reviewer-accessible feature, available entitlements/flags and representative matching results; no credentials in this repository |
 
 Repeat the public checks for `/de`, `/fr` and `/it`. Full canonical documents
@@ -52,9 +52,9 @@ support inbox; DNS is not proof that a customer can get a response.
 | #10078 — eligibility | Owner reports inquiry sent on 27 September. Await written Paddle response and satisfy any conditions. |
 | #10079 — content rights | Codex completed the owner's requested review: [assessment](content-rights-assessment.md). Conditional basis for factual search/analysis; unresolved full-text uses, TDM defects and public dataset redistribution require decisions/remediation. Assessment complete; content readiness remains open. |
 | #10080 — seller/Terms | Public name/address and revised Terms prepared. Publication and owner's applicable Swiss administrative steps remain open. |
-| #10081 — refunds | Wording and footer section prepared, aligned with #10073. Verify deployed links and implemented cancellation/deletion behavior after integration. |
+| #10081 — refunds | #10073 merged; all four live Terms pages return HTTP 200 and include the refund anchor. Owner reports billing migration/webhook verification. Retain actual cancellation/deletion and refund-flow evidence before closure. |
 | #10082 — privacy | Production evidence recorded in `production-privacy-evidence.md`; revised notice prepared. Reconcile/publicly verify on deployment and retain applicable agreements privately. |
-| #10083 — domain packet | This packet is prepared. Final offer deployment, screenshots and actual reviewer-access demonstration remain open. |
+| #10083 — domain packet | #10073 deployment reported by owner. Final screenshots, updated complete policies from #10087 and actual reviewer-access demonstration remain open. |
 
 Do not close issues solely because a draft document or pull request exists.
 
@@ -83,6 +83,17 @@ migration/webhook/entitlement/cancellation/account-deletion checks and activatio
 runbook. In particular, reconcile migration numbering against the merged
 notification migration. This preparation task has performed no deployment, migration, Paddle
 submission, charge, refund, government filing or live-checkout activation.
+The owner subsequently reported #10073 production deployment and live webhook
+activation; this does not by itself establish Paddle category/domain approval.
+
+## Production publication follow-up
+
+After the owner reported deployment, anonymous HTTPS checks returned HTTP 200
+for Terms and Privacy in all four locales, with refund anchors on each Terms
+page. The fetched pages did not yet include the Lausanne postal address or the
+complete-document sections prepared in #10087. Policy pages are published;
+publication of this PR's additional seller/privacy/full-text corrections remains
+open. No production customer billing action was performed for this check.
 
 ## Local implementation validation
 

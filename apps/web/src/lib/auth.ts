@@ -1,6 +1,6 @@
 import "server-only";
 import { betterAuth } from "better-auth";
-import { createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { username } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -53,6 +53,17 @@ export const auth = betterAuth({
     },
     deleteUser: {
       enabled: true,
+      beforeDelete: async (user) => {
+        try {
+          const { preparePaddleAccountDeletion } = await import("@/lib/paddle/account-deletion");
+          await preparePaddleAccountDeletion(user.id);
+        } catch {
+          throw new APIError("SERVICE_UNAVAILABLE", {
+            code: "BILLING_DELETION_UNAVAILABLE",
+            message: "We could not stop your billing. Please retry account deletion shortly or contact support.",
+          });
+        }
+      },
     },
   },
   socialProviders: {

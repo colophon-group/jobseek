@@ -66,6 +66,16 @@ export function assertUtcWindow(window: UtcWindow): void {
   }
 }
 
+/** Preserve half-open membership for Typesense's integer first-seen timestamps. */
+export function getNotificationSearchWindow(window: UtcWindow): UtcWindow | null {
+  assertUtcWindow(window);
+  // Ceiling excludes the pre-opt-in second and includes the final partial
+  // second. Keep original timestamps for policy/decision completion checks.
+  const windowStart = new Date(Math.ceil(window.windowStart.getTime() / 1000) * 1000);
+  const windowEnd = new Date(Math.ceil(window.windowEnd.getTime() / 1000) * 1000);
+  return windowStart < windowEnd ? { windowStart, windowEnd } : null;
+}
+
 function stableUint32(
   userId: string,
   cadence: NotificationCadence,
