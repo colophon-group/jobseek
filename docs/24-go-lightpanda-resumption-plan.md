@@ -6,6 +6,53 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-27 — complete Teamtailor RSS routing v0.13.878
+
+PR #10109 merged as `ca3d0c244b6e8288227276c0151f80edc1c3d988`.
+[Deployment 36347539962](https://github.com/colophon-group/jobseek/actions/runs/36347539962)
+succeeded. **All 162 enabled Teamtailor RSS monitors now select Go**, up from
+one. The live census is **3,843 Go / 4,036 Python** of 7,879 enabled monitors,
+with zero route errors. No enabled boards were removed; the baseline includes
+four already quarantined boards and five new boards without history.
+
+The retained real Sellpy feed matches Python across all seven rich fields for
+11 jobs. Verification passed 217 focused runtime/RSS/shared monitor tests, Go
+race/vet, Ruff/Pyright, Required CI and installed-image parity. Go configuration
+sync completed 6,013 companies and 7,879 boards at 20:27:50 UTC.
+
+Two newly admitted boards completed natural Go runs. Huawei Finland R&D
+returned 15 jobs at 20:28:15 UTC, matching the active DB URL hash exactly;
+posting IDs and description hashes also match the pre-deploy baseline.
+Doconomy returned one job after c1 reactivation at 20:31:41 UTC, also with an
+exact DB URL hash. Both have zero consecutive failures. The read-only baseline
+covers 162 boards and 3,178 active postings. No due scores or publisher requests
+were forced. The preceding Ashby rollout also has new custom-domain evidence:
+Smallpdf's three jobs match its natural Go output and active DB exactly.
+
+Supported rollback retired epoch 88 at 89, restored all five schedules and
+left zero terminal drops/write fences. The unchanged **25 selectors** were
+cleared under lock and restaged at the promoted revision. C1 is active at
+**epoch 90**, accepted/audit_ok, with five ready records and zero inflight/dead;
+all long-lived services are healthy. C2 remains dark. The post-activation
+snapshot reports 121 successful Typesense exports, zero errors, zero lag and
+healthy status. See the sanitized
+[production evidence](evidence/go-teamtailor-production-2026-09-27.json).
+
+Before another deployment or selector mutation, complete supported `rollback c1`,
+then clear all **25** selectors using `/tmp/jobseek-post-go-experience-selectors.py`
+under `/run/lock/jobseek-crawler-mutation.lock`, against full revision
+`ca3d0c244b6e8288227276c0151f80edc1c3d988` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision, then reactivate c1. Teamtailor's percentage is now a release default
+of 100; it is not an additional host selector. These instructions supersede
+older release/epoch instructions below.
+
+Remaining work includes 4,036 Python monitors, detail/browser profiles, Python
+worker/writer and CPU stages, plus same-workload whole-lane efficiency and final
+cutover/reversal. No full retirement or new whole-lane resource claim is made.
+A read-only next-slice census found 227 enabled SuccessFactors RSS boards:
+188 pass current Go feed eligibility and 39 need configuration/profile work.
+
 ## Implementation checkpoint: complete Teamtailor RSS routing v0.13.878
 
 The Teamtailor RSS runtime now defaults to Go for every supported direct feed,
@@ -25,9 +72,8 @@ hash after filtering and transformations, for exact database comparisons.
 Replaying the retained 69,210-byte Sellpy feed through current Python and Go
 matched all seven rich fields for 11 jobs (canonical field SHA-256
 `3e156cb0a84a47f5c2d64307d6626e079694e033b9aa871c0c56bf6028accbb5`).
-No publisher traffic was generated. Production deployment and newly admitted
-natural-run evidence are pending; the authoritative live release/selector
-instructions remain in the production checkpoint below.
+No publisher traffic was generated. Deployment and natural-run evidence are
+recorded in the production checkpoint above.
 
 For percentage rollback set `TEAMTAILOR_RSS_GO_PERCENT=0` through the supported
 cold configuration procedure. Explicit `TEAMTAILOR_RSS_GO_BOARD_IDS` still take
