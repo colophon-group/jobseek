@@ -12,11 +12,9 @@ type Props = {
 };
 
 /**
- * Client wrapper for the filter-aware strip. Page zero arrives in the cached
- * company route snapshot, then refreshes browser-direct from Typesense so a
- * no-filter visit does not need a mount-time Server Action. The client still
- * owns URL filter changes and pagination, keeping `searchParams` / `headers()`
- * / `getSession()` out of the cached route render path.
+ * Globally ranked peers load directly from Typesense, independent of the
+ * posting filters. A server snapshot is supplied only when browser-direct
+ * search is disabled. Company facts remain in the cached route.
  */
 export function SimilarSection({
   companyId,
@@ -27,6 +25,7 @@ export function SimilarSection({
   if (industryId == null) return null;
   return (
     <SimilarCompaniesStrip
+      key={`${companyId}:${industryId}`}
       companyId={companyId}
       industryId={industryId}
       initialCompanies={initialPage?.companies ?? []}

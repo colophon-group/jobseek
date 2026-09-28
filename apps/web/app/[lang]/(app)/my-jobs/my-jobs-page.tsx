@@ -336,14 +336,12 @@ export function MyJobsPage({
   );
 
   return (
-    <div className="flex gap-5">
+    <div className="posting-detail-layout flex gap-5">
       <div className="min-w-0 flex-1">{listColumn}</div>
       {selectedJob && (
         <>
-          <div className="hidden w-[420px] shrink-0 lg:block" aria-hidden="true" />
           <div
-            className="fixed top-[4.5rem] z-40 hidden w-[420px] lg:block"
-            style={{ right: "max(1rem, calc((100vw - 1200px) / 2 + 1rem))", height: "calc(100vh - 5.5rem)" }}
+            className="posting-detail-panel"
           >
             <JobDetailPanel
               postingId={selectedJob.postingId}

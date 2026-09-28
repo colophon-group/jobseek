@@ -523,7 +523,7 @@ export function WatchlistJobList({
       {showPostingId && (
         <>
           <div
-            className="sticky top-[4.5rem] z-40 hidden h-[calc(100vh-5.5rem)] w-[420px] shrink-0 lg:block"
+            className="posting-detail-panel"
           >
             <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
           </div>

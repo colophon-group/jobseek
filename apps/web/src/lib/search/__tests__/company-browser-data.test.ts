@@ -99,6 +99,30 @@ beforeEach(() => {
 });
 
 describe("loadCompanyBrowserData", () => {
+  it.each([false, true])("loads deferred unfiltered results once (unavailable=%s)", async (unavailable) => {
+    const page = { postings: [], activeCount: 12, yearCount: 20 };
+    mocks.directPostings.mockResolvedValue(unavailable ? null : page);
+    const result = await loadCompanyBrowserData({
+      initialData: makeData({ postingsDeferred: true, postings: [], activeCount: 0 }),
+      searchParams: new URLSearchParams(),
+      locale: "en",
+      jobLanguages: [],
+      rates: [],
+      isLoggedIn: false,
+    });
+
+    expect(mocks.directPostings).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ companyId: "company-1", languages: [], offset: 0, limit: 20 }),
+      false,
+    );
+    expect(mocks.semanticFilters).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      unavailable,
+      directAttempted: true,
+      data: { postingsDeferred: false, activeCount: unavailable ? 0 : 12 },
+    });
+  });
+
   it("uses resolved URL filters, preferences, bounds, and the authenticated cap", async () => {
     const parsed: ParsedSearchFilters = {
       ...emptyParsed,

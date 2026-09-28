@@ -4770,12 +4770,6 @@ msgstr "Afficher tous les filtres"
 msgid "search.filters.showFewer"
 msgstr "Afficher moins de filtres"
 
-#. Action shown when fresher Explore results are available without interrupting the current feed
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/search-page.tsx
-msgid "explore.results.showLatest"
-msgstr "Afficher les derniers résultats"
-
 #. Button to collapse location list
 #. js-lingui-explicit-id
 #: src/components/search/job-detail-dialog.tsx

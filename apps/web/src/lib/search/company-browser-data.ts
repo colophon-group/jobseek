@@ -69,6 +69,7 @@ function buildUnavailableData(params: {
 }): CompanyPageData {
   return {
     ...params.initialData,
+    postingsDeferred: false,
     postings: [],
     activeCount: 0,
     yearCount: 0,
@@ -216,7 +217,7 @@ export async function loadCompanyBrowserData(params: {
     userLat,
     userLng,
   };
-  if (!hasResultFilter) {
+  if (!hasResultFilter && !params.initialData.postingsDeferred) {
     return { data: baseData, unavailable: false, directAttempted: false };
   }
 
@@ -269,6 +270,7 @@ export async function loadCompanyBrowserData(params: {
   return {
     data: {
       ...baseData,
+      postingsDeferred: false,
       postings: result.postings,
       activeCount: result.activeCount,
       yearCount: result.yearCount,

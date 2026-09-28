@@ -1,0 +1,645 @@
+{
+  "method": "Eight company/locale paths, three sequential HTML reads each, production Next.js build on local Node 25.2.1; /en/company/aircall warm-up excluded. Per-request process.cpuUsage through the existing audit hook. Local indicative measurements, not billed Vercel CPU. Parallel test processes and per-locale initialization can affect comparisons.",
+  "phases": {
+    "before": {
+      "coldCpuMs": 855.602,
+      "coldCpuMedianMs": 64.596,
+      "coldBytes": 2516575,
+      "coldWallMedianMs": 1575.873,
+      "requests": [
+        {
+          "path": "/de/company/aircall",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 314569,
+          "wall_ms": 1756.228,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://aircall.io/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Aircall</a>",
+          "cpuMs": 384.095
+        },
+        {
+          "path": "/de/company/aircall",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 151039,
+          "wall_ms": 9.778,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://aircall.io/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Aircall</a>",
+          "cpuMs": 11.513
+        },
+        {
+          "path": "/de/company/aircall",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 151039,
+          "wall_ms": 5.961,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://aircall.io/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Aircall</a>",
+          "cpuMs": 5.338
+        },
+        {
+          "path": "/fr/company/hellofresh",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 319944,
+          "wall_ms": 1615.816,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.hellofresh.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">HelloFresh</a>",
+          "cpuMs": 87.551
+        },
+        {
+          "path": "/fr/company/hellofresh",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 153167,
+          "wall_ms": 6.878,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.hellofresh.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">HelloFresh</a>",
+          "cpuMs": 9.678
+        },
+        {
+          "path": "/fr/company/hellofresh",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 153167,
+          "wall_ms": 4.028,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.hellofresh.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">HelloFresh</a>",
+          "cpuMs": 3.545
+        },
+        {
+          "path": "/de/company/sap",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 315722,
+          "wall_ms": 1356.304,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.sap.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">SAP</a>",
+          "cpuMs": 64.72
+        },
+        {
+          "path": "/de/company/sap",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 150746,
+          "wall_ms": 4.466,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.sap.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">SAP</a>",
+          "cpuMs": 6.002
+        },
+        {
+          "path": "/de/company/sap",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 150746,
+          "wall_ms": 5.073,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.sap.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">SAP</a>",
+          "cpuMs": 5.091
+        },
+        {
+          "path": "/it/company/siemens",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 314409,
+          "wall_ms": 1655.998,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.siemens.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Siemens</a>",
+          "cpuMs": 86.086
+        },
+        {
+          "path": "/it/company/siemens",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 150466,
+          "wall_ms": 6.033,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.siemens.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Siemens</a>",
+          "cpuMs": 8.191
+        },
+        {
+          "path": "/it/company/siemens",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 150466,
+          "wall_ms": 3.747,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.siemens.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Siemens</a>",
+          "cpuMs": 4.021
+        },
+        {
+          "path": "/en/company/stripe",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 297354,
+          "wall_ms": 1426.373,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://stripe.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Stripe</a>",
+          "cpuMs": 55.484
+        },
+        {
+          "path": "/en/company/stripe",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 141731,
+          "wall_ms": 3.644,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://stripe.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Stripe</a>",
+          "cpuMs": 3.057
+        },
+        {
+          "path": "/en/company/stripe",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 141731,
+          "wall_ms": 4.114,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://stripe.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Stripe</a>",
+          "cpuMs": 5.154
+        },
+        {
+          "path": "/fr/company/google",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 321770,
+          "wall_ms": 1535.93,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.google.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Google</a>",
+          "cpuMs": 59.329
+        },
+        {
+          "path": "/fr/company/google",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 153651,
+          "wall_ms": 3.328,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.google.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Google</a>",
+          "cpuMs": 2.867
+        },
+        {
+          "path": "/fr/company/google",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 153651,
+          "wall_ms": 3.218,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.google.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Google</a>",
+          "cpuMs": 2.822
+        },
+        {
+          "path": "/de/company/securitas-ag",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 318940,
+          "wall_ms": 1413.987,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.securitas.ch/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Securitas AG</a>",
+          "cpuMs": 64.472
+        },
+        {
+          "path": "/de/company/securitas-ag",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 152469,
+          "wall_ms": 7.645,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.securitas.ch/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Securitas AG</a>",
+          "cpuMs": 8.968
+        },
+        {
+          "path": "/de/company/securitas-ag",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 152469,
+          "wall_ms": 3.587,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.securitas.ch/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Securitas AG</a>",
+          "cpuMs": 4.804
+        },
+        {
+          "path": "/it/company/microsoft",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 313867,
+          "wall_ms": 1635.581,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.microsoft.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Microsoft</a>",
+          "cpuMs": 53.865
+        },
+        {
+          "path": "/it/company/microsoft",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 150648,
+          "wall_ms": 3.409,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.microsoft.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Microsoft</a>",
+          "cpuMs": 2.75
+        },
+        {
+          "path": "/it/company/microsoft",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 150648,
+          "wall_ms": 3.738,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.microsoft.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Microsoft</a>",
+          "cpuMs": 4.468
+        }
+      ]
+    },
+    "after": {
+      "coldCpuMs": 743.685,
+      "coldCpuMedianMs": 83.25450000000001,
+      "coldBytes": 2069495,
+      "coldWallMedianMs": 115.3365,
+      "requests": [
+        {
+          "path": "/de/company/aircall",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 261488,
+          "wall_ms": 217.224,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://aircall.io/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Aircall</a>",
+          "cpuMs": 138.656
+        },
+        {
+          "path": "/de/company/aircall",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 143688,
+          "wall_ms": 12.37,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://aircall.io/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Aircall</a>",
+          "cpuMs": 13.423
+        },
+        {
+          "path": "/de/company/aircall",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 143688,
+          "wall_ms": 12.302,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://aircall.io/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Aircall</a>",
+          "cpuMs": 6.768
+        },
+        {
+          "path": "/fr/company/hellofresh",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 264590,
+          "wall_ms": 199.491,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.hellofresh.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">HelloFresh</a>",
+          "cpuMs": 110.94
+        },
+        {
+          "path": "/fr/company/hellofresh",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 145084,
+          "wall_ms": 174.25,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.hellofresh.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">HelloFresh</a>",
+          "cpuMs": 8.582
+        },
+        {
+          "path": "/fr/company/hellofresh",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 145084,
+          "wall_ms": 23.849,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.hellofresh.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">HelloFresh</a>",
+          "cpuMs": 6.409
+        },
+        {
+          "path": "/de/company/sap",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 260073,
+          "wall_ms": 120.398,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.sap.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">SAP</a>",
+          "cpuMs": 78.437
+        },
+        {
+          "path": "/de/company/sap",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 142773,
+          "wall_ms": 13.196,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.sap.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">SAP</a>",
+          "cpuMs": 11.842
+        },
+        {
+          "path": "/de/company/sap",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 142773,
+          "wall_ms": 9.799,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.sap.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">SAP</a>",
+          "cpuMs": 7.971
+        },
+        {
+          "path": "/it/company/siemens",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 258489,
+          "wall_ms": 98.513,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.siemens.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Siemens</a>",
+          "cpuMs": 82.904
+        },
+        {
+          "path": "/it/company/siemens",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 142348,
+          "wall_ms": 13.596,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.siemens.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Siemens</a>",
+          "cpuMs": 10.981
+        },
+        {
+          "path": "/it/company/siemens",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 142348,
+          "wall_ms": 7.714,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.siemens.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Siemens</a>",
+          "cpuMs": 7.69
+        },
+        {
+          "path": "/en/company/stripe",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 240170,
+          "wall_ms": 105.526,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://stripe.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Stripe</a>",
+          "cpuMs": 83.605
+        },
+        {
+          "path": "/en/company/stripe",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 132537,
+          "wall_ms": 8.499,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://stripe.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Stripe</a>",
+          "cpuMs": 6.762
+        },
+        {
+          "path": "/en/company/stripe",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 132537,
+          "wall_ms": 8.608,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://stripe.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Stripe</a>",
+          "cpuMs": 6.957
+        },
+        {
+          "path": "/fr/company/google",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 263739,
+          "wall_ms": 110.275,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.google.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Google</a>",
+          "cpuMs": 74.071
+        },
+        {
+          "path": "/fr/company/google",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 144547,
+          "wall_ms": 8.302,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.google.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Google</a>",
+          "cpuMs": 4.942
+        },
+        {
+          "path": "/fr/company/google",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 144547,
+          "wall_ms": 13.691,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.google.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Google</a>",
+          "cpuMs": 4.802
+        },
+        {
+          "path": "/de/company/securitas-ag",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 262273,
+          "wall_ms": 96.113,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.securitas.ch/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Securitas AG</a>",
+          "cpuMs": 77.929
+        },
+        {
+          "path": "/de/company/securitas-ag",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 144192,
+          "wall_ms": 29.425,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.securitas.ch/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Securitas AG</a>",
+          "cpuMs": 18.377
+        },
+        {
+          "path": "/de/company/securitas-ag",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 144192,
+          "wall_ms": 10.266,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.securitas.ch/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Securitas AG</a>",
+          "cpuMs": 12.553
+        },
+        {
+          "path": "/it/company/microsoft",
+          "attempt": 1,
+          "status": 200,
+          "bytes": 258673,
+          "wall_ms": 133.261,
+          "headers": {
+            "x-nextjs-postponed": "1",
+            "Cache-Control": "private, no-cache, no-store, max-age=0, must-revalidate"
+          },
+          "heading": "<a href=\"https://www.microsoft.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Microsoft</a>",
+          "cpuMs": 97.143
+        },
+        {
+          "path": "/it/company/microsoft",
+          "attempt": 2,
+          "status": 200,
+          "bytes": 142453,
+          "wall_ms": 8.943,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.microsoft.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Microsoft</a>",
+          "cpuMs": 4.815
+        },
+        {
+          "path": "/it/company/microsoft",
+          "attempt": 3,
+          "status": 200,
+          "bytes": 142453,
+          "wall_ms": 11.864,
+          "headers": {
+            "x-nextjs-cache": "HIT",
+            "Cache-Control": "s-maxage=86400, stale-while-revalidate=518400"
+          },
+          "heading": "<a href=\"https://www.microsoft.com/?utm_source=jobseek\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"hover:underline\">Microsoft</a>",
+          "cpuMs": 4.901
+        }
+      ]
+    }
+  }
+}

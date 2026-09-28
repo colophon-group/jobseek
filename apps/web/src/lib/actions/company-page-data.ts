@@ -3,8 +3,6 @@
 import {
   getCompanyBySlug,
   getCompanyPostings,
-  getCompanyPostingsAnonymous,
-  getSimilarCompanies,
   type CompanyDetail,
   type SimilarCompaniesPage,
 } from "@/lib/actions/company";
@@ -20,24 +18,13 @@ import type { SearchResultPosting } from "@/lib/search";
 
 const PAGE_SIZE = 20;
 
-const DEFAULT_DISPLAY_CURRENCY = "EUR";
-
-const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
-  keywords: [],
-  locations: [],
-  occupations: [],
-  seniorities: [],
-  technologies: [],
-  workMode: [],
-  employmentTypes: [],
-};
-
 export interface CompanyPageData {
   company: CompanyDetail;
+  /** The cached shell has no results yet; load them browser-direct before rendering. */
+  postingsDeferred?: boolean;
   /**
-   * Unfiltered first page of same-industry companies embedded in the cached
-   * anonymous route snapshot. Personalized reads intentionally omit this: the
-   * strip owns filter changes after hydration.
+   * Global peer totals for the server-rendered fallback when browser-direct
+   * search is disabled. Otherwise the strip loads directly after hydration.
    */
   similarCompanies?: SimilarCompaniesPage;
   postings: SearchResultPosting[];
@@ -158,84 +145,5 @@ export async function fetchCompanyPageData(params: {
     experienceMin,
     experienceMax,
     showPostingId: show ?? null,
-  };
-}
-
-/**
- * Server-side prerender variant of :func:`fetchCompanyPageData` for the
- * anonymous, no-filter company-detail page case (#3203).
- *
- * Mirrors :func:`fetchExplorePageDefaults` (#2640). Critically does NOT
- * call :func:`getPreferences`/:func:`getSession`/:func:`readAnonJobLanguagesCookie`
- * (read ``cookies()``) or :func:`getGeoFromHeaders` (reads ``headers()``)
- * — those force dynamic rendering and would silently break the page's
- * ISR eligibility (`revalidate = CACHE_TTL_DETAIL`). Returns the same
- * ``CompanyPageData`` shape with anonymous defaults: EUR currency, no
- * job-language filter, no geo proximity bias, no active filters,
- * ``showPostingId: null``. The client component reuses app-bootstrap
- * preferences and resolves personalized/filter-bearing results directly
- * through the scoped browser Typesense key.
- *
- * Returns ``null`` when the slug is unknown — caller renders the
- * not-found shell. The cache layer in `getCompanyBySlug` ensures repeat
- * unknown-slug hits don't churn Typesense/Postgres.
- */
-export async function fetchCompanyPageDefaults(params: {
-  slug: string;
-  locale: string;
-}): Promise<CompanyPageData | null> {
-  const { slug, locale } = params;
-
-  const company = await getCompanyBySlug(slug, locale);
-  if (!company) return null;
-
-  const displayCurrency = DEFAULT_DISPLAY_CURRENCY;
-  const { jobLanguages, languages } = resolveCompanyPageJobLanguages([], locale);
-
-  // ``getCompanyPostingsAnonymous`` (not ``getCompanyPostings``) — the
-  // latter calls ``getSessionUserId`` which awaits ``headers()`` and
-  // would silently downgrade the page to dynamic rendering, defeating
-  // the ISR optimisation this function exists for. See the parallel
-  // pattern in `explore-page-data.ts::fetchExplorePageDefaults` (#2640).
-  // The first similar-company page is stable enough to share the route's
-  // cached snapshot. Fetch it alongside postings so the browser does not emit
-  // an uncached Server Action POST merely because the strip mounted (#6614).
-  // Page zero never reaches the anonymous pagination cap, so this call does
-  // not read session headers and remains safe inside the ISR snapshot.
-  const [postingsResult, similarCompanies] = await Promise.all([
-    getCompanyPostingsAnonymous({
-      companyId: company.id,
-      keywords: [],
-      languages,
-      locale,
-      offset: 0,
-      limit: PAGE_SIZE,
-    }),
-    getSimilarCompanies(company.id, company.industryId, {
-      offset: 0,
-      limit: 10,
-      locale,
-    }),
-  ]);
-
-  return {
-    company,
-    similarCompanies,
-    postings: postingsResult.postings,
-    activeCount: postingsResult.activeCount,
-    yearCount: postingsResult.yearCount,
-    truncated: postingsResult.truncated,
-    parsed: EMPTY_PARSED_FILTERS,
-    displayCurrency,
-    jobLanguages,
-    languages,
-    userLat: undefined,
-    userLng: undefined,
-    salaryCurrencyParam: displayCurrency,
-    salaryMinDisplay: undefined,
-    salaryMaxDisplay: undefined,
-    experienceMin: undefined,
-    experienceMax: undefined,
-    showPostingId: null,
   };
 }

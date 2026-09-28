@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -78,6 +78,33 @@ function CompanySearchHarness() {
 }
 
 describe("SearchBar company scope", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([undefined, { userLat: 47.37, userLng: 8.54 }])(
+    "searches without asking for browser location, with coordinates %j",
+    async (coordinates) => {
+      const getCurrentPosition = vi.fn();
+      vi.stubGlobal("navigator", Object.create(navigator, {
+        geolocation: { value: { getCurrentPosition } },
+      }));
+      mocks.suggestLocations.mockResolvedValue([]);
+
+      render(
+        <SearchStateProvider>
+          <SearchBar {...coordinates} />
+        </SearchStateProvider>,
+      );
+      await userEvent.type(screen.getByRole("combobox"), "zurich");
+      await waitFor(() => expect(mocks.suggestSearchBar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userLat: coordinates?.userLat,
+          userLng: coordinates?.userLng,
+        }),
+      ));
+      expect(getCurrentPosition).not.toHaveBeenCalled();
+    },
+  );
+
   it("submits free text on Enter after additional suggestions arrive", async () => {
     mocks.suggestLocations.mockResolvedValue([
       {
