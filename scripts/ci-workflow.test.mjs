@@ -2488,7 +2488,7 @@ test("company auto-merges dispatch exact-revision guarded sync without deploying
 
   assert.match(
     uploadCompanyImagesWorkflow,
-    /name: Dispatch production CSV sync[\s\S]*steps\.merge\.outputs\.merged == 'true'[\s\S]*dispatch-company-production-sync\.sh/,
+    /gh workflow run maybe-auto-merge\.yml/,
   );
   assert.match(
     dispatchCompanyProductionSyncScript,
@@ -2633,10 +2633,10 @@ test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(uploadCompanyImagesWorkflow, /id: image-sync/);
   assert.match(uploadCompanyImagesWorkflow, /steps\.image-sync\.outputs\.pushed == 'true'/);
   assert.match(uploadCompanyImagesWorkflow, /Dispatch checks for image commit/);
-  assert.match(uploadCompanyImagesWorkflow, /Auto merge is not allowed for this repository/);
+  assert.doesNotMatch(uploadCompanyImagesWorkflow, /gh pr merge/);
   assert.match(uploadCompanyImagesWorkflow, /maybe-auto-merge-pr\.sh/);
   assert.match(uploadCompanyImagesWorkflow, /Retry trusted auto-merge/);
-  assert.match(uploadCompanyImagesWorkflow, /TRUSTED_SCRIPTS_DIR: \$\{\{ runner\.temp \}\}\/trusted-scripts/);
+  assert.match(uploadCompanyImagesWorkflow, /gh workflow run maybe-auto-merge\.yml/);
 });
 
 test("company image upload is PR-scoped and waits for Required CI", () => {
@@ -2652,7 +2652,7 @@ test("company image upload is PR-scoped and waits for Required CI", () => {
   assert.doesNotMatch(uploadCompanyImagesWorkflow, /git add apps\/crawler\/data\//);
   assert.match(
     uploadCompanyImagesWorkflow,
-    /Branch protection is unavailable; trusted retry will wait for Required CI/,
+    /gh workflow run maybe-auto-merge\.yml/,
   );
   assert.doesNotMatch(
     uploadCompanyImagesWorkflow,

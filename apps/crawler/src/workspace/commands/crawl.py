@@ -1800,16 +1800,22 @@ def _auto_compare_boards(slug: str, current_alias: str) -> None:
 @click.argument("slug_or_type")
 @click.argument("type_", required=False)
 @click.option("--board", "-b", "board_alias", default=None, help="Target board alias")
+@click.option("--as", "config_name", default=None, help="Named config slot to update")
 @click.option("--config", "config_json", help="Scraper config JSON")
 def select_scraper(
     slug_or_type: str,
     type_: str | None,
     board_alias: str | None,
     config_json: str | None,
+    config_name: str | None = None,
 ):
     """Set scraper type for the active board."""
     slug, type_ = resolve_two_args(slug_or_type, type_)
     ws, board = _resolve_board(slug, board_alias)
+    if config_name:
+        if config_name not in board.configs:
+            out.die(f"Unknown config: {config_name}; select its monitor first")
+        board.active_config = config_name
     prev_scraper_type = board.scraper_type
 
     # Validate type against registry
@@ -1844,8 +1850,6 @@ def select_scraper(
 
     name = board.active_config or type_
     asyncio.run(_lib_select_scraper(BoardBackedClaimKV(board), type_, name, config))
-
-    save_board(slug, board)
 
     action_log.append_to_list(board.log, "select scraper", True, f"Selected scraper: {type_}")
     save_board(slug, board)

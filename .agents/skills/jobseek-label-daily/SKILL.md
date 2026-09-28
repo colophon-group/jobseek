@@ -164,7 +164,7 @@ For changes to this orchestration surface, run:
 
 ```bash
 git status --short
-uv run --with 'pyyaml>=6' python /Users/Viktor/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/jobseek-label-daily
+(cd apps/crawler && uv run --frozen python ../../scripts/check-agent-contracts.py)
 python3 - <<'PY'
 import pathlib
 expected = {
