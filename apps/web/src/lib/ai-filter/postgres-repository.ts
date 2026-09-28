@@ -243,7 +243,7 @@ export class PostgresAiFilterExecutionRepository
       const leaseExpiresAt = new Date(input.now.getTime() + CACHE_LEASE_MS);
 
       for (const candidate of unresolved) {
-        const existing = existingByKey.get(candidate.cacheKey);
+        let existing = existingByKey.get(candidate.cacheKey);
         if (
           existing?.status === "ready" &&
           existing.decision &&
@@ -307,6 +307,32 @@ export class PostgresAiFilterExecutionRepository
           )
           .for("update")
           .limit(1);
+
+        // The initial cache snapshot can predate another worker's claim and
+        // reservation. Lock its current row before deciding that any spend is
+        // orphaned, using the same ledger -> cache order as batch completion.
+        [existing] = await tx
+          .select()
+          .from(aiFilterGlobalCache)
+          .where(eq(aiFilterGlobalCache.cacheKey, candidate.cacheKey))
+          .for("update")
+          .limit(1);
+        if (
+          existing?.status === "pending" &&
+          existing.leaseExpiresAt &&
+          existing.leaseExpiresAt.getTime() >= input.now.getTime()
+        ) {
+          waitingCacheKeys.push(candidate.cacheKey);
+          continue;
+        }
+        if (
+          existing?.status === "ready" &&
+          existing.decision &&
+          existing.expiresAt.getTime() > input.now.getTime()
+        ) {
+          cacheHits.push({ binding: candidate, decision: existing.decision });
+          continue;
+        }
 
         const pendingLeaseExpired = Boolean(
           existing?.status === "pending" &&

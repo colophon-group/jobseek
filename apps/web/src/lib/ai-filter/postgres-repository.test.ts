@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({ transaction: vi.fn() }));
 vi.mock("@/db", () => ({ db: { transaction: mocks.transaction } }));
 
 import { PostgresAiFilterExecutionRepository } from "./postgres-repository";
-import { aiFilterGlobalCache } from "@/db/schema";
+import { aiFilterGlobalCache, aiFilterUsageLedger } from "@/db/schema";
 import { normalizeClassifierInputV1 } from "./classifier-input";
 
 beforeEach(() => vi.resetAllMocks());
@@ -68,18 +68,24 @@ describe("AI filter uncertain reservation recovery", () => {
     ledger = oldCharge,
     reclaimed: { cacheKey: string }[] = [{ cacheKey }],
     candidates = input.candidates,
+    lockedCache = cache,
   ) {
     const orderBy = vi.fn();
+    const lockOrder: unknown[] = [];
     const rows: unknown[][] = [
       [], candidates.map(candidate => ({ ...cache, cacheKey: candidate.cacheKey })),
-      ...candidates.map(() => [ledger]),
+      ...candidates.flatMap(candidate => [
+        [ledger], [{ ...lockedCache, cacheKey: candidate.cacheKey }],
+      ]),
     ];
     const select = vi.fn(() => {
       const result = rows.shift()!;
+      let table: unknown;
       const query = {
-        from: vi.fn(() => query), where: vi.fn(() => query),
+        from: vi.fn((value: unknown) => { table = value; return query; }), where: vi.fn(() => query),
         orderBy: vi.fn((...args: SQL[]) => { orderBy(...args); return query; }),
-        for: vi.fn(() => query), limit: vi.fn(async () => result),
+        for: vi.fn((mode: string) => { expect(mode).toBe("update"); lockOrder.push(table); return query; }),
+        limit: vi.fn(async () => result),
         then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(result).then(resolve),
       };
       return query;
@@ -90,7 +96,7 @@ describe("AI filter uncertain reservation recovery", () => {
     };
     const tx = { select, update: vi.fn(() => updateQuery) };
     mocks.transaction.mockImplementation(async (callback) => callback(tx));
-    return { tx, orderBy, updateQuery };
+    return { tx, orderBy, updateQuery, lockOrder };
   }
 
   it("reclaims the original five-job failure history without changing its charged ledger", async () => {
@@ -151,5 +157,22 @@ describe("AI filter uncertain reservation recovery", () => {
     const result = await new PostgresAiFilterExecutionRepository({ user: null, project: null }).resolve(input);
     expect(result.claims).toEqual([]);
     expect(result.waitingCacheKeys).toEqual([cacheKey]);
+  });
+
+  it("does not charge a new reservation using a stale expired cache snapshot", async () => {
+    const expired = {
+      ...failedCache, status: "pending", leaseOwner: "expired-worker",
+      leaseExpiresAt: new Date(now.getTime() - 60_000),
+    };
+    const active = {
+      ...expired, leaseOwner: "new-worker", leaseExpiresAt: new Date(now.getTime() + 60_000),
+    };
+    const { tx, lockOrder } = setup(expired, { ...oldCharge, status: "reserved" }, undefined, input.candidates, active);
+    const result = await new PostgresAiFilterExecutionRepository({ user: null, project: null }).resolve(input);
+    expect(result.claims).toEqual([]);
+    expect(result.waitingCacheKeys).toEqual([cacheKey]);
+    expect(tx.select).toHaveBeenCalledTimes(4);
+    expect(lockOrder).toEqual([aiFilterUsageLedger, aiFilterGlobalCache]);
+    expect(tx.update).not.toHaveBeenCalled();
   });
 });
