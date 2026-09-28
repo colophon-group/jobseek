@@ -17,6 +17,9 @@
 
 ## Pages
 
+- [Blog](https://jseek.co/en/blog) — Original hiring analyses and explanations of the product
+- [Remote engineering research, May 2026](https://jseek.co/en/blog/remote-engineering-jobs-2026) — Historical hiring snapshot with methodology; not a live vacancy count
+
 - [Homepage](https://jseek.co) — Product overview, features, and pricing
 - [Explore Jobs](https://jseek.co/en/explore) — Search and filter job postings across all indexed companies
 - [About](https://jseek.co/en/about) — Who built Job Seek, how it works, and our philosophy

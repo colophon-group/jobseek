@@ -219,7 +219,9 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 ## SEO and IndexNow
 
-`/{locale}/company/{slug}` is now `noindex,follow` (#2821) — pages stay as the in-app product surface but are excluded from the sitemap. The crawler-side IndexNow notifier (which only ever covered company URLs) was retired in the same PR. Watchlist-side IndexNow notification from web server actions via `after()` remains active for the qualifying-watchlist surface (#2823). Blog post URLs are pushed to IndexNow by `.github/workflows/notify-blog-indexnow.yml` on every blog content commit (see `apps/web/script/notify-blog-indexnow.ts`).
+Only localized home/about/FAQ/blog pages and translated blog articles are indexable. Explore and company pages are `noindex,follow`; account/watchlist pages are `noindex,nofollow`. HTML stays crawlable so engines can observe these directives. The sitemap excludes all product/account and legal/policy routes.
+
+Blog IndexNow submissions run in `.github/workflows/deploy-web-production.yml` after production promotion is verified. `.github/workflows/notify-blog-indexnow.yml` is a manual retry against an exact deployed revision. Company and watchlist notifiers are retired.
 
 See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
 

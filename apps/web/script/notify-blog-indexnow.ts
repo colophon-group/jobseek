@@ -12,13 +12,11 @@
  * Idempotency: re-running on a deploy where no MDX file changed is
  * harmless — IndexNow tolerates re-submission of the same URL
  * (engines dedupe their re-fetch behavior on the receiving side).
- * The only cost is one HTTP POST per run.
+ * The only cost is one HTTP POST per post.
  *
- * No-op when `INDEXNOW_KEY` is unset (`notifyIndexNow` short-circuits
- * on missing env). Errors are caught and logged inside
- * `notifyIndexNow`; the script always exits 0 unless a blog read
- * itself errors. Crawlers re-fetch the sitemap on a 1–7 day cadence
- * so a missed submission isn't catastrophic.
+ * Missing credentials and rejected/failed submissions exit nonzero so the
+ * production workflow cannot report a successful notification that never ran.
+ * Automatic invocation is after verified promotion in deploy-web-production.
  *
  * Run with:
  *   pnpm --filter @jobseek/web exec tsx script/notify-blog-indexnow.ts
@@ -30,8 +28,7 @@ import { listBlogPosts, getBlogPostLocales } from "../src/lib/blog";
 
 async function main(): Promise<void> {
   if (!process.env.INDEXNOW_KEY) {
-    console.log("[notify-blog-indexnow] INDEXNOW_KEY unset — exiting no-op");
-    return;
+    throw new Error("INDEXNOW_KEY is required for production blog notification");
   }
 
   const posts = await listBlogPosts();
@@ -41,9 +38,8 @@ async function main(): Promise<void> {
   }
 
   // Track per-post failures so we can fail the workflow loudly. The
-  // catch inside `notifyIndexNow` swallows network/HTTP errors so
-  // existing watchlist `after()` callers stay fire-and-forget — script
-  // mode reads the result envelope and turns rejections into a
+  // shared helper returns network/HTTP errors as a result envelope.
+  // Script mode reads that envelope and turns rejections into a
   // non-zero exit. Without this, a revoked INDEXNOW_KEY or a Bing
   // policy change would silently kill the signal for weeks.
   const failures: string[] = [];

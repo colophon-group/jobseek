@@ -1,8 +1,9 @@
 import type { Locale } from "@/lib/i18n";
 
-export type MissingResourceKind = "company" | "watchlist";
+export type MissingResourceKind = "company" | "watchlist" | "blog";
 
 type RecoveryCopy = {
+  blog: { title: string; message: string; browseLabel: string };
   company: {
     title: string;
     message: string;
@@ -23,6 +24,7 @@ type RecoveryCopy = {
  */
 const RECOVERY_COPY: Record<Locale, RecoveryCopy> = {
   en: {
+    blog: { title: "Article not found", message: "This article does not exist or has been removed.", browseLabel: "Browse the blog" },
     company: {
       title: "Company not found",
       message:
@@ -37,6 +39,7 @@ const RECOVERY_COPY: Record<Locale, RecoveryCopy> = {
     },
   },
   de: {
+    blog: { title: "Artikel nicht gefunden", message: "Dieser Artikel existiert nicht oder wurde entfernt.", browseLabel: "Zum Blog" },
     company: {
       title: "Unternehmen nicht gefunden",
       message:
@@ -52,6 +55,7 @@ const RECOVERY_COPY: Record<Locale, RecoveryCopy> = {
     },
   },
   fr: {
+    blog: { title: "Article introuvable", message: "Cet article n’existe pas ou a été supprimé.", browseLabel: "Parcourir le blog" },
     company: {
       title: "Entreprise introuvable",
       message:
@@ -67,6 +71,7 @@ const RECOVERY_COPY: Record<Locale, RecoveryCopy> = {
     },
   },
   it: {
+    blog: { title: "Articolo non trovato", message: "Questo articolo non esiste o è stato rimosso.", browseLabel: "Vai al blog" },
     company: {
       title: "Azienda non trovata",
       message: "L'azienda che stai cercando non esiste o è stata rimossa.",
@@ -122,6 +127,12 @@ export function staticMissingResourceDocument(
         title: copy.company.title,
         message: copy.company.message,
         actions: companyActions(locale, slug, copy),
+      }
+    : kind === "blog"
+    ? {
+        title: copy.blog.title,
+        message: copy.blog.message,
+        actions: `<a class="primary" href="/${locale}/blog">${copy.blog.browseLabel}</a>`,
       }
     : {
         title: copy.watchlist.title,

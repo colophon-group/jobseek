@@ -36,6 +36,7 @@ export const siteConfig = {
   domain: "jseek.co",
   repoUrl: "https://github.com/colophon-group/jobseek",
   creator: "Viktor Shcherbakov",
+  creatorUrl: "https://github.com/viktor-shcherb",
 
   social: {
     linkedin: { href: "https://www.linkedin.com/company/jseek/", external: true },
@@ -188,24 +189,9 @@ export const siteConfig = {
   },
 
   seo: {
-    disallow: [
-      "/dashboard",
-      "/sign-in",
-      "/sign-up",
-      "/api/auth/",
-      "/api/admin/",
-      "/api/stripe/",
-      "/api/paddle/",
-      "/checkout",
-      "/settings",
-      "/watchlists",
-      "/my-jobs",
-      "/progress",
-      "/check-email",
-      "/forgot-password",
-      "/reset-password",
-      "/verify-email",
-    ],
+    // Public HTML shells stay crawlable so search engines can read noindex.
+    // Authentication/authorization, not robots.txt, protects account data.
+    disallow: ["/api/auth/", "/api/admin/", "/api/stripe/", "/api/paddle/"],
     // Only pages users actually search for. Legal/policy pages
     // (license, privacy-policy, terms, how-we-index) are reached from
     // the footer of every page and are noindex per #2822 — adding
@@ -217,16 +203,13 @@ export const siteConfig = {
     // regen would always say "modified now" and the engine eventually
     // discounts the signal (#2824).
     sitemap: [
-      { path: "/", changeFrequency: "weekly", priority: 1, lastModified: "2026-05-01" },
-      { path: "/about", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
-      { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-05-01" },
+      { path: "/", changeFrequency: "weekly", priority: 1, lastModified: "2026-09-28" },
+      { path: "/about", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-09-28" },
+      { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-09-28" },
       // Blog index. Per-post URLs are emitted separately by
       // `blogPostEntries` in `apps/web/src/lib/sitemap.ts` (#2828).
-      { path: "/blog", changeFrequency: "weekly", priority: 0.7, lastModified: "2026-05-01" },
+      { path: "/blog", changeFrequency: "weekly", priority: 0.7, lastModified: "2026-09-28" },
     ],
-    // The /explore prerendered shell — bump when filter UI / hero /
-    // initial-data layout substantively changes (#2824).
-    exploreLastModified: "2026-05-01",
   },
 
   footer: {
