@@ -400,12 +400,10 @@ class TestProcessOneBoard:
             ),
         ],
     )
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_all_provider_boundary_rejections_fail_without_empty_or_delist(
         self,
         mock_monitor,
-        mock_get_redis,
         allowlist,
         raw_url,
         mock_pool,
@@ -474,7 +472,6 @@ class TestProcessOneBoard:
             - before
             == 1
         )
-        mock_get_redis.assert_not_called()
 
     @pytest.mark.parametrize(
         "payload",
@@ -520,12 +517,10 @@ class TestProcessOneBoard:
             ),
         ],
     )
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_fenaco_schema_loss_records_failure_without_empty_or_delist(
         self,
         mock_monitor,
-        mock_get_redis,
         payload,
         mock_pool,
         mock_http,
@@ -584,12 +579,10 @@ class TestProcessOneBoard:
         assert _DELIST_BOARD_POSTINGS not in fetch_sqls
         migration.assert_not_awaited()
         gone_guards.assert_not_awaited()
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_partial_provider_rejection_keeps_accepted_write_then_fails_us_cycle(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """US/receipt cycles keep accepted writes but suppress every gone path."""
         from src.processing.board import monitor_url_filtered_total
@@ -673,13 +666,9 @@ class TestProcessOneBoard:
             - before
             == 1
         )
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_empty_result_records_empty_check(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_empty_result_records_empty_check(self, mock_monitor, mock_pool, mock_http):
         """Monitor returns empty urls -> _RECORD_EMPTY_CHECK called, no transaction."""
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
@@ -692,12 +681,10 @@ class TestProcessOneBoard:
         await _process_one_board(board, pool, mock_http)
 
         conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1", None)
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_empty_result_persists_recovered_sitemap_with_empty_check(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A valid empty replacement sitemap must evict the stale cached URL."""
         pool, conn = mock_pool
@@ -722,12 +709,10 @@ class TestProcessOneBoard:
             "sitemap_url": "https://example.com/current-sitemap.xml",
         }
         conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1", None)
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_valid_empty_result_recovers_quarantined_board(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         from src.processing.board import monitor_quarantine_events_total
 
@@ -746,12 +731,10 @@ class TestProcessOneBoard:
 
         assert _counter_value(monitor_quarantine_events_total, event="recovered") - before == 1
         assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_valid_empty_result_recovers_confirmed_gone_board(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A recreated provider token can self-recover even with zero jobs."""
         from src.processing.board import monitor_gone_events_total
@@ -771,12 +754,10 @@ class TestProcessOneBoard:
 
         assert _counter_value(monitor_gone_events_total, event="recovered") - before == 1
         assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_confirmed_empty_delists_postings_but_keeps_board_pollable(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Six confirmed empties delist stale postings without retiring the board.
 
@@ -801,8 +782,6 @@ class TestProcessOneBoard:
             ],
             [{"id": "jp-1"}, {"id": "jp-2"}],
         ]
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
@@ -812,12 +791,10 @@ class TestProcessOneBoard:
         assert fetch_sqls == [_RECORD_EMPTY_CHECK, _DELIST_BOARD_POSTINGS]
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after - before == 2
-        mock_redis.delete.assert_awaited_with("cache:platform-stats")
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_empty_result_board_suspect_does_not_delist(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Board still ``suspect`` after empty check -> no delist, no gone counter."""
         from src.processing.board import monitor_jobs_discovered
@@ -837,11 +814,8 @@ class TestProcessOneBoard:
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after == before
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_rich_data_inserts_new_jobs(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_rich_data_inserts_new_jobs(self, mock_monitor, mock_pool, mock_http):
         """Monitor returns DiscoveredJobs -> executemany with _INSERT_RICH_JOB."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -868,10 +842,9 @@ class TestProcessOneBoard:
         call_args = conn.fetchrow.await_args_list
         assert any(c.args[0] == _INSERT_RICH_JOB for c in call_args)
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_rich_data_normalizes_escaped_description(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Escaped HTML from rich monitors is normalized before DB insert."""
         pool, conn = mock_pool
@@ -897,10 +870,9 @@ class TestProcessOneBoard:
         # Verify the job's description was normalized in-place for R2 upload.
         assert job1.description == "<p>Hello</p>"
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_new_rich_enrich_row_keeps_localized_monitor_description_fallback(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A first-seen row keeps its teaser until detail enrichment succeeds.
 
@@ -942,12 +914,10 @@ class TestProcessOneBoard:
             pytest.param("infor", None, id="auto-enrich"),
         ],
     )
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_existing_rich_row_preserves_detail_scraper_description(
         self,
         mock_monitor,
-        mock_get_redis,
         crawler_type,
         metadata,
         action,
@@ -998,10 +968,9 @@ class TestProcessOneBoard:
             "<p>Teaser in a different locale</p>",
         )
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_existing_rich_row_without_description_enrich_keeps_monitor_ownership(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Rich boards without description enrichment retain prior behavior."""
         pool, conn = mock_pool
@@ -1032,12 +1001,10 @@ class TestProcessOneBoard:
         assert desc_calls[0].args[1:4] == ("jp-existing", "de", monitor_body)
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_description_ownership_lifecycle_preserves_body_and_adds_new_locale(
         self,
         mock_monitor,
-        mock_get_redis,
         mock_scrape,
         mock_pool,
         mock_http,
@@ -1164,12 +1131,10 @@ class TestProcessOneBoard:
             ("jp-1", "de"): teaser_de,
         }
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_rich_processing_and_enqueue_release_db_transaction(
         self,
         mock_monitor,
-        mock_get_redis,
         mock_pool,
         mock_http,
         monkeypatch,
@@ -1247,12 +1212,10 @@ class TestProcessOneBoard:
         # and the later gone-detection transaction.
         assert conn.transaction.call_count == 3
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_url_only_inserts_stubs_for_scrape(
         self,
         mock_monitor,
-        mock_get_redis,
         mock_pool,
         mock_http,
     ):
@@ -1282,12 +1245,10 @@ class TestProcessOneBoard:
         # Non-rich monitor → never_scrape flag is False, so next_scrape_at is set.
         assert second_fetch.args[4] is False
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_url_only_emits_posting_discovered_lifecycle_event(
         self,
         mock_monitor,
-        mock_get_redis,
         mock_pool,
         mock_http,
     ):
@@ -1333,12 +1294,10 @@ class TestProcessOneBoard:
         # board_id must be carried so a Loki query can group by board too.
         assert all(e["board_id"] == "board-1" for e in events)
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_url_only_on_rich_crawler_type_keeps_next_scrape_null(
         self,
         mock_monitor,
-        mock_get_redis,
         mock_pool,
         mock_http,
     ):
@@ -1371,30 +1330,8 @@ class TestProcessOneBoard:
         # never_scrape must be True even though the runtime is_rich flag was False.
         assert second_fetch.args[4] is True
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_gone_jobs_in_diff(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
-        """DIFF_URLS returns 'gone' rows -> they trigger cache invalidation."""
-        pool, conn = mock_pool
-        url1 = "https://example.com/job/1"
-        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
-        conn.fetch.return_value = [
-            _diff_row("gone", row_id="jp-gone", url="https://example.com/old"),
-        ]
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
-        board = _mock_board()
-
-        await _process_one_board(board, pool, mock_http)
-
-        # Cache invalidation because there are gone jobs
-        mock_redis.delete.assert_awaited_with("cache:platform-stats")
-
-    @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one_stream")
-    async def test_relisted_jobs_content_update(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_relisted_jobs_content_update(self, mock_monitor, mock_pool, mock_http):
         """Rich data with relisted rows -> bulk update via temp table."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -1417,11 +1354,8 @@ class TestProcessOneBoard:
         assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
         conn.copy_records_to_table.assert_awaited()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_new_sitemap_url_updates_metadata(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_new_sitemap_url_updates_metadata(self, mock_monitor, mock_pool, mock_http):
         """result.new_sitemap_url set -> _UPDATE_METADATA called."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -1447,10 +1381,9 @@ class TestProcessOneBoard:
         assert len(sitemap_patch) == 1
         assert "sitemap-jobs.xml" in sitemap_patch[0].args[2]
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_hybrid_partial_rich_falls_through_to_url_only(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Hybrid monitors return jobs_by_url with rich data for only some URLs.
 
@@ -1494,10 +1427,9 @@ class TestProcessOneBoard:
         assert len(url_only_calls) == 1
         assert url_only_calls[0].args[3] == [stub_url]  # 3rd positional is urls list
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_metadata_updates_merged_with_sitemap_url(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Both new_sitemap_url and metadata_updates go in a SINGLE
         _UPDATE_METADATA call from the per-chunk transaction. (The
@@ -1528,10 +1460,9 @@ class TestProcessOneBoard:
         assert patch_dict["pcsx_watermark"]["max_ts"] == 12345
         assert patch_dict["pcsx_watermark"]["enabled"] is True
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_failed_insert_does_not_advance_watermark_or_enqueue(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """An incremental cursor cannot commit ahead of its posting inserts."""
         from src.processing.board import _enqueue_scrapes_for_new
@@ -1566,11 +1497,8 @@ class TestProcessOneBoard:
         assert metadata_calls == []
         enqueue_spy.assert_not_awaited()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_hybrid_skips_touched_content_update(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_hybrid_skips_touched_content_update(self, mock_monitor, mock_pool, mock_http):
         """Hybrid monitors must NOT feed 'touched' jobs to _BATCH_UPDATE_RICH_CONTENT.
 
         That SQL uses plain SET (not COALESCE) for core fields, so feeding
@@ -1605,11 +1533,8 @@ class TestProcessOneBoard:
         ]
         assert len(create_temp_calls) == 0
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_hybrid_skips_relisted_content_update(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_hybrid_skips_relisted_content_update(self, mock_monitor, mock_pool, mock_http):
         """Hybrid monitors must NOT feed 'relisted' jobs to _BATCH_UPDATE_RICH_CONTENT
         either. That SQL uses plain SET (not COALESCE) for core fields, so PCSX's
         partial data (no employment_type, salary, experience) would null out the
@@ -1639,10 +1564,9 @@ class TestProcessOneBoard:
         assert len(rich_update_calls) == 0, "hybrid must not touch relisted content"
         assert len(create_temp_calls) == 0
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_nonhybrid_relisted_still_updates_content(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Sanity check: non-hybrid rich monitors (greenhouse, lever, etc.) still
         go through the update path for relisted."""
@@ -1666,10 +1590,9 @@ class TestProcessOneBoard:
         execute_calls = conn.execute.await_args_list
         assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in execute_calls)
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_nonhybrid_partial_description_preserves_stored_experience(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Partial non-hybrid monitor rows must not erase scraped experience.
 
@@ -1723,9 +1646,8 @@ class TestProcessOneBoard:
         assert "ELSE u.experience_max" in sql
         assert "experience_max = COALESCE(u.experience_max, jp.experience_max)" not in sql
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_error_records_failure(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
+    async def test_error_records_failure(self, mock_monitor, mock_pool, mock_http):
         """monitor_one raises -> _RECORD_FAILURE called with truncated error."""
         from src.metrics import tasks_total
 
@@ -1748,10 +1670,9 @@ class TestProcessOneBoard:
         assert outcome.status == "failed"
         assert _counter_value(tasks_total, kind="monitor", status="failed") == task_before
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_publicis_truncated_proof_skips_every_gone_path(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A failed raw-UUID proof may upsert URLs but cannot mark any missing."""
         pool, conn = mock_pool
@@ -1782,12 +1703,10 @@ class TestProcessOneBoard:
             for call in conn.fetch.await_args_list
         )
         conn.fetchval.assert_awaited_with(_RECORD_SUCCESS_NONEMPTY, "board-1", None)
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_five_strike_enters_quarantine_without_delisting(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Strike five enters a schedulable quarantine and preserves postings."""
         from src.processing.board import (
@@ -1816,12 +1735,10 @@ class TestProcessOneBoard:
         assert (
             _counter_value(monitor_quarantine_events_total, event="entered") - entered_before == 1
         )
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_quarantine_probe_failure_stays_retryable(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A failed recovery probe remains quarantined without delisting."""
         from src.processing.board import (
@@ -1849,12 +1766,10 @@ class TestProcessOneBoard:
             _counter_value(monitor_quarantine_events_total, event="probe_failed") - probe_before
             == 1
         )
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_never_successful_board_also_uses_quarantine(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """No success history is not proof of retirement or permission to delist."""
         from src.processing.board import monitor_jobs_discovered
@@ -1873,13 +1788,9 @@ class TestProcessOneBoard:
         assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after == before
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_non_disabling_failure_does_not_delist(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_non_disabling_failure_does_not_delist(self, mock_monitor, mock_pool, mock_http):
         """Consecutive-failure count below threshold -> no delist, no gone counter."""
         from src.processing.board import monitor_jobs_discovered
 
@@ -1900,12 +1811,10 @@ class TestProcessOneBoard:
         assert delist_calls == []
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after == before
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_record_failure_write_failure_does_not_emit_transition(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A rolled-back state write cannot produce a quarantine event."""
         import asyncpg
@@ -1923,12 +1832,10 @@ class TestProcessOneBoard:
 
         assert _counter_value(monitor_quarantine_events_total, event="entered") == entered_before
         assert _counter_value(monitor_quarantine_events_total, event="probe_failed") == probe_before
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_spaced_board_gone_confirmation_delists_and_emits_gone(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Only a terminal spaced confirmation delists the board postings.
 
@@ -1964,8 +1871,6 @@ class TestProcessOneBoard:
         conn.fetchrow.side_effect = fetchrow
         # _DELIST_BOARD_POSTINGS returns three rows
         conn.fetch.return_value = [{"id": "jp-1"}, {"id": "jp-2"}, {"id": "jp-3"}]
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         terminal_before = _counter_value(monitor_gone_events_total, event="terminal")
@@ -1980,12 +1885,10 @@ class TestProcessOneBoard:
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after - before == 3
         assert _counter_value(monitor_gone_events_total, event="terminal") - terminal_before == 1
-        mock_redis.delete.assert_awaited_with("cache:platform-stats")
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_first_board_gone_confirmation_preserves_active_postings(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A single recent-success 404 records evidence without delisting."""
         from src.core.monitors import BoardGoneError
@@ -2029,15 +1932,11 @@ class TestProcessOneBoard:
             _counter_value(monitor_gone_events_total, event="confirmation") - confirmation_before
             == 1
         )
-        mock_get_redis.assert_not_called()
         for status, value in task_before.items():
             assert _counter_value(tasks_total, kind="monitor", status=status) == value
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_tdm_reserved_skips_gracefully(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_tdm_reserved_skips_gracefully(self, mock_monitor, mock_pool, mock_http):
         """TDMReservedError (#2842) — publisher emitted W3C TDM opt-out
         signal. The board run is treated as a clean skip:
 
@@ -2089,10 +1988,9 @@ class TestProcessOneBoard:
         # terminal crawler_tasks_total sample.
         assert _counter_value(tasks_total, kind="monitor", status="tdm_reserved") == task_before
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_error_records_exception_type_when_message_is_blank(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Exceptions with empty str() should still record useful error text."""
         pool, conn = mock_pool
@@ -2108,56 +2006,6 @@ class TestProcessOneBoard:
         failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
         assert failure_calls[0].args[2] == "RuntimeError"
-
-    @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one_stream")
-    async def test_stats_cache_invalidated_on_changes(
-        self,
-        mock_monitor,
-        mock_get_redis,
-        mock_pool,
-        mock_http,
-    ):
-        """New or gone jobs -> get_redis().delete called."""
-        pool, conn = mock_pool
-        url1 = "https://example.com/job/1"
-        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={url1}, jobs_by_url=None))
-        conn.fetch.side_effect = [
-            [_diff_row("new", url=url1)],
-            [_inserted_row("jp-1", url1)],
-            # MARK_GONE_BY_TIMESTAMP
-            [],
-        ]
-        board = _mock_board()
-
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
-
-        await _process_one_board(board, pool, mock_http)
-
-        mock_redis.delete.assert_awaited_with("cache:platform-stats")
-
-    @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one_stream")
-    async def test_no_cache_invalidation_when_no_changes(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
-        """No new/gone jobs -> get_redis().delete NOT called."""
-        pool, conn = mock_pool
-        url1 = "https://example.com/job/1"
-        mock_monitor.side_effect = _mock_stream(
-            MonitorResult(
-                urls={url1},
-                jobs_by_url={url1: _discovered_job(url=url1)},
-            )
-        )
-        # Only existing active jobs, no new/gone/relisted
-        conn.fetch.return_value = []
-        board = _mock_board()
-
-        await _process_one_board(board, pool, mock_http)
-
-        mock_get_redis.assert_not_called()
 
 
 # ── TestIsPlausibleJobUrl ────────────────────────────────────────────
@@ -2645,10 +2493,9 @@ class TestDiffBatchDeadlockRetry:
 class TestDuplicateSourceUrl:
     """Fix for issue 02: duplicate source_url must not abort the batch."""
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_url_only_duplicate_skipped_by_on_conflict(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """URL-only batch where ON CONFLICT drops one of two rows still succeeds.
 
@@ -2680,10 +2527,9 @@ class TestDuplicateSourceUrl:
         assert insert_call.args[0] == _INSERT_URL_ONLY_JOBS
         assert set(insert_call.args[3]) == {url1, url2}
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_rich_duplicate_keeps_description_aligned(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Rich-insert path: when the first fetchrow returns None (ON CONFLICT
         no-op), the description UPSERT must be written against the SECOND
@@ -2749,10 +2595,9 @@ class TestDuplicateSourceUrl:
             f"description body should belong to {survivor_url} but got {desc_calls[0].args[3]!r}"
         )
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_implausible_urls_filtered_before_insert(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Site-root URL yielded by a DOM monitor is dropped pre-insert."""
         pool, conn = mock_pool
@@ -2776,10 +2621,9 @@ class TestDuplicateSourceUrl:
         assert garbage not in diff_call.args[1]
         assert real in diff_call.args[1]
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_all_urls_filtered_treated_as_empty_check(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """If every URL is filtered out, fall back to the empty-check path
         rather than running _MARK_GONE_BY_TIMESTAMP (which would wrongly
@@ -2813,10 +2657,9 @@ class TestDuplicateSourceUrl:
         assert len(metadata_calls) == 1
         assert json.loads(metadata_calls[0].args[2]) == {"_confirmed_drop_candidate": None}
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_rich_duplicate_uses_enrich_insert_when_enrich_configured(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """ON CONFLICT must also apply to the ENRICH insert variant — a
         regression here would re-introduce crashes for boards that have
@@ -2842,11 +2685,8 @@ class TestDuplicateSourceUrl:
         assert _INSERT_RICH_JOB_ENRICH in insert_sqls
         assert _INSERT_RICH_JOB not in insert_sqls
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_rich_all_inserts_conflict_no_crash(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_rich_all_inserts_conflict_no_crash(self, mock_monitor, mock_pool, mock_http):
         """All-rows-deduped edge case: every fetchrow returns None. The loop
         must complete, no description upserts should fire, and nothing
         should be enqueued for scraping."""
@@ -2889,10 +2729,9 @@ class TestDuplicateSourceUrl:
         # enqueue branch wouldn't fire anyway; this is just belt-and-braces).
         enqueue_spy.assert_not_awaited()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_rich_enrich_all_inserts_conflict_does_not_enqueue(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Enrich path + all-conflict: the `if enrich_fields and inserted_rich`
         branch must NOT fire, so no deduped URLs leak into the scrape queue.
@@ -2920,11 +2759,8 @@ class TestDuplicateSourceUrl:
         # conflicted — nothing to enrich, nothing to scrape.
         enqueue_spy.assert_not_awaited()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_url_only_dedup_does_not_enqueue_scrape(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_url_only_dedup_does_not_enqueue_scrape(self, mock_monitor, mock_pool, mock_http):
         """Silent behaviour contract: when _INSERT_URL_ONLY_JOBS drops a row
         via ON CONFLICT, that URL must NOT be enqueued for scraping. Only
         the surviving inserted row should be passed to
@@ -2955,10 +2791,9 @@ class TestDuplicateSourceUrl:
         passed_urls = {r["source_url"] for r in passed_rows}
         assert passed_urls == {url1}, f"deduped url2 leaked into scrape queue: {passed_urls}"
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_touched_missing_due_row_reenters_scrape_queue(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Touched no-content rows can be due in Postgres but absent from Redis.
 
@@ -3006,10 +2841,9 @@ class TestDuplicateSourceUrl:
             first_time=True,
         )
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_foreign_action_does_not_insert_or_enqueue(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """_DIFF_BATCH can emit the ``foreign`` action when the URL is
         already owned by another board (cross-tenant Workday etc.). The
@@ -3065,10 +2899,9 @@ class TestDuplicateSourceUrl:
             == 1
         )
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_foreign_relisted_action_enqueues_canonical_posting_refresh(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A live foreign discovery recovers and refreshes the canonical row."""
         from src.metrics import monitor_dedup_total, monitor_foreign_discovery_total
@@ -4848,10 +4681,9 @@ class TestEnrichmentScrape:
 
 
 class TestMonitorEnrichInsert:
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_rich_enrich_new_jobs_get_next_scrape_at(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Rich monitor + enrich → new jobs use _INSERT_RICH_JOB_ENRICH (next_scrape_at = now())."""
         pool, conn = mock_pool
@@ -4873,11 +4705,8 @@ class TestMonitorEnrichInsert:
         assert _INSERT_RICH_JOB_ENRICH in insert_sqls
         assert _INSERT_RICH_JOB not in insert_sqls
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_rich_no_enrich_uses_standard_insert(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_rich_no_enrich_uses_standard_insert(self, mock_monitor, mock_pool, mock_http):
         """Rich monitor, no enrich → standard _INSERT_RICH_JOB (next_scrape_at = NULL)."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -4898,10 +4727,9 @@ class TestMonitorEnrichInsert:
         assert _INSERT_RICH_JOB in insert_sqls
         assert _INSERT_RICH_JOB_ENRICH not in insert_sqls
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_relisted_on_enrich_board_passes_false_to_diff(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Enrich board → DIFF_URLS $4 (is_rich_no_scrape) = False."""
         pool, conn = mock_pool
@@ -4930,11 +4758,8 @@ class TestMonitorEnrichInsert:
         assert diff_call is not None, "No _DIFF_BATCH call found"
         assert diff_call.args[3] is False  # is_rich_no_scrape = False for enrich boards
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_non_enrich_board_passes_true_to_diff(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_non_enrich_board_passes_true_to_diff(self, mock_monitor, mock_pool, mock_http):
         """Non-enrich rich board → DIFF_URLS $4 (is_rich_no_scrape) = True."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -5223,11 +5048,8 @@ class TestResolveDelistThreshold:
             _resolve_delist_threshold({"delist_threshold": 0.9}, "dom") == _DELIST_THRESHOLD_FRAGILE
         )
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_pipeline_passes_override_to_mark_gone(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_pipeline_passes_override_to_mark_gone(self, mock_monitor, mock_pool, mock_http):
         """End-to-end: ``metadata.delist_threshold`` is threaded through
         ``_process_one_board`` into ``_MARK_GONE_BY_TIMESTAMP``."""
         from src.queries.monitor import _MARK_GONE_BY_TIMESTAMP
@@ -5249,10 +5071,9 @@ class TestResolveDelistThreshold:
         # (after board_id and monitor_start_ts).
         assert mark_gone[0].args[3] == 6
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_identity_migration_runs_before_ordinary_gone_guards(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """The one-shot lane retires legacy identities before unchanged guards."""
         pool, conn = mock_pool
@@ -5290,10 +5111,9 @@ class TestResolveDelistThreshold:
         assert result.success is True
         assert events == ["migration", "ordinary_guard"]
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_unisante_identity_migration_runs_before_diff_and_gone_guards(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Legacy URL identities must be adopted before durable diff classification."""
         pool, _conn = mock_pool
@@ -6038,10 +5858,9 @@ class TestMarkGoneGuards:
 
 
 class TestMarkGoneGuardsIntegration:
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_obsolete_config_cannot_delist_or_record_success(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """A sync that wins the row lock leaves its quarantine authoritative."""
         from src.queries.monitor import _MARK_GONE_BY_TIMESTAMP
@@ -6072,13 +5891,9 @@ class TestMarkGoneGuardsIntegration:
             call.args and call.args[0] == _RECORD_SUCCESS_NONEMPTY
             for call in conn.fetchval.await_args_list
         )
-        mock_get_redis.assert_not_called()
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_drop_guard_skips_mark_gone_in_pipeline(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_drop_guard_skips_mark_gone_in_pipeline(self, mock_monitor, mock_pool, mock_http):
         """Pipeline path — drop guard fires, _MARK_GONE_BY_TIMESTAMP
         skipped, ``crawler_monitor_gone_skipped_total{reason="drop"}``
         ticks up."""
@@ -6127,11 +5942,8 @@ class TestMarkGoneGuardsIntegration:
         after_gone = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after_gone == before_gone
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_passing_cycle_proceeds_to_mark_gone(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_passing_cycle_proceeds_to_mark_gone(self, mock_monitor, mock_pool, mock_http):
         """No history + benign blast radius -> mark-gone runs normally."""
         from src.batch import _MARK_GONE_BY_TIMESTAMP
 
@@ -6153,10 +5965,9 @@ class TestMarkGoneGuardsIntegration:
         sqls = [c.args[0] for c in conn.fetch.await_args_list]
         assert _MARK_GONE_BY_TIMESTAMP in sqls
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_blast_radius_guard_skips_mark_gone_in_pipeline(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Pipeline path — fresh board (no history) where the blast-radius
         guard catches a catastrophic truncation. Confirms the guard is
@@ -6297,12 +6108,10 @@ class TestBatchedLocationResolve:
         monkeypatch.setattr("src.batch._get_location_resolver", _fake_get_resolver)
         return resolver
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_batch_resolves_locations_with_single_backfill(
         self,
         mock_monitor,
-        mock_get_redis,
         counting_resolver,
         mock_pool,
         mock_http,

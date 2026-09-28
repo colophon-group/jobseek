@@ -137,9 +137,6 @@ class Settings(BaseSettings):
     # for the lifetime of the container. Set to 0 only for diagnostics.
     browser_playwright_recycle_seconds: int = 6 * 60 * 60
 
-    # Upstash (web app only, kept for backward compat)
-    upstash_redis_rest_url: str = ""
-    upstash_redis_rest_token: str = ""
     log_level: str = "INFO"
     worker_id_prefix: str = ""
     crawler_max_concurrent: int = 20

@@ -284,7 +284,7 @@ async def sweep_phantom_postings(
 
 
 async def refresh_derived_surfaces(pool: Any) -> None:
-    """Invalidate local caches and recompute Typesense count documents.
+    """Recompute derived Typesense count documents.
 
     Posting documents themselves stay on the normal ordered CDC path; this
     refresh handles the derived company/taxonomy counts that are not CDC
@@ -292,11 +292,9 @@ async def refresh_derived_surfaces(pool: Any) -> None:
     the idempotent command and finish the post-repair gate.
     """
 
-    from src.redis_queue import get_redis
     from src.sync import refresh_typesense_counts
     from src.typesense_client import get_typesense_client
 
-    await get_redis().delete("cache:platform-stats")
     client = get_typesense_client()
     if client is None:
         raise RuntimeError("Typesense is not configured; derived counts were not refreshed")

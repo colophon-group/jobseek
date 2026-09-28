@@ -74,7 +74,6 @@ vi.mock("@/lib/search/typesense-retry", () => ({
     ),
   withTypesenseRetry: (fn: () => Promise<unknown>) => fn(),
 }));
-vi.mock("@/lib/search/pg-filters", () => ({ localesOrNoneClause: vi.fn() }));
 vi.mock("@/lib/services/search-input", () => ({ parseSearchFilters: vi.fn() }));
 vi.mock("@/lib/search/params", () => ({
   firstOf: vi.fn(),

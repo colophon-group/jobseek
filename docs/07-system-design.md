@@ -117,6 +117,8 @@ ratelimit:{domain}    STRING  TTL-based cooldown per domain
 
 Prevents concurrent requests to shared ATS APIs (e.g. all Greenhouse boards share `boards-api.greenhouse.io`).
 
+Platform stats are read from Typesense and cached by the web app with Next `use cache`; crawler workers do not invalidate a Redis stats key.
+
 ### Redis Keys
 
 | Key Pattern            | Type       | Purpose                         |
@@ -125,7 +127,6 @@ Prevents concurrent requests to shared ATS APIs (e.g. all Greenhouse boards shar
 | `ready:browser:0/1/2` | Sorted Set | Browser worker ready queues     |
 | `ready:rotation:*`    | Sorted Set | Per-worker recurring-scrape domain rotation floors |
 | `ratelimit:{domain}`  | String     | Per-domain request cooldown     |
-| `cache:platform-stats` | String    | Platform stats (6h TTL, invalidated by workers) |
 
 ---
 

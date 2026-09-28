@@ -57,7 +57,6 @@ const mocks = vi.hoisted(() => {
     getSessionUserId: vi.fn(),
     getViewerLanguages: vi.fn(),
     isTypesenseUnavailableError: vi.fn(),
-    localesOrNoneClause: vi.fn(),
     sqlTag,
     tsSearch: vi.fn(),
     withTypesenseRetry: vi.fn(),
@@ -144,9 +143,6 @@ vi.mock("@/lib/search/constants", () => ({
   COMPANY_BATCH_SIZE: 100,
 }));
 
-vi.mock("@/lib/search/pg-filters", () => ({
-  localesOrNoneClause: mocks.localesOrNoneClause,
-}));
 
 vi.mock("@/lib/search/typesense-client", () => ({
   getSearchClient: () => ({
@@ -258,7 +254,6 @@ describe("watchlist posting read degradation (#6167)", () => {
               .typesenseUnavailable === true))
       );
     });
-    mocks.localesOrNoneClause.mockReturnValue(undefined);
     mocks.withTypesenseRetry.mockImplementation((fn: () => Promise<unknown>) => fn());
   });
 
