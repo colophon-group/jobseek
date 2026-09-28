@@ -58,6 +58,20 @@
       }
     },
     {
+      "slug": "anybotics",
+      "name": "ANYbotics",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/anybotics/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 3,
+      "foundedYear": 2016,
+      "descriptions": {
+        "en": "Swiss robotics company building autonomous legged robots for industrial inspection and maintenance",
+        "de": "Schweizer Robotikunternehmen, das autonome Laufroboter fuer industrielle Inspektion und Wartung entwickelt",
+        "fr": "Entreprise suisse de robotique developpant des robots autonomes a pattes pour inspection et maintenance industrielles",
+        "it": "Azienda svizzera di robotica che sviluppa robot autonomi a zampe per ispezione e manutenzione industriale"
+      }
+    },
+    {
       "slug": "clickhouse",
       "name": "ClickHouse",
       "icon": "https://jobseek-assets.colophon-group.org/companies/clickhouse/icon.webp",
@@ -111,6 +125,48 @@
         "de": "Globaler Unterhaltungs- und Medienkonzern mit Freizeitparks, Filmstudios und Streaming-Diensten",
         "fr": "Conglomérat mondial du divertissement et des médias exploitant des parcs à thèmes, des studios de cinéma et des services de streaming",
         "it": "Conglomerato globale dell'intrattenimento e dei media con parchi tematici, studi cinematografici e servizi di streaming"
+      }
+    },
+    {
+      "slug": "distalmotion",
+      "name": "Distalmotion",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/distalmotion/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 4,
+      "foundedYear": 2012,
+      "descriptions": {
+        "en": "Distalmotion is a Swiss medical technology company that develops and manufactures the DEXTER robotic surgery system. Founded in 2012 as a spin-off from the EPFL Robotics Lab, the Lausanne-based company works to expand access to minimally invasive robotic surgery.",
+        "de": "Distalmotion ist ein Schweizer Medizintechnikunternehmen, das das robotergestützte Chirurgiesystem DEXTER entwickelt und herstellt. Das 2012 als Spin-off des Robotiklabors der EPFL gegründete Unternehmen mit Sitz in Lausanne will den Zugang zu minimalinvasiver robotischer Chirurgie erweitern.",
+        "fr": "Distalmotion est une entreprise suisse de technologies médicales qui développe et fabrique le système de chirurgie robotique DEXTER. Fondée en 2012 en tant que spin-off du laboratoire de robotique de l’EPFL, l’entreprise lausannoise vise à élargir l’accès à la chirurgie robotique mini-invasive.",
+        "it": "Distalmotion è un’azienda svizzera di tecnologia medicale che sviluppa e produce il sistema di chirurgia robotica DEXTER. Fondata nel 2012 come spin-off del laboratorio di robotica dell’EPFL, l’azienda con sede a Losanna mira ad ampliare l’accesso alla chirurgia robotica mininvasiva."
+      }
+    },
+    {
+      "slug": "ecorobotix",
+      "name": "Ecorobotix",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/ecorobotix/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 4,
+      "foundedYear": 2011,
+      "descriptions": {
+        "en": "Ecorobotix is a Swiss agricultural robotics company that develops AI-powered ultra-high-precision spraying systems for crop and turf care. Its technology targets individual plants to reduce the use of crop protection products and other agricultural inputs.",
+        "de": "Ecorobotix ist ein Schweizer Agrarrobotikunternehmen, das KI-gestützte, ultrahochpräzise Sprühsysteme für Pflanzenbau und Rasenpflege entwickelt. Die Technologie behandelt einzelne Pflanzen gezielt, um den Einsatz von Pflanzenschutzmitteln und anderen landwirtschaftlichen Betriebsmitteln zu reduzieren.",
+        "fr": "Ecorobotix est une entreprise suisse de robotique agricole qui développe des systèmes de pulvérisation d’ultra-haute précision pilotés par l’IA pour les cultures et l’entretien des gazons. Sa technologie cible les plantes individuellement afin de réduire l’utilisation de produits phytosanitaires et d’autres intrants agricoles.",
+        "it": "Ecorobotix è un’azienda svizzera di robotica agricola che sviluppa sistemi di irrorazione ad altissima precisione basati sull’intelligenza artificiale per le colture e la cura dei tappeti erbosi. La sua tecnologia tratta in modo mirato le singole piante per ridurre l’uso di prodotti fitosanitari e altri input agricoli."
+      }
+    },
+    {
+      "slug": "flyability",
+      "name": "Flyability",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/flyability/icon-7b785837078fc63a6d214ad154f2f66cb6f7df522ab0f4f2294a948de7f6ea24.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 3,
+      "foundedYear": 2014,
+      "descriptions": {
+        "en": "Flyability develops collision-tolerant indoor drones and software for inspecting confined and hazardous industrial spaces. Its Elios systems enable remote visual inspection, mapping, and data collection while reducing the need for people to enter dangerous environments.",
+        "de": "Flyability entwickelt kollisionsresistente Indoor-Drohnen und Software für die Inspektion enger und gefährlicher Industrieanlagen. Die Elios-Systeme ermöglichen visuelle Ferninspektionen, Kartierungen und Datenerfassung, ohne dass Menschen gefährliche Bereiche betreten müssen.",
+        "fr": "Flyability développe des drones d’intérieur résistants aux collisions et des logiciels destinés à l’inspection d’espaces industriels confinés et dangereux. Ses systèmes Elios permettent l’inspection visuelle à distance, la cartographie et la collecte de données tout en limitant l’exposition humaine aux environnements à risque.",
+        "it": "Flyability sviluppa droni da interni resistenti agli urti e software per l’ispezione di spazi industriali confinati e pericolosi. I suoi sistemi Elios consentono ispezioni visive da remoto, mappatura e raccolta dati, riducendo la necessità che le persone entrino in ambienti rischiosi."
       }
     },
     {
@@ -363,6 +419,34 @@
         "de": "Veeva Systems bietet cloudbasierte Software fuer die globale Life-Sciences-Branche und bedient ueber 1000 Pharma- und Biotech-Kunden.",
         "fr": "Veeva Systems fournit des logiciels cloud pour l'industrie mondiale des sciences de la vie, au service de plus de 1000 clients pharmaceutiques et biotechnologiques.",
         "it": "Veeva Systems fornisce software cloud per l'industria globale delle scienze della vita, servendo oltre 1000 clienti farmaceutici e biotecnologici."
+      }
+    },
+    {
+      "slug": "voliro",
+      "name": "Voliro",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/voliro/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 3,
+      "foundedYear": 2019,
+      "descriptions": {
+        "en": null,
+        "de": null,
+        "fr": null,
+        "it": null
+      }
+    },
+    {
+      "slug": "wingtra",
+      "name": "Wingtra",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/wingtra/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 3,
+      "foundedYear": 2016,
+      "descriptions": {
+        "en": "Wingtra is a Swiss robotics company that designs and manufactures VTOL mapping drones used for surveying, mining, agriculture, and environmental monitoring.",
+        "de": "Wingtra ist ein Schweizer Robotikunternehmen, das VTOL-Kartierungsdrohnen für Vermessung, Bergbau, Landwirtschaft und Umweltüberwachung entwickelt und herstellt.",
+        "fr": "Wingtra est une entreprise suisse de robotique qui conçoit et fabrique des drones cartographiques VTOL utilisés pour la topographie, l'exploitation minière, l'agriculture et la surveillance environnementale.",
+        "it": "Wingtra è un'azienda svizzera di robotica che progetta e produce droni VTOL per la mappatura utilizzati nel rilevamento topografico, nell'attività mineraria, nell'agricoltura e nel monitoraggio ambientale."
       }
     }
   ]

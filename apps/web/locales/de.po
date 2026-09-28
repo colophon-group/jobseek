@@ -651,7 +651,7 @@ msgstr "Eine gezielte Jobsuche nach deinen Vorstellungen."
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.description"
-msgstr "Kostenlose Bewerbungsverwaltung für auf Job Seek gespeicherte Stellen. Organisiere Jobs, aktualisiere den Status und sammle Gesprächsnotizen."
+msgstr "Kostenlose Bewerbungsverwaltung für auf Job Seek gespeicherte Stellen. Organisiere Jobs, aktualisiere den Status und behalte Gesprächstermine im Blick."
 
 #. Narrowed marketing page: body
 #. js-lingui-explicit-id
@@ -2895,7 +2895,7 @@ msgstr "Interview-Protokoll"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.common.exampleNote"
-msgstr "Gesprächsnotizen bleiben bei der Stelle."
+msgstr "Gesprächsrunden bleiben bei der Stelle."
 
 #. Screen-reader confirmation after updating an interview round
 #. js-lingui-explicit-id
@@ -3099,12 +3099,6 @@ msgstr "Jobs bei {name}"
 #: src/components/search/search-bar.tsx
 msgid "search.bar.keepAsKeywords"
 msgstr "\"{0}\" als Suchbegriffe behalten"
-
-#. Public marketing page: tracker_step3Title
-#. js-lingui-explicit-id
-#: src/content/marketing.ts
-msgid "marketing.tracker.step3Title"
-msgstr "Sammle Gesprächsnotizen"
 
 #. Dismiss paused notification warning without changing preference
 #. js-lingui-explicit-id
@@ -3921,7 +3915,7 @@ msgstr "Hoppla, etwas ist schiefgelaufen."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.apply"
-msgstr "Öffne eine Stelle und folge dem Link zur Bewerbung auf der Website des Arbeitgebers. Speichere sie auf Job Seek, aktualisiere ihren Status bei Bewerbungen oder Gesprächen und ergänze Gesprächstermine und Notizen. Du führst den Tracker selbst; Job Seek versendet keine Bewerbungen und aktualisiert ihren Status nicht automatisch."
+msgstr "Öffne eine Stelle und folge dem Link zur Bewerbung auf der Website des Arbeitgebers. Speichere sie auf Job Seek, aktualisiere ihren Status bei Bewerbungen oder Gesprächen und ergänze Datum und Art der Gespräche. Du führst den Tracker selbst; Job Seek versendet keine Bewerbungen und aktualisiert ihren Status nicht automatisch."
 
 #. Explains where subscribed users can use Pro
 #. js-lingui-explicit-id
@@ -4504,13 +4498,13 @@ msgstr "Kürzlich aktualisiert"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s2.p2.description"
-msgstr "Halte jede Interview-Runde mit Datum, Art und Notizen fest, damit nichts durchs Raster fällt."
+msgstr "Halte jede Gesprächsrunde mit Datum und Art fest, damit du siehst, was als Nächstes ansteht."
 
 #. Public marketing page: tracker_step3Body
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.step3Body"
-msgstr "Notiere Datum, Art und Notizen zu jeder Gesprächsrunde. Verfolge deinen Fortschritt von gespeicherten Stellen über Gespräche bis zum Angebot."
+msgstr "Halte jede Gesprächsrunde mit Datum und Art fest. Verfolge deinen Fortschritt von gespeicherten Stellen über Gespräche bis zum Angebot."
 
 #. MIT right 2
 #. js-lingui-explicit-id
@@ -4755,7 +4749,7 @@ msgstr "Setze oben die E-Mail-Benachrichtigungen fort, um deine Watchlist-Auswah
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.proofBody"
-msgstr "Kehre bei der Gesprächsvorbereitung zu den Stellendetails zurück. Status und Notizen bleiben mit der gespeicherten Stelle verknüpft."
+msgstr "Kehre bei der Gesprächsvorbereitung zu den Stellendetails zurück. Status und Gesprächsrunden bleiben mit der gespeicherten Stelle verknüpft."
 
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
@@ -4833,7 +4827,7 @@ msgstr "Job speichern"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.body"
-msgstr "Speichere Jobs, die du auf Job Seek findest, aktualisiere ihren Bewerbungsstatus und halte deine Gesprächsnotizen zusammen."
+msgstr "Speichere Jobs, die du auf Job Seek findest, aktualisiere ihren Bewerbungsstatus und behalte deine Gesprächstermine im Blick."
 
 #. Empty state for stats
 #. js-lingui-explicit-id
@@ -5713,11 +5707,17 @@ msgstr "Bis"
 msgid "watchlists.jobList.today"
 msgstr "Heute"
 
+#. Public marketing page: tracker_step3Title
+#. js-lingui-explicit-id
+#: src/content/marketing.ts
+msgid "marketing.tracker.step3Title"
+msgstr "Verfolge Gesprächsrunden"
+
 #. Feature section 2 description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s2.description"
-msgstr "Verfolge auf Job Seek gespeicherte Stellen, aktualisiere den Bewerbungsstatus und halte deine Gesprächsnotizen an einem Ort fest."
+msgstr "Verfolge auf Job Seek gespeicherte Stellen, aktualisiere den Status bei Bewerbungen und Gesprächen und behalte deine Gesprächstermine im Blick."
 
 #. Main heading on the landing page — leads with company-watchlist ICP
 #. js-lingui-explicit-id

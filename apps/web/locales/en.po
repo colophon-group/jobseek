@@ -3100,12 +3100,6 @@ msgstr "Jobs at {name}"
 msgid "search.bar.keepAsKeywords"
 msgstr "Keep \"{0}\" as keywords"
 
-#. Public marketing page: tracker_step3Title
-#. js-lingui-explicit-id
-#: src/content/marketing.ts
-msgid "marketing.tracker.step3Title"
-msgstr "Keep interview notes"
-
 #. Dismiss paused notification warning without changing preference
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx
@@ -5712,6 +5706,12 @@ msgstr "To"
 #: src/components/watchlist/watchlist-job-list.tsx
 msgid "watchlists.jobList.today"
 msgstr "Today"
+
+#. Public marketing page: tracker_step3Title
+#. js-lingui-explicit-id
+#: src/content/marketing.ts
+msgid "marketing.tracker.step3Title"
+msgstr "Keep interview notes"
 
 #. Feature section 2 description
 #. js-lingui-explicit-id

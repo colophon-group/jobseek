@@ -124,7 +124,7 @@ export default async function FaqPage({ params }: Props) {
     },
     apply: {
       q: i18n._({ id: "faq.q.apply", comment: "FAQ question about apply", message: "How do I apply and track my progress?" }),
-      a: i18n._({ id: "faq.a.apply", comment: "FAQ answer about apply", message: "Open a job and follow the link to apply on the employer’s website. Save it on Job Seek, update its status as you apply or interview, and add interview dates and notes. You control the tracker; Job Seek does not send applications or update their status automatically." }),
+      a: i18n._({ id: "faq.a.apply", comment: "FAQ answer about apply", message: "Open a job and follow the link to apply on the employer’s website. Save it on Job Seek, update its status as you apply or interview, and add interview dates and types. You control the tracker; Job Seek does not send applications or update their status automatically." }),
     },
   };
 

@@ -42,7 +42,7 @@ Save a watchlist for each direction you’re considering: selected employers, a 
 
 ### Track applications, interviews, and offers
 
-Save a job, record when you apply, add interview rounds and notes, and update the outcome. Your application tracker keeps the original job details alongside your progress; pipeline statistics help you see how the search is going.
+Save a job, record when you apply, add interview rounds and dates, and update the outcome. Your application tracker keeps the original job details alongside your progress; pipeline statistics help you see how the search is going.
 
 [![Application tracker showing saved jobs, applied roles, offers, and interview controls beside the job description](.github/assets/readme/application-tracker.png)](.github/assets/readme/application-tracker.png)
 
