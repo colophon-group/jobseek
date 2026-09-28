@@ -4,6 +4,7 @@ import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlte
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import { FaqContent } from "./faq-content";
+import { MarketingLinks } from "@/components/marketing/MarketingPage";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -47,27 +48,27 @@ export default async function FaqPage({ params }: Props) {
   const faqItems = [
     {
       q: i18n._({ id: "faq.q.whatIsJobseek", comment: "FAQ question asking for a short product definition.", message: "What is Job Seek?" }),
-      a: i18n._({ id: "faq.a.whatIsJobseek", comment: "FAQ answer explaining what Job Seek does for targeted job seekers.", message: "Job Seek helps you track the companies you actually want to work at. Build a watchlist, get email alerts when new roles open up, and track applications in one place. Postings come straight from company career pages, so you see them within hours of going live — typically before LinkedIn or Indeed cross-post them." }),
+      a: i18n._({ id: "faq.a.whatIsJobseek", comment: "FAQ answer explaining what Job Seek does for targeted job seekers.", message: "Job Seek helps you follow employers, find jobs from company career pages, and track the roles you save on Job Seek. Watchlists combine your companies and search filters." }),
     },
     {
-      q: i18n._({ id: "faq.q.targetedSeeker", comment: "FAQ question about whether the product suits company-targeted job seekers.", message: "Is Job Seek for me if I already know which companies I want to work for?" }),
-      a: i18n._({ id: "faq.a.targetedSeeker", comment: "FAQ answer explaining the company watchlist use case.", message: "Yes — that's the use case we built around. Add the companies you care about to a watchlist, set your filters (role, location, seniority, salary), and Job Seek monitors their career pages and alerts you the moment new roles match. You don't have to keep checking each company's site by hand or fight LinkedIn's algorithm." }),
+      q: i18n._({ id: "faq.q.targetedSeeker", comment: "FAQ question about whether the product suits company-targeted job seekers.", message: "Do I need to know which companies I want to follow?" }),
+      a: i18n._({ id: "faq.a.targetedSeeker", comment: "FAQ answer explaining the company watchlist use case.", message: "No. Start with a role and location, then add companies as you discover them. Company filtering is optional: a watchlist can also be a saved search across employers." }),
     },
     {
       q: i18n._({ id: "faq.q.howOftenUpdated", comment: "FAQ question about job listing refresh cadence.", message: "How often are job listings updated?" }),
-      a: i18n._({ id: "faq.a.howOftenUpdated", comment: "FAQ answer explaining crawler discovery and refresh frequency.", message: "The crawler discovers new postings on an hourly cycle and refreshes job details daily. Most roles appear within hours of being published on a company's careers page." }),
+      a: i18n._({ id: "faq.a.howOftenUpdated", comment: "FAQ answer explaining crawler discovery and refresh frequency.", message: "Career pages are checked regularly, but discovery and refresh times vary by source. Check the original posting before applying. Email digests run on a separate weekly schedule." }),
     },
     {
       q: i18n._({ id: "faq.q.differentiation", comment: "FAQ question comparing Job Seek with general job boards.", message: "What makes Job Seek different from LinkedIn or Indeed?" }),
-      a: i18n._({ id: "faq.a.differentiation", comment: "FAQ answer explaining direct career-page indexing and no recruiter spam.", message: "We index company career pages directly, not third-party feeds. No recruiter spam, no reposted ghost jobs, and we re-check companies frequently — so most roles show up here within hours of being published. We're built for users who already know which companies they want to work at, not broad 'find me any job' searches." }),
+      a: i18n._({ id: "faq.a.differentiation", comment: "FAQ answer explaining direct career-page indexing and no recruiter spam.", message: "Job Seek combines direct career-page indexing, company-focused watchlists, and application tracking. Direct sourcing does not guarantee that a posting is newer than on another site or that the employer is still hiring." }),
     },
     {
       q: i18n._({ id: "faq.q.requestCompany", comment: "FAQ question about requesting a missing company.", message: "How do I request a company that isn't listed?" }),
-      a: i18n._({ id: "faq.a.requestCompany", comment: "FAQ answer explaining how to request a missing company from the Explore page.", message: "Use the request form on the explore page — paste a careers page URL or company name and we'll start indexing it. You can track progress via the issue number we return." }),
+      a: i18n._({ id: "faq.a.requestCompany", comment: "FAQ answer explaining how to request a missing company from the Explore page.", message: "Use the request form on Explore to submit a company name or careers page URL. A request starts a review; it does not guarantee indexing. When an issue number is available, use it to follow progress." }),
     },
     {
       q: i18n._({ id: "faq.q.freeVsPro", comment: "FAQ question comparing the Free and Pro plans.", message: "What's the difference between Free and Pro?" }),
-      a: i18n._({ id: "faq.a.freeVsPro", comment: "FAQ answer summarizing Free and the upcoming Pro plan.", message: "Free includes full search, up to 10 watchlists, email alerts, and the application tracker. Pro adds Narrowed results for your watchlists." }),
+      a: i18n._({ id: "faq.a.freeVsPro", comment: "FAQ answer summarizing Free and the upcoming Pro plan.", message: "Free includes search, up to 10 watchlists, weekly email digests, and tracking for jobs saved on Job Seek. Pro adds Narrowed results. The subscription page shows current trial availability." }),
     },
     {
       q: i18n._({ id: "faq.q.whatIsWatchlist", comment: "FAQ question defining a watchlist.", message: "What is a watchlist?" }),
@@ -76,6 +77,18 @@ export default async function FaqPage({ params }: Props) {
     {
       q: i18n._({ id: "faq.q.trackerLimit", comment: "FAQ question about application tracker limits.", message: "Is there a limit to how many jobs I can track?" }),
       a: i18n._({ id: "faq.a.trackerLimit", comment: "FAQ answer explaining that the application tracker has no hard limit.", message: "No. The application tracker has no hard limit — save as many jobs as you want and move them through your pipeline." }),
+    },
+    {
+      q: i18n._({ id: "faq.q.emailTiming", comment: "Customer question about emailTiming", message: "When will I receive email notifications?" }),
+      a: i18n._({ id: "faq.a.emailTiming", comment: "Explains supported behavior for emailTiming", message: "Email notifications are opt-in weekly digests, not instant alerts. Verify your email and enable the watchlists you want included in Settings. New matches are combined into one digest, with up to 20 roles. You can pause notifications in Settings." }),
+    },
+    {
+      q: i18n._({ id: "faq.q.externalTracking", comment: "Customer question about externalTracking", message: "Can I track a job from another website?" }),
+      a: i18n._({ id: "faq.a.externalTracking", comment: "Explains supported behavior for externalTracking", message: "The tracker works with jobs indexed on Job Seek. It does not currently import applications from other websites or let you add an arbitrary external job." }),
+    },
+    {
+      q: i18n._({ id: "faq.q.remoteEligibility", comment: "Customer question about remoteEligibility", message: "Does remote mean I can work from any country?" }),
+      a: i18n._({ id: "faq.a.remoteEligibility", comment: "Explains supported behavior for remoteEligibility", message: "No. Remote jobs can restrict hiring countries, time zones, or work authorization. Posting language also does not establish the working language. Check the employer\u2019s stated requirements." }),
     },
     {
       q: i18n._({ id: "faq.q.crawlingPolicy", comment: "FAQ question for company operators about crawler behavior.", message: "How does the crawler behave on my company's website?" }),
@@ -116,6 +129,7 @@ export default async function FaqPage({ params }: Props) {
         inLanguage: locale,
       }} />
       <FaqContent items={faqItems} />
+      <div className="mx-auto max-w-[720px] px-4 pb-12"><MarketingLinks locale={locale} /></div>
     </>
   );
 }

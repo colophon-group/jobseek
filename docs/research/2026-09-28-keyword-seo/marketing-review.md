@@ -2,6 +2,8 @@
 
 28 September 2026 · Follow-up to the [50-persona keyword analysis](report.md)
 
+**Implementation update:** the user confirmed that production emails are already being delivered. No email rollout notice is needed; retain the weekly-cadence clarification.
+
 ## Decision
 
 **Keep the company-first positioning. Correct product promises first, make the first action more specific, and add a small number of pages for distinct customer tasks.** The research supports this direction as a hypothesis; it does not prove that these changes will increase traffic or conversion.
@@ -18,14 +20,14 @@ The 390px homepage had no horizontal document overflow. This is a focused market
 
 | Priority | Current observation | Recommended change | Evidence |
 |---|---|---|---|
-| P0 | About and FAQ promise notification the moment a role appears. | Say **weekly email digest**, distinguish it from the freshness of the in-app feed, and explain opt-in. Verify production activation before actively advertising delivery. | [Notification documentation](../../../apps/web/docs/notifications.md), [weekly cadence policy](../../../apps/web/src/lib/notifications/policy.ts), [About](<../../../apps/web/app/[lang]/(public)/about/about-content.tsx>), [FAQ](<../../../apps/web/app/[lang]/(public)/faq/page.tsx>) |
+| P0 | About and FAQ promise notification the moment a role appears. | Say **weekly email digest**, distinguish it from the freshness of the in-app feed, and explain opt-in. Production delivery is confirmed by the user. | [Notification documentation](../../../apps/web/docs/notifications.md), [weekly cadence policy](../../../apps/web/src/lib/notifications/policy.ts), [About](<../../../apps/web/app/[lang]/(public)/about/about-content.tsx>), [FAQ](<../../../apps/web/app/[lang]/(public)/faq/page.tsx>) |
 | P0 | Hero, features, About and FAQ imply listings arrive before LinkedIn/Indeed; homepage metadata promises no reposted listings, and FAQ promises no reposted ghost jobs. | Retain the factual claim that listings are sourced from company career pages. Remove comparative speed and hiring-intent guarantees unless supported by a reproducible study. A company's own posting can still be stale or not lead to a hire. | [Hero](../../../apps/web/src/components/Hero.tsx), [Features](../../../apps/web/src/components/Features.tsx), [homepage metadata/JSON-LD](<../../../apps/web/app/[lang]/(public)/page.tsx>), [live FAQ](https://jseek.co/en/faq) |
 | P0 | The hero promises to track every application; feature copy says users can save any role they find. | Specify **jobs saved on Job Seek**. Do not imply imports from other websites or arbitrary manual application entry. | [Saved-job action](../../../apps/web/src/lib/actions/saved-jobs.ts) requires an indexed posting ID and fetches its snapshot before insertion. |
 | P0 | The homepage advertises a seven-day Pro trial, while the signed-out billing destination says trial signup is not open yet. | State current availability beside the homepage offer and use an informational CTA until checkout is actually enabled. Recheck availability before shipping copy. | Direct browser visit to [the public billing page](https://jseek.co/en/settings/billing); the page remained accessible without signing in. |
 | P1 | Request-company copy says pasting a URL means indexing starts. | Explain that users submit a request and can follow its progress. Avoid guaranteed coverage or a time-to-add claim. | [Request action](../../../apps/web/src/lib/actions/request-company.ts) records a request and attempts to create a GitHub issue; successful submission is not successful indexing. |
 | P1 | Search is described as providing every filter a seeker needs. | Name the supported dimensions. Include employment type and work mode alongside role, location, salary and posting language; avoid implying that shifts, sponsorship or travel are standard filters. | [Features](../../../apps/web/src/components/Features.tsx), [search filter implementation](../../../apps/web/src/lib/search/typesense-filters.ts), persona constraint examples. |
 
-The notification mismatch changes the interpretation of the keyword research: company monitoring still fits, but **instant-alert intent is not currently satisfied by the weekly email policy**. Do not optimize pages around instant notifications without implementing and verifying that capability. Cadence policy is not proof that mail is live: runtime defaults to off and the repository documents a staged activation process.
+The notification mismatch changes the interpretation of the keyword research: company monitoring still fits, but **instant-alert intent is not currently satisfied by the weekly email policy**. Do not optimize pages around instant notifications without implementing and verifying that capability. The user confirmed that production emails are already being delivered. Repository defaults do not establish production availability.
 
 Apply corrections to English, German, French and Italian together, including metadata and FAQ JSON-LD. The translated hero paragraphs repeat the comparative speed claim; the German FAQ also implies immediate notification.
 
@@ -43,7 +45,7 @@ Apply corrections to English, German, French and Italian together, including met
 
 **Supporting line:** Free search, up to 10 watchlists, and application tracking.
 
-Once production email activation is confirmed, add: **Opt in to a weekly email digest of new matches.** The line should not promise an email every week when there are no new matches.
+Email delivery is live, so use: **Opt in to a weekly email digest of new matches.** The line should not promise an email every week when there are no new matches.
 
 The current primary button goes to Explore, so “Find companies to follow” matches the destination better than “Create an alert” would. “Create my first watchlist” becomes appropriate if the button actually opens that flow, preserves company choices through sign-in, and handles missing employers. The secondary can keep linking to the existing feature section, with its new label matching the content.
 
@@ -55,7 +57,7 @@ Show a short three-step sequence near the first product screenshot:
 2. Save a watchlist and optionally enable its weekly digest.
 3. Save relevant jobs and track applications and interviews.
 
-The second step is conditional on verified email availability. A labeled sample digest would demonstrate the alert promise more directly than another abstract benefit sentence.
+A labeled sample digest would demonstrate the alert promise more directly than another abstract benefit sentence.
 
 ### Visual hierarchy
 

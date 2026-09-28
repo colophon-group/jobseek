@@ -28,7 +28,7 @@ export function ProPitch() {
           <Trans id="pro.pitch.body" comment="Explains the Narrowed benefit">Describe what matters beyond job titles. Narrowed checks the postings in your watchlist against your criteria, so you can focus on the matches.</Trans>
         </p>
         <p className="mt-5 text-xs leading-6 text-muted">
-          <Trans id="pro.pitch.scope" comment="Explains that Narrowed adds to standard search rather than replacing it">Works with your watchlists and usual filters.</Trans>
+          <Trans id="pro.pitch.scope" comment="Explains that Narrowed adds to standard search rather than replacing it">Checks the information in postings. Missing details do not confirm that a role meets your criteria.</Trans>
         </p>
         <a href="#pro-offer" className="mt-5 inline-flex items-center gap-2 text-sm underline underline-offset-4 lg:hidden">
           <Trans id="pro.pitch.pricingLink" comment="Mobile shortcut from product explanation to pricing">See pricing</Trans><ArrowDown size={14} aria-hidden="true" />
@@ -71,7 +71,7 @@ export function FreeAccessNote() {
   return (
     <div className="flex items-start gap-3 border-t border-divider pt-5 text-xs leading-6 text-muted">
       <Check size={16} className="mt-1 shrink-0 text-success" aria-hidden="true" />
-      <p><span className="font-semibold text-foreground"><Trans id="pro.free.title" comment="Reassures that core job search features stay free">Your job search stays free.</Trans></span>{" "}<Trans id="pro.free.body" comment="Features everyone has, independent of Pro">Full search, up to 10 watchlists, email alerts, and application tracking. Pro adds Narrowed results.</Trans></p>
+      <p><span className="font-semibold text-foreground"><Trans id="pro.free.title" comment="Reassures that core job search features stay free">Your job search stays free.</Trans></span>{" "}<Trans id="pro.free.body" comment="Features everyone has, independent of Pro">Full search, up to 10 watchlists, weekly email digests, and tracking for jobs saved on Job Seek. Pro adds Narrowed results.</Trans></p>
     </div>
   );
 }

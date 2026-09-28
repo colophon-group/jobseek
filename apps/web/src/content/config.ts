@@ -206,6 +206,8 @@ export const siteConfig = {
       { path: "/", changeFrequency: "weekly", priority: 1, lastModified: "2026-09-28" },
       { path: "/about", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-09-28" },
       { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-09-28" },
+      { path: "/job-alerts", changeFrequency: "monthly", priority: 0.8, lastModified: "2026-09-28" },
+      { path: "/job-application-tracker", changeFrequency: "monthly", priority: 0.8, lastModified: "2026-09-28" },
       // Blog index. Per-post URLs are emitted separately by
       // `blogPostEntries` in `apps/web/src/lib/sitemap.ts` (#2828).
       { path: "/blog", changeFrequency: "weekly", priority: 0.7, lastModified: "2026-09-28" },
@@ -227,6 +229,31 @@ export const siteConfig = {
 } as const;
 
 export const publicDomainAssets: Record<string, PublicDomainAsset> = {
+  the_ploughman: {
+    href: "/publicdomain/master/the_ploughman.jpg",
+    light: "/publicdomain/the_ploughman_dark.png",
+    dark: "/publicdomain/the_ploughman_light.png",
+    width: 550,
+    height: 720,
+    crop: { top: 15, right: 18, bottom: 22, left: 25 },
+    alt: "The Ploughman by Hans Holbein",
+    title: "The Ploughman",
+    author: "Hans Holbein",
+    date: "1523–5",
+    link: "https://pdimagearchive.org/images/ff74e7ae-cc8f-468c-b77e-43c119df5290/",
+  },
+  poliphilus_writing: {
+    href: "/publicdomain/master/poliphilus_writing.jpg",
+    light: "/publicdomain/poliphilus_writing_dark.png",
+    dark: "/publicdomain/poliphilus_writing_light.png",
+    width: 1590,
+    height: 1334,
+    crop: { top: 400, right: 40, bottom: 50, left: 720 },
+    alt: "Poliphilus writing at his desk, from Hypnerotomachia Poliphili",
+    title: "Hypnerotomachia Poliphili",
+    date: "1499",
+    link: "https://pdimagearchive.org/images/f891503a-3ce5-43f3-a653-8d7fb78f631c/",
+  },
   the_king: {
     href: "/publicdomain/master/the_king.jpg",
     light: "/publicdomain/the_king_dark.png",

@@ -35,9 +35,7 @@ export function AboutContent({ contactEmail, ossRepoUrl }: AboutContentProps) {
             <div className="w-full max-w-[840px]">
               <div className="flex flex-col gap-6 text-muted">
                 <p>
-                  <Trans id="about.p2" comment="About paragraph 2: how it works — leads with direct sourcing and watchlist ICP, no platform listing">
-                    Instead of waiting for companies to push roles to third-party job boards, we go straight to the source. Our crawler monitors thousands of company career pages directly and re-checks them frequently, so roles show up here within hours of going live — typically before they reach the large aggregators. Build a watchlist of the companies you care about and get notified the moment they post.
-                  </Trans>
+                  <Trans id="about.p2" comment="About paragraph 2: how it works — leads with direct sourcing and watchlist ICP, no platform listing">We monitor company career pages directly and bring their postings into one searchable place. Choose employers, save your filters, and return to your watchlist for matching roles. Email notifications use a weekly digest, not an instant alert.</Trans>
                 </p>
                 <p>
                   <Trans id="about.p3" comment="About paragraph 3: philosophy">

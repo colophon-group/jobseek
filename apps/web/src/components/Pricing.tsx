@@ -8,7 +8,7 @@ import { sectionScrollMarginClass } from "@/lib/styles";
 import { Button } from "@/components/ui/Button";
 import { FreeAccessNote, ProPitch } from "@/components/pro/ProPitch";
 
-export function Pricing() {
+export function Pricing({ checkoutEnabled = false }: { checkoutEnabled?: boolean }) {
   const { t } = useLingui();
   const lp = useLocalePath();
   return (
@@ -19,9 +19,10 @@ export function Pricing() {
           <div>
             <p className="font-semibold"><Trans id="pro.discovery.trial" comment="Public Pro pricing offer">7 days to try Pro.</Trans></p>
             <p className="mt-1 text-sm text-muted"><Trans id="pro.discovery.price" comment="Public monthly price after trial">Then US$10 per month. Cancel anytime.</Trans></p>
+            {!checkoutEnabled && <p className="mt-2 text-sm text-muted"><Trans id="pro.offer.unavailable" comment="Honest availability notice when checkout is disabled">Trial signup isn’t open yet.</Trans></p>}
           </div>
           <Button href={lp("/settings/billing")} className="gap-2 self-start sm:self-auto">
-            {t({ id: "pro.discovery.cta", comment: "Link to the Pro explanation and subscription offer", message: "Explore Pro" })}<ArrowRight size={16} aria-hidden="true" />
+            {t({ id: "pro.discovery.cta", comment: "Link to the Pro explanation and subscription offer", message: "Learn about Pro" })}<ArrowRight size={16} aria-hidden="true" />
           </Button>
         </div>
         <FreeAccessNote />

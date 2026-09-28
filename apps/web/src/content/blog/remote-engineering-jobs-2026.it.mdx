@@ -2,7 +2,7 @@
 title: "Dove l'engineering remoto assume ancora, maggio 2026"
 description: "JLL: il 54% dei dipendenti Fortune 100 è in RTO totale. Noi seguiamo 4.400 pagine carriere in diretta. Ecco dove l'engineering remoto assume ancora a maggio 2026."
 datePublished: "2026-05-07"
-dateModified: "2026-09-10"
+dateModified: "2026-09-28"
 author: "Viktor Shcherbakov"
 tags: ["data-analysis", "remote-work"]
 relatedCompanies: ["nvidia", "tether", "sezzle", "disney", "clickhouse", "netflix", "grafana-labs", "affirm", "veeva", "samsara", "oliver-wyman", "instacart", "cresta", "gitlab", "kraken", "accenture", "reddit", "clickup", "keeper-security", "twilio"]
@@ -86,9 +86,9 @@ Il corollario: l'engineering remote-eligible non compete con il mercato globale 
 
 Sui 4.338 ruoli remote-eligible di engineering, **1.995 (46%) sono taggati Senior**, un altro 11% Staff, 3% Principal, 2% Lead. Circa il 62% del campione è gated su livelli senior+. **I ruoli Entry-Level sono lo 0,7%: 31 annunci su 4.338.** Gli stage lo 0,5%.
 
-Per anni la narrazione è stata che il lavoro remoto avrebbe democratizzato l'accesso entry-level ai datori di lavoro migliori. I dati dicono il contrario. Il remoto si concentra su dipendenti di cui un'azienda già si fida nel lavorare senza supervisione. Se hai meno di 2 anni di esperienza e cerchi un primo ruolo remote-first nei nostri dati, hai circa 31 annunci a cui candidarti, su uno sfondo di oltre 89.000 aperture engineering complessive.
+Questa fotografia contiene 31 annunci esplicitamente classificati Entry-Level. Non dimostra che soltanto 31 posizioni siano adatte a chi ha meno di due anni di esperienza: il 36% degli annunci da remoto non ha un livello indicato. Una sola fotografia non permette neppure di stabilire una tendenza nell’accesso al lavoro da remoto.
 
-31 contro oltre 89.000. Da sapere prima di costruirci una strategia di ricerca.
+Usa le posizioni classificate come punto di partenza e leggi anche i requisiti degli annunci senza livello indicato.
 
 ## Quale stack viene richiesto
 
@@ -128,8 +128,8 @@ Il dataset dietro questo post è il dataset dietro la ricerca. La [pagina explor
 
 - **Data dello snapshot.** Tutti i conteggi vengono da una singola query di facet su Typesense contro la nostra collection `job_posting_v1`, il 7 maggio 2026 verso le 13:00 UTC. Il flag `is_active=true` viene impostato dal nostro crawler quando un annuncio è stato visto per l'ultima volta sulla sua sorgente entro le tolleranze di delisting (definite per ATS nella nostra [policy di indicizzazione](/it/how-we-index)).
 - **Definizione di engineering.** Annunci la cui catena di occupation normalizzata include uno tra: software-engineer (con i figli frontend, backend, fullstack, mobile, embedded, game, AI Engineer, Research Engineer), devops-engineer (varianti SRE, platform, cloud, release), qa-engineer, data-engineer, data-scientist, ml-engineer, data-analyst, data-annotator. L'ingegneria elettrica, meccanica e civile è taggata fuori dal dominio software/dati ed esclusa.
-- **« Remote-eligible ».** Un annuncio in cui il nostro array `location_types` normalizzato contiene `remote`. Circa il 28% di questi annunci porta anche un tag `onsite`, che leggiamo come « remote-eligible con accesso opzionale all'HQ » piuttosto che « solo remoto ». Una definizione strict-remote-only darebbe un numero più piccolo; usiamo la definizione larga perché corrisponde a ciò su cui un candidato può effettivamente candidarsi.
-- **Tagging della seniority.** Circa il 64% degli annunci remote engineering (2.767 su 4.338) porta un tag di seniority normalizzato. Le percentuali in questo post sono calcolate come quota dei 4.338 totali — quando diciamo « 0,7% Entry-Level », il numero assoluto (31) è solido, ma la percentuale assume che il 36% non taggato abbia una distribuzione di livello simile. Probabilmente pende verso Mid-Level (spesso non taggato), il che *rafforza* l'argomento dello squilibrio senior, non lo indebolisce.
+- **« Remote-eligible ».** Un annuncio il cui array normalizzato `location_types` contiene `remote`. Circa il 28% ha anche il tag `onsite`. Questa combinazione non prova che l’accesso all’ufficio sia facoltativo o che si possa lavorare da qualsiasi paese. Verifica l’annuncio originale. I conteggi descrivono tag, non condizioni di lavoro interamente da remoto verificate.
+- **Livello di esperienza.** Circa il 64% degli annunci (2.767 su 4.338) ha un livello indicato. I 31 tag Entry-Level rappresentano lo 0,7% del campione completo. Il livello del restante 36% è sconosciuto. La quota misura i tag, non tutte le posizioni accessibili ai principianti.
 - **Riserva di copertura.** Il nostro indice copre 4.441 aziende. Non è un campione rappresentativo del mercato del lavoro globale: seguiamo deliberatamente aziende in Europa occidentale, Svizzera, e un sottoinsieme di datori di lavoro tech statunitensi, con i loro annunci di filiali globali quando la pagina carriere è monitorabile. La forma dei dati segue questa distorsione.
 - **La riga « Stati Uniti ».** Il conteggio US della tabella di geografia (2.277) è calcolato contro gli antenati `location_ids` nella nostra gerarchia di location — ogni annuncio taggato con una città USA, uno stato o « United States » stesso si arrampica. Le altre righe della tabella sono facet count diretti su `location_names`. La differenza conta qui perché gli annunci remote spesso taggano una città o uno stato USA invece della radice del paese.
 - **Snapshot, non trend.** Il `first_seen_at` più antico per un annuncio ancora attivo è il 9 marzo 2026. Annunci più vecchi possono esistere sulle sorgenti ma compaiono nel nostro indice solo dalla prima crawl-discovery. Da questo snapshot non facciamo affermazioni di tendenza. Nella stessa finestra di due mesi, 4.233 annunci remote-eligible di engineering si sono *chiusi* — il mercato si muove, non è fermo.

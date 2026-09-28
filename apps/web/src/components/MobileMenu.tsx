@@ -29,7 +29,7 @@ export function MobileMenu({ open, onCloseAction }: MobileMenuProps) {
   }
 
   const appHref = lp(siteConfig.nav.app.href);
-  const appLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
+  const appLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Find companies to follow" });
 
   return (
     <Dialog.Root open={open} onOpenChange={(v) => { if (!v) onCloseAction(); }}>

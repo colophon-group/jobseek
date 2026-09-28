@@ -30,7 +30,7 @@ export function Header({ onOpenMobileAction }: HeaderProps) {
   }
 
   const appHref = lp(siteConfig.nav.app.href);
-  const appLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
+  const appLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Find companies to follow" });
 
   return (
     <header className="border-b border-divider bg-background/95 backdrop-blur-md">

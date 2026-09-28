@@ -4,6 +4,7 @@ import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlte
 import { siteConfig } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import { AboutContent } from "./about-content";
+import { MarketingLinks } from "@/components/marketing/MarketingPage";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -66,6 +67,7 @@ export default async function AboutPage({ params }: Props) {
         contactEmail={siteConfig.indexing.contactEmail}
         ossRepoUrl={siteConfig.indexing.ossRepoUrl}
       />
+      <div className="mx-auto max-w-[900px] px-4 pb-12"><MarketingLinks locale={locale} /></div>
     </>
   );
 }
