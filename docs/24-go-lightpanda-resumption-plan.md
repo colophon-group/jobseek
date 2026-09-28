@@ -6,6 +6,64 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — JOIN monitors v0.13.883
+
+PR #10118 merged as `9436ff0d9267c8e3657f1977ab35ced6195176c0`.
+[Deployment 36360980005](https://github.com/colophon-group/jobseek/actions/runs/36360980005)
+succeeded. All **276 enabled JOIN monitors** now select Go. The live census is
+**4,725 Go / 3,154 Python** of 7,879 enabled monitors, with zero route errors.
+The JOIN percentage is a release default of 100 in both Compose and the runtime;
+no board was disabled. Required CI, installed-image parity, the native parser's
+offline image fixtures and the crawler deploy gate passed.
+
+Go configuration sync completed 6,013 companies and 7,879 boards at 00:17:50 UTC.
+The refreshed pre-deploy baseline contains 276 boards and 4,169 active postings,
+with zero consecutive failures. The first two natural Go cycles have exact
+active DB URL readbacks and unchanged posting-ID/description-hash digests:
+Cove Partners returned four jobs and Simply Payments a verified empty inventory.
+The empty board had no recent discovery history and was excluded by the former
+positive-history route rule. No failure count increased across the initial
+276-board sweep. No due score or duplicate publisher request was forced.
+
+Supported cold rollback retired c1 epoch 98 at 99 and restored all five schedules
+with zero terminal drops/write fences. All **24 selectors** cleared under the
+host lock, then restaged at the promoted full revision. C1 is active at **epoch
+100**, accepted/audit_ok with five ready and zero inflight/dead records. The five
+due times match the pre-rollback readback; all configured service health checks
+pass and c2 remains dark. The initial Typesense snapshot reports 388 successful
+exports, zero errors, zero lag and healthy status. See
+[sanitized production evidence](evidence/go-join-production-2026-09-28.json).
+
+Before another crawler deploy or selector mutation, complete supported
+`rollback c1`, then clear all **24** selectors under
+`/run/lock/jobseek-crawler-mutation.lock` with
+`/tmp/jobseek-post-smart-personio-selectors.py` against full revision
+`9436ff0d9267c8e3657f1977ab35ced6195176c0` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision, then reactivate c1. The helper SHA-256 remains
+`07f3dca2e8d0c0185b12817f76ab9e1e8e6775d2df128f9f123abdc803cb97a5`.
+These instructions supersede the older revision/epoch checkpoints below.
+To reverse JOIN routing, set its percentage to zero and remove any exact JOIN
+board selectors through the supported cold mutation procedure, or restore the
+previous release.
+
+The remaining JOIN monitors, including paginated inventories, need natural output
+observation. The next implementation slice covers the **265 configured Next.js
+detail boards across four exact configuration forms**. Three Next.js boards
+have no configured fields and eight use JSON-LD; retain their resolved behaviors
+and fallback/browser obligations. `JOIN_CAPTURE_SLUGS` captures Python monitor
+responses and is inactive after the Go monitor route; add native passive capture
+for retained-response comparisons. Complete the native TDM metadata precedence,
+source and companion-policy parity with the shared Python checker while porting
+the detail transport. The broader default-worker detail census resolves 3,040
+boards, including six native detail selectors and 3,034 Python selections; B0
+provided runtimes are tracked separately from that census.
+
+This checkpoint covers monitor fetch/parser ownership and observed persistence.
+Python worker/writer/detail and browser retirement, same-actual-workload
+whole-lane CPU/RAM/density/cost proof and final cutover remain outstanding. The
+full migration goal stays active.
+
 ## Implementation checkpoint: JOIN monitor broad route v0.13.883
 
 The Go JOIN route now defaults to 100% in both the runtime and Compose. A
@@ -16,7 +74,10 @@ jobs. The private baseline is retained mode 0600 at
 `/tmp/jobseek-join-baseline.json`, SHA-256
 `34a10c37aa0446d5b281933deac10d1d64540d53625275cefd3540f10fe2abc2`.
 This projects 4,725 Go / 3,154 Python monitors across the unchanged 7,879 enabled
-boards. Deployment and natural production output for this route are pending.
+boards. Deployment and the initial natural readbacks are now recorded above.
+The refreshed private pre-deploy baseline is retained mode 0600 at
+`/tmp/jobseek-join-predeploy.json`, SHA-256
+`dcdfea6fd389fa03253bb701a3079977f4fd656f2bb8e069e2f14adf02808a9b`.
 
 The native fetcher now preserves redirects, cookies, Python request headers,
 three-attempt page retries and the four-million-character HTML prefix. Response
