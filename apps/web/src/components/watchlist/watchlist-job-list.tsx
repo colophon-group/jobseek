@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState, useRef } from "react";
+import { type ReactNode, createContext, useContext, useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bookmark, Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -58,29 +58,7 @@ export interface WatchlistJobListFilters {
   languages?: string[];
 }
 
-export function WatchlistJobList({
-  filters,
-  initialPostings,
-  initialTotal,
-  initialTruncated = false,
-  yearTotal,
-  initialSearchUnavailable = false,
-  jobLanguages,
-  locale,
-  onResultStateChange,
-  onAiMatchCountChange,
-  aiFilterState = null,
-  initialAiAcceptedPage = null,
-  onAiFilterStateChange,
-  aiFilterScopeKey = "",
-  aiFilterScopeReady = true,
-  resultMode = "auto",
-  drawerControl,
-  drawerOpen = false,
-  candidateTotal,
-  aiFilterReadOnly = false,
-  sharedSnapshot = false,
-}: {
+type WatchlistJobListProps = {
   filters: WatchlistJobListFilters;
   initialPostings: WatchlistPostingEntry[];
   initialTotal: number;
@@ -111,13 +89,105 @@ export function WatchlistJobList({
   aiFilterReadOnly?: boolean;
   /** Public snapshots keep the owner's language scope and immutable controls. */
   sharedSnapshot?: boolean;
-}) {
+};
+
+type PostingSelection = {
+  postingId: string | null;
+  open: (postingId: string) => void;
+};
+const PostingSelectionContext = createContext<PostingSelection | null>(null);
+
+function replaceSelectedPosting(postingId: string | null) {
+  const url = new URL(window.location.href);
+  if (postingId) url.searchParams.set("show", postingId);
+  else url.searchParams.delete("show");
+  window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+}
+
+export function WatchlistJobList(props: WatchlistJobListProps) {
+  const sharedSelection = useContext(PostingSelectionContext);
+  // The narrowed feed is nested inside the broad feed's drawer. Keep both
+  // feeds mounted for pagination, but give them a single detail host.
+  if (sharedSelection) {
+    return <WatchlistJobListContent {...props} selection={sharedSelection} />;
+  }
+  return <WatchlistJobListWithSelection {...props} />;
+}
+
+function WatchlistJobListWithSelection(props: WatchlistJobListProps) {
+  const searchParams = useSearchParams();
+  const view = props.drawerOpen ?? false;
+  const [selected, setSelected] = useState(() => ({
+    postingId: searchParams.get("show"),
+    view,
+  }));
+  // Hide immediately on a view switch, including portalled mobile details.
+  const postingId = selected.view === view ? selected.postingId : null;
+  useEffect(() => {
+    if (selected.view === view) return;
+    setSelected({ postingId: null, view });
+    replaceSelectedPosting(null);
+  }, [selected.view, view]);
+
+  function close() {
+    setSelected({ postingId: null, view });
+    replaceSelectedPosting(null);
+  }
+  const selection: PostingSelection = {
+    postingId,
+    open: (nextPostingId) => {
+      setSelected({ postingId: nextPostingId, view });
+      replaceSelectedPosting(nextPostingId);
+    },
+  };
+  return (
+    <PostingSelectionContext.Provider value={selection}>
+      <div className="flex w-full min-w-0 max-w-full gap-5">
+        <div className="min-w-0 flex-1">
+          <WatchlistJobListContent {...props} selection={selection} />
+        </div>
+        {postingId && (
+          <>
+            <div className="posting-detail-panel">
+              <JobDetailPanel postingId={postingId} onClose={close} />
+            </div>
+            <MobileJobDetailDialog postingId={postingId} onClose={close} />
+          </>
+        )}
+      </div>
+    </PostingSelectionContext.Provider>
+  );
+}
+
+function WatchlistJobListContent({
+  filters,
+  initialPostings,
+  initialTotal,
+  initialTruncated = false,
+  yearTotal,
+  initialSearchUnavailable = false,
+  jobLanguages,
+  locale,
+  onResultStateChange,
+  onAiMatchCountChange,
+  aiFilterState = null,
+  initialAiAcceptedPage = null,
+  onAiFilterStateChange,
+  aiFilterScopeKey = "",
+  aiFilterScopeReady = true,
+  resultMode = "auto",
+  drawerControl,
+  drawerOpen = false,
+  candidateTotal,
+  aiFilterReadOnly = false,
+  sharedSnapshot = false,
+  selection,
+}: WatchlistJobListProps & { selection: PostingSelection }) {
   const { i18n, t } = useLingui();
   const { isLoggedIn, isPending: isSessionPending } = useSession();
   const isLoggedInRef = useRef(isLoggedIn);
   isLoggedInRef.current = isLoggedIn;
-  const searchParams = useSearchParams();
-  const [showPostingId, setShowPostingId] = useState<string | null>(searchParams.get("show"));
+  const showPostingId = selection.postingId;
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
   const { isSaved, toggle } = useSavedJobs();
@@ -270,20 +340,6 @@ export function WatchlistJobList({
     resultMode,
   ]);
 
-  function handleOpenPosting(postingId: string) {
-    setShowPostingId(postingId);
-    const url = new URL(window.location.href);
-    url.searchParams.set("show", postingId);
-    window.history.replaceState(null, "", url.pathname + url.search);
-  }
-
-  function handleClosePosting() {
-    setShowPostingId(null);
-    const url = new URL(window.location.href);
-    url.searchParams.delete("show");
-    window.history.replaceState(null, "", url.pathname + url.search);
-  }
-
   // Build entries with date dividers
   let lastDateKey = "";
   const rows: React.ReactNode[] = [];
@@ -334,7 +390,7 @@ export function WatchlistJobList({
       >
         <button
           type="button"
-          onClick={() => handleOpenPosting(entry.id)}
+          onClick={() => selection.open(entry.id)}
           aria-label={
             entry.title
               ? `${entry.company.name} — ${entry.title}${locationSummary ? ` — ${locationSummary}` : ""}`
@@ -517,19 +573,5 @@ export function WatchlistJobList({
     </div>
   );
 
-  return (
-    <div className="flex w-full min-w-0 max-w-full gap-5">
-      <div className="min-w-0 flex-1">{listColumn}</div>
-      {showPostingId && (
-        <>
-          <div
-            className="posting-detail-panel"
-          >
-            <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
-          </div>
-          <MobileJobDetailDialog postingId={showPostingId} onClose={handleClosePosting} />
-        </>
-      )}
-    </div>
-  );
+  return listColumn;
 }
