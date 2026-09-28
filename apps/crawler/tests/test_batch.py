@@ -956,6 +956,9 @@ class TestProcessOneBoard:
 
         assert any(c.args[0] == _BATCH_UPDATE_RICH_CONTENT for c in conn.execute.await_args_list)
         assert not any(c.args[0] == _UPSERT_DESCRIPTION for c in conn.execute.await_args_list)
+        records = conn.copy_records_to_table.await_args.kwargs["records"]
+        assert records[0][3] is None  # Preserve the detail body's primary R2 locale.
+        assert "locales = COALESCE(u.locales, jp.locales)" in _BATCH_UPDATE_RICH_CONTENT
         fallback_calls = [
             c
             for c in conn.execute.await_args_list
@@ -4218,7 +4221,73 @@ class TestEnrichmentScrape:
         call_args = enrich_calls[0].args
         assert call_args[2] is None  # employment_type
         assert call_args[3] is None  # titles
-        assert call_args[4] is None  # locales
+        assert call_args[4] == ["en"]  # Locale follows the enriched description.
+
+    @pytest.mark.parametrize("path", ["legacy", "pipeline"])
+    @pytest.mark.parametrize(
+        "primary, detected, expected",
+        [
+            ("de", ["de", "en"], ["de", "en"]),
+            ("sv", ["sv"], ["sv"]),
+            (None, [], ["en"]),
+        ],
+    )
+    async def test_description_enrich_aligns_locale_with_staged_body(
+        self, monkeypatch, mock_pool, mock_http, path, primary, detected, expected
+    ):
+        """Existing monitor titles must not prevent a new body's primary locale."""
+        from src.processing.scrape import (
+            ScrapeResult,
+            _do_one_enrich_scrape,
+            _ScrapeWorkItem,
+        )
+
+        pool, conn = mock_pool
+        pool.fetchrow = AsyncMock(
+            return_value={
+                "titles": ["Monitor title"],
+                "locales": ["en"],
+                "location_ids": [1],
+                "location_types": ["physical"],
+                "employment_type": "full_time",
+            }
+        )
+        monkeypatch.setattr(
+            "src.processing.scrape._scrape_with_browser_target_recovery",
+            AsyncMock(return_value=_job_content(description="<p>Full detail body</p>")),
+        )
+        monkeypatch.setattr("src.processing.scrape.detect_language", lambda _: primary)
+        monkeypatch.setattr("src.processing.scrape.detect_all_languages", lambda _: detected)
+        item = ScrapeItem(job_posting_id="jp-1", url="https://example.com/job/1", board_id="b-1")
+        if path == "legacy":
+            ok, _ = await _process_one_enrich_scrape(
+                item, pool, mock_http, "json-ld", None, ["description"]
+            )
+            assert ok
+            update = next(
+                c for c in conn.execute.await_args_list if c.args[0] == _UPDATE_ENRICH_CONTENT
+            )
+            description = next(
+                c for c in conn.fetchrow.await_args_list if c.args[0] == _UPSERT_DESCRIPTION
+            )
+            assert update.args[3] is None  # Preserve monitor title.
+            assert update.args[4] == expected
+            assert description.args[2] == expected[0]
+        else:
+            result = await _do_one_enrich_scrape(
+                _ScrapeWorkItem(item, "json-ld", None, ["description"]),
+                mock_http,
+                pool,
+                MagicMock(),
+                {},
+                {},
+                {},
+                {},
+            )
+            assert isinstance(result, ScrapeResult)
+            assert result.params[2] is None
+            assert result.params[3] == expected
+            assert result.staged is not None and result.staged[1] == expected[0]
 
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_description_enrich_stages_r2_pending(self, mock_scrape, mock_pool, mock_http):

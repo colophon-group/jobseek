@@ -1,0 +1,88 @@
+{
+  "company_id": "61a45190-f4f0-4a3f-81a9-6f3a48f4d973",
+  "board_url": "https://www.swisslog.com/en-us/careers/openings",
+  "observed_at": "2026-09-28",
+  "postings": [
+    {
+      "id": "046e287c-8c67-4435-8084-ee5040d964df",
+      "source_url": "https://www.swisslog.com/de-de/karriere/offene-stellen/apprentice-computer-scientist-mwd-4458",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "de",
+      "html_sha256": "2b2c40055f0e93ca5a554eeb366a6a15271d12b42c9a45bc36784cfb7fe3fa02"
+    },
+    {
+      "id": "b6d6efc3-e7f9-4597-95a4-861a60d611f2",
+      "source_url": "https://www.swisslog.com/de-de/karriere/offene-stellen/software-project-manager-mwd-4385",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "de",
+      "html_sha256": "a7bdfe3135fc9793bc9ad6485ab1bd0ec3a8dcee22375b36ea7ce96b69051dec"
+    },
+    {
+      "id": "59c09a76-2e1c-4b2d-af48-c8a7e2057b6d",
+      "source_url": "https://www.swisslog.com/de-de/karriere/offene-stellen/servicetechniker--wartungstechniker-mwd-4681",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "de",
+      "html_sha256": "e65415fcdd40de5d57203492e4be1f792fcb5a8da94d6c40ce0224b48747e22f"
+    },
+    {
+      "id": "8537759e-d2f4-49e6-8636-cd6768e1bb25",
+      "source_url": "https://www.swisslog.com/de-de/karriere/offene-stellen/automatikerin-efz-4097",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "de",
+      "html_sha256": "4d982888e68297d2bb2f1589d64e394c8e57d580832e4fd4947adaac4de9e7dd"
+    },
+    {
+      "id": "ec59fa85-5b5a-4528-8515-3787f8a18e9f",
+      "source_url": "https://www.swisslog.com/de-de/karriere/offene-stellen/system-operation-team-lead-mfd-4682",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "de",
+      "html_sha256": "f5e208e92a441377e4c2fbc60b04c7a4c41d243f7c152c5ff333e0ea9af607c5"
+    },
+    {
+      "id": "65eadca5-441a-445b-b6ea-a9356a931809",
+      "source_url": "https://www.swisslog.com/de-de/karriere/offene-stellen/instandhaltungstechniker-mwd-4384",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "de",
+      "html_sha256": "bb6394cb0876ff9a4b9f4aa9345269a8480554e715ac8203429ee3cfb0ff7059"
+    },
+    {
+      "id": "a4a5cb27-e778-4ed5-a0fd-c10e328505ee",
+      "source_url": "https://www.swisslog.com/de-de/karriere/offene-stellen/servicetechniker-intralogistik-mwd--auendienst-mit-dienstwagen-4707",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "de",
+      "html_sha256": "1fb176cb34ae1008f8690c1ccef670e9c7159e529b1a0dce3122bc6c8cc1414f"
+    },
+    {
+      "id": "7b1685d6-1c1c-4a55-90df-9494d1908d9e",
+      "source_url": "https://www.swisslog.com/de-de/karriere/offene-stellen/working-student-procurement-4317",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "de",
+      "html_sha256": "227858a06969889e52642cd701137de217592032b49cb94602a7f2cd9c9d6804"
+    },
+    {
+      "id": "e178faa8-dc0e-4a0a-8dc9-3ba9f550f7ef",
+      "source_url": "https://www.swisslog.com/sv-se/careers/lediga-tj%c3%a4nster/category-procurement-manager-4420",
+      "old_locales": [
+        "en"
+      ],
+      "locale": "sv",
+      "html_sha256": "a7bc356e4fee84bd46178c8cfbb4bf752d34435dda91c5a01f2216f1b16f0f3c"
+    }
+  ]
+}

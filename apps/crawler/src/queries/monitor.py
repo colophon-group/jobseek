@@ -1290,7 +1290,7 @@ CREATE TEMP TABLE _rich_updates (
 _BATCH_UPDATE_RICH_CONTENT = """
 UPDATE job_posting AS jp
 SET employment_type = u.employment_type,
-    titles = u.titles, locales = u.locales,
+    titles = u.titles, locales = COALESCE(u.locales, jp.locales),
     location_ids = u.location_ids, location_types = u.location_types,
     salary_min = u.salary_min, salary_max = u.salary_max,
     salary_currency = u.salary_currency, salary_period = u.salary_period,
