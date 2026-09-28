@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> None:
     if os.geteuid() != 0:
         raise SystemExit("run as root in disposable Linux CI")
+    os.umask(0o022)  # Hosted runners may inherit a group-writable umask.
     nobody = pwd.getpwnam("nobody")
     # /tmp is deliberately disallowed as a privileged source ancestor.
     with tempfile.TemporaryDirectory(prefix="codex-permission-test-", dir="/opt") as tmp:
