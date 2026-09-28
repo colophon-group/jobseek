@@ -7,14 +7,14 @@ import type { PostingDetail } from "@/lib/actions/search";
 interface PostingDetailState {
   detail: PostingDetail | null;
   loading: boolean;
-  error: boolean;
+  error: "not_found" | "unavailable" | null;
   descriptionLoaded: boolean;
 }
 
 const EMPTY_STATE: PostingDetailState = {
   detail: null,
   loading: false,
-  error: false,
+  error: null,
   descriptionLoaded: false,
 };
 
@@ -28,7 +28,7 @@ export function usePostingDetail(postingId: string | null): PostingDetailState {
     setState({
       detail: null,
       loading: Boolean(postingId),
-      error: false,
+      error: null,
       descriptionLoaded: false,
     });
 
@@ -43,7 +43,7 @@ export function usePostingDetail(postingId: string | null): PostingDetailState {
           setState({
             detail: null,
             loading: false,
-            error: true,
+            error: "not_found",
             descriptionLoaded: false,
           });
           return;
@@ -55,7 +55,7 @@ export function usePostingDetail(postingId: string | null): PostingDetailState {
         setState({
           detail,
           loading: false,
-          error: false,
+          error: null,
           descriptionLoaded: !needsDescriptionFetch,
         });
 
@@ -87,7 +87,7 @@ export function usePostingDetail(postingId: string | null): PostingDetailState {
         setState({
           detail: null,
           loading: false,
-          error: true,
+          error: "unavailable",
           descriptionLoaded: false,
         });
       });

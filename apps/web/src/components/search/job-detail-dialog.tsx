@@ -66,8 +66,14 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
       <ScrollFade wrapperClassName="flex-1 min-h-0" className="px-4 py-4">
         {loading && <DetailSkeleton />}
         {error && (
-          <p className="py-12 text-center text-sm text-muted">
-            <Trans id="search.detail.notFound" comment="Posting not found message">Posting not found.</Trans>
+          <p role="alert" className="py-12 text-center text-sm text-muted">
+            {error === "not_found" ? (
+              <Trans id="search.detail.notFound" comment="Posting not found message">Posting not found.</Trans>
+            ) : (
+              <Trans id="search.detail.unavailable" comment="Posting detail request failed, for example because of a temporary rate limit or network error">
+                Couldn't load this posting. Please try again later.
+              </Trans>
+            )}
           </p>
         )}
         {detail && !loading && <DetailContent detail={detail} descriptionLoaded={descriptionLoaded} />}

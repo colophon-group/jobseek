@@ -5966,3 +5966,9 @@ msgstr "Le tue watchlist, le offerte salvate e gli avvisi email sono ancora qui.
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.billing.ready"
 msgstr "Le tue watchlist, un po’ più mirate."
+
+#. Posting detail request failed, for example because of a temporary rate limit or network error
+#. js-lingui-explicit-id
+#: src/components/search/job-detail-dialog.tsx
+msgid "search.detail.unavailable"
+msgstr "Impossibile caricare questo annuncio. Riprova più tardi."
