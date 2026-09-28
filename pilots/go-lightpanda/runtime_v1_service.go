@@ -161,7 +161,7 @@ func newRuntimeV1ServiceExecution(config Config, run taskRunner) (*runtimeV1Serv
 		}
 		return result, err
 	}
-	adapter, err := lightpandaadapter.NewRenderOnly(runtimeV1Runner{config: config, run: monitoredRun})
+	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: config, run: monitoredRun})
 	if err != nil {
 		return nil, err
 	}

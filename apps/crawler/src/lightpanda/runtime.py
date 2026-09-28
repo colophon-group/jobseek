@@ -31,7 +31,7 @@ class LightpandaResultError(RuntimeError):
 
 
 class LightpandaB0ScrapeRuntime:
-    """Use one reservation for one frozen JSON-LD render assignment."""
+    """Render and natively parse one frozen JSON-LD or DOM assignment."""
 
     implementation = "go"
 
@@ -41,8 +41,10 @@ class LightpandaB0ScrapeRuntime:
         reservation: LightpandaB0Reservation,
         *,
         parser_binary: str = "/usr/local/bin/jsonld-detail-live",
+        dom_parser_binary: str = "/usr/local/bin/dom-detail-parse",
     ) -> None:
         self._parser_binary = parser_binary
+        self._dom_parser_binary = dom_parser_binary
         self._task = task
         self._reservation = reservation
         self._used = False
@@ -65,7 +67,7 @@ class LightpandaB0ScrapeRuntime:
         if (
             not isinstance(scraper_config, dict)
             or url != self._task.source_url
-            or scraper_type != "json-ld"
+            or scraper_type not in {"json-ld", "dom"}
             or scraper_type != self._task.assignment.scraper_type
             or scraper_config != expected_config
             or pw is not None
@@ -85,13 +87,26 @@ class LightpandaB0ScrapeRuntime:
             or resolved.scraper_type != expected.scraper_type
             or resolved.scraper_step != expected.scraper_step
             or resolved.timeout_ms != expected.timeout_ms
+            or resolved.wait != expected.wait
+            or resolved.wait_fallback != expected.wait_fallback
             or resolved.config != expected.config
             or resolved.config_digest_sha256 != expected.config_digest_sha256
         ):
             raise LightpandaResultError("scrape invocation changed the frozen B0 identity")
 
-        result = await self._reservation.execute(self._task)
+        result: Any = await self._reservation.execute(self._task)
         html = _validated_rendered_html(result, requested_url=url)
+        if scraper_type == "dom":
+            from src.core.scrapers.dom import _check_gone_redirect, _raise_if_bot_challenge
+            from src.runtime.dom_go_parse import parse_fetched_html
+
+            _check_gone_redirect(
+                result.success.final_url, scraper_config.get("gone_url_pattern"), url
+            )
+            _raise_if_bot_challenge(result.success.final_url, html)
+            return await parse_fetched_html(
+                html, scraper_config, url, binary=self._dom_parser_binary
+            )
         return await parse_rendered_html(url, scraper_config, html, binary=self._parser_binary)
 
 

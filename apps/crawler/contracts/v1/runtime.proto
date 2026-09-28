@@ -596,6 +596,15 @@ message NavigationPlan {
   repeated Header headers = 3;
   bool ignore_tls_errors = 4;
   string origin_request_id = 5;
+  // Optional readiness check on the already navigated document after a primary
+  // wait timeout. Absence preserves the original one-wait contract. This never
+  // authorizes another navigation or any additional origin operation.
+  NavigationFallback fallback = 6;
+}
+
+message NavigationFallback {
+  WaitCondition wait_until = 1;
+  uint64 timeout_ms = 2;
 }
 
 message SessionPlan {

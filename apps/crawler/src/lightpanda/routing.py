@@ -39,6 +39,14 @@ _PARSER_BOOL_KEYS: Final = frozenset(
 )
 _PARSER_KEYS: Final = frozenset({"defaults", "defaults_by_url", "enrich"}) | _PARSER_BOOL_KEYS
 _ALLOWED_KEYS: Final = _REQUIRED_KEYS | _PARSER_KEYS
+_DOM_BOOL_KEYS: Final = frozenset(
+    {"include_header_content", "include_document_title", "include_document_description"}
+)
+_DOM_KEYS: Final = (
+    frozenset({"steps", "scope", "preset", "defaults_by_regex", "gone_url_pattern"})
+    | _DOM_BOOL_KEYS
+)
+_WAITS: Final = frozenset({"commit", "domcontentloaded", "load", "networkidle"})
 _JOB_CONTENT_FIELDS: Final = frozenset(JobContent.__dataclass_fields__)
 _ROUTING_REVISION_RE: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")
 _MAX_CONFIG_BYTES: Final = 256 * 1024
@@ -73,9 +81,11 @@ class RenderAssignment:
 
     browser_backend: Literal["lightpanda"]
     routing_revision: str
-    scraper_type: Literal["json-ld"]
+    scraper_type: Literal["json-ld", "dom"]
     scraper_step: Literal[0]
     timeout_ms: int
+    wait: str
+    wait_fallback: str | None
     config: Mapping[str, object]
     config_digest_sha256: str
 
@@ -118,12 +128,19 @@ def resolve_render_assignment(
 
     _validate_json_tree(config)
 
-    if scraper_type != "json-ld":
-        raise RenderAssignmentError("Lightpanda assignment requires scraper step 0 type 'json-ld'")
+    if scraper_type not in {"json-ld", "dom"}:
+        raise RenderAssignmentError(
+            "Lightpanda assignment requires scraper step 0 type 'json-ld' or 'dom'"
+        )
     if type(scraper_step) is not int or scraper_step != 0:
         raise RenderAssignmentError("Lightpanda assignment is only valid at scraper step 0")
 
-    unknown = set(config) - _ALLOWED_KEYS
+    allowed = (
+        _ALLOWED_KEYS
+        if scraper_type == "json-ld"
+        else (_REQUIRED_KEYS | {"defaults", "defaults_by_url", "enrich"} | _DOM_KEYS)
+    )
+    unknown = set(config) - allowed
     if unknown:
         raise RenderAssignmentError(
             "Lightpanda assignment has forbidden or unknown keys: " + ", ".join(sorted(unknown))
@@ -139,20 +156,72 @@ def resolve_render_assignment(
 
     if config["render"] is not True:
         raise RenderAssignmentError("render must be true")
-    if config["wait"] != "load":
-        raise RenderAssignmentError("wait must be 'load'")
-    if config["wait_fallback"] is not None:
-        raise RenderAssignmentError("wait_fallback must be explicitly null")
+    wait = config["wait"]
+    fallback = config["wait_fallback"]
+    if scraper_type == "json-ld":
+        if wait != "load":
+            raise RenderAssignmentError("wait must be 'load'")
+        if fallback is not None:
+            raise RenderAssignmentError("wait_fallback must be explicitly null")
+    elif (
+        not isinstance(wait, str)
+        or wait not in _WAITS
+        or (fallback is not None and (not isinstance(fallback, str) or fallback not in _WAITS))
+    ):
+        raise RenderAssignmentError(
+            "DOM wait and wait_fallback must be supported navigation states"
+        )
 
     timeout = config["timeout"]
     if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 120_000:
         raise RenderAssignmentError("timeout must be an integer from 1 through 120000")
 
-    for key in _PARSER_BOOL_KEYS:
+    for key in _PARSER_BOOL_KEYS if scraper_type == "json-ld" else _DOM_BOOL_KEYS:
         if key in config and not isinstance(config[key], bool):
             raise RenderAssignmentError(f"{key} must be boolean")
-    _validate_defaults(config.get("defaults"), path="defaults")
-    _validate_defaults_by_url(config.get("defaults_by_url"))
+    if scraper_type == "dom":
+        steps = config.get("steps")
+        if (
+            not isinstance(steps, list)
+            or not steps
+            or any(not isinstance(step, Mapping) for step in steps)
+        ):
+            raise RenderAssignmentError("DOM steps must be a non-empty list of objects")
+        if config.get("preset") not in (None, "elementor-careers"):
+            raise RenderAssignmentError("DOM preset is unsupported")
+        if "scope" in config and (
+            not isinstance(config["scope"], str)
+            or not config["scope"].strip()
+            or len(config["scope"]) > 256
+            or "\x00" in config["scope"]
+        ):
+            raise RenderAssignmentError("DOM scope must be a bounded CSS selector")
+        if config.get("defaults") is not None and not isinstance(config["defaults"], Mapping):
+            raise RenderAssignmentError("DOM defaults must be an object")
+        by_url = config.get("defaults_by_url")
+        if by_url is not None and (
+            not isinstance(by_url, Mapping)
+            or any(not isinstance(v, Mapping) for v in by_url.values())
+        ):
+            raise RenderAssignmentError("DOM defaults_by_url must map URLs to objects")
+        if "defaults_by_regex" in config and (
+            not isinstance(config["defaults_by_regex"], list)
+            or not 1 <= len(config["defaults_by_regex"]) <= 20
+            or any(
+                not isinstance(rule, Mapping)
+                or set(rule) != {"field", "pattern", "defaults"}
+                or not isinstance(rule["field"], str)
+                or not isinstance(rule["pattern"], str)
+                or not isinstance(rule["defaults"], Mapping)
+                for rule in config["defaults_by_regex"]
+            )
+        ):
+            raise RenderAssignmentError("DOM defaults_by_regex rules are invalid")
+        if "gone_url_pattern" in config and not isinstance(config["gone_url_pattern"], str):
+            raise RenderAssignmentError("DOM gone_url_pattern must be a string")
+    else:
+        _validate_defaults(config.get("defaults"), path="defaults")
+        _validate_defaults_by_url(config.get("defaults_by_url"))
     _validate_enrich(config.get("enrich"))
 
     canonical = _canonical_config(config)
@@ -162,9 +231,11 @@ def resolve_render_assignment(
     return RenderAssignment(
         browser_backend="lightpanda",
         routing_revision=routing_revision,
-        scraper_type="json-ld",
+        scraper_type="json-ld" if scraper_type == "json-ld" else "dom",
         scraper_step=0,
         timeout_ms=timeout,
+        wait=wait,
+        wait_fallback=fallback,
         config=frozen_snapshot,
         config_digest_sha256=hashlib.sha256(canonical).hexdigest(),
     )

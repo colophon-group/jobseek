@@ -219,8 +219,26 @@ func browserInput(task queueTask) (*runtimev1.BrowserExecutionInput, error) {
 	}
 	payload := bytes.TrimSuffix(canonicalRequest.Bytes(), []byte{'\n'})
 	fingerprint := sha256.Sum256(payload)
+	waits := map[string]runtimev1.WaitCondition{
+		"commit":           runtimev1.WaitCondition_WAIT_CONDITION_COMMIT,
+		"domcontentloaded": runtimev1.WaitCondition_WAIT_CONDITION_DOM_CONTENT_LOADED,
+		"load":             runtimev1.WaitCondition_WAIT_CONDITION_LOAD,
+		"networkidle":      runtimev1.WaitCondition_WAIT_CONDITION_NETWORK_IDLE,
+	}
+	condition, ok := waits[task.Envelope.Wait]
+	if !ok {
+		return nil, errors.New("invalid navigation wait")
+	}
+	navigation := &runtimev1.NavigationPlan{WaitUntil: condition, TimeoutMs: uint64(task.Envelope.TimeoutMS), OriginRequestId: originID}
+	if fallback := task.Envelope.WaitFallback; fallback != nil && *fallback != task.Envelope.Wait {
+		fallbackWait, ok := waits[*fallback]
+		if !ok {
+			return nil, errors.New("invalid navigation fallback")
+		}
+		navigation.Fallback = &runtimev1.NavigationFallback{WaitUntil: fallbackWait, TimeoutMs: min(uint64(task.Envelope.TimeoutMS), 5000)}
+	}
 	return &runtimev1.BrowserExecutionInput{
 		Assignment: &runtimev1.BrowserAssignment{Backend: runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA, CapabilityClass: runtimev1.BrowserCapabilityClass_BROWSER_CAPABILITY_CLASS_NAVIGATION_EVALUATION, ServiceLane: runtimev1.BrowserServiceLane_BROWSER_SERVICE_LANE_LIGHTPANDA, RoutingRevision: task.Envelope.RoutingRevision},
-		Plan:       &runtimev1.BrowserPlan{ContractVersion: runtimeContract, TargetUrl: task.Envelope.SourceURL, RequiredCapabilities: []runtimev1.BrowserCapability{runtimev1.BrowserCapability_BROWSER_CAPABILITY_RENDER}, Navigation: &runtimev1.NavigationPlan{WaitUntil: runtimev1.WaitCondition_WAIT_CONDITION_LOAD, TimeoutMs: uint64(task.Envelope.TimeoutMS), OriginRequestId: originID}, OriginOperations: []*runtimev1.OriginOperationRef{{OriginRequestId: originID, OperationSequence: 1, Role: "navigation", RequestFingerprint: hex.EncodeToString(fingerprint[:])}}},
+		Plan:       &runtimev1.BrowserPlan{ContractVersion: runtimeContract, TargetUrl: task.Envelope.SourceURL, RequiredCapabilities: []runtimev1.BrowserCapability{runtimev1.BrowserCapability_BROWSER_CAPABILITY_RENDER}, Navigation: navigation, OriginOperations: []*runtimev1.OriginOperationRef{{OriginRequestId: originID, OperationSequence: 1, Role: "navigation", RequestFingerprint: hex.EncodeToString(fingerprint[:])}}},
 	}, nil
 }

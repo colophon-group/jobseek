@@ -238,7 +238,9 @@ def _decode_task(request: Mapping[str, Any]) -> tuple[LightpandaB0Task, Lease, b
     try:
         envelope = json.loads(payload)
         parser_config = envelope["parser_config"]
-        assignment = resolve_render_assignment("json-ld", parser_config, scraper_step=0)
+        assignment = resolve_render_assignment(
+            envelope["scraper_type"], parser_config, scraper_step=envelope["scraper_step"]
+        )
         route = RouteIdentity(
             shard_id=envelope["shard_id"],
             routing_epoch=envelope["routing_epoch"],
@@ -394,7 +396,7 @@ async def _execute(
                         ),
                         pool,
                         no_origin_http,
-                        "json-ld",
+                        task.assignment.scraper_type,
                         parser_config,
                         scrape_step=0,
                         scrape_interval=detail.scrape_interval_hours,

@@ -117,7 +117,7 @@ func decodeQueueTask(payload, expectedDigest string, route routeIdentity) (queue
 		envelope.ShardID != route.ShardID || envelope.RoutingEpoch != route.RoutingEpoch || envelope.EngineOwner != route.EngineOwner ||
 		envelope.ConfigRevision < 1 || envelope.ConfigRevision > maxInteger || envelope.InitialReadyAtMS < 0 || envelope.InitialReadyAtMS > maxInteger ||
 		envelope.BrowserBackend != "lightpanda" || !safeRevision.MatchString(envelope.RoutingRevision) ||
-		envelope.ScraperType != "json-ld" || envelope.ScraperStep != 0 || !envelope.Render || envelope.Wait != "load" || envelope.WaitFallback != nil ||
+		(envelope.ScraperType != "json-ld" && envelope.ScraperType != "dom") || envelope.ScraperStep != 0 || !envelope.Render || !validNavigationWait(envelope.Wait) ||
 		envelope.TimeoutMS < 1 || envelope.TimeoutMS > 120_000 || !hex256.MatchString(envelope.AssignmentDigestSHA256) ||
 		len(envelope.ParserConfig) < 2 || envelope.ParserConfig[0] != '{' {
 		return queueTask{}, errors.New("task envelope violates B0 identity")
@@ -150,31 +150,21 @@ func canonicalAssignmentJSON(raw json.RawMessage) ([]byte, error) {
 }
 
 func validateParserConfig(envelope taskEnvelope) error {
-	var config map[string]json.RawMessage
-	decoder := json.NewDecoder(strings.NewReader(string(envelope.ParserConfig)))
-	if err := decoder.Decode(&config); err != nil || config == nil {
+	metadata := struct {
+		ScraperType  string          `json:"scraper_type"`
+		ParserConfig json.RawMessage `json:"scraper_config"`
+	}{envelope.ScraperType, envelope.ParserConfig}
+	raw, err := json.Marshal(metadata)
+	if err != nil {
 		return errors.New("task parser config is invalid")
 	}
-	allowed := set("browser_backend", "routing_revision", "render", "timeout", "wait", "wait_fallback", "defaults", "defaults_by_url", "enrich", "ignore_address_region", "ignore_date_posted", "ignore_locations", "ignore_valid_through")
-	for key := range config {
-		if _, ok := allowed[key]; !ok {
-			return errors.New("task parser config has unknown fields")
-		}
+	_, assignment, err := producerAssignment(string(raw))
+	if err != nil {
+		return err
 	}
-	for _, key := range []string{"browser_backend", "routing_revision", "render", "timeout", "wait", "wait_fallback"} {
-		if _, ok := config[key]; !ok {
-			return errors.New("task parser config is incomplete")
-		}
-	}
-	var backend, revision, wait string
-	var render bool
-	var timeout int64
-	if json.Unmarshal(config["browser_backend"], &backend) != nil || backend != envelope.BrowserBackend ||
-		json.Unmarshal(config["routing_revision"], &revision) != nil || revision != envelope.RoutingRevision ||
-		json.Unmarshal(config["render"], &render) != nil || !render ||
-		json.Unmarshal(config["timeout"], &timeout) != nil || timeout != envelope.TimeoutMS ||
-		json.Unmarshal(config["wait"], &wait) != nil || wait != envelope.Wait ||
-		string(config["wait_fallback"]) != "null" {
+	if assignment.routingRevision != envelope.RoutingRevision || assignment.timeoutMS != envelope.TimeoutMS ||
+		assignment.digest != envelope.AssignmentDigestSHA256 || assignment.scraperType != envelope.ScraperType ||
+		assignment.wait != envelope.Wait || !sameOptionalString(assignment.waitFallback, envelope.WaitFallback) {
 		return errors.New("task parser config disagrees with assignment")
 	}
 	return nil

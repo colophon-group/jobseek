@@ -4949,8 +4949,12 @@ type NavigationPlan struct {
 	Headers         []*Header              `protobuf:"bytes,3,rep,name=headers,proto3" json:"headers,omitempty"`
 	IgnoreTlsErrors bool                   `protobuf:"varint,4,opt,name=ignore_tls_errors,json=ignoreTlsErrors,proto3" json:"ignore_tls_errors,omitempty"`
 	OriginRequestId string                 `protobuf:"bytes,5,opt,name=origin_request_id,json=originRequestId,proto3" json:"origin_request_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Optional readiness check on the already navigated document after a primary
+	// wait timeout. Absence preserves the original one-wait contract. This never
+	// authorizes another navigation or any additional origin operation.
+	Fallback      *NavigationFallback `protobuf:"bytes,6,opt,name=fallback,proto3" json:"fallback,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NavigationPlan) Reset() {
@@ -5018,6 +5022,65 @@ func (x *NavigationPlan) GetOriginRequestId() string {
 	return ""
 }
 
+func (x *NavigationPlan) GetFallback() *NavigationFallback {
+	if x != nil {
+		return x.Fallback
+	}
+	return nil
+}
+
+type NavigationFallback struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WaitUntil     WaitCondition          `protobuf:"varint,1,opt,name=wait_until,json=waitUntil,proto3,enum=jobseek.crawler.runtime.v1.WaitCondition" json:"wait_until,omitempty"`
+	TimeoutMs     uint64                 `protobuf:"varint,2,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NavigationFallback) Reset() {
+	*x = NavigationFallback{}
+	mi := &file_runtime_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NavigationFallback) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NavigationFallback) ProtoMessage() {}
+
+func (x *NavigationFallback) ProtoReflect() protoreflect.Message {
+	mi := &file_runtime_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NavigationFallback.ProtoReflect.Descriptor instead.
+func (*NavigationFallback) Descriptor() ([]byte, []int) {
+	return file_runtime_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *NavigationFallback) GetWaitUntil() WaitCondition {
+	if x != nil {
+		return x.WaitUntil
+	}
+	return WaitCondition_WAIT_CONDITION_UNSPECIFIED
+}
+
+func (x *NavigationFallback) GetTimeoutMs() uint64 {
+	if x != nil {
+		return x.TimeoutMs
+	}
+	return 0
+}
+
 type SessionPlan struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	SessionKey      *string                `protobuf:"bytes,1,opt,name=session_key,json=sessionKey,proto3,oneof" json:"session_key,omitempty"`
@@ -5030,7 +5093,7 @@ type SessionPlan struct {
 
 func (x *SessionPlan) Reset() {
 	*x = SessionPlan{}
-	mi := &file_runtime_proto_msgTypes[44]
+	mi := &file_runtime_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5042,7 +5105,7 @@ func (x *SessionPlan) String() string {
 func (*SessionPlan) ProtoMessage() {}
 
 func (x *SessionPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[44]
+	mi := &file_runtime_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5055,7 +5118,7 @@ func (x *SessionPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionPlan.ProtoReflect.Descriptor instead.
 func (*SessionPlan) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{44}
+	return file_runtime_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *SessionPlan) GetSessionKey() string {
@@ -5099,7 +5162,7 @@ type CapturePlan struct {
 
 func (x *CapturePlan) Reset() {
 	*x = CapturePlan{}
-	mi := &file_runtime_proto_msgTypes[45]
+	mi := &file_runtime_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5111,7 +5174,7 @@ func (x *CapturePlan) String() string {
 func (*CapturePlan) ProtoMessage() {}
 
 func (x *CapturePlan) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[45]
+	mi := &file_runtime_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5124,7 +5187,7 @@ func (x *CapturePlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturePlan.ProtoReflect.Descriptor instead.
 func (*CapturePlan) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{45}
+	return file_runtime_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *CapturePlan) GetCaptureId() string {
@@ -5176,7 +5239,7 @@ type EvaluationPlan struct {
 
 func (x *EvaluationPlan) Reset() {
 	*x = EvaluationPlan{}
-	mi := &file_runtime_proto_msgTypes[46]
+	mi := &file_runtime_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5188,7 +5251,7 @@ func (x *EvaluationPlan) String() string {
 func (*EvaluationPlan) ProtoMessage() {}
 
 func (x *EvaluationPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[46]
+	mi := &file_runtime_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5201,7 +5264,7 @@ func (x *EvaluationPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluationPlan.ProtoReflect.Descriptor instead.
 func (*EvaluationPlan) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{46}
+	return file_runtime_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *EvaluationPlan) GetEvaluationId() string {
@@ -5257,7 +5320,7 @@ type InterceptionRule struct {
 
 func (x *InterceptionRule) Reset() {
 	*x = InterceptionRule{}
-	mi := &file_runtime_proto_msgTypes[47]
+	mi := &file_runtime_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5269,7 +5332,7 @@ func (x *InterceptionRule) String() string {
 func (*InterceptionRule) ProtoMessage() {}
 
 func (x *InterceptionRule) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[47]
+	mi := &file_runtime_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5282,7 +5345,7 @@ func (x *InterceptionRule) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InterceptionRule.ProtoReflect.Descriptor instead.
 func (*InterceptionRule) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{47}
+	return file_runtime_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *InterceptionRule) GetUrlPattern() string {
@@ -5326,7 +5389,7 @@ type BrowserPlan struct {
 
 func (x *BrowserPlan) Reset() {
 	*x = BrowserPlan{}
-	mi := &file_runtime_proto_msgTypes[48]
+	mi := &file_runtime_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5338,7 +5401,7 @@ func (x *BrowserPlan) String() string {
 func (*BrowserPlan) ProtoMessage() {}
 
 func (x *BrowserPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[48]
+	mi := &file_runtime_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5351,7 +5414,7 @@ func (x *BrowserPlan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserPlan.ProtoReflect.Descriptor instead.
 func (*BrowserPlan) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{48}
+	return file_runtime_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *BrowserPlan) GetContractVersion() string {
@@ -5439,7 +5502,7 @@ type BrowserAssignment struct {
 
 func (x *BrowserAssignment) Reset() {
 	*x = BrowserAssignment{}
-	mi := &file_runtime_proto_msgTypes[49]
+	mi := &file_runtime_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5451,7 +5514,7 @@ func (x *BrowserAssignment) String() string {
 func (*BrowserAssignment) ProtoMessage() {}
 
 func (x *BrowserAssignment) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[49]
+	mi := &file_runtime_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5464,7 +5527,7 @@ func (x *BrowserAssignment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserAssignment.ProtoReflect.Descriptor instead.
 func (*BrowserAssignment) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{49}
+	return file_runtime_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *BrowserAssignment) GetBackend() BrowserBackend {
@@ -5508,7 +5571,7 @@ type BrowserExecutionInput struct {
 
 func (x *BrowserExecutionInput) Reset() {
 	*x = BrowserExecutionInput{}
-	mi := &file_runtime_proto_msgTypes[50]
+	mi := &file_runtime_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5520,7 +5583,7 @@ func (x *BrowserExecutionInput) String() string {
 func (*BrowserExecutionInput) ProtoMessage() {}
 
 func (x *BrowserExecutionInput) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[50]
+	mi := &file_runtime_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5533,7 +5596,7 @@ func (x *BrowserExecutionInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserExecutionInput.ProtoReflect.Descriptor instead.
 func (*BrowserExecutionInput) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{50}
+	return file_runtime_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *BrowserExecutionInput) GetPlan() *BrowserPlan {
@@ -5561,7 +5624,7 @@ type ActionOutcome struct {
 
 func (x *ActionOutcome) Reset() {
 	*x = ActionOutcome{}
-	mi := &file_runtime_proto_msgTypes[51]
+	mi := &file_runtime_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5573,7 +5636,7 @@ func (x *ActionOutcome) String() string {
 func (*ActionOutcome) ProtoMessage() {}
 
 func (x *ActionOutcome) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[51]
+	mi := &file_runtime_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5586,7 +5649,7 @@ func (x *ActionOutcome) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActionOutcome.ProtoReflect.Descriptor instead.
 func (*ActionOutcome) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{51}
+	return file_runtime_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *ActionOutcome) GetActionId() string {
@@ -5620,7 +5683,7 @@ type CapturedValue struct {
 
 func (x *CapturedValue) Reset() {
 	*x = CapturedValue{}
-	mi := &file_runtime_proto_msgTypes[52]
+	mi := &file_runtime_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5632,7 +5695,7 @@ func (x *CapturedValue) String() string {
 func (*CapturedValue) ProtoMessage() {}
 
 func (x *CapturedValue) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[52]
+	mi := &file_runtime_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5645,7 +5708,7 @@ func (x *CapturedValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturedValue.ProtoReflect.Descriptor instead.
 func (*CapturedValue) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{52}
+	return file_runtime_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *CapturedValue) GetCaptureId() string {
@@ -5672,7 +5735,7 @@ type EvaluationValue struct {
 
 func (x *EvaluationValue) Reset() {
 	*x = EvaluationValue{}
-	mi := &file_runtime_proto_msgTypes[53]
+	mi := &file_runtime_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5684,7 +5747,7 @@ func (x *EvaluationValue) String() string {
 func (*EvaluationValue) ProtoMessage() {}
 
 func (x *EvaluationValue) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[53]
+	mi := &file_runtime_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5697,7 +5760,7 @@ func (x *EvaluationValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EvaluationValue.ProtoReflect.Descriptor instead.
 func (*EvaluationValue) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{53}
+	return file_runtime_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *EvaluationValue) GetEvaluationId() string {
@@ -5729,7 +5792,7 @@ type BrowserSuccess struct {
 
 func (x *BrowserSuccess) Reset() {
 	*x = BrowserSuccess{}
-	mi := &file_runtime_proto_msgTypes[54]
+	mi := &file_runtime_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5741,7 +5804,7 @@ func (x *BrowserSuccess) String() string {
 func (*BrowserSuccess) ProtoMessage() {}
 
 func (x *BrowserSuccess) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[54]
+	mi := &file_runtime_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5754,7 +5817,7 @@ func (x *BrowserSuccess) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserSuccess.ProtoReflect.Descriptor instead.
 func (*BrowserSuccess) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{54}
+	return file_runtime_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *BrowserSuccess) GetFinalUrl() string {
@@ -5816,7 +5879,7 @@ type BrowserFailure struct {
 
 func (x *BrowserFailure) Reset() {
 	*x = BrowserFailure{}
-	mi := &file_runtime_proto_msgTypes[55]
+	mi := &file_runtime_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5828,7 +5891,7 @@ func (x *BrowserFailure) String() string {
 func (*BrowserFailure) ProtoMessage() {}
 
 func (x *BrowserFailure) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[55]
+	mi := &file_runtime_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5841,7 +5904,7 @@ func (x *BrowserFailure) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserFailure.ProtoReflect.Descriptor instead.
 func (*BrowserFailure) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{55}
+	return file_runtime_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *BrowserFailure) GetError() *RuntimeError {
@@ -5868,7 +5931,7 @@ type BrowserUnsupported struct {
 
 func (x *BrowserUnsupported) Reset() {
 	*x = BrowserUnsupported{}
-	mi := &file_runtime_proto_msgTypes[56]
+	mi := &file_runtime_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5880,7 +5943,7 @@ func (x *BrowserUnsupported) String() string {
 func (*BrowserUnsupported) ProtoMessage() {}
 
 func (x *BrowserUnsupported) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[56]
+	mi := &file_runtime_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5893,7 +5956,7 @@ func (x *BrowserUnsupported) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserUnsupported.ProtoReflect.Descriptor instead.
 func (*BrowserUnsupported) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{56}
+	return file_runtime_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *BrowserUnsupported) GetCapabilities() []BrowserCapability {
@@ -5926,7 +5989,7 @@ type BrowserResult struct {
 
 func (x *BrowserResult) Reset() {
 	*x = BrowserResult{}
-	mi := &file_runtime_proto_msgTypes[57]
+	mi := &file_runtime_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5938,7 +6001,7 @@ func (x *BrowserResult) String() string {
 func (*BrowserResult) ProtoMessage() {}
 
 func (x *BrowserResult) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[57]
+	mi := &file_runtime_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5951,7 +6014,7 @@ func (x *BrowserResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BrowserResult.ProtoReflect.Descriptor instead.
 func (*BrowserResult) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{57}
+	return file_runtime_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *BrowserResult) GetContractVersion() string {
@@ -6040,7 +6103,7 @@ type DisconnectFault struct {
 
 func (x *DisconnectFault) Reset() {
 	*x = DisconnectFault{}
-	mi := &file_runtime_proto_msgTypes[58]
+	mi := &file_runtime_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6052,7 +6115,7 @@ func (x *DisconnectFault) String() string {
 func (*DisconnectFault) ProtoMessage() {}
 
 func (x *DisconnectFault) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[58]
+	mi := &file_runtime_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6065,7 +6128,7 @@ func (x *DisconnectFault) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisconnectFault.ProtoReflect.Descriptor instead.
 func (*DisconnectFault) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{58}
+	return file_runtime_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *DisconnectFault) GetPoint() DisconnectPoint {
@@ -6118,7 +6181,7 @@ type ProtocolEvent struct {
 
 func (x *ProtocolEvent) Reset() {
 	*x = ProtocolEvent{}
-	mi := &file_runtime_proto_msgTypes[59]
+	mi := &file_runtime_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6130,7 +6193,7 @@ func (x *ProtocolEvent) String() string {
 func (*ProtocolEvent) ProtoMessage() {}
 
 func (x *ProtocolEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[59]
+	mi := &file_runtime_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6143,7 +6206,7 @@ func (x *ProtocolEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProtocolEvent.ProtoReflect.Descriptor instead.
 func (*ProtocolEvent) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{59}
+	return file_runtime_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *ProtocolEvent) GetDirection() EventDirection {
@@ -6220,7 +6283,7 @@ type ProtocolTranscript struct {
 
 func (x *ProtocolTranscript) Reset() {
 	*x = ProtocolTranscript{}
-	mi := &file_runtime_proto_msgTypes[60]
+	mi := &file_runtime_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6232,7 +6295,7 @@ func (x *ProtocolTranscript) String() string {
 func (*ProtocolTranscript) ProtoMessage() {}
 
 func (x *ProtocolTranscript) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[60]
+	mi := &file_runtime_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6245,7 +6308,7 @@ func (x *ProtocolTranscript) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProtocolTranscript.ProtoReflect.Descriptor instead.
 func (*ProtocolTranscript) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{60}
+	return file_runtime_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *ProtocolTranscript) GetContractVersion() string {
@@ -6281,7 +6344,7 @@ type CapturedRequest struct {
 
 func (x *CapturedRequest) Reset() {
 	*x = CapturedRequest{}
-	mi := &file_runtime_proto_msgTypes[61]
+	mi := &file_runtime_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6293,7 +6356,7 @@ func (x *CapturedRequest) String() string {
 func (*CapturedRequest) ProtoMessage() {}
 
 func (x *CapturedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[61]
+	mi := &file_runtime_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6306,7 +6369,7 @@ func (x *CapturedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturedRequest.ProtoReflect.Descriptor instead.
 func (*CapturedRequest) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{61}
+	return file_runtime_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *CapturedRequest) GetMethod() string {
@@ -6348,7 +6411,7 @@ type CapturedResponse struct {
 
 func (x *CapturedResponse) Reset() {
 	*x = CapturedResponse{}
-	mi := &file_runtime_proto_msgTypes[62]
+	mi := &file_runtime_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6360,7 +6423,7 @@ func (x *CapturedResponse) String() string {
 func (*CapturedResponse) ProtoMessage() {}
 
 func (x *CapturedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[62]
+	mi := &file_runtime_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6373,7 +6436,7 @@ func (x *CapturedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturedResponse.ProtoReflect.Descriptor instead.
 func (*CapturedResponse) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{62}
+	return file_runtime_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *CapturedResponse) GetStatus() uint32 {
@@ -6413,7 +6476,7 @@ type CapturedExchange struct {
 
 func (x *CapturedExchange) Reset() {
 	*x = CapturedExchange{}
-	mi := &file_runtime_proto_msgTypes[63]
+	mi := &file_runtime_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6425,7 +6488,7 @@ func (x *CapturedExchange) String() string {
 func (*CapturedExchange) ProtoMessage() {}
 
 func (x *CapturedExchange) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[63]
+	mi := &file_runtime_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6438,7 +6501,7 @@ func (x *CapturedExchange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CapturedExchange.ProtoReflect.Descriptor instead.
 func (*CapturedExchange) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{63}
+	return file_runtime_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *CapturedExchange) GetOperation() *OriginOperationRef {
@@ -6489,7 +6552,7 @@ type JobEffect struct {
 
 func (x *JobEffect) Reset() {
 	*x = JobEffect{}
-	mi := &file_runtime_proto_msgTypes[64]
+	mi := &file_runtime_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6501,7 +6564,7 @@ func (x *JobEffect) String() string {
 func (*JobEffect) ProtoMessage() {}
 
 func (x *JobEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[64]
+	mi := &file_runtime_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6514,7 +6577,7 @@ func (x *JobEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobEffect.ProtoReflect.Descriptor instead.
 func (*JobEffect) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{64}
+	return file_runtime_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *JobEffect) GetSourceUrl() string {
@@ -6549,7 +6612,7 @@ type ProjectedTarget struct {
 
 func (x *ProjectedTarget) Reset() {
 	*x = ProjectedTarget{}
-	mi := &file_runtime_proto_msgTypes[65]
+	mi := &file_runtime_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6561,7 +6624,7 @@ func (x *ProjectedTarget) String() string {
 func (*ProjectedTarget) ProtoMessage() {}
 
 func (x *ProjectedTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[65]
+	mi := &file_runtime_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6574,7 +6637,7 @@ func (x *ProjectedTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectedTarget.ProtoReflect.Descriptor instead.
 func (*ProjectedTarget) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{65}
+	return file_runtime_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ProjectedTarget) GetUrl() string {
@@ -6627,7 +6690,7 @@ type ProjectedEffects struct {
 
 func (x *ProjectedEffects) Reset() {
 	*x = ProjectedEffects{}
-	mi := &file_runtime_proto_msgTypes[66]
+	mi := &file_runtime_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6639,7 +6702,7 @@ func (x *ProjectedEffects) String() string {
 func (*ProjectedEffects) ProtoMessage() {}
 
 func (x *ProjectedEffects) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[66]
+	mi := &file_runtime_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6652,7 +6715,7 @@ func (x *ProjectedEffects) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectedEffects.ProtoReflect.Descriptor instead.
 func (*ProjectedEffects) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{66}
+	return file_runtime_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ProjectedEffects) GetUrlsToUpsert() []string {
@@ -6792,7 +6855,7 @@ type ReplayCase struct {
 
 func (x *ReplayCase) Reset() {
 	*x = ReplayCase{}
-	mi := &file_runtime_proto_msgTypes[67]
+	mi := &file_runtime_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6804,7 +6867,7 @@ func (x *ReplayCase) String() string {
 func (*ReplayCase) ProtoMessage() {}
 
 func (x *ReplayCase) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[67]
+	mi := &file_runtime_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6817,7 +6880,7 @@ func (x *ReplayCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayCase.ProtoReflect.Descriptor instead.
 func (*ReplayCase) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{67}
+	return file_runtime_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *ReplayCase) GetContractVersion() string {
@@ -6908,7 +6971,7 @@ type ConformanceCase struct {
 
 func (x *ConformanceCase) Reset() {
 	*x = ConformanceCase{}
-	mi := &file_runtime_proto_msgTypes[68]
+	mi := &file_runtime_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6920,7 +6983,7 @@ func (x *ConformanceCase) String() string {
 func (*ConformanceCase) ProtoMessage() {}
 
 func (x *ConformanceCase) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[68]
+	mi := &file_runtime_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6933,7 +6996,7 @@ func (x *ConformanceCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConformanceCase.ProtoReflect.Descriptor instead.
 func (*ConformanceCase) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{68}
+	return file_runtime_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *ConformanceCase) GetName() string {
@@ -7386,7 +7449,7 @@ const file_runtime_proto_rawDesc = "" +
 	"\x11origin_request_id\x18\a \x01(\tH\x01R\x0foriginRequestId\x88\x01\x01\x12W\n" +
 	"\x0enetwork_effect\x18\b \x01(\x0e20.jobseek.crawler.runtime.v1.BrowserNetworkEffectR\rnetworkEffectB\b\n" +
 	"\x06actionB\x14\n" +
-	"\x12_origin_request_id\"\x8f\x02\n" +
+	"\x12_origin_request_id\"\xdb\x02\n" +
 	"\x0eNavigationPlan\x12H\n" +
 	"\n" +
 	"wait_until\x18\x01 \x01(\x0e2).jobseek.crawler.runtime.v1.WaitConditionR\twaitUntil\x12\x1d\n" +
@@ -7394,7 +7457,13 @@ const file_runtime_proto_rawDesc = "" +
 	"timeout_ms\x18\x02 \x01(\x04R\ttimeoutMs\x12<\n" +
 	"\aheaders\x18\x03 \x03(\v2\".jobseek.crawler.runtime.v1.HeaderR\aheaders\x12*\n" +
 	"\x11ignore_tls_errors\x18\x04 \x01(\bR\x0fignoreTlsErrors\x12*\n" +
-	"\x11origin_request_id\x18\x05 \x01(\tR\x0foriginRequestId\"\xd2\x01\n" +
+	"\x11origin_request_id\x18\x05 \x01(\tR\x0foriginRequestId\x12J\n" +
+	"\bfallback\x18\x06 \x01(\v2..jobseek.crawler.runtime.v1.NavigationFallbackR\bfallback\"}\n" +
+	"\x12NavigationFallback\x12H\n" +
+	"\n" +
+	"wait_until\x18\x01 \x01(\x0e2).jobseek.crawler.runtime.v1.WaitConditionR\twaitUntil\x12\x1d\n" +
+	"\n" +
+	"timeout_ms\x18\x02 \x01(\x04R\ttimeoutMs\"\xd2\x01\n" +
 	"\vSessionPlan\x12$\n" +
 	"\vsession_key\x18\x01 \x01(\tH\x00R\n" +
 	"sessionKey\x88\x01\x01\x12\x1e\n" +
@@ -7731,7 +7800,7 @@ func file_runtime_proto_rawDescGZIP() []byte {
 }
 
 var file_runtime_proto_enumTypes = make([]protoimpl.EnumInfo, 23)
-var file_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
+var file_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 70)
 var file_runtime_proto_goTypes = []any{
 	(Implementation)(0),             // 0: jobseek.crawler.runtime.v1.Implementation
 	(EngineOwner)(0),                // 1: jobseek.crawler.runtime.v1.EngineOwner
@@ -7800,31 +7869,32 @@ var file_runtime_proto_goTypes = []any{
 	(*EvaluateAction)(nil),          // 64: jobseek.crawler.runtime.v1.EvaluateAction
 	(*BrowserAction)(nil),           // 65: jobseek.crawler.runtime.v1.BrowserAction
 	(*NavigationPlan)(nil),          // 66: jobseek.crawler.runtime.v1.NavigationPlan
-	(*SessionPlan)(nil),             // 67: jobseek.crawler.runtime.v1.SessionPlan
-	(*CapturePlan)(nil),             // 68: jobseek.crawler.runtime.v1.CapturePlan
-	(*EvaluationPlan)(nil),          // 69: jobseek.crawler.runtime.v1.EvaluationPlan
-	(*InterceptionRule)(nil),        // 70: jobseek.crawler.runtime.v1.InterceptionRule
-	(*BrowserPlan)(nil),             // 71: jobseek.crawler.runtime.v1.BrowserPlan
-	(*BrowserAssignment)(nil),       // 72: jobseek.crawler.runtime.v1.BrowserAssignment
-	(*BrowserExecutionInput)(nil),   // 73: jobseek.crawler.runtime.v1.BrowserExecutionInput
-	(*ActionOutcome)(nil),           // 74: jobseek.crawler.runtime.v1.ActionOutcome
-	(*CapturedValue)(nil),           // 75: jobseek.crawler.runtime.v1.CapturedValue
-	(*EvaluationValue)(nil),         // 76: jobseek.crawler.runtime.v1.EvaluationValue
-	(*BrowserSuccess)(nil),          // 77: jobseek.crawler.runtime.v1.BrowserSuccess
-	(*BrowserFailure)(nil),          // 78: jobseek.crawler.runtime.v1.BrowserFailure
-	(*BrowserUnsupported)(nil),      // 79: jobseek.crawler.runtime.v1.BrowserUnsupported
-	(*BrowserResult)(nil),           // 80: jobseek.crawler.runtime.v1.BrowserResult
-	(*DisconnectFault)(nil),         // 81: jobseek.crawler.runtime.v1.DisconnectFault
-	(*ProtocolEvent)(nil),           // 82: jobseek.crawler.runtime.v1.ProtocolEvent
-	(*ProtocolTranscript)(nil),      // 83: jobseek.crawler.runtime.v1.ProtocolTranscript
-	(*CapturedRequest)(nil),         // 84: jobseek.crawler.runtime.v1.CapturedRequest
-	(*CapturedResponse)(nil),        // 85: jobseek.crawler.runtime.v1.CapturedResponse
-	(*CapturedExchange)(nil),        // 86: jobseek.crawler.runtime.v1.CapturedExchange
-	(*JobEffect)(nil),               // 87: jobseek.crawler.runtime.v1.JobEffect
-	(*ProjectedTarget)(nil),         // 88: jobseek.crawler.runtime.v1.ProjectedTarget
-	(*ProjectedEffects)(nil),        // 89: jobseek.crawler.runtime.v1.ProjectedEffects
-	(*ReplayCase)(nil),              // 90: jobseek.crawler.runtime.v1.ReplayCase
-	(*ConformanceCase)(nil),         // 91: jobseek.crawler.runtime.v1.ConformanceCase
+	(*NavigationFallback)(nil),      // 67: jobseek.crawler.runtime.v1.NavigationFallback
+	(*SessionPlan)(nil),             // 68: jobseek.crawler.runtime.v1.SessionPlan
+	(*CapturePlan)(nil),             // 69: jobseek.crawler.runtime.v1.CapturePlan
+	(*EvaluationPlan)(nil),          // 70: jobseek.crawler.runtime.v1.EvaluationPlan
+	(*InterceptionRule)(nil),        // 71: jobseek.crawler.runtime.v1.InterceptionRule
+	(*BrowserPlan)(nil),             // 72: jobseek.crawler.runtime.v1.BrowserPlan
+	(*BrowserAssignment)(nil),       // 73: jobseek.crawler.runtime.v1.BrowserAssignment
+	(*BrowserExecutionInput)(nil),   // 74: jobseek.crawler.runtime.v1.BrowserExecutionInput
+	(*ActionOutcome)(nil),           // 75: jobseek.crawler.runtime.v1.ActionOutcome
+	(*CapturedValue)(nil),           // 76: jobseek.crawler.runtime.v1.CapturedValue
+	(*EvaluationValue)(nil),         // 77: jobseek.crawler.runtime.v1.EvaluationValue
+	(*BrowserSuccess)(nil),          // 78: jobseek.crawler.runtime.v1.BrowserSuccess
+	(*BrowserFailure)(nil),          // 79: jobseek.crawler.runtime.v1.BrowserFailure
+	(*BrowserUnsupported)(nil),      // 80: jobseek.crawler.runtime.v1.BrowserUnsupported
+	(*BrowserResult)(nil),           // 81: jobseek.crawler.runtime.v1.BrowserResult
+	(*DisconnectFault)(nil),         // 82: jobseek.crawler.runtime.v1.DisconnectFault
+	(*ProtocolEvent)(nil),           // 83: jobseek.crawler.runtime.v1.ProtocolEvent
+	(*ProtocolTranscript)(nil),      // 84: jobseek.crawler.runtime.v1.ProtocolTranscript
+	(*CapturedRequest)(nil),         // 85: jobseek.crawler.runtime.v1.CapturedRequest
+	(*CapturedResponse)(nil),        // 86: jobseek.crawler.runtime.v1.CapturedResponse
+	(*CapturedExchange)(nil),        // 87: jobseek.crawler.runtime.v1.CapturedExchange
+	(*JobEffect)(nil),               // 88: jobseek.crawler.runtime.v1.JobEffect
+	(*ProjectedTarget)(nil),         // 89: jobseek.crawler.runtime.v1.ProjectedTarget
+	(*ProjectedEffects)(nil),        // 90: jobseek.crawler.runtime.v1.ProjectedEffects
+	(*ReplayCase)(nil),              // 91: jobseek.crawler.runtime.v1.ReplayCase
+	(*ConformanceCase)(nil),         // 92: jobseek.crawler.runtime.v1.ConformanceCase
 }
 var file_runtime_proto_depIdxs = []int32{
 	26,  // 0: jobseek.crawler.runtime.v1.DataChunk.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
@@ -7847,7 +7917,7 @@ var file_runtime_proto_depIdxs = []int32{
 	32,  // 17: jobseek.crawler.runtime.v1.ExecutionRequest.board_manifest:type_name -> jobseek.crawler.runtime.v1.BoardManifest
 	40,  // 18: jobseek.crawler.runtime.v1.ExecutionRequest.monitor:type_name -> jobseek.crawler.runtime.v1.MonitorInput
 	41,  // 19: jobseek.crawler.runtime.v1.ExecutionRequest.scrape:type_name -> jobseek.crawler.runtime.v1.ScrapeInput
-	73,  // 20: jobseek.crawler.runtime.v1.ExecutionRequest.browser:type_name -> jobseek.crawler.runtime.v1.BrowserExecutionInput
+	74,  // 20: jobseek.crawler.runtime.v1.ExecutionRequest.browser:type_name -> jobseek.crawler.runtime.v1.BrowserExecutionInput
 	44,  // 21: jobseek.crawler.runtime.v1.ExecutionRequest.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
 	43,  // 22: jobseek.crawler.runtime.v1.ExecutionRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
 	1,   // 23: jobseek.crawler.runtime.v1.FencingContext.engine_owner:type_name -> jobseek.crawler.runtime.v1.EngineOwner
@@ -7869,7 +7939,7 @@ var file_runtime_proto_depIdxs = []int32{
 	52,  // 39: jobseek.crawler.runtime.v1.ExecutionFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactFrame
 	31,  // 40: jobseek.crawler.runtime.v1.ExecutionFrame.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
 	53,  // 41: jobseek.crawler.runtime.v1.ExecutionFrame.terminal:type_name -> jobseek.crawler.runtime.v1.Terminal
-	80,  // 42: jobseek.crawler.runtime.v1.ExecutionFrame.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
+	81,  // 42: jobseek.crawler.runtime.v1.ExecutionFrame.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
 	51,  // 43: jobseek.crawler.runtime.v1.ExecutionFrame.origin_operation_declared:type_name -> jobseek.crawler.runtime.v1.OriginOperationDeclared
 	31,  // 44: jobseek.crawler.runtime.v1.ResumeRejected.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
 	48,  // 45: jobseek.crawler.runtime.v1.ClientMessage.hello:type_name -> jobseek.crawler.runtime.v1.ClientHello
@@ -7895,71 +7965,73 @@ var file_runtime_proto_depIdxs = []int32{
 	11,  // 65: jobseek.crawler.runtime.v1.BrowserAction.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
 	10,  // 66: jobseek.crawler.runtime.v1.NavigationPlan.wait_until:type_name -> jobseek.crawler.runtime.v1.WaitCondition
 	25,  // 67: jobseek.crawler.runtime.v1.NavigationPlan.headers:type_name -> jobseek.crawler.runtime.v1.Header
-	15,  // 68: jobseek.crawler.runtime.v1.CapturePlan.kind:type_name -> jobseek.crawler.runtime.v1.CaptureKind
-	11,  // 69: jobseek.crawler.runtime.v1.EvaluationPlan.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
-	25,  // 70: jobseek.crawler.runtime.v1.InterceptionRule.replace_headers:type_name -> jobseek.crawler.runtime.v1.Header
-	7,   // 71: jobseek.crawler.runtime.v1.BrowserPlan.required_capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
-	66,  // 72: jobseek.crawler.runtime.v1.BrowserPlan.navigation:type_name -> jobseek.crawler.runtime.v1.NavigationPlan
-	67,  // 73: jobseek.crawler.runtime.v1.BrowserPlan.session:type_name -> jobseek.crawler.runtime.v1.SessionPlan
-	65,  // 74: jobseek.crawler.runtime.v1.BrowserPlan.actions:type_name -> jobseek.crawler.runtime.v1.BrowserAction
-	68,  // 75: jobseek.crawler.runtime.v1.BrowserPlan.captures:type_name -> jobseek.crawler.runtime.v1.CapturePlan
-	69,  // 76: jobseek.crawler.runtime.v1.BrowserPlan.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationPlan
-	70,  // 77: jobseek.crawler.runtime.v1.BrowserPlan.interceptions:type_name -> jobseek.crawler.runtime.v1.InterceptionRule
-	44,  // 78: jobseek.crawler.runtime.v1.BrowserPlan.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	6,   // 79: jobseek.crawler.runtime.v1.BrowserAssignment.backend:type_name -> jobseek.crawler.runtime.v1.BrowserBackend
-	8,   // 80: jobseek.crawler.runtime.v1.BrowserAssignment.capability_class:type_name -> jobseek.crawler.runtime.v1.BrowserCapabilityClass
-	9,   // 81: jobseek.crawler.runtime.v1.BrowserAssignment.service_lane:type_name -> jobseek.crawler.runtime.v1.BrowserServiceLane
-	71,  // 82: jobseek.crawler.runtime.v1.BrowserExecutionInput.plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
-	72,  // 83: jobseek.crawler.runtime.v1.BrowserExecutionInput.assignment:type_name -> jobseek.crawler.runtime.v1.BrowserAssignment
-	28,  // 84: jobseek.crawler.runtime.v1.CapturedValue.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	29,  // 85: jobseek.crawler.runtime.v1.EvaluationValue.value:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	28,  // 86: jobseek.crawler.runtime.v1.BrowserSuccess.html:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	74,  // 87: jobseek.crawler.runtime.v1.BrowserSuccess.action_outcomes:type_name -> jobseek.crawler.runtime.v1.ActionOutcome
-	75,  // 88: jobseek.crawler.runtime.v1.BrowserSuccess.captures:type_name -> jobseek.crawler.runtime.v1.CapturedValue
-	76,  // 89: jobseek.crawler.runtime.v1.BrowserSuccess.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationValue
-	26,  // 90: jobseek.crawler.runtime.v1.BrowserSuccess.artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	31,  // 91: jobseek.crawler.runtime.v1.BrowserFailure.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
-	26,  // 92: jobseek.crawler.runtime.v1.BrowserFailure.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	7,   // 93: jobseek.crawler.runtime.v1.BrowserUnsupported.capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
-	26,  // 94: jobseek.crawler.runtime.v1.BrowserUnsupported.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	6,   // 95: jobseek.crawler.runtime.v1.BrowserResult.backend:type_name -> jobseek.crawler.runtime.v1.BrowserBackend
-	77,  // 96: jobseek.crawler.runtime.v1.BrowserResult.success:type_name -> jobseek.crawler.runtime.v1.BrowserSuccess
-	78,  // 97: jobseek.crawler.runtime.v1.BrowserResult.error:type_name -> jobseek.crawler.runtime.v1.BrowserFailure
-	79,  // 98: jobseek.crawler.runtime.v1.BrowserResult.unsupported:type_name -> jobseek.crawler.runtime.v1.BrowserUnsupported
-	21,  // 99: jobseek.crawler.runtime.v1.DisconnectFault.point:type_name -> jobseek.crawler.runtime.v1.DisconnectPoint
-	20,  // 100: jobseek.crawler.runtime.v1.ProtocolEvent.direction:type_name -> jobseek.crawler.runtime.v1.EventDirection
-	56,  // 101: jobseek.crawler.runtime.v1.ProtocolEvent.client:type_name -> jobseek.crawler.runtime.v1.ClientMessage
-	57,  // 102: jobseek.crawler.runtime.v1.ProtocolEvent.server:type_name -> jobseek.crawler.runtime.v1.ServerMessage
-	81,  // 103: jobseek.crawler.runtime.v1.ProtocolEvent.fault:type_name -> jobseek.crawler.runtime.v1.DisconnectFault
-	82,  // 104: jobseek.crawler.runtime.v1.ProtocolTranscript.events:type_name -> jobseek.crawler.runtime.v1.ProtocolEvent
-	25,  // 105: jobseek.crawler.runtime.v1.CapturedRequest.headers:type_name -> jobseek.crawler.runtime.v1.Header
-	28,  // 106: jobseek.crawler.runtime.v1.CapturedRequest.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	25,  // 107: jobseek.crawler.runtime.v1.CapturedResponse.headers:type_name -> jobseek.crawler.runtime.v1.Header
-	28,  // 108: jobseek.crawler.runtime.v1.CapturedResponse.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	44,  // 109: jobseek.crawler.runtime.v1.CapturedExchange.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	84,  // 110: jobseek.crawler.runtime.v1.CapturedExchange.request:type_name -> jobseek.crawler.runtime.v1.CapturedRequest
-	85,  // 111: jobseek.crawler.runtime.v1.CapturedExchange.response:type_name -> jobseek.crawler.runtime.v1.CapturedResponse
-	22,  // 112: jobseek.crawler.runtime.v1.ProjectedTarget.action:type_name -> jobseek.crawler.runtime.v1.ProjectedAction
-	87,  // 113: jobseek.crawler.runtime.v1.ProjectedEffects.job_effects:type_name -> jobseek.crawler.runtime.v1.JobEffect
-	2,   // 114: jobseek.crawler.runtime.v1.ProjectedEffects.execution_kind:type_name -> jobseek.crawler.runtime.v1.ExecutionKind
-	88,  // 115: jobseek.crawler.runtime.v1.ProjectedEffects.targets:type_name -> jobseek.crawler.runtime.v1.ProjectedTarget
-	18,  // 116: jobseek.crawler.runtime.v1.ProjectedEffects.canonicalization_rule:type_name -> jobseek.crawler.runtime.v1.CanonicalizationRule
-	19,  // 117: jobseek.crawler.runtime.v1.ProjectedEffects.content_hash_rule:type_name -> jobseek.crawler.runtime.v1.HashRule
-	17,  // 118: jobseek.crawler.runtime.v1.ReplayCase.adapter:type_name -> jobseek.crawler.runtime.v1.ReplayAdapter
-	42,  // 119: jobseek.crawler.runtime.v1.ReplayCase.execution_request:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
-	86,  // 120: jobseek.crawler.runtime.v1.ReplayCase.exchanges:type_name -> jobseek.crawler.runtime.v1.CapturedExchange
-	54,  // 121: jobseek.crawler.runtime.v1.ReplayCase.expected_frames:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
-	89,  // 122: jobseek.crawler.runtime.v1.ReplayCase.expected_projection:type_name -> jobseek.crawler.runtime.v1.ProjectedEffects
-	19,  // 123: jobseek.crawler.runtime.v1.ReplayCase.semantic_hash_rule:type_name -> jobseek.crawler.runtime.v1.HashRule
-	83,  // 124: jobseek.crawler.runtime.v1.ConformanceCase.transcript:type_name -> jobseek.crawler.runtime.v1.ProtocolTranscript
-	71,  // 125: jobseek.crawler.runtime.v1.ConformanceCase.browser_plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
-	80,  // 126: jobseek.crawler.runtime.v1.ConformanceCase.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
-	90,  // 127: jobseek.crawler.runtime.v1.ConformanceCase.replay:type_name -> jobseek.crawler.runtime.v1.ReplayCase
-	128, // [128:128] is the sub-list for method output_type
-	128, // [128:128] is the sub-list for method input_type
-	128, // [128:128] is the sub-list for extension type_name
-	128, // [128:128] is the sub-list for extension extendee
-	0,   // [0:128] is the sub-list for field type_name
+	67,  // 68: jobseek.crawler.runtime.v1.NavigationPlan.fallback:type_name -> jobseek.crawler.runtime.v1.NavigationFallback
+	10,  // 69: jobseek.crawler.runtime.v1.NavigationFallback.wait_until:type_name -> jobseek.crawler.runtime.v1.WaitCondition
+	15,  // 70: jobseek.crawler.runtime.v1.CapturePlan.kind:type_name -> jobseek.crawler.runtime.v1.CaptureKind
+	11,  // 71: jobseek.crawler.runtime.v1.EvaluationPlan.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
+	25,  // 72: jobseek.crawler.runtime.v1.InterceptionRule.replace_headers:type_name -> jobseek.crawler.runtime.v1.Header
+	7,   // 73: jobseek.crawler.runtime.v1.BrowserPlan.required_capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
+	66,  // 74: jobseek.crawler.runtime.v1.BrowserPlan.navigation:type_name -> jobseek.crawler.runtime.v1.NavigationPlan
+	68,  // 75: jobseek.crawler.runtime.v1.BrowserPlan.session:type_name -> jobseek.crawler.runtime.v1.SessionPlan
+	65,  // 76: jobseek.crawler.runtime.v1.BrowserPlan.actions:type_name -> jobseek.crawler.runtime.v1.BrowserAction
+	69,  // 77: jobseek.crawler.runtime.v1.BrowserPlan.captures:type_name -> jobseek.crawler.runtime.v1.CapturePlan
+	70,  // 78: jobseek.crawler.runtime.v1.BrowserPlan.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationPlan
+	71,  // 79: jobseek.crawler.runtime.v1.BrowserPlan.interceptions:type_name -> jobseek.crawler.runtime.v1.InterceptionRule
+	44,  // 80: jobseek.crawler.runtime.v1.BrowserPlan.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	6,   // 81: jobseek.crawler.runtime.v1.BrowserAssignment.backend:type_name -> jobseek.crawler.runtime.v1.BrowserBackend
+	8,   // 82: jobseek.crawler.runtime.v1.BrowserAssignment.capability_class:type_name -> jobseek.crawler.runtime.v1.BrowserCapabilityClass
+	9,   // 83: jobseek.crawler.runtime.v1.BrowserAssignment.service_lane:type_name -> jobseek.crawler.runtime.v1.BrowserServiceLane
+	72,  // 84: jobseek.crawler.runtime.v1.BrowserExecutionInput.plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
+	73,  // 85: jobseek.crawler.runtime.v1.BrowserExecutionInput.assignment:type_name -> jobseek.crawler.runtime.v1.BrowserAssignment
+	28,  // 86: jobseek.crawler.runtime.v1.CapturedValue.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	29,  // 87: jobseek.crawler.runtime.v1.EvaluationValue.value:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	28,  // 88: jobseek.crawler.runtime.v1.BrowserSuccess.html:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	75,  // 89: jobseek.crawler.runtime.v1.BrowserSuccess.action_outcomes:type_name -> jobseek.crawler.runtime.v1.ActionOutcome
+	76,  // 90: jobseek.crawler.runtime.v1.BrowserSuccess.captures:type_name -> jobseek.crawler.runtime.v1.CapturedValue
+	77,  // 91: jobseek.crawler.runtime.v1.BrowserSuccess.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationValue
+	26,  // 92: jobseek.crawler.runtime.v1.BrowserSuccess.artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	31,  // 93: jobseek.crawler.runtime.v1.BrowserFailure.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
+	26,  // 94: jobseek.crawler.runtime.v1.BrowserFailure.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	7,   // 95: jobseek.crawler.runtime.v1.BrowserUnsupported.capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
+	26,  // 96: jobseek.crawler.runtime.v1.BrowserUnsupported.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	6,   // 97: jobseek.crawler.runtime.v1.BrowserResult.backend:type_name -> jobseek.crawler.runtime.v1.BrowserBackend
+	78,  // 98: jobseek.crawler.runtime.v1.BrowserResult.success:type_name -> jobseek.crawler.runtime.v1.BrowserSuccess
+	79,  // 99: jobseek.crawler.runtime.v1.BrowserResult.error:type_name -> jobseek.crawler.runtime.v1.BrowserFailure
+	80,  // 100: jobseek.crawler.runtime.v1.BrowserResult.unsupported:type_name -> jobseek.crawler.runtime.v1.BrowserUnsupported
+	21,  // 101: jobseek.crawler.runtime.v1.DisconnectFault.point:type_name -> jobseek.crawler.runtime.v1.DisconnectPoint
+	20,  // 102: jobseek.crawler.runtime.v1.ProtocolEvent.direction:type_name -> jobseek.crawler.runtime.v1.EventDirection
+	56,  // 103: jobseek.crawler.runtime.v1.ProtocolEvent.client:type_name -> jobseek.crawler.runtime.v1.ClientMessage
+	57,  // 104: jobseek.crawler.runtime.v1.ProtocolEvent.server:type_name -> jobseek.crawler.runtime.v1.ServerMessage
+	82,  // 105: jobseek.crawler.runtime.v1.ProtocolEvent.fault:type_name -> jobseek.crawler.runtime.v1.DisconnectFault
+	83,  // 106: jobseek.crawler.runtime.v1.ProtocolTranscript.events:type_name -> jobseek.crawler.runtime.v1.ProtocolEvent
+	25,  // 107: jobseek.crawler.runtime.v1.CapturedRequest.headers:type_name -> jobseek.crawler.runtime.v1.Header
+	28,  // 108: jobseek.crawler.runtime.v1.CapturedRequest.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	25,  // 109: jobseek.crawler.runtime.v1.CapturedResponse.headers:type_name -> jobseek.crawler.runtime.v1.Header
+	28,  // 110: jobseek.crawler.runtime.v1.CapturedResponse.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	44,  // 111: jobseek.crawler.runtime.v1.CapturedExchange.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	85,  // 112: jobseek.crawler.runtime.v1.CapturedExchange.request:type_name -> jobseek.crawler.runtime.v1.CapturedRequest
+	86,  // 113: jobseek.crawler.runtime.v1.CapturedExchange.response:type_name -> jobseek.crawler.runtime.v1.CapturedResponse
+	22,  // 114: jobseek.crawler.runtime.v1.ProjectedTarget.action:type_name -> jobseek.crawler.runtime.v1.ProjectedAction
+	88,  // 115: jobseek.crawler.runtime.v1.ProjectedEffects.job_effects:type_name -> jobseek.crawler.runtime.v1.JobEffect
+	2,   // 116: jobseek.crawler.runtime.v1.ProjectedEffects.execution_kind:type_name -> jobseek.crawler.runtime.v1.ExecutionKind
+	89,  // 117: jobseek.crawler.runtime.v1.ProjectedEffects.targets:type_name -> jobseek.crawler.runtime.v1.ProjectedTarget
+	18,  // 118: jobseek.crawler.runtime.v1.ProjectedEffects.canonicalization_rule:type_name -> jobseek.crawler.runtime.v1.CanonicalizationRule
+	19,  // 119: jobseek.crawler.runtime.v1.ProjectedEffects.content_hash_rule:type_name -> jobseek.crawler.runtime.v1.HashRule
+	17,  // 120: jobseek.crawler.runtime.v1.ReplayCase.adapter:type_name -> jobseek.crawler.runtime.v1.ReplayAdapter
+	42,  // 121: jobseek.crawler.runtime.v1.ReplayCase.execution_request:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
+	87,  // 122: jobseek.crawler.runtime.v1.ReplayCase.exchanges:type_name -> jobseek.crawler.runtime.v1.CapturedExchange
+	54,  // 123: jobseek.crawler.runtime.v1.ReplayCase.expected_frames:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
+	90,  // 124: jobseek.crawler.runtime.v1.ReplayCase.expected_projection:type_name -> jobseek.crawler.runtime.v1.ProjectedEffects
+	19,  // 125: jobseek.crawler.runtime.v1.ReplayCase.semantic_hash_rule:type_name -> jobseek.crawler.runtime.v1.HashRule
+	84,  // 126: jobseek.crawler.runtime.v1.ConformanceCase.transcript:type_name -> jobseek.crawler.runtime.v1.ProtocolTranscript
+	72,  // 127: jobseek.crawler.runtime.v1.ConformanceCase.browser_plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
+	81,  // 128: jobseek.crawler.runtime.v1.ConformanceCase.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
+	91,  // 129: jobseek.crawler.runtime.v1.ConformanceCase.replay:type_name -> jobseek.crawler.runtime.v1.ReplayCase
+	130, // [130:130] is the sub-list for method output_type
+	130, // [130:130] is the sub-list for method input_type
+	130, // [130:130] is the sub-list for extension type_name
+	130, // [130:130] is the sub-list for extension extendee
+	0,   // [0:130] is the sub-list for field type_name
 }
 
 func init() { file_runtime_proto_init() }
@@ -8020,26 +8092,26 @@ func file_runtime_proto_init() {
 		(*BrowserAction_Paginate)(nil),
 		(*BrowserAction_Evaluate)(nil),
 	}
-	file_runtime_proto_msgTypes[44].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[45].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[46].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[54].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[57].OneofWrappers = []any{
+	file_runtime_proto_msgTypes[47].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[55].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[58].OneofWrappers = []any{
 		(*BrowserResult_Success)(nil),
 		(*BrowserResult_Error)(nil),
 		(*BrowserResult_Unsupported)(nil),
 	}
-	file_runtime_proto_msgTypes[58].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[59].OneofWrappers = []any{
+	file_runtime_proto_msgTypes[59].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[60].OneofWrappers = []any{
 		(*ProtocolEvent_Client)(nil),
 		(*ProtocolEvent_Server)(nil),
 		(*ProtocolEvent_Fault)(nil),
 	}
-	file_runtime_proto_msgTypes[63].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[64].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[65].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[66].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[68].OneofWrappers = []any{
+	file_runtime_proto_msgTypes[67].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[69].OneofWrappers = []any{
 		(*ConformanceCase_Transcript)(nil),
 		(*ConformanceCase_BrowserPlan)(nil),
 		(*ConformanceCase_BrowserResult)(nil),
@@ -8051,7 +8123,7 @@ func file_runtime_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_runtime_proto_rawDesc), len(file_runtime_proto_rawDesc)),
 			NumEnums:      23,
-			NumMessages:   69,
+			NumMessages:   70,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

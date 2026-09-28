@@ -265,11 +265,11 @@ def test_assignment_validates_parser_only_fields(patch: dict[str, object], messa
         resolve_render_assignment("json-ld", config)
 
 
-def test_assignment_rejects_non_jsonld_and_chained_scraper_steps() -> None:
+def test_assignment_rejects_unsupported_and_chained_scraper_steps() -> None:
     config = _valid_config()
 
     with pytest.raises(RenderAssignmentError, match="type 'json-ld'"):
-        resolve_render_assignment("dom", config)
+        resolve_render_assignment("api", config)
     for step in (False, 0.0, 1):
         with pytest.raises(RenderAssignmentError, match="only valid at scraper step 0"):
             resolve_render_assignment("json-ld", config, scraper_step=step)  # type: ignore[arg-type]
@@ -344,8 +344,59 @@ def test_committed_boards_have_only_fixed_b0_render_assignments() -> None:
             config = fallback.get("config") if isinstance(fallback, dict) else None
 
     assert assigned == [
+        "algorized-careers",
         "browser-use-careers",
+        "bunq-careers",
         "eclypsium-careers",
         "kandou-ai-careers",
         "poke-and-wiggle-careers",
     ]
+
+
+@pytest.mark.parametrize("wait", ["commit", "domcontentloaded", "load", "networkidle"])
+@pytest.mark.parametrize("fallback", [None, "domcontentloaded", "load"])
+def test_dom_assignment_preserves_readiness_and_parser_metadata(wait, fallback) -> None:
+    config = {
+        "browser_backend": "lightpanda",
+        "routing_revision": "dom-b0-1",
+        "render": True,
+        "timeout": 30000,
+        "wait": wait,
+        "wait_fallback": fallback,
+        "steps": [{"tag": "h1", "field": "title"}],
+        "defaults": {"raw_metadata": "kept"},
+    }
+    assignment = resolve_render_assignment("dom", config)
+    assert assignment is not None
+    assert assignment.scraper_type == "dom"
+    assert assignment.wait == wait and assignment.wait_fallback == fallback
+    config["steps"][0]["field"] = "description"
+    assert assignment.config["steps"][0]["field"] == "title"
+
+
+@pytest.mark.parametrize(
+    "patch",
+    [
+        {"actions": []},
+        {"proxy": True},
+        {"stealth": True},
+        {"resource_policy": "minimal"},
+        {"wait": "invalid"},
+        {"wait_fallback": True},
+        {"steps": []},
+        {"scope": None},
+    ],
+)
+def test_dom_assignment_rejects_unimplemented_browser_or_invalid_parser_contract(patch) -> None:
+    config = {
+        "browser_backend": "lightpanda",
+        "routing_revision": "dom-b0-1",
+        "render": True,
+        "timeout": 30000,
+        "wait": "networkidle",
+        "wait_fallback": "domcontentloaded",
+        "steps": [{"tag": "h1", "field": "title"}],
+        **patch,
+    }
+    with pytest.raises(RenderAssignmentError):
+        resolve_render_assignment("dom", config)

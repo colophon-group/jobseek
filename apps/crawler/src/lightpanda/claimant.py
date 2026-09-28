@@ -313,7 +313,7 @@ async def _run_claim(
                     ),
                     dependencies.pool,
                     no_origin_http,
-                    "json-ld",
+                    lease.task.assignment.scraper_type,
                     parser_config,
                     pw=None,
                     scrape_step=0,
