@@ -596,6 +596,19 @@ message NavigationPlan {
   repeated Header headers = 3;
   bool ignore_tls_errors = 4;
   string origin_request_id = 5;
+  // Optional readiness check on the already navigated document after a primary
+  // wait timeout. Absence preserves the original one-wait contract. This never
+  // authorizes another navigation or any additional origin operation.
+  NavigationFallback fallback = 6;
+  // Conditional retry of an explicitly classified transient navigation
+  // transport failure on the same page. Only 0 or 1 is admitted; a retry needs
+  // its own predeclared origin operation. Readiness timeouts are never retried.
+  uint32 transport_retries = 7;
+}
+
+message NavigationFallback {
+  WaitCondition wait_until = 1;
+  uint64 timeout_ms = 2;
 }
 
 message SessionPlan {

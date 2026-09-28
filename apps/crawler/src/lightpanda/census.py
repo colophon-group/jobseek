@@ -355,6 +355,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
         {
             "_replace",
             "actions",
+            "browser_backend",
             "channel",
             "defaults",
             "defaults_by_regex",
@@ -375,6 +376,7 @@ _SCRAPER_CONFIG_KEYS: dict[str, frozenset[str]] = {
             "preset",
             "proxy",
             "render",
+            "routing_revision",
             "request_headers",
             "resource_policy",
             "retry_statuses",

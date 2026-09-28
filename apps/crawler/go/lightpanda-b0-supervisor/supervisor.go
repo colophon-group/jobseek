@@ -33,6 +33,7 @@ type supervisor struct {
 	executor       executorRunner
 	attestRoute    executorRouteAttestor
 	logger         *slog.Logger
+	classifier     renderedClassifier
 }
 
 type rendererSource interface {
@@ -269,9 +270,15 @@ func (s *supervisor) processLease(parent context.Context, held heldReservation, 
 	heartbeatErr := make(chan error, 1)
 	go func() { heartbeatErr <- authority.heartbeatLoop(ctx, cancel) }()
 	renderStarted := time.Now()
-	result, err := held.execute(ctx, current.Task)
+	result, err := s.renderLease(ctx, held, current, authority)
 	s.metrics.renderWait.observe(time.Since(renderStarted).Milliseconds())
 	if err != nil {
+		var authorityFailure *authorityError
+		if errors.As(err, &authorityFailure) {
+			cancel()
+			<-heartbeatErr
+			return err, true
+		}
 		s.metrics.render[1].Add(1)
 		s.logTask("renderer", "failure", current, err)
 		return s.rescheduleOperationalFailure(parent, cancel, heartbeatErr, authority, current, "renderer", err)

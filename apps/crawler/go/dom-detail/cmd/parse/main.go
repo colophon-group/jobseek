@@ -55,6 +55,12 @@ func main() {
 		var cursor int
 		fields, cursor, err = dom.WalkSteps(input.Elements, input.Steps, input.Start)
 		result = dom.Object{"fields": fields, "cursor": cursor}
+	case "classify-rendered":
+		if input.URL == nil {
+			err = errors.New("rendered document URL is required")
+		} else {
+			result, err = dom.ClassifyRendered(input.HTML, input.Config, *input.URL)
+		}
 	default:
 		err = errors.New("unsupported extraction mode")
 	}

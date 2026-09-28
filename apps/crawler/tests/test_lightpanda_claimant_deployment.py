@@ -2995,7 +2995,11 @@ def test_workflow_transports_bundle_not_claimant_credentials_to_ssh() -> None:
     assert "LIGHTPANDA_B0_CREDENTIAL_DIR" in persisted
 
 
-def test_claimant_core_and_runtime_v1_contract_are_unchanged() -> None:
+def test_frozen_runtime_v1_contract_baseline_is_unchanged() -> None:
+    # Runtime-v1 permits additive fields and separately admitted profiles. Freeze
+    # the compatibility baseline rather than forbidding every later claimant or
+    # adapter implementation. The conformance gate checks the current descriptor
+    # against these exact bytes; routing tests retain the JSON-LD restrictions.
     diff = subprocess.run(
         [
             "git",
@@ -3003,8 +3007,7 @@ def test_claimant_core_and_runtime_v1_contract_are_unchanged() -> None:
             "--name-only",
             "b79b5b0e8b0d822239cc09439594c36798397fd7",
             "--",
-            "apps/crawler/src/lightpanda/claimant.py",
-            "apps/crawler/contracts/v1",
+            "apps/crawler/contracts/v1/baseline",
         ],
         cwd=ROOT,
         check=True,

@@ -33,6 +33,13 @@ func (runner runtimeV1Runner) Run(
 	}
 
 	task := Task{URL: input.Plan.TargetUrl}
+	navigation := input.Plan.Navigation
+	if navigation.WaitUntil != runtimev1.WaitCondition_WAIT_CONDITION_LOAD || navigation.Fallback != nil || navigation.TransportRetries != 0 {
+		task.Navigation = &navigationOptions{wait: navigation.WaitUntil, timeout: time.Duration(navigation.TimeoutMs) * time.Millisecond, transportRetries: navigation.TransportRetries}
+		if fallback := navigation.Fallback; fallback != nil {
+			task.Navigation.fallback = &navigationOptions{wait: fallback.WaitUntil, timeout: time.Duration(fallback.TimeoutMs) * time.Millisecond}
+		}
+	}
 	if len(input.Plan.Evaluations) == 1 {
 		evaluation := input.Plan.Evaluations[0]
 		if evaluation == nil {
@@ -52,7 +59,7 @@ func (runner runtimeV1Runner) Run(
 	}
 
 	config := runner.config
-	config.TaskTimeout = time.Duration(input.Plan.Navigation.TimeoutMs) * time.Millisecond
+	config.TaskTimeout = lightpandaadapter.NavigationExecutionBudget(navigation)
 	run := runner.run
 	if run == nil {
 		run = runTask
@@ -60,9 +67,19 @@ func (runner runtimeV1Runner) Run(
 	result, err := run(ctx, config, task)
 	if err != nil {
 		contextErr := ctx.Err()
+		var transport *navigationTransportError
 		switch {
 		case errors.Is(err, errCleanupUnproved):
 			return lightpandaadapter.NewRunnerCleanupFailure(bound)
+		case errors.Is(err, errNavigationTimeout):
+			return lightpandaadapter.NewRunnerFailure(bound, lightpandaadapter.ProviderFailure{
+				Code:        runtimev1.ErrorCode_ERROR_CODE_TIMEOUT,
+				Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY,
+			})
+		case errors.As(err, &transport):
+			return lightpandaadapter.NewRunnerFailure(bound, lightpandaadapter.ProviderFailure{
+				Code: runtimev1.ErrorCode_ERROR_CODE_TRANSPORT, Disposition: runtimev1.ErrorDisposition_ERROR_DISPOSITION_RETRY_POLICY,
+			})
 		case errors.Is(err, errResourceLimit):
 			return lightpandaadapter.NewRunnerFailure(bound, lightpandaadapter.ProviderFailure{
 				Code:        runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT,

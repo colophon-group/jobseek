@@ -376,8 +376,8 @@ class LightpandaB0Task:
             "scraper_type": validated_assignment.scraper_type,
             "scraper_step": validated_assignment.scraper_step,
             "render": True,
-            "wait": "load",
-            "wait_fallback": None,
+            "wait": validated_assignment.wait,
+            "wait_fallback": validated_assignment.wait_fallback,
             "timeout_ms": validated_assignment.timeout_ms,
             "parser_config": parser_config,
             "assignment_digest_sha256": validated_assignment.config_digest_sha256,
@@ -767,8 +767,8 @@ class LightpandaB0Queue:
     ) -> TransitionResult:
         """Atomically return a cold, fully guarded namespace to legacy queues."""
 
-        if cohort not in {"c1", "c2", "c3", "c4"}:
-            raise ValueError("rollback cohort must be exactly c1, c2, c3, or c4")
+        if cohort not in {"c1", "c2", "c3", "c4", "cdom"}:
+            raise ValueError("rollback cohort must be exactly c1, c2, c3, c4, or cdom")
         if not _SHA256_RE.fullmatch(rollback_plan_digest):
             raise ValueError("rollback_plan_digest must be lowercase SHA-256")
         if not _SHA256_RE.fullmatch(source_receipt_sha256):
@@ -794,8 +794,8 @@ class LightpandaB0Queue:
     ) -> TransitionResult:
         """Exact-compare and delete the durable Redis rollback commit proof."""
 
-        if cohort not in {"c1", "c2", "c3", "c4"}:
-            raise ValueError("rollback cohort must be exactly c1, c2, c3, or c4")
+        if cohort not in {"c1", "c2", "c3", "c4", "cdom"}:
+            raise ValueError("rollback cohort must be exactly c1, c2, c3, c4, or cdom")
         if not _SHA256_RE.fullmatch(rollback_plan_digest):
             raise ValueError("rollback_plan_digest must be lowercase SHA-256")
         if not _SHA256_RE.fullmatch(source_receipt_sha256):
@@ -1316,6 +1316,8 @@ def _validated_assignment(
         or resolved.browser_backend != assignment.browser_backend
         or resolved.routing_revision != assignment.routing_revision
         or resolved.timeout_ms != assignment.timeout_ms
+        or resolved.wait != assignment.wait
+        or resolved.wait_fallback != assignment.wait_fallback
         or resolved.config_digest_sha256 != assignment.config_digest_sha256
     ):
         raise ValueError("assignment identity mismatch")
@@ -1357,8 +1359,8 @@ def _assignment_from_envelope(envelope: dict[str, Any]) -> RenderAssignment:
         "browser_backend": assignment.browser_backend,
         "routing_revision": assignment.routing_revision,
         "render": True,
-        "wait": "load",
-        "wait_fallback": None,
+        "wait": assignment.wait,
+        "wait_fallback": assignment.wait_fallback,
         "timeout_ms": assignment.timeout_ms,
         "assignment_digest_sha256": assignment.config_digest_sha256,
     }

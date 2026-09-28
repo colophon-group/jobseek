@@ -72,6 +72,7 @@ var (
 type Task struct {
 	URL        string
 	Evaluation *TaskEvaluation
+	Navigation *navigationOptions
 }
 
 // TaskEvaluation is present exactly for B1 work. Presence is explicit so an
@@ -251,6 +252,9 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if !validNavigationOptions(task.Navigation) {
+		return errors.New("navigation wait options are invalid")
+	}
 	if len(task.URL) == 0 || len(task.URL) > maxURLBytes {
 		return fmt.Errorf("URL must contain 1..%d bytes", maxURLBytes)
 	}
@@ -823,8 +827,29 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	var finalURL string
 	var html string
 	var capturedFrame mainDocumentFrame
+	navigate := chromedp.Navigate(task.URL)
+	if task.Navigation != nil {
+		state := newNavigationState(mainFrame)
+		chromedp.ListenTarget(targetCtx, func(event any) { state.observe(event, time.Now()) })
+		navigate = chromedp.ActionFunc(func(actionCtx context.Context) error {
+			return navigateDocument(actionCtx, state, *task.Navigation, func(navigationCtx context.Context) error {
+				// A timeout cancels only this command/wait. The target and its
+				// committed document remain alive for the readiness fallback.
+				commandCtx := cdp.WithExecutor(navigationCtx, chromedp.FromContext(actionCtx).Target)
+				_, loader, errorText, _, err := page.Navigate(task.URL).Do(commandCtx)
+				if err != nil {
+					return err
+				}
+				if errorText != "" {
+					return navigationError(errorText)
+				}
+				state.commit(loader, time.Now())
+				return nil
+			})
+		})
+	}
 	if err := chromedp.Run(targetCtx,
-		chromedp.Navigate(task.URL),
+		navigate,
 		chromedp.WaitReady("html", chromedp.ByQuery),
 		chromedp.Location(&finalURL),
 		chromedp.OuterHTML("html", &html, chromedp.ByQuery),

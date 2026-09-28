@@ -34,9 +34,10 @@ const (
 )
 
 var producerCohorts = map[string]map[string]struct{}{
-	"c1": set("browser-use-careers"),
-	"c2": set("browser-use-careers", "kandou-ai-careers"),
-	"c3": set("browser-use-careers", "eclypsium-careers", "kandou-ai-careers"),
+	"c1":   set("browser-use-careers"),
+	"c2":   set("browser-use-careers", "kandou-ai-careers"),
+	"c3":   set("browser-use-careers", "eclypsium-careers", "kandou-ai-careers"),
+	"cdom": set("browser-use-careers", "bunq-careers", "algorized-careers"),
 	// c4 is retained for the frozen four-origin admission fixture, not production cutover.
 	"c4": set("browser-use-careers", "eclypsium-careers", "kandou-ai-careers", "poke-and-wiggle-careers"),
 }
@@ -208,7 +209,7 @@ type producerOwnerIdentity struct {
 }
 
 func (owner producerOwnerIdentity) validate() error {
-	if !safeID.MatchString(owner.Namespace) || !contains(set("c1", "c2", "c3", "c4"), owner.Cohort) ||
+	if !safeID.MatchString(owner.Namespace) || !contains(set("c1", "c2", "c3", "c4", "cdom"), owner.Cohort) ||
 		owner.Route.validate() != nil || owner.Route.EngineOwner != engineOwner ||
 		len(owner.BoardSlugs) == 0 || len(owner.BoardSlugs) > 16 || !sort.StringsAreSorted(owner.BoardSlugs) {
 		return errors.New("invalid producer owner identity")
@@ -630,6 +631,9 @@ func producerQueueAuthority(err error) error {
 type producerAssignmentIdentity struct {
 	routingRevision string
 	timeoutMS       int64
+	scraperType     string
+	wait            string
+	waitFallback    *string
 	digest          string
 }
 
@@ -658,14 +662,22 @@ func producerAssignment(rawMetadata string) (map[string]any, producerAssignmentI
 		}
 	}
 	config, ok := configValue.(map[string]any)
-	if !ok || scraperType != "json-ld" {
-		return nil, producerAssignmentIdentity{}, errors.New("allowlisted board has no JSON-LD parser assignment")
+	if !ok || (scraperType != "json-ld" && scraperType != "dom") {
+		return nil, producerAssignmentIdentity{}, errors.New("allowlisted board has no supported parser assignment")
 	}
 	allowed := set(
 		"browser_backend", "routing_revision", "render", "timeout", "wait", "wait_fallback",
 		"defaults", "defaults_by_url", "enrich", "ignore_address_region", "ignore_date_posted",
 		"ignore_locations", "ignore_valid_through",
 	)
+	booleanKeys := []string{"ignore_address_region", "ignore_date_posted", "ignore_locations", "ignore_valid_through"}
+	if scraperType == "dom" {
+		booleanKeys = []string{"include_header_content", "include_document_title", "include_document_description"}
+		allowed = set("browser_backend", "routing_revision", "render", "timeout", "wait", "wait_fallback", "defaults", "defaults_by_url", "enrich", "steps", "scope", "preset", "defaults_by_regex", "gone_url_pattern", "include_header_content", "include_document_title", "include_document_description")
+		if err := validateProducerDOMConfig(config); err != nil {
+			return nil, producerAssignmentIdentity{}, err
+		}
+	}
 	if !keysWithin(config, allowed) {
 		return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment has unknown fields")
 	}
@@ -676,12 +688,21 @@ func producerAssignment(rawMetadata string) (map[string]any, producerAssignmentI
 	}
 	revision, revisionOK := config["routing_revision"].(string)
 	timeoutMS, timeoutOK := canonicalInt(config["timeout"])
+	wait, waitOK := config["wait"].(string)
+	var fallback *string
+	if config["wait_fallback"] != nil {
+		value, valid := config["wait_fallback"].(string)
+		if !valid || !validNavigationWait(value) {
+			return nil, producerAssignmentIdentity{}, errors.New("B0 parser fallback is invalid")
+		}
+		fallback = &value
+	}
 	if backend, ok := config["browser_backend"].(string); !ok || backend != "lightpanda" || !revisionOK ||
-		!safeRevision.MatchString(revision) || config["render"] != true || config["wait"] != "load" ||
-		config["wait_fallback"] != nil || !timeoutOK || timeoutMS < 1 || timeoutMS > 120_000 {
+		!safeRevision.MatchString(revision) || config["render"] != true || !waitOK || !validNavigationWait(wait) ||
+		(scraperType == "json-ld" && (wait != "load" || fallback != nil)) || !timeoutOK || timeoutMS < 1 || timeoutMS > 120_000 {
 		return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment identity is invalid")
 	}
-	for _, key := range []string{"ignore_address_region", "ignore_date_posted", "ignore_locations", "ignore_valid_through"} {
+	for _, key := range booleanKeys {
 		if value, ok := config[key]; ok {
 			if _, valid := value.(bool); !valid {
 				return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment boolean is invalid")
@@ -691,7 +712,7 @@ func producerAssignment(rawMetadata string) (map[string]any, producerAssignmentI
 	jobFields := set("title", "description", "locations", "employment_type", "job_location_type", "date_posted", "base_salary", "language", "extras", "metadata")
 	if defaults, ok := config["defaults"]; ok && defaults != nil {
 		values, valid := defaults.(map[string]any)
-		if !valid || !keysWithin(values, jobFields) {
+		if !valid || (scraperType == "json-ld" && !keysWithin(values, jobFields)) {
 			return nil, producerAssignmentIdentity{}, errors.New("B0 parser defaults are invalid")
 		}
 	}
@@ -702,7 +723,7 @@ func producerAssignment(rawMetadata string) (map[string]any, producerAssignmentI
 		}
 		for _, raw := range values {
 			nested, valid := raw.(map[string]any)
-			if !valid || !keysWithin(nested, jobFields) {
+			if !valid || (scraperType == "json-ld" && !keysWithin(nested, jobFields)) {
 				return nil, producerAssignmentIdentity{}, errors.New("B0 parser URL defaults are invalid")
 			}
 		}
@@ -725,8 +746,65 @@ func producerAssignment(rawMetadata string) (map[string]any, producerAssignmentI
 	}
 	digest := sha256.Sum256(canonical)
 	return config, producerAssignmentIdentity{
-		routingRevision: revision, timeoutMS: timeoutMS, digest: hex.EncodeToString(digest[:]),
+		routingRevision: revision, timeoutMS: timeoutMS, scraperType: scraperType, wait: wait, waitFallback: fallback, digest: hex.EncodeToString(digest[:]),
 	}, nil
+}
+
+func validNavigationWait(value string) bool {
+	return value == "commit" || value == "domcontentloaded" || value == "load" || value == "networkidle"
+}
+
+func sameOptionalString(left, right *string) bool {
+	return (left == nil && right == nil) || (left != nil && right != nil && *left == *right)
+}
+
+func validateProducerDOMConfig(config map[string]any) error {
+	invalid := errors.New("B0 DOM parser configuration is invalid")
+	steps, ok := config["steps"].([]any)
+	if !ok || len(steps) == 0 {
+		return invalid
+	}
+	for _, raw := range steps {
+		if _, ok := raw.(map[string]any); !ok {
+			return invalid
+		}
+	}
+	if preset := config["preset"]; preset != nil && preset != "elementor-careers" {
+		return invalid
+	}
+	if raw, present := config["scope"]; present {
+		scope, ok := raw.(string)
+		if !ok || len([]rune(scope)) > 256 || strings.TrimSpace(scope) == "" || strings.ContainsRune(scope, 0) {
+			return invalid
+		}
+	}
+	if raw, present := config["gone_url_pattern"]; present {
+		if _, ok := raw.(string); !ok {
+			return invalid
+		}
+	}
+	if raw, present := config["defaults_by_regex"]; present {
+		rules, ok := raw.([]any)
+		if !ok || len(rules) < 1 || len(rules) > 20 {
+			return invalid
+		}
+		for _, rawRule := range rules {
+			rule, ok := rawRule.(map[string]any)
+			if !ok || len(rule) != 3 || !keysWithin(rule, set("field", "pattern", "defaults")) {
+				return invalid
+			}
+			if _, ok := rule["field"].(string); !ok {
+				return invalid
+			}
+			if _, ok := rule["pattern"].(string); !ok {
+				return invalid
+			}
+			if _, ok := rule["defaults"].(map[string]any); !ok {
+				return invalid
+			}
+		}
+	}
+	return nil
 }
 
 func buildProducerTask(request producerRequest, route routeIdentity, parserConfig map[string]any, assignment producerAssignmentIdentity, revision int64) (queueTask, error) {
@@ -737,9 +815,9 @@ func buildProducerTask(request producerRequest, route routeIdentity, parserConfi
 		"parser_config": parserConfig, "policy_key": queuePolicyKey, "render": true,
 		"routing_epoch": route.RoutingEpoch, "routing_revision": assignment.routingRevision,
 		"schema_version": "lightpanda-b0-task-v1", "scraper_step": int64(0),
-		"scraper_type": "json-ld", "shard_id": route.ShardID,
+		"scraper_type": assignment.scraperType, "shard_id": route.ShardID,
 		"source_url": request.Config["source_url"], "task_id": request.PostingID,
-		"task_kind": "scrape", "timeout_ms": assignment.timeoutMS, "wait": "load", "wait_fallback": nil,
+		"task_kind": "scrape", "timeout_ms": assignment.timeoutMS, "wait": assignment.wait, "wait_fallback": assignment.waitFallback,
 	}
 	payload, err := canonicalJSON(envelope, false)
 	if err != nil || len(payload) == 0 || len(payload) > maxPayload {
@@ -755,7 +833,9 @@ func sameProducerIdentity(current, wanted queueTask) bool {
 		current.Envelope.Domain == wanted.Envelope.Domain &&
 		current.Envelope.AssignmentDigestSHA256 == wanted.Envelope.AssignmentDigestSHA256 &&
 		current.Envelope.RoutingRevision == wanted.Envelope.RoutingRevision &&
-		current.Envelope.TimeoutMS == wanted.Envelope.TimeoutMS
+		current.Envelope.TimeoutMS == wanted.Envelope.TimeoutMS &&
+		current.Envelope.ScraperType == wanted.Envelope.ScraperType &&
+		current.Envelope.Wait == wanted.Envelope.Wait && sameOptionalString(current.Envelope.WaitFallback, wanted.Envelope.WaitFallback)
 }
 
 func producerLegacyConfig(config map[string]string, task queueTask) (string, error) {

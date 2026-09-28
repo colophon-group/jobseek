@@ -44,8 +44,10 @@ const (
 	maxPEMFileBytes               = int64(128 * 1024)
 	serviceHandshakeTimeout       = 10 * time.Second
 	serviceConnectionTimeout      = 135 * time.Second
-	defaultMemoryMaxPath          = "/sys/fs/cgroup/memory.max"
-	defaultMemorySwapMaxPath      = "/sys/fs/cgroup/memory.swap.max"
+	// Initial idle/read bound plus the longest fully validated DOM execution.
+	serviceMaxConnectionTimeout = 405 * time.Second
+	defaultMemoryMaxPath        = "/sys/fs/cgroup/memory.max"
+	defaultMemorySwapMaxPath    = "/sys/fs/cgroup/memory.swap.max"
 )
 
 func probeRuntimeV1ServiceWithoutClient(address, caPath, serverName string) error {
@@ -161,7 +163,7 @@ func newRuntimeV1ServiceExecution(config Config, run taskRunner) (*runtimeV1Serv
 		}
 		return result, err
 	}
-	adapter, err := lightpandaadapter.NewRenderOnly(runtimeV1Runner{config: config, run: monitoredRun})
+	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: config, run: monitoredRun})
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +371,7 @@ func (service *runtimeV1Service) admit(
 	ctx context.Context,
 	connection net.Conn,
 ) (context.Context, bool) {
-	connectionContext, cancel := context.WithTimeout(ctx, serviceConnectionTimeout)
+	connectionContext, cancel := context.WithTimeout(ctx, serviceMaxConnectionTimeout)
 	service.lifecycleMu.Lock()
 	if service.stopping || ctx.Err() != nil {
 		service.lifecycleMu.Unlock()
@@ -465,7 +467,12 @@ func (service *runtimeV1Service) handleConnection(
 		))
 		return
 	}
-	executionContext, cancelExecution := context.WithCancel(connectionContext)
+	executionBudget := serviceConnectionTimeout
+	if budget, valid := lightpandaadapter.ValidatedRenderExecutionBudget(request); valid {
+		executionBudget = budget + 15*time.Second
+		_ = connection.SetDeadline(time.Now().Add(executionBudget))
+	}
+	executionContext, cancelExecution := context.WithTimeout(connectionContext, executionBudget)
 	readDone := make(chan runtimeV1PostMarkerRead, 1)
 	go watchRuntimeV1PostMarker(reader, cancelExecution, readDone)
 	result := sanitizeRuntimeV1Result(service.executor.Execute(executionContext, request))

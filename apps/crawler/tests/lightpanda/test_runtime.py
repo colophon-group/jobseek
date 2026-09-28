@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import subprocess
 import uuid
 from dataclasses import replace
+from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
@@ -310,3 +312,61 @@ def test_http_error_cannot_bypass_strict_manifest_validation() -> None:
 
     with pytest.raises(LightpandaResultError, match="header"):
         _validated_rendered_html(result, requested_url="https://example.test/jobs/1")
+
+
+@pytest.fixture(scope="module")
+def dom_binary(tmp_path_factory):
+    binary = tmp_path_factory.mktemp("lightpanda-dom") / "dom-detail-parse"
+    subprocess.run(
+        ["go", "build", "-o", str(binary), "./cmd/parse"],
+        cwd=Path(__file__).resolve().parents[2] / "go/dom-detail",
+        check=True,
+    )
+    return str(binary)
+
+
+@pytest.mark.asyncio
+async def test_runtime_parses_exact_dom_result_natively_without_second_origin_request(
+    dom_binary, monkeypatch, tmp_path
+):
+    task, _ = _task()
+    config = {
+        "browser_backend": "lightpanda",
+        "render": True,
+        "routing_revision": "dom-b0-1",
+        "timeout": 30000,
+        "wait": "networkidle",
+        "wait_fallback": "domcontentloaded",
+        "steps": [
+            {"tag": "h1", "field": "title"},
+            {"tag": "p", "field": "description", "to_end": True, "html": True},
+        ],
+        "defaults_by_url": {task.source_url: {"locations": ["Zurich"]}},
+    }
+    assignment = resolve_render_assignment("dom", config)
+    assert assignment is not None
+    task = replace(task, assignment=assignment)
+    html = b"<h1>Engineer</h1><p>Build &amp; ship.</p>"
+    reservation = AsyncMock()
+    reservation.execute.return_value = _result(html)
+    monkeypatch.setattr("src.runtime.dom_go_parse._CAPTURE_PREFIX", str(tmp_path / "capture"))
+    runtime = LightpandaB0ScrapeRuntime(task, reservation, dom_parser_binary=dom_binary)
+    http = AsyncMock()
+    content = await runtime.scrape(task.source_url, "dom", config, http)
+    assert content.title == "Engineer" and content.description == "<p>Build &amp; ship.</p>"
+    assert content.locations == ["Zurich"]
+    reservation.execute.assert_awaited_once_with(task)
+    assert http.mock_calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("patch", [{"wait": "commit"}, {"wait_fallback": "load"}])
+async def test_runtime_rejects_readiness_drift_before_origin(patch):
+    task, config = _task()
+    task = replace(task, assignment=replace(task.assignment, **patch))
+    reservation = AsyncMock()
+    with pytest.raises(LightpandaResultError, match="identity"):
+        await LightpandaB0ScrapeRuntime(task, reservation).scrape(
+            task.source_url, "json-ld", config, AsyncMock()
+        )
+    reservation.execute.assert_not_awaited()
