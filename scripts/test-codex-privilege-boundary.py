@@ -19,7 +19,7 @@ def main() -> None:
     os.umask(0o022)  # Hosted runners may inherit a group-writable umask.
     nobody = pwd.getpwnam("nobody")
     # /tmp is deliberately disallowed as a privileged source ancestor.
-    with tempfile.TemporaryDirectory(prefix="codex-permission-test-", dir="/opt") as tmp:
+    with tempfile.TemporaryDirectory(prefix="codex-permission-test-", dir="/var/lib") as tmp:
         directory = Path(tmp)
         directory.chmod(0o755)
         source = directory / "bundle"
@@ -28,6 +28,10 @@ def main() -> None:
         shutil.copyfile(ROOT / "scripts/deploy-codex-runner-host.sh", deploy)
         helper = source / "scripts/jobseek_maintenance_provenance.py"
         helper.write_text("# trusted helper\n")
+        # Match the real transfer's normalization, including inherited ACL
+        # masks on hosted-runner filesystems; umask alone is insufficient.
+        for path in [source, *source.rglob("*")]:
+            path.chmod(0o755 if path.is_dir() else 0o644)
 
         def verify(expected: int) -> None:
             result = subprocess.run(
@@ -47,6 +51,7 @@ def main() -> None:
         verify(1)
         helper.unlink()
         helper.write_text("# trusted helper\n")
+        helper.chmod(0o644)
         os.chown(helper, nobody.pw_uid, nobody.pw_gid)
         verify(1)
         os.chown(helper, 0, 0)

@@ -317,7 +317,7 @@ paths = [root, *root.parents, *root.rglob("*")]
 for path in paths:
     info = path.lstat()
     if stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
-        raise SystemExit(f"unsafe trusted deployment path: {path}")
+        raise SystemExit(f"unsafe trusted deployment path: {path} (uid={info.st_uid}, mode={stat.S_IMODE(info.st_mode):o})")
 PYTHON
 }
 
