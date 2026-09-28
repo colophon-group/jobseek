@@ -1,0 +1,48 @@
+{
+  "checked_at_utc": "2026-09-28T09:12:28.451457+00:00",
+  "method": "Read-only Chrome browser inspection; no sign-in, writes, checkout, or notification sending. Screenshots visually inspected at 1440px and 390px.",
+  "pages": [
+    {
+      "route": "/en",
+      "url": "https://jseek.co/en",
+      "title": "Track the companies you want to work at \u2014 Job Seek"
+    },
+    {
+      "route": "/en/about",
+      "url": "https://jseek.co/en/about",
+      "title": "About | Job Seek"
+    },
+    {
+      "route": "/en/faq",
+      "url": "https://jseek.co/en/faq",
+      "title": "FAQ | Job Seek"
+    },
+    {
+      "route": "/en/blog",
+      "url": "https://jseek.co/en/blog",
+      "title": "Blog | Job Seek"
+    },
+    {
+      "route": "/de",
+      "url": "https://jseek.co/de",
+      "title": "Verfolge die Unternehmen, bei denen du arbeiten willst \u2014 Job Seek"
+    },
+    {
+      "route": "/fr",
+      "url": "https://jseek.co/fr",
+      "title": "Suis les entreprises pour lesquelles tu veux travailler \u2014 Job Seek"
+    },
+    {
+      "route": "/it",
+      "url": "https://jseek.co/it",
+      "title": "Monitora le aziende per cui vuoi lavorare \u2014 Job Seek"
+    }
+  ],
+  "mobile_horizontal_overflow_390px": false,
+  "pro_cta": {
+    "href": "https://jseek.co/en/settings/billing",
+    "requires_sign_in_to_read": false,
+    "observed_availability_text": "Trial signup isn\u2019t open yet."
+  },
+  "email_runtime_activation": "not verified; source policy is weekly"
+}

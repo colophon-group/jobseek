@@ -14,6 +14,8 @@ These stages call for different pages. A person searching “junior developer jo
 
 Keep Explore as the noindex product interface. Add a small number of indexable pages that answer these distinct needs and lead into it. Do not turn the persona exercise into hundreds of keyword-permutation pages.
 
+**Implementation qualification from the follow-up marketing review:** the current notification policy is an opt-in **weekly digest**, not an immediate alert. Production delivery activation was not verified in this research. Company-monitoring keywords remain relevant, but instant-notification intent is not satisfied by that policy. Marketing must distinguish feed freshness from email cadence. See the [marketing review and proposed copy](marketing-review.md) and [notification documentation](../../../apps/web/docs/notifications.md).
+
 The raw personas sometimes propose a guide for a vacancy-seeking query. Those suggestions are not accepted automatically: a jobs-intent query needs useful current job supply, or the target must be changed to an explicitly informational question. The final page priorities below apply that correction.
 
 This is a **hypothesis-led keyword strategy**, not measured customer behavior or a search-volume report. It uses **50 overlapping persona simulations, 606 candidate search phrases, 100 persona search checks, and 166 distinct persona source URLs**, plus lead-researcher source and product checks. Three persistent subagents carried out the assignments. The runtime limited the number of subagent threads; these are 50 assignments, not 50 independent human respondents or independent models. [Method and limitations](methodology.md).
