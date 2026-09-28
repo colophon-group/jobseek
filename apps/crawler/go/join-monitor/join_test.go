@@ -1,9 +1,51 @@
 package join
 
 import (
+	"encoding/json"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestFrozenPythonPages(t *testing.T) {
+	body, err := os.ReadFile("testdata/python_pages.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cases []struct {
+		Name          string `json:"name"`
+		HTML          string `json:"html"`
+		First         bool   `json:"first"`
+		Fill          string `json:"fill"`
+		Prefix        int    `json:"prefix"`
+		Suffix        int    `json:"suffix"`
+		Expected      Page   `json:"expected"`
+		ExpectedError bool   `json:"expected_error"`
+	}
+	if err := json.Unmarshal(body, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range cases {
+		t.Run(tc.Name, func(t *testing.T) {
+			html := strings.Repeat(tc.Fill, tc.Prefix) + tc.HTML + strings.Repeat(tc.Fill, tc.Suffix)
+			page, err := ParsePage([]byte(html), "acme", tc.First)
+			if tc.ExpectedError {
+				if err == nil {
+					t.Fatal("accepted a Python parser failure")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			urls, err := UniqueSorted([]Page{page})
+			if err != nil || page.PageCount != tc.Expected.PageCount || !reflect.DeepEqual(urls, tc.Expected.URLs) {
+				t.Fatalf("got %#v, want %#v: %v", Page{URLs: urls, PageCount: page.PageCount}, tc.Expected, err)
+			}
+		})
+	}
+}
 
 func samplePage(items, count string) []byte {
 	return []byte(`<html><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"initialState":{"jobs":{"items":` + items + `,"pagination":{"pageCount":` + count + `}}}}}}</script></html>`)

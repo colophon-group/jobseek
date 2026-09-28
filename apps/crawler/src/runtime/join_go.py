@@ -8,8 +8,9 @@ import json
 import os
 import re
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from time import monotonic
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 import httpx
 import structlog
@@ -41,6 +42,7 @@ _BOOKKEEPING = {
     "_confirmed_drop_candidate",
 }
 log = structlog.get_logger()
+_MAX_OUTPUT_BYTES = 64 << 20
 
 
 def _eligible(board_url: str, monitor_type: str, config: dict | None, pw: object | None) -> str:
@@ -74,8 +76,8 @@ def _eligible(board_url: str, monitor_type: str, config: dict | None, pw: object
 
 
 def percentage_selected(board_id: str, board_url: str, config: dict | None) -> bool:
-    """Choose a stable share whose recent inventory fits the Go request bound."""
-    raw = os.environ.get("JOIN_GO_PERCENT", "0")
+    """Choose a stable share of the supported provider configurations."""
+    raw = os.environ.get("JOIN_GO_PERCENT", "100")
     if not re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw):
         return False
     percent = int(raw)
@@ -84,13 +86,6 @@ def percentage_selected(board_id: str, board_url: str, config: dict | None) -> b
     try:
         _eligible(board_url, "join", config, None)
     except ValueError:
-        return False
-    recent = (config or {}).get("recent_discovered_counts")
-    if (
-        not isinstance(recent, list)
-        or len(recent) < 3
-        or not all(type(count) is int and 1 <= count <= 500 for count in recent[-3:])
-    ):
         return False
     bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
     return bucket < percent * 100
@@ -125,12 +120,18 @@ class GoJoinMonitorRuntime:
                 "--slug",
                 slug,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
             )
-            stdout, stderr = await proc.communicate()
-            if len(stdout) > 16_000_000:
-                raise ValueError("Go JOIN output exceeded its inventory bound")
-            payload = json.loads(stdout)
+            assert proc.stdout is not None
+            chunks = []
+            size = 0
+            while chunk := await proc.stdout.read(min(1 << 20, _MAX_OUTPUT_BYTES + 1 - size)):
+                chunks.append(chunk)
+                size += len(chunk)
+                if size > _MAX_OUTPUT_BYTES:
+                    raise ValueError("Go JOIN output exceeded its inventory bound")
+            await proc.wait()
+            payload = json.loads(b"".join(chunks))
             if not isinstance(payload, dict):
                 raise ValueError("invalid Go JOIN response")
             attempts = payload.get("requests")
@@ -138,11 +139,11 @@ class GoJoinMonitorRuntime:
             body_bytes = payload.get("bytes")
             if (
                 type(attempts) is not int
-                or not 1 <= attempts <= 30_000
+                or not 1 <= attempts <= 630_000
                 or type(responses) is not int
                 or not 0 <= responses <= attempts
                 or type(body_bytes) is not int
-                or not 0 <= body_bytes <= 72 << 20
+                or not 0 <= body_bytes <= responses * ((16 << 20) + 1)
                 or (responses == 0 and body_bytes != 0)
             ):
                 raise ValueError("invalid Go JOIN request accounting")
@@ -166,17 +167,13 @@ class GoJoinMonitorRuntime:
                     port = endpoint.port
                 except ValueError as exc:
                     raise ValueError("Go JOIN returned an unexpected endpoint") from exc
-                query = parse_qs(endpoint.query, keep_blank_values=True)
                 if (
                     endpoint.scheme != "https"
-                    or endpoint.hostname not in {"join.com", "www.join.com"}
+                    or not endpoint.hostname
                     or endpoint.username is not None
                     or endpoint.password is not None
-                    or port is not None
-                    or endpoint.path not in {f"/companies/{slug}", f"/companies/{slug}/"}
+                    or port not in (None, 443)
                     or endpoint.fragment
-                    or (query and (set(query) != {"page"} or len(query["page"]) != 1))
-                    or (query and not re.fullmatch(r"[1-9][0-9]{0,3}", query["page"][0]))
                 ):
                     raise ValueError("Go JOIN returned an unexpected endpoint")
             if not responses and (final_url or status):
@@ -197,7 +194,7 @@ class GoJoinMonitorRuntime:
                     )
                 if responses:
                     mark_external_response(final_url, status)
-                detail = payload.get("error") or stderr.decode(errors="replace")[:300]
+                detail = payload.get("error") or "child process failed"
                 raise RuntimeError(f"Go JOIN inventory failed: {detail}")
             raw_urls = payload.get("urls")
             prefix = f"https://join.com/companies/{slug}/"
@@ -231,8 +228,14 @@ class GoJoinMonitorRuntime:
             raise
         finally:
             if proc is not None and proc.returncode is None:
-                proc.terminate()
-                await proc.wait()
+                with suppress(ProcessLookupError):
+                    proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), 5)
+                except TimeoutError:
+                    with suppress(ProcessLookupError):
+                        proc.kill()
+                    await proc.wait()
             runtime_execution_duration_seconds.labels(
                 stage="monitor", implementation=self.implementation
             ).observe(monotonic() - started)

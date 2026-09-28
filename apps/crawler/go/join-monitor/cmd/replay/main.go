@@ -20,9 +20,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "unexpected positional argument")
 		os.Exit(2)
 	}
-	input, err := io.ReadAll(io.LimitReader(os.Stdin, (8<<20)+1))
-	if err != nil || len(input) > 8<<20 {
-		fmt.Fprintln(os.Stderr, "JOIN replay input exceeded 8 MiB")
+	input, err := io.ReadAll(io.LimitReader(os.Stdin, (16<<20)+1))
+	if err != nil || len(input) > 16<<20 {
+		fmt.Fprintln(os.Stderr, "JOIN replay input exceeded 16 MiB")
 		os.Exit(1)
 	}
 	page, err := join.ParsePage(input, slug, first)
