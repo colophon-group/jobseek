@@ -63,6 +63,10 @@ Replay artifacts: `/tmp/robotics-revision3-question-local-full-payloads.json`, `
 
 A final bounded replay simplified the public request to lifecycle language while retaining the original production builder. It evaluated the same 186 inputs in their original 38 batches, with no retries or failures. Agreement declined to 172/176 definite expectations (118 accepted, 68 rejected). It retained the Distalmotion complaint-quality miss and introduced misses in FIXPOSITION product marketing, Distalmotion clinical sales, and RIVR robotics trade management. The current public request was retained; no further variants were tried.
 
+## Durable evaluation record
+
+The adjacent [JSON evaluation record](2026-09-28-swiss-robotics-narrowed-qa.json) preserves all 186 input hashes, fixed expectations and rationales, production decisions, and both complete replay outcomes with batch membership and probabilities. It excludes full job descriptions, credentials and account data. The local files below retain the richer diagnostic artifacts from this run.
+
 ## Evidence index
 
 - Full production records: `/tmp/robotics-narrowed-qa-revision3-complete.json`.
