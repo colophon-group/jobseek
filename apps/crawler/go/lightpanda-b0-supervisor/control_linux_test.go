@@ -681,3 +681,34 @@ func TestProducerReadinessRejectsSocketWithoutHealthProtocol(t *testing.T) {
 	}
 	<-done
 }
+
+func TestProducerControlCarriesBoundSourceSchedule(t *testing.T) {
+	client, server := controlConnections(t)
+	queue := &fakeProducerQueue{}
+	startControlHandler(t, server, validProducer(t, queue, "browser-use-careers"), uint32(os.Geteuid()))
+	request := validProducerRequest()
+	request.FirstTime, request.NextScrapeAtMS, request.LegacyScheduleScore = true, 350_001, "350.0001"
+	payload, err := canonicalJSON(request, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := framing.EncodeRecord(payload, producerFrameLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = client.SetDeadline(time.Now().Add(2 * time.Second))
+	if _, err := client.Write(record); err != nil {
+		t.Fatal(err)
+	}
+	responsePayload, err := framing.ReadRecord(client, producerFrameLimit)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var response producerResponse
+	if err := json.Unmarshal(responsePayload, &response); err != nil || response.Outcome != "prepared" || !hex256.MatchString(response.PreparationDigest) {
+		t.Fatalf("real UDS decoder rejected the source-bound operator: %#v %v", response, err)
+	}
+	if queue.initialized != 0 || queue.activated != 0 {
+		t.Fatal("control preparation mutated authority")
+	}
+}

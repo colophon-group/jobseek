@@ -761,3 +761,38 @@ func TestOperatorTransferBindsDeferredSourceScore(t *testing.T) {
 		t.Fatal("runtime caller supplied operator schedule authority")
 	}
 }
+
+func TestProducerControlSourceScoreSchema(t *testing.T) {
+	request := validProducerRequest()
+	request.FirstTime, request.NextScrapeAtMS, request.LegacyScheduleScore = true, 350_001, "350.0001"
+	payload, err := canonicalJSON(request, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := decodeProducerRequest(payload)
+	if err != nil || decoded.LegacyScheduleScore != request.LegacyScheduleScore {
+		t.Fatalf("source-bound twelve-field operator request rejected: %#v %v", decoded, err)
+	}
+	for _, change := range []map[string]any{
+		{"legacy_schedule_score": ""}, {"legacy_schedule_score": nil},
+		{"legacy_schedule_score": 350}, {"legacy_schedule_score": strings.Repeat("1", 33)},
+		{"operator_transfer": false}, {"operation": "enqueue"},
+		{"operation": "manifest"}, {"operation": "health"},
+		{"unknown": true},
+	} {
+		fields := map[string]any{}
+		if err := json.Unmarshal(payload, &fields); err != nil {
+			t.Fatal(err)
+		}
+		for k, v := range change {
+			fields[k] = v
+		}
+		body, err := canonicalJSON(fields, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := decodeProducerRequest(body); err == nil {
+			t.Fatalf("invalid score schema accepted: %#v", change)
+		}
+	}
+}
