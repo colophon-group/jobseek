@@ -211,10 +211,39 @@ func TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence(t *test
 			"scrape_step": "0", "scrape_interval_hours": "24", "description_r2_hash": "",
 		}, Browser: true,
 	}
+	// Exercise the actual installed control decoder, not only prepareTask:
+	// cold operators bind one extra source-score field on the wire.
+	legacy := make(map[string]any, len(request.Config)+1)
+	for key, value := range request.Config {
+		legacy[key] = value
+	}
+	legacy["domain"] = request.Domain
+	if err := client.HSet(ctx, "scrape:"+integrationTaskID, legacy).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.ZAdd(ctx, "scrapes_browser:"+request.Domain, redis.Z{Score: 0, Member: integrationTaskID}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.ZAdd(ctx, "ready:browser:2", redis.Z{Score: 0, Member: request.Domain}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	request.Operation, request.OperatorTransfer, request.LegacyScheduleScore = "prepare", true, "0"
+	prepared := controlExchange(t, producerSocketPath, request)
+	if prepared.Outcome != "prepared" || !hex256.MatchString(prepared.PreparationDigest) {
+		t.Fatalf("installed source-bound preparation failed: %#v", prepared)
+	}
+	request.Operation, request.ExpectedDigest = "activate", prepared.PreparationDigest
 	first := controlExchange(t, producerSocketPath, request)
 	if first.Outcome != "activated" || first.Reason != "activated" || !first.Activated {
 		t.Fatalf("first real activation failed: %#v", first)
 	}
+	if _, err := client.ZScore(ctx, "scrapes_browser:"+request.Domain, integrationTaskID).Result(); err != redis.Nil {
+		t.Fatalf("source membership was not transferred: %v", err)
+	}
+	if present, err := client.HExists(ctx, "scrape:"+integrationTaskID, "__operator_source_score").Result(); err != nil || present {
+		t.Fatalf("operator CAS marker leaked into the legacy hash: %t %v", present, err)
+	}
+	request.Operation, request.OperatorTransfer, request.LegacyScheduleScore, request.ExpectedDigest = "enqueue", false, "", ""
 	second := controlExchange(t, producerSocketPath, request)
 	if second.Outcome != "activated" || second.Reason != "already_activated" || second.Activated {
 		t.Fatalf("idempotent real activation failed: %#v", second)

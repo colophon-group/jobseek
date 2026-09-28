@@ -386,7 +386,19 @@ func decodeProducerRequest(payload []byte) (producerRequest, error) {
 		return producerRequest{}, err
 	}
 	object, ok := value.(map[string]any)
-	if !ok || len(object) != 11 {
+	if !ok {
+		return producerRequest{}, errors.New("producer request fields are not exact")
+	}
+	fieldCount := 11
+	if rawScore, present := object["legacy_schedule_score"]; present {
+		fieldCount++
+		score, valid := rawScore.(string)
+		if !valid || score == "" || len(score) > 32 || object["operator_transfer"] != true ||
+			(object["operation"] != "prepare" && object["operation"] != "activate") {
+			return producerRequest{}, errors.New("producer source score is not an operator transfer binding")
+		}
+	}
+	if len(object) != fieldCount {
 		return producerRequest{}, errors.New("producer request fields are not exact")
 	}
 	for _, field := range []string{

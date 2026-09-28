@@ -6,7 +6,61 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
-## Schedule-transfer implementation: 2026-09-28 — pending deployment
+## Production checkpoint: 2026-09-28 — schedule transfer deployed, wire correction pending
+
+[PR #10164](https://github.com/colophon-group/jobseek/pull/10164) merged as
+`c41e249a54efb554ecc80fb46040980681095316`, crawler **v0.13.894**.
+Required CI, Crawler Deploy Gate and installed image contracts passed at head
+`271ce4baf81b15ac521abd97ee22e313b0e40174`.
+[Deployment 36442669172](https://github.com/colophon-group/jobseek/actions/runs/36442669172)
+succeeded through promotion. The renderer remains at the proven September 28
+nightly/source/image tuple recorded below; upstream and installed bytes match.
+
+Supported c1 rollback retired epoch **122**, restored all five schedules and
+cleared all 25 selectors. They were staged at the new promoted revision after
+deployment. Both attempted cdom admission and c1 restoration failed **during
+preparation, before task transfer**. The Go control decoder still required the
+old eleven request fields and rejected the optional operator source score.
+The decoder omission is in the migration change; preparation unit tests did
+not exercise that extended request through the control endpoint.
+
+The supported maintenance recovery proved every Go queue key and guard absent,
+no producer owner, zero Go write fences and no activation receipt. Under the
+shared mutation lock it restored all six promoted base mutation services as a
+coordinated group, without changing images, schedules or `.env`. Workers,
+browser, drain and dark claimant are healthy; the maintenance window completed
+with zero restoration failures. **B0 is dark; cdom has no admission proof.**
+
+The **v0.13.895** correction preserves the eleven mandatory fields and permits
+only the bounded, nonempty twelfth source-score string for operator prepare or
+activate. Unknown/missing fields, wrong types, ordinary callers and other
+operations remain rejected. Go race tests and a real ARM64 Linux UDS preparation
+test pass. The installed producer/Redis integration now performs actual
+source-bound prepare and activation before verifying ordinary enqueue
+compatibility. Required CI and deployment for this correction remain pending.
+
+The intervening **v0.13.893** locale fix deployed successfully in
+[run 36440738548](https://github.com/colophon-group/jobseek/actions/runs/36440738548)
+at `3e00ebc274c0b898660fb3772adf4dc8e2d141af`. Its exact nine-row Swisslog repair
+completed under the maintenance lock and exporter operator fence after dry-run
+review: eight `en`→`de`, one `en`→`sv`; no R2 writes or publisher requests, zero
+restoration failures. The catalogue owner independently verified all 29 company
+identities/pages and all 67 primary descriptions across six affected employers.
+
+All **25** selectors are still staged at promoted revision
+**`c41e249a54efb554ecc80fb46040980681095316`**. Before the next full deployment,
+verify B0 remains absent and clear them using the unchanged selector helper
+under the mutation lock at that exact revision and Kandou URL below. The
+pre-transfer failures created no receipt to roll back. Stage only after terminal
+next-deployment success including promotion, then use supported activation.
+Python/Chromium production work and actual-workload whole-lane resource proof
+remain unfinished. Full transition remains active.
+
+Private refusal, restoration, repair and native endpoint evidence:
+`/Users/Viktor/.codex/migration-evidence/lightpanda-dom/2026-09-28/schedule-transfer/`.
+**This checkpoint supersedes older production state and revision instructions.**
+
+## Schedule-transfer implementation: 2026-09-28 — deployed in PR #10164
 
 The legacy publisher retains the original Redis `description_r2_hash` cache
 hint on recurring reschedule. PostgreSQL can hold a newer populated hash.
@@ -29,11 +83,11 @@ milliseconds rounds upward, preventing an early request. An internal operator
 CAS marker is removed before hash validation/storage. Normal runtime callers
 cannot supply this authority.
 
-The implementation passes 93 focused Python tests, Go race tests, Ruff and
+The implementation passes 129 focused Python tests, Go race tests, Ruff and
 Pyright. Tests cover blank cached hashes with populated DB content, pruned
 rows, deferred first-time work, fractional due times, and score changes between
 planning and atomic transfer. Production cdom admission and natural output
-evidence remain pending deployment.
+evidence remain pending the wire correction and supported admission.
 
 The intervening supported catalogue window retired c1 at epoch **120**, restored
 all five schedules with zero drops/fences, cleared all 25 exact selectors and
