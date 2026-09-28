@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { companyCacheTag, companyCsvDataCacheTag } from "@/lib/cache-tags";
 import { CACHE_TTL_COMPANY_SHELL } from "@/lib/cache-ttl";
-import { fetchCompanyPageDefaults } from "@/lib/actions/company-page-data";
+import { fetchCompanyPageDefaults } from "@/lib/services/company-page-defaults";
 import type { Locale } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";

@@ -28,6 +28,13 @@ vi.mock("@/lib/actions/company", () => ({
   getCompanyPostingsAnonymous: mocks.getCompanyPostingsAnonymous,
   getSimilarCompanies: mocks.getSimilarCompanies,
 }));
+vi.mock("@/lib/services/company-detail", () => ({
+  getCompanyBySlug: mocks.getCompanyBySlug,
+}));
+vi.mock("@/lib/services/company", () => ({
+  getCompanyPostingsAnonymous: mocks.getCompanyPostingsAnonymous,
+  getSimilarCompanies: mocks.getSimilarCompanies,
+}));
 vi.mock("@/lib/actions/search", () => ({
   getCurrencyRates: mocks.getCurrencyRates,
 }));
@@ -49,10 +56,8 @@ vi.mock("@/lib/actions/search-input", () => ({
   parseSearchFilters: mocks.parseSearchFilters,
 }));
 
-import {
-  fetchCompanyPageDefaults,
-  fetchCompanyPageData,
-} from "../company-page-data";
+import { fetchCompanyPageData } from "../company-page-data";
+import { fetchCompanyPageDefaults } from "@/lib/services/company-page-defaults";
 
 function makeCompany(): CompanyDetail {
   return {

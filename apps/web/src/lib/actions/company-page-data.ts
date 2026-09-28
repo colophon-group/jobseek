@@ -3,8 +3,6 @@
 import {
   getCompanyBySlug,
   getCompanyPostings,
-  getCompanyPostingsAnonymous,
-  getSimilarCompanies,
   type CompanyDetail,
   type SimilarCompaniesPage,
 } from "@/lib/actions/company";
@@ -19,18 +17,6 @@ import { convertToEur } from "@/lib/salary";
 import type { SearchResultPosting } from "@/lib/search";
 
 const PAGE_SIZE = 20;
-
-const DEFAULT_DISPLAY_CURRENCY = "EUR";
-
-const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
-  keywords: [],
-  locations: [],
-  occupations: [],
-  seniorities: [],
-  technologies: [],
-  workMode: [],
-  employmentTypes: [],
-};
 
 export interface CompanyPageData {
   company: CompanyDetail;
@@ -159,84 +145,5 @@ export async function fetchCompanyPageData(params: {
     experienceMin,
     experienceMax,
     showPostingId: show ?? null,
-  };
-}
-
-/**
- * Server-side prerender variant of :func:`fetchCompanyPageData` for the
- * anonymous, no-filter company-detail page case (#3203).
- *
- * Mirrors :func:`fetchExplorePageDefaults` (#2640). Critically does NOT
- * call :func:`getPreferences`/:func:`getSession`/:func:`readAnonJobLanguagesCookie`
- * (read ``cookies()``) or :func:`getGeoFromHeaders` (reads ``headers()``)
- * — those force dynamic rendering and would silently break the page's
- * ISR eligibility (`revalidate = CACHE_TTL_DETAIL`). Returns the same
- * ``CompanyPageData`` shape with anonymous defaults: EUR currency, no
- * job-language filter, no geo proximity bias, no active filters,
- * ``showPostingId: null``. The client component reuses app-bootstrap
- * preferences and loads deferred or filtered results directly through the
- * scoped browser Typesense key. With browser-direct search enabled, only
- * company facts are fetched on the server; posting counts stay loading until
- * that first browser read completes.
- *
- * Returns ``null`` when the slug is unknown — caller renders the
- * not-found shell. The cache layer in `getCompanyBySlug` ensures repeat
- * unknown-slug hits don't churn Typesense/Postgres.
- */
-export async function fetchCompanyPageDefaults(params: {
-  slug: string;
-  locale: string;
-}): Promise<CompanyPageData | null> {
-  const { slug, locale } = params;
-
-  const company = await getCompanyBySlug(slug, locale);
-  if (!company) return null;
-
-  const displayCurrency = DEFAULT_DISPLAY_CURRENCY;
-  const { jobLanguages, languages } = resolveCompanyPageJobLanguages([], locale);
-
-  // Browser-direct mode already reads fresh postings and peers after hydration.
-  // Keep those lists out of the cached shell to avoid fetching, serializing and
-  // rendering them a second time on every cold company/locale path. Retain the
-  // anonymous server snapshot for environments where direct search is disabled.
-  const postingsDeferred = process.env.NEXT_PUBLIC_TYPESENSE_DIRECT === "1";
-  const [postingsResult, similarCompanies] = postingsDeferred
-    ? [null, undefined]
-    : await Promise.all([
-        getCompanyPostingsAnonymous({
-          companyId: company.id,
-          keywords: [],
-          languages,
-          locale,
-          offset: 0,
-          limit: PAGE_SIZE,
-        }),
-        getSimilarCompanies(company.id, company.industryId, {
-          offset: 0,
-          limit: 10,
-          locale,
-        }),
-      ]);
-
-  return {
-    company,
-    postingsDeferred,
-    similarCompanies,
-    postings: postingsResult?.postings ?? [],
-    activeCount: postingsResult?.activeCount ?? 0,
-    yearCount: postingsResult?.yearCount ?? 0,
-    truncated: postingsResult?.truncated,
-    parsed: EMPTY_PARSED_FILTERS,
-    displayCurrency,
-    jobLanguages,
-    languages,
-    userLat: undefined,
-    userLng: undefined,
-    salaryCurrencyParam: displayCurrency,
-    salaryMinDisplay: undefined,
-    salaryMaxDisplay: undefined,
-    experienceMin: undefined,
-    experienceMax: undefined,
-    showPostingId: null,
   };
 }

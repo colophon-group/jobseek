@@ -220,6 +220,9 @@ The subsequent implementation targets the company-page work identified above:
   The jobs area stays in a loading state until the first bounded read settles;
   failures use the existing unavailable state. Environments with direct search
   disabled retain the anonymous server snapshot.
+- The public snapshot imports the small company-detail service directly; auth
+  and personalized-search services are loaded only by the disabled-direct-search
+  fallback. This removes the broad server-action dependency from the cached read.
 - Related companies always use global active-position totals. Entry filters and
   subsequent filter changes do not change the ranking/counts or trigger a server
   action. Links open the related company without inherited filters.
