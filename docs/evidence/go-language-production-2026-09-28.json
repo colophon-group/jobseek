@@ -1,0 +1,193 @@
+{
+  "status": "deployed and verified on natural production work; full Go/Typesense/Lightpanda migration remains active",
+  "version": "0.13.898",
+  "implementation_pr": "https://github.com/colophon-group/jobseek/pull/10174",
+  "pr_head": "6630d483c30ee32ed79c145df7fb933820886ffb",
+  "deployed_revision": "20b4031ccc7e3056c6ca10b55b68bd5562c0c720",
+  "required_ci_run": 36465873665,
+  "deployment_gate_run": 36465873622,
+  "installed_runtime_contracts_run": 36465873766,
+  "deployment_run": 36467631537,
+  "deployment_completed_at": "2026-09-28T19:00:19Z",
+  "promotion_completed_at": "2026-09-28T19:00:41Z",
+  "images": {
+    "CRAWLER_IMAGE_TAG": "v0.13.898",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:5a1003ecf68d70b58c06a4c4c692c4aad28369754d8807a09a9b96c6d6b0102f",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:52763522dfce80079619d18aa0cb7ff372b883ea86b8a9797e19a00255cd266b",
+    "JOBSEEK_DEPLOY_REVISION": "20b4031ccc7e3056c6ca10b55b68bd5562c0c720"
+  },
+  "model_sha256": "8f3472cfe8738a7b6099e8e999c3cbfae0dcd15696aac7d7738a8039db603e83",
+  "natural_output": {
+    "natural_readback_utc": "2026-09-28T19:05:33.803764+00:00",
+    "deploy_completed_at": "2026-09-28T19:00:19Z",
+    "description_rows": 256,
+    "postings": 256,
+    "boards": 38,
+    "monitor_types": [
+      "api_sniffer",
+      "ashby",
+      "bamboohr",
+      "cornerstone",
+      "dom",
+      "greenhouse",
+      "icims",
+      "lever",
+      "nextdata",
+      "oracle_hcm",
+      "phenom",
+      "rss",
+      "sitemap",
+      "ukg",
+      "workday"
+    ],
+    "locales": [
+      "en",
+      "es",
+      "fr",
+      "hu",
+      "pt"
+    ],
+    "same_byte_Python_Go_primary_and_ordered_multilingual_match": true,
+    "fresh_description_rows": 201,
+    "fresh_primary_description_rows": 201,
+    "fresh_primary_detected_language_coverage_matches_DB": true,
+    "fresh_description_hash_mismatches": 0,
+    "primary_scalar_pending": [],
+    "zero_scrape_failures": 256,
+    "metrics_snapshots": {
+      "after-promote": {
+        "utc": "2026-09-28T19:01:59.881905+00:00",
+        "capabilities": {
+          "all_languages": {
+            "successes": 4843,
+            "errors": 0,
+            "by_port": {
+              "9095": {
+                "success": 109
+              },
+              "9096": {
+                "success": 1237
+              },
+              "9097": {
+                "success": 1566
+              },
+              "9098": {
+                "success": 1931
+              }
+            }
+          },
+          "language": {
+            "successes": 4654,
+            "errors": 0,
+            "by_port": {
+              "9095": {
+                "success": 83
+              },
+              "9096": {
+                "success": 1041
+              },
+              "9097": {
+                "success": 1599
+              },
+              "9098": {
+                "success": 1931
+              }
+            }
+          }
+        }
+      },
+      "after-activation": {
+        "utc": "2026-09-28T19:09:52.552348+00:00",
+        "capabilities": {
+          "language": {
+            "successes": 2491,
+            "errors": 0,
+            "by_port": {
+              "9095": {
+                "success": 1130
+              },
+              "9096": {
+                "success": 55
+              },
+              "9097": {
+                "success": 1162
+              },
+              "9098": {
+                "success": 144
+              }
+            }
+          },
+          "all_languages": {
+            "successes": 2392,
+            "errors": 0,
+            "by_port": {
+              "9095": {
+                "success": 1128
+              },
+              "9096": {
+                "success": 60
+              },
+              "9097": {
+                "success": 1060
+              },
+              "9098": {
+                "success": 144
+              }
+            }
+          }
+        }
+      }
+    },
+    "cohort_rows": 137,
+    "cohort_active_rows": 39,
+    "cohort_all_canonical_fields_and_failures_unchanged": true,
+    "source_definition": "Read-only rows updated after terminal deploy job, exact stored-byte offline Python/Go comparison. Fresh primary description detected languages are present in stored locales; preexisting primary/localization locale order is retained. Source-provided primary language may differ from model; it is not overwritten for a check. Counters are separate worker generations across supported cohort reactivation. No origin request, forced due or queue priority.",
+    "initial_pending_primary_uploads": 2,
+    "ordinary_drain_pending_readback": {
+      "postings": 2,
+      "same_bytes_and_hash": true,
+      "r2_uploaded": true,
+      "primary_scalar_matches": true
+    },
+    "primary_scalar_hash_mismatches_after_drain": 0
+  },
+  "cohort": {
+    "name": "cdom",
+    "active_epoch": 133,
+    "selected": 22,
+    "already_unqueued": 17,
+    "lifetime_headroom": 2026,
+    "pilot_limit": 1600,
+    "audit": {
+      "decision": "accepted",
+      "reason": "audit_ok",
+      "server_time_ms": 1790622601309,
+      "value": 22,
+      "secondary_value": 0
+    },
+    "exact_selectors": 25,
+    "retired_epoch": 132,
+    "schedules_restored": 22,
+    "terminals_dropped": 0,
+    "fences_remaining": 0,
+    "selector_helper_sha256": "8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743",
+    "kandou_url": "https://kandou.bamboohr.com/careers/310",
+    "selector_staging_first_attempt": "180-second lock wait expired while normal bounded Go Typesense reconciliation ran; service finished success, exact retry staged25; no bypass or interruption"
+  },
+  "lightpanda": {
+    "latest_verified_date": "2026-09-28",
+    "arm64_asset_id": 594332898,
+    "arm64_installed_sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f",
+    "amd64_asset_id": 594332787,
+    "amd64_sha256": "e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f",
+    "renderer_source": "fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0",
+    "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:72b73991cc4a6820263970ccf07367b5d9193eb37cb9d742701fb78ea0104a21",
+    "c2_kandou": "dark"
+  },
+  "limitations": [
+    "Same actual-workload whole-lane production CPU/RAM/density/cost remains required. Local stage replay including IPC is slower and is not a savings claim.",
+    "Python/Chromium still own other production stages; language ownership is one deployed slice, not full transition.",
+    "No fresh cdom cycle was forced; previous five natural Bunq DOM cases remain valid."
+  ],
+  "private_evidence_directory": "/Users/Viktor/.codex/migration-evidence/go-language/2026-09-28"
+}
