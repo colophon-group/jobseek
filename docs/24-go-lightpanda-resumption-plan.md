@@ -6,7 +6,102 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
-## Production checkpoint: 2026-09-28 — shared Go HTML normalization v0.13.897
+## Production checkpoint: 2026-09-28 — shared Go language detection v0.13.898
+
+[PR #10174](https://github.com/colophon-group/jobseek/pull/10174) merged as
+**`20b4031ccc7e3056c6ca10b55b68bd5562c0c720`**, crawler **v0.13.898**.
+Required CI, Crawler Deploy Gate and installed runtime contracts passed at
+`6630d483c30ee32ed79c145df7fb933820886ffb`.
+[Deployment 36467631537](https://github.com/colophon-group/jobseek/actions/runs/36467631537)
+reached terminal success, including promotion at **19:00:41 UTC**. **Go now owns
+both shared primary and multilingual description language detection** in board
+monitoring, detail scraping and CPU processing. The existing compressed model
+is embedded and digest checked, with pure Go quantized prediction and
+hierarchical softmax. No model download or Python/C++ binding is needed in the
+Go path. Python is retained lazily for offline comparison and explicit cold
+reversal; runtime failures never call it automatically.
+
+The exact existing model digest is
+`8f3472cfe8738a7b6099e8e999c3cbfae0dcd15696aac7d7738a8039db603e83`.
+Go preserves regex stripping, Unicode limits/trimming, the 500-character
+primary/chunk boundaries, hard-cut skip, 80-character minimum chunk length,
+**fast-langdetect 1.0.1's actual 80-character prediction limit**, LF replacement,
+uppercase preparation, signed UTF-8 hashing/EOS, float32 prediction, confidence
+and coverage thresholds, failed/inconclusive chunk denominator and language
+insertion order. Model and adapted-code provenance/license notices ship in the
+image. Unknown engines, model corruption and IPC failures fail explicitly.
+
+Verification matches **1,347** frozen synthetic prediction/description cases
+across 19 languages, **1,982** Unicode preparation cases, and **512** stored
+production descriptions from **265 boards / 14 locales**. Public outputs match
+exactly; raw prediction scores are tested within 2e-6. Forty-five focused Python
+tests, uncached Go race/vet/mod checks, Ruff and Pyright passed. A fresh Go-path
+Python process does not import the Python detector or fastText binding.
+Installed-image CI verifies all 1,347 public-output cases through the shipped
+resident binary, alongside the existing taxonomy/experience/HTML fixtures.
+
+Natural production work recorded **4,654 primary + 4,843 multilingual successes
+with zero errors** before reactivation, then **2,491 + 2,392 successes/zero errors**
+in the new worker generation. These are separate counter generations. Read-only
+fresh-posting evidence includes **256 postings from 38 boards**, 15 monitor types
+and five stored locales. Exact stored-byte Python/Go primary and ordered
+multilingual results match. All **201 newly written primary description rows**
+have exact content hashes and detected-language coverage in stored locales;
+source-provided primary/localization ordering is preserved. All 256 postings
+have zero scrape failures. Two pending scalar hashes converged via the ordinary
+Go drain: uploaded flags/scalars now match the original, unchanged bytes/hash.
+No marker was rewritten to make a check pass.
+
+Supported **`rollback cdom` retired epoch 132**, restored all **22** schedules,
+dropped zero terminals and cleared every write fence. All **25** selectors were
+cleared, then staged at the full promoted revision. The first staging lock wait
+expired while the normal bounded **Go Typesense reconciliation** held the lock;
+that service finished successfully, and the exact retry staged all 25. Its lock
+was not bypassed or its work interrupted. Supported **`activate cdom` succeeded
+at epoch 133**: **22** selected schedules, **17** already unqueued rows and
+lifetime headroom **2026** (pilot limit 1600). Conservation is accepted/audit_ok,
+22 ready/zero inflight. Workers, browser, drain, producer, executor, claimant and
+Redis are healthy; exporter and Alloy are up. All **137** cohort rows, **39** active
+rows, canonical content, failures and scrape timestamps/due times are unchanged.
+No publisher request, due time or queue priority was forced. Earlier five natural
+Bunq DOM cases remain valid; no new cdom cycle is claimed for this window.
+
+The renderer remains source `fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0`, image
+`ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:72b73991cc4a6820263970ccf07367b5d9193eb37cb9d742701fb78ea0104a21`.
+The **latest official September 28 nightly** asset IDs/checksums were rechecked,
+and the installed ARM64 binary matches
+`e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f`.
+C2 Kandou remains dark.
+
+Before any further crawler deploy or selector mutation, use supported
+**`/home/deploy/scripts/lightpanda-b0-cutover.sh rollback cdom`**, then clear all
+**25** selectors under `/run/lock/jobseek-crawler-mutation.lock` with
+`scripts/migration-jsonld-selectors.py`, full promoted revision
+**`20b4031ccc7e3056c6ca10b55b68bd5562c0c720`** and exact Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Helper SHA-256 remains
+`8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743`.
+Stage at the next full revision only after terminal deployment success including
+promotion, then reactivate cdom through the supported wrapper. Never manually
+edit `.env`, force due or duplicate publisher traffic.
+
+See [production output and operational evidence](evidence/go-language-production-2026-09-28.json)
+and [offline stage replay](evidence/go-language-replay-2026-09-28.json). Protected
+inputs/readbacks/logs: `/Users/Viktor/.codex/migration-evidence/go-language/2026-09-28/`.
+The counterbalanced local 20x512 stage replay used **1.882/1.912 seconds Python
+CPU** and **3.255/3.288 seconds Go CPU including child and bridge**. The current
+IPC slice is slower on this stage workload. Parent/child RSS maxima are reported
+separately; these are not whole-lane production RAM, density or cost results and
+no savings are claimed.
+
+**This is the current production authority; all checkpoints below are history.**
+Continue Go salary/location processing, remaining enabled monitor/detail profiles,
+native workers and persistence. Configuration sync, Typesense publication and
+R2 drain are already Go-owned. Python/Chromium still own production work; same
+actual-workload whole-lane CPU/RAM/density/cost and final full cutover/reversal
+remain required. The full Go + Typesense + Lightpanda goal remains active;
+owner-closed #7966 was not reopened.
+
+## Production checkpoint: 2026-09-28 — shared Go HTML normalization v0.13.897 (historical)
 
 [PR #10172](https://github.com/colophon-group/jobseek/pull/10172) merged as
 **`ed4a86d68e3d6ea9d0ea804ee2f7f6c9dfe7002e`**, crawler **v0.13.897**.
@@ -75,7 +170,7 @@ See [production output and operational evidence](evidence/go-html-normalization-
 and [offline stage replay](evidence/go-html-normalization-replay-2026-09-28.json).
 Protected inputs/readbacks/logs:
 `/Users/Viktor/.codex/migration-evidence/go-html-normalization/2026-09-28/`.
-**This is the current production authority; all checkpoints below are history.**
+**This historical checkpoint was superseded by v0.13.898 above.**
 Continue implementation of remaining Go monitor/detail profiles, language/location/
 salary processing, native workers and persistence. Configuration sync, Typesense
 publication and the R2 drain are already Go-owned. Python/Chromium still own
