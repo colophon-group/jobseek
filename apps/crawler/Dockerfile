@@ -84,6 +84,14 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/jsonld-detail-live ./cmd/live
 
+# Shared DOM extractor for already fetched static and rendered documents.
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-dom-build
+WORKDIR /workspace/apps/crawler/go/dom-detail
+COPY go/dom-detail/ ./
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/dom-detail-parse ./cmd/parse
+
 # ── Default-off Go Recruitee rich monitor ────────────────────────────
 FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-recruitee-build
 WORKDIR /workspace/apps/crawler/go/recruitee-monitor
@@ -204,6 +212,7 @@ COPY --from=go-ashby-build /out/ashby-monitor-live /usr/local/bin/ashby-monitor-
 COPY --from=go-lever-build /out/lever-monitor-live /usr/local/bin/lever-monitor-live
 COPY --from=go-join-build /out/join-monitor-live /usr/local/bin/join-monitor-live
 COPY --from=go-jsonld-build /out/jsonld-detail-live /usr/local/bin/jsonld-detail-live
+COPY --from=go-dom-build /out/dom-detail-parse /usr/local/bin/dom-detail-parse
 COPY --from=go-recruitee-build /out/recruitee-monitor-live /usr/local/bin/recruitee-monitor-live
 COPY --from=go-job-enrichment-build /out/job-enrichment /usr/local/bin/job-enrichment
 COPY --from=go-smartrecruiters-build /out/smartrecruiters-monitor-live /usr/local/bin/smartrecruiters-monitor-live

@@ -1,0 +1,61 @@
+{
+  "cmsmasters": {
+    "scope": "div[data-elementor-type=\"single-post\"]",
+    "steps": [
+      {
+        "tag": "h1",
+        "attr": "class=elementor-heading-title",
+        "field": "title"
+      },
+      {
+        "field": "description",
+        "html": true,
+        "stop_regex": "(?i)^\\s*Apply(?:\\s+for(?:\\s+this)?\\s+Job|\\s+Now)(?:\\s*:.*)?\\s*$"
+      },
+      {
+        "match_regex": "(?i)^\\s*Location\\s*:\\s*(?:In[- ]?person|On[- ]?site|Remote|Hybrid)\\s*$",
+        "field": "job_location_type",
+        "regex": "(?i)^\\s*Location\\s*:\\s*(In[- ]?person|On[- ]?site|Remote|Hybrid)\\s*$",
+        "from": 0,
+        "optional": true
+      },
+      {
+        "match_regex": "^\\s*.+?,\\s*[A-Z]{2}\\s*\\(",
+        "field": "locations",
+        "regex": "^\\s*(?:.*\\|\\s*)?([^|]+?,\\s*[A-Z]{2})\\s*\\(",
+        "from": 0,
+        "optional": true
+      }
+    ]
+  },
+  "elementor": {
+    "scope": "div[data-elementor-type=\"wp-post\"]",
+    "include_document_title": true,
+    "steps": [
+      {
+        "tag": "title",
+        "field": "title",
+        "regex": "^(.*)\\s+-\\s+[^-]+$"
+      },
+      {
+        "field": "description",
+        "html": true,
+        "stop_regex": "(?i)^\\s*Apply\\s*$"
+      },
+      {
+        "match_regex": "(?i)^\\s*Employment Type\\s*:\\s*\\S",
+        "field": "employment_type",
+        "regex": "(?i)^\\s*Employment Type\\s*:\\s*(\\S.*)\\s*$",
+        "from": 0,
+        "optional": true
+      },
+      {
+        "match_regex": "(?i)^\\s*Location\\s*:\\s*(?:In[- ]?person|On[- ]?site|Remote|Hybrid)\\s*$",
+        "field": "job_location_type",
+        "regex": "(?i)^\\s*Location\\s*:\\s*(In[- ]?person|On[- ]?site|Remote|Hybrid)\\s*$",
+        "from": 0,
+        "optional": true
+      }
+    ]
+  }
+}
