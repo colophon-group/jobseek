@@ -302,7 +302,29 @@ describe("browser-direct shell refreshes", () => {
       "company-1",
       7,
       10,
+      0,
     );
     expect(mocks.serverGetCompanyPostings).not.toHaveBeenCalled();
+  });
+
+  it("caps anonymous peer pagination at 15 and allows authenticated continuation", async () => {
+    const companies = Array.from({ length: 5 }, (_, i) => ({ id: String(i) }));
+    mocks.browserLoadSimilarCompanies.mockResolvedValue({ companies, hasMore: true });
+    const { tryGetSimilarCompaniesDirect } = await import("../search-runner");
+    const params = { companyId: "company-1", industryId: 7, offset: 10, limit: 10 };
+    await expect(tryGetSimilarCompaniesDirect(params, false)).resolves.toEqual({
+      companies, hasMore: false, truncated: true,
+    });
+    expect(mocks.browserLoadSimilarCompanies).toHaveBeenLastCalledWith("company-1", 7, 5, 10);
+
+    await expect(tryGetSimilarCompaniesDirect({ ...params, offset: 15 }, false)).resolves.toEqual({
+      companies: [], hasMore: false, truncated: true,
+    });
+    expect(mocks.browserLoadSimilarCompanies).toHaveBeenCalledOnce();
+
+    await expect(tryGetSimilarCompaniesDirect({ ...params, offset: 15 }, true)).resolves.toEqual({
+      companies, hasMore: true,
+    });
+    expect(mocks.browserLoadSimilarCompanies).toHaveBeenLastCalledWith("company-1", 7, 10, 15);
   });
 });

@@ -142,6 +142,28 @@ afterEach(() => {
 });
 
 describe("CompanyContent browser initialization", () => {
+  it("shows a loading state and waits for anonymous bootstrap before one direct read", async () => {
+    sessionState = { isLoggedIn: false, isPending: true, preferences: null };
+    const initialData = makeData({ postingsDeferred: true, activeCount: 0 });
+    const { getByTestId, queryByTestId, rerender } = render(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+    expect(getByTestId("company-skeleton")).toBeTruthy();
+    expect(queryByTestId("company-page")).toBeNull();
+    expect(mockLoadCompanyBrowserData).not.toHaveBeenCalled();
+
+    sessionState = { ...sessionState, isPending: false };
+    mockLoadCompanyBrowserData.mockResolvedValue(successfulResult(makeData()));
+    rerender(<CompanyContent locale="en" slug="test-company" initialData={initialData} />);
+    await waitFor(() => expect(getByTestId("company-page").getAttribute("data-active")).toBe("5"));
+    expect(mockLoadCompanyBrowserData).toHaveBeenCalledOnce();
+    expect(getByTestId("company-page").getAttribute("data-direct-attempted")).toBe("true");
+
+    currentSearchParams = new URLSearchParams("show=posting-2");
+    rerender(<CompanyContent locale="en" slug="test-company" initialData={initialData} />);
+    expect(mockLoadCompanyBrowserData).toHaveBeenCalledOnce();
+  });
+
   it("uses the prerendered shell with zero mount request for default anonymous views", async () => {
     const { getByTestId } = render(
       <CompanyContent locale="en" slug="test-company" initialData={makeData()} />,

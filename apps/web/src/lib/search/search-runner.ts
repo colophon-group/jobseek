@@ -42,6 +42,7 @@ type SimilarCompaniesResult = {
     activeJobCount: number;
   }>;
   hasMore: boolean;
+  truncated?: boolean;
 };
 
 const directEnabled = process.env.NEXT_PUBLIC_TYPESENSE_DIRECT === "1";
@@ -274,23 +275,35 @@ export async function tryGetCompanyPostingsDirect(
 }
 
 /**
- * Revalidate the unfiltered peer strip embedded in a company shell directly
- * against Typesense. A failed refresh keeps the rendered snapshot and never
- * falls through to a mount-time Server Action.
+ * Load globally ranked peers directly from the company collection. Failures
+ * never fall through to a Server Action. Preserve the anonymous browsing cap.
  */
 export async function tryGetSimilarCompaniesDirect(params: {
   companyId: string;
   industryId: number;
   limit: number;
-}): Promise<SimilarCompaniesResult | null> {
+  offset?: number;
+}, isLoggedIn = false): Promise<SimilarCompaniesResult | null> {
   if (!directEnabled) return null;
+  const offset = params.offset ?? 0;
+  if (!isLoggedIn && offset >= ANON_MAX_COMPANIES) {
+    return { companies: [], hasMore: false, truncated: true };
+  }
+  const limit = isLoggedIn
+    ? params.limit
+    : Math.min(params.limit, ANON_MAX_COMPANIES - offset);
   try {
     const provider = await tryBrowserProvider();
-    return await provider.loadSimilarCompanies(
+    const result = await provider.loadSimilarCompanies(
       params.companyId,
       params.industryId,
-      params.limit,
+      limit,
+      offset,
     );
+    if (!isLoggedIn && result.hasMore && offset + result.companies.length >= ANON_MAX_COMPANIES) {
+      return { ...result, hasMore: false, truncated: true };
+    }
+    return result;
   } catch (err) {
     logExternalError(
       "error",

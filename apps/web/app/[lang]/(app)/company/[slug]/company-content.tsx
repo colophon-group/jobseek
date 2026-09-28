@@ -3,10 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { CompanyPageData } from "@/lib/actions/company-page-data";
-import {
-  hasLoggedInHint,
-  readAnonJobLanguagesPreference,
-} from "@/lib/client-cookies";
+import { readAnonJobLanguagesPreference } from "@/lib/client-cookies";
 import { logExternalError } from "@/lib/safe-external-error";
 import { CompanySkeleton } from "@/components/search/company-skeleton";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -22,11 +19,9 @@ type CompanyContentProps = {
   locale: string;
   slug: string;
   /**
-   * Server-prerendered ``CompanyPageData`` for the unauthenticated,
-   * no-filter visit case (#3203, mirrors `/explore` from #2640).
-   * Anonymous visitors with no filter searchParams use this directly —
-   * no second server-action round-trip on mount. The server route resolves
-   * unknown slugs before this client boundary is rendered.
+   * Cached company facts and anonymous defaults. In browser-direct mode the
+   * postings are deferred, so the first render is a skeleton until the scoped
+   * search completes. The server still resolves unknown slugs.
    */
   initialData: CompanyPageData;
 };
@@ -54,10 +49,12 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
     data: CompanyPageData;
     unavailable: boolean;
     directAttempted: boolean;
-  } | null>({ data: initialData, unavailable: false, directAttempted: false });
+  } | null>(() => initialData.postingsDeferred
+    ? null
+    : { data: initialData, unavailable: false, directAttempted: false });
 
-  // Re-initialize only when the prerendered anonymous snapshot does not
-  // reflect the browser URL or viewer preferences. Authenticated preferences
+  // Load deferred results or re-initialize when the anonymous snapshot does
+  // not reflect the browser URL or viewer preferences. Authenticated preferences
   // come from the app bootstrap action the layout already paid for; anonymous
   // job languages come from their client-readable, bounded cookie. Filter
   // resolution and posting results go browser-direct to Typesense, so this
@@ -71,12 +68,15 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
   useEffect(() => {
     const fetchId = ++fetchIdRef.current;
     const params = new URLSearchParams(dataParamsKey);
-    if (hasLoggedInHint() && isPending) return;
+    // Anonymous bootstrap settles locally. Waiting for it also avoids issuing
+    // the same direct search twice as isPending flips on the first mount.
+    if (isPending) return;
 
     const anonymousJobLanguages = isLoggedIn
       ? null
       : readAnonJobLanguagesPreference();
     const needsBrowserLoad =
+      initialData.postingsDeferred ||
       isLoggedIn ||
       anonymousJobLanguages !== null ||
       hasSearchFilterParams(params);

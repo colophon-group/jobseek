@@ -9,20 +9,15 @@ import type { Locale } from "@/lib/i18n";
 type Props = {
   company: SimilarCompany;
   locale: Locale;
-  /** Raw URL query string (without "?") forwarded onto the card link so
-   *  filters persist when the user clicks through to another company. */
-  preserveParams?: string;
 };
 
-export function SimilarCompanyCard({ company, locale, preserveParams }: Props) {
+export function SimilarCompanyCard({ company, locale }: Props) {
   // Defensive coercion: if a non-numeric snuck in (string from a
   // Typesense edge case, undefined from a miss), ICU renders "NaN".
   const count = Number.isFinite(company.activeJobCount)
     ? (company.activeJobCount as number)
     : Number(company.activeJobCount) || 0;
-  const href = preserveParams
-    ? `/${locale}/company/${company.slug}?${preserveParams}`
-    : `/${locale}/company/${company.slug}`;
+  const href = `/${locale}/company/${company.slug}`;
 
   return (
     <li className="shrink-0 snap-start">

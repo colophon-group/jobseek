@@ -18,9 +18,9 @@ afterEach(() => {
 });
 
 describe("TypesenseBrowserProvider.loadSimilarCompanies", () => {
-  it("maps and ranks the unfiltered peer page from the company collection", async () => {
+  it.each([[0, true], [10, false]] as const)("loads global peers at offset %i (hasMore=%s)", async (offset, hasMore) => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(Response.json({
-      found: 2,
+      found: 11,
       hits: [
         {
           document: {
@@ -37,7 +37,7 @@ describe("TypesenseBrowserProvider.loadSimilarCompanies", () => {
 
     const provider = new TypesenseBrowserProvider();
     await expect(
-      provider.loadSimilarCompanies("company-1", 7, 1),
+      provider.loadSimilarCompanies("company-1", 7, 1, offset),
     ).resolves.toEqual({
       companies: [
         {
@@ -48,7 +48,7 @@ describe("TypesenseBrowserProvider.loadSimilarCompanies", () => {
           activeJobCount: 12,
         },
       ],
-      hasMore: true,
+      hasMore,
     });
 
     const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
@@ -59,7 +59,8 @@ describe("TypesenseBrowserProvider.loadSimilarCompanies", () => {
     expect(requestUrl.searchParams.get("sort_by")).toBe(
       "active_posting_count:desc",
     );
-    expect(requestUrl.searchParams.get("per_page")).toBe("1");
+    expect(requestUrl.searchParams.get("limit")).toBe("1");
+    expect(requestUrl.searchParams.get("offset")).toBe(String(offset));
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
       headers: { "x-typesense-api-key": "browser-key" },
     });

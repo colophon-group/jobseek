@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CompanyDetail } from "@/lib/actions/company";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
+
+withTestEnv({ NEXT_PUBLIC_TYPESENSE_DIRECT: "0" });
 
 // Hoisted mocks so they apply before module imports below.
 const mocks = vi.hoisted(() => ({
@@ -117,6 +120,26 @@ beforeEach(() => {
 });
 
 describe("fetchCompanyPageDefaults — ISR-safe prerender variant (#3203)", () => {
+  it("defers postings and peers when the browser can load them directly", async () => {
+    setTestEnv({ NEXT_PUBLIC_TYPESENSE_DIRECT: "1" });
+    const result = await fetchCompanyPageDefaults({
+      slug: "test-company",
+      locale: "en",
+    });
+
+    expect(result).toMatchObject({
+      company: makeCompany(),
+      postingsDeferred: true,
+      postings: [],
+    });
+    expect(result?.similarCompanies).toBeUndefined();
+    expect(mocks.getCompanyBySlug).toHaveBeenCalledOnce();
+    expect(mocks.getCompanyPostingsAnonymous).not.toHaveBeenCalled();
+    expect(mocks.getCompanyPostings).not.toHaveBeenCalled();
+    expect(mocks.getSimilarCompanies).not.toHaveBeenCalled();
+    expect(mocks.getSession).not.toHaveBeenCalled();
+  });
+
   it("returns null when the company is unknown", async () => {
     mocks.getCompanyBySlug.mockResolvedValueOnce(null);
 

@@ -143,27 +143,22 @@ export default async function CompanyPageRoute({ params }: Props) {
   cacheTag(companyCacheTag(slug));
   cacheTag(companyCsvDataCacheTag());
 
-  // Prerender the unauthenticated, no-filter ``CompanyPageData`` and
-  // embed it as ``initialData`` so anonymous visitors hit a CDN-cached
-  // shell with zero client-side server-action round-trips (#3203,
-  // mirrors `/explore` from #2640). ``fetchCompanyPageDefaults``
-  // deliberately avoids ``headers()``/``cookies()`` to stay
-  // ISR-eligible — the client component reuses app-bootstrap preferences and
-  // resolves personalized/filter-bearing results browser-direct through the
-  // scoped Typesense key when required.
+  // Cache company facts and metadata together. Browser-direct mode defers
+  // postings and peers, avoiding duplicate search, serialization and card
+  // rendering on a cold company/locale path. The client applies preferences
+  // and URL filters before loading the first posting page.
   const initialData = await getCompanyRouteSnapshot(slug, locale);
   if (!initialData) notFound();
   const { company } = initialData;
 
   // The page body is `'use cache'`-wrapped (1-day revalidate) so the
   // anonymous static shell ships from the per-region cache without
-  // invoking a function on every request. Anything that reads
-  // `CompanyPage` refreshes anonymous postings directly from Typesense after
-  // hydration, preserving visible freshness. `searchParams`, `headers()`,
+  // invoking a function on every request. The browser loads postings directly
+  // from Typesense after hydration, preserving freshness. `searchParams`, `headers()`,
   // `cookies()`, or session state inside
   // this function would either fail the build or kill the cache. The
-  // back-link (filter-aware) and similar-companies strip live in client
-  // subtrees that read `useSearchParams()` so the shell here stays
+  // back-link and posting filters live in client subtrees that read
+  // `useSearchParams()` so the shell here stays
   // cache-friendly. See issue #2243.
   return (
     <div className="space-y-4">

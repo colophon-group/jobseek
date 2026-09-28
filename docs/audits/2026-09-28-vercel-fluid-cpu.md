@@ -210,3 +210,48 @@ included.
 Validated row uniqueness, invocation sums, exhaustive group reconciliation,
 CPU unit conversion, and target arithmetic. This change contains audit documents
 only; application code and production configuration were not changed.
+
+## Optimization delivery
+
+The subsequent implementation targets the company-page work identified above:
+
+- With browser-direct search enabled, the shared server snapshot fetches company
+  facts only. Job results and related companies load directly from Typesense.
+  The jobs area stays in a loading state until the first bounded read settles;
+  failures use the existing unavailable state. Environments with direct search
+  disabled retain the anonymous server snapshot.
+- Related companies always use global active-position totals. Entry filters and
+  subsequent filter changes do not change the ranking/counts or trigger a server
+  action. Links open the related company without inherited filters.
+- Related-company pagination is also browser-direct, using explicit offset/limit
+  and the existing 15-company anonymous cap. Failed reads retain visible peers
+  and let the scroll hook back off. The server fallback remains available when
+  the direct-search feature flag is disabled.
+- The shared metadata/body snapshot, localized company facts, noindex directive,
+  missing-company handling, and one-day cache lifetime are retained. Crawler sync
+  invalidation is unchanged; narrowing it requires a reliable changed-company
+  contract across publishing, retries and cache invalidation.
+
+Local production-build comparison (eight company/locale paths, three requests
+per path, one excluded module warm-up) is recorded in
+[local-optimization-benchmark.json](2026-09-28-vercel-fluid-cpu/local-optimization-benchmark.json).
+Cold response bytes fell from 2,516,575 to 2,069,495 (17.8%). Median cold wall
+latency fell from 1,575.9 ms to 115.3 ms after removing the duplicate server
+searches. All eight paths reached complete `HIT` responses without postponed
+content. Aggregate cold CPU fell from 855.6 ms to 743.7 ms, but median CPU rose
+from 64.6 ms to 83.3 ms; locale initialization and concurrent local test work make
+this a noisy comparison, **not evidence that billed daily CPU meets the target**.
+
+Verification before rollout: production build/typecheck, ESLint, 64 focused
+regression tests, and the full web unit suite (2,854 passed, 41 skipped). The local
+build classifier passed all 16 route/cache checks; its four fixture-oriented
+Explore-content checks require the separate secretless CI build and do not pass
+against this service-backed local build. CI must pass before merge. Browser checks
+used real search results via the public production scoped-key endpoint because
+local browser-parent credentials were stale: Aircall's Remote filter showed 3
+active jobs, clearing it showed 77, and related-company global totals stayed
+identical with unfiltered links. No credential configuration was changed remotely.
+
+The acceptance criterion remains a clean 24-hour production window below 300
+billed seconds (Functions plus Routing Middleware). This patch removes duplicate
+reads and related-company server actions; it does not establish that daily target.

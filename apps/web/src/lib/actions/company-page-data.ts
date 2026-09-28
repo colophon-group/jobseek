@@ -34,10 +34,11 @@ const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
 
 export interface CompanyPageData {
   company: CompanyDetail;
+  /** The cached shell has no results yet; load them browser-direct before rendering. */
+  postingsDeferred?: boolean;
   /**
-   * Unfiltered first page of same-industry companies embedded in the cached
-   * anonymous route snapshot. Personalized reads intentionally omit this: the
-   * strip owns filter changes after hydration.
+   * Global peer totals for the server-rendered fallback when browser-direct
+   * search is disabled. Otherwise the strip loads directly after hydration.
    */
   similarCompanies?: SimilarCompaniesPage;
   postings: SearchResultPosting[];
@@ -173,8 +174,10 @@ export async function fetchCompanyPageData(params: {
  * ``CompanyPageData`` shape with anonymous defaults: EUR currency, no
  * job-language filter, no geo proximity bias, no active filters,
  * ``showPostingId: null``. The client component reuses app-bootstrap
- * preferences and resolves personalized/filter-bearing results directly
- * through the scoped browser Typesense key.
+ * preferences and loads deferred or filtered results directly through the
+ * scoped browser Typesense key. With browser-direct search enabled, only
+ * company facts are fetched on the server; posting counts stay loading until
+ * that first browser read completes.
  *
  * Returns ``null`` when the slug is unknown — caller renders the
  * not-found shell. The cache layer in `getCompanyBySlug` ensures repeat
@@ -192,39 +195,37 @@ export async function fetchCompanyPageDefaults(params: {
   const displayCurrency = DEFAULT_DISPLAY_CURRENCY;
   const { jobLanguages, languages } = resolveCompanyPageJobLanguages([], locale);
 
-  // ``getCompanyPostingsAnonymous`` (not ``getCompanyPostings``) — the
-  // latter calls ``getSessionUserId`` which awaits ``headers()`` and
-  // would silently downgrade the page to dynamic rendering, defeating
-  // the ISR optimisation this function exists for. See the parallel
-  // pattern in `explore-page-data.ts::fetchExplorePageDefaults` (#2640).
-  // The first similar-company page is stable enough to share the route's
-  // cached snapshot. Fetch it alongside postings so the browser does not emit
-  // an uncached Server Action POST merely because the strip mounted (#6614).
-  // Page zero never reaches the anonymous pagination cap, so this call does
-  // not read session headers and remains safe inside the ISR snapshot.
-  const [postingsResult, similarCompanies] = await Promise.all([
-    getCompanyPostingsAnonymous({
-      companyId: company.id,
-      keywords: [],
-      languages,
-      locale,
-      offset: 0,
-      limit: PAGE_SIZE,
-    }),
-    getSimilarCompanies(company.id, company.industryId, {
-      offset: 0,
-      limit: 10,
-      locale,
-    }),
-  ]);
+  // Browser-direct mode already reads fresh postings and peers after hydration.
+  // Keep those lists out of the cached shell to avoid fetching, serializing and
+  // rendering them a second time on every cold company/locale path. Retain the
+  // anonymous server snapshot for environments where direct search is disabled.
+  const postingsDeferred = process.env.NEXT_PUBLIC_TYPESENSE_DIRECT === "1";
+  const [postingsResult, similarCompanies] = postingsDeferred
+    ? [null, undefined]
+    : await Promise.all([
+        getCompanyPostingsAnonymous({
+          companyId: company.id,
+          keywords: [],
+          languages,
+          locale,
+          offset: 0,
+          limit: PAGE_SIZE,
+        }),
+        getSimilarCompanies(company.id, company.industryId, {
+          offset: 0,
+          limit: 10,
+          locale,
+        }),
+      ]);
 
   return {
     company,
+    postingsDeferred,
     similarCompanies,
-    postings: postingsResult.postings,
-    activeCount: postingsResult.activeCount,
-    yearCount: postingsResult.yearCount,
-    truncated: postingsResult.truncated,
+    postings: postingsResult?.postings ?? [],
+    activeCount: postingsResult?.activeCount ?? 0,
+    yearCount: postingsResult?.yearCount ?? 0,
+    truncated: postingsResult?.truncated,
     parsed: EMPTY_PARSED_FILTERS,
     displayCurrency,
     jobLanguages,

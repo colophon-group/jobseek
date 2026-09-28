@@ -1,6 +1,12 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SimilarCompany } from "@/lib/actions/company";
+
+import { withTestEnv } from "@/test-utils/env";
+
+withTestEnv({ NEXT_PUBLIC_TYPESENSE_DIRECT: "1" });
+
+let loadNextPage: () => Promise<void>;
 
 const mocks = vi.hoisted(() => ({
   getSimilarCompanies: vi.fn(),
@@ -28,10 +34,13 @@ vi.mock("@/lib/search/search-runner", () => ({
     mocks.tryGetSimilarCompaniesDirect(...args),
 }));
 vi.mock("@/components/providers/SessionProvider", () => ({
-  useSession: () => ({ isPending: false }),
+  useSession: () => ({ isLoggedIn: false, isPending: false }),
 }));
 vi.mock("@/lib/use-infinite-scroll", () => ({
-  useInfiniteScroll: () => ({ sentinelRef: vi.fn(), isLoading: false }),
+  useInfiniteScroll: ({ load }: { load: () => Promise<void> }) => {
+    loadNextPage = load;
+    return { sentinelRef: vi.fn(), isLoading: false };
+  },
 }));
 vi.mock("@/components/ui/scroll-fade", () => ({
   ScrollFade: ({ children }: { children: React.ReactNode }) => (
@@ -43,7 +52,7 @@ vi.mock("@/components/InfiniteScrollSentinel", () => ({
 }));
 vi.mock("../similar-company-card", () => ({
   SimilarCompanyCard: ({ company }: { company: SimilarCompany }) => (
-    <li>{company.name}</li>
+    <li>{company.name}: {company.activeJobCount}</li>
   ),
 }));
 
@@ -107,7 +116,7 @@ describe("SimilarCompaniesStrip cached initial page", () => {
     renderStrip();
 
     await waitFor(() => {
-      expect(screen.getByText("Fresh Peer")).toBeTruthy();
+      expect(screen.getByText("Fresh Peer: 6")).toBeTruthy();
     });
     expect(mocks.tryGetSimilarCompaniesDirect).toHaveBeenCalledWith({
       companyId: "company-1",
@@ -128,28 +137,23 @@ describe("SimilarCompaniesStrip cached initial page", () => {
     expect(mocks.getSimilarCompanies).not.toHaveBeenCalled();
   });
 
-  it("loads a filtered ranking when the entry URL has filters", async () => {
-    currentSearchParams = new URLSearchParams("q=python");
+  it("ignores entry filters and shows global open-position totals", async () => {
+    currentSearchParams = new URLSearchParams("q=python&loc=zurich&wm=remote&show=posting-1");
     renderStrip();
 
-    await waitFor(() => {
-      expect(mocks.getSimilarCompanies).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByText("Fresh Peer: 6")).toBeTruthy());
+    expect(mocks.tryGetSimilarCompaniesDirect).toHaveBeenCalledExactlyOnceWith({
+      companyId: "company-1", industryId: 7, limit: 10,
     });
-    expect(mocks.getSimilarCompanies).toHaveBeenCalledWith("company-1", 7, {
-      offset: 0,
-      limit: 10,
-      searchParams: { q: "python" },
-      locale: "en",
-    });
-    expect(screen.getByText("Filtered Peer")).toBeTruthy();
+    expect(mocks.getSimilarCompanies).not.toHaveBeenCalled();
   });
 
-  it("refreshes browser-direct when filters are cleared", async () => {
+  it("does not refetch peers when filters are cleared", async () => {
     currentSearchParams = new URLSearchParams("q=python");
     const view = renderStrip();
 
     await waitFor(() => {
-      expect(screen.getByText("Filtered Peer")).toBeTruthy();
+      expect(screen.getByText("Fresh Peer: 6")).toBeTruthy();
     });
 
     currentSearchParams = new URLSearchParams();
@@ -164,9 +168,34 @@ describe("SimilarCompaniesStrip cached initial page", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Fresh Peer")).toBeTruthy();
+      expect(screen.getByText("Fresh Peer: 6")).toBeTruthy();
     });
-    expect(mocks.getSimilarCompanies).toHaveBeenCalledTimes(1);
+    expect(mocks.getSimilarCompanies).not.toHaveBeenCalled();
     expect(mocks.tryGetSimilarCompaniesDirect).toHaveBeenCalledTimes(1);
   });
+  it("paginates without filter parameters or a server action", async () => {
+    currentSearchParams = new URLSearchParams("q=python");
+    renderStrip();
+    await waitFor(() => expect(screen.getByText("Fresh Peer: 6")).toBeTruthy());
+    mocks.tryGetSimilarCompaniesDirect.mockResolvedValue({
+      companies: [{ id: "next-peer", slug: "next-peer", name: "Next Peer", icon: null, activeJobCount: 4 }],
+      hasMore: false,
+    });
+    await act(() => loadNextPage());
+    expect(mocks.tryGetSimilarCompaniesDirect).toHaveBeenLastCalledWith({
+      companyId: "company-1", industryId: 7, offset: 1, limit: 10,
+    }, false);
+    expect(screen.getByText("Next Peer: 4")).toBeTruthy();
+    expect(mocks.getSimilarCompanies).not.toHaveBeenCalled();
+  });
+
+  it("preserves peers and lets the scroll hook back off after a failed page", async () => {
+    renderStrip();
+    await waitFor(() => expect(screen.getByText("Fresh Peer: 6")).toBeTruthy());
+    mocks.tryGetSimilarCompaniesDirect.mockResolvedValue(null);
+    await expect(loadNextPage()).rejects.toThrow("Related companies unavailable");
+    expect(screen.getByText("Fresh Peer: 6")).toBeTruthy();
+    expect(mocks.getSimilarCompanies).not.toHaveBeenCalled();
+  });
+
 });

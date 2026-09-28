@@ -623,6 +623,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
     companyId: string,
     industryId: number,
     limit: number,
+    offset = 0,
   ): Promise<BrowserSimilarCompaniesPage> {
     // Let transport errors escape so the direct-refresh runner can preserve
     // the prerendered snapshot without falling back to Fluid CPU.
@@ -633,8 +634,8 @@ export class TypesenseBrowserProvider implements SearchProvider {
       filter_by:
         `industry_id:=${industryId} && active_posting_count:>0 && id:!=${companyId}`,
       sort_by: "active_posting_count:desc",
-      per_page: limit,
-      page: 1,
+      limit,
+      offset,
       include_fields: "id,slug,name,icon,active_posting_count",
     });
     const companies = (result.hits ?? []).map(({ document }) => ({
@@ -649,7 +650,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
     }));
     return {
       companies,
-      hasMore: companies.length < (result.found ?? companies.length),
+      hasMore: offset + companies.length < (result.found ?? offset + companies.length),
     };
   }
 

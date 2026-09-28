@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -12,10 +12,6 @@ import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { getSimilarCompanies, type SimilarCompany } from "@/lib/actions/company";
 import { tryGetSimilarCompaniesDirect } from "@/lib/search/search-runner";
 import type { Locale } from "@/lib/i18n";
-import {
-  searchFilterParamsToObject,
-  serializeSearchFilterParams,
-} from "@/lib/search/query-params";
 import { SimilarCompanyCard } from "./similar-company-card";
 
 type Props = {
@@ -39,76 +35,57 @@ export function SimilarCompaniesStrip({
   locale,
 }: Props) {
   const { t } = useLingui();
-  const searchParams = useSearchParams();
-  // Result-bearing query string → stable cache key for the effect + card
-  // links. UI-only ``show`` changes must only replace the detail panel;
-  // they do not affect counts or belong on another company's URL (#5766).
-  const paramsKey = serializeSearchFilterParams(searchParams);
-  const spObject = useMemo(
-    () => searchFilterParamsToObject(new URLSearchParams(paramsKey)),
-    [paramsKey],
-  );
+  const { isLoggedIn } = useSession();
   const [companies, setCompanies] = useState<SimilarCompany[]>(initialCompanies);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [truncated, setTruncated] = useState(initialTruncated);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Refetch page 0 whenever the URL query changes (user applied/cleared
-  // a filter on the search toolbar). Counts on each card stay in sync
-  // with the same filter state that drives the postings list.
+  // Related companies always show global open-position totals. Reading the
+  // company collection directly avoids a server action and filtered facets.
   useEffect(() => {
     const currentIndustryId = industryId;
     if (currentIndustryId == null) return;
     let cancelled = false;
     (async () => {
-      // A one-day shell must not pin posting-derived rankings for a day. The
-      // unfiltered refresh talks to Typesense from the browser and deliberately
-      // returns null on failure, preserving the snapshot without consuming
-      // Fluid CPU. Filtered, user-driven changes retain the Server Action path.
-      const next = paramsKey === ""
-        ? await tryGetSimilarCompaniesDirect({
-            companyId,
-            industryId: currentIndustryId,
-            limit: PAGE_SIZE,
-          })
-        : await getSimilarCompanies(companyId, currentIndustryId, {
-            offset: 0,
-            limit: PAGE_SIZE,
-            searchParams: spObject,
-            locale,
-          });
+      const next = await tryGetSimilarCompaniesDirect({
+        companyId,
+        industryId: currentIndustryId,
+        limit: PAGE_SIZE,
+      });
       if (!next || cancelled) return;
       setCompanies(next.companies);
       setHasMore(next.hasMore);
-      setTruncated("truncated" in next && next.truncated === true);
+      setTruncated(next.truncated ?? false);
       scrollRef.current?.scrollTo({ left: 0 });
     })();
     return () => {
       cancelled = true;
     };
-  }, [
-    paramsKey,
-    companyId,
-    industryId,
-    locale,
-    spObject,
-  ]);
+  }, [companyId, industryId]);
 
   const loadMore = useCallback(async () => {
     if (industryId == null) return;
-    const next = await getSimilarCompanies(companyId, industryId, {
-      offset: companies.length,
-      limit: PAGE_SIZE,
-      searchParams: spObject,
-      locale,
-    });
+    const next = process.env.NEXT_PUBLIC_TYPESENSE_DIRECT === "1"
+      ? await tryGetSimilarCompaniesDirect({
+          companyId,
+          industryId,
+          offset: companies.length,
+          limit: PAGE_SIZE,
+        }, isLoggedIn)
+      : await getSimilarCompanies(companyId, industryId, {
+          offset: companies.length,
+          limit: PAGE_SIZE,
+        });
+    // Let the scroll hook wait for another user scroll before retrying.
+    if (!next) throw new Error("Related companies unavailable");
     setCompanies((prev) => {
       const seen = new Set(prev.map((c) => c.id));
       return [...prev, ...next.companies.filter((c) => !seen.has(c.id))];
     });
     setHasMore(next.hasMore);
     setTruncated(next.truncated ?? false);
-  }, [companyId, industryId, companies.length, spObject, locale]);
+  }, [companyId, industryId, companies.length, isLoggedIn]);
 
   const { sentinelRef, isLoading } = useInfiniteScroll({
     hasMore,
@@ -143,7 +120,6 @@ export function SimilarCompaniesStrip({
                 key={company.id}
                 company={company}
                 locale={locale}
-                preserveParams={paramsKey}
               />
             ))}
             {hasMore && (
