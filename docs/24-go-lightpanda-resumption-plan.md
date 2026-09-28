@@ -6,6 +6,84 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — shared Go HTML normalization v0.13.897
+
+[PR #10172](https://github.com/colophon-group/jobseek/pull/10172) merged as
+**`ed4a86d68e3d6ea9d0ea804ee2f7f6c9dfe7002e`**, crawler **v0.13.897**.
+Required CI, Crawler Deploy Gate and installed runtime contracts passed at
+`dea4a4798a56f56f74e7aa4512b3ee055aeb9220`.
+[Deployment 36460841424](https://github.com/colophon-group/jobseek/actions/runs/36460841424)
+reached terminal success including promotion. **Go now owns the entire shared
+HTML normalization stage in rich monitor, detail and CPU processing**, through
+the existing resident enrichment process. The Python parser remains an offline
+oracle and explicit cold reversal; there is no automatic fallback or truncation.
+
+Go preserves document/body parsing, unsafe subtree removal, empty unknown-element
+retention, attribute cleanup, comments/text serialization, malformed HTML5
+reconstruction, table foster parenting, escaped markup, numeric-reference
+exclusions and NBSP replacement after serialized trimming. Verification matches
+**8,567** Python/Lexbor oracle cases, **512** stored descriptions from **265 boards
+and 14 locales**, and **five** naturally captured DOM extraction inputs.
+Thirty-six focused Python tests, Go race/vet/mod checks, Ruff and Pyright passed.
+Installed-image CI verifies all 8,567 cases through the shipped resident binary.
+The parser's 512-element stack limit, request/deadline and separate expanded-HTML
+response bounds fail explicitly and reap the child.
+
+Natural production work recorded **4,579 successful Go normalization calls with
+zero errors** before cohort reactivation, then **153 successes/zero errors** in
+the first new worker-generation snapshot. These are separate counter generations.
+A read-only sample of **256** fresh posting rows from **40 boards**, ten monitor
+types and six locales matches Python/Go reparse bytes. All **171 newly written
+description rows** have the exact byte hash; all primary scalar hashes match after
+the ordinary drain finishes its pending upload. All 256 sampled postings have
+zero scrape failures. The initial mixed sample contained 51 inherited markers:
+the exact rows predate deployment and preserve their original bytes/hash, as the
+existing equal-byte deduplication contract requires. No marker was rewritten to
+make the check pass; one pending scalar upload converged with unchanged HTML.
+
+Supported **`rollback cdom` retired epoch 130**, restored all **22** schedules,
+dropped zero terminals and cleared every write fence. All **25** exact selectors
+were cleared under the mutation lock, then staged at the full promoted revision.
+Supported **`activate cdom` succeeded at epoch 131** with **22** selected schedules,
+**17** already unqueued rows and lifetime headroom **2026** (pilot limit 1600).
+Conservation is accepted/audit_ok, 22 ready/zero inflight. All worker, browser,
+drain, producer, executor, claimant and Redis services are healthy; exporter and
+Alloy are up. Before/after snapshots preserve all **137** cohort rows, all **39**
+active rows, canonical content and failures. No publisher request, due time or
+queue priority was forced. The five natural Bunq DOM successes in the preceding
+checkpoint remain valid; this does not claim five new DOM cycles at v0.13.897.
+
+The renderer remains source `fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0`, image
+`ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:72b73991cc4a6820263970ccf07367b5d9193eb37cb9d742701fb78ea0104a21`.
+The **latest official September 28 nightly** assets were rechecked; the installed
+ARM64 binary checksum remains
+`e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f`.
+No renderer replacement was needed. C2 Kandou remains dark.
+
+Before any further crawler deploy or selector mutation, use supported
+**`/home/deploy/scripts/lightpanda-b0-cutover.sh rollback cdom`**, then clear all
+**25** selectors under `/run/lock/jobseek-crawler-mutation.lock` with
+`scripts/migration-jsonld-selectors.py`, full promoted revision
+**`ed4a86d68e3d6ea9d0ea804ee2f7f6c9dfe7002e`** and exact Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Helper SHA-256 remains
+`8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743`.
+Stage at the next full revision only after terminal deployment success including
+promotion, then reactivate cdom through the supported wrapper. Never manually
+edit `.env`, force due or duplicate publisher traffic.
+
+See [production output and operational evidence](evidence/go-html-normalization-production-2026-09-28.json)
+and [offline stage replay](evidence/go-html-normalization-replay-2026-09-28.json).
+Protected inputs/readbacks/logs:
+`/Users/Viktor/.codex/migration-evidence/go-html-normalization/2026-09-28/`.
+**This is the current production authority; all checkpoints below are history.**
+Continue implementation of remaining Go monitor/detail profiles, language/location/
+salary processing, native workers and persistence. Configuration sync, Typesense
+publication and the R2 drain are already Go-owned. Python/Chromium still own
+production work; same actual-workload whole-lane CPU/RAM/density/cost and final
+full cutover/reversal remain required. Offline stage measurements and synthetic
+fixture density are not production savings. The full Go + Typesense + Lightpanda
+goal remains active; owner-closed #7966 was not reopened.
+
 ## Production checkpoint: 2026-09-28 — cdom admitted with natural Go DOM output
 
 [PR #10170](https://github.com/colophon-group/jobseek/pull/10170) merged as
@@ -66,7 +144,7 @@ cdom through the supported wrapper. Never manually edit `.env` or force due.
 See [sanitized admission and output evidence](evidence/lightpanda-dom-admission-2026-09-28.json).
 Protected input bytes, comparisons, readbacks and operational logs:
 `/Users/Viktor/.codex/migration-evidence/lightpanda-dom/2026-09-28/schedule-transfer/`.
-**This is the current production authority; all checkpoints below are history.**
+**Historical checkpoint; use the current production authority at the top.**
 Python/Chromium still own remaining production work. Same actual-workload
 whole-lane CPU/RAM/density/cost and final full cutover/reversal remain required.
 Synthetic fixture density ratios are not production savings. The full Go +

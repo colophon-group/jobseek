@@ -1,0 +1,190 @@
+{
+  "status": "deployed; durable bounded checkpoint; full transition goal active",
+  "code_pr": "https://github.com/colophon-group/jobseek/pull/10172",
+  "tested_head": "dea4a4798a56f56f74e7aa4512b3ee055aeb9220",
+  "promoted_revision": "ed4a86d68e3d6ea9d0ea804ee2f7f6c9dfe7002e",
+  "version": "v0.13.897",
+  "required_ci": 36459044841,
+  "crawler_deploy_gate": 36459045146,
+  "installed_runtime_contracts": 36459044806,
+  "deployment": 36460841424,
+  "deployment_all_jobs_including_promote": "success",
+  "images": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:afe3f7630c5b25f0144296bf4c4db0b333639f762a152cf098e173657aadf03f",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:b42c06b6f1ec62594406dba1ad293807b197bba29f442e599a1b342be6fb92e5"
+  },
+  "scope": "Entire shared monitor/detail HTML normalization stage; Python workers, remaining enrichment/extraction and browser profiles still own production work. Not full #7966 completion.",
+  "offline_verification": {
+    "oracle_cases": 8567,
+    "stored_description_rows": 512,
+    "stored_boards": 265,
+    "stored_locales": 14,
+    "naturally_captured_DOM_cases": 5,
+    "complete_normalized_bytes_match": true,
+    "replay_record": "go-html-normalization-replay-2026-09-28.json"
+  },
+  "natural_execution_and_output": {
+    "natural_readback_utc": "2026-09-28T18:07:22.975491+00:00",
+    "description_rows": 256,
+    "postings": 256,
+    "boards": 40,
+    "monitor_types": [
+      "api_sniffer",
+      "greenhouse",
+      "icims",
+      "oracle_hcm",
+      "paycom",
+      "phenom",
+      "sitemap",
+      "talentbrew",
+      "typify",
+      "workday"
+    ],
+    "locales": [
+      "en",
+      "es",
+      "et",
+      "fr",
+      "nl",
+      "pt"
+    ],
+    "same_byte_Python_Go_reparse_match": true,
+    "fresh_description_rows": 171,
+    "fresh_description_hash_mismatches": 0,
+    "primary_scalar_hash_mismatches": 0,
+    "retained_older_markers_in_latest_sample": 27,
+    "zero_scrape_failures": 256,
+    "metrics_snapshots": {
+      "after-promote": {
+        "utc": "2026-09-28T18:01:54.221996+00:00",
+        "successes": 4579,
+        "errors": 0,
+        "by_port": {
+          "9095": {
+            "success": 1141
+          },
+          "9096": {
+            "success": 1624
+          },
+          "9097": {
+            "success": 1766
+          },
+          "9098": {
+            "success": 48
+          }
+        }
+      },
+      "after-activation": {
+        "utc": "2026-09-28T18:04:25.235419+00:00",
+        "successes": 153,
+        "errors": 0,
+        "by_port": {
+          "9095": {
+            "success": 22
+          },
+          "9096": {
+            "success": 117
+          },
+          "9097": {
+            "success": 12
+          },
+          "9098": {
+            "success": 2
+          }
+        }
+      }
+    },
+    "cohort_rows": 137,
+    "cohort_active_rows": 39,
+    "cohort_all_canonical_fields_and_failures_unchanged": true,
+    "source_definition": "Read-only fresh PostgreSQL posting rows updated after terminal deploy-job success at18:00:48UTC; 171 description rows were newly written in this interval. Reparse compares stored bytes offline. Counters are natural production Go executions, captured in separate worker generations across supported reactivation; do not treat them as one uninterrupted counter. No origin fetch, forced due or queue promotion."
+  },
+  "legacy_hash_retention": {
+    "initial_inherited_hash_markers": 51,
+    "all_same_bytes_and_markers": true,
+    "all_description_rows_predate_deploy": true,
+    "initial_primary_scalar_difference": [
+      {
+        "initial_uploaded": false,
+        "now_uploaded": true,
+        "now_primary_hash_equal": true,
+        "html_unchanged": true
+      }
+    ],
+    "interpretation": "Equal HTML preserves inherited row/hash/upload state by the existing byte-authoritative deduplication contract; one pending drain upload converged with unchanged HTML. No Go normalization byte drift."
+  },
+  "supported_cold_window": {
+    "cohort": "cdom",
+    "retired_epoch": 130,
+    "restored_schedules": 22,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "selectors_cleared_and_staged": 25,
+    "selector_helper_sha256": "8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743",
+    "kandou_url": "https://kandou.bamboohr.com/careers/310"
+  },
+  "admission": {
+    "receipt": {
+      "schema": "jobseek.lightpanda-b0-active/v1",
+      "state": "active",
+      "cohort": "cdom",
+      "namespace": "production-b0",
+      "shard_id": "lightpanda-b0",
+      "routing_epoch": "131",
+      "plan_digest": "6d2410613d1ecb67adc53f23a4117f9b2949a72bc3f216a81fde36622304f63f",
+      "compose_digest": "e068f1da1198a13b2cb58e30027effc5f556ccfdb5cedb0706628677f0946a52",
+      "crawler_image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:afe3f7630c5b25f0144296bf4c4db0b333639f762a152cf098e173657aadf03f",
+      "deploy_revision": "ed4a86d68e3d6ea9d0ea804ee2f7f6c9dfe7002e",
+      "activated_at_epoch": "1790618633"
+    },
+    "audit": {
+      "decision": "accepted",
+      "reason": "audit_ok",
+      "server_time_ms": 1790618747823,
+      "value": 22,
+      "secondary_value": 0
+    },
+    "ready_records": 22,
+    "already_unqueued": 17,
+    "lifetime_headroom": 2026,
+    "pilot_limit": 1600,
+    "all_core_services_healthy": true,
+    "collector_errors": []
+  },
+  "latest_lightpanda": {
+    "verified_at_utc": "2026-09-28T18:01:53.168665+00:00",
+    "upstream_assets_match_manifest": true,
+    "installed_arm64_sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f",
+    "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:72b73991cc4a6820263970ccf07367b5d9193eb37cb9d742701fb78ea0104a21",
+    "manifest": {
+      "schema_version": 1,
+      "repository": "https://github.com/lightpanda-io/browser",
+      "tag": "nightly",
+      "verified_at": "2026-09-28",
+      "release_url": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
+      "note": "Nightly tag is mutable. Asset IDs and SHA-256 bind this snapshot; builds fail closed if upstream removes or replaces these bytes. Tag creation time/commit does not identify the binary build.",
+      "assets": {
+        "amd64": {
+          "id": 594332787,
+          "name": "lightpanda-x86_64-linux",
+          "updated_at": "2026-09-28T02:56:04Z",
+          "sha256": "e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f"
+        },
+        "arm64": {
+          "id": 594332898,
+          "name": "lightpanda-aarch64-linux",
+          "updated_at": "2026-09-28T02:56:09Z",
+          "sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f"
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Counters captured before and after worker recreation are separate generations; no cumulative uninterrupted total claimed.",
+    "Offline reparse uses stored description bytes, not a forced second publisher fetch.",
+    "Five natural DOM output cases belong to the prior v0.13.896 admission; v0.13.897 preserves them and their schedules, without forcing a new cycle.",
+    "Offline normalization CPU/RSS replay is not same actual-workload whole-lane CPU/RAM/density/cost evidence.",
+    "Full final cutover and reversal with zero production Python/Playwright/Chromium remain required. Owner-closed issue#7966 is not reopened.",
+    "Go parser stack limit512, request/deadline/response bounds and explicit failure/reaping remain documented. No truncation or same-task Python fallback."
+  ]
+}
