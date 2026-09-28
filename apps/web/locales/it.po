@@ -651,7 +651,7 @@ msgstr "Una ricerca di lavoro basata sulle tue preferenze."
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.description"
-msgstr "Gestione gratuita delle candidature per le offerte salvate su Job Seek. Organizza posizioni, fasi delle candidature e note dei colloqui."
+msgstr "Gestione gratuita delle candidature per le offerte salvate su Job Seek. Organizza posizioni, fasi delle candidature e date dei colloqui."
 
 #. Narrowed marketing page: body
 #. js-lingui-explicit-id
@@ -2895,7 +2895,7 @@ msgstr "Registro dei colloqui"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.common.exampleNote"
-msgstr "Le note dei colloqui restano con la posizione."
+msgstr "Le fasi dei colloqui restano collegate alla posizione."
 
 #. Screen-reader confirmation after updating an interview round
 #. js-lingui-explicit-id
@@ -3099,12 +3099,6 @@ msgstr "Lavori presso {name}"
 #: src/components/search/search-bar.tsx
 msgid "search.bar.keepAsKeywords"
 msgstr "Mantieni \"{0}\" come parole chiave"
-
-#. Public marketing page: tracker_step3Title
-#. js-lingui-explicit-id
-#: src/content/marketing.ts
-msgid "marketing.tracker.step3Title"
-msgstr "Conserva le note dei colloqui"
 
 #. Dismiss paused notification warning without changing preference
 #. js-lingui-explicit-id
@@ -3921,7 +3915,7 @@ msgstr "Ops, qualcosa è andato storto."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.apply"
-msgstr "Apri un annuncio e segui il link per candidarti sul sito del datore di lavoro. Salvalo su Job Seek, aggiornane lo stato quando ti candidi o sostieni un colloquio e aggiungi date e note dei colloqui. Gestisci tu il tracker; Job Seek non invia candidature e non ne aggiorna automaticamente lo stato."
+msgstr "Apri un annuncio e segui il link per candidarti sul sito del datore di lavoro. Salvalo su Job Seek, aggiornane lo stato quando ti candidi o sostieni un colloquio e aggiungi date e tipi dei colloqui. Gestisci tu il tracker; Job Seek non invia candidature e non ne aggiorna automaticamente lo stato."
 
 #. Explains where subscribed users can use Pro
 #. js-lingui-explicit-id
@@ -4504,13 +4498,13 @@ msgstr "Aggiornati di recente"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s2.p2.description"
-msgstr "Registra ogni round di colloquio con data, tipo e note così non ti sfugge nulla."
+msgstr "Registra ogni fase di colloquio con data e tipo per sapere quale sarà il prossimo passo."
 
 #. Public marketing page: tracker_step3Body
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.step3Body"
-msgstr "Annota data, tipo e note di ogni colloquio. Segui i progressi dalle offerte salvate ai colloqui e alle proposte."
+msgstr "Registra data e tipo di ogni colloquio. Segui i progressi dalle offerte salvate ai colloqui e alle proposte."
 
 #. MIT right 2
 #. js-lingui-explicit-id
@@ -4755,7 +4749,7 @@ msgstr "Riattiva le notifiche email qui sopra per modificare le scelte delle tue
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.proofBody"
-msgstr "Ritrova i dettagli della posizione per preparare un colloquio. Stato e note restano collegati all’offerta salvata."
+msgstr "Ritrova i dettagli della posizione per preparare un colloquio. Stato e fasi dei colloqui restano collegati all’offerta salvata."
 
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
@@ -4833,7 +4827,7 @@ msgstr "Salva offerta"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.body"
-msgstr "Salva le offerte trovate su Job Seek, aggiorna lo stato delle candidature e raccogli le note dei colloqui."
+msgstr "Salva le offerte trovate su Job Seek, aggiorna lo stato delle candidature e tieni insieme le date dei colloqui."
 
 #. Empty state for stats
 #. js-lingui-explicit-id
@@ -5713,11 +5707,17 @@ msgstr "Al"
 msgid "watchlists.jobList.today"
 msgstr "Oggi"
 
+#. Public marketing page: tracker_step3Title
+#. js-lingui-explicit-id
+#: src/content/marketing.ts
+msgid "marketing.tracker.step3Title"
+msgstr "Tieni traccia dei colloqui"
+
 #. Feature section 2 description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s2.description"
-msgstr "Segui le posizioni salvate su Job Seek, aggiorna lo stato delle candidature e dei colloqui e raccogli le tue note."
+msgstr "Segui le posizioni salvate su Job Seek, aggiorna lo stato delle candidature e dei colloqui e tieni insieme le date dei colloqui."
 
 #. Main heading on the landing page — leads with company-watchlist ICP
 #. js-lingui-explicit-id

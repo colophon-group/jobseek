@@ -6,14 +6,14 @@ This directory holds MDX source for posts on `https://jseek.co/{locale}/blog/{sl
 - `apps/web/app/[lang]/(public)/blog/[slug]/page.tsx` — post
 - `apps/web/app/og/blog/[lang]/[slug]/route.tsx` — per-post OG card, isolated from page traces
 - `apps/web/src/lib/blog.ts` — frontmatter + body loader
-- `apps/web/src/lib/sitemap.ts::blogPostEntries` — sitemap inclusion (English-only canonical)
+- `apps/web/src/lib/sitemap.ts::blogPostEntries` — sitemap inclusion for each published translation
 - `apps/web/src/components/blog/MdxMentions.tsx` — interactive entity-mention components
 
 ## Purpose
 
 The blog is jseek's primary growing surface of unique content for SEO + AI-retriever grounding. After the SEO batch (#2821 + #2822 + #2823 part 1) reduced the indexable surface from ~17,000 source-derivable URLs to ~100 URLs of editorial content, the blog is the only place new indexable content gets *created* over time. Every post earns:
 
-- A `/{en}/blog/{slug}` URL that goes into `sitemap.xml`.
+- A `/{locale}/blog/{slug}` URL for each published translation, included in `sitemap.xml`.
 - An `Article` JSON-LD block (author, dates, publisher, mainEntityOfPage) — consumable by Google, Bing, Perplexity, ChatGPT, Claude.
 - A per-post OG image so social shares don't fall back to the site-wide generic card.
 - An entry on the blog index page, ordered by `datePublished`.
@@ -28,6 +28,8 @@ The recurring formats (in priority order):
 2. **Original data analysis on questions only jseek can answer.** Hiring-trajectory follow-ups after announced layoffs, ATS market-share shifts measured at the careers-page level, role-mix changes around major events. ~800–1200 words, methodology footnote required.
 3. **News commentary anchored in our data.** When something newsworthy happens (a major restructuring, a regulatory change, a tech-stack shift), respond with what the underlying posting data says — without lapsing into generic op-ed. The data does the talking; commentary is structural.
 4. **Process / behind-the-scenes posts.** How the crawler works, how we onboard companies, how we handle WAF-blocked boards. Engaging narrative format — see `how-we-index-job-postings.mdx` as the template.
+
+5. **Source-checked employer and job-description guides.** Follow the reviewed keyword backlog in `docs/research/2026-09-28-keyword-seo/`. Give readers a useful employer shortlist or a method for evaluating actual work, grounded in primary sources and catalogue coverage. Keep geography, current vacancies, and suggested role families distinct.
 
 ### What doesn't
 
@@ -44,11 +46,12 @@ The recurring formats (in priority order):
 - **Methodology footnote** when the post makes any quantitative claim. Scope, time window, inclusion criteria, exclusions, dataset reference. Anchor `#methodology` so it's linkable. The reader should be able to reproduce the result given the same data.
 - **Steelmanned sources.** When contrasting against a published report or report author's claim, summarize their position fairly *before* contrasting. The angle is "complementary measurement," not "they're wrong."
 - **Charts (if any) are minimal SVG** rendered inline or via a lightweight `<Chart>` component. Never an external chart library shipped in the bundle for one post.
-- **Internal links use mention components** for companies / watchlists where they exist (see below). Plain markdown links for anything else.
+- **Keep catalogue journeys on the site.** When a company or job is covered by our catalogue, link to its verified locale-correct Job Seek page instead of its external homepage, careers board, or an aggregator. Use `<Company slug="..." />` naturally within prose and comparison tables; use other rendered elements only when already supported by the MDX catalogue. Plain internal links cover search and feature pages. Do not replace an essential source citation with a catalogue page that cannot substantiate the claim: keep necessary original research/policy sources, and record a detailed source audit in the repo. Verify links and regenerate the mention snapshot.
+- **Inline elements must help the reader.** Prefer a company mention at the point it is discussed, useful section jump links, and concise comparisons. Do not stack redundant cards or build a new marketing scaffold inside the article.
 
 ### Cadence
 
-Quarterly is the floor. Monthly is achievable when aligned with industry-report release calendars. **Empty / half-built blogs trigger Helpful Content demotion** — once the blog is live, commit to a real cadence or pause and document the pause in the index page copy.
+The current user-authorized series targets one complete article each week, using the reviewed keyword backlog and publication log. Evidence and usefulness take precedence over the schedule. Publishing frequency alone is not a ranking guarantee or a documented demotion rule; do not publish filler to maintain cadence.
 
 ### Critic-iteration policy (mandatory for every new post)
 
@@ -65,7 +68,7 @@ Each critic ends with a verdict: SHIP / SHIP-AFTER-EDITS / REWRITE (or PUBLISH /
 The cycle is mandatory because authors uniformly **overrate their own clarity, accuracy, and voice consistency** — the failure mode is silent, not visible, and the cost of an unclear/inaccurate post #1 setting the tone for everything that follows is much higher than the cost of running three reviews. Re-running critics on subsequent revisions is cheap; running them once and shipping isn't enough.
 
 Logistics:
-- Critics run as Claude Code agents (or human reviewers in the same lens) and receive only the post text + the briefing — not the author's drafting context.
+- Critics run as independent Codex subagents (or human reviewers in the same lens) and receive only the post text + the briefing — not the author's drafting context.
 - Briefing includes pointers to the surface-tone references (FAQ, About, indexing-policy) and the codebase root for the fact-checker.
 - Known-aspirational claims must be enumerated in the fact-checker brief so they don't get re-flagged.
 - After applying feedback, re-run at least the affected critic. Three rounds is normal; more is fine if the post is high-stakes (e.g. a flagship piece or one that takes a strong position against a published report).
@@ -95,17 +98,19 @@ relatedPosts: ["other-slug"]        # optional, override "you may also be intere
 
 ## MDX components catalogue
 
-Components are server-rendered from `mention-snapshot.json` and fall back to `<code>{Type slug}</code>` if the entity is missing — so a broken reference is visible during draft review. They never fetch an entity while `next build` prerenders the four locale variants.
+Components are server-rendered from reviewed repository snapshots and fall back to `<code>{Type slug}</code>` if the entity is missing — so a broken reference is visible during draft review. They never fetch an entity while `next build` prerenders the four locale variants.
 
 ### Build-time data and call budget
 
 The complete `en` / `de` / `fr` / `it` blog build has an external-call budget of **zero** for MDX mentions. Production Typesense, Postgres, Redis, and their credentials are not inputs to this path. A 503 or 429 from the search plane therefore cannot trigger per-component retry amplification or change the rendered post.
 
-`mention-snapshot.json` is the only approved build input:
+The approved build inputs are `mention-snapshot.json` and `watchlist-mention-snapshot.json`:
 
 - Company rows are generated from the versioned `apps/crawler/data/companies.csv`, `company_descriptions.csv`, and `industries.csv` sources. The snapshot contains one row per unique company slug used across all locale MDX files; localized descriptions are selected from that single row with English fallback.
 
-Every production build runs `pnpm blog-mentions:check`. The gate scans every MDX file, requires exactly one snapshot row for each unique company reference, verifies generated company fields against the repository CSVs, and walks the mention component's local import graph. Imports of database/search service layers, Typesense/Postgres/network clients, or a direct `fetch()` fail the build. This both asserts the zero-call budget in CI and prevents a production-host fallback from being introduced behind the snapshot.
+- Watchlist rows are manually reviewed `{slug, name, path}` records in `watchlist-mention-snapshot.json`. Use a verified, shared, locale-neutral `/watchlists/<lowercase UUID>` path. Confirm the intended companies and filters persist, and check the link while signed out. Never store credentials or volatile job counts. The update command validates these rows but does not create or fetch watchlists.
+
+Every production build runs `pnpm blog-mentions:check`. The gate scans every MDX file, requires exactly one snapshot row for each unique company and watchlist reference, verifies generated company fields against the repository CSVs, and walks the mention component's local import graph. Imports of database/search service layers, Typesense/Postgres/network clients, or a direct `fetch()` fail the build. This both asserts the zero-call budget in CI and prevents a production-host fallback from being introduced behind the snapshot.
 
 After adding or changing a mention:
 
@@ -126,6 +131,16 @@ The shift was led by <Company slug="stripe" /> and <Company slug="openai" />.
 ```
 
 Source: `MdxMentions.tsx::CompanyMention`. Resolves synchronously from the approved snapshot; no search-plane client is in its import graph.
+
+### `<Watchlist slug="..." />`
+
+Inline pill using the existing watchlist Eye icon and reviewed title. Links to the shared watchlist in the reader’s locale. Use it to give readers a combined feed they can clone and customize:
+
+```mdx
+Follow these employers in <Watchlist slug="swiss-robotics" />.
+```
+
+Add the verified destination to `watchlist-mention-snapshot.json` before using the tag. Recheck guest access before publishing; a valid UUID alone does not establish that sharing is enabled.
 
 ### Adding a new mention type
 

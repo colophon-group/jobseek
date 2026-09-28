@@ -232,7 +232,7 @@ function FeatureSection2() {
                 <Trans id="home.features.s2.title" comment="Feature section 2 heading">From saved role to signed offer, all in one place</Trans>
               </h2>
               <p className="mt-4 text-muted">
-                <Trans id="home.features.s2.description" comment="Feature section 2 description">Track jobs you save on Job Seek, update their status as you apply and interview, and keep your interview notes together.</Trans>
+                <Trans id="home.features.s2.description" comment="Feature section 2 description">Track jobs you save on Job Seek, update their status as you apply and interview, and keep your interview dates together.</Trans>
               </p>
             </div>
             <dl className="mt-8 flex flex-col gap-6">
@@ -244,7 +244,7 @@ function FeatureSection2() {
               <PointBlock
                 icon={cfg.pointIcons[1]}
                 title={<Trans id="home.features.s2.p2.title" comment="Feature: interview log title">Interview log</Trans>}
-                description={<Trans id="home.features.s2.p2.description" comment="Feature: interview log description">Record each interview round with date, type, and notes so nothing slips through the cracks.</Trans>}
+                description={<Trans id="home.features.s2.p2.description" comment="Feature: interview log description">Record each interview round with its date and type so you can see what comes next.</Trans>}
               />
               <PointBlock
                 icon={cfg.pointIcons[2]}

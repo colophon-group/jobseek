@@ -1,0 +1,874 @@
+{
+  "checkedAt": "2026-09-28",
+  "scope": "Swiss robotics employers, autonomy teams and specialist suppliers with verified career sources",
+  "zurichAndGermanSpeaking": {
+    "checked_at": "2026-09-28",
+    "scope": "Zurich and German-speaking Switzerland; national expansion includes Swisslog. Read-only primary research, no assertion of exhaustive coverage.",
+    "qualified": [
+      {
+        "slug": "rivr",
+        "name": "RIVR",
+        "location": "Zurich",
+        "product": "Wheeled-legged robots for last-mile doorstep delivery",
+        "careers_url": "https://jobs.lever.co/rivr",
+        "sources": [
+          "https://rivr.ai/careers",
+          "https://www.rivr.ai/",
+          "https://jobs.lever.co/rivr/54dfe3aa-3732-428a-8476-28de54795007"
+        ],
+        "notes": "Current employer job description says part of Amazon following March 2026 acquisition; avoid independent-startup claim. Active Zurich software, hardware, operations and HR roles.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "rivr-careers",
+            "board_url": "https://jobs.lever.co/rivr",
+            "monitor_type": "lever"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "ascento",
+        "name": "Ascento",
+        "location": "Zurich / Swiss-origin; current listed openings Brooklyn",
+        "product": "Autonomous outdoor security patrol robots",
+        "careers_url": "https://ascento-ag.breezy.hr/",
+        "sources": [
+          "https://www.ascento.ai/",
+          "https://www.ascento.ai/about",
+          "https://ascento-ag.breezy.hr/"
+        ],
+        "notes": "Primary product/company pages verified. Current board lists two Brooklyn roles, no Swiss vacancy observed; include follow-worthy employer but do not promise Swiss jobs. Precise current Swiss office address not found in reviewed primary pages.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "ascento-careers",
+            "board_url": "https://ascento-ag.breezy.hr/",
+            "monitor_type": "breezy"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "bota-systems",
+        "name": "Bota Systems",
+        "location": "Zurich",
+        "product": "Force-torque sensors that provide robotic systems with touch feedback",
+        "careers_url": "https://bota-systems-ag.breezy.hr/",
+        "sources": [
+          "https://bota-systems-ag.breezy.hr/"
+        ],
+        "notes": "Two concrete Zurich production and sensor-validation/test roles observed. Component supplier rather than complete robot manufacturer.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "bota-systems-careers",
+            "board_url": "https://bota-systems-ag.breezy.hr/",
+            "monitor_type": "breezy"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "gravis-robotics",
+        "name": "Gravis Robotics",
+        "location": "Zurich",
+        "product": "Retrofit autonomy for construction machinery and excavators",
+        "careers_url": "https://jobs.lever.co/gravisrobotics",
+        "sources": [
+          "https://www.gravisrobotics.com/",
+          "https://jobs.lever.co/gravisrobotics"
+        ],
+        "notes": "Current Zurich autonomy, reinforcement learning and embedded Linux roles; board also contains overseas and general application entries.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "gravis-robotics-careers",
+            "board_url": "https://jobs.lever.co/gravisrobotics",
+            "monitor_type": "lever"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "verity",
+        "name": "Verity",
+        "location": "Zurich",
+        "product": "Autonomous indoor drones for warehouse inventory",
+        "careers_url": "https://verity-ag.breezy.hr/",
+        "sources": [
+          "https://verity-ag.breezy.hr/",
+          "https://www.verity.net/careers/",
+          "https://assets3.verity.net/app/uploads/2024/02/Whitepaper-Autonomous-inventory-tracking-for-3PLs.pdf"
+        ],
+        "notes": "Zurich machine vision, autonomy/perception and tech lead jobs observed plus spontaneous application.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "verity-breezy",
+            "board_url": "https://verity-ag.breezy.hr/",
+            "monitor_type": "sitemap"
+          }
+        ],
+        "configuration_gap": "Company CSV points to veritystudios.com while current configured Breezy employer homepage is verity.net; verify/update company homepage identity."
+      },
+      {
+        "slug": "abb",
+        "name": "ABB Robotics / Sevensense",
+        "location": "Zurich",
+        "product": "Industrial robotics and Sevensense visual positioning/navigation for mobile robots",
+        "careers_url": "https://careers.abb/",
+        "sources": [
+          "https://www.sevensense.ai/",
+          "https://www.sevensense.ai/company"
+        ],
+        "notes": "Sevensense explicitly merged into ABB as dedicated business unit; use canonical abb, do not create duplicate independent company. Company page lists current Zurich robotic systems test internship linking careers.abb. Existing abb-workday board present. Broad ABB company scope includes nonrobotics roles.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "abb-brightloop",
+            "board_url": "https://carrieres.brightloop.fr/fr/brightloop-converters/",
+            "monitor_type": "sitemap"
+          },
+          {
+            "board_slug": "abb-emobility",
+            "board_url": "https://careers.abb-emobility.com/search/",
+            "monitor_type": "rss"
+          },
+          {
+            "board_slug": "abb-eve",
+            "board_url": "https://www.evehome.com/en-us/jobs",
+            "monitor_type": "sitemap"
+          },
+          {
+            "board_slug": "abb-foedisch",
+            "board_url": "https://www.foedisch.de/karriere/",
+            "monitor_type": "inline"
+          },
+          {
+            "board_slug": "abb-premium-power",
+            "board_url": "https://premium-power.com/careers/",
+            "monitor_type": "sitemap"
+          },
+          {
+            "board_slug": "abb-sensorfact",
+            "board_url": "https://jobs.ashbyhq.com/sensorfact",
+            "monitor_type": "ashby"
+          },
+          {
+            "board_slug": "abb-workday",
+            "board_url": "https://abb.wd3.myworkdayjobs.com/External_Career_Page",
+            "monitor_type": "workday"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "staubli",
+        "name": "Stäubli",
+        "location": "Pfäffikon SZ headquarters; Horgen robotics office; Swiss jobs also Neuchâtel",
+        "product": "Industrial robots and mechatronics",
+        "careers_url": "https://careers.smartrecruiters.com/StaubliGroup",
+        "sources": [
+          "https://www.staubli.com/ch/de/careers/jobliste.html",
+          "https://assets.staubli.com/user_upload/Access_map_Staeubli_Horgen_DE_FR.pdf"
+        ],
+        "notes": "Official job list includes Field Service Engineer - Robotics in Neuchâtel; many robotics engineering jobs are in France. Company-level watchlist includes connectors/textile roles; do not imply every Swiss role is robotics.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "staubli-careers",
+            "board_url": "https://careers.smartrecruiters.com/StaubliGroup",
+            "monitor_type": "smartrecruiters"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "fp-robotics",
+        "name": "F&P Robotics",
+        "location": "Glattbrugg",
+        "product": "Collaborative arms and mobile manipulators for laboratories, manufacturing and healthcare",
+        "careers_url": "https://fp-robotics.zohorecruit.com/jobs/Careers",
+        "sources": [
+          "https://www.fp-robotics.com/",
+          "https://www.fp-robotics.com/company/career/"
+        ],
+        "notes": "Current official site describes Sola and Lio mobile robots and cobots. Existing Zoho board returns HTTP200; current exact vacancies require browser verification, not inferred from internship or spontaneous application copy.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "fp-robotics-careers-zoho",
+            "board_url": "https://fp-robotics.zohorecruit.com/jobs/Careers",
+            "monitor_type": "dom"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "mimic",
+        "name": "Mimic",
+        "location": "Zurich",
+        "product": "Dexterous robot manipulation for assembly, packaging and industrial work",
+        "careers_url": "https://jobs.gem.com/mimicrobotics-com",
+        "sources": [
+          "https://www.mimicrobotics.com/",
+          "https://www.mimicrobotics.com/careers"
+        ],
+        "notes": "Current Zurich roles across robot learning, technician work, data collection, field engineering and operations; software-only AI label would miss physical robotics scope.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "mimic-careers",
+            "board_url": "https://jobs.gem.com/mimicrobotics-com",
+            "monitor_type": "gem"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "flexion-robotics",
+        "name": "Flexion Robotics",
+        "location": "Zurich",
+        "product": "Humanoid robot intelligence and control",
+        "careers_url": "https://flexion.ai/careers",
+        "sources": [
+          "https://flexion.ai/careers"
+        ],
+        "notes": "Official page lists Zurich humanoid motion generation, dexterous manipulation, mechatronic intern, product manager and finance roles; also San Francisco, retain Swiss location filter.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "flexion-robotics-careers",
+            "board_url": "https://flexion.ai/careers",
+            "monitor_type": "dom"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "fixposition",
+        "name": "Fixposition",
+        "location": "Schlieren",
+        "product": "Sensor fusion and precise positioning for mobile robots and autonomous machines",
+        "careers_url": "https://fixposition.bamboohr.com/careers",
+        "sources": [
+          "https://www.fixposition.com/",
+          "https://www.fixposition.com/pages/about-us"
+        ],
+        "notes": "Official address Rütistrasse14 Schlieren. Component/navigation supplier, not whole robot manufacturer. BambooHR responds200 but vacancy contents require browser confirmation.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "fixposition-careers",
+            "board_url": "https://fixposition.bamboohr.com/careers",
+            "monitor_type": "dom"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "roboa",
+        "name": "roboa",
+        "location": "Zurich",
+        "product": "Robots for inspection, repair and cable installation in confined spaces",
+        "careers_url": "https://www.roboa.ch/career",
+        "sources": [
+          "https://www.roboa.ch/",
+          "https://www.roboa.ch/career",
+          "https://www.roboa.ch/career/jobs/field-hardware-engineer",
+          "https://www.roboa.ch/career/jobs/service-und-produktionstechniker"
+        ],
+        "notes": "Official careers page lists two concrete Zurich positions and speculative application.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "roboa-careers",
+            "board_url": "https://sites.google.com/roboa.ch/open-positions/home",
+            "monitor_type": "dom"
+          }
+        ],
+        "configuration_gap": "Existing roboa-careers board points at obsolete Google Sites open-positions page. Replace monitor/scraper with current roboa.ch/career and /career/jobs/ pages after ws verification."
+      },
+      {
+        "slug": "hexagon-robotics",
+        "name": "Hexagon Robotics",
+        "location": "Zurich",
+        "product": "AEON industrial humanoid for manipulation, inspection and reality capture",
+        "careers_url": "https://robotics.hexagon.com/careers/",
+        "sources": [
+          "https://robotics.hexagon.com/",
+          "https://robotics.hexagon.com/careers/",
+          "https://robotics.hexagon.com/bmw-deploys-aeon-hexagon-robotics-humanoid/"
+        ],
+        "notes": "Official February2026 article explicitly says division headquartered Zurich. Careers HTML embeds hexagon-robotics.onlyfy.jobs/widget/iframe.js; existing board captures this widget. No exact current role claimed from text-only page.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "hexagon-robotics-careers",
+            "board_url": "https://robotics.hexagon.com/careers/",
+            "monitor_type": "dom"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "tethys-robotics",
+        "name": "Tethys Robotics",
+        "location": "Schlieren",
+        "product": "Underwater drones for infrastructure inspection and search/rescue",
+        "careers_url": "https://www.tethys-robotics.ch/company/jobs",
+        "sources": [
+          "https://www.tethys-robotics.ch/",
+          "https://www.tethys-robotics.ch/company/jobs",
+          "https://www.tethys-robotics.ch/privacy-policy"
+        ],
+        "notes": "Current address Zürcherstrasse39d Schlieren. Jobs page200 with no concrete positions or job links in current HTML; do not imply actively hiring. Existing DOM monitor matches former ETH softfactors URLs; empty page currently cannot verify extraction.",
+        "company_present": true,
+        "boards": [
+          {
+            "board_slug": "tethys-robotics-careers",
+            "board_url": "https://www.tethys-robotics.ch/company/jobs",
+            "monitor_type": "dom"
+          }
+        ],
+        "configuration_gap": null
+      },
+      {
+        "slug": "swisslog",
+        "name": "Swisslog",
+        "location": "Buchs AG / Aarau",
+        "product": "Automated warehouses, robotic picking and material handling systems",
+        "careers_url": "https://www.swisslog.com/en-us/careers/openings",
+        "sources": [
+          "https://www.swisslog.com/en-us",
+          "https://www.swisslog.com/en-us/careers/openings",
+          "https://www.swisslog.com/de-de/karriere/swisslog-als-arbeitgeber/attraktive-arbeitsstandorte-im-deutschsprachigen-raum",
+          "https://www.swisslog.com/de-de/karriere/offene-stellen/automatikerin-efz-4097"
+        ],
+        "notes": "Official Swiss roles include automation apprentice, software project manager and maintenance; KUKA group subsidiary. National Swiss expansion, not Zurich city.",
+        "company_present": false,
+        "boards": [],
+        "configuration_gap": "Missing company and board in CSV; configure through ws after checking parent-company ownership policy (KUKA)."
+      }
+    ],
+    "excluded_or_deduplicated": [
+      {
+        "name": "Sevensense standalone company",
+        "reason": "Explicitly ABB business unit; use abb canonical rather than duplicate."
+      },
+      {
+        "name": "Swiss-Mile standalone company",
+        "reason": "Former name of RIVR; use rivr canonical."
+      }
+    ],
+    "limitations": [
+      "Company/board existence verified from CSV; production catalogue availability must be checked before adding inline MDX references.",
+      "Research distinguishes active employer and career endpoint from guaranteed current Swiss vacancy.",
+      "Breezy/Lever and official pages reviewed live; some widget-based boards need rendered browser verification."
+    ],
+    "configuration_results": {
+      "worktree": "/Users/Viktor/.codex/worktrees/swiss-robotics-catalogue/jobseek",
+      "swisslog": {
+        "monitor": "api_sniffer",
+        "source": "https://www.swisslog.com/en-us/api/job/getjobs?searchrootpath=24F53394AB4E44F1A28C930664FDC228",
+        "source_provenance": "Official careers div#mod-joblist data-url",
+        "monitor_count": 53,
+        "rendered_count": 53,
+        "swiss_roles": 5,
+        "scraper": "json-ld",
+        "samples": [
+          {
+            "title": "Software Project Manager (m/w/d) - Swisslog",
+            "location": "Buchs, Schweiz",
+            "description": "Complete responsibilities and requirements"
+          },
+          {
+            "title": "Cyber Security Incident Responder - Swisslog Global",
+            "location": "Petaling Jaya, Malaysia",
+            "description": "Complete responsibilities and requirements"
+          }
+        ],
+        "important": "Explicit json-ld scraper retained despite partial monitor fields, so descriptions are fetched; not skip.",
+        "metadata": "EN/DE/FR/IT descriptions; official PNG logo and SVG icon visually verified and staged.",
+        "status": "WS_LOCAL submit complete: board quality gates and global CSV validation passed. No Git commit or push performed.",
+        "artwork_status": "Official PNG wordmark and SVG icon staged under data/images/swisslog and visually reviewed. CSV asset URLs left blank for normal image-upload CI."
+      },
+      "roboa": {
+        "monitor_count": 3,
+        "official_page_count": 4,
+        "excluded": "Speculative application",
+        "scraper": "dom",
+        "samples": [
+          {
+            "title": "Field & Hardware Engineer (60%-100%)",
+            "location": "Zurich, Switzerland"
+          },
+          {
+            "title": "Service- und Produktionstechniker / Service and Production Technician (60–100%)",
+            "location": "Zürich"
+          },
+          {
+            "title": "Software Intern (6 Months)",
+            "location": "Zürich"
+          }
+        ],
+        "sample_quality": "3/3 titles, complete descriptions, locations and On-site work mode. Stops descriptions at How to Apply.",
+        "verification_runtime": "DOM_GO_PARSE_ENABLED=0 local Python fallback because machine lacks /usr/local/bin/dom-detail-parse. Production config does not contain this override.",
+        "status": "WS_LOCAL submit complete: board quality gates and global CSV validation passed. No Git commit or push performed."
+      },
+      "verity": {
+        "old_website": "https://veritystudios.com/",
+        "new_website": "https://www.verity.net/",
+        "evidence": "Configured official Breezy board links new homepage and has active Zurich robotics roles."
+      }
+    }
+  },
+  "romandieAndNational": {
+    "verifiedAt": "2026-09-28",
+    "candidates": [
+      {
+        "slug": "flybotix",
+        "name": "Flybotix",
+        "region": "Renens / Lausanne",
+        "product": "Indoor inspection drones",
+        "source": "https://www.flybotix.com/careers/",
+        "careers": "https://flybotix.jobs.personio.com/",
+        "catalogueStatus": "missing"
+      },
+      {
+        "slug": "rigitech",
+        "name": "RigiTech",
+        "region": "Prilly",
+        "product": "Delivery drones and fleet software",
+        "source": "https://rigi.tech/careers/",
+        "careers": "https://rigi.tech/careers/",
+        "catalogueStatus": "missing"
+      },
+      {
+        "slug": "cascination",
+        "name": "CASCINATION",
+        "region": "Bern",
+        "product": "Surgical robotics and image guidance",
+        "source": "https://www.cascination.com/en/about-us",
+        "careers": "https://cascination-ag.jobs.personio.com/",
+        "catalogueStatus": "missing"
+      },
+      {
+        "slug": "dufour-aerospace",
+        "name": "Dufour Aerospace",
+        "region": "Dübendorf and Visp",
+        "product": "Autonomous aerial logistics",
+        "source": "https://www.dufour.aero/about",
+        "careers": "https://join.com/companies/dufour",
+        "catalogueStatus": "existing"
+      },
+      {
+        "slug": "lem-surgical",
+        "name": "LEM Surgical",
+        "region": "Bern",
+        "product": "Dynamis surgical robot",
+        "source": "https://lemsurgical.com/",
+        "careers": "https://lemsurgical.com/lem-surgical-job-opportunities/",
+        "catalogueStatus": "missing; email applications without individual jobURLs"
+      },
+      {
+        "slug": "bluebotics",
+        "name": "BlueBotics",
+        "region": "Saint-Sulpice",
+        "product": "AGV/AMR navigation",
+        "source": "https://bluebotics.com/about",
+        "careers": null,
+        "catalogueStatus": "missing; current first-party board not located"
+      },
+      {
+        "slug": "asyril",
+        "name": "Asyril",
+        "region": "Villaz-Saint-Pierre",
+        "product": "Robot feeding and vision",
+        "source": "https://asyril.com/contact/",
+        "careers": "https://asyril.com/about-asyril/career/",
+        "catalogueStatus": "missing; official zerojobs"
+      },
+      {
+        "slug": "mobsya",
+        "name": "Mobsya",
+        "region": "Renens",
+        "product": "Thymio educational robots",
+        "source": "https://www.thymio.org/",
+        "careers": null,
+        "catalogueStatus": "missing; no current board verified"
+      },
+      {
+        "slug": "force-dimension",
+        "name": "Force Dimension",
+        "region": "Nyon (needs primary confirmation)",
+        "product": "Haptics for robotics",
+        "source": "https://www.forcedimension.com/",
+        "careers": null,
+        "catalogueStatus": "missing; no careers boardverified"
+      },
+      {
+        "slug": "rovenso",
+        "name": "ROVENSO",
+        "region": "Lausanne / Renens",
+        "product": "Industrial safety and security robots",
+        "source": "https://www.rovenso.com/about/",
+        "careers": null,
+        "catalogueStatus": "missing; acquired IRS2023; no current hiring board"
+      },
+      {
+        "slug": "aica",
+        "name": "AICA",
+        "region": "Lausanne historical",
+        "product": "Industrial robotic control",
+        "source": "https://www.ai-can-change.tech/",
+        "careers": null,
+        "catalogueStatus": "excluded pending transition; aica.tech redirects newchapter2026 splash and career404"
+      }
+    ],
+    "scope": "Read-only research, nonexhaustive defensible employer coverage; current vacancies may change.",
+    "configurations": {
+      "cascination": {
+        "qualityGateBlockers": [],
+        "qualityGateWarnings": [],
+        "status": "CSV and images written via WS_LOCAL submit; global validation awaiting other company stubs",
+        "board": "https://cascination-ag.jobs.personio.com/",
+        "sources": {
+          "homepage": "https://www.cascination.com/en/",
+          "logo": "/Users/Viktor/.codex/worktrees/swiss-robotics-catalogue/jobseek/apps/crawler/.workspace/cascination/artifacts/company/logo-candidates/candidate-1.png",
+          "icon": "https://www.cascination.com/hubfs/favicon.png"
+        },
+        "monitorConfig": {
+          "monitor_type": "personio",
+          "monitor_config": {
+            "slug": "cascination-ag"
+          },
+          "status": "tested",
+          "cost": {
+            "monitor_per_cycle": 0.32,
+            "initial_load": 60.0
+          },
+          "run": {
+            "jobs": 3,
+            "time": 0.3,
+            "has_rich_data": true,
+            "truncated": false,
+            "sample_urls": [
+              "https://cascination-ag.jobs.personio.com/job/2804359",
+              "https://cascination-ag.jobs.personio.com/job/2690827",
+              "https://cascination-ag.jobs.personio.com/job/2690683"
+            ],
+            "ran_at": "2026-09-28T13:27:55Z",
+            "description_samples": [
+              {
+                "length": 2233,
+                "snippet": "Your mission\nHarmonize the different AI tools and initiatives already taking shape across teams into one coherent, company-wide approachDesign and roll out new AI-driven workflows - using agents, skil"
+              },
+              {
+                "length": 2248,
+                "snippet": "Your mission\nDesign, develop, and maintain the software at the core of our image-guided navigation platforms in modern C++Own specialized technical areas including tracking, computer vision, and 3D re"
+              },
+              {
+                "length": 2889,
+                "snippet": "Your mission\nTest coverage: Review the unit and integration tests written by developers, contributing tests where needed — including Qt logic and GUI tests — and continuously test the application duri"
+              }
+            ],
+            "quality": {
+              "title": 3,
+              "description": 3,
+              "locations": 3,
+              "employment_type": 3,
+              "job_location_type": 0,
+              "date_posted": 3,
+              "base_salary": 0,
+              "skills": 0,
+              "responsibilities": 0,
+              "qualifications": 0
+            }
+          },
+          "scraper_type": "skip",
+          "feedback": {
+            "fields": {
+              "title": {
+                "quality": "clean",
+                "coverage": "3/3"
+              },
+              "description": {
+                "quality": "clean",
+                "coverage": "3/3"
+              },
+              "locations": {
+                "quality": "clean",
+                "coverage": "3/3"
+              },
+              "employment_type": {
+                "quality": "clean",
+                "coverage": "3/3"
+              },
+              "job_location_type": {
+                "quality": "absent",
+                "coverage": "0/3"
+              },
+              "date_posted": {
+                "quality": "clean",
+                "coverage": "3/3"
+              },
+              "base_salary": {
+                "quality": "absent",
+                "coverage": "0/3"
+              },
+              "skills": {
+                "quality": "absent",
+                "coverage": "0/3"
+              },
+              "qualifications": {
+                "quality": "absent",
+                "coverage": "0/3"
+              },
+              "responsibilities": {
+                "quality": "absent",
+                "coverage": "0/3"
+              },
+              "valid_through": {
+                "quality": "absent",
+                "coverage": "0/3"
+              }
+            },
+            "required": {
+              "coverage": "6/6",
+              "quality": "clean"
+            },
+            "important": {
+              "coverage": "6/9",
+              "quality": "absent"
+            },
+            "optional": {
+              "coverage": "3/18",
+              "quality": "absent"
+            },
+            "verdict": "good",
+            "verdict_notes": "Official Personio listing and XML agree on all 3 Bern positions. Read all three substantive role descriptions: distinct AI infrastructure, C++ image-guidance, and system verification duties; 2520-3795 chars each. Full-time and posting dates match source. Other structured fields absent upstream; responsibilities/skills retained in descriptions.",
+            "verified_empty_board": false
+          }
+        }
+      },
+      "rigitech": {
+        "qualityGateBlockers": [],
+        "qualityGateWarnings": [],
+        "status": "CSV and images written via WS_LOCAL submit; global validation awaiting other company stubs",
+        "board": "https://rigi.tech/careers/",
+        "sources": {
+          "homepage": "https://rigi.tech/",
+          "logo": "/Users/Viktor/.codex/worktrees/swiss-robotics-catalogue/jobseek/apps/crawler/.workspace/rigitech/artifacts/company/logo-candidates/candidate-1.png",
+          "icon": "/Users/Viktor/.codex/worktrees/swiss-robotics-catalogue/jobseek/apps/crawler/.workspace/rigitech/artifacts/company/logo-candidates/candidate-2.png"
+        },
+        "monitorConfig": {
+          "monitor_type": "sitemap",
+          "monitor_config": {
+            "url_filter": "^https://rigi\\.tech/job/[^/]+/$"
+          },
+          "status": "tested",
+          "cost": {
+            "monitor_per_cycle": 1.08,
+            "initial_load": 0.83,
+            "scraper_per_job": 0.83
+          },
+          "run": {
+            "jobs": 1,
+            "time": 1.1,
+            "has_rich_data": false,
+            "truncated": false,
+            "sample_urls": [
+              "https://rigi.tech/job/marketing-and-sales-internship/"
+            ],
+            "ran_at": "2026-09-28T13:29:13Z"
+          },
+          "scraper_type": "json-ld",
+          "scraper_config": {},
+          "scraper_run": {
+            "count": 1,
+            "avg_time": 0.8,
+            "titles": 1,
+            "descriptions": 1,
+            "locations": 1,
+            "description_samples": [
+              {
+                "length": 1747,
+                "snippet": "RigiTech is an exciting high-tech startup developing a fully-integrated, inter-city drone delivery solution. It enables universal access to goods for communities and businesses through efficient drone"
+              }
+            ],
+            "ran_at": "2026-09-28T13:29:47Z",
+            "quality": {
+              "title": 1,
+              "description": 1,
+              "locations": 1,
+              "employment_type": 0,
+              "job_location_type": 0,
+              "date_posted": 1,
+              "valid_through": 0,
+              "base_salary": 0,
+              "skills": 0,
+              "responsibilities": 0,
+              "qualifications": 0
+            }
+          },
+          "feedback": {
+            "fields": {
+              "title": {
+                "quality": "clean",
+                "coverage": "1/1"
+              },
+              "description": {
+                "quality": "clean",
+                "coverage": "1/1"
+              },
+              "locations": {
+                "quality": "clean",
+                "coverage": "1/1"
+              },
+              "employment_type": {
+                "quality": "absent",
+                "coverage": "0/1"
+              },
+              "job_location_type": {
+                "quality": "absent",
+                "coverage": "0/1"
+              },
+              "date_posted": {
+                "quality": "clean",
+                "coverage": "1/1"
+              },
+              "base_salary": {
+                "quality": "absent",
+                "coverage": "0/1"
+              },
+              "skills": {
+                "quality": "absent",
+                "coverage": "0/1"
+              },
+              "qualifications": {
+                "quality": "absent",
+                "coverage": "0/1"
+              },
+              "responsibilities": {
+                "quality": "absent",
+                "coverage": "0/1"
+              },
+              "valid_through": {
+                "quality": "absent",
+                "coverage": "0/1"
+              }
+            },
+            "required": {
+              "coverage": "2/2",
+              "quality": "clean"
+            },
+            "important": {
+              "coverage": "1/3",
+              "quality": "absent"
+            },
+            "optional": {
+              "coverage": "1/6",
+              "quality": "absent"
+            },
+            "verdict": "good",
+            "verdict_notes": "Official careers page and sitemap both expose exactly one live internship. Read entire JSON-LD description and compared visible page: summer/fall2026,6months,Prilly-Lausanne, marketing/sales duties, education/language requirements preserved. Prilly Switzerland exact structured location; posting date matches page age. RSS rejected for truncation. Unstructured duties/qualifications remain in full description.",
+            "verified_empty_board": false
+          }
+        }
+      }
+    },
+    "careerSourceGaps": {
+      "lem-surgical": {
+        "checkedAt": "2026-09-28T13:33:00Z",
+        "careers": "https://lemsurgical.com/lem-surgical-job-opportunities/",
+        "httpStatus": 200,
+        "visibleRoles": [
+          "Systems & Field Engineer (Bern, Switzerland)",
+          "Test & Commissioning Engineer (Bern, Switzerland)"
+        ],
+        "pageDateModified": "2026-08-11T07:07:56+00:00",
+        "observations": [
+          "Current page exposes titles and email application only; no distinct job URLs, PDF links, embedded iframe, or JobPosting JSON-LD.",
+          "JSON-LD contains only website, webpage, organization and breadcrumb metadata.",
+          "Older searchable PDF files (2024/2025 engineering roles) are not linked by the current page and were deliberately excluded.",
+          "Official site links employer LinkedIn, company URN independently identifies79753723; exact-ID guest job discovery returned zero and does not cover the two visible roles."
+        ],
+        "decision": "No company or board added: required role descriptions and stable source identities cannot be verified.",
+        "artifacts": [
+          "/tmp/lem-career-source.html",
+          "/tmp/lem-surgical-ag-linkedin.html"
+        ]
+      },
+      "bluebotics": {
+        "checkedAt": "2026-09-28T13:33:00Z",
+        "homepage": "https://bluebotics.com/",
+        "parentCareers": "https://www.zapigroup.com/en/careers",
+        "officialJobsCTA": "https://www.linkedin.com/company/zapi-group/jobs/",
+        "officialGroupCompanyIds": [
+          "1456262",
+          "1275954",
+          "100466",
+          "111080",
+          "2529162",
+          "79092842",
+          "9203745",
+          "1027465"
+        ],
+        "verifiedBlueBoticsCompanyId": "111080",
+        "observations": [
+          "BlueBotics homepage has no careers link; it links official employer LinkedIn and ZAPI parent.",
+          "ZAPI careers current See open positions CTA routes to group LinkedIn; its public company page exposes affiliated-company filter containing111080.",
+          "BlueBotics public company page has organization URN111080, confirming identity and avoiding broad parent-company attribution.",
+          "Exact-ID and exact-slug guest discovery returned zero jobs. No explicit official no-openings statement or complete individual posting could be verified."
+        ],
+        "decision": "No company or board added: absence of guest results alone is insufficient to certify an empty live board; revisit when verified postings/explicit empty state are available.",
+        "artifacts": [
+          "/tmp/bluebotics-career-source.html",
+          "/tmp/zapi-careers.html",
+          "/tmp/zapi-group-linkedin.html",
+          "/tmp/bluebotics-sa-linkedin.html"
+        ]
+      }
+    }
+  },
+  "additionalExistingEmployers": [
+    {
+      "slug": "fotokite",
+      "location": "Zurich",
+      "product": "Tethered aerial systems for public safety",
+      "sources": [
+        "https://fotokite.com/careers/",
+        "https://fotokite.com/"
+      ]
+    },
+    {
+      "slug": "auterion",
+      "location": "Zurich roles verified in catalogue; headquarters are outside Switzerland",
+      "product": "Autonomy software/hardware for unmanned systems including defence",
+      "sources": [
+        "https://auterion.com/company/careers/",
+        "https://jseek.co/en/company/auterion"
+      ]
+    },
+    {
+      "slug": "swissdrones",
+      "location": "Zurich headquarters; Buchs SG manufacturing",
+      "product": "Long-range unmanned helicopter systems",
+      "sources": [
+        "https://www.swissdrones.com/company",
+        "https://swissdrones.jobs.personio.de/"
+      ]
+    }
+  ],
+  "newCatalogueConfigurations": [
+    "cascination",
+    "embotech",
+    "flybotix",
+    "rigitech",
+    "swisslog"
+  ],
+  "cataloguePullRequest": "https://github.com/colophon-group/jobseek/pull/10160",
+  "limits": "Not an exhaustive census. Unverified hiring endpoints are recorded as gaps, not fabricated crawler configurations."
+}
