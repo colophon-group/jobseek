@@ -21,6 +21,10 @@ The refreshed pre-deploy baseline contains 276 boards and 4,169 active postings,
 with zero consecutive failures. The first two natural Go cycles have exact
 active DB URL readbacks and unchanged posting-ID/description-hash digests:
 Cove Partners returned four jobs and Simply Payments a verified empty inventory.
+Three further paginated runs have exact active DB URL and unchanged content
+digest readbacks: Visus One five jobs from two requests, Trigon 15 from four,
+and Pflegehelden six from two. Sixteen natural cycles were retained in the
+later log snapshot, with five exact database readbacks covering 30 active rows.
 The empty board had no recent discovery history and was excluded by the former
 positive-history route rule. No failure count increased across the initial
 276-board sweep. No due score or duplicate publisher request was forced.
@@ -30,7 +34,11 @@ with zero terminal drops/write fences. All **24 selectors** cleared under the
 host lock, then restaged at the promoted full revision. C1 is active at **epoch
 100**, accepted/audit_ok with five ready and zero inflight/dead records. The five
 due times match the pre-rollback readback; all configured service health checks
-pass and c2 remains dark. The initial Typesense snapshot reports 388 successful
+pass and c2 remains dark. The next naturally due c1 task then reported success
+at 00:26:40 UTC and committed at 00:26:42; its ready time advanced to
+2026-09-29 00:26:42 UTC. The post-cycle audit still has all five records ready
+and zero inflight work. This is task/schedule evidence, not paired resource
+proof. The initial Typesense snapshot reports 388 successful
 exports, zero errors, zero lag and healthy status. See
 [sanitized production evidence](evidence/go-join-production-2026-09-28.json).
 
@@ -47,8 +55,8 @@ To reverse JOIN routing, set its percentage to zero and remove any exact JOIN
 board selectors through the supported cold mutation procedure, or restore the
 previous release.
 
-The remaining JOIN monitors, including paginated inventories, need natural output
-observation. The next implementation slice covers the **265 configured Next.js
+The remaining JOIN monitors, including the largest inventories, need natural
+output observation. The next implementation slice covers the **265 configured Next.js
 detail boards across four exact configuration forms**. Three Next.js boards
 have no configured fields and eight use JSON-LD; retain their resolved behaviors
 and fallback/browser obligations. `JOIN_CAPTURE_SLUGS` captures Python monitor

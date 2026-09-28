@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "observed_at_utc": "2026-09-28T00:27:00.568984+00:00",
+  "observed_at_utc": "2026-09-28T00:34:44.686345+00:00",
   "scope": "JOIN monitor fetch/parser ownership; full migration remains active",
   "release": {
     "version": "0.13.883",
@@ -94,8 +94,8 @@
     "scope": "Initial snapshot after this release; counters continue to advance"
   },
   "natural_output": {
-    "cycles": 2,
-    "exact_db_readbacks": 2,
+    "cycles": 5,
+    "exact_db_readbacks": 5,
     "proof": [
       {
         "board_id": "3f96dd9a-4473-49e6-b8a1-c55a1d5cc7ad",
@@ -130,9 +130,61 @@
         "readback_posting_ids_description_hashes_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
         "consecutive_failures": 0,
         "db_last_success_at": "2026-09-28 00:22:24.758225+00:00"
+      },
+      {
+        "board_id": "508abbed-fca2-40fe-b8d4-3431158e2b73",
+        "urls": 5,
+        "url_sha256": "43769e3815abda6071fb5ad407221d554d7ca6f05827f5777c9750186458003f",
+        "requests": 2,
+        "responses": 2,
+        "response_bytes": 264976,
+        "event": "go_join.monitor_complete",
+        "timestamp": "2026-09-28T00:30:54.122379Z",
+        "board_url": "https://join.com/companies/visusone",
+        "db_active": 5,
+        "db_url_sha256": "43769e3815abda6071fb5ad407221d554d7ca6f05827f5777c9750186458003f",
+        "baseline_posting_ids_description_hashes_sha256": "e6a56afaf85597a3ed65854488aa677531f4c150e4fc026650cdb4a8c10452a0",
+        "readback_posting_ids_description_hashes_sha256": "e6a56afaf85597a3ed65854488aa677531f4c150e4fc026650cdb4a8c10452a0",
+        "consecutive_failures": 0,
+        "db_last_success_at": "2026-09-28 00:30:54.521675+00:00"
+      },
+      {
+        "board_id": "62f28c97-5cc4-4efc-bbbb-08e2848c7706",
+        "urls": 15,
+        "url_sha256": "8de7a5cd37473962fe164ca99a328b0c70d2de6dec8106425f2d48da123f55de",
+        "requests": 4,
+        "responses": 4,
+        "response_bytes": 576147,
+        "event": "go_join.monitor_complete",
+        "timestamp": "2026-09-28T00:31:00.301754Z",
+        "board_url": "https://join.com/companies/trigon-gruppede",
+        "db_active": 15,
+        "db_url_sha256": "8de7a5cd37473962fe164ca99a328b0c70d2de6dec8106425f2d48da123f55de",
+        "baseline_posting_ids_description_hashes_sha256": "d93bfac9d605e9d343c96e9f4cf83920b2b9a015cf7085b090a695f4db5e6bed",
+        "readback_posting_ids_description_hashes_sha256": "d93bfac9d605e9d343c96e9f4cf83920b2b9a015cf7085b090a695f4db5e6bed",
+        "consecutive_failures": 0,
+        "db_last_success_at": "2026-09-28 00:31:00.427529+00:00"
+      },
+      {
+        "board_id": "4898eef1-8049-465e-8c42-12e106a244c9",
+        "urls": 6,
+        "url_sha256": "7f80c1a67d2f4ad24c505ef4214a7844c9b8ed2da67dff51f8f7cb853095a793",
+        "requests": 2,
+        "responses": 2,
+        "response_bytes": 243857,
+        "event": "go_join.monitor_complete",
+        "timestamp": "2026-09-28T00:24:10.301804Z",
+        "board_url": "https://join.com/companies/pflegeheldende",
+        "db_active": 6,
+        "db_url_sha256": "7f80c1a67d2f4ad24c505ef4214a7844c9b8ed2da67dff51f8f7cb853095a793",
+        "baseline_posting_ids_description_hashes_sha256": "0dcf72daece26d156040e0d9761ebbef1f916bc61f8f0c948dcb0249db6a2280",
+        "readback_posting_ids_description_hashes_sha256": "0dcf72daece26d156040e0d9761ebbef1f916bc61f8f0c948dcb0249db6a2280",
+        "consecutive_failures": 0,
+        "db_last_success_at": "2026-09-28 00:24:10.347145+00:00"
       }
     ],
-    "scope": "Initial naturally scheduled cycles after reactivation; no replay or forced due score"
+    "scope": "Initial naturally scheduled cycles after reactivation; no replay or forced due score",
+    "cycles_observed_in_retained_logs": 16
   },
   "failure_readback": {
     "boards_checked": 276,
@@ -146,9 +198,35 @@
   },
   "limitations": [
     "JOIN scheduling, writer and detail extraction remain Python owned except separately tracked B0 provided runtimes.",
-    "Remaining JOIN monitors, including paginated inventories, need natural output observation.",
+    "Other JOIN monitors, including the largest inventories, need natural output observation; three paginated boards are now proven.",
     "JOIN_CAPTURE_SLUGS currently captures Python monitor responses and is inactive after the Go route; native passive capture is follow-up work.",
     "Complete JOIN TDM metadata precedence, source and companion policy parity with the shared Python checker during detail transport migration.",
     "Same-actual-workload whole-lane CPU/RAM/density/cost and final zero-Python/Chromium retirement remain outstanding."
-  ]
+  ],
+  "natural_b0_cycle": {
+    "task_id": "12413a9e-3bcc-48a9-9839-fb0fe5d4c100",
+    "routing_epoch": 100,
+    "claimant_events": [
+      {
+        "container": "deploy-lightpanda-claimant-1",
+        "msg": "lightpanda_b0_task",
+        "time": "2026-09-28T00:26:40.108972844Z",
+        "task_id": "12413a9e-3bcc-48a9-9839-fb0fe5d4c100",
+        "outcome": "success"
+      },
+      {
+        "container": "deploy-lightpanda-claimant-1",
+        "msg": "lightpanda_b0_task",
+        "time": "2026-09-28T00:26:42.968466588Z",
+        "task_id": "12413a9e-3bcc-48a9-9839-fb0fe5d4c100",
+        "outcome": "committed"
+      }
+    ],
+    "next_ready_at_utc": "2026-09-29T00:26:42.835000+00:00",
+    "post_cycle_records": 5,
+    "post_cycle_ready": 5,
+    "post_cycle_inflight": 0,
+    "audit": "accepted/audit_ok",
+    "scope": "Natural due task success/commit and schedule readback; no paired resource claim"
+  }
 }
