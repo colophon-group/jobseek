@@ -52,6 +52,7 @@ type fetcher struct {
 	token  string
 	client requestDoer
 	pause  Pause
+	retain func(string, []byte)
 	mu     sync.Mutex
 	result FetchResult
 }
@@ -183,6 +184,9 @@ func (f *fetcher) once(ctx context.Context, endpoint string, limit int) (Object,
 		return nil, status, "", &Failure{Kind: "tdm", URL: endpoint, Source: "meta", Policy: policy}
 	}
 	data, err := decodeObject(body)
+	if err == nil && f.retain != nil {
+		f.retain(endpoint, body)
+	}
 	return data, status, "", err
 }
 func (f *fetcher) get(ctx context.Context, endpoint string, limit int) (Object, error) {

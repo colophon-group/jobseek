@@ -6,6 +6,39 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: SmartRecruiters broad details v0.13.886
+
+The existing native SmartRecruiters detail extractor now has a default-100
+`SMARTRECRUITERS_GO_DETAIL_PERCENT` route for unchanged direct configurations.
+The protected read-only inventory contains **126 primary detail configurations**,
+all default/null, with **109,792 active URLs** on 121 boards. Offline admission
+accepts every URL and preserves the canonical Python company/posting identity;
+zero URLs were omitted or rewritten. Inventory SHA-256 is
+`a91b169264fa19fedc43042f7b73e8869b5fb09c2aea7197274af3e1ab0ea8df`.
+The five exact detail selectors retain precedence. Provided B0 runtimes still
+own their selected work, while idle browser handles no longer reject a direct
+Go request within mixed batches. Non-200 detail responses preserve Python's
+empty-content behavior and single-request policy.
+
+Only the existing exact detail selectors retain passive Go API samples:
+four exclusive mode-0600 response envelopes per board/worker, after body and
+publisher-policy checks, with no refetch or implicit percentage-route capture.
+[`scripts/compare-smartrecruiters-detail-capture.py`](../scripts/compare-smartrecruiters-detail-capture.py)
+compares the retained response with both parsers and the natural completion
+hash entirely offline. Preserve private captures outside temporary directories.
+Runtime tests cover route reversal, provided-runtime precedence, ordinary and
+oneclick identity, ambiguous/encoded URL rejection, idle browser handling,
+single-request capture, policy denial and four-sample bounds; the existing
+86 installed-image fixture cases remain the runtime deployment gate.
+
+Deployment and natural Go detail/database proof are pending for this slice.
+Before deployment use the current **25-selector** supported cold procedure in
+the JSON-LD production checkpoint below. Reversal sets the detail percentage
+to zero and removes exact detail selectors through that procedure, or restores
+the preceding runtime release. This slice retains Python enrichment, persistence
+and scheduling ownership; it does not prove overall migration completion or
+paired production resource savings.
+
 ## Production checkpoint: 2026-09-28 — shared JSON-LD details v0.13.885
 
 PR #10122 merged as `a91adb088c9f2e5c6a0a2e29c56a03e7add220db`.

@@ -203,12 +203,67 @@ async def test_detail_routing_fields_and_http_empty_contract(tmp_path, monkeypat
         path = tmp_path / "detail"
         path.write_text(
             "#!/usr/bin/env python3\nimport json,sys\n"
-            "assert json.load(sys.stdin)['mode']=='detail'\n" + f"print(json.dumps({payload!r}))\n"
+            "request=json.load(sys.stdin)\nassert request['mode']=='detail'\n"
+            + f"assert request['capture_board_id']=={BOARD_ID!r}\n"
+            + f"print(json.dumps({payload!r}))\n"
         )
         path.chmod(0o755)
-        content = await GoSmartRecruitersDetailRuntime(str(path)).scrape(
-            "https://jobs.smartrecruiters.com/Acme/123", "smartrecruiters", {}, None
+        content = await GoSmartRecruitersDetailRuntime(str(path), board_id=BOARD_ID).scrape(
+            "https://jobs.smartrecruiters.com/Acme/123", "smartrecruiters", {}, None, pw=object()
         )
         assert dataclasses.asdict(content) == (
             expected if status == 200 else dataclasses.asdict(JobContent())
         )
+
+
+def test_default_detail_family_routing_and_reversal(monkeypatch):
+    from src.processing.scrape import _runtime_for_scrape
+    from src.runtime.smartrecruiters_go_detail import percentage_selected as detail_selected
+
+    url = "https://jobs.smartrecruiters.com/Acme/123-role"
+    monkeypatch.delenv("SMARTRECRUITERS_GO_DETAIL_BOARD_IDS", raising=False)
+    monkeypatch.delenv("SMARTRECRUITERS_GO_DETAIL_PERCENT", raising=False)
+    assert detail_selected(BOARD_ID, url, None)
+    runtime = _runtime_for_scrape(BOARD_ID, "smartrecruiters", None, None, url=url)
+    assert runtime.implementation == "go-smartrecruiters-detail"
+    assert runtime.board_id == BOARD_ID
+    provided = object()
+    assert _runtime_for_scrape(BOARD_ID, "smartrecruiters", None, provided, url=url) is provided
+    for value in ["0", "-1", "101", "1.5", "01", "invalid"]:
+        monkeypatch.setenv("SMARTRECRUITERS_GO_DETAIL_PERCENT", value)
+        assert _runtime_for_scrape(BOARD_ID, "smartrecruiters", None, None, url=url) is None
+    monkeypatch.setenv("SMARTRECRUITERS_GO_DETAIL_BOARD_IDS", BOARD_ID)
+    assert (
+        _runtime_for_scrape(BOARD_ID, "smartrecruiters", None, None, url=url).implementation
+        == "go-smartrecruiters-detail"
+    )
+
+
+def test_detail_identity_admission_matches_python_parser(monkeypatch):
+    from src.core.scrapers.smartrecruiters import _parse_job_url
+    from src.runtime.smartrecruiters_go_detail import eligible as detail_eligible
+    from src.runtime.smartrecruiters_go_detail import percentage_selected as detail_selected
+
+    monkeypatch.delenv("SMARTRECRUITERS_GO_DETAIL_PERCENT", raising=False)
+    for path in [
+        "/Acme/123-role",
+        "/Acme/123-rôle/",
+        "/oneclick-ui/company/Acme/publication/123",
+        "/oneclick-ui/company/Acme/job/123",
+    ]:
+        url = "https://jobs.smartrecruiters.com" + path + "?source=normal"
+        assert detail_eligible(url, "smartrecruiters", None) == _parse_job_url(url)
+        assert detail_selected(BOARD_ID, url, None)
+    for url in [
+        "http://jobs.smartrecruiters.com/Acme/123",
+        "https://jobs.smartrecruiters.com@evil.test/Acme/123",
+        "https://jobs.smartrecruiters.com:443/Acme/123",
+        "https://jobs.smartrecruiters.com/Acme/123/extra",
+        "https://jobs.smartrecruiters.com/Acme/123%2Drole",
+        "https://jobs.smartrecruiters.com/Acme/123;other",
+        "https://jobs.smartrecruiters.com/Acme/123?u=https://jobs.smartrecruiters.com/oneclick-ui/company/Other/job/456",
+    ]:
+        assert not detail_selected(BOARD_ID, url, None)
+    url = "https://jobs.smartrecruiters.com/Acme/123"
+    for config in [{"proxy": True}, {"render": True}, {"enrich": {}}, {"default": {}}]:
+        assert not detail_selected(BOARD_ID, url, config)

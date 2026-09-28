@@ -87,15 +87,20 @@ def _runtime_for_scrape(
         if percentage_selected(board_id, url, scraper_config):
             return GoJoinDetailRuntime()
     if scraper_type == "smartrecruiters":
+        from src.runtime.smartrecruiters_go_detail import (
+            GoSmartRecruitersDetailRuntime,
+            percentage_selected,
+        )
+
         selected = {
             value.strip()
             for value in os.environ.get("SMARTRECRUITERS_GO_DETAIL_BOARD_IDS", "").split(",")
             if value.strip()
         }
-        if board_id in selected:
-            from src.runtime.smartrecruiters_go_detail import GoSmartRecruitersDetailRuntime
-
-            return GoSmartRecruitersDetailRuntime()
+        if board_id in selected or (
+            url is not None and percentage_selected(board_id, url, scraper_config)
+        ):
+            return GoSmartRecruitersDetailRuntime(board_id=board_id)
         return None
     if scraper_type == "workable":
         selected = {

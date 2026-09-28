@@ -6,6 +6,7 @@ import asyncio
 import dataclasses
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 from time import monotonic
@@ -14,8 +15,6 @@ from urllib.parse import urlparse
 import structlog
 
 from src.core.job_content import JobContent
-from src.core.scrapers import all_scraper_types
-from src.core.scrapers.smartrecruiters import _parse_job_url
 from src.metrics import (
     runtime_execution_duration_seconds,
     runtime_executions_total,
@@ -35,12 +34,67 @@ from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
 
+_ORDINARY = re.compile(r"(?:jobs|careers)\.smartrecruiters\.com/([\w-]+)/([\w-]+)")
+_ONECLICK = re.compile(
+    r"(?:jobs|careers)\.smartrecruiters\.com/oneclick-ui/company/([\w-]+)/"
+    r"(?:publication|job)/([\w-]+)"
+)
+
+
+def eligible(url: str, scraper_type: str, config: dict | None) -> tuple[str, str]:
+    parsed = urlparse(url)
+    if (
+        scraper_type != "smartrecruiters"
+        or config
+        or parsed.scheme != "https"
+        or parsed.params
+        or parsed.netloc not in {"jobs.smartrecruiters.com", "careers.smartrecruiters.com"}
+    ):
+        raise ValueError("Go SmartRecruiters detail requires a direct unchanged configuration")
+    parts = parsed.path.strip("/").split("/")
+    if (
+        len(parts) == 5
+        and parts[:2] == ["oneclick-ui", "company"]
+        and parts[3] in {"publication", "job"}
+    ):
+        token, posting_id = parts[2], parts[4]
+    elif len(parts) == 2:
+        token, posting_id = parts
+    else:
+        raise ValueError("unsupported SmartRecruiters detail path")
+    # Preserve the existing parser's identity, including oneclick precedence.
+    # Encoded segments and nested URLs must not silently change the API target.
+    historical = _ONECLICK.search(url) or _ORDINARY.search(url)
+    if (
+        historical is None
+        or historical.groups() != (token, posting_id)
+        or re.fullmatch(r"[A-Za-z0-9_-]{1,128}", token) is None
+        or re.fullmatch(r"[\w-]{1,128}", posting_id) is None
+    ):
+        raise ValueError("unsupported SmartRecruiters detail identity")
+    return token, posting_id
+
+
+def percentage_selected(board_id: str, url: str, config: dict | None) -> bool:
+    raw = os.environ.get("SMARTRECRUITERS_GO_DETAIL_PERCENT", "100")
+    if re.fullmatch(r"(?:0|[1-9][0-9]?|100)", raw) is None or raw == "0":
+        return False
+    try:
+        eligible(url, "smartrecruiters", config)
+    except ValueError:
+        return False
+    bucket = int.from_bytes(hashlib.sha256(board_id.encode()).digest()[:8], "big") % 10_000
+    return bucket < int(raw) * 100
+
 
 class GoSmartRecruitersDetailRuntime:
     implementation = "go-smartrecruiters-detail"
 
-    def __init__(self, binary: str = "/usr/local/bin/smartrecruiters-monitor-live"):
+    def __init__(
+        self, binary: str = "/usr/local/bin/smartrecruiters-monitor-live", *, board_id: str = ""
+    ):
         self.binary = binary
+        self.board_id = board_id
 
     async def scrape(
         self,
@@ -52,30 +106,16 @@ class GoSmartRecruitersDetailRuntime:
         pw=None,
         artifact_dir: Path | None = None,
     ) -> JobContent:
-        del http, artifact_dir
-        parsed = urlparse(url)
-        if (
-            scraper_type != "smartrecruiters"
-            or pw is not None
-            or scraper_config
-            or parsed.scheme != "https"
-            or parsed.netloc not in {"jobs.smartrecruiters.com", "careers.smartrecruiters.com"}
-        ):
-            raise ValueError("Go SmartRecruiters detail requires a direct unchanged configuration")
-        token, posting_id = _parse_job_url(url)
-        if (
-            not token
-            or not posting_id
-            or re.fullmatch(r"[A-Za-z0-9_-]{1,128}", token) is None
-            or re.fullmatch(r"[\w-]{1,128}", posting_id) is None
-        ):
-            raise ValueError("unsupported SmartRecruiters detail identity")
+        del http, artifact_dir, pw  # Mixed domain batches may carry an idle browser.
+        token, posting_id = eligible(url, scraper_type, scraper_config)
         api_url = f"https://api.smartrecruiters.com/v1/companies/{token}/postings/{posting_id}"
         started = monotonic()
         outcome = "error"
         try:
             payload, returncode = await run_go(
-                self.binary, {"mode": "detail", "url": url}, limit=8 << 20
+                self.binary,
+                {"mode": "detail", "url": url, "capture_board_id": self.board_id},
+                limit=8 << 20,
             )
             requests, responses, size, status = (
                 payload.get(k) for k in ("requests", "responses", "bytes", "status")
@@ -149,6 +189,8 @@ class GoSmartRecruitersDetailRuntime:
             outcome = "cancelled"
             raise
         finally:
+            from src.core.scrapers import all_scraper_types
+
             runtime_execution_duration_seconds.labels(
                 stage="scrape", implementation=self.implementation
             ).observe(monotonic() - started)

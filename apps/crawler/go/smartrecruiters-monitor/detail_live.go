@@ -42,12 +42,22 @@ func FetchDetail(ctx context.Context, raw string) (DetailResult, error) {
 	return fetchDetailWith(ctx, raw, newClient())
 }
 
+// FetchDetailForBoard can retain the existing response on exact selected boards.
+// Capture never sends another request or changes the extraction result.
+func FetchDetailForBoard(ctx context.Context, raw, boardID string) (DetailResult, error) {
+	return fetchDetailRetained(ctx, raw, newClient(), detailCapture(boardID, raw, "/tmp"))
+}
+
 func fetchDetailWith(ctx context.Context, raw string, client requestDoer) (DetailResult, error) {
+	return fetchDetailRetained(ctx, raw, client, nil)
+}
+
+func fetchDetailRetained(ctx context.Context, raw string, client requestDoer, retain func(string, []byte)) (DetailResult, error) {
 	result := DetailResult{}
 	token, endpoint, err := DetailEndpoint(raw)
 	if err == nil {
 		result.FinalURL = endpoint
-		f := &fetcher{token: token, client: client}
+		f := &fetcher{token: token, client: client, retain: retain}
 		var data Object
 		// The retained Python detail scraper makes one request and returns empty
 		// content for every non-200 status. Do not apply monitor retry semantics.
