@@ -1,0 +1,268 @@
+{
+  "id": "p07",
+  "name": "Milan junior marketer seeking paid entry work",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Digital marketer",
+    "seniority": "Junior; first permanent job or paid internship",
+    "geography": "Milan; Italy and Ticino considered",
+    "languages": [
+      "it"
+    ],
+    "employment_state": "Seeking an initial stable role; limited budget",
+    "constraints": [
+      "Exclude unpaid internships",
+      "Wants digital marketing rather than a sales-only job",
+      "Needs explicit pay information",
+      "Budget-sensitive; reluctant to buy job-search subscriptions"
+    ],
+    "company_awareness": "Low; recognises some brands but has no fixed target list"
+  },
+  "overlap_tags": [
+    "junior",
+    "italian",
+    "marketing",
+    "paid-internship",
+    "milan",
+    "ticino",
+    "budget"
+  ],
+  "trigger": "A promising marketing interview turns out to concern commission-based promotion, prompting more specific searches for paid digital work.",
+  "searches_run": [
+    {
+      "query": "lavoro marketing junior Milano stage retribuito",
+      "observation": "Results included paid internships with variable duties, employer postings and aggregators. An opened uCV result was explicitly closed despite appearing in retrieval; its duties included reception and workspace operations alongside digital marketing.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "stage digital marketing Ticino retribuito no vendita",
+      "observation": "The sample included an older Ticino Turismo internship PDF, institutional documents and discussions; it did not establish a suitable current paid digital-marketing opening in Ticino.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://it.ucv.online/offerte-lavoro/junior-marketing-specialist-milano-lombardia-junior-it/junior-marketing-specialist-marketing-junior-cofoundry-italy-it",
+      "title": "Junior Marketing Specialist — Cofoundry on uCV",
+      "supports": "Directly inspected aggregator page marks the role closed and lists paid internship, operations, reception and digital marketing duties. This supports duty ambiguity, not a claim that the employer is deceptive."
+    },
+    {
+      "id": "s2",
+      "url": "https://careers.publicisgroupe.com/PS-SignUp-30/jobs/169563?lang=it-it&previousLocale=it-IT",
+      "title": "Social Media Manager - stage curriculare — Publicis Groupe",
+      "supports": "Retrieved employer snippet includes student eligibility and a monthly expense allowance. Direct access returned 403, so current availability was not verified."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.ticino.ch/it/dam/jcr%3A0a287417-841c-4673-b778-231b758a71f0/StagistaMercatoCH_01.03.2023.pdf",
+      "title": "Stagista Settore Mercato CH — Ticino Turismo",
+      "supports": "An older employer internship PDF appeared for the Ticino query. Retrieval alone does not show a current vacancy or pay."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "stage digital marketing retribuito Milano",
+    "promise": "Find junior marketing openings and compare stated duties, internship requirements and published compensation before applying.",
+    "cta": "Try free junior-marketing searches and save alerts for relevant employers.",
+    "proof_needed": [
+      "Current, covered employers with paid entry-level examples.",
+      "Distinguish stated pay, missing pay and expense allowances without annualising ambiguously.",
+      "Show actual digital duties instead of claiming to certify honest employers.",
+      "Explain curricular/student requirements when stated; this persona's enrolment status is unknown.",
+      "Keep free search and alerts prominent; advanced description checking is optional Pro.",
+      "An indexable Italian guide must be newly created."
+    ]
+  },
+  "conversion_objections": [
+    "Why pay when I do not yet have a salary?",
+    "Will I mostly see unpaid or commission-based work?",
+    "Is a stage open to people no longer enrolled?",
+    "Do you cover Italian and Ticino employers beyond technology startups?",
+    "Will a paid label reveal the actual amount?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "stage garantito assunzione marketing",
+      "reason": "An internship cannot guarantee permanent employment."
+    },
+    {
+      "query": "crea CV marketing gratis",
+      "reason": "CV building is not demonstrated."
+    },
+    {
+      "query": "aziende marketing truffa lista",
+      "reason": "Job-description screening is not employer verification and cannot certify or accuse companies."
+    }
+  ],
+  "message_to_founder": "Simulation: Voglio imparare campagne e contenuti, non scoprire al colloquio che il lavoro è solo vendita. Se mi fate vedere mansioni e compenso quando sono pubblicati, provo gli avvisi gratuiti; per ora non ho budget per un abbonamento.",
+  "confidence_and_limits": "Synthetic Italian searcher. Two queries, two failed source opens and one successful aggregator inspection; no hiring-market quantities or fraud conclusions inferred. Ticino evidence was weak in this small retrieval sample, not evidence of no opportunities.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "lavoro marketing junior Milano",
+      "language": "it",
+      "english_gloss": "Junior marketing jobs Milan",
+      "intent": "commercial",
+      "need": "Find an entry point.",
+      "cluster": "junior-marketing",
+      "product_fit": "high",
+      "fit_reason": "Role, experience and location search fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "offerte lavoro digital marketing Italia",
+      "language": "it",
+      "english_gloss": "Digital marketing jobs Italy",
+      "intent": "commercial",
+      "need": "Explore beyond Milan.",
+      "cluster": "italian-marketing",
+      "product_fit": "high",
+      "fit_reason": "Broad discovery is useful before employer selection.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "stage retribuito marketing",
+      "language": "it",
+      "english_gloss": "Paid marketing internship",
+      "intent": "commercial",
+      "need": "Avoid unpaid work.",
+      "cluster": "paid-internships",
+      "product_fit": "medium",
+      "fit_reason": "Employment type helps; payment still needs explicit evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "lavoro marketing junior Milano stage retribuito",
+      "language": "it",
+      "english_gloss": "Junior marketing work Milan paid internship",
+      "intent": "commercial",
+      "need": "Combine level, location and pay.",
+      "cluster": "milan-internships",
+      "product_fit": "high",
+      "fit_reason": "Core discovery fits with pay verification.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "stage digital marketing Ticino retribuito no vendita",
+      "language": "it",
+      "english_gloss": "Paid digital marketing internship Ticino no sales",
+      "intent": "commercial",
+      "need": "Test Ticino without sales-only roles.",
+      "cluster": "ticino-marketing",
+      "product_fit": "medium",
+      "fit_reason": "Coverage and duty evidence must be demonstrated.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "social media junior tempo indeterminato Milano",
+      "language": "it",
+      "english_gloss": "Junior social media permanent jobs Milan",
+      "intent": "commercial",
+      "need": "Prefer a stable first contract.",
+      "cluster": "permanent-junior-marketing",
+      "product_fit": "high",
+      "fit_reason": "Employment-type and role filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "annuncio marketing ma lavoro vendita come capire",
+      "language": "it",
+      "english_gloss": "Marketing advert but sales job how to tell",
+      "intent": "informational",
+      "need": "Interpret actual responsibilities.",
+      "cluster": "marketing-duty-check",
+      "product_fit": "medium",
+      "fit_reason": "A guide and Pro text checks can assist without verifying honesty.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "stage marketing rimborso spese importo",
+      "language": "it",
+      "english_gloss": "Marketing internship expense allowance amount",
+      "intent": "informational",
+      "need": "Assess affordability.",
+      "cluster": "internship-pay",
+      "product_fit": "medium",
+      "fit_reason": "Only published amounts can be surfaced reliably.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "stage marketing extracurriculare Milano",
+      "language": "it",
+      "english_gloss": "Extracurricular marketing internship Milan",
+      "intent": "commercial",
+      "need": "Find an internship without assuming student enrolment.",
+      "cluster": "internship-requirements",
+      "product_fit": "medium",
+      "fit_reason": "Description requirements need inspection.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Indeed marketing junior Milano senza esperienza",
+      "language": "it",
+      "english_gloss": "Indeed junior marketing Milan no experience",
+      "intent": "navigational",
+      "need": "Try a familiar alternative.",
+      "cluster": "entry-job-boards",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation is not a natural Job Seek landing.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "avvisi lavoro marketing junior gratis",
+      "language": "it",
+      "english_gloss": "Free junior marketing job alerts",
+      "intent": "commercial",
+      "need": "Keep searching without subscription cost.",
+      "cluster": "free-marketing-alerts",
+      "product_fit": "high",
+      "fit_reason": "Free saved searches and email alerts align.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "aziende Milano assumono junior digital marketing",
+      "language": "it",
+      "english_gloss": "Milan companies hiring junior digital marketers",
+      "intent": "commercial",
+      "need": "Build a shortlist from concrete openings.",
+      "cluster": "marketing-employers",
+      "product_fit": "high",
+      "fit_reason": "Company discovery can lead to alerts after initial relevance is proven.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

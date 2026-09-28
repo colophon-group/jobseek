@@ -1,0 +1,254 @@
+{
+  "id": "p25",
+  "name": "Sydney civil engineer wanting metropolitan projects",
+  "context": {
+    "occupation": "Civil engineer",
+    "seniority": "Midlevel",
+    "geography": "Sydney metropolitan area, Australia",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed; considering a move",
+    "constraints": [
+      "No FIFO or long remote rotations",
+      "Metro infrastructure work",
+      "Wants realistic site location and travel requirements",
+      "Knows several contractors"
+    ],
+    "company_awareness": "Has contractor shortlist; less aware of utility, consultancy and council alternatives."
+  },
+  "overlap_tags": [
+    "civil-engineering",
+    "Australia",
+    "Sydney",
+    "site-location",
+    "travel-exclusions",
+    "known-employers"
+  ],
+  "trigger": "A proposed regional project rotation makes the engineer look for work that allows regular nights at home.",
+  "searches_run": [
+    {
+      "query": "civil engineer jobs Sydney infrastructure",
+      "observation": "Retrieved SEEK, Indeed and a Sydney Water vacancy. The Sydney Water page failed to load; the inspected SEEK page showed diverse contractor, council and consultancy roles.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "civil engineer Sydney jobs no FIFO Monday Friday infrastructure",
+      "observation": "Results still included FIFO/DIDO roles. Direct SEEK inspection placed a DIDO roster and projects up to four hours away under Sydney, illustrating that search location may be a hiring base rather than daily worksite.",
+      "source_ids": [
+        "s1"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://au.seek.com/civil%2Bengineer-jobs/in-All-Sydney-NSW",
+      "title": "Civil Engineer Jobs in Sydney | SEEK",
+      "supports": "Directly inspected listing page includes local infrastructure roles and Sydney-labelled FIFO/DIDO rosters; supports a location-semantics concern only."
+    },
+    {
+      "id": "s2",
+      "url": "https://talent.sydneywater.com.au/job/7G8RG/PM9H4ZRMFL/civil-engineer",
+      "title": "Civil Engineer | Sydney Water",
+      "supports": "Retrieved employer listing concerns infrastructure assets; direct fetch failed, so vacancy and details remain unverified."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "civil engineer jobs Sydney no FIFO",
+    "promise": "Find covered infrastructure employers and check actual project locations, travel and roster wording before applying.",
+    "cta": "Select Sydney employers and save civil/site/project-engineer searches.",
+    "proof_needed": [
+      "Australian contractor and utility coverage",
+      "Source evidence separating office base from worksite",
+      "Explicit FIFO/DIDO/roster wording and unknown values",
+      "Title recall across civil, site and project engineer"
+    ]
+  },
+  "conversion_objections": [
+    "Sydney location does not mean Sydney worksite.",
+    "Metro projects can still require night or weekend work.",
+    "Are the contractors I know covered?",
+    "SEEK already has many openings and alerts."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "guaranteed Monday Friday civil jobs Sydney",
+      "reason": "Hours cannot be inferred from metro location or missing roster text."
+    },
+    {
+      "query": "Sydney Metro project jobs all contractors",
+      "reason": "Complete project and subcontractor coverage is unverified."
+    }
+  ],
+  "message_to_founder": "Simulation: I know roughly who I want to work for, but Sydney-labelled results still send me away for weeks. Show where the actual project is and what the posting says about rotations; a city filter alone does not solve my problem.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "civil engineer jobs Sydney infrastructure",
+      "language": "en",
+      "english_gloss": "civil engineer jobs Sydney infrastructure",
+      "intent": "transactional",
+      "need": "Survey metro infrastructure roles",
+      "cluster": "Sydney civil jobs",
+      "product_fit": "high",
+      "fit_reason": "Role/location discovery fits, subject to actual worksites.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "project engineer jobs Western Sydney",
+      "language": "en",
+      "english_gloss": "project engineer jobs Western Sydney",
+      "intent": "transactional",
+      "need": "Look near a plausible daily commute",
+      "cluster": "metro engineering jobs",
+      "product_fit": "high",
+      "fit_reason": "Role and location filters fit; commute routing is unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "site engineer water infrastructure Sydney",
+      "language": "en",
+      "english_gloss": "site engineer water infrastructure Sydney",
+      "intent": "transactional",
+      "need": "Consider utilities infrastructure",
+      "cluster": "utility engineering",
+      "product_fit": "high",
+      "fit_reason": "Company and role filters can broaden employers.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "civil engineer Sydney jobs no FIFO Monday Friday infrastructure",
+      "language": "en",
+      "english_gloss": "civil engineer Sydney jobs no FIFO Monday Friday infrastructure",
+      "intent": "transactional",
+      "need": "Avoid extended rotations",
+      "cluster": "FIFO exclusions",
+      "product_fit": "medium",
+      "fit_reason": "Description checks help only where work patterns are explicit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "Sydney based engineer job regional travel requirements",
+      "language": "en",
+      "english_gloss": "Sydney based engineer job regional travel requirements",
+      "intent": "informational",
+      "need": "Interpret hiring-base versus project location",
+      "cluster": "site-location ambiguity",
+      "product_fit": "medium",
+      "fit_reason": "A guide can teach source verification.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "civil contractors metropolitan Sydney careers",
+      "language": "en",
+      "english_gloss": "civil contractors metropolitan Sydney careers",
+      "intent": "informational",
+      "need": "Expand the known contractor list",
+      "cluster": "contractor discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first discovery fits verified coverage.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Sydney Water civil engineer careers",
+      "language": "en",
+      "english_gloss": "Sydney Water civil engineer careers",
+      "intent": "navigational",
+      "need": "Inspect a utility alternative",
+      "cluster": "utility careers",
+      "product_fit": "high",
+      "fit_reason": "Company monitoring fits if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "SEEK job alerts exclude FIFO DIDO",
+      "language": "en",
+      "english_gloss": "SEEK job alerts exclude FIFO DIDO",
+      "intent": "informational",
+      "need": "Compare existing alert controls",
+      "cluster": "engineering alert alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Description-level criteria may add value but cannot guarantee exclusion.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job alerts project engineer selected contractors",
+      "language": "en",
+      "english_gloss": "job alerts project engineer selected contractors",
+      "intent": "commercial",
+      "need": "Consolidate known employer searches",
+      "cluster": "contractor alerts",
+      "product_fit": "high",
+      "fit_reason": "Selected-company alerts align.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "civil engineering job filter actual project location",
+      "language": "en",
+      "english_gloss": "civil engineering job filter actual project location",
+      "intent": "commercial",
+      "need": "Find a reliable worksite filter",
+      "cluster": "project-location filtering",
+      "product_fit": "medium",
+      "fit_reason": "Posting location exists; precise site extraction needs proof.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "free civil engineer job alerts Sydney",
+      "language": "en",
+      "english_gloss": "free civil engineer job alerts Sydney",
+      "intent": "transactional",
+      "need": "Test alert relevance",
+      "cluster": "free engineering alerts",
+      "product_fit": "high",
+      "fit_reason": "Free saved searches fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "track engineering applications interview travel questions",
+      "language": "en",
+      "english_gloss": "track engineering applications interview travel questions",
+      "intent": "transactional",
+      "need": "Keep answers about rotations with applications",
+      "cluster": "application notes",
+      "product_fit": "medium",
+      "fit_reason": "Notes fit indexed jobs; employer guarantees remain external.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

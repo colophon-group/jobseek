@@ -1,0 +1,274 @@
+{
+  "id": "p20",
+  "name": "Lausanne ML PhD approaching industry transition",
+  "context": {
+    "occupation": "Machine-learning doctoral researcher",
+    "seniority": "Final-year PhD, industry newcomer with research experience",
+    "geography": "Lausanne; open to European research hubs",
+    "languages": [
+      "en",
+      "fr"
+    ],
+    "employment_state": "Finishing doctorate, exploring post-graduation employment",
+    "constraints": [
+      "Graduation date not yet fixed",
+      "Research contribution matters more than title alone",
+      "Avoid another PhD or unintended academic postdoc",
+      "Europe-based work",
+      "Needs to understand applied versus research-scientist scope"
+    ],
+    "company_awareness": "Knows several major labs but little about research teams in less familiar product and industrial companies."
+  },
+  "overlap_tags": [
+    "machine-learning",
+    "PhD",
+    "academia-to-industry",
+    "Europe",
+    "French",
+    "English",
+    "title-ambiguity",
+    "graduation-timing"
+  ],
+  "trigger": "An adviser asks about plans after the thesis defense; job searches produce a confusing mixture of PhDs, postdocs, senior scientists and production engineering.",
+  "searches_run": [
+    {
+      "query": "machine learning research scientist PhD graduate jobs Europe",
+      "observation": "Retrieved a direct Citadel Securities PhD graduate role, ELLIS opportunities and mixed academic job sites. The employer page asks for an estimated graduation date and lists Dublin, London and Zurich; it also uses continuing-interest language rather than guaranteeing an immediate vacancy.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "emploi docteur machine learning industrie research scientist applied scientist différence",
+      "observation": "Retrieval surfaced English comparisons and a computing research association career guide despite the partly French query. This shows available title-comparison content, not evidence that French demand is large or underserved.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.citadelsecurities.com/careers/details/machine-learning-researcher-phd-graduate-europe/",
+      "title": "Machine Learning Researcher – PhD Graduate Europe | Citadel Securities",
+      "supports": "Direct inspection confirms PhD-targeted title, multiple offices, anticipated graduation-date field, research/programming requirements and continuing-interest language."
+    },
+    {
+      "id": "s2",
+      "url": "https://ellis.eu/research/jobs",
+      "title": "Jobs in the ELLIS Network",
+      "supports": "Retrieved listing mixes PhD and research scientist opportunities; relevant alternative needing role-type discrimination."
+    },
+    {
+      "id": "s3",
+      "url": "https://careercenter.cra.org/career-resources/get-the-job-2/from-faculty-researcher-to-industry-research-scientist-2026-100",
+      "title": "From Faculty Researcher to Industry Research Scientist | Computing Research Association",
+      "supports": "Retrieved career-resource description frames industry research across several fields beyond AI; no detailed advice adopted without inspection."
+    },
+    {
+      "id": "s4",
+      "url": "https://www.indeed.com/career-advice/finding-a-job/data-scientist-vs-research-scientist-vs-applied-scientist",
+      "title": "Data Scientist vs. Research Scientist vs. Applied Scientist | Indeed",
+      "supports": "Retrieval includes a title-comparison article, establishing an informational alternative rather than universal employer definitions."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "machine learning research scientist PhD graduate jobs Europe",
+    "promise": "Map common industry research titles to posting responsibilities, then find covered European employers with relevant research openings.",
+    "cta": "Explore companies and save several research-title searches with European locations.",
+    "proof_needed": [
+      "Source-backed examples of research, applied-science and engineering responsibilities",
+      "Filters that avoid academic PhD openings without discarding new doctoral graduates",
+      "Actual lab coverage and research-area relevance",
+      "Distinguish an open requisition from a talent-pool page",
+      "State that graduation flexibility needs employer confirmation"
+    ]
+  },
+  "conversion_objections": [
+    "Graduate filters may mean undergraduate schemes.",
+    "Seniority may mistake years researching for years in industry.",
+    "A broad ML alert produces irrelevant specialisms.",
+    "Can I start after my defense, or is this immediate hiring?",
+    "Will I find labs beyond the brands I already follow?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "fully funded machine learning PhD Europe",
+      "reason": "This persona is leaving doctoral study; attracting PhD applicants would confound the audience."
+    },
+    {
+      "query": "guaranteed research scientist job after PhD",
+      "reason": "No hiring guarantee or qualification matching is demonstrated."
+    }
+  ],
+  "message_to_founder": "Simulation: I need you to understand that I am new to industry but not new to research. Help me compare the work behind several titles, then show relevant labs and the source text about degree completion or start dates.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "machine learning research scientist PhD graduate jobs Europe",
+      "language": "en",
+      "english_gloss": "machine learning research scientist PhD graduate jobs Europe",
+      "intent": "transactional",
+      "need": "Find industry roles for new PhDs",
+      "cluster": "PhD industry jobs",
+      "product_fit": "high",
+      "fit_reason": "Role/location discovery fits with degree and timing checks.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "applied scientist jobs Switzerland",
+      "language": "en",
+      "english_gloss": "applied scientist jobs Switzerland",
+      "intent": "transactional",
+      "need": "Explore nearby industry opportunities",
+      "cluster": "applied science jobs",
+      "product_fit": "high",
+      "fit_reason": "Role and location filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "emploi recherche intelligence artificielle industrie Suisse",
+      "language": "fr",
+      "english_gloss": "AI research industry jobs Switzerland",
+      "intent": "transactional",
+      "need": "Search French descriptions beyond familiar labs",
+      "cluster": "French industry research",
+      "product_fit": "high",
+      "fit_reason": "French interface and posting-language filtering help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "emploi docteur machine learning industrie research scientist applied scientist différence",
+      "language": "fr",
+      "english_gloss": "ML PhD industry jobs research scientist versus applied scientist difference",
+      "intent": "informational",
+      "need": "Translate academic experience into job families",
+      "cluster": "research title comparison",
+      "product_fit": "medium",
+      "fit_reason": "A guide supports discovery but definitions vary by employer.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "apply industry research scientist before PhD defense",
+      "language": "en",
+      "english_gloss": "apply industry research scientist before PhD defense",
+      "intent": "informational",
+      "need": "Understand application timing",
+      "cluster": "PhD graduation timing",
+      "product_fit": "medium",
+      "fit_reason": "Sources may state completion requirements; no automatic timing guarantee.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "laboratoires privés machine learning Europe recrutement",
+      "language": "fr",
+      "english_gloss": "Private machine learning labs Europe recruitment",
+      "intent": "informational",
+      "need": "Expand target employers",
+      "cluster": "research employer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first discovery is useful when coverage is clear.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "machine learning scientist jobs Europe not PhD positions",
+      "language": "en",
+      "english_gloss": "machine learning scientist jobs Europe not PhD positions",
+      "intent": "transactional",
+      "need": "Avoid offers of another doctorate",
+      "cluster": "academic noise exclusion",
+      "product_fit": "medium",
+      "fit_reason": "Employment type and role filters help; title ambiguity remains.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "ELLIS industry research jobs",
+      "language": "en",
+      "english_gloss": "ELLIS industry research jobs",
+      "intent": "navigational",
+      "need": "Compare specialist network opportunities",
+      "cluster": "research job alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Specialist network may have stronger academic context.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "research scientist job alerts by research topic",
+      "language": "en",
+      "english_gloss": "research scientist job alerts by research topic",
+      "intent": "commercial",
+      "need": "Match research domain rather than just technology",
+      "cluster": "research-specific alerts",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria may help; research-topic taxonomy is unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "alerte emploi chercheur IA entreprises Europe",
+      "language": "fr",
+      "english_gloss": "AI researcher job alerts European companies",
+      "intent": "commercial",
+      "need": "Monitor a cross-border company list",
+      "cluster": "European lab alerts",
+      "product_fit": "high",
+      "fit_reason": "Covered employer alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "email alerts applied scientist research scientist Zurich Paris London",
+      "language": "en",
+      "english_gloss": "email alerts applied scientist research scientist Zurich Paris London",
+      "intent": "transactional",
+      "need": "Save several title and location variants",
+      "cluster": "research alerts",
+      "product_fit": "high",
+      "fit_reason": "Multiple saved searches are supported within free limits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "suivi candidatures industrie après doctorat",
+      "language": "fr",
+      "english_gloss": "Track industry applications after doctorate",
+      "intent": "transactional",
+      "need": "Record research conversations and interview notes",
+      "cluster": "PhD application tracking",
+      "product_fit": "medium",
+      "fit_reason": "Tracking fits indexed postings; arbitrary external applications are unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

@@ -1,0 +1,272 @@
+{
+  "id": "p21",
+  "name": "Spain-based full-stack contractor filling the next engagement",
+  "context": {
+    "occupation": "Freelance full-stack developer",
+    "seniority": "Experienced independent contractor",
+    "geography": "Spain, remote engagements with European clients",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Current client engagement nearing completion",
+    "constraints": [
+      "Three-to-six-month B2B engagements",
+      "Explicit hourly/day rate and currency",
+      "Remote from Spain permitted",
+      "Clear duration and start date",
+      "Does not want permanent employment"
+    ],
+    "company_awareness": "Knows some product companies but finds contracts through specialist recruiters and personal contacts."
+  },
+  "overlap_tags": [
+    "developer",
+    "freelance",
+    "B2B",
+    "Spain",
+    "remote-Europe",
+    "contract-duration",
+    "rate-transparency"
+  ],
+  "trigger": "A client confirms the current project will end in six weeks, leaving a finite window to find another paid engagement.",
+  "searches_run": [
+    {
+      "query": "remote full stack developer B2B contract Europe 3 months day rate",
+      "observation": "Retrieved specialist recruiter postings, LinkedIn and contract boards with duration and rate terms. The directly opened Foxley Talent result was explicitly closed, despite appearing relevant in search.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "freelance developer remote Europe contract jobs alerts day rate Spain",
+      "observation": "Retrieval included a Europe contract-board page with country filters and alert/save controls, plus remote-contract aggregators. Several other results were UK-only remote or longer engagements, illustrating geography and duration checks.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://foxleytalent.com/jobs/contract-developer/",
+      "title": "Full Stack Developer Contract/Freelance | Foxley Talent",
+      "supports": "Directly inspected closed posting clearly states three-month duration, hourly rate, Europe/UK remote restriction and near-term start; example of useful fields, not a live opportunity."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.signifytechnology.com/jobs/Senior-Software-Engineer-20845/",
+      "title": "Senior Software Engineer | Signify Technology",
+      "supports": "Retrieved snippet states Contract B2B, EU-based applicants and daily rate; not independently verified as available."
+    },
+    {
+      "id": "s3",
+      "url": "https://toproles.eu/contract",
+      "title": "Contract and freelance roles in Europe | TopRoles",
+      "supports": "Retrieved page advertises country filters, contract listings, rate terms and alert/save controls."
+    },
+    {
+      "id": "s4",
+      "url": "https://uk.linkedin.com/jobs/view/senior-full-stack-developer-3-x-3-month-contractors-required-at-acquire-4457471702",
+      "title": "Senior Full Stack Developer three-month contractors | Acquire on LinkedIn",
+      "supports": "Retrieved snippet specifies remote within UK, demonstrating that remote does not imply Spain eligibility."
+    }
+  ],
+  "best_entry_page": {
+    "type": "do not target",
+    "primary_query": "remote full stack developer B2B contract Europe 3 months day rate",
+    "promise": "No dedicated acquisition promise until current B2B inventory, Spain compatibility, rate units and contract duration can be demonstrated.",
+    "cta": "Use free employment-type, work-mode and technology filters to assess existing inventory before subscribing.",
+    "proof_needed": [
+      "Count and sample current B2B engagements from covered sources",
+      "Separate fixed-term employment from business-to-business contracts",
+      "Preserve hourly/day rates and currency without silently annualising them",
+      "Explicit Spain or EU remote scope",
+      "Current close-status handling and usable duration/start-date evidence"
+    ]
+  },
+  "conversion_objections": [
+    "Most company career pages may offer permanent jobs.",
+    "My next engagement may be advertised only by a recruiter.",
+    "Contract can mean fixed-term employment rather than B2B.",
+    "An annual salary filter is not a day-rate filter.",
+    "I need an immediate pipeline, not occasional alerts from favorite companies."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "B2B tax setup Spain developer",
+      "reason": "Tax/legal setup is outside the product and this research."
+    },
+    {
+      "query": "best freelance marketplace guaranteed clients",
+      "reason": "No marketplace, client matching or guaranteed work is demonstrated."
+    }
+  ],
+  "message_to_founder": "Simulation: My unit of choice is an engagement with a rate, duration and start date, not an employer I admire. Show enough current contracts I can actually perform from Spain before selling me a monitoring subscription; otherwise my specialist recruiters remain more useful.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "remote full stack developer B2B contract Europe 3 months day rate",
+      "language": "en",
+      "english_gloss": "remote full stack developer B2B contract Europe 3 months day rate",
+      "intent": "transactional",
+      "need": "Find the next defined engagement",
+      "cluster": "B2B developer contracts",
+      "product_fit": "low",
+      "fit_reason": "Relevant inventory and rate/duration handling remain unverified.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "freelance React Node developer jobs Europe",
+      "language": "en",
+      "english_gloss": "freelance React Node developer jobs Europe",
+      "intent": "transactional",
+      "need": "Find stack-compatible client work",
+      "cluster": "freelance stack jobs",
+      "product_fit": "medium",
+      "fit_reason": "Technology and employment-type filters help if supply exists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "full stack contract jobs remote Spain",
+      "language": "en",
+      "english_gloss": "full stack contract jobs remote Spain",
+      "intent": "transactional",
+      "need": "Avoid remote roles limited to another country",
+      "cluster": "Spain contract jobs",
+      "product_fit": "medium",
+      "fit_reason": "Location/work-mode filters help but source permission matters.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "remote Europe contract means can work from Spain",
+      "language": "en",
+      "english_gloss": "remote Europe contract means can work from Spain",
+      "intent": "informational",
+      "need": "Clarify location wording before applying",
+      "cluster": "remote scope",
+      "product_fit": "low",
+      "fit_reason": "Cannot decide contracting eligibility; only surface source restrictions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "six month freelance software developer contract EUR day rate",
+      "language": "en",
+      "english_gloss": "six month freelance software developer contract EUR day rate",
+      "intent": "transactional",
+      "need": "Compare defined durations and compensation",
+      "cluster": "contract terms",
+      "product_fit": "low",
+      "fit_reason": "Duration and day-rate controls are not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "freelance developer remote Europe contract jobs alerts day rate Spain",
+      "language": "en",
+      "english_gloss": "freelance developer remote Europe contract jobs alerts day rate Spain",
+      "intent": "commercial",
+      "need": "Find targeted contract alerts",
+      "cluster": "freelance alerts",
+      "product_fit": "medium",
+      "fit_reason": "Alert mechanism fits but rate and B2B accuracy need evidence.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "B2B contract job board Europe versus LinkedIn",
+      "language": "en",
+      "english_gloss": "B2B contract job board Europe versus LinkedIn",
+      "intent": "commercial",
+      "need": "Choose a reliable source for contractor work",
+      "cluster": "contract board alternatives",
+      "product_fit": "low",
+      "fit_reason": "Specialist boards may better match engagement metadata.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job search exclude permanent full time developer",
+      "language": "en",
+      "english_gloss": "job search exclude permanent full time developer",
+      "intent": "commercial",
+      "need": "Remove employee roles from results",
+      "cluster": "employment-type filtering",
+      "product_fit": "medium",
+      "fit_reason": "EmploymentTypes exist; verify contract category semantics.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "contract developer job advertised closed still online",
+      "language": "en",
+      "english_gloss": "contract developer job advertised closed still online",
+      "intent": "informational",
+      "need": "Stop wasting time on ended assignments",
+      "cluster": "contract freshness",
+      "product_fit": "medium",
+      "fit_reason": "Monitoring can help but guaranteed freshness is not supported.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "recruiters remote EU JavaScript contracts",
+      "language": "en",
+      "english_gloss": "recruiters remote EU JavaScript contracts",
+      "intent": "informational",
+      "need": "Find intermediary sources of work",
+      "cluster": "contract recruiters",
+      "product_fit": "low",
+      "fit_reason": "Company-career coverage may miss recruiter-only mandates.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "free alerts remote contract TypeScript Europe",
+      "language": "en",
+      "english_gloss": "free alerts remote contract TypeScript Europe",
+      "intent": "transactional",
+      "need": "Test useful inventory with no commitment",
+      "cluster": "free contractor alerts",
+      "product_fit": "medium",
+      "fit_reason": "Free filters and alerts support a trial of fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "track freelance developer contract applications",
+      "language": "en",
+      "english_gloss": "track freelance developer contract applications",
+      "intent": "transactional",
+      "need": "Track discussions with covered opportunities",
+      "cluster": "contract application tracking",
+      "product_fit": "medium",
+      "fit_reason": "Indexed posting tracking exists; external leads and client CRM are unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

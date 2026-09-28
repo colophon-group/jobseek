@@ -1,0 +1,265 @@
+{
+  "id": "p32",
+  "name": "Zurich school leaver finding a 2027 commercial apprenticeship",
+  "context": {
+    "occupation": "School leaver seeking commercial apprenticeship KV",
+    "seniority": "First vocational role",
+    "geography": "Zurich city/canton, Switzerland",
+    "languages": [
+      "de"
+    ],
+    "employment_state": "At school, searching with family support",
+    "constraints": [
+      "2027 apprenticeship start",
+      "Employer discovery",
+      "Application windows and documents",
+      "Needs plain German explanations",
+      "Opening alerts are not closing-date reminders"
+    ],
+    "company_awareness": "Recognizes banks, insurers and city administration but has no settled industry choice."
+  },
+  "overlap_tags": [
+    "apprenticeship",
+    "Switzerland",
+    "Zurich",
+    "German",
+    "school-leaver",
+    "KV",
+    "start-year",
+    "family-support"
+  ],
+  "trigger": "A family discussion about life after school leads to the first KV search, where different industries and application windows are hard to compare.",
+  "searches_run": [
+    {
+      "query": "KV Lehrstelle Zürich 2027",
+      "observation": "Retrieved cantonal apprenticeship listings, public and private employers, and general job boards. KV listings span training branches rather than one uniform office job.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "KV Lehrstelle Zürich 2027 Bewerbungsfrist Lehrbeginn",
+      "observation": "Direct city-employer inspection shows staggered application windows, application caps and conditional later rounds. A single yearly deadline would misrepresent this particular employer's process.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://berufswahl.zh.ch/lehrstelle/2027-klever-ag-kaufmann-frau-dienstleistung-und-administration-da-efz-2",
+      "title": "KV Dienstleistung und Administration 2027 KLEVER | Berufswahl Zürich",
+      "supports": "Retrieved cantonal listing shows 2027 start, training branch, qualification and employer network; availability not independently checked."
+    },
+    {
+      "id": "s2",
+      "url": "https://svazurich.ch/jobs-und-karriere/im-unternehmen/lehre-und-berufseinstieg/kv-lehre/deine-ausbildung.html",
+      "title": "KV-Lehre Deine Ausbildung | SVA Zürich",
+      "supports": "Retrieved employer page describes insurance training branch and 2027 intake."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.stadt-zuerich.ch/de/politik-und-verwaltung/arbeiten-bei-der-stadt/stadtvielfalt/arbeiten-beim-sd/lehrstellen-kv.html",
+      "title": "Kauffrau/-mann EFZ/EBA | Stadt Zürich",
+      "supports": "Direct employer page describes 2027 intake, staggered windows, application caps, conditional later rounds and required documents. Applies to this employer only."
+    }
+  ],
+  "best_entry_page": {
+    "type": "curated employer guide",
+    "primary_query": "KV Lehrstelle Zürich 2027",
+    "promise": "Discover covered Zurich KV training employers by branch and connect each option to original 2027 intake and application information.",
+    "cta": "Explore employers together, then save free apprenticeship searches in the applicant's own account.",
+    "proof_needed": [
+      "KV apprenticeship coverage and correct 2027 start extraction",
+      "EFZ/EBA and branch distinctions with source links",
+      "Opening windows versus deadlines, including conditional rounds",
+      "Verify account-age requirements before youth-specific onboarding claims",
+      "No unverified family collaboration or reminder features"
+    ]
+  },
+  "conversion_objections": [
+    "I do not know which KV branch suits me.",
+    "My family helps, but do we need shared access?",
+    "Does a 2027 title mean applications are open today?",
+    "Why use this instead of the cantonal apprenticeship portal?",
+    "Will alerts miss a reopening of the same listing?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "KV Lehrstelle Zürich 2027 alle Fristen garantiert",
+      "reason": "Coverage and deadline completeness cannot be guaranteed."
+    },
+    {
+      "query": "KV Multicheck Vorbereitung",
+      "reason": "Assessment training is outside the product."
+    }
+  ],
+  "message_to_founder": "Simulation: Ich brauche zuerst einen verständlichen Überblick über Lehrbetriebe und KV-Branchen. Zeigt mir bei jeder Stelle, ob ich mich jetzt bewerben kann und wo die echten Termine stehen; meine Familie und ich sollten nicht aus einer Stellenmail eine Frist-Erinnerung machen müssen.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "KV Lehrstelle Zürich 2027",
+      "language": "de",
+      "english_gloss": "Commercial apprenticeship Zurich 2027",
+      "intent": "transactional",
+      "need": "Find the correct intake",
+      "cluster": "Zurich KV apprenticeships",
+      "product_fit": "medium",
+      "fit_reason": "Fit depends on verified training inventory.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "kaufmännische Lehre Zürich",
+      "language": "de",
+      "english_gloss": "Commercial apprenticeship Zurich",
+      "intent": "transactional",
+      "need": "Explore the occupation broadly",
+      "cluster": "commercial apprenticeships",
+      "product_fit": "medium",
+      "fit_reason": "Role search helps; school-level labels matter.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Lehrstellen Büro Zürich 2027",
+      "language": "de",
+      "english_gloss": "Office apprenticeships Zurich 2027",
+      "intent": "transactional",
+      "need": "Use everyday language before knowing KV terms",
+      "cluster": "first apprenticeship search",
+      "product_fit": "medium",
+      "fit_reason": "Requires title/occupation synonym recall.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "KV Lehrstelle Zürich 2027 Bewerbungsfrist Lehrbeginn",
+      "language": "de",
+      "english_gloss": "KV apprenticeship Zurich 2027 application deadline start",
+      "intent": "informational",
+      "need": "Understand when to act",
+      "cluster": "apprenticeship application windows",
+      "product_fit": "medium",
+      "fit_reason": "Source windows help; alerts are not deadline reminders.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "KV Lehre welche Branche passt",
+      "language": "de",
+      "english_gloss": "Which commercial apprenticeship branch fits",
+      "intent": "informational",
+      "need": "Choose between training contexts",
+      "cluster": "KV branch discovery",
+      "product_fit": "medium",
+      "fit_reason": "Employer guide helps, but career counselling is separate.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "KV Lehrbetriebe Zürich kleine Firmen",
+      "language": "de",
+      "english_gloss": "KV training employers Zurich small companies",
+      "intent": "informational",
+      "need": "Look beyond familiar big brands",
+      "cluster": "local training employers",
+      "product_fit": "medium",
+      "fit_reason": "Smaller training-firm coverage needs proof.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Stadt Zürich KV Lehrstelle 2027",
+      "language": "de",
+      "english_gloss": "City of Zurich KV apprenticeship 2027",
+      "intent": "navigational",
+      "need": "Inspect a known public employer",
+      "cluster": "public training employer",
+      "product_fit": "high",
+      "fit_reason": "Company monitoring fits if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "berufswahl Zürich KV Lehrstellensuche",
+      "language": "de",
+      "english_gloss": "Zurich career-choice KV apprenticeship search",
+      "intent": "navigational",
+      "need": "Compare the cantonal source",
+      "cluster": "apprenticeship portal alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Specialist source already provides training metadata.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "KV Lehrstelle EFZ mit Berufsmaturität Zürich",
+      "language": "de",
+      "english_gloss": "KV EFZ apprenticeship with vocational baccalaureate Zurich",
+      "intent": "transactional",
+      "need": "Compare training options",
+      "cluster": "training qualification options",
+      "product_fit": "medium",
+      "fit_reason": "Need explicit employer requirements/options.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "neue KV Lehrstellen per E-Mail Zürich",
+      "language": "de",
+      "english_gloss": "New Zurich KV apprenticeships by email",
+      "intent": "commercial",
+      "need": "Reduce repeated employer checking",
+      "cluster": "apprenticeship alerts",
+      "product_fit": "high",
+      "fit_reason": "Covered new-posting alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "kostenlos Lehrstellenalarm KV 2027",
+      "language": "de",
+      "english_gloss": "Free apprenticeship alert KV 2027",
+      "intent": "transactional",
+      "need": "Set up simple monitoring",
+      "cluster": "free training alerts",
+      "product_fit": "high",
+      "fit_reason": "Free saved searches fit; reopening behavior needs verification.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Übersicht Bewerbungen Lehrstellen speichern",
+      "language": "de",
+      "english_gloss": "Save overview of apprenticeship applications",
+      "intent": "transactional",
+      "need": "Keep application status organized",
+      "cluster": "training application tracking",
+      "product_fit": "medium",
+      "fit_reason": "Indexed-job tracker fits; shared family access unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

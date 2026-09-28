@@ -1,0 +1,270 @@
+{
+  "id": "p35",
+  "name": "US support specialist seeking written-channel remote work",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Customer-support specialist",
+    "seniority": "Experienced frontline support",
+    "geography": "United States; state unspecified",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Actively seeking a suitable role",
+    "constraints": [
+      "Remote within the US",
+      "Email/chat support rather than phone sales",
+      "Disclosed shifts",
+      "Low budget",
+      "Wants identifiable direct-employer openings"
+    ],
+    "company_awareness": "Few named targets; needs employer discovery"
+  },
+  "overlap_tags": [
+    "customer-support",
+    "us",
+    "remote",
+    "written-support",
+    "shift-work",
+    "budget",
+    "trust"
+  ],
+  "trigger": "Repeated searches for chat support lead to mixed phone roles and generic apply pages, so the candidate starts checking employer identity and shift details before proceeding.",
+  "searches_run": [
+    {
+      "query": "remote customer support email chat jobs US no phone",
+      "observation": "Results included broad boards and numerous generic non-phone landing pages. An Indeed no-phone query page still contained phone duties; confident page titles did not establish job suitability.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "customer support specialist email chat remote United States shifts careers",
+      "observation": "The sample surfaced ClearLine's self-described careers page. Inspection showed phone/email/chat duties and nights/weekends/holidays language, but no exact individual shift schedule; it is a mismatch for written-only support.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.indeed.com/q-Email-Chat-Customer-Service-No-Phones-Remote-jobs.html",
+      "title": "Email Chat Customer Service No Phones Remote jobs — Indeed",
+      "supports": "Retrieved page snippet contains phone/email/chat duties and variable shift-start descriptions despite the search-page label."
+    },
+    {
+      "id": "s2",
+      "url": "https://remotejobrecruiting.com/job/email-and-chat-support-jobs-remote-no-phone-flexible-hours-25-35-hr/",
+      "title": "Email Support Specialist [Non-Phone] — Remote Job Recruiting",
+      "supports": "Retrieved page advertises non-phone work for an unnamed subscription company. Used only as evidence of retrieval presentation, not as a verified employer or vacancy."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.clearlinecx.com/careers",
+      "title": "Careers — ClearLine CX",
+      "supports": "Directly inspected self-published page advertises US remote roles but explicitly includes phone support and broad round-the-clock coverage. Employer legitimacy and individual vacancies were not independently verified."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "remote email chat customer support jobs US",
+    "promise": "Find covered employers' support postings and inspect stated channels, location restrictions and shifts before applying.",
+    "cta": "Try free support searches, open the source posting and save alerts for relevant employers.",
+    "proof_needed": [
+      "Show named employers and traceable source postings; do not badge them as verified safe.",
+      "Prove US support-employer coverage before making this a priority SEO landing.",
+      "Separate email/chat-only from mixed-channel work and sales.",
+      "Show exact shift text, timezone and unknown schedules.",
+      "Explain free search/alerts and optional paid description checks.",
+      "New indexable page required; filtered search is currently noindex."
+    ]
+  },
+  "conversion_objections": [
+    "Is this another page that sends me to an unnamed employer?",
+    "Will no-phone searches still include outbound sales?",
+    "Are jobs available in my state?",
+    "What hours would I actually work?",
+    "Can I use the useful parts without paying?",
+    "Do you verify companies, or only collect their descriptions?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "verified scam free remote jobs guaranteed",
+      "reason": "Employer verification and guarantees are not demonstrated."
+    },
+    {
+      "query": "no experience chat jobs 35 dollars guaranteed",
+      "reason": "Unsupported pay and hiring promise."
+    },
+    {
+      "query": "customer support software live chat",
+      "reason": "Buyer/software intent, not employment intent."
+    }
+  ],
+  "message_to_founder": "Simulation: I need an actual employer, a written-support role and a schedule I can evaluate. Free alerts could help, but I would leave if I still had to open every result to discover it is phone sales or an unspecified shift.",
+  "confidence_and_limits": "Synthetic candidate. Two queries and one direct inspection; no fraud accusation or employer endorsement made. The noisy retrieved sample does not quantify demand or prove all non-phone listings unreliable. State restrictions and exact availability remain unspecified.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "remote customer support jobs",
+      "language": "en",
+      "english_gloss": "remote customer support jobs",
+      "intent": "commercial",
+      "need": "Explore remote openings.",
+      "cluster": "remote-support",
+      "product_fit": "high",
+      "fit_reason": "Work mode and role filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "email support jobs USA",
+      "language": "en",
+      "english_gloss": "email support jobs USA",
+      "intent": "commercial",
+      "need": "Find written-channel work.",
+      "cluster": "email-support",
+      "product_fit": "medium",
+      "fit_reason": "Description channel evidence is needed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "chat support jobs work from home",
+      "language": "en",
+      "english_gloss": "chat support jobs work from home",
+      "intent": "commercial",
+      "need": "Find a suitable channel.",
+      "cluster": "chat-support",
+      "product_fit": "medium",
+      "fit_reason": "Remote title alone does not exclude phones.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "remote customer support email chat jobs US no phone",
+      "language": "en",
+      "english_gloss": "remote customer support email chat jobs US no phone",
+      "intent": "commercial",
+      "need": "Exclude phone-based duties.",
+      "cluster": "nonphone-support",
+      "product_fit": "medium",
+      "fit_reason": "Pro criteria checks could help if explicit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "customer support specialist email chat remote United States shifts careers",
+      "language": "en",
+      "english_gloss": "customer support specialist email chat remote United States shifts careers",
+      "intent": "commercial",
+      "need": "Find source postings and shifts.",
+      "cluster": "support-shifts",
+      "product_fit": "medium",
+      "fit_reason": "Source detail and coverage are decisive.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "customer service remote jobs no sales",
+      "language": "en",
+      "english_gloss": "customer service remote jobs no sales",
+      "intent": "commercial",
+      "need": "Separate support from selling.",
+      "cluster": "support-not-sales",
+      "product_fit": "medium",
+      "fit_reason": "Needs duty-level interpretation.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "remote support jobs hiring in my state",
+      "language": "en",
+      "english_gloss": "remote support jobs hiring in my state",
+      "intent": "commercial",
+      "need": "Check location restrictions.",
+      "cluster": "us-state-remote",
+      "product_fit": "medium",
+      "fit_reason": "State evidence must match a supplied location.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "chat support jobs fixed schedule weekends",
+      "language": "en",
+      "english_gloss": "chat support jobs fixed schedule weekends",
+      "intent": "commercial",
+      "need": "Find a predictable rota.",
+      "cluster": "support-schedule",
+      "product_fit": "medium",
+      "fit_reason": "Text checks cannot infer omitted shifts.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "customer support careers direct company website",
+      "language": "en",
+      "english_gloss": "customer support careers direct company website",
+      "intent": "commercial",
+      "need": "Find an identifiable employer.",
+      "cluster": "direct-support-careers",
+      "product_fit": "high",
+      "fit_reason": "Company-first source access fits if coverage exists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "FlexJobs email chat support free alternatives",
+      "language": "en",
+      "english_gloss": "FlexJobs email chat support free alternatives",
+      "intent": "commercial",
+      "need": "Avoid subscription costs.",
+      "cluster": "support-board-alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Free search is relevant; comparisons need evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "free email alerts remote chat support jobs",
+      "language": "en",
+      "english_gloss": "free email alerts remote chat support jobs",
+      "intent": "commercial",
+      "need": "Follow suitable openings.",
+      "cluster": "free-support-alerts",
+      "product_fit": "high",
+      "fit_reason": "Free saved-search alerts align.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "is this customer support job from the real company",
+      "language": "en",
+      "english_gloss": "is this customer support job from the real company",
+      "intent": "informational",
+      "need": "Establish trust before applying.",
+      "cluster": "job-identity-check",
+      "product_fit": "low",
+      "fit_reason": "Monitoring and description checks cannot certify authenticity.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

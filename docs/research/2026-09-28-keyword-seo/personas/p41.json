@@ -1,0 +1,273 @@
+{
+  "id": "p41",
+  "name": "US veteran translating logistics leadership into civilian programs",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Military program/logistics leader seeking civilian project or program management",
+    "seniority": "Experienced leader; civilian level to be assessed from duties",
+    "geography": "United States; location preference unspecified",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Transitioning into civilian employment",
+    "constraints": [
+      "Wants concrete jobs rather than generic transition advice",
+      "Needs employer title and experience wording interpreted",
+      "Does not assume clearance, degree or certifications",
+      "Interested in several target employers and broader options"
+    ],
+    "company_awareness": "Some known employers; not limited to defense contractors"
+  },
+  "overlap_tags": [
+    "veteran",
+    "us",
+    "career-transition",
+    "program-management",
+    "logistics",
+    "title-translation"
+  ],
+  "trigger": "The candidate begins translating past planning, resource and logistics leadership into civilian searches and discovers that similarly named roles expect very different domain experience.",
+  "searches_run": [
+    {
+      "query": "military veteran logistics program manager civilian jobs",
+      "observation": "Retrieval leaned toward defense contractors and federal logistics roles. This shows the wording's effect on the sample, not that these are the only suitable civilian employers.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "military logistics leadership equivalent experience program manager careers veterans",
+      "observation": "Employer listings and official title-translation resources appeared. The inspected Anduril role explicitly accepts relevant military program experience and equivalent education experience, alongside specific acquisition expertise and clearance requirements.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://job-boards.greenhouse.io/andurilindustries/jobs/5204204007?gh_jid=5204204007",
+      "title": "Logistics Program Manager — Anduril Industries",
+      "supports": "Direct ATS page describes program/logistics duties, military/government program experience, possible education substitution and a stated clearance requirement. It is not proof this persona qualifies or holds a clearance."
+    },
+    {
+      "id": "s2",
+      "url": "https://pae.wd1.myworkdayjobs.com/Amentum_Careers/job/US-VA-McLean/Logistics-Program-Manager_R0169226",
+      "title": "Logistics Program Manager — Amentum",
+      "supports": "Retrieved employer snippet describes logistics/supply-chain experience and leadership years, illustrating requirements-based comparison rather than military rank matching."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.dol.gov/sites/dolgov/files/VETS/files/TAP-EFCT-ParticipantGuide-5.1-J-Fillable.pdf?trk=article-ssr-frontend-pulse_little-text-block",
+      "title": "Employment Fundamentals of Career Transition — US Department of Labor",
+      "supports": "Retrieved official guide cautions against assuming exact civilian title equivalence. Used to support careful title exploration, not as a credential or hiring assessment."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "military logistics experience civilian program manager jobs",
+    "promise": "Explore civilian role titles through real employer duties and experience requirements, then follow relevant openings at selected companies.",
+    "cta": "Compare program, project and logistics roles and save searches for the titles that fit your experience.",
+    "proof_needed": [
+      "Include employers beyond defense so military keywords do not constrain discovery.",
+      "Show duty-level examples instead of rank-to-title equivalence.",
+      "Distinguish military experience mentioned in qualifications from veteran-status boilerplate.",
+      "Keep clearance and certifications as stated requirements without judging personal eligibility.",
+      "Verify US employer coverage.",
+      "Create an indexable guide anchored in jobs, not a generic advice funnel."
+    ]
+  },
+  "conversion_objections": [
+    "Will every result be a defense job?",
+    "Does military experience genuinely satisfy a requirement or only appear in equal-opportunity text?",
+    "Are you assuming a rank maps to senior manager?",
+    "Can I compare project, program and operations roles?",
+    "Do target employers have relevant openings now?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "military rank civilian job title exact equivalent",
+      "reason": "Exact equivalence cannot be established from rank alone."
+    },
+    {
+      "query": "veteran guaranteed program manager placement",
+      "reason": "No placement guarantee."
+    },
+    {
+      "query": "security clearance eligibility checker",
+      "reason": "Eligibility determination is outside product capability."
+    },
+    {
+      "query": "military resume translator generator",
+      "reason": "Resume-generation capability is not demonstrated."
+    }
+  ],
+  "message_to_founder": "Simulation: I have led complex work, but civilian titles do not tell me whether an employer wants that experience. Show me openings where the responsibilities line up, including companies outside defense, and let me follow the ones worth pursuing.",
+  "confidence_and_limits": "Synthetic veteran persona. Two queries and one direct employer inspection; no assumptions about rank, combat service, disability, gender, education, clearance or certifications. Broad civilian opportunities were not comprehensively researched; retrieval was shaped by military keywords.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "program manager jobs USA",
+      "language": "en",
+      "english_gloss": "program manager jobs USA",
+      "intent": "commercial",
+      "need": "Survey civilian roles.",
+      "cluster": "us-program-management",
+      "product_fit": "high",
+      "fit_reason": "Role/location search fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "logistics manager jobs",
+      "language": "en",
+      "english_gloss": "logistics manager jobs",
+      "intent": "commercial",
+      "need": "Explore direct functional continuity.",
+      "cluster": "logistics-management",
+      "product_fit": "high",
+      "fit_reason": "Occupation discovery fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "project manager jobs military experience",
+      "language": "en",
+      "english_gloss": "project manager jobs military experience",
+      "intent": "commercial",
+      "need": "Find explicit experience relevance.",
+      "cluster": "military-project-experience",
+      "product_fit": "medium",
+      "fit_reason": "Need qualifications text rather than boilerplate.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "military veteran logistics program manager civilian jobs",
+      "language": "en",
+      "english_gloss": "military veteran logistics program manager civilian jobs",
+      "intent": "commercial",
+      "need": "Locate concrete transition opportunities.",
+      "cluster": "civilian-logistics-programs",
+      "product_fit": "medium",
+      "fit_reason": "Can overconcentrate on defense.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "military logistics leadership equivalent experience program manager careers veterans",
+      "language": "en",
+      "english_gloss": "military logistics leadership equivalent experience program manager careers veterans",
+      "intent": "commercial",
+      "need": "Check relevant experience acceptance.",
+      "cluster": "experience-substitution",
+      "product_fit": "medium",
+      "fit_reason": "Description checks help but cannot certify fit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "supply chain program manager operations leadership",
+      "language": "en",
+      "english_gloss": "supply chain program manager operations leadership",
+      "intent": "commercial",
+      "need": "Use civilian functional vocabulary.",
+      "cluster": "supply-chain-programs",
+      "product_fit": "high",
+      "fit_reason": "Multiple title searches expand discovery.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Amazon program manager military logistics careers",
+      "language": "en",
+      "english_gloss": "Amazon program manager military logistics careers",
+      "intent": "navigational",
+      "need": "Check a plausible named employer.",
+      "cluster": "target-employer-programs",
+      "product_fit": "high",
+      "fit_reason": "Coverage-dependent monitoring fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "program manager versus project manager job responsibilities",
+      "language": "en",
+      "english_gloss": "program manager versus project manager job responsibilities",
+      "intent": "informational",
+      "need": "Compare employer expectations.",
+      "cluster": "program-project-duties",
+      "product_fit": "medium",
+      "fit_reason": "A duties-based guide can lead to real searches.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "program manager equivalent experience degree required",
+      "language": "en",
+      "english_gloss": "program manager equivalent experience degree required",
+      "intent": "commercial",
+      "need": "Find stated alternatives.",
+      "cluster": "program-education-requirements",
+      "product_fit": "medium",
+      "fit_reason": "Must preserve conditions and unknowns.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "operations manager jobs manufacturing civilian",
+      "language": "en",
+      "english_gloss": "operations manager jobs manufacturing civilian",
+      "intent": "commercial",
+      "need": "Look beyond defense.",
+      "cluster": "civilian-operations",
+      "product_fit": "high",
+      "fit_reason": "Company/occupation discovery supports breadth.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "alerts program management jobs selected companies",
+      "language": "en",
+      "english_gloss": "alerts program management jobs selected companies",
+      "intent": "commercial",
+      "need": "Monitor targets across title variants.",
+      "cluster": "program-company-alerts",
+      "product_fit": "high",
+      "fit_reason": "Free saved-search alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "compare program manager job requirements military experience",
+      "language": "en",
+      "english_gloss": "compare program manager job requirements military experience",
+      "intent": "informational",
+      "need": "Decide which applications merit effort.",
+      "cluster": "transferable-experience-fit",
+      "product_fit": "medium",
+      "fit_reason": "Can show source requirements; human assessment still needed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

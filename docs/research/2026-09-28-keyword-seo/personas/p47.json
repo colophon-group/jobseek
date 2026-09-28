@@ -1,0 +1,280 @@
+{
+  "id": "p47",
+  "name": "German marketing coordinator switching into paid performance marketing",
+  "context": {
+    "occupation": "Marketing coordinator transitioning to performance marketing",
+    "seniority": "Midcareer overall; junior in campaign performance specialization",
+    "geography": "Germany; no specific city assumed",
+    "languages": [
+      "de"
+    ],
+    "employment_state": "Employed and exploring a career switch",
+    "constraints": [
+      "No university degree",
+      "Has campaign portfolio and certification",
+      "Paid employment rather than unpaid work or another course",
+      "Budget-sensitive",
+      "Junior label must not imply student enrollment"
+    ],
+    "company_awareness": "Open to agencies or in-house teams; no fixed employer list"
+  },
+  "overlap_tags": [
+    "marketing",
+    "Germany",
+    "German",
+    "career-change",
+    "non-degree",
+    "junior-specialism",
+    "budget-sensitive"
+  ],
+  "trigger": "A junior search returns degree requirements, student-only positions and course advertisements despite an existing portfolio.",
+  "searches_run": [
+    {
+      "query": "Junior Performance Marketing Jobs Quereinsteiger ohne Studium",
+      "observation": "Retrieval mixed actual roles, training-provider results and vacancies offering degree alternatives. One attractive explicitly no-degree result was in Switzerland, showing language match did not establish German location fit.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "query": "Performance Marketing Einstieg ohne Studium bezahlte Stelle kein Praktikum Zertifikat Portfolio",
+      "observation": "Results included paid role pages and substantial training content. Direct Cyrus inspection states employee status, a salary range and no prior experience required; it lists Munich residence/relocation and does not state a degree requirement. Omission is not a guarantee of acceptance.",
+      "source_ids": [
+        "s1",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://join.com/companies/cyrusdigital/16700078-performance-marketing-manager-quereinsteiger-m-w-d-muenchen",
+      "title": "Performance Marketing Manager Quereinsteiger — Cyrus Digital",
+      "supports": "Direct employer-authored posting states employment, salary range, no prior experience and Munich residence/relocation. No degree is listed; candidate acceptance and portfolio sufficiency remain unverified."
+    },
+    {
+      "id": "s2",
+      "url": "https://de.indeed.com/q-quereinsteiger-performance-marketing-jobs.html",
+      "title": "Quereinsteiger Performance Marketing Jobs — Indeed",
+      "supports": "Retrieved category includes training-provider language and a career-change role asking for a quantitative degree plus practice, illustrating mixed entry requirements."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.jobscout24.ch/de/job/15f57f09-e030-4a6f-ba19-6f80cfb84fa2/",
+      "title": "Junior Performance Marketing 20–40% — QYOU",
+      "supports": "Retrieved Swiss listing explicitly downplays formal education but is located in Pratteln, not Germany."
+    },
+    {
+      "id": "s4",
+      "url": "https://join.com/companies/starttofinish1/16087803-junior-performance-marketing-manager-m-w-d",
+      "title": "Junior Performance Marketing Manager — Start To Finish Consulting",
+      "supports": "Retrieved junior posting asks for a completed quantitative degree and treats projects as a plus; historical date wording prevents assuming a current vacancy."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "Performance Marketing Quereinstieg ohne Studium Jobs",
+    "promise": "Show how to distinguish paid junior marketing employment from courses and student roles, and identify explicitly alternative qualification wording.",
+    "cta": "Bezahlte Rollen und Anforderungen prüfen",
+    "proof_needed": [
+      "Original requirement wording with required/preferred distinctions",
+      "Employment type and location alongside junior label",
+      "No-degree omission separated from explicit alternative acceptance",
+      "Verified German employer coverage",
+      "Free search explained without pushing paid courses",
+      "No portfolio or certification acceptance guarantee",
+      "New indexable guide; search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Is this an actual paid vacancy or a course lead?",
+    "Does junior require being enrolled at university?",
+    "Will employers consider my work rather than automatically demand a degree?",
+    "Can I use the free search before paying?",
+    "Is the job campaign analysis or mostly cold sales?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "Performance Marketing Weiterbildung Bildungsgutschein",
+      "reason": "Training acquisition is not this persona's goal or product function."
+    },
+    {
+      "query": "garantiert Marketing Job ohne Abschluss",
+      "reason": "Employer acceptance cannot be guaranteed."
+    },
+    {
+      "query": "unbezahltes Praktikum Marketing",
+      "reason": "Conflicts with the paid-employment need."
+    }
+  ],
+  "message_to_founder": "Simulation: Ich bringe Berufserfahrung, ein Portfolio und ein Zertifikat mit und suche eine bezahlte Chance im Performance Marketing. Zeigt mir echte Anforderungen und Beschäftigungsarten, statt mich wieder zu einer Weiterbildung zu schicken.",
+  "confidence_and_limits": "Synthetic persona, two searches and one direct employer-authored inspection. No city, willingness to relocate or educational equivalence assumed. Other queries are hypotheses. No salary advice, hiring guarantee or entry-market prevalence inferred. Employment/experience filters exist; degree-free hiring verification does not.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "Performance Marketing Jobs Deutschland",
+      "language": "de",
+      "english_gloss": "performance marketing jobs Germany",
+      "intent": "transactional",
+      "need": "Survey paid roles.",
+      "cluster": "marketing jobs Germany",
+      "product_fit": "high",
+      "fit_reason": "Role/location filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Junior Online Marketing Jobs",
+      "language": "de",
+      "english_gloss": "junior online marketing jobs",
+      "intent": "transactional",
+      "need": "Include adjacent titles.",
+      "cluster": "junior marketing jobs",
+      "product_fit": "medium",
+      "fit_reason": "Broad titles can include unsuitable duties.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "SEA Junior Stellenangebote",
+      "language": "de",
+      "english_gloss": "junior search advertising vacancies",
+      "intent": "transactional",
+      "need": "Search a specific specialization.",
+      "cluster": "junior SEA",
+      "product_fit": "high",
+      "fit_reason": "Role and technology-related criteria can help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Junior Performance Marketing Jobs Quereinsteiger ohne Studium",
+      "language": "de",
+      "english_gloss": "junior performance marketing career-change jobs without degree",
+      "intent": "transactional",
+      "need": "Find alternative entry paths.",
+      "cluster": "non-degree entry jobs",
+      "product_fit": "medium",
+      "fit_reason": "Text evidence is needed beyond junior labels.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "Performance Marketing Einstieg ohne Studium bezahlte Stelle kein Praktikum Zertifikat Portfolio",
+      "language": "de",
+      "english_gloss": "performance marketing entry without degree paid job no internship certificate portfolio",
+      "intent": "transactional",
+      "need": "Separate work from training and unpaid routes.",
+      "cluster": "paid career-change roles",
+      "product_fit": "medium",
+      "fit_reason": "Employment-type filters and source reading help.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s4"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "Marketing Stelle Studium oder vergleichbare Qualifikation",
+      "language": "de",
+      "english_gloss": "marketing job degree or equivalent qualification",
+      "intent": "informational",
+      "need": "Interpret alternative requirements.",
+      "cluster": "qualification wording",
+      "product_fit": "medium",
+      "fit_reason": "Guide can explain wording without certifying equivalence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Junior Performance Marketing Festanstellung kein Werkstudent",
+      "language": "de",
+      "english_gloss": "junior performance marketing employment not student job",
+      "intent": "transactional",
+      "need": "Exclude enrollment-only routes.",
+      "cluster": "employment type mismatch",
+      "product_fit": "high",
+      "fit_reason": "Employment filters fit explicit contract types.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "Marketing Quereinsteiger Stellenanzeige Weiterbildung erkennen",
+      "language": "de",
+      "english_gloss": "identify training disguised as marketing career-change job advertisement",
+      "intent": "informational",
+      "need": "Avoid unwanted course funnels.",
+      "cluster": "job versus training",
+      "product_fit": "high",
+      "fit_reason": "Source-backed guide fits this problem.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Google Ads Zertifikat Portfolio Bewerbung Marketing",
+      "language": "de",
+      "english_gloss": "Google Ads certificate portfolio marketing application",
+      "intent": "informational",
+      "need": "Present existing evidence.",
+      "cluster": "portfolio application",
+      "product_fit": "low",
+      "fit_reason": "No application coaching or portfolio review is demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Performance Marketing Agentur Junior Einarbeitung",
+      "language": "de",
+      "english_gloss": "performance marketing agency junior onboarding",
+      "intent": "transactional",
+      "need": "Find employer-provided development.",
+      "cluster": "supported junior roles",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria can surface explicit onboarding.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Junior Paid Social Kampagnen Analyse keine Telefonakquise",
+      "language": "de",
+      "english_gloss": "junior paid social campaign analysis no cold calling",
+      "intent": "transactional",
+      "need": "Check actual day-to-day work.",
+      "cluster": "role substance",
+      "product_fit": "high",
+      "fit_reason": "Description matching fits stated duties.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "kostenlos Marketing Jobs suchen ohne Abo",
+      "language": "de",
+      "english_gloss": "search marketing jobs free without subscription",
+      "intent": "commercial",
+      "need": "Avoid added search costs.",
+      "cluster": "free job search",
+      "product_fit": "high",
+      "fit_reason": "Free search matches; premium matching remains optional.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

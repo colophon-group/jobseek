@@ -1,0 +1,275 @@
+{
+  "id": "p33",
+  "name": "Laid-off Midwest People Operations manager rebuilding a focused pipeline",
+  "context": {
+    "occupation": "HR / People Operations manager",
+    "seniority": "Senior",
+    "geography": "US Midwest; remote US preferred",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Recently laid off; active search",
+    "constraints": [
+      "In-house HR leadership rather than agency recruiter work",
+      "Remote compatible with home state",
+      "Needs active openings soon",
+      "Organize multiple applications",
+      "Avoid duplicate recruiter reposts"
+    ],
+    "company_awareness": "Knows some former-sector employers but must widen the list."
+  },
+  "overlap_tags": [
+    "HR",
+    "people-operations",
+    "US",
+    "Midwest",
+    "laid-off",
+    "remote",
+    "in-house",
+    "application-tracking"
+  ],
+  "trigger": "After a layoff, the manager creates several job alerts but finds agency recruiting, generic operations and duplicate reposts mixed with relevant HR roles.",
+  "searches_run": [
+    {
+      "query": "senior people operations manager remote US jobs",
+      "observation": "Retrieved direct employer/ATS pages and aggregators. The Mixpanel role redirected to its current company board with an error parameter when inspected; the fetched board did not list the searched US role. A Murmuration role returned 410, underscoring availability uncertainty.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "query": "in house HR manager remote jobs exclude staffing recruiting agencies",
+      "observation": "Combined retrieval included a third-party 'for our client' repost, remote HR aggregators and in-house responsibilities. It did not establish a reliable exclusion filter. Advertiser identity and actual work scope are separate questions.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://job-boards.greenhouse.io/mixpanel/jobs/8140707",
+      "title": "Senior People Operations Manager search result / current Mixpanel board",
+      "supports": "Retrieved role snippet described internal HR systems; direct open redirected to https://job-boards.greenhouse.io/mixpanel?error=true. Inspected board lists a London People role, not the searched US opening; no current availability claim."
+    },
+    {
+      "id": "s2",
+      "url": "https://jobs.workable.com/view/tqt4hBvFXRXDqx1VUgFU4k/remote-senior-people-operations-manager-in-united-states-at-murmuration",
+      "title": "Senior People Operations Manager | Murmuration on Workable",
+      "supports": "Retrieved internal payroll/benefits/lifecycle duties; direct open returned 410 Gone."
+    },
+    {
+      "id": "s3",
+      "url": "https://hubcareers-docusign.icims.com/jobs/29422/sr.-manager%2C-people-operations/job?mobile=true&needsRedirect=false",
+      "title": "Senior Manager People Operations | Docusign",
+      "supports": "Retrieved employer snippet names US/Illinois remote and global employee-lifecycle work; current availability not independently verified."
+    },
+    {
+      "id": "s4",
+      "url": "https://www.linkedin.com/jobs/view/senior-people-operations-manager-at-ladders-4457765136",
+      "title": "Senior People Operations Manager | Ladders on LinkedIn",
+      "supports": "Retrieved third-party posting uses 'for our client' framing; does not prove the underlying job is agency recruiting."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "in house people operations manager remote US jobs",
+    "promise": "Find covered employers' HR openings and compare responsibilities, state restrictions and original job links before building an application pipeline.",
+    "cta": "Search People Operations and HR management roles, then save relevant indexed openings and employer alerts.",
+    "proof_needed": [
+      "Role classification separating HR operations, recruiting and generic operations",
+      "Direct employer identity alongside posting source",
+      "US/state remote eligibility text",
+      "Evidence of closed-role handling and duplicate management",
+      "Tracker scope explicitly limited to demonstrated indexed-job saving"
+    ]
+  },
+  "conversion_objections": [
+    "Remote US may exclude my state.",
+    "Agency-posted does not necessarily mean agency work.",
+    "Company selection is hard when I need to widen the search quickly.",
+    "A tracker that omits outside applications leaves me maintaining a spreadsheet too.",
+    "I cannot afford endless stale listings."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "recruiter ATS manage candidates",
+      "reason": "The applicant needs a personal search tool, not an employer ATS."
+    },
+    {
+      "query": "all remote HR jobs guaranteed active",
+      "reason": "Complete coverage and freshness are not guaranteed."
+    }
+  ],
+  "message_to_founder": "Simulation: I know how hiring works, but searching for my own next role is still disorganized. Help me distinguish real internal People roles from recruiting work and verify state restrictions; I also need a clear answer about which applications your tracker can actually hold.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "senior people operations manager remote US jobs",
+      "language": "en",
+      "english_gloss": "senior people operations manager remote US jobs",
+      "intent": "transactional",
+      "need": "Find suitable senior openings",
+      "cluster": "remote People Operations",
+      "product_fit": "high",
+      "fit_reason": "Role, seniority and work-mode filters fit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "HR manager jobs remote United States",
+      "language": "en",
+      "english_gloss": "HR manager jobs remote United States",
+      "intent": "transactional",
+      "need": "Use a broader HR title",
+      "cluster": "remote HR management",
+      "product_fit": "high",
+      "fit_reason": "Title variants broaden appropriate discovery.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "human resources operations manager Midwest",
+      "language": "en",
+      "english_gloss": "human resources operations manager Midwest",
+      "intent": "transactional",
+      "need": "Explore regional alternatives",
+      "cluster": "Midwest HR",
+      "product_fit": "high",
+      "fit_reason": "Geography and role search fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "in house HR manager remote jobs exclude staffing recruiting agencies",
+      "language": "en",
+      "english_gloss": "in house HR manager remote jobs exclude staffing recruiting agencies",
+      "intent": "commercial",
+      "need": "Reduce agency-recruiting noise",
+      "cluster": "in-house HR distinction",
+      "product_fit": "medium",
+      "fit_reason": "Scope and source identity need separate checks.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "people operations jobs not talent acquisition",
+      "language": "en",
+      "english_gloss": "people operations jobs not talent acquisition",
+      "intent": "transactional",
+      "need": "Avoid a recruiter-only remit",
+      "cluster": "HR role boundaries",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria can help distinguish responsibilities.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "companies hiring remote people operations teams",
+      "language": "en",
+      "english_gloss": "companies hiring remote people operations teams",
+      "intent": "informational",
+      "need": "Expand the employer list after layoff",
+      "cluster": "HR employer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company discovery and monitoring align.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "senior HR business partner remote US",
+      "language": "en",
+      "english_gloss": "senior HR business partner remote US",
+      "intent": "transactional",
+      "need": "Test an adjacent senior title",
+      "cluster": "HR title variants",
+      "product_fit": "medium",
+      "fit_reason": "Responsibilities may differ from operations expertise.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "remote HR jobs allowed states Illinois Ohio Michigan",
+      "language": "en",
+      "english_gloss": "remote HR jobs allowed states Illinois Ohio Michigan",
+      "intent": "transactional",
+      "need": "Confirm home-state compatibility",
+      "cluster": "remote state restrictions",
+      "product_fit": "medium",
+      "fit_reason": "Source scope matters; no eligibility guarantee.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job alerts only direct employer HR careers",
+      "language": "en",
+      "english_gloss": "job alerts only direct employer HR careers",
+      "intent": "commercial",
+      "need": "Prefer original employer postings",
+      "cluster": "direct employer alerts",
+      "product_fit": "high",
+      "fit_reason": "Company career monitoring directly fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job tracker import applications from every website",
+      "language": "en",
+      "english_gloss": "job tracker import applications from every website",
+      "intent": "commercial",
+      "need": "Avoid maintaining two tracking systems",
+      "cluster": "external application import",
+      "product_fit": "low",
+      "fit_reason": "Arbitrary external/manual import is not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "free people operations job alerts selected companies",
+      "language": "en",
+      "english_gloss": "free people operations job alerts selected companies",
+      "intent": "transactional",
+      "need": "Set focused alerts while actively applying",
+      "cluster": "free HR alerts",
+      "product_fit": "high",
+      "fit_reason": "Free selected-company alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "save HR job applications interview notes statuses",
+      "language": "en",
+      "english_gloss": "save HR job applications interview notes statuses",
+      "intent": "transactional",
+      "need": "Organize multiple active processes",
+      "cluster": "HR application tracking",
+      "product_fit": "high",
+      "fit_reason": "Indexed-job saving, statuses and interview notes fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

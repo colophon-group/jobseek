@@ -1,0 +1,267 @@
+{
+  "id": "p27",
+  "name": "Montreal bilingual customer-success manager choosing SaaS employers",
+  "context": {
+    "occupation": "Customer-success manager",
+    "seniority": "Experienced",
+    "geography": "Montreal, Quebec; remote within Quebec/Canada",
+    "languages": [
+      "fr",
+      "en"
+    ],
+    "employment_state": "Employed; selective exploration",
+    "constraints": [
+      "SaaS employer",
+      "Remote compatible with Quebec residence",
+      "French-first search but English titles common",
+      "Avoid European remote roles",
+      "Wants customer success rather than generic support"
+    ],
+    "company_awareness": "Knows several Canadian SaaS brands but wants smaller employers too."
+  },
+  "overlap_tags": [
+    "customer-success",
+    "SaaS",
+    "Canada",
+    "Quebec",
+    "French",
+    "English",
+    "remote-geography",
+    "selective-search"
+  ],
+  "trigger": "A promising French-language remote role turns out to require residence in France, prompting a more geographically precise search.",
+  "searches_run": [
+    {
+      "query": "gestionnaire succès client SaaS Montréal télétravail",
+      "observation": "Retrieved French and English customer-success titles, employer pages and aggregators. Petal uses a French title while Fourwaves uses English, supporting a bilingual title strategy rather than French-only posting filters.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "customer success manager remote Canada Quebec bilingual French jobs",
+      "observation": "Results included explicit Quebec-only and Canada-remote roles. Direct Fourwaves inspection says Canada remote but also near Quebec City, showing that even country/province matches may leave a proximity requirement to clarify.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://fourwaves.com/careers/customer-success-manager/",
+      "title": "Customer success manager | Fourwaves",
+      "supports": "Direct employer page says SaaS, Canada remote, French/English fluency and near Quebec City; exact Montreal compatibility should be confirmed."
+    },
+    {
+      "id": "s2",
+      "url": "https://petalmd.recruitee.com/l/fr/o/digital-scaled-customer-success-manager",
+      "title": "Gestionnaire de réussite client digital | Petal",
+      "supports": "Retrieved French posting title and remote designation; SaaS-health responsibilities appear in snippet."
+    },
+    {
+      "id": "s3",
+      "url": "https://canada-appliedsystems.icims.com/jobs/7510/bilingual-%28french%29-sr.-customer-success-manager/job?in_iframe=1",
+      "title": "Bilingual French Senior Customer Success Manager | Applied Systems",
+      "supports": "Retrieved employer snippet explicitly specifies remote within Quebec and French/English requirements."
+    }
+  ],
+  "best_entry_page": {
+    "type": "curated employer guide",
+    "primary_query": "entreprises SaaS Québec emplois succès client télétravail",
+    "promise": "Discover covered SaaS employers and compare bilingual customer-success openings with explicit Canadian or Quebec remote scope.",
+    "cta": "Follow selected employers using French and English title variants.",
+    "proof_needed": [
+      "Canadian SaaS company coverage",
+      "French and English title recall",
+      "Country/province and proximity restrictions from sources",
+      "Do not confuse posting language with required language",
+      "Relevant customer-success scope versus support or sales-only duties"
+    ]
+  },
+  "conversion_objections": [
+    "French search results often lead to Europe.",
+    "English titles can still require French.",
+    "Remote Canada may carry province or office-distance restrictions.",
+    "Customer success can mean support tickets or sales quota under another label."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "tous les emplois télétravail francophones monde",
+      "reason": "Global French-speaking roles are broader than this geographic need and all-coverage is unverified."
+    },
+    {
+      "query": "remote anywhere SaaS Canada guaranteed",
+      "reason": "Remote permission must come from individual postings."
+    }
+  ],
+  "message_to_founder": "Simulation: Je cherche en français, mais je ne veux pas perdre les offres au titre anglais. Mon critère est de pouvoir travailler depuis Montréal; montrez-moi le territoire permis et les éventuelles contraintes de proximité, pas seulement le mot télétravail.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "gestionnaire succès client SaaS Montréal télétravail",
+      "language": "fr",
+      "english_gloss": "SaaS customer-success manager Montreal remote",
+      "intent": "transactional",
+      "need": "Find local-compatible SaaS roles",
+      "cluster": "Quebec customer success",
+      "product_fit": "high",
+      "fit_reason": "Role, employer and remote filters fit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "emploi réussite client Québec",
+      "language": "fr",
+      "english_gloss": "Customer-success jobs Quebec",
+      "intent": "transactional",
+      "need": "Try a French title variant",
+      "cluster": "French success titles",
+      "product_fit": "high",
+      "fit_reason": "Multiple title variants help recall.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "customer success manager Montreal SaaS",
+      "language": "en",
+      "english_gloss": "customer success manager Montreal SaaS",
+      "intent": "transactional",
+      "need": "Catch English-titled postings",
+      "cluster": "English CSM titles",
+      "product_fit": "high",
+      "fit_reason": "English posting discovery is relevant to bilingual candidate.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "customer success manager remote Canada Quebec bilingual French jobs",
+      "language": "en",
+      "english_gloss": "customer success manager remote Canada Quebec bilingual French jobs",
+      "intent": "transactional",
+      "need": "Find explicit Quebec-compatible remote work",
+      "cluster": "remote Canada eligibility",
+      "product_fit": "medium",
+      "fit_reason": "Source wording must confirm geographic scope.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "offre télétravail Canada résidence Québec obligatoire",
+      "language": "fr",
+      "english_gloss": "Remote Canada job Quebec residence required",
+      "intent": "informational",
+      "need": "Interpret location restrictions",
+      "cluster": "remote province restrictions",
+      "product_fit": "medium",
+      "fit_reason": "Description checks support evidence, not eligibility guarantees.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "entreprises SaaS Québec recrutement customer success",
+      "language": "fr",
+      "english_gloss": "Quebec SaaS companies recruiting customer success",
+      "intent": "informational",
+      "need": "Build an employer shortlist",
+      "cluster": "SaaS employer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first model aligns.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Petal carrières réussite client",
+      "language": "fr",
+      "english_gloss": "Petal careers customer success",
+      "intent": "navigational",
+      "need": "Check a specific employer",
+      "cluster": "employer careers",
+      "product_fit": "high",
+      "fit_reason": "Company alerts fit if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "alerte emploi français anglais Montréal SaaS",
+      "language": "fr",
+      "english_gloss": "French English Montreal SaaS job alerts",
+      "intent": "commercial",
+      "need": "Avoid missing bilingual title variations",
+      "cluster": "bilingual alerts",
+      "product_fit": "high",
+      "fit_reason": "Multiple saved searches support variants.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "filtrer emplois télétravail Canada pas France",
+      "language": "fr",
+      "english_gloss": "Filter remote jobs Canada not France",
+      "intent": "commercial",
+      "need": "Reduce European noise",
+      "cluster": "remote territory filtering",
+      "product_fit": "high",
+      "fit_reason": "Country and work-mode filters help; restrictions still need review.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "customer success manager vs support SaaS duties",
+      "language": "en",
+      "english_gloss": "customer success manager vs support SaaS duties",
+      "intent": "informational",
+      "need": "Assess work behind title",
+      "cluster": "customer-success scope",
+      "product_fit": "medium",
+      "fit_reason": "Source responsibility checks can help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "alerte gratuite emplois entreprises SaaS choisies",
+      "language": "fr",
+      "english_gloss": "Free job alerts for selected SaaS companies",
+      "intent": "transactional",
+      "need": "Monitor a selective list",
+      "cluster": "company alerts",
+      "product_fit": "high",
+      "fit_reason": "Free selected-company alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "suivi candidatures notes entretiens customer success",
+      "language": "fr",
+      "english_gloss": "Track customer-success applications and interview notes",
+      "intent": "transactional",
+      "need": "Record remit and territory confirmations",
+      "cluster": "application notes",
+      "product_fit": "medium",
+      "fit_reason": "Indexed-job tracking fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

@@ -1,0 +1,266 @@
+{
+  "id": "p28",
+  "name": "Irish technical writer returning with a documentation portfolio",
+  "context": {
+    "occupation": "Technical writer",
+    "seniority": "Experienced, returning after career break",
+    "geography": "Ireland; remote within Ireland",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Returning to employment",
+    "constraints": [
+      "Remote Ireland",
+      "Flexible hours",
+      "Existing documentation portfolio",
+      "Writing responsibilities rather than software developer role",
+      "Career break should not reset seniority"
+    ],
+    "company_awareness": "Some former industry contacts; needs to rediscover current documentation teams."
+  },
+  "overlap_tags": [
+    "technical-writing",
+    "Ireland",
+    "returner",
+    "remote",
+    "flexible-hours",
+    "role-ambiguity",
+    "portfolio"
+  ],
+  "trigger": "A refreshed documentation portfolio feels ready, but searches mix developer jobs, content marketing and office-based returner programmes.",
+  "searches_run": [
+    {
+      "query": "technical writer remote Ireland jobs",
+      "observation": "Retrieved a direct Astreya remote-Ireland posting, specialist writing company careers and general aggregators. This offers specific writing sources alongside broad boards.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "technical writer return career break flexible hours remote Ireland",
+      "observation": "Retrieved a Workday career-returner listing and Bárd's remote/flexible careers page. Direct Bárd inspection states flexible hours but solicits ongoing writer interest; it is not proof of a currently open matching role or returner eligibility.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://bardglobal.com/technical-writing-careers/",
+      "title": "Technical writing careers | Bárd Global",
+      "supports": "Direct inspection documents remote-first/flexible-hours employer language and ongoing CV invitation; individual vacancy terms and returner acceptance not established."
+    },
+    {
+      "id": "s2",
+      "url": "https://astreya.wd5.myworkdayjobs.com/life-at-astreya-opportunities/job/Remote-Ireland/Technical-Writer-II_R0016292",
+      "title": "Technical Writer II | Astreya",
+      "supports": "Retrieved direct employer result names Remote Ireland; current availability and hours not verified."
+    },
+    {
+      "id": "s3",
+      "url": "https://ie.linkedin.com/jobs/view/sr-associate-technical-writer-career-returner-at-workday-3623766315",
+      "title": "Sr Associate Technical Writer Career Returner | Workday on LinkedIn",
+      "supports": "Retrieved listing explicitly targets returners and combines in-person and remote work; do not treat it as fully remote or verified current intake."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "technical writer remote Ireland flexible hours",
+    "promise": "Find covered documentation employers and distinguish remote location, flexible hours and genuine writing responsibilities using posting evidence.",
+    "cta": "Search technical-writing titles and follow suitable covered employers.",
+    "proof_needed": [
+      "Technical-writing occupation accuracy",
+      "Ireland remote scope and actual core-hour evidence",
+      "No inference that returners need junior roles",
+      "Distinguish active vacancies from general talent-interest pages",
+      "Examples where portfolio work is accepted in stated requirements"
+    ]
+  },
+  "conversion_objections": [
+    "Technology keywords bring developer roles.",
+    "Remote is not the same as flexible hours.",
+    "A returnship may require office attendance.",
+    "I want appropriate experience level despite my break.",
+    "A company-wide benefits page may not apply to my role."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "guaranteed return to work technical writer programme",
+      "reason": "No placement or employer-acceptance guarantee."
+    },
+    {
+      "query": "technical writing portfolio builder",
+      "reason": "Portfolio authoring is not demonstrated product functionality."
+    }
+  ],
+  "message_to_founder": "Simulation: My portfolio shows I can still do the work; I need help finding the right writing role, not being automatically treated as a beginner. Keep remote location and working hours separate, and show whether the opening is real or just an invitation to send a CV.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "technical writer remote Ireland jobs",
+      "language": "en",
+      "english_gloss": "technical writer remote Ireland jobs",
+      "intent": "transactional",
+      "need": "Find geographically compatible writing roles",
+      "cluster": "Irish technical-writing jobs",
+      "product_fit": "high",
+      "fit_reason": "Role and work-mode search fit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "documentation specialist jobs Ireland",
+      "language": "en",
+      "english_gloss": "documentation specialist jobs Ireland",
+      "intent": "transactional",
+      "need": "Try related writing titles",
+      "cluster": "documentation jobs",
+      "product_fit": "high",
+      "fit_reason": "Title variants can improve recall.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "API documentation writer jobs remote",
+      "language": "en",
+      "english_gloss": "API documentation writer jobs remote",
+      "intent": "transactional",
+      "need": "Use portfolio specialization",
+      "cluster": "API writing jobs",
+      "product_fit": "medium",
+      "fit_reason": "Technical keywords need occupation guardrails and Ireland scope.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "technical writer return career break flexible hours remote Ireland",
+      "language": "en",
+      "english_gloss": "technical writer return career break flexible hours remote Ireland",
+      "intent": "transactional",
+      "need": "Find a workable return route",
+      "cluster": "returner writing jobs",
+      "product_fit": "medium",
+      "fit_reason": "No returner or flexibility guarantee; source evidence needed.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "technical writer job search exclude developer roles",
+      "language": "en",
+      "english_gloss": "technical writer job search exclude developer roles",
+      "intent": "informational",
+      "need": "Remove misleading technology matches",
+      "cluster": "writer developer confusion",
+      "product_fit": "medium",
+      "fit_reason": "Occupation filters and description checks help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "companies hiring technical writers Ireland remote",
+      "language": "en",
+      "english_gloss": "companies hiring technical writers Ireland remote",
+      "intent": "informational",
+      "need": "Discover relevant teams",
+      "cluster": "writing employer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first search fits coverage.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "technical writer returnship Ireland",
+      "language": "en",
+      "english_gloss": "technical writer returnship Ireland",
+      "intent": "transactional",
+      "need": "Check formal returner options",
+      "cluster": "writing returnships",
+      "product_fit": "medium",
+      "fit_reason": "Specific programmes may be scarce and time-bound.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "technical writing jobs flexible hours not just remote",
+      "language": "en",
+      "english_gloss": "technical writing jobs flexible hours not just remote",
+      "intent": "commercial",
+      "need": "Verify working pattern",
+      "cluster": "flexible writing hours",
+      "product_fit": "medium",
+      "fit_reason": "Work mode exists; exact hours require source text.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "LinkedIn technical writer alerts too many software engineers",
+      "language": "en",
+      "english_gloss": "LinkedIn technical writer alerts too many software engineers",
+      "intent": "informational",
+      "need": "Compare alert precision",
+      "cluster": "writer alert alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Can test role precision rather than promise perfection.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job alerts documentation teams selected companies",
+      "language": "en",
+      "english_gloss": "job alerts documentation teams selected companies",
+      "intent": "commercial",
+      "need": "Monitor relevant employers",
+      "cluster": "documentation alerts",
+      "product_fit": "high",
+      "fit_reason": "Covered-company alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "free technical writer job alerts Ireland",
+      "language": "en",
+      "english_gloss": "free technical writer job alerts Ireland",
+      "intent": "transactional",
+      "need": "Start low-cost monitoring",
+      "cluster": "free writing alerts",
+      "product_fit": "high",
+      "fit_reason": "Free alerts suit returner exploration.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "track technical writing applications portfolio sent",
+      "language": "en",
+      "english_gloss": "track technical writing applications portfolio sent",
+      "intent": "transactional",
+      "need": "Record portfolio versions and conversations",
+      "cluster": "portfolio application notes",
+      "product_fit": "medium",
+      "fit_reason": "Notes for indexed postings fit; portfolio generation does not.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

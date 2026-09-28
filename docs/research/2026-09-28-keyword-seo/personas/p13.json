@@ -1,0 +1,268 @@
+{
+  "id": "p13",
+  "name": "Lille logistics coordinator seeking stable daytime employment",
+  "context": {
+    "occupation": "Logistics and supply-chain coordinator",
+    "seniority": "Experienced individual contributor",
+    "geography": "Lille metropolitan area, including nearby commutable towns",
+    "languages": [
+      "fr"
+    ],
+    "employment_state": "Unemployed and actively searching",
+    "constraints": [
+      "Permanent local role",
+      "Predictable daytime schedule",
+      "Prefers direct employer over agencies",
+      "Coordination or supply-chain work, not automatically warehouse picking"
+    ],
+    "company_awareness": "Recognizes regional industrial and retail employers but has no settled shortlist"
+  },
+  "overlap_tags": [
+    "logistics",
+    "France",
+    "French",
+    "unemployed",
+    "daytime-work",
+    "direct-employers",
+    "local-search"
+  ],
+  "trigger": "A promising daytime logistics advertisement turns out to be an agency warehouse assignment rather than a permanent coordination job.",
+  "searches_run": [
+    {
+      "query": "coordinateur logistique Lille CDI emploi",
+      "observation": "Retrieval included a CDI coordinator advertisement and a transport coordinator result from Cap emploi. Opening the latter returned a notice that the offer no longer exists; the retrieved snippet could not be treated as a live vacancy.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "emploi logistique Lille horaires journée CDI sans intérim",
+      "observation": "Retrieval returned many agency/warehouse results despite the exclusion intent. An inspected CRIT page states specific weekday hours but also explicitly describes an interim assignment in order picking.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.jobintree.com/emplois/82379841.html",
+      "title": "Coordinateur Logistique H/F — Otteo / Jobintree",
+      "supports": "Retrieved result describes CDI coordination with international transport and ERP responsibilities; direct-employer status and schedule were not verified."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.capemploi-59lille.com/emploi/offre.html?c=OFEM5610&i=3101",
+      "title": "Offre d'emploi — Cap emploi 59 Lille",
+      "supports": "Retrieved snippet described a CDI transport coordinator; direct inspection instead showed that the offer no longer exists."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.crit-job.com/offres/79ce4aeb-b143-4ed3-bdba-2690ef690439",
+      "title": "Agent logistique — CRIT Lesquin",
+      "supports": "Direct inspection states agency recruitment for a client, order-picking duties, weekday daytime hours and an 18-month interim contract. Specific hours do not establish the requested role or permanent employment."
+    }
+  ],
+  "best_entry_page": {
+    "type": "curated employer guide",
+    "primary_query": "coordinateur logistique Lille CDI",
+    "promise": "Introduce covered local employers with relevant coordination roles, linking to the original contract and hours wording where available.",
+    "cta": "Voir les employeurs et vérifier les postes",
+    "proof_needed": [
+      "Verified regional employer and career-board coverage",
+      "Clear role boundary between coordination and picking",
+      "Actual employing entity distinguished from agency or consultancy",
+      "Date and source for each role and schedule claim",
+      "No live opening or day-shift claim when unknown",
+      "New indexable guide; company/search pages currently noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Does this list actual local employers or another set of agencies?",
+    "Will logistique mostly return warehouse picking?",
+    "Does CDI describe this vacancy or the agency's general recruitment options?",
+    "Are exact hours available before I apply?",
+    "Is the site genuinely in Lille or outside a practical commute?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "emploi logistique Lille CDI horaires fixes garantis",
+      "reason": "Contract and shift arrangements require employer evidence."
+    },
+    {
+      "query": "intérim préparateur commandes Lille urgent",
+      "reason": "Different role and contract preference from this persona."
+    },
+    {
+      "query": "meilleure agence intérim Lille",
+      "reason": "The persona prioritizes direct employers; agency recommendations are not the product."
+    }
+  ],
+  "message_to_founder": "Simulation : Je cherche un poste de coordination avec un employeur identifiable, pas n’importe quelle annonce contenant logistique. Donnez-moi le lieu réel, le contrat et les horaires annoncés avant de me demander de créer un compte.",
+  "confidence_and_limits": "Synthetic persona, two queries, two direct inspections. Other query rows are modeled, not observed demand. No volume or rankings inferred. One unavailable source illustrates a retrieval/source discrepancy, not a general staleness rate. Employment-type filters exist, but direct-employer exclusion and rota verification are not demonstrated. Local coverage remains unverified.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "coordinateur logistique Lille CDI emploi",
+      "language": "fr",
+      "english_gloss": "logistics coordinator Lille permanent jobs",
+      "intent": "transactional",
+      "need": "Find local coordination jobs.",
+      "cluster": "local logistics coordination",
+      "product_fit": "medium",
+      "fit_reason": "Role, location and employment type fit if employers are covered.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "emploi supply chain Lille",
+      "language": "fr",
+      "english_gloss": "supply chain jobs Lille",
+      "intent": "transactional",
+      "need": "See adjacent role titles.",
+      "cluster": "local supply chain",
+      "product_fit": "medium",
+      "fit_reason": "Role discovery helps but may return unsuitable seniority.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "assistant logistique CDI Lille",
+      "language": "fr",
+      "english_gloss": "logistics assistant permanent jobs Lille",
+      "intent": "transactional",
+      "need": "Broaden titles while retaining contract needs.",
+      "cluster": "adjacent logistics roles",
+      "product_fit": "medium",
+      "fit_reason": "Filtering can help; duties must remain comparable.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "emploi logistique Lille horaires journée CDI sans intérim",
+      "language": "fr",
+      "english_gloss": "logistics Lille daytime permanent no temporary agency jobs",
+      "intent": "transactional",
+      "need": "Intersect schedule and direct employment requirements.",
+      "cluster": "daytime direct logistics",
+      "product_fit": "medium",
+      "fit_reason": "Multiple criteria need explicit text evidence.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "coordinateur transport Lille horaires fixes",
+      "language": "fr",
+      "english_gloss": "transport coordinator Lille fixed hours",
+      "intent": "transactional",
+      "need": "Check predictable working times.",
+      "cluster": "fixed-hours coordination",
+      "product_fit": "medium",
+      "fit_reason": "Description matching may identify stated times only.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "entreprises logistiques recrutent Lille directement",
+      "language": "fr",
+      "english_gloss": "logistics companies hiring directly Lille",
+      "intent": "informational",
+      "need": "Build a direct-employer shortlist.",
+      "cluster": "employer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first search fits after a verified shortlist exists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "offre CDI cabinet recrutement employeur qui signe contrat",
+      "language": "fr",
+      "english_gloss": "permanent job recruitment firm who employs you",
+      "intent": "informational",
+      "need": "Understand who the actual employer is.",
+      "cluster": "employer identity",
+      "product_fit": "medium",
+      "fit_reason": "Source-reading guide fits; no legal advice or contract review.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "approvisionneur Lille CDI",
+      "language": "fr",
+      "english_gloss": "supply planner Lille permanent jobs",
+      "intent": "transactional",
+      "need": "Explore a related coordination role.",
+      "cluster": "supply planning roles",
+      "product_fit": "medium",
+      "fit_reason": "Occupation and location discovery can fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "coordinateur logistique Villeneuve d'Ascq emploi",
+      "language": "fr",
+      "english_gloss": "logistics coordinator Villeneuve d'Ascq jobs",
+      "intent": "transactional",
+      "need": "Refine to a nearby workable location.",
+      "cluster": "commute geography",
+      "product_fit": "medium",
+      "fit_reason": "Locality filtering is useful; route planning is not shown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "travail en journée horaires 2x8 différence annonce",
+      "language": "fr",
+      "english_gloss": "daytime work versus rotating shifts in job advertisements",
+      "intent": "informational",
+      "need": "Avoid misleading schedule labels.",
+      "cluster": "schedule interpretation",
+      "product_fit": "medium",
+      "fit_reason": "A guide can explain distinctions without verifying shifts.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "France Travail coordinateur logistique Lille CDI",
+      "language": "fr",
+      "english_gloss": "France Travail logistics coordinator Lille permanent",
+      "intent": "navigational",
+      "need": "Check an established job source.",
+      "cluster": "existing job board",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation is not a good landing target.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions entretien coordinateur logistique horaires planning",
+      "language": "fr",
+      "english_gloss": "logistics coordinator interview questions hours rota",
+      "intent": "informational",
+      "need": "Confirm unanswered schedule details.",
+      "cluster": "interview due diligence",
+      "product_fit": "medium",
+      "fit_reason": "Notes can preserve answers for indexed jobs; no general external application import proven.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

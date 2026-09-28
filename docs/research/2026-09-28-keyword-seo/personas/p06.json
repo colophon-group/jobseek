@@ -1,0 +1,268 @@
+{
+  "id": "p06",
+  "name": "Lyon laboratory scientist approaching contract end",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Biotech laboratory scientist",
+    "seniority": "Experienced laboratory practitioner; exact degree unspecified",
+    "geography": "Lyon; considering Geneva, Lausanne and Basel",
+    "languages": [
+      "fr",
+      "en"
+    ],
+    "employment_state": "Fixed-term contract ending; actively searching",
+    "constraints": [
+      "Needs concrete laboratory skill match",
+      "French and English working environments",
+      "Relocation cost and timing matter",
+      "Cannot assume German fluency or Swiss eligibility"
+    ],
+    "company_awareness": "Knows several large pharma employers; smaller biotech companies less familiar"
+  },
+  "overlap_tags": [
+    "life-sciences",
+    "french",
+    "english",
+    "switzerland",
+    "contract-ending",
+    "relocation",
+    "skills"
+  ],
+  "trigger": "The laboratory confirms that the current fixed-term appointment will not be extended, leaving a limited window to find the next role and plan a move.",
+  "searches_run": [
+    {
+      "query": "emploi laboratoire biotechnologie Genève Lausanne Bâle",
+      "observation": "Results mixed hospital diagnostics, biotech laboratory work, academic openings and aggregators. Several different job families appeared under a broad laboratory label; a retrieved CHUV result had a past application deadline.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "laboratory scientist Basel cell culture English relocation French",
+      "observation": "Results included Novartis, Roche and University of Basel roles. The opened Novartis posting explicitly requires English, treats German as advantageous and rules out relocation support for that vacancy.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://recrutement.chuv.ch/vacancy/technicienne-en-analyses-biomedicales-au-service-dimmunologie-et-allergie-316246.html",
+      "title": "Technicien-ne en analyses biomédicales — CHUV",
+      "supports": "Retrieved employer result identifies a Lausanne diagnostic laboratory role and an August 2026 deadline, demonstrating that retrievable pages need not still accept applications."
+    },
+    {
+      "id": "s2",
+      "url": "https://jobsswitzerland.ch/fr/jobs/c835cf4d-3b01-48b5-a95f-c95967ce84d1",
+      "title": "Technicien de laboratoire, biologie moléculaire — Adaptyv",
+      "supports": "Retrieved aggregator snippet lists PCR, cloning and protein-related skills for on-site Lausanne work. Not directly verified against the employer."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.novartis.com/fr-fr/careers/career-search/job/details/req-10085492-usp-research-scientist-ii",
+      "title": "USP Research Scientist II — Novartis",
+      "supports": "Directly inspected employer page states on-site Basel work, mammalian cell-culture expertise, English essential/German advantageous, and no relocation support for this role. A French site wrapper contains English job text."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "emploi laboratoire biotech Suisse français anglais",
+    "promise": "Search Swiss laboratory roles across French and English titles, then compare published methods, language requirements and relocation information.",
+    "cta": "Save separate searches for suitable laboratory work in each target city.",
+    "proof_needed": [
+      "Show current source postings and distinguish research from regulated diagnostic roles.",
+      "Demonstrate laboratory-method coverage; software technology filters alone are insufficient proof.",
+      "Distinguish page language, job language and required working languages.",
+      "Use role-specific relocation wording, including explicit absence and unknown.",
+      "Create a new indexable acquisition guide; live search is currently noindex."
+    ]
+  },
+  "conversion_objections": [
+    "Will laboratory techniques be recognised rather than only software skills?",
+    "Will a French-only search hide relevant English postings?",
+    "Are these openings still accepting applications?",
+    "Is relocation support real for this role?",
+    "Can I compare contract duration and expected start date?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "reconnaissance diplôme laboratoire Suisse automatique",
+      "reason": "Credential and eligibility outcomes cannot be promised."
+    },
+    {
+      "query": "emploi biotech Suisse sans qualification",
+      "reason": "Conflicts with the skilled laboratory need."
+    },
+    {
+      "query": "laboratory scientist guaranteed relocation Switzerland",
+      "reason": "Employer support varies by vacancy; no guarantee is demonstrated."
+    }
+  ],
+  "message_to_founder": "Simulation: Mon CDD se termine et je dois choisir où concentrer mes candidatures. Je veux retrouver mes techniques de laboratoire dans les annonces, même quand le titre est anglais, puis savoir ce qui est écrit sur la langue de travail et le déménagement.",
+  "confidence_and_limits": "Synthetic bilingual journey. Two queries and one direct inspection provide examples, not a census of Swiss hiring. Exact technical repertoire, degree and notice period are unknown; cell culture and PCR are exploratory search examples, not asserted qualifications.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "emploi laboratoire biotechnologie Genève Lausanne Bâle",
+      "language": "fr",
+      "english_gloss": "Biotech laboratory jobs Geneva Lausanne Basel",
+      "intent": "commercial",
+      "need": "Survey three destinations.",
+      "cluster": "swiss-lab-jobs",
+      "product_fit": "high",
+      "fit_reason": "Role and location discovery fit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "offres emploi biologiste Suisse",
+      "language": "fr",
+      "english_gloss": "Biologist job openings Switzerland",
+      "intent": "commercial",
+      "need": "Find relevant job families.",
+      "cluster": "biology-jobs",
+      "product_fit": "medium",
+      "fit_reason": "Broad title includes diagnostics and other mismatches.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "laboratory scientist jobs Switzerland",
+      "language": "en",
+      "english_gloss": "Laboratory scientist jobs Switzerland",
+      "intent": "commercial",
+      "need": "Access English-language vacancies.",
+      "cluster": "english-lab-jobs",
+      "product_fit": "high",
+      "fit_reason": "English searches complement French titles.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "research associate biotech Lausanne",
+      "language": "en",
+      "english_gloss": "Research associate biotech Lausanne",
+      "intent": "commercial",
+      "need": "Search an alternative industry title.",
+      "cluster": "lab-title-variants",
+      "product_fit": "high",
+      "fit_reason": "Title variants expand discovery.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "emploi culture cellulaire Bâle anglais",
+      "language": "fr",
+      "english_gloss": "Cell culture jobs Basel English",
+      "intent": "commercial",
+      "need": "Explore technique-specific matches.",
+      "cluster": "laboratory-methods",
+      "product_fit": "medium",
+      "fit_reason": "Needs proven lab-method search or description checks.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "laboratory scientist Basel cell culture English relocation French",
+      "language": "en",
+      "english_gloss": "Laboratory scientist Basel cell culture English relocation French",
+      "intent": "commercial",
+      "need": "Compare language and relocation details.",
+      "cluster": "lab-relocation",
+      "product_fit": "medium",
+      "fit_reason": "Source text can help but relocation cannot be inferred.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Roche Bâle emplois laboratoire",
+      "language": "fr",
+      "english_gloss": "Roche Basel laboratory jobs",
+      "intent": "navigational",
+      "need": "Check a known employer.",
+      "cluster": "pharma-careers",
+      "product_fit": "high",
+      "fit_reason": "Coverage-dependent company monitoring fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Novartis research scientist English German required",
+      "language": "en",
+      "english_gloss": "Novartis research scientist English German required",
+      "intent": "informational",
+      "need": "Check language barriers.",
+      "cluster": "work-language",
+      "product_fit": "medium",
+      "fit_reason": "Posting locale does not resolve required languages.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "biotech Lausanne technicien research associate différence",
+      "language": "fr",
+      "english_gloss": "Lausanne biotech technician research associate difference",
+      "intent": "informational",
+      "need": "Interpret titles against actual responsibility.",
+      "cluster": "lab-role-level",
+      "product_fit": "medium",
+      "fit_reason": "Description review helps more than title matching alone.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "emploi laboratoire Suisse CDI CDD",
+      "language": "fr",
+      "english_gloss": "Swiss laboratory jobs permanent fixed-term",
+      "intent": "commercial",
+      "need": "Compare contract continuity.",
+      "cluster": "lab-contracts",
+      "product_fit": "high",
+      "fit_reason": "Employment-type filters support this where populated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "alerte emploi laboratoire Genève Lausanne",
+      "language": "fr",
+      "english_gloss": "Job alerts laboratory Geneva Lausanne",
+      "intent": "commercial",
+      "need": "Follow openings before contract expiry.",
+      "cluster": "lab-alerts",
+      "product_fit": "high",
+      "fit_reason": "Saved-search alerts are a direct fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions entretien laboratoire aide déménagement langue équipe",
+      "language": "fr",
+      "english_gloss": "Laboratory interview questions relocation help team language",
+      "intent": "informational",
+      "need": "Resolve unreported constraints.",
+      "cluster": "lab-interview",
+      "product_fit": "low",
+      "fit_reason": "A guide can help prepare questions; employer answers remain necessary.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

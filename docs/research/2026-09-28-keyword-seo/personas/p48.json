@@ -1,0 +1,278 @@
+{
+  "id": "p48",
+  "name": "London startup generalist rebuilding a search after closure",
+  "context": {
+    "occupation": "Startup operations generalist targeting Chief of Staff and BizOps",
+    "seniority": "Experienced operator",
+    "geography": "London",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Previous startup closed; actively seeking next role",
+    "constraints": [
+      "Early-stage company",
+      "Substantive operating scope",
+      "Funding and stage evidence matters",
+      "Role title may vary",
+      "Wants to understand employer stability without false assurances"
+    ],
+    "company_awareness": "Aware of the startup ecosystem but building a new employer shortlist"
+  },
+  "overlap_tags": [
+    "operations",
+    "UK",
+    "London",
+    "English",
+    "company-closure",
+    "startup-stage",
+    "role-title-ambiguity"
+  ],
+  "trigger": "After the employer closes, searches for equivalent work but sees the same title applied to administration, AI-training projects and strategic operating roles.",
+  "searches_run": [
+    {
+      "query": "Chief of Staff BizOps startup jobs London",
+      "observation": "Retrieval returned specialist boards, founder-support jobs, recruiting programs and AI-training expert opportunities. One direct startup vacancy URL returned 404 on opening. Similar titles therefore did not establish comparable employment or current availability.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "query": "startup job candidate questions funding runway chief of staff London early stage",
+      "observation": "Results mixed interview content, recruiting claims about funding/runway and an investor-authored hiring guide. Direct Outset inspection describes the role as variable, lists adjacent titles and encourages publishing founder/funding specifics; it does not validate any startup's current finances.",
+      "source_ids": [
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.bizops.network/jobs-new",
+      "title": "Chief of Staff and BizOps jobs — BizOps Network",
+      "supports": "Retrieved specialist source groups Chief of Staff and operations opportunities; no accuracy or market-volume claim."
+    },
+    {
+      "id": "s2",
+      "url": "https://uk.linkedin.com/jobs/view/expert-opportunity-chief-of-staff-business-operations-lead-%2480-hr-up-to-%241-600-week-at-ethos-4439566654",
+      "title": "Expert Opportunity Chief of Staff / Business Operations Lead — Ethos",
+      "supports": "Retrieved description concerns helping train an AI model, not necessarily becoming an operating leader in a startup."
+    },
+    {
+      "id": "s3",
+      "url": "https://cassi-ai.com/job/chief-of-staff/",
+      "title": "Chief of Staff to CEO — Cassi",
+      "supports": "Retrieved startup role described operations duties and an uncertain Oxford/London office; direct open returned 404, so no current vacancy is claimed."
+    },
+    {
+      "id": "s4",
+      "url": "https://www.outsetcapital.com/blog/chief-of-staff-guide",
+      "title": "Guide to hiring a Chief of Staff — Outset Capital",
+      "supports": "Direct investor-authored guide describes variable scope, suggests founder/funding specifics and enumerates adjacent operations titles. It is advice, not company financial verification."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "Chief of Staff vs BizOps startup jobs London",
+    "promise": "Map overlapping operating titles to responsibilities and show how to assemble a dated employer shortlist with stage and funding claims clearly attributed.",
+    "cta": "Compare role scope and research the employer",
+    "proof_needed": [
+      "Examples of actual responsibilities across titles",
+      "Verified coverage of small London startups",
+      "Dated primary funding announcements when discussing rounds",
+      "Funding amount not treated as current runway or safety",
+      "Unknown employer/stage details preserved",
+      "Exclude AI-training tasks from conventional employment comparisons unless labeled",
+      "New indexable guide; company/search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Do you cover small companies before they become well-known?",
+    "Does Chief of Staff mean operational ownership or mostly executive assistance?",
+    "Is this an actual operating job or an expert contractor task?",
+    "How old is the funding information?",
+    "Can I search across adjacent titles without drowning in unrelated operations jobs?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "safe startup jobs guaranteed funding runway",
+      "reason": "No stability guarantee or private financial verification exists."
+    },
+    {
+      "query": "startup investment returns equity valuation",
+      "reason": "Financial/investment advice is outside this job-search use case."
+    },
+    {
+      "query": "Chief of Staff AI training tasks",
+      "reason": "A different work model from the persona's target operating role."
+    }
+  ],
+  "message_to_founder": "Simulation: I want to join another early-stage team, but I will ask harder questions after the last company closed. Help me compare the actual work across titles and show where company-stage information came from, without pretending funding guarantees stability.",
+  "confidence_and_limits": "Synthetic persona, exactly two queries, one failed employer open and one successful investor-guide inspection. Other queries are hypotheses. No employer funding, runway, stability or job availability independently verified. Funding/stage filters are not demonstrated; company-first discovery helps only after useful employer research.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "Chief of Staff BizOps startup jobs London",
+      "language": "en",
+      "english_gloss": "Chief of Staff BizOps startup jobs London",
+      "intent": "transactional",
+      "need": "Find comparable operating roles.",
+      "cluster": "London startup operations",
+      "product_fit": "high",
+      "fit_reason": "Role/location discovery fits with title breadth.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "business operations jobs London startup",
+      "language": "en",
+      "english_gloss": "business operations jobs London startup",
+      "intent": "transactional",
+      "need": "Search a common alternative title.",
+      "cluster": "BizOps locality",
+      "product_fit": "high",
+      "fit_reason": "Description criteria help identify actual duties.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "founders associate jobs London",
+      "language": "en",
+      "english_gloss": "founders associate jobs London",
+      "intent": "transactional",
+      "need": "Explore founder-facing roles.",
+      "cluster": "founder office roles",
+      "product_fit": "medium",
+      "fit_reason": "Seniority and scope vary despite related work.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "startup job candidate questions funding runway chief of staff London early stage",
+      "language": "en",
+      "english_gloss": "startup job candidate questions funding runway chief of staff London early stage",
+      "intent": "informational",
+      "need": "Prepare employer due diligence.",
+      "cluster": "startup employer evidence",
+      "product_fit": "medium",
+      "fit_reason": "Guide fits; private financial verification does not.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s4"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "Chief of Staff versus executive assistant job description",
+      "language": "en",
+      "english_gloss": "Chief of Staff versus executive assistant job description",
+      "intent": "informational",
+      "need": "Understand actual scope.",
+      "cluster": "title ambiguity",
+      "product_fit": "high",
+      "fit_reason": "Source responsibilities can support distinctions without devaluing roles.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "strategy operations seed startup London jobs",
+      "language": "en",
+      "english_gloss": "strategy operations seed startup London jobs",
+      "intent": "transactional",
+      "need": "Focus on early company stage.",
+      "cluster": "early-stage operations",
+      "product_fit": "medium",
+      "fit_reason": "Stage must be sourced; not a proven structured filter.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "London startup operations recently funded companies",
+      "language": "en",
+      "english_gloss": "London startup operations recently funded companies",
+      "intent": "informational",
+      "need": "Build a candidate employer list.",
+      "cluster": "funding employer discovery",
+      "product_fit": "medium",
+      "fit_reason": "Requires dated external evidence, not job-text certainty.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "BizOps jobs startup experience no consulting requirement",
+      "language": "en",
+      "english_gloss": "BizOps jobs startup experience no consulting requirement",
+      "intent": "transactional",
+      "need": "Find roles accepting operator backgrounds.",
+      "cluster": "background requirements",
+      "product_fit": "high",
+      "fit_reason": "Required/preferred description distinctions help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "startup funding announcement does not show runway job offer",
+      "language": "en",
+      "english_gloss": "startup funding announcement does not show runway job offer",
+      "intent": "informational",
+      "need": "Avoid equating fundraising with safety.",
+      "cluster": "funding limits",
+      "product_fit": "medium",
+      "fit_reason": "Guide can explain evidence gaps without financial advice.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Chief of Staff London first operations hire responsibilities",
+      "language": "en",
+      "english_gloss": "Chief of Staff London first operations hire responsibilities",
+      "intent": "transactional",
+      "need": "Find hands-on early-stage work.",
+      "cluster": "first operator scope",
+      "product_fit": "high",
+      "fit_reason": "Description matching fits explicit responsibilities.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions founder before joining early stage startup",
+      "language": "en",
+      "english_gloss": "questions founder before joining early stage startup",
+      "intent": "informational",
+      "need": "Confirm scope and employer context.",
+      "cluster": "founder interview",
+      "product_fit": "medium",
+      "fit_reason": "Guide and notes support conversations, not assurance.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "track startup job interviews founder notes",
+      "language": "en",
+      "english_gloss": "track startup job interviews founder notes",
+      "intent": "commercial",
+      "need": "Compare founder discussions.",
+      "cluster": "interview notes",
+      "product_fit": "medium",
+      "fit_reason": "Notes fit indexed roles; external manual records are unproven.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

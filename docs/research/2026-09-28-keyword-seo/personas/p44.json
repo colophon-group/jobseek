@@ -1,0 +1,269 @@
+{
+  "id": "p44",
+  "name": "Ruhr industrial electrician seeking direct permanent employment",
+  "context": {
+    "occupation": "Industrial electrician / Elektroniker für Betriebstechnik",
+    "seniority": "Experienced skilled tradesperson",
+    "geography": "Ruhr region; practical local commute required",
+    "languages": [
+      "de"
+    ],
+    "employment_state": "Working on a temporary agency contract",
+    "constraints": [
+      "Direct permanent manufacturer employment",
+      "Accepts shift work including nights if rota and supplements are clear",
+      "Wants actual plant location",
+      "Contract must not merely offer a possible future takeover"
+    ],
+    "company_awareness": "Some local manufacturers known; seeks additional identifiable plants"
+  },
+  "overlap_tags": [
+    "industrial-trades",
+    "Germany",
+    "German",
+    "direct-employment",
+    "shift-accepting",
+    "local-commute"
+  ],
+  "trigger": "Another agency extension prompts a search for a permanent plant role with transparent shift terms.",
+  "searches_run": [
+    {
+      "query": "Elektroniker Betriebstechnik Ruhrgebiet unbefristet Hersteller Stellen",
+      "observation": "Retrieval mixed regional boards, direct businesses and agency assignments with takeover possibilities. A BA direct-placement result explicitly distinguished employment by the manufacturer from agency work.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "Betriebselektriker Ruhrgebiet Direktanstellung Schichtzulagen Schichtsystem Hersteller",
+      "observation": "Results included staffing listings and a manufacturer PDF. Direct inspection of that PDF specifies a continuous six-shift system, 38-hour week and tariff-based supplements, but the plant is Erwitte, outside the core Ruhr area, and exact supplement rates are absent.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.arbeitsagentur.de/jobsuche/jobdetail/10000-1207139411-S",
+      "title": "Betriebselektriker Direktvermittlung Ruhrgebiet — BA / DIS AG",
+      "supports": "Retrieved direct-placement advertisement states direct employer employment and a regulated shift model; actual manufacturer identity and rota are not resolved."
+    },
+    {
+      "id": "s2",
+      "url": "https://jobs.dis-ag.com/job/d5e72ecc-3941-4d7c-871a-261e368f805b/elektronikerin-betriebstechnik-krefeld-26252",
+      "title": "Elektroniker Betriebstechnik — DIS AG",
+      "supports": "Retrieved result explicitly uses agency employment with takeover prospects, a different relationship from immediate direct employment."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.miebach.de/fileadmin/medienablage/PDF/Stellenausschreibungen/Stellenausschreibung_PZW_Elektriker_Betriebstechnik_Schichtsystem_mwd.pdf",
+      "title": "Elektriker Betriebstechnik Schichtsystem — Wittekind/Miebach",
+      "supports": "Direct employer PDF identifies the manufacturer and Erwitte site, continuous six-shift system, 38-hour week and tariff-based supplements. It does not state exact supplement amounts or prove permanent contract terms."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "Elektroniker Ruhrgebiet Direktanstellung Schicht",
+    "promise": "Help compare industrial roles by actual employer, plant, contract wording, shift model and stated supplements without assuming shifts are undesirable.",
+    "cta": "Direkte Arbeitgeber und Vertragsdetails vergleichen",
+    "proof_needed": [
+      "Verified manufacturer coverage and plant locations",
+      "Distinguish direct placement from agency employment and takeover options",
+      "Permanent contract evidence separate from direct employment",
+      "Rota detail and actual supplement wording with unknowns retained",
+      "No net-pay or legal entitlement calculation",
+      "New indexable guide; current company/search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Is the employer the manufacturer or an agency?",
+    "Which exact plant would I commute to?",
+    "Does unbefristet describe an agency contract?",
+    "What does the rotation actually look like?",
+    "Are supplements quantified or just advertised as attractive?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "Elektriker ohne Nachtschicht Ruhrgebiet",
+      "reason": "This persona accepts nights; exclusion would discard suitable roles."
+    },
+    {
+      "query": "garantierte Übernahme Zeitarbeit Industrie",
+      "reason": "Future employer decisions cannot be guaranteed."
+    },
+    {
+      "query": "Schichtzulagen netto Steuer Rechner",
+      "reason": "Financial/tax calculation is outside product scope."
+    }
+  ],
+  "message_to_founder": "Simulation: Schichtarbeit ist für mich in Ordnung, wenn ich den Plan und die Vergütung nachvollziehen kann. Entscheidend sind der echte Arbeitgeber, ein unbefristeter Vertrag und ein Werk, das ich vernünftig erreiche.",
+  "confidence_and_limits": "Synthetic scenario with two separate queries and one direct employer PDF inspection. Remaining queries are hypotheses. No individual commute, pay entitlement, contract or availability verified. Manufacturer example is outside the core target geography and is evidence of useful detail, not a recommended vacancy. Coverage and direct-employer filtering remain unproven.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "Elektroniker Betriebstechnik Ruhrgebiet unbefristet Hersteller Stellen",
+      "language": "de",
+      "english_gloss": "industrial electrician Ruhr permanent manufacturer jobs",
+      "intent": "transactional",
+      "need": "Find direct plant roles.",
+      "cluster": "industrial electrician locality",
+      "product_fit": "medium",
+      "fit_reason": "Role/location/employment filters help; employer relationship needs evidence.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Industrieelektriker Jobs Essen",
+      "language": "de",
+      "english_gloss": "industrial electrician jobs Essen",
+      "intent": "transactional",
+      "need": "Search a local city.",
+      "cluster": "electrician locality",
+      "product_fit": "medium",
+      "fit_reason": "Coverage and actual plant location need verification.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Betriebselektriker Duisburg Stellenangebote",
+      "language": "de",
+      "english_gloss": "plant electrician Duisburg vacancies",
+      "intent": "transactional",
+      "need": "Explore another nearby area.",
+      "cluster": "electrician locality",
+      "product_fit": "medium",
+      "fit_reason": "Locality helps but cannot establish commute.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Betriebselektriker Ruhrgebiet Direktanstellung Schichtzulagen Schichtsystem Hersteller",
+      "language": "de",
+      "english_gloss": "plant electrician Ruhr direct employment shift supplements shift system manufacturer",
+      "intent": "transactional",
+      "need": "Compare concrete employment terms.",
+      "cluster": "direct manufacturing shifts",
+      "product_fit": "medium",
+      "fit_reason": "Description matching can surface explicit terms.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "unbefristet Zeitarbeit oder direkt beim Unternehmen",
+      "language": "de",
+      "english_gloss": "permanent agency contract or directly with company",
+      "intent": "informational",
+      "need": "Distinguish contract relationships.",
+      "cluster": "employer identity",
+      "product_fit": "medium",
+      "fit_reason": "A source-reading guide fits, not legal contract advice.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Elektroniker Chemiewerk Ruhrgebiet Schichtplan",
+      "language": "de",
+      "english_gloss": "electrician chemical plant Ruhr rota",
+      "intent": "transactional",
+      "need": "See an actual rotation.",
+      "cluster": "shift evidence",
+      "product_fit": "medium",
+      "fit_reason": "Only stated patterns can be compared.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Elektriker Metallindustrie Schichtzulagen Stellenangebot",
+      "language": "de",
+      "english_gloss": "electrician metal industry shift supplements job advertisement",
+      "intent": "transactional",
+      "need": "Compare stated supplements.",
+      "cluster": "pay transparency",
+      "product_fit": "medium",
+      "fit_reason": "Source salary facts fit; calculations and guarantees do not.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Hersteller Dortmund Instandhaltung Elektrik Karriere",
+      "language": "de",
+      "english_gloss": "manufacturer Dortmund electrical maintenance careers",
+      "intent": "informational",
+      "need": "Build a direct-employer shortlist.",
+      "cluster": "manufacturer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first search becomes useful with named plants.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Elektroniker Direktvermittlung keine Arbeitnehmerüberlassung",
+      "language": "de",
+      "english_gloss": "electrician direct placement no agency employment",
+      "intent": "transactional",
+      "need": "Allow recruitment intermediaries if final employment is direct.",
+      "cluster": "employment relationship",
+      "product_fit": "medium",
+      "fit_reason": "Do not confuse recruiter involvement with agency employment.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "6 Schichtsystem Stellenanzeige Dienstplan Beispiel",
+      "language": "de",
+      "english_gloss": "six-shift system job advertisement rota example",
+      "intent": "informational",
+      "need": "Know what to request from a prospective employer.",
+      "cluster": "rota clarification",
+      "product_fit": "medium",
+      "fit_reason": "Guide can frame questions without inventing schedules.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Fragen Vorstellungsgespräch Betriebselektriker Schicht Zulagen",
+      "language": "de",
+      "english_gloss": "plant electrician interview questions shifts supplements",
+      "intent": "informational",
+      "need": "Confirm unresolved terms.",
+      "cluster": "interview due diligence",
+      "product_fit": "medium",
+      "fit_reason": "Interview notes fit indexed roles.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Industrie Elektroniker neue Stellen Ruhrgebiet E-Mail",
+      "language": "de",
+      "english_gloss": "new industrial electrician jobs Ruhr email",
+      "intent": "transactional",
+      "need": "Follow researched plants while still employed.",
+      "cluster": "plant vacancy alerts",
+      "product_fit": "high",
+      "fit_reason": "Alerts fit after verified employer selection.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

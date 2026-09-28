@@ -1,0 +1,269 @@
+{
+  "id": "p37",
+  "name": "Senior SAP consultant moving toward manufacturing in-house",
+  "hypothetical": true,
+  "context": {
+    "occupation": "SAP consultant",
+    "seniority": "Senior",
+    "geography": "Germany",
+    "languages": [
+      "de",
+      "en"
+    ],
+    "employment_state": "Employed; selective",
+    "constraints": [
+      "In-house manufacturer role",
+      "Little travel rather than weekly client visits",
+      "Keep specialist SAP responsibility",
+      "German and English searches"
+    ],
+    "company_awareness": "Knows manufacturing employers; module expertise unspecified"
+  },
+  "overlap_tags": [
+    "sap",
+    "germany",
+    "senior",
+    "employed",
+    "in-house",
+    "travel-limit",
+    "manufacturing"
+  ],
+  "trigger": "Another client rollout requires extended weekly travel; the consultant starts monitoring internal SAP teams at manufacturers.",
+  "searches_run": [
+    {
+      "query": "SAP Inhouse Consultant Deutschland Hersteller Stellenangebote",
+      "observation": "Results included StepStone, manufacturer ATS pages and module-specific roles. The directly inspected PERI role clearly described internal manufacturing work and three office days, with travel quantity unstated.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "Senior SAP inhouse consultant geringe Reisebereitschaft Hersteller Germany",
+      "observation": "Recruiter-distributed listings explicitly advertised very low travel or periodic attendance, but location labels and wording varied. In-house and hybrid are not evidence of a precise travel ceiling.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://jobs.peri.com/job/Weissenhorn-SAP-S4HANA-Inhouse-Consultant-(PP)-(mfd)-89264/823978302/",
+      "title": "SAP S/4HANA Inhouse Consultant (PP) — PERI",
+      "supports": "Direct manufacturer posting describes SAP PP manufacturing duties, German/English and a three-office/two-home-day arrangement. No quantified business-travel requirement was visible."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.stepstone.de/jobs/sap-inhouse-consultant/in-deutschland",
+      "title": "SAP Inhouse Consultant jobs — StepStone",
+      "supports": "Retrieved page includes named manufacturers and module-specific vacancies. Counts and salary summaries are not adopted."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.kununu.com/de/job/22dafba4-a70d-4eb5-b105-1f4437622381",
+      "title": "SAP SD/MM Inhouse Senior Consultant — KA Resources",
+      "supports": "Retrieved recruiter listing uses very-low-travel wording and hybrid details. It does not establish exact travel frequency or a verified current employer match."
+    }
+  ],
+  "best_entry_page": {
+    "type": "product landing",
+    "primary_query": "SAP Inhouse Stellen bei bestimmten Unternehmen beobachten",
+    "promise": "Follow SAP openings at selected employers and compare module, work arrangement and published travel requirements.",
+    "cta": "Select your manufacturing employers and save module-specific SAP alerts.",
+    "proof_needed": [
+      "Verify coverage for the actual shortlist.",
+      "Show that SAP modules are represented accurately; module examples are not this persona's asserted skills.",
+      "Keep office attendance separate from customer or plant travel.",
+      "Pro checks should identify explicit travel wording and unknowns.",
+      "Demonstrate recurring alerts beyond employers' own alert forms.",
+      "Create a new indexable landing; current company/search pages are noindex."
+    ]
+  },
+  "conversion_objections": [
+    "Will consulting-service roles slip into an in-house search?",
+    "Does the title conceal international plant rollouts?",
+    "Can I follow only my module at selected manufacturers?",
+    "How often is office attendance required?",
+    "Can I see missing travel details rather than a false no-travel match?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "SAP Inhouse garantiert keine Reise",
+      "reason": "In-house work does not guarantee zero travel."
+    },
+    {
+      "query": "SAP Zertifizierung Kurs kostenlos",
+      "reason": "Training intent is outside job discovery."
+    },
+    {
+      "query": "SAP freelancer remote Tagessatz",
+      "reason": "Freelance-market intent conflicts with the chosen employed in-house move."
+    }
+  ],
+  "message_to_founder": "Simulation: Ich will meine SAP-Erfahrung behalten, aber nicht jede Woche beim nächsten Kunden sein. Wenn ihr meine Zielunternehmen und Module zuverlässig abdeckt und Dienstreisen von Bürotagen trennt, sind gezielte Alarme interessant.",
+  "confidence_and_limits": "Synthetic bilingual specialist. Two searches and one direct employer inspection; no claim about total SAP demand or typical travel. Exact module, home location and acceptable travel frequency are unknown.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "SAP Inhouse Jobs Deutschland",
+      "language": "de",
+      "english_gloss": "SAP in-house jobs Germany",
+      "intent": "commercial",
+      "need": "Find internal roles.",
+      "cluster": "sap-inhouse",
+      "product_fit": "high",
+      "fit_reason": "Role/company discovery fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "Senior SAP Consultant jobs Germany",
+      "language": "en",
+      "english_gloss": "Senior SAP consultant jobs Germany",
+      "intent": "commercial",
+      "need": "Survey senior openings.",
+      "cluster": "senior-sap",
+      "product_fit": "medium",
+      "fit_reason": "Broad search includes unwanted consultancy work.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "SAP Stellenangebote Industrie",
+      "language": "de",
+      "english_gloss": "SAP vacancies industry",
+      "intent": "commercial",
+      "need": "Explore manufacturers.",
+      "cluster": "industrial-sap",
+      "product_fit": "high",
+      "fit_reason": "Employer-first search is relevant.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "SAP Inhouse Consultant Deutschland Hersteller Stellenangebote",
+      "language": "de",
+      "english_gloss": "SAP in-house consultant Germany manufacturer vacancies",
+      "intent": "commercial",
+      "need": "Find product employers.",
+      "cluster": "manufacturer-sap",
+      "product_fit": "high",
+      "fit_reason": "Company and technical filters align.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Senior SAP inhouse consultant geringe Reisebereitschaft Hersteller Germany",
+      "language": "de",
+      "english_gloss": "Senior SAP in-house consultant low travel manufacturer Germany",
+      "intent": "commercial",
+      "need": "Test travel-limited openings.",
+      "cluster": "sap-low-travel",
+      "product_fit": "medium",
+      "fit_reason": "Needs explicit description evidence.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "ZEISS SAP Inhouse Karriere",
+      "language": "de",
+      "english_gloss": "ZEISS SAP in-house careers",
+      "intent": "navigational",
+      "need": "Check a plausible target.",
+      "cluster": "named-manufacturer",
+      "product_fit": "high",
+      "fit_reason": "Coverage-dependent company alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "SAP S4HANA PP inhouse manufacturing jobs",
+      "language": "en",
+      "english_gloss": "SAP S4HANA PP in-house manufacturing jobs",
+      "intent": "commercial",
+      "need": "Explore module-specific duties.",
+      "cluster": "sap-module-match",
+      "product_fit": "high",
+      "fit_reason": "Illustrative module search; actual speciality unspecified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Inhouse SAP Berater internationale Rollouts Reisetätigkeit",
+      "language": "de",
+      "english_gloss": "In-house SAP consultant international rollouts travel",
+      "intent": "informational",
+      "need": "Check hidden travel exposure.",
+      "cluster": "sap-rollout-travel",
+      "product_fit": "medium",
+      "fit_reason": "Text checks can identify conditions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "SAP Inhouse drei Tage Büro Homeoffice",
+      "language": "de",
+      "english_gloss": "SAP in-house three office days home office",
+      "intent": "commercial",
+      "need": "Assess weekly routine.",
+      "cluster": "sap-office-pattern",
+      "product_fit": "medium",
+      "fit_reason": "Work mode alone does not express office frequency.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "SAP Consultant inhouse vs consulting travel",
+      "language": "en",
+      "english_gloss": "SAP consultant in-house versus consulting travel",
+      "intent": "informational",
+      "need": "Compare role structures.",
+      "cluster": "sap-role-comparison",
+      "product_fit": "medium",
+      "fit_reason": "Guide should avoid universal travel assumptions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Job Alarm SAP bestimmte Unternehmen",
+      "language": "de",
+      "english_gloss": "SAP job alert selected companies",
+      "intent": "commercial",
+      "need": "Follow a shortlist.",
+      "cluster": "sap-company-alerts",
+      "product_fit": "high",
+      "fit_reason": "Free saved searches directly fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "SAP Stellen Reiseanteil nicht angegeben",
+      "language": "de",
+      "english_gloss": "SAP vacancies travel percentage not stated",
+      "intent": "informational",
+      "need": "Resolve unknown travel.",
+      "cluster": "sap-unknown-travel",
+      "product_fit": "low",
+      "fit_reason": "Only employer confirmation can fill omissions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

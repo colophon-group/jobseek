@@ -1,0 +1,278 @@
+{
+  "id": "p15",
+  "name": "Berlin analyst evaluating climate mission credibility",
+  "context": {
+    "occupation": "Operations and sustainability analyst",
+    "seniority": "Midlevel",
+    "geography": "Berlin",
+    "languages": [
+      "de",
+      "en"
+    ],
+    "employment_state": "Employed, selectively exploring a mission-aligned move",
+    "constraints": [
+      "Climate or energy employer",
+      "Credible evidence of environmental contribution",
+      "Relevant analytical work rather than a sustainability label alone",
+      "German and English searches"
+    ],
+    "company_awareness": "Partly defined shortlist including energy and climate businesses; names are candidates for research, not endorsements"
+  },
+  "overlap_tags": [
+    "analyst",
+    "Germany",
+    "Berlin",
+    "German-English",
+    "mission-led",
+    "partly-known-employers",
+    "evidence-seeking"
+  ],
+  "trigger": "Sees a sustainability-titled role whose employer mission is unclear and decides to research both the work and the business before applying.",
+  "searches_run": [
+    {
+      "query": "sustainability operations analyst jobs Berlin energy climate",
+      "observation": "Results included Enpal operations, Rosneft sustainability and Vattenfall climate-strategy roles: related titles across different business contexts. Direct inspection showed the Vattenfall role was expired and involved climate data/disclosures; its title was not evidence of present availability or independently verified company impact.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "query": "Klimajobs Arbeitgeber Greenwashing erkennen Nachhaltigkeitsbericht Karriere",
+      "observation": "Retrieval returned employer-evaluation guides, a consumer greenwashing explainer and a sustainability checklist referencing reports and company information. This supports an evidence-seeking content category, not a verified rating of any employer.",
+      "source_ids": [
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://jobs.ashbyhq.com/enpal/87b7f771-921e-472f-a68e-66fce11aad88/",
+      "title": "Operations Analyst, Quality & Process Management — Enpal",
+      "supports": "Retrieved employer posting combines operations analysis with a Berlin energy-company context; role availability and environmental impact not verified."
+    },
+    {
+      "id": "s2",
+      "url": "https://jobapplication.hrworks.de/de?companyId=q039c1f&id=56c169",
+      "title": "Sustainability Analyst — Rosneft Deutschland",
+      "supports": "Retrieved employer text describes mineral-oil and renewable-energy products, illustrating why sustainability title and business model require separate assessment; no greenwashing accusation is made."
+    },
+    {
+      "id": "s3",
+      "url": "https://careers.vattenfall.com/job/climate-strategy-analyst-in-berlin-jid-48761",
+      "title": "Climate Strategy Analyst — Vattenfall",
+      "supports": "Direct inspection explicitly marks the vacancy expired; duties include climate data quality, strategy and disclosures. Employer mission statements are claims rather than independently verified impact."
+    },
+    {
+      "id": "s4",
+      "url": "https://www.nachhaltigejobs.de/bewerben-mit-gutem-gewissen/m",
+      "title": "Mit diesen 7 Hinweisen erkennst du ein nachhaltiges Unternehmen — NachhaltigeJobs",
+      "supports": "Retrieved guide suggests examining sustainability reports, supply chains, production impacts and employee treatment; demonstrates available evaluation content, not proof any employer is sustainable."
+    }
+  ],
+  "best_entry_page": {
+    "type": "curated employer guide",
+    "primary_query": "Klima Unternehmen Berlin Analyst Jobs",
+    "promise": "Help build a Berlin climate and energy employer shortlist using explicit inclusion criteria, dated sources and separate descriptions of business activities and analyst roles.",
+    "cta": "Arbeitgeber prüfen und passende Stellen suchen",
+    "proof_needed": [
+      "Published selection methodology and boundaries",
+      "Company reports with dates, scope and independent evidence where available",
+      "No verified-green badge inferred from job-description language",
+      "Verified career-board coverage for each featured employer",
+      "Differentiate role contribution from company-wide impact",
+      "Current availability checks; expired postings used only as labeled examples",
+      "New indexable guide, since company/search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Who decides what counts as a climate employer?",
+    "Does text matching merely repeat marketing claims?",
+    "Can I separate operations in a useful business from an ESG-reporting title?",
+    "Are known employers covered before I invest in a shortlist?",
+    "I need sources and dates, not a green score with no explanation."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "garantiert nachhaltige Arbeitgeber ohne Greenwashing",
+      "reason": "The product does not verify company environmental performance."
+    },
+    {
+      "query": "AI Greenwashing Arbeitgeber Zertifizierung",
+      "reason": "Description matching is not auditing or certification."
+    },
+    {
+      "query": "beste Klimafirma Berlin Ranking",
+      "reason": "A ranking requires an explicit comparative evidence base not supplied here."
+    }
+  ],
+  "message_to_founder": "Simulation: I am willing to choose companies first, but I need to understand why they belong on a climate shortlist. Show sources and uncertainties, and keep the role's contribution separate from the employer's slogans.",
+  "confidence_and_limits": "Synthetic persona with two retrieval queries and one successful direct employer inspection. All other query rows are hypotheses. No company sustainability, greenwashing, impact, volume or ranking conclusions were verified. Source examples demonstrate the need for separate role and employer evaluation. Text matching alone cannot meet the trust requirement.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "Nachhaltigkeit Jobs Berlin",
+      "language": "de",
+      "english_gloss": "sustainability jobs Berlin",
+      "intent": "transactional",
+      "need": "Survey local roles.",
+      "cluster": "sustainability locality",
+      "product_fit": "medium",
+      "fit_reason": "Role/location filters help but mission quality remains unknown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "operations analyst jobs Berlin",
+      "language": "en",
+      "english_gloss": "operations analyst jobs Berlin",
+      "intent": "transactional",
+      "need": "Find role-fit openings.",
+      "cluster": "operations locality",
+      "product_fit": "high",
+      "fit_reason": "Occupation, experience and location fit if employers are covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "erneuerbare Energien Analyst Jobs Berlin",
+      "language": "de",
+      "english_gloss": "renewable energy analyst jobs Berlin",
+      "intent": "transactional",
+      "need": "Combine function with energy sector.",
+      "cluster": "energy analyst jobs",
+      "product_fit": "medium",
+      "fit_reason": "Company selection helps; employer business evidence is still needed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "sustainability operations analyst jobs Berlin energy climate",
+      "language": "en",
+      "english_gloss": "sustainability operations analyst jobs Berlin energy climate",
+      "intent": "transactional",
+      "need": "Compare analytical routes into climate/energy work.",
+      "cluster": "climate analyst roles",
+      "product_fit": "medium",
+      "fit_reason": "Titles span different roles and business activities.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "Klimajobs Arbeitgeber Greenwashing erkennen Nachhaltigkeitsbericht Karriere",
+      "language": "de",
+      "english_gloss": "climate jobs employer greenwashing assess sustainability report career",
+      "intent": "informational",
+      "need": "Find a defensible evaluation method.",
+      "cluster": "mission credibility",
+      "product_fit": "medium",
+      "fit_reason": "A sourced guide fits; employer verification is outside the product.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s4"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "climate tech companies Berlin operations jobs",
+      "language": "en",
+      "english_gloss": "climate tech companies Berlin operations jobs",
+      "intent": "informational",
+      "need": "Build a shortlist of businesses.",
+      "cluster": "climate employer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first workflow aligns with the intent if coverage is verified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Enpal operations analyst Karriere",
+      "language": "de",
+      "english_gloss": "Enpal operations analyst careers",
+      "intent": "navigational",
+      "need": "Inspect a candidate employer.",
+      "cluster": "known employer research",
+      "product_fit": "medium",
+      "fit_reason": "Source navigation matters; company monitoring can follow research.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Vattenfall Nachhaltigkeitsbericht Klimaziele Fortschritt",
+      "language": "de",
+      "english_gloss": "Vattenfall sustainability report climate-target progress",
+      "intent": "informational",
+      "need": "Research company-level evidence.",
+      "cluster": "employer impact evidence",
+      "product_fit": "low",
+      "fit_reason": "External reports and independent scrutiny exceed job-description matching.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "sustainability analyst reporting versus operations role",
+      "language": "en",
+      "english_gloss": "sustainability analyst reporting versus operations role",
+      "intent": "informational",
+      "need": "Understand day-to-day contribution.",
+      "cluster": "role meaning",
+      "product_fit": "medium",
+      "fit_reason": "Duties in source text can support comparisons.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "GoodJobs Berlin Analyst",
+      "language": "en",
+      "english_gloss": "GoodJobs Berlin analyst",
+      "intent": "navigational",
+      "need": "Check a specialist alternative.",
+      "cluster": "specialist job board",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation is not a direct acquisition fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Fragen Vorstellungsgespräch Nachhaltigkeit messbare Wirkung",
+      "language": "de",
+      "english_gloss": "interview questions sustainability measurable impact",
+      "intent": "informational",
+      "need": "Ask about role-specific objectives and evidence.",
+      "cluster": "mission interview",
+      "product_fit": "medium",
+      "fit_reason": "Guide plus interview notes can help; employer answers remain claims.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "new operations jobs climate companies Berlin email",
+      "language": "en",
+      "english_gloss": "new operations jobs climate companies Berlin email",
+      "intent": "transactional",
+      "need": "Follow a researched shortlist.",
+      "cluster": "target employer alerts",
+      "product_fit": "high",
+      "fit_reason": "Alerts fit after employer selection, not as a substitute for evaluation.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

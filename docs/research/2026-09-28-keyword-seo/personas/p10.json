@@ -1,0 +1,281 @@
+{
+  "id": "p10",
+  "name": "UK project manager returning after caregiving",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Project manager",
+    "seniority": "Experienced before career break",
+    "geography": "United Kingdom; exact locality unspecified",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Returning after a caregiving career break",
+    "constraints": [
+      "Part-time or school-hours-compatible schedule",
+      "Hybrid work acceptable if commute is feasible",
+      "Needs evidence of suitable openings",
+      "Wants to rebuild confidence without being treated as a beginner"
+    ],
+    "company_awareness": "No firm shortlist; familiar past employers and returner programmes are starting points"
+  },
+  "overlap_tags": [
+    "returner",
+    "caregiving",
+    "uk",
+    "part-time",
+    "hybrid",
+    "project-management",
+    "schedule"
+  ],
+  "trigger": "A more dependable care arrangement creates time to return to paid work, but a search for project management roles mostly presents full-time schedules.",
+  "searches_run": [
+    {
+      "query": "part time project manager jobs UK school hours hybrid",
+      "observation": "Results included general boards, charity roles and a concrete Historic England 0.7 FTE hybrid vacancy. Direct inspection confirmed that example had already closed and did not establish school-hours scheduling.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "project manager return to work career break part time returnship UK",
+      "observation": "Results included official returner guidance, a project-management professional-body guide and employer returnship pages. These describe routes and support, not a verified currently open school-hours role.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://app.beapplied.com/apply/1fhixlwdeu",
+      "title": "Part Time Project Manager - Creative Content Exchange — Historic England",
+      "supports": "Directly inspected employer ATS page states 0.7 FTE, hybrid locations, a fixed term and pro-rata salary. It explicitly says applications closed 23 August 2026; no guaranteed school-hours pattern was shown."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.reed.co.uk/jobs/part-time-hybrid-project-manager-jobs?workingOption=hybrid",
+      "title": "Part-time Hybrid Project Manager Jobs — Reed",
+      "supports": "Retrieved job-board page targets this combined role/work-pattern query and offers alerts. Counts are not treated as verified current supply."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.gov.uk/government/publications/returner-toolkit-helping-you-back-to-work/returner-toolkit-helping-you-back-to-work",
+      "title": "Returner toolkit: helping you back to work — GOV.UK",
+      "supports": "Retrieved official guidance distinguishes several return routes and working patterns. Used only to observe available guidance, not legal entitlements or individual programme eligibility."
+    },
+    {
+      "id": "s4",
+      "url": "https://careers.nationalhighways.co.uk/jobs-you-can-do/returning-to-work/",
+      "title": "Returning to work — National Highways",
+      "supports": "Retrieved employer snippet advertises a six-month returnship for people with a career break. Direct access failed with 502; no current intake or role availability verified."
+    }
+  ],
+  "best_entry_page": {
+    "type": "curated employer guide",
+    "primary_query": "part time project manager jobs returners UK",
+    "promise": "Explore employers advertising reduced-hours project roles or returner pathways, and compare the stated schedule, location and application status.",
+    "cta": "Check suitable openings first, then save a part-time project-management search.",
+    "proof_needed": [
+      "Use actually open examples; separate a programme information page from an open intake.",
+      "Show hours, days, commute location and hybrid expectations where stated.",
+      "Distinguish school-hours, term-time, part-time and compressed full-time schedules.",
+      "Respect prior experience; career breaks do not imply junior level.",
+      "Verify coverage beyond technology companies, including public and charitable employers.",
+      "Publish a new indexable guide; filtered search currently remains noindex."
+    ]
+  },
+  "conversion_objections": [
+    "Will you show actual openings or more confidence-building advice?",
+    "Does part-time fit school collection times?",
+    "Will a break exclude me despite my previous experience?",
+    "Are local hybrid workplaces covered?",
+    "Will the system keep showing closed returner programmes?",
+    "Can I start free before deciding whether description checks help?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "guaranteed job after career break",
+      "reason": "Hiring outcomes cannot be promised."
+    },
+    {
+      "query": "career break CV generator",
+      "reason": "CV generation is not demonstrated."
+    },
+    {
+      "query": "school hours project manager guaranteed flexible",
+      "reason": "General flexibility and reduced FTE do not establish daily start/end times."
+    },
+    {
+      "query": "track all applications from every job site",
+      "reason": "The demonstrated tracker saves indexed postings; arbitrary external imports are not established."
+    }
+  ],
+  "message_to_founder": "Simulation: I need to see that there are project roles whose hours could work, before I need another article telling me to feel confident. Let me inspect the schedule and closing date, then keep me informed when similar jobs appear.",
+  "confidence_and_limits": "Synthetic gender-neutral returner, not an interview. Two queries and one successful source inspection plus one failed employer open. Exact location, break length and availability are not supplied, so commute fit and returnship eligibility remain unknown. No search volumes, hiring outcomes or programme availability inferred.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "part time project manager jobs",
+      "language": "en",
+      "english_gloss": "part time project manager jobs",
+      "intent": "commercial",
+      "need": "Find experienced work with fewer hours.",
+      "cluster": "part-time-project-manager",
+      "product_fit": "high",
+      "fit_reason": "Employment type and role filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "hybrid project manager jobs UK",
+      "language": "en",
+      "english_gloss": "hybrid project manager jobs UK",
+      "intent": "commercial",
+      "need": "Explore manageable workplace attendance.",
+      "cluster": "hybrid-project-manager",
+      "product_fit": "high",
+      "fit_reason": "Work-mode and role filters fit, subject to locality.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "jobs after career break UK",
+      "language": "en",
+      "english_gloss": "jobs after career break UK",
+      "intent": "informational",
+      "need": "Find possible re-entry routes.",
+      "cluster": "career-return",
+      "product_fit": "low",
+      "fit_reason": "Broad guidance is less aligned than concrete vacancy discovery.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "part time project manager jobs UK school hours hybrid",
+      "language": "en",
+      "english_gloss": "part time project manager jobs UK school hours hybrid",
+      "intent": "commercial",
+      "need": "Combine role and schedule needs.",
+      "cluster": "school-hours-project-work",
+      "product_fit": "medium",
+      "fit_reason": "Filters help but school-hours detail needs source evidence.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "project manager return to work career break part time returnship UK",
+      "language": "en",
+      "english_gloss": "project manager return to work career break part time returnship UK",
+      "intent": "commercial",
+      "need": "Find supported return pathways.",
+      "cluster": "project-returnships",
+      "product_fit": "medium",
+      "fit_reason": "Coverage and active programme evidence must be demonstrated.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "project manager 25 hours a week UK",
+      "language": "en",
+      "english_gloss": "project manager 25 hours a week UK",
+      "intent": "commercial",
+      "need": "Search measurable hours.",
+      "cluster": "project-hours",
+      "product_fit": "medium",
+      "fit_reason": "Description checks can assess hours when provided.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "project manager job share vacancies",
+      "language": "en",
+      "english_gloss": "project manager job share vacancies",
+      "intent": "commercial",
+      "need": "Consider another reduced-workload structure.",
+      "cluster": "project-job-share",
+      "product_fit": "medium",
+      "fit_reason": "Job share wording needs text inspection; do not promise a dedicated filter.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Timewise project manager part time jobs",
+      "language": "en",
+      "english_gloss": "Timewise project manager part time jobs",
+      "intent": "navigational",
+      "need": "Try a flexible-work specialist.",
+      "cluster": "flexible-job-boards",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation is not a strong direct landing target.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "returnship project management part time or full time",
+      "language": "en",
+      "english_gloss": "returnship project management part time or full time",
+      "intent": "informational",
+      "need": "Check whether a programme meets schedule needs.",
+      "cluster": "returnship-hours",
+      "product_fit": "medium",
+      "fit_reason": "Description evidence may distinguish support from actual hours.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "part time project manager school holidays term time",
+      "language": "en",
+      "english_gloss": "part time project manager school holidays term time",
+      "intent": "commercial",
+      "need": "Explore a more restrictive calendar.",
+      "cluster": "term-time-project-work",
+      "product_fit": "medium",
+      "fit_reason": "Cannot infer term-time from school-related employers.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "alerts part time project manager jobs near me",
+      "language": "en",
+      "english_gloss": "alerts part time project manager jobs near me",
+      "intent": "commercial",
+      "need": "Follow suitable openings after initial proof.",
+      "cluster": "project-manager-alerts",
+      "product_fit": "high",
+      "fit_reason": "Free alerts fit once a real location is supplied.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions to ask employer about school hours hybrid job",
+      "language": "en",
+      "english_gloss": "questions to ask employer about school hours hybrid job",
+      "intent": "informational",
+      "need": "Clarify daily hours before applying.",
+      "cluster": "schedule-questions",
+      "product_fit": "low",
+      "fit_reason": "A guide can prepare questions; employer confirmation remains necessary.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

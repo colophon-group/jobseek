@@ -1,0 +1,96 @@
+{
+  "date": "2026-09-28",
+  "source_type_note": "Public pages and retrieval observations; not traffic or ranking data.",
+  "sources": [
+    {
+      "id": "R01",
+      "title": "LinkedIn company job alerts",
+      "url": "https://www.linkedin.com/help/sales-navigator/answer/a554166",
+      "supports": "Primary help page supports company-specific alerts as an existing alternative. It does not establish comparative freshness or our ranking prospects."
+    },
+    {
+      "id": "R02",
+      "title": "LinkedIn job alerts",
+      "url": "https://www.linkedin.com/help/linkedin/answer/a511279/job-alerts-on-linkedin?lang=en",
+      "supports": "Primary help page describes alerts using search criteria and delivery settings."
+    },
+    {
+      "id": "R03",
+      "title": "Huntr job tracker",
+      "url": "https://help.huntr.co/en/articles/9883324-job-tracker",
+      "supports": "Primary product documentation describes application boards and supporting organizational tools; category overlap, not a hands-on comparison."
+    },
+    {
+      "id": "R04",
+      "title": "Teal job tracker guide",
+      "url": "https://help.tealhq.com/en/articles/14435727-how-to-track-your-job-applications",
+      "supports": "Primary product documentation describes saved jobs, statuses, notes, dates and follow-ups. Do not transfer these features to Job Seek."
+    },
+    {
+      "id": "R05",
+      "title": "JobBeacon career-page monitor",
+      "url": "https://jobbeacon.app/",
+      "supports": "Inspected vendor page advertises company-career monitoring, keyword/location filters and email alerts. Direct-source monitoring is not an uncontested position. Vendor performance/comparison claims not verified."
+    },
+    {
+      "id": "R06",
+      "title": "FirstPost career-page alerts",
+      "url": "https://firstpost.io/",
+      "supports": "Inspected vendor page advertises career-page monitoring, personalized alerts and exclusion rules across several languages. Coverage and speed claims not verified."
+    },
+    {
+      "id": "R07",
+      "title": "Visualping website monitoring",
+      "url": "https://visualping.io/blog/how-to-monitor-website-changes",
+      "supports": "Primary vendor explanation of monitoring websites; a horizontal substitute for manually checking career pages."
+    },
+    {
+      "id": "R08",
+      "title": "France Travail alerts",
+      "url": "https://www.francetravail.fr/region/occitanie/candidat/conseils-a-lemploi/sabonner-aux-offres-demploi.html",
+      "supports": "Primary public-service guidance describes personalized job alerts, illustrating a native French alternative and vocabulary."
+    },
+    {
+      "id": "R09",
+      "title": "LinkedIn Italian job alerts",
+      "url": "https://www.linkedin.com/help/linkedin/answer/a506445/avvisi-di-offerte-di-lavoro-su-linkedin?lang=it",
+      "supports": "Search-returned official terminology: avvisi di offerte di lavoro. Supports language choice, not search volume."
+    },
+    {
+      "id": "R10",
+      "title": "LinkedIn German job alerts",
+      "url": "https://www.linkedin.com/help/linkedin/answer/a511279/jobbenachrichtigungen-auf-linkedin?lang=de",
+      "supports": "Search-returned official terminology: Jobbenachrichtigungen. Supports vocabulary testing, not demand estimates."
+    },
+    {
+      "id": "R11",
+      "title": "Target-company monitoring question",
+      "url": "https://www.reddit.com/r/careerguidance/comments/1waomqt/how_do_you_follow_companies_youd_love_to_work_for/",
+      "supports": "Directly inspected individual question from a creative professional about monitoring a target-company list and irrelevant recommendations. Anecdote only; promotional reply excluded."
+    },
+    {
+      "id": "R12",
+      "title": "Keyword Planner metric definitions",
+      "url": "https://support.google.com/google-ads/answer/3022575?hl=en-uk",
+      "supports": "Official documentation: monthly search estimates depend on close variants, date/location/network settings; competition is advertiser competition, not organic SEO difficulty."
+    },
+    {
+      "id": "R13",
+      "title": "Search Console query dimension",
+      "url": "https://support.google.com/webmasters/answer/17011259?hl=en",
+      "supports": "Official documentation: query data describes searches leading to site visibility; anonymized queries are omitted. A site with few impressions cannot reveal total market demand."
+    },
+    {
+      "id": "R14",
+      "title": "Google people-first content guidance",
+      "url": "https://developers.google.com/search/docs/fundamentals/creating-helpful-content",
+      "supports": "Official guidance supports original useful content and purpose; used to reject one thin page per generated query."
+    },
+    {
+      "id": "R15",
+      "title": "Job Seek homepage",
+      "url": "https://jseek.co/en",
+      "supports": "Public positioning centers selected companies, filters, alerts and application tracking. Search retrieval can lag deployment; current code confirms feature details."
+    }
+  ]
+}

@@ -1,0 +1,269 @@
+{
+  "id": "p09",
+  "name": "Portugal-based designer seeking genuine location freedom",
+  "hypothetical": true,
+  "context": {
+    "occupation": "UX/product designer",
+    "seniority": "Senior",
+    "geography": "Currently Portugal; wants Europe-compatible work from anywhere",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed and selective",
+    "constraints": [
+      "Needs clear permitted countries and timezone overlap",
+      "Wants location freedom beyond a home-office label",
+      "Does not want to change country solely for payroll eligibility",
+      "Values senior product-design scope"
+    ],
+    "company_awareness": "Knows some remote-first brands but is open to specialist discovery"
+  },
+  "overlap_tags": [
+    "design",
+    "remote",
+    "portugal",
+    "europe",
+    "timezone",
+    "employed",
+    "selective"
+  ],
+  "trigger": "The current employer clarifies that remote work is allowed only from one registered address, prompting a search for roles with broader location flexibility.",
+  "searches_run": [
+    {
+      "query": "senior product designer remote Europe work from anywhere",
+      "observation": "Results ranged from remote EU-timezone employer pages to aggregators and Europe-only listings. Remote, Europe, named countries and anywhere language appeared in different combinations, so none was treated as interchangeable.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "product designer remote Portugal timezone country restrictions jobs",
+      "observation": "Results included a Reedsy country list containing Portugal, a RemoFirst list of permitted locations and WhiteTech's broad Europe/CET wording. Direct WhiteTech inspection showed location flexibility alongside timezone conditions and an application question about residence.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.primeline.dev/careers/product-designer",
+      "title": "Senior Product Designer — Primeline",
+      "supports": "Retrieved employer snippet advertises remote EU timezones and senior design responsibilities; it does not establish unrestricted country mobility."
+    },
+    {
+      "id": "s2",
+      "url": "https://jobs.ashbyhq.com/reedsy/5b054faf-e032-44d2-90f4-60a6b1241937",
+      "title": "Senior Product Designer - Remote Europe — Reedsy",
+      "supports": "Retrieved ATS snippet lists Portugal among locations and says Europe-based applicants only. That is not proof of an unrestricted travel policy."
+    },
+    {
+      "id": "s3",
+      "url": "https://job-boards.eu.greenhouse.io/whitetech/jobs/4987197101",
+      "title": "Senior Product Designer — WhiteTech",
+      "supports": "Directly inspected ATS page welcomes European applicants and mentions CET-compatible applicants elsewhere; benefits describe flexible remote work within CET. Application asks country of residence. This establishes wording to clarify, not legal or contractual mobility."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "remote product designer Europe country restrictions",
+    "promise": "Compare remote design roles using the employer's stated countries, timezone requirements and work-location wording, then follow the companies that fit.",
+    "cta": "Search senior remote design roles and save the suitable employers.",
+    "proof_needed": [
+      "Display work mode separately from allowed countries and time overlap.",
+      "Show source excerpts for broad location claims and label missing travel policies unknown.",
+      "Test description checks against country lists and timezone exceptions.",
+      "Demonstrate coverage of design employers and relevant senior roles.",
+      "A new indexable guide is required; the current filtered results are noindex."
+    ]
+  },
+  "conversion_objections": [
+    "Will remote just mean remote within the employer's country?",
+    "Does Portugal appear explicitly or only Europe?",
+    "Can I distinguish a timezone requirement from a residence rule?",
+    "Can I travel while employed, or does anywhere only describe recruitment?",
+    "Will descriptions tell me if the role is UX product work rather than graphic design?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "digital nomad tax Portugal work anywhere",
+      "reason": "Tax and legal mobility advice are outside the product."
+    },
+    {
+      "query": "worldwide product designer jobs guaranteed any country",
+      "reason": "No tool can guarantee every employer/country combination."
+    },
+    {
+      "query": "UX portfolio builder free",
+      "reason": "Portfolio generation is not demonstrated."
+    }
+  ],
+  "message_to_founder": "Simulation: I already have a remote job; the question is where I am actually allowed to work. Show me the country and timezone wording so I can shortlist roles worth a conversation instead of reading another page of remote badges.",
+  "confidence_and_limits": "Synthetic selective candidate. Two queries and one direct inspection support a distinction between remote labels and source conditions, not actual employer compliance or mobility rights. Citizenship, contractual arrangement and intended travel pattern remain unspecified.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "remote UX designer jobs",
+      "language": "en",
+      "english_gloss": "remote UX designer jobs",
+      "intent": "commercial",
+      "need": "Survey design opportunities.",
+      "cluster": "remote-ux",
+      "product_fit": "high",
+      "fit_reason": "Role and work-mode filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "senior product designer jobs Europe",
+      "language": "en",
+      "english_gloss": "senior product designer jobs Europe",
+      "intent": "commercial",
+      "need": "Look for the right scope.",
+      "cluster": "senior-product-design",
+      "product_fit": "high",
+      "fit_reason": "Occupation, seniority and region search fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "work from anywhere design jobs",
+      "language": "en",
+      "english_gloss": "work from anywhere design jobs",
+      "intent": "commercial",
+      "need": "Find genuine location flexibility.",
+      "cluster": "anywhere-design",
+      "product_fit": "medium",
+      "fit_reason": "Must read restrictions rather than trust remote tags.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "senior product designer remote Europe work from anywhere",
+      "language": "en",
+      "english_gloss": "senior product designer remote Europe work from anywhere",
+      "intent": "commercial",
+      "need": "Combine senior role and flexibility.",
+      "cluster": "europe-anywhere-design",
+      "product_fit": "medium",
+      "fit_reason": "Filtering narrows candidates but does not confirm mobility.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "product designer remote Portugal timezone country restrictions jobs",
+      "language": "en",
+      "english_gloss": "product designer remote Portugal timezone country restrictions jobs",
+      "intent": "commercial",
+      "need": "Check current country compatibility.",
+      "cluster": "portugal-remote-design",
+      "product_fit": "medium",
+      "fit_reason": "Text checks can identify explicit countries and conditions.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "remote design systems designer Europe",
+      "language": "en",
+      "english_gloss": "remote design systems designer Europe",
+      "intent": "commercial",
+      "need": "Explore a specialised role variant.",
+      "cluster": "design-systems-jobs",
+      "product_fit": "high",
+      "fit_reason": "Role and technology discovery are useful.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "remote Europe job can I work from Portugal",
+      "language": "en",
+      "english_gloss": "remote Europe job can I work from Portugal",
+      "intent": "informational",
+      "need": "Interpret ambiguous region wording.",
+      "cluster": "remote-location-rules",
+      "product_fit": "medium",
+      "fit_reason": "A guide can show questions and evidence, not eligibility conclusions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "product designer UTC CET overlap remote",
+      "language": "en",
+      "english_gloss": "product designer UTC CET overlap remote",
+      "intent": "commercial",
+      "need": "Avoid an unsuitable meeting schedule.",
+      "cluster": "design-timezone",
+      "product_fit": "medium",
+      "fit_reason": "Timezone statements can be assessed where published.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "We Work Remotely product designer anywhere",
+      "language": "en",
+      "english_gloss": "We Work Remotely product designer anywhere",
+      "intent": "navigational",
+      "need": "Try a remote-work specialist.",
+      "cluster": "remote-board-alternative",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation has weak direct conversion fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "remote first companies product design careers",
+      "language": "en",
+      "english_gloss": "remote first companies product design careers",
+      "intent": "informational",
+      "need": "Form a selective employer shortlist.",
+      "cluster": "remote-design-employers",
+      "product_fit": "high",
+      "fit_reason": "Company-first discovery becomes useful here.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "job alerts senior product designer remote Europe",
+      "language": "en",
+      "english_gloss": "job alerts senior product designer remote Europe",
+      "intent": "commercial",
+      "need": "Wait for a compelling role while employed.",
+      "cluster": "design-alerts",
+      "product_fit": "high",
+      "fit_reason": "Saved-search alerts match selective monitoring.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions recruiter work from anywhere country policy",
+      "language": "en",
+      "english_gloss": "questions recruiter work from anywhere country policy",
+      "intent": "informational",
+      "need": "Confirm recruitment wording before switching jobs.",
+      "cluster": "remote-policy-questions",
+      "product_fit": "low",
+      "fit_reason": "Employer confirmation is required beyond search output.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

@@ -1,0 +1,268 @@
+{
+  "id": "p19",
+  "name": "Selective Zurich risk and compliance analyst",
+  "context": {
+    "occupation": "Risk/compliance analyst",
+    "seniority": "Experienced individual contributor",
+    "geography": "Zurich commuting area, Switzerland",
+    "languages": [
+      "de",
+      "en"
+    ],
+    "employment_state": "Employed, low-urgency exploration",
+    "constraints": [
+      "80–100% workload",
+      "Hybrid working",
+      "Selective banks and insurers",
+      "Discreet search without public availability signals"
+    ],
+    "company_awareness": "Has a small employer shortlist and knows sector terminology in German and English."
+  },
+  "overlap_tags": [
+    "finance",
+    "compliance",
+    "Zurich",
+    "German",
+    "English",
+    "hybrid",
+    "part-time",
+    "passive-search",
+    "privacy"
+  ],
+  "trigger": "A possible office-attendance change prompts a quiet review of alternatives at a few preferred banks and insurers.",
+  "searches_run": [
+    {
+      "query": "Compliance Analyst Zürich 80 100 hybrid Jobs",
+      "observation": "Returned jobs.ch, Indeed, LinkedIn and reposted vacancies with workload ranges. Direct jobs.ch inspection exposed workload, contract, language and job-alert controls, plus related roles beyond compliance.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "diskret Jobsuche Job Alert Bank Compliance Schweiz",
+      "observation": "Combined retrieval chiefly returned ordinary compliance vacancy pages and job-alert entry points. It did not substantiate confidential-search guarantees or a dedicated privacy-oriented product.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.jobs.ch/de/stellenangebote/?location=z%C3%BCrich&term=compliance%20analyst",
+      "title": "Compliance analyst Jobs in Zürich | jobs.ch",
+      "supports": "Direct inspection shows workload/language/contract filters, alerts and mixed compliance-adjacent titles."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.workpool-jobs.ch/compliance-officer-80-100-zuerich-hybrid-in-zuerich/10010530sf",
+      "title": "Compliance Officer 80–100% Zürich Hybrid | Workpool",
+      "supports": "Retrieved title combines workload and hybrid criteria; current vacancy not independently verified."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.efinancialcareers.com/jobs/compliance/in-zurich%2Csuisse",
+      "title": "Compliance jobs in Zürich | eFinancialCareers",
+      "supports": "Retrieval advertised job alerts on a sector-specific search page, an alternative to another tool."
+    }
+  ],
+  "best_entry_page": {
+    "type": "product landing",
+    "primary_query": "Job Alert Compliance Zürich ausgewählte Banken",
+    "promise": "Follow covered banks and insurers for new risk and compliance openings, with source requirements for workload and hybrid arrangements.",
+    "cta": "Select preferred employers and save a free alert.",
+    "proof_needed": [
+      "Coverage list for target Swiss financial employers",
+      "Source examples showing separate workload and hybrid percentage",
+      "Verified documentation of account, saved-search and tracker visibility",
+      "German and English role/title recall",
+      "Explain paid description criteria checks and unknown information"
+    ]
+  },
+  "conversion_objections": [
+    "I already receive jobs.ch alerts.",
+    "Does my employer see that I follow competitors?",
+    "Will 80% mean workload or remote attendance?",
+    "Are compliance officer and analyst both captured without irrelevant IT jobs?",
+    "I may not apply for months; a subscription must show sustained value."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "garantiert anonyme Jobsuche Schweiz",
+      "reason": "No absolute anonymity or privacy guarantees have been established."
+    },
+    {
+      "query": "Compliance Beratung Schweiz",
+      "reason": "Professional compliance advice is a different intent from job search."
+    }
+  ],
+  "message_to_founder": "Simulation: Ich möchte nur von passenden Stellen bei wenigen Banken und Versicherungen hören. Zeigt mir das Pensum, die genaue Hybrid-Regelung und nachvollziehbar, wer meine gespeicherten Suchen sehen kann; mehr Benachrichtigungen allein helfen mir nicht.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "Compliance Analyst Zürich 80 100 hybrid Jobs",
+      "language": "de",
+      "english_gloss": "Compliance analyst Zurich 80–100% hybrid jobs",
+      "intent": "transactional",
+      "need": "Find compatible workload and attendance",
+      "cluster": "compliance Zurich",
+      "product_fit": "high",
+      "fit_reason": "Covered roles are searchable; workload and attendance need source checks.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Risk Analyst Jobs Zürich",
+      "language": "de",
+      "english_gloss": "Risk analyst jobs Zurich",
+      "intent": "transactional",
+      "need": "Survey role options",
+      "cluster": "risk analyst jobs",
+      "product_fit": "high",
+      "fit_reason": "Occupation and location filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "compliance officer jobs Zurich insurance",
+      "language": "en",
+      "english_gloss": "compliance officer jobs Zurich insurance",
+      "intent": "transactional",
+      "need": "Explore insurers using English titles",
+      "cluster": "insurance compliance",
+      "product_fit": "high",
+      "fit_reason": "Company and role selection fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "diskret Jobsuche Job Alert Bank Compliance Schweiz",
+      "language": "de",
+      "english_gloss": "Discreet job search alerts bank compliance Switzerland",
+      "intent": "informational",
+      "need": "Understand low-visibility monitoring options",
+      "cluster": "discreet search",
+      "product_fit": "medium",
+      "fit_reason": "Alerts reduce repeated search; confidentiality guarantees require verification.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "Compliance Stellen 80 Prozent Homeoffice Zürich",
+      "language": "de",
+      "english_gloss": "Compliance jobs 80 percent home office Zurich",
+      "intent": "transactional",
+      "need": "Distinguish reduced workload from home-office share",
+      "cluster": "workload and hybrid",
+      "product_fit": "medium",
+      "fit_reason": "Text checks can help but numeric context matters.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Swiss Re compliance careers Zurich",
+      "language": "en",
+      "english_gloss": "Swiss Re compliance careers Zurich",
+      "intent": "navigational",
+      "need": "Inspect a known insurer directly",
+      "cluster": "employer careers",
+      "product_fit": "high",
+      "fit_reason": "Company monitoring fits if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Zürcher Kantonalbank Risk Compliance Stellen",
+      "language": "de",
+      "english_gloss": "Zurich Cantonal Bank risk compliance vacancies",
+      "intent": "navigational",
+      "need": "Check a shortlisted bank",
+      "cluster": "bank careers",
+      "product_fit": "high",
+      "fit_reason": "Strong company-first fit subject to coverage.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Job Alert mehrere Banken Zürich",
+      "language": "de",
+      "english_gloss": "Job alert for multiple banks Zurich",
+      "intent": "commercial",
+      "need": "Consolidate a known list",
+      "cluster": "multi-company alerts",
+      "product_fit": "high",
+      "fit_reason": "One saved search across selected employers fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "jobs.ch Job Alert nur bestimmte Firmen",
+      "language": "de",
+      "english_gloss": "jobs.ch job alert only certain companies",
+      "intent": "informational",
+      "need": "Check whether an existing tool is sufficient",
+      "cluster": "alerts alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Existing service may already solve enough of the need.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "are saved job searches visible to employers",
+      "language": "en",
+      "english_gloss": "are saved job searches visible to employers",
+      "intent": "informational",
+      "need": "Verify visibility before registration",
+      "cluster": "search privacy",
+      "product_fit": "medium",
+      "fit_reason": "Needs factual product privacy documentation, not inference.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Job Alert Compliance Zürich kostenlos",
+      "language": "de",
+      "english_gloss": "Free compliance job alert Zurich",
+      "intent": "transactional",
+      "need": "Set a low-commitment search",
+      "cluster": "free compliance alerts",
+      "product_fit": "high",
+      "fit_reason": "Free alerts suit low urgency.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "save bank job applications interview notes privately",
+      "language": "en",
+      "english_gloss": "save bank job applications interview notes privately",
+      "intent": "transactional",
+      "need": "Record sparse applications and interview details",
+      "cluster": "application notes",
+      "product_fit": "medium",
+      "fit_reason": "Tracker exists; privacy promises require validation.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

@@ -1,0 +1,278 @@
+{
+  "id": "p46",
+  "name": "Senior US designer seeking reduced hours with caregiving commitments",
+  "context": {
+    "occupation": "Digital product designer",
+    "seniority": "Senior",
+    "geography": "United States",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed; selectively exploring a sustainable reduced-hours move",
+    "constraints": [
+      "Part-time or job-share",
+      "US-compatible employment",
+      "Caregiving responsibilities require agreed working hours",
+      "Remote alone is insufficient",
+      "Retain meaningful senior design scope"
+    ],
+    "company_awareness": "Selective company list; willing to add employers with explicit reduced-hours arrangements"
+  },
+  "overlap_tags": [
+    "design",
+    "senior",
+    "US",
+    "English",
+    "part-time",
+    "caregiving",
+    "selective-employers"
+  ],
+  "trigger": "Finds many remote senior roles but none clearly state fewer hours or a viable job-share arrangement.",
+  "searches_run": [
+    {
+      "query": "senior product designer part time jobs United States",
+      "observation": "Retrieval included broad senior-design boards, part-time consulting and contract listings. A direct employer PDF described remote US part-time design, but it did not establish senior scope, exact hours or job-share support.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "product designer job share part time 20 hours United States",
+      "observation": "Results included 20-hour weekly contracts, a fractional role offering 20–30 hours monthly and a historical three-month engagement. No explicit current job-share arrangement was verified; hours units and duration materially differ.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.indeed.com/q-Senior-Product-Designer-l-United-States-jobs.html",
+      "title": "Senior Product Designer US — Indeed",
+      "supports": "Retrieved category mixes a part-time role with full-time senior roles; no fitting-vacancy count is inferred."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.cltexam.com/wp-content/uploads/2026/02/Product-Designer-Part-Time.pdf",
+      "title": "Product Designer Part-Time — Classic Learning Test",
+      "supports": "Direct employer PDF states part-time and remote within the US, with scheduling flexibility; exact hours, job sharing and senior-level scope are not established."
+    },
+    {
+      "id": "s3",
+      "url": "https://jobs.gusto.com/postings/serious-development-fractional-product-systems-designer-web-ios-remote-u-s-based-dd6c6ced-eb16-4387-aa85-b3df77ad8dee",
+      "title": "Fractional Product Systems Designer — Serious Development",
+      "supports": "Retrieved employer result states US-based remote work and 20–30 hours per month, illustrating why fractional is not equivalent to a regular part-time week."
+    },
+    {
+      "id": "s4",
+      "url": "https://jobs.lever.co/jobgether/ed113dcf-7c36-47e9-af3c-790e42d52426",
+      "title": "Senior Product Designer Contract — Jobgether",
+      "supports": "Retrieved intermediary listing states approximately 20 hours weekly for 60–90 days, with possible full-time transition; neither job share nor ongoing part-time employment is established."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "senior product designer part time US",
+    "promise": "Compare reduced-hours design opportunities by weekly commitment, duration, senior scope and stated US location rules, while distinguishing job share from contracting.",
+    "cta": "Compare explicit hours and role terms",
+    "proof_needed": [
+      "Verified relevant employer coverage",
+      "Exact weekly versus monthly hours",
+      "Separate temporary contract, permanent part-time and job-share statements",
+      "Office/meeting obligations alongside remote labels",
+      "Senior scope demonstrated by responsibilities",
+      "Missing hours or job-share policy left unknown",
+      "New indexable guide; existing search/company pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Does part-time mean twenty hours per week or per month?",
+    "Is reduced workload matched by realistic responsibilities?",
+    "Are meetings compatible with my stated availability?",
+    "Is this an ongoing role or a short project?",
+    "Can a job share actually be discussed with this team?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "remote jobs for caregivers guaranteed flexible",
+      "reason": "Remote location does not establish schedule flexibility."
+    },
+    {
+      "query": "senior product designer job share guaranteed",
+      "reason": "Job-share availability is not demonstrated."
+    },
+    {
+      "query": "caregiver benefits eligibility US",
+      "reason": "Benefits/legal advice is outside product scope."
+    }
+  ],
+  "message_to_founder": "Simulation: I want to keep doing senior design work with fewer, agreed hours. Show the weekly commitment and team expectations before calling a role flexible; working from home does not solve the schedule by itself.",
+  "confidence_and_limits": "Synthetic persona. Exactly two searches and one direct employer PDF inspected. No specific caregiving schedule, gender or capability assumption. No employer arrangement, benefit or vacancy availability guaranteed. Other rows are hypotheses; job share remains an unmet evidence need rather than an observed offering.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "senior product designer part time jobs United States",
+      "language": "en",
+      "english_gloss": "senior product designer part time jobs United States",
+      "intent": "transactional",
+      "need": "Find reduced-hours senior work.",
+      "cluster": "US senior design part-time",
+      "product_fit": "medium",
+      "fit_reason": "Employment-type and seniority filters help; hours need reading.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "part time UX designer jobs US",
+      "language": "en",
+      "english_gloss": "part time UX designer jobs US",
+      "intent": "transactional",
+      "need": "Broaden role titles.",
+      "cluster": "US UX part-time",
+      "product_fit": "medium",
+      "fit_reason": "Occupation filtering helps if scope matches.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "senior product designer jobs remote US",
+      "language": "en",
+      "english_gloss": "senior product designer jobs remote US",
+      "intent": "transactional",
+      "need": "Survey employers before narrowing.",
+      "cluster": "US remote design",
+      "product_fit": "medium",
+      "fit_reason": "Remote alone misses the reduced-hours requirement.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "product designer job share part time 20 hours United States",
+      "language": "en",
+      "english_gloss": "product designer job share part time 20 hours United States",
+      "intent": "transactional",
+      "need": "Find explicit arrangements.",
+      "cluster": "design job share",
+      "product_fit": "medium",
+      "fit_reason": "Text can identify stated arrangements, not negotiate them.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "fractional product designer hours per week",
+      "language": "en",
+      "english_gloss": "fractional product designer hours per week",
+      "intent": "informational",
+      "need": "Clarify variable engagement wording.",
+      "cluster": "fractional hours",
+      "product_fit": "high",
+      "fit_reason": "Guide can distinguish hours and duration.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "permanent part time senior UX designer",
+      "language": "en",
+      "english_gloss": "permanent part time senior UX designer",
+      "intent": "transactional",
+      "need": "Avoid a short project when seeking stability.",
+      "cluster": "ongoing reduced hours",
+      "product_fit": "medium",
+      "fit_reason": "Contract and hours evidence must both be present.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "product design job share employers US",
+      "language": "en",
+      "english_gloss": "product design job share employers US",
+      "intent": "informational",
+      "need": "Build a shortlist with actual policies.",
+      "cluster": "job-share employers",
+      "product_fit": "medium",
+      "fit_reason": "Company-first fits but verified examples are required.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "remote part time design jobs core meeting hours",
+      "language": "en",
+      "english_gloss": "remote part time design jobs core meeting hours",
+      "intent": "transactional",
+      "need": "Check schedule compatibility.",
+      "cluster": "meeting commitments",
+      "product_fit": "medium",
+      "fit_reason": "Description matching cannot fill missing meeting expectations.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "senior designer 3 days a week US",
+      "language": "en",
+      "english_gloss": "senior designer 3 days a week US",
+      "intent": "transactional",
+      "need": "Search one plausible reduced-week pattern.",
+      "cluster": "reduced-week design",
+      "product_fit": "medium",
+      "fit_reason": "Illustrative search preference, not an assumed caregiving schedule.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "part time product design employee vs contract role",
+      "language": "en",
+      "english_gloss": "part time product design employee vs contract role",
+      "intent": "informational",
+      "need": "Compare relationship and continuity.",
+      "cluster": "part-time contract distinction",
+      "product_fit": "medium",
+      "fit_reason": "Source terminology helps; no legal advice.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions hiring manager part time design workload",
+      "language": "en",
+      "english_gloss": "questions hiring manager part time design workload",
+      "intent": "informational",
+      "need": "Check how scope scales with hours.",
+      "cluster": "workload due diligence",
+      "product_fit": "medium",
+      "fit_reason": "Guide and indexed-job notes fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "new part time design jobs selected companies",
+      "language": "en",
+      "english_gloss": "new part time design jobs selected companies",
+      "intent": "transactional",
+      "need": "Follow researched employers selectively.",
+      "cluster": "target employer alerts",
+      "product_fit": "high",
+      "fit_reason": "Monitoring fits low urgency after company and role verification.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

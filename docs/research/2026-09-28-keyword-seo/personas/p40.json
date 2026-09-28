@@ -1,0 +1,276 @@
+{
+  "id": "p40",
+  "name": "International student seeking local work around London classes",
+  "hypothetical": true,
+  "context": {
+    "occupation": "University student seeking part-time retail, hospitality or campus work",
+    "seniority": "Entry-level; prior work experience unspecified",
+    "geography": "London; university and neighbourhood unspecified",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Studying; seeking paid part-time work",
+    "constraints": [
+      "Schedule must fit classes",
+      "Short practical commute",
+      "Wants identifiable employers and paid work",
+      "Employer requirements and permitted work/hours must be checked independently",
+      "No assumed visa conditions"
+    ],
+    "company_awareness": "Little employer preference; campus and nearby workplaces first"
+  },
+  "overlap_tags": [
+    "student",
+    "london",
+    "part-time",
+    "local",
+    "entry-level",
+    "timetable",
+    "international"
+  ],
+  "trigger": "The class timetable becomes clear and the student needs a manageable source of earnings without accepting incompatible shifts.",
+  "searches_run": [
+    {
+      "query": "part time student jobs London evenings weekends",
+      "observation": "Results included job boards, campus resources and local roles with variable hours. Part-time search pages also included professional posts or varying shifts, so the label did not establish compatibility with lectures.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "London university student part time jobs employer careers fixed weekly hours",
+      "observation": "University careers services and campus staffing schemes appeared alongside roles requiring professional experience. Direct Roehampton inspection described paid flexible campus work and registration of availability, rather than a guaranteed vacancy or hours.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://uk.indeed.com/q-part-time-student-evening-work-l-london-jobs.html",
+      "title": "Part-time student evening work jobs — Indeed",
+      "supports": "Retrieved page includes local school lettings roles advertised at average weekly hours, illustrating schedule details beyond a part-time label. Current individual openings were not inspected."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.roehampton.ac.uk/working-at-roehampton/urjobs/",
+      "title": "URJobs temporary staff — University of Roehampton",
+      "supports": "Direct university page describes paid campus roles, availability preferences and a registration/matching process. It is not a confirmed vacancy for this student; campus eligibility and personal work conditions remain unverified."
+    },
+    {
+      "id": "s3",
+      "url": "https://info.lse.ac.uk/current-students/careers/information-and-resources/internships-and-work-experience/part-time-work",
+      "title": "Part-time work — LSE Careers",
+      "supports": "Retrieved university guidance points students to its own vacancy platform and campus/external options. The persona's access to this institution's services is not assumed."
+    }
+  ],
+  "best_entry_page": {
+    "type": "do not target",
+    "primary_query": "part time jobs London international students",
+    "promise": "Do not build a dedicated eligibility-led acquisition promise from current capabilities; local covered-employer search can only supplement the student's existing university routes.",
+    "cta": "If relevant nearby employers are covered, use free searches and inspect the actual shift requirements.",
+    "proof_needed": [
+      "Verify local hourly-work and campus employer coverage.",
+      "Prove useful locality and schedule detail before prioritising this audience.",
+      "No personal eligibility or allowed-hours determination from job descriptions.",
+      "Do not present staffing registration as an immediately open job.",
+      "Do not imply timetable integration, shift booking or guaranteed hours.",
+      "Any future page must clearly distinguish supplemental search from institutional advice."
+    ]
+  },
+  "conversion_objections": [
+    "Are there jobs near my campus or only graduate careers?",
+    "Can I see days and shift lengths?",
+    "Is this a specific opening or just a staffing pool?",
+    "Does your site know my personal restrictions?",
+    "Why use this before my university's job service?",
+    "Will alerts be useful before I know which employers to follow?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "jobs guaranteed legal for student visa London",
+      "reason": "Personal eligibility and permitted work cannot be promised."
+    },
+    {
+      "query": "international student allowed work hours calculator",
+      "reason": "No legal or visa determination capability demonstrated."
+    },
+    {
+      "query": "cash jobs no checks London student",
+      "reason": "Does not fit the legitimate identifiable-employer search."
+    },
+    {
+      "query": "book flexible student shifts tonight",
+      "reason": "Shift-booking marketplace capability is not demonstrated."
+    }
+  ],
+  "message_to_founder": "Simulation: I need a nearby paid shift that fits between classes, not a list of graduate schemes. I might use free searches if you cover those employers, but I would still check my own work conditions and the actual rota separately.",
+  "confidence_and_limits": "Synthetic student scenario. Two queries and one university-page inspection. No institution, course, visa category, nationality, permitted hours or employer eligibility supplied or inferred. This is a low-priority acquisition hypothesis because campus routes and local schedule matching may serve the need better.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "part time jobs London",
+      "language": "en",
+      "english_gloss": "part time jobs London",
+      "intent": "commercial",
+      "need": "Find paid local work.",
+      "cluster": "london-part-time",
+      "product_fit": "medium",
+      "fit_reason": "Basic location/type fit; local inventory unproven.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "student jobs near me",
+      "language": "en",
+      "english_gloss": "student jobs near me",
+      "intent": "commercial",
+      "need": "Minimise commute.",
+      "cluster": "local-student-work",
+      "product_fit": "low",
+      "fit_reason": "Exact locality unknown and route matching not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "weekend jobs London",
+      "language": "en",
+      "english_gloss": "weekend jobs London",
+      "intent": "commercial",
+      "need": "Fit work around classes.",
+      "cluster": "weekend-work",
+      "product_fit": "medium",
+      "fit_reason": "Day-specific availability requires source text.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "part time student jobs London evenings weekends",
+      "language": "en",
+      "english_gloss": "part time student jobs London evenings weekends",
+      "intent": "commercial",
+      "need": "Explore compatible shifts.",
+      "cluster": "student-evening-weekend",
+      "product_fit": "medium",
+      "fit_reason": "Part-time filtering does not guarantee schedule fit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "London university student part time jobs employer careers fixed weekly hours",
+      "language": "en",
+      "english_gloss": "London university student part time jobs employer careers fixed weekly hours",
+      "intent": "commercial",
+      "need": "Find clear employer requirements.",
+      "cluster": "campus-hours",
+      "product_fit": "low",
+      "fit_reason": "Campus staffing routes may be more useful.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "campus jobs library assistant student London",
+      "language": "en",
+      "english_gloss": "campus jobs library assistant student London",
+      "intent": "commercial",
+      "need": "Explore nearby university work.",
+      "cluster": "campus-jobs",
+      "product_fit": "low",
+      "fit_reason": "Institution coverage and access unknown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "retail assistant London 8 hours weekend",
+      "language": "en",
+      "english_gloss": "retail assistant London 8 hours weekend",
+      "intent": "commercial",
+      "need": "Find a small stated commitment.",
+      "cluster": "retail-hours",
+      "product_fit": "medium",
+      "fit_reason": "Employment type and text can help if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "part time jobs fixed shifts around university timetable",
+      "language": "en",
+      "english_gloss": "part time jobs fixed shifts around university timetable",
+      "intent": "commercial",
+      "need": "Avoid clashes with classes.",
+      "cluster": "timetable-fit",
+      "product_fit": "low",
+      "fit_reason": "No timetable integration is demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "student job advert minimum availability weekends",
+      "language": "en",
+      "english_gloss": "student job advert minimum availability weekends",
+      "intent": "informational",
+      "need": "Understand employer scheduling demands.",
+      "cluster": "student-availability",
+      "product_fit": "medium",
+      "fit_reason": "Can surface requirements, not negotiate them.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "university careers service part time jobs London",
+      "language": "en",
+      "english_gloss": "university careers service part time jobs London",
+      "intent": "navigational",
+      "need": "Use institutional resources.",
+      "cluster": "university-jobs",
+      "product_fit": "low",
+      "fit_reason": "Another channel may better serve this need.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "free alerts part time retail jobs London",
+      "language": "en",
+      "english_gloss": "free alerts part time retail jobs London",
+      "intent": "commercial",
+      "need": "Follow nearby openings.",
+      "cluster": "local-job-alerts",
+      "product_fit": "medium",
+      "fit_reason": "Free alerts help only with adequate local inventory.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "who can confirm my permitted work hours student London",
+      "language": "en",
+      "english_gloss": "who can confirm my permitted work hours student London",
+      "intent": "informational",
+      "need": "Verify personal conditions independently.",
+      "cluster": "student-work-verification",
+      "product_fit": "low",
+      "fit_reason": "Outside product capability; no legal determination.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

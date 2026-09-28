@@ -1,0 +1,272 @@
+{
+  "id": "p38",
+  "name": "Paris-area social worker seeking stable daytime work",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Social worker",
+    "seniority": "Practising professional; exact qualification unspecified",
+    "geography": "Near Paris; local commute matters",
+    "languages": [
+      "fr"
+    ],
+    "employment_state": "Fixed-term post ending",
+    "constraints": [
+      "Permanent employment",
+      "Daytime schedule",
+      "Nonprofit or hospital setting",
+      "Qualification and client population must match",
+      "Feasible commute"
+    ],
+    "company_awareness": "Knows local institutions but needs current vacancies"
+  },
+  "overlap_tags": [
+    "social-work",
+    "french",
+    "paris",
+    "contract-ending",
+    "permanent",
+    "daytime",
+    "local"
+  ],
+  "trigger": "A fixed-term service contract approaches its end, prompting a search for continuity in a setting and population the worker can support confidently.",
+  "searches_run": [
+    {
+      "query": "travailleur social CDI journée Paris association hôpital",
+      "observation": "Results included associations, hospital PDFs, municipal recruitment and training pages. Broad social-work labels spanned several qualifications and populations; one nonprofit listing described a fixed-term evening/weekend pattern rather than the requested daytime CDI.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "assistant service social CDI Paris horaires journée diplôme public accompagné",
+      "observation": "The sample returned concrete qualification, population and hours language. Direct Valentin Haüy inspection showed a 28-hour CDI for work with visually impaired adults and a stated DEASS requirement, but contact-opening hours were not a job schedule.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.avh.asso.fr/implantations/cfrp-valentin-hauy/offres/assistant-de-service-social-hf",
+      "title": "Assistant de service social — Association Valentin Haüy",
+      "supports": "Direct nonprofit posting states a Paris address, 28-hour CDI, DEASS requirement and adult visual-disability context. No individual daily schedule was specified; footer contact hours are not employee hours."
+    },
+    {
+      "id": "s2",
+      "url": "https://recrutement.samusocial.paris/tshaltefemmes-230321/ASH",
+      "title": "Assistant de service social/Éducateur spécialisé — Samusocial de Paris",
+      "supports": "Retrieved employer snippet describes required diplomas, a women-focused service, a ten-month CDD with possible CDI and late/weekend shifts. A possible future CDI is not a current permanent contract."
+    },
+    {
+      "id": "s3",
+      "url": "https://travaillerpourparis.offres.paris.fr/13969/4/assistant-ou-assistante-socio-educative-d-accompagnement-f-h?src=Indeed",
+      "title": "Assistant socio-éducatif d'accompagnement — Ville de Paris",
+      "supports": "Retrieved official employer snippet includes required qualifications, presence during opening hours and on-call/permanence obligations, illustrating schedule complexity."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "emploi travailleur social CDI journée Paris",
+    "promise": "Compare local social-work postings by stated contract, service population, qualification requirements and schedule, with direct source links.",
+    "cta": "Check covered local employers and save a search using your actual professional title.",
+    "proof_needed": [
+      "Verify nonprofit and hospital coverage before prioritising this landing.",
+      "Keep DEASS, DEES and other qualifications distinct; do not infer equivalence.",
+      "Show population and actual workplace, not only organisation headquarters.",
+      "Do not use contact hours as employee shifts or CDD-to-CDI possibilities as CDI.",
+      "Unknown schedules remain unknown in Pro description checks.",
+      "New indexable French guide required."
+    ]
+  },
+  "conversion_objections": [
+    "Are my local associations covered?",
+    "Will you mix social-work qualifications as if interchangeable?",
+    "Who would I work with in this service?",
+    "Does daytime still include evenings or on-call periods?",
+    "Is this a real CDI or only a possible extension?",
+    "How far is the actual workplace?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "équivalence DEASS DEES automatique",
+      "reason": "Qualification equivalence is not demonstrated and needs independent verification."
+    },
+    {
+      "query": "formation travailleur social Paris",
+      "reason": "Training intent does not match an experienced job search."
+    },
+    {
+      "query": "emploi social journée garanti sans astreinte",
+      "reason": "No schedule guarantee can be inferred from labels."
+    }
+  ],
+  "message_to_founder": "Simulation: Mon contrat se termine et je cherche un poste durable, auprès d'un public que je connais. Montrez le diplôme demandé, le lieu exact et les horaires du poste; le nom d'une association et la mention CDI ne suffisent pas.",
+  "confidence_and_limits": "Synthetic French searcher. Two queries and one direct nonprofit inspection; no legal/credential or service-quality conclusions. Exact qualification, population preference and home location are unknown, limiting actual matching.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "emploi travailleur social Paris",
+      "language": "fr",
+      "english_gloss": "Social worker jobs Paris",
+      "intent": "commercial",
+      "need": "Find local roles.",
+      "cluster": "paris-social-work",
+      "product_fit": "medium",
+      "fit_reason": "Coverage outside tech must be proven.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "assistant social CDI Île de France",
+      "language": "fr",
+      "english_gloss": "Permanent social worker jobs Île-de-France",
+      "intent": "commercial",
+      "need": "Seek stability.",
+      "cluster": "social-work-cdi",
+      "product_fit": "high",
+      "fit_reason": "Employment type and locality filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "offres emploi association Paris",
+      "language": "fr",
+      "english_gloss": "Nonprofit jobs Paris",
+      "intent": "commercial",
+      "need": "Explore employers.",
+      "cluster": "nonprofit-paris",
+      "product_fit": "medium",
+      "fit_reason": "Broad search includes unrelated roles.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "travailleur social CDI journée Paris association hôpital",
+      "language": "fr",
+      "english_gloss": "Social worker permanent daytime Paris nonprofit hospital",
+      "intent": "commercial",
+      "need": "Combine constraints.",
+      "cluster": "daytime-social-work",
+      "product_fit": "medium",
+      "fit_reason": "Hours and setting need description evidence.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "assistant service social CDI Paris horaires journée diplôme public accompagné",
+      "language": "fr",
+      "english_gloss": "Social service assistant permanent Paris daytime qualification population served",
+      "intent": "commercial",
+      "need": "Inspect role-specific requirements.",
+      "cluster": "social-work-fit",
+      "product_fit": "medium",
+      "fit_reason": "Cannot infer qualification equivalence.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "assistant social hôpital Paris recrutement",
+      "language": "fr",
+      "english_gloss": "Hospital social worker Paris recruitment",
+      "intent": "commercial",
+      "need": "Check hospital work.",
+      "cluster": "hospital-social-work",
+      "product_fit": "medium",
+      "fit_reason": "Employer coverage matters.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "emploi travailleur social adultes handicap Paris",
+      "language": "fr",
+      "english_gloss": "Social work jobs adults disability Paris",
+      "intent": "commercial",
+      "need": "Explore population-specific roles.",
+      "cluster": "social-work-population",
+      "product_fit": "medium",
+      "fit_reason": "Illustrative population; actual preference unspecified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "assistant social horaires lundi vendredi sans nuit",
+      "language": "fr",
+      "english_gloss": "Social worker Monday-Friday no night hours",
+      "intent": "commercial",
+      "need": "Avoid unsuitable schedules.",
+      "cluster": "social-work-hours",
+      "product_fit": "medium",
+      "fit_reason": "Explicit shift language is needed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "CDD possibilité CDI travailleur social",
+      "language": "fr",
+      "english_gloss": "Fixed-term possible permanent social worker",
+      "intent": "informational",
+      "need": "Distinguish current and future contract.",
+      "cluster": "contract-wording",
+      "product_fit": "medium",
+      "fit_reason": "Text reading can surface conditional language.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "emploi social Paris lieu de travail transports",
+      "language": "fr",
+      "english_gloss": "Social jobs Paris workplace public transport",
+      "intent": "commercial",
+      "need": "Assess commute.",
+      "cluster": "social-work-commute",
+      "product_fit": "medium",
+      "fit_reason": "Location supports discovery; route calculation not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "alerte emploi assistant social CDI Paris",
+      "language": "fr",
+      "english_gloss": "Permanent social worker job alerts Paris",
+      "intent": "commercial",
+      "need": "Catch suitable openings.",
+      "cluster": "social-work-alerts",
+      "product_fit": "medium",
+      "fit_reason": "Useful with adequate employer coverage.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "poste social diplôme requis expérience public accompagné",
+      "language": "fr",
+      "english_gloss": "Social job qualification required population experience",
+      "intent": "informational",
+      "need": "Check personal fit before applying.",
+      "cluster": "qualification-source-check",
+      "product_fit": "low",
+      "fit_reason": "Product can show requirements, not certify qualification fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}
