@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -205,8 +206,7 @@ def test_duplicate_check_remains_required_for_seeded_issue() -> None:
     ).read_text()
     rendered = template.format(
         issue=123,
-        issue_title="Add company: Acme",
-        issue_body=body,
+        issue_evidence=json.dumps({"title": "Add company: Acme", "body": body}),
         ats_inventory_context=context,
     )
 

@@ -112,7 +112,7 @@ jobs:
         working-directory: apps/crawler
         run: |
           uv run --frozen python ../../scripts/check-agent-contracts.py
-          uv run --frozen pytest -q tests/test_agent_contracts.py tests/test_workspace_state.py tests/test_ws_commands.py tests/workspace/lib/test_select.py tests/test_labeller_render.py tests/test_codex_runner.py tests/test_codex_runner_deploy_config.py
+          uv run --frozen pytest -q tests/test_agent_contracts.py tests/test_workspace_state.py tests/test_ws_commands.py tests/test_ws_ats_seed.py tests/test_deploy_script.py::test_operator_guidance_preserves_generation_and_credential_boundaries tests/workspace/lib/test_select.py tests/test_labeller_render.py tests/test_codex_runner.py tests/test_codex_runner_deploy_config.py
 
       - name: Verify privileged Codex filesystem boundary
         run: sudo python3 scripts/test-codex-privilege-boundary.py
