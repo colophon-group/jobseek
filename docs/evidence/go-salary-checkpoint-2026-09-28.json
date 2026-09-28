@@ -109,5 +109,5 @@
   "private_evidence_dir": "/Users/Viktor/.codex/migration-evidence/go-salary/2026-09-28",
   "resumption_document": "docs/24-go-lightpanda-salary-checkpoint-2026-09-28.md",
   "pr": "https://github.com/colophon-group/jobseek/pull/10177",
-  "pr_state": "draft; current-head CI gates must be read at resumption"
+  "pr_state": "draft; Crawler Deploy Gate intentionally fails: Draft PR; no merge authority is granted. Required CI/image results must be read at resumption."
 }

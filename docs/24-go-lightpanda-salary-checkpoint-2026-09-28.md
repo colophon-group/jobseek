@@ -15,6 +15,10 @@ production work. Continue implementation from here when the migration resumes.
 - Draft [PR #10177](https://github.com/colophon-group/jobseek/pull/10177) preserves
   the candidate and this handoff. Required CI/image gates must be read from
   the current PR head; no CI completion or deployment is assumed here.
+  **Crawler Deploy Gate intentionally fails while the PR is draft** with
+  `Draft PR; no merge authority is granted`. This is the saved stopping state,
+  not a salary failure. Reconciliation evaluates it again after the PR is
+  marked ready at the supported resumption step.
 - Candidate crawler version: **0.13.899**; **not deployed**.
 - This document/evidence are a second commit on the same branch. Resolve the
   full draft PR head and required checks from GitHub before continuing:
@@ -141,7 +145,8 @@ or use a mutable Docker image tag.
 1. Resolve the draft PR/current head above. Fetch latest main in an isolated
    checkout, account for any newer implementation/deployment, and update the
    candidate's base/VERSION if needed. Required CI and Crawler Deploy Gate must
-   pass. Fix a concrete failure once observed; do not start another optional
+   pass before merge; the draft deployment gate becomes eligible in step 3.
+   Fix a concrete failure once observed; do not start another optional
    verification loop after focused checks and required gates suffice.
 2. Re-read production `success.env`, B0 receipt and selector state. If revision
    or owner changed, use that authoritative state instead of this historical
