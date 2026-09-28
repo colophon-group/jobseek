@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "companies": [
     {
+      "slug": "abb",
+      "name": "ABB",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/abb/icon-790ac08eea0a2cc2811dc69c5a622ea326b28e44abe925510ec5849bd776812a.webp",
+      "industryName": "Manufacturing",
+      "employeeCountRange": 8,
+      "foundedYear": 1988,
+      "descriptions": {
+        "en": "ABB is a global technology company specializing in electrification and automation. Its engineering and digital solutions help industries improve efficiency, productivity, and sustainability.",
+        "de": "ABB ist ein globales Technologieunternehmen mit Schwerpunkt auf Elektrifizierung und Automatisierung. Seine Engineering- und Digitallösungen helfen der Industrie, Effizienz, Produktivität und Nachhaltigkeit zu steigern.",
+        "fr": "ABB est une entreprise technologique mondiale spécialisée dans l’électrification et l’automatisation. Ses solutions d’ingénierie et numériques aident les industries à améliorer leur efficacité, leur productivité et leur durabilité.",
+        "it": "ABB è un’azienda tecnologica globale specializzata nell’elettrificazione e nell’automazione. Le sue soluzioni ingegneristiche e digitali aiutano le industrie a migliorare efficienza, produttività e sostenibilità."
+      }
+    },
+    {
       "slug": "accenture",
       "name": "Accenture",
       "icon": "https://jobseek-assets.colophon-group.org/companies/accenture/icon.webp",
@@ -69,6 +83,62 @@
         "de": "Schweizer Robotikunternehmen, das autonome Laufroboter fuer industrielle Inspektion und Wartung entwickelt",
         "fr": "Entreprise suisse de robotique developpant des robots autonomes a pattes pour inspection et maintenance industrielles",
         "it": "Azienda svizzera di robotica che sviluppa robot autonomi a zampe per ispezione e manutenzione industriale"
+      }
+    },
+    {
+      "slug": "ascento",
+      "name": "Ascento",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/ascento/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2021,
+      "descriptions": {
+        "en": "Ascento is a Swiss robotics company developing autonomous bipedal patrol robots for outdoor security at data centers, airports, and industrial sites. Founded as an ETH Zurich spinoff, the company deploys its robots across Europe and the United States.",
+        "de": "Ascento ist ein Schweizer Robotikunternehmen, das autonome bipedale Patrouillenroboter für die Außensicherung von Rechenzentren, Flughäfen und Industrieanlagen entwickelt. Das aus der ETH Zürich hervorgegangene Spin-off setzt seine Roboter in Europa und den USA ein.",
+        "fr": "Ascento est une entreprise suisse de robotique qui développe des robots bipèdes autonomes pour la surveillance extérieure de centres de données, d'aéroports et de sites industriels. Issue de l'ETH Zurich, la société déploie ses robots en Europe et aux États-Unis.",
+        "it": "Ascento è un'azienda svizzera di robotica che sviluppa robot bipedi autonomi per la sorveglianza esterna di data center, aeroporti e siti industriali. Nata come spin-off del Politecnico di Zurigo (ETH), l'azienda impiega i propri robot in Europa e negli Stati Uniti."
+      }
+    },
+    {
+      "slug": "auterion",
+      "name": "Auterion",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/auterion/icon.webp",
+      "industryName": "Aerospace & Defense",
+      "employeeCountRange": 3,
+      "foundedYear": 2017,
+      "descriptions": {
+        "en": "Auterion develops an open-source operating system and software platform for autonomous drones, powering commercial and government unmanned aerial systems.",
+        "de": "Auterion entwickelt ein Open-Source-Betriebssystem und eine Softwareplattform fuer autonome Drohnen, die kommerzielle und staatliche unbemannte Luftfahrzeuge antreiben.",
+        "fr": "Auterion developpe un systeme d'exploitation open source et une plateforme logicielle pour drones autonomes, alimentant des aeronefs sans pilote commerciaux et gouvernementaux.",
+        "it": "Auterion sviluppa un sistema operativo open source e una piattaforma software per droni autonomi, alimentando velivoli senza pilota commerciali e governativi."
+      }
+    },
+    {
+      "slug": "bota-systems",
+      "name": "BOTA Systems",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/bota-systems/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2020,
+      "descriptions": {
+        "en": null,
+        "de": null,
+        "fr": null,
+        "it": null
+      }
+    },
+    {
+      "slug": "cascination",
+      "name": "CASCINATION",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/cascination/icon-8808bfb0a039157e0490ce634f1953867d84a8b78dab7d3fd6481b3055abb17d.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": null,
+      "foundedYear": 2009,
+      "descriptions": {
+        "en": "CASCINATION is a medical technology company based in Bern, Switzerland. It develops robotic and image-guided systems for minimally invasive procedures, including HEARO for cochlear implantation and CAS-One IR for tumour ablation.",
+        "de": "CASCINATION ist ein Medizintechnikunternehmen mit Sitz in Bern. Es entwickelt robotische und bildgestützte Systeme für minimalinvasive Eingriffe, darunter HEARO für Cochlea-Implantationen und CAS-One IR für die Tumorablation.",
+        "fr": "CASCINATION est une entreprise de technologie médicale basée à Berne, en Suisse. Elle développe des systèmes robotiques et guidés par imagerie pour les interventions mini-invasives, dont HEARO pour les implants cochléaires et CAS-One IR pour l’ablation des tumeurs.",
+        "it": "CASCINATION è un’azienda di tecnologia medica con sede a Berna, in Svizzera. Sviluppa sistemi robotici e guidati da immagini per interventi mininvasivi, tra cui HEARO per gli impianti cocleari e CAS-One IR per l’ablazione dei tumori."
       }
     },
     {
@@ -142,6 +212,20 @@
       }
     },
     {
+      "slug": "dufour-aerospace",
+      "name": "Dufour Aerospace",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/dufour-aerospace/icon.webp",
+      "industryName": "Aerospace & Defense",
+      "employeeCountRange": 2,
+      "foundedYear": 2015,
+      "descriptions": {
+        "en": "Dufour Aerospace is a Swiss aviation company developing hybrid-electric vertical take-off and landing (eVTOL) aircraft for passenger, cargo, and special mission use.",
+        "de": "Dufour Aerospace ist ein Schweizer Luftfahrtunternehmen, das hybrid-elektrische Senkrechtstart- und -landeflugzeuge (eVTOL) für Passagier-, Fracht- und Spezialeinsätze entwickelt.",
+        "fr": "Dufour Aerospace est une société aéronautique suisse qui développe des aéronefs hybrides-électriques à décollage et atterrissage verticaux (eVTOL) destinés au transport de passagers, de fret et aux missions spéciales.",
+        "it": "Dufour Aerospace è un'azienda aeronautica svizzera che sviluppa velivoli ibridi-elettrici a decollo e atterraggio verticale (eVTOL) per trasporto passeggeri, merci e missioni speciali."
+      }
+    },
+    {
       "slug": "ecorobotix",
       "name": "Ecorobotix",
       "icon": "https://jobseek-assets.colophon-group.org/companies/ecorobotix/icon.webp",
@@ -156,6 +240,48 @@
       }
     },
     {
+      "slug": "embotech",
+      "name": "Embotech",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/embotech/icon-6792911d208f7a54a34548a479a63c500038c391c6454dd44e559f5a782f57d0.svg",
+      "industryName": "Robotics",
+      "employeeCountRange": 3,
+      "foundedYear": 2013,
+      "descriptions": {
+        "en": "Embotech develops autonomous driving systems for industrial logistics. Its technology moves vehicles in factories and automates terminal tractors at ports and logistics sites.",
+        "de": "Embotech entwickelt autonome Fahrsysteme für die Industrielogistik. Die Technologie bewegt Fahrzeuge in Fabriken und automatisiert Terminalzugmaschinen in Häfen und auf Logistikgeländen.",
+        "fr": "Embotech développe des systèmes de conduite autonome pour la logistique industrielle. Sa technologie déplace des véhicules dans les usines et automatise les tracteurs de terminaux dans les ports et sur les sites logistiques.",
+        "it": "Embotech sviluppa sistemi di guida autonoma per la logistica industriale. La sua tecnologia sposta veicoli nelle fabbriche e automatizza i trattori portuali nei porti e nei siti logistici."
+      }
+    },
+    {
+      "slug": "fixposition",
+      "name": "FIXPOSITION",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/fixposition/icon.svg",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2017,
+      "descriptions": {
+        "en": null,
+        "de": null,
+        "fr": null,
+        "it": null
+      }
+    },
+    {
+      "slug": "flexion-robotics",
+      "name": "Flexion Robotics",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/flexion-robotics/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": null,
+      "descriptions": {
+        "en": "Flexion Robotics is a Zurich-based startup building autonomous software for humanoid robots, from manipulation and locomotion to command and control.",
+        "de": "Flexion Robotics ist ein Zürcher Startup, das autonome Software für humanoide Roboter entwickelt – von Manipulation und Fortbewegung bis hin zu Steuerung und Kontrolle.",
+        "fr": "Flexion Robotics est une startup zurichoise qui développe des logiciels autonomes pour robots humanoïdes, de la manipulation et la locomotion au commandement et au contrôle.",
+        "it": "Flexion Robotics è una startup di Zurigo che sviluppa software autonomo per robot umanoidi, dalla manipolazione e locomozione al comando e controllo."
+      }
+    },
+    {
       "slug": "flyability",
       "name": "Flyability",
       "icon": "https://jobseek-assets.colophon-group.org/companies/flyability/icon-7b785837078fc63a6d214ad154f2f66cb6f7df522ab0f4f2294a948de7f6ea24.webp",
@@ -167,6 +293,48 @@
         "de": "Flyability entwickelt kollisionsresistente Indoor-Drohnen und Software für die Inspektion enger und gefährlicher Industrieanlagen. Die Elios-Systeme ermöglichen visuelle Ferninspektionen, Kartierungen und Datenerfassung, ohne dass Menschen gefährliche Bereiche betreten müssen.",
         "fr": "Flyability développe des drones d’intérieur résistants aux collisions et des logiciels destinés à l’inspection d’espaces industriels confinés et dangereux. Ses systèmes Elios permettent l’inspection visuelle à distance, la cartographie et la collecte de données tout en limitant l’exposition humaine aux environnements à risque.",
         "it": "Flyability sviluppa droni da interni resistenti agli urti e software per l’ispezione di spazi industriali confinati e pericolosi. I suoi sistemi Elios consentono ispezioni visive da remoto, mappatura e raccolta dati, riducendo la necessità che le persone entrino in ambienti rischiosi."
+      }
+    },
+    {
+      "slug": "flybotix",
+      "name": "Flybotix",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/flybotix/icon-78b5d6cfda46b093214711c4a4ca776e751f523052da95bcc61bfa9069a3f795.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2019,
+      "descriptions": {
+        "en": "Flybotix is a Swiss robotics company that develops collision-tolerant drones and software for inspecting confined industrial spaces. Its ASIO system combines aerial inspection hardware with tools for analysing inspection data.",
+        "de": "Flybotix ist ein Schweizer Robotikunternehmen, das kollisionsresistente Drohnen und Software zur Inspektion enger industrieller Räume entwickelt. Das ASIO-System verbindet Inspektionsdrohnen mit Werkzeugen zur Auswertung der erfassten Daten.",
+        "fr": "Flybotix est une entreprise suisse de robotique qui développe des drones résistants aux collisions et des logiciels pour inspecter les espaces industriels confinés. Son système ASIO associe des drones à des outils d’analyse des données d’inspection.",
+        "it": "Flybotix è un’azienda svizzera di robotica che sviluppa droni resistenti alle collisioni e software per ispezionare spazi industriali confinati. Il sistema ASIO combina droni per l’ispezione con strumenti di analisi dei dati raccolti."
+      }
+    },
+    {
+      "slug": "fotokite",
+      "name": "Fotokite",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/fotokite/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2014,
+      "descriptions": {
+        "en": null,
+        "de": null,
+        "fr": null,
+        "it": null
+      }
+    },
+    {
+      "slug": "fp-robotics",
+      "name": "F&P Robotics",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/fp-robotics/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2010,
+      "descriptions": {
+        "en": null,
+        "de": null,
+        "fr": null,
+        "it": null
       }
     },
     {
@@ -209,6 +377,34 @@
         "de": "Entwickler von Grafana, der Open-Source-Plattform für Analytik und Monitoring, sowie Loki, Tempo und Mimir für einheitliche Observability von Metriken, Logs und Traces.",
         "fr": "Createur de Grafana, la plateforme open source d'analyse et de monitoring, ainsi que de Loki, Tempo et Mimir pour une observabilite unifiee des metriques, logs et traces.",
         "it": "Creatore di Grafana, la piattaforma open source di analisi e monitoraggio, insieme a Loki, Tempo e Mimir per un'osservabilita unificata di metriche, log e tracce."
+      }
+    },
+    {
+      "slug": "gravis-robotics",
+      "name": "Gravis Robotics",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/gravis-robotics/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 3,
+      "foundedYear": 2022,
+      "descriptions": {
+        "en": "Gravis Robotics develops autonomous earthmoving technology, retrofitting excavators with AI to enable fully autonomous operation. Founded in Zurich, the company operates across 7 countries and serves major construction and infrastructure clients.",
+        "de": "Gravis Robotics entwickelt autonome Erdbewegungstechnologie und rüstet Bagger mit KI für den vollautonomen Betrieb nach. Das in Zürich gegründete Unternehmen ist in 7 Ländern tätig und bedient grosse Bau- und Infrastrukturkunden.",
+        "fr": "Gravis Robotics développe une technologie autonome de terrassement, en équipant des excavatrices d'IA pour un fonctionnement entièrement autonome. Fondée à Zurich, l'entreprise opère dans 7 pays et sert de grands clients du BTP et de l'infrastructure.",
+        "it": "Gravis Robotics sviluppa tecnologie autonome per il movimento terra, dotando gli escavatori di IA per il funzionamento completamente autonomo. Fondata a Zurigo, l'azienda opera in 7 paesi e serve importanti clienti del settore edile e infrastrutturale."
+      }
+    },
+    {
+      "slug": "hexagon-robotics",
+      "name": "Hexagon Robotics",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/hexagon-robotics/icon.svg",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2025,
+      "descriptions": {
+        "en": "Hexagon Robotics is a division of Hexagon AB that develops AEON, a humanoid robot built for industrial applications. Based in Zurich, the company combines precision measurement technology and AI expertise to build autonomous solutions.",
+        "de": "Hexagon Robotics ist eine Abteilung von Hexagon AB, die AEON entwickelt, einen humanoiden Roboter für industrielle Anwendungen. Das Unternehmen mit Sitz in Zürich verbindet Präzisionsmesstechnik und KI-Expertise zur Entwicklung autonomer Lösungen.",
+        "fr": "Hexagon Robotics est une division de Hexagon AB qui développe AEON, un robot humanoïde conçu pour des applications industrielles. Basée à Zurich, l'entreprise allie technologies de mesure de précision et expertise en IA pour créer des solutions autonomes.",
+        "it": "Hexagon Robotics è una divisione di Hexagon AB che sviluppa AEON, un robot umanoide progettato per applicazioni industriali. Con sede a Zurigo, l'azienda combina tecnologie di misurazione di precisione e competenze in IA per creare soluzioni autonome."
       }
     },
     {
@@ -282,6 +478,20 @@
       }
     },
     {
+      "slug": "mimic",
+      "name": "Mimic",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/mimic/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2023,
+      "descriptions": {
+        "en": "Robotics company developing physical AI systems to automate tedious tasks in manufacturing and logistics, enabling scalable robot manipulation.",
+        "de": "Robotikunternehmen, das physische KI-Systeme zur Automatisierung von Routineaufgaben in Fertigung und Logistik entwickelt und skalierbare Robotermanipulation ermoeglicht.",
+        "fr": "Entreprise de robotique developpant des systemes de IA physique pour automatiser les taches repetitives dans la fabrication et la logistique.",
+        "it": "Azienda di robotica che sviluppa sistemi di IA fisica per automatizzare compiti ripetitivi nella produzione e nella logistica, rendendo scalabile la manipolazione robotica."
+      }
+    },
+    {
       "slug": "netflix",
       "name": "Netflix",
       "icon": "https://jobseek-assets.colophon-group.org/companies/netflix/icon.webp",
@@ -352,6 +562,48 @@
       }
     },
     {
+      "slug": "rigitech",
+      "name": "RigiTech",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/rigitech/icon-f18c35e9a90d3f2ab21be83ccd38505b0ef3e8595184c58553b365deab44b51b.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": null,
+      "foundedYear": 2018,
+      "descriptions": {
+        "en": "RigiTech is a Swiss drone delivery company based in Prilly, near Lausanne. It develops the Eiger delivery drone and RigiCloud software to operate connected aerial logistics networks for businesses and communities.",
+        "de": "RigiTech ist ein Schweizer Unternehmen für Drohnenlieferungen mit Sitz in Prilly bei Lausanne. Es entwickelt die Lieferdrohne Eiger und die Software RigiCloud für vernetzte Luftlogistik zwischen Unternehmen und Gemeinden.",
+        "fr": "RigiTech est une entreprise suisse de livraison par drone basée à Prilly, près de Lausanne. Elle développe le drone de livraison Eiger et le logiciel RigiCloud pour exploiter des réseaux de logistique aérienne connectés au service des entreprises et des collectivités.",
+        "it": "RigiTech è un’azienda svizzera di consegne tramite droni con sede a Prilly, vicino a Losanna. Sviluppa il drone da trasporto Eiger e il software RigiCloud per gestire reti connesse di logistica aerea al servizio di aziende e comunità."
+      }
+    },
+    {
+      "slug": "rivr",
+      "name": "RIVR",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/rivr/icon.png",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2023,
+      "descriptions": {
+        "en": "Autonomous delivery robots for last-mile logistics",
+        "de": "Autonome Lieferroboter für die letzte Meile der Logistik",
+        "fr": "Robots de livraison autonomes pour la logistique du dernier kilomètre",
+        "it": "Robot di consegna autonomi per la logistica dell'ultimo miglio"
+      }
+    },
+    {
+      "slug": "roboa",
+      "name": "roboa",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/roboa/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 1,
+      "foundedYear": 2025,
+      "descriptions": {
+        "en": "roboa develops robotic systems for inspecting, repairing and installing cables in confined spaces, including industrial pipes and underground infrastructure.",
+        "de": "roboa entwickelt Robotersysteme für Inspektionen, Reparaturen und Kabelinstallationen in engen Räumen, darunter industrielle Rohrleitungen und unterirdische Infrastruktur.",
+        "fr": "roboa développe des systèmes robotiques pour inspecter, réparer et installer des câbles dans des espaces confinés, notamment des conduites industrielles et des infrastructures souterraines.",
+        "it": "roboa sviluppa sistemi robotici per ispezionare, riparare e installare cavi in spazi confinati, tra cui tubazioni industriali e infrastrutture sotterranee."
+      }
+    },
+    {
       "slug": "samsara",
       "name": "Samsara",
       "icon": "https://jobseek-assets.colophon-group.org/companies/samsara/icon.webp",
@@ -380,6 +632,48 @@
       }
     },
     {
+      "slug": "staubli",
+      "name": "Stäubli",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/staubli/icon.webp",
+      "industryName": "Manufacturing",
+      "employeeCountRange": 7,
+      "foundedYear": 1892,
+      "descriptions": {
+        "en": null,
+        "de": null,
+        "fr": null,
+        "it": null
+      }
+    },
+    {
+      "slug": "swissdrones",
+      "name": "SwissDrones",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/swissdrones/icon.webp",
+      "industryName": "Aerospace & Defense",
+      "employeeCountRange": 2,
+      "foundedYear": 2013,
+      "descriptions": {
+        "en": "SwissDrones is specialized in the development, manufacturing, and operation of long-range unmanned helicopter systems for commercial and public safety applications.",
+        "de": "SwissDrones ist spezialisiert auf die Entwicklung, Herstellung und den Betrieb unbemannter Langstrecken-Helikoptersysteme für kommerzielle und öffentliche Sicherheitsanwendungen.",
+        "fr": "SwissDrones est spécialisée dans le développement, la fabrication et l'exploitation de systèmes d'hélicoptères sans pilote à long rayon d'action pour les applications commerciales et de sécurité publique.",
+        "it": "SwissDrones è specializzata nello sviluppo, nella produzione e nell'operatività di sistemi di elicotteri senza pilota a lungo raggio per applicazioni commerciali e di sicurezza pubblica."
+      }
+    },
+    {
+      "slug": "swisslog",
+      "name": "Swisslog",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/swisslog/icon-68653cdaed25f18a141af6367e0a8875daeb105b6da87b0e667eee7fa12e3b7f.svg",
+      "industryName": "Robotics",
+      "employeeCountRange": null,
+      "foundedYear": null,
+      "descriptions": {
+        "en": "Swisslog develops automated warehouse and material-handling systems, integrating robotics, controls and logistics software for distribution and fulfillment operations.",
+        "de": "Swisslog entwickelt automatisierte Lager- und Materialflusssysteme und verbindet Robotik, Steuerungstechnik und Logistiksoftware für Distributions- und Versandprozesse.",
+        "fr": "Swisslog développe des systèmes automatisés de stockage et de manutention associant robotique, commande et logiciels logistiques pour les opérations de distribution et de préparation des commandes.",
+        "it": "Swisslog sviluppa sistemi automatizzati di magazzino e movimentazione dei materiali, integrando robotica, controlli e software logistico per le attività di distribuzione ed evasione degli ordini."
+      }
+    },
+    {
       "slug": "tether",
       "name": "Tether",
       "icon": "https://jobseek-assets.colophon-group.org/companies/tether/icon.webp",
@@ -391,6 +685,20 @@
         "de": "Kryptowährungsunternehmen hinter dem Stablecoin USDT, das Blockchain-Infrastruktur und digitale Vermögenswert-Technologie für das globale Finanzsystem bereitstellt.",
         "fr": "Entreprise de cryptomonnaie, createur du stablecoin USDT, fournissant une infrastructure blockchain et des technologies pour le systeme financier mondial.",
         "it": "Azienda di criptovalute creatrice dello stablecoin USDT, che fornisce infrastruttura blockchain e tecnologie per gli asset digitali nel sistema finanziario globale."
+      }
+    },
+    {
+      "slug": "tethys-robotics",
+      "name": "Tethys Robotics",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/tethys-robotics/icon.png",
+      "industryName": "Robotics",
+      "employeeCountRange": 2,
+      "foundedYear": 2018,
+      "descriptions": {
+        "en": "Underwater inspection and monitoring robotics",
+        "de": "Unterwasserinspektions- und Überwachungsrobotik",
+        "fr": "Robotique d'inspection et de surveillance sous-marine",
+        "it": "Robotica per l'ispezione e il monitoraggio subacqueo"
       }
     },
     {
@@ -419,6 +727,20 @@
         "de": "Veeva Systems bietet cloudbasierte Software fuer die globale Life-Sciences-Branche und bedient ueber 1000 Pharma- und Biotech-Kunden.",
         "fr": "Veeva Systems fournit des logiciels cloud pour l'industrie mondiale des sciences de la vie, au service de plus de 1000 clients pharmaceutiques et biotechnologiques.",
         "it": "Veeva Systems fornisce software cloud per l'industria globale delle scienze della vita, servendo oltre 1000 clienti farmaceutici e biotecnologici."
+      }
+    },
+    {
+      "slug": "verity",
+      "name": "Verity",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/verity/icon.webp",
+      "industryName": "Robotics",
+      "employeeCountRange": 3,
+      "foundedYear": 2014,
+      "descriptions": {
+        "en": "Verity develops autonomous indoor drone systems for live entertainment, creating aerial light shows for concerts, stage productions, and permanent venue installations.",
+        "de": "Verity entwickelt autonome Indoor-Drohnensysteme für Live-Entertainment und realisiert Luftlichtshows für Konzerte, Bühnenproduktionen und dauerhafte Veranstaltungsinstallationen.",
+        "fr": "Verity développe des systèmes de drones autonomes en intérieur pour le spectacle vivant et crée des shows lumineux aériens pour des concerts, des productions scéniques et des installations permanentes.",
+        "it": "Verity sviluppa sistemi autonomi di droni indoor per l’intrattenimento dal vivo e crea spettacoli luminosi aerei per concerti, produzioni teatrali e installazioni permanenti."
       }
     },
     {

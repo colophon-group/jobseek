@@ -31,7 +31,7 @@ The authoring guide now records this policy for future articles and corrects the
 
 ## Product behavior checks
 
-Public company pages expose `Save this search`. Shared watchlists offer `Clone`: guests can customize a temporary browser copy, while signing in enables account persistence, sharing and alerts. Email digests require verified email and selected watchlists, and run weekly. Applications happen at the original employer; the tracker records user-managed progress for jobs saved in Job Seek. These descriptions match the released FAQ and marketing pages and their underlying implementation. No new Narrowed request is proposed in this article.
+Public company pages expose `Save this search`. Shared watchlists offer `Clone`: guests can customize a temporary browser copy, while signing in enables account persistence, sharing and alerts. Email digests require verified email and selected watchlists, and run weekly. Applications happen at the original employer; the tracker records user-managed progress for jobs saved in Job Seek. These descriptions match the released FAQ and marketing pages and their underlying implementation. The initial six-company draft did not propose a Narrowed request; the expanded shared watchlist now uses the criteria documented below.
 
 ## Review and release record
 
@@ -43,10 +43,10 @@ Public company pages expose `Save this search`. Shared watchlists offer `Clone`:
 
 PMS terminology was cross-checked against [Swissmedic’s post-market surveillance presentation](https://www.swissmedic.ch/dam/swissmedic/en/dokumente/stab/veranstaltung/mep-2021/ueberwachung-nach-inverkehrbringen.pdf.download.pdf/7_ueberwachung_inverkehrbringen_vigilance_und_marktueberwachung-en.pdf). The original Workable role body was inaccessible to the critic; the article makes no claims about that role beyond its observed title, location and this standard acronym expansion.
 
-## Shared employer watchlist
+## Initial shared employer watchlist
 
 - Canonical shared path: `/watchlists/c47beab8-3e96-4032-af4b-d9843bdba631`; title: Swiss robotics employers.
-- Six persisted company selections: ANYbotics, Voliro, Wingtra, Flyability, Distalmotion, Ecorobotix. Location: Switzerland. No occupation restriction; all posting languages.
+- Initial six persisted company selections: ANYbotics, Voliro, Wingtra, Flyability, Distalmotion, Ecorobotix. Location: Switzerland. No occupation restriction; all posting languages.
 - Verified after reload in the owner editor and an anonymous browser: all six pills, Switzerland, populated results including Flyability. The feed had 29 active jobs at verification; this volatile count is deliberately absent from the article and snapshot.
 - Guest `Clone` produced an editable browser copy. The interface explains that account login enables persistence, sharing and alerts.
 - The two article mentions resolve to the same reviewed shared UUID. Desktop/mobile and light/dark checks passed.
@@ -56,3 +56,25 @@ PMS terminology was cross-checked against [Swissmedic’s post-market surveillan
 Flyability was configured in the crawler registry and searchable in Typesense, but missing from the web database’s `company` table. Saving its selection failed the `watchlist_company` foreign key. Current crawler registry sync intentionally does not mirror companies to the web database, so re-running it would not repair this boundary gap.
 
 Used `apps/web/scripts/repair-company-reference.ts` to insert only the missing Flyability row with canonical ID `b2a619ff-f2fd-4a37-b87a-dc211ac62d74`. The script defaults to dry run, verifies Typesense identity and registry data, refuses ID/slug conflicts, and applies one guarded transaction. All inserted fields, artwork and JSONB extras were read back and compared with the registry. Existing company rows and user data were untouched. Flyability then saved successfully through the normal watchlist UI. This scoped repair does not resolve the general legacy-reference dependency for future catalogue additions.
+
+## Expanded employer guide
+
+After the user approved publication and reuse of the blog layout, they requested a broader company list. The expanded article references 29 unique employers, with the intended watchlist covering the same set, Switzerland only and no occupation restriction. The 23 additional entries are concise regional descriptions; the original six examples retain their deeper job-search context.
+
+The primary-source audit, parent-brand decisions and unresolved source gaps are in `b01-expanded-employer-evidence.json`. Catalogue PR #10160 adds five employers and repairs roboa/Verity coverage before the article release. LEM Surgical and BlueBotics were investigated but not configured from incomplete or stale hiring material. SwissDrones' Buchs SG site is distinguished from Swisslog's Buchs AG site. The expanded shared watchlist uses Narrowed to remove unrelated product lines at diversified employers rather than leaving readers to filter those roles manually.
+
+All three independent reviewers cleared the expanded draft: factual SHIP, editorial SHIP, product/factual SHIP conditional on verifying all 29 saved memberships and the five new catalogue destinations before publication.
+
+## Narrowed verification
+
+Saved criteria: “Keep work on physical robots or autonomous machines, including their sensors and control software. Include production, quality, procurement, sales and customer support tied to those products. Exclude unrelated product lines, even at robotics companies.”
+
+The request is short enough to read in the actual interface and intentionally crosses occupational categories. It requires a product connection rather than a robotics keyword or employer label.
+
+On 28 September, a reproduction using the real first five complete job descriptions accepted ANYbotics Product Manager – Physical AI and Mimic Senior Mechanical Engineer (Wearable Devices). It rejected Stäubli Project Leader Renewable Energy, ABB Sales Specialist Panel Builder and ABB R&D Center Lead – Materials Development. Manual description review agreed with these five decisions, including Stäubli's generic robotics boilerplate, which did not make the renewable-energy role relevant.
+
+Production verification is still pending: the saved query's first attempts returned provider errors with no persisted decisions. A local reproduction is not evidence that the shared feed works. Publication remains gated on successful live processing and guest verification.
+
+Guest cloning was tested after enabling Narrowed: the interface warns that a Free copy keeps the standard filters and cannot use its own Narrowed feed. The article explains that Pro is required for Narrowed in the reader's own copy, while the existing shared feed remains viewable.
+
+Expanded-draft verification: production build and all 63 focused tests passed. Six light/dark × 320/390/1440 browser checks passed with all 29 employer mentions resolved, both watchlist mentions intact, internal navigation and SEO metadata intact, and no horizontal overflow. The Narrowed passage passed a separate editorial/product review, conditional on live verification.
