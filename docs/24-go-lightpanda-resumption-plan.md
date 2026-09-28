@@ -6,6 +6,73 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — cdom admitted with natural Go DOM output
+
+[PR #10170](https://github.com/colophon-group/jobseek/pull/10170) merged as
+**`7ce853c8fe10c925bcbc217a92eefd35434cdccb`**, crawler **v0.13.896**.
+Required CI, Crawler Deploy Gate and installed runtime contracts passed at
+**`250c128538e91f987ea420507969314e96eaad2e`**. The installed producer test
+exercises both JSON-LD and DOM through real UDS/Redis transfer, claim, terminal,
+reactivation, health auditing and corruption/recovery. All 52 affected Python
+queue tests and uncached Go race tests passed. The reviewed Lua digest is
+`60bc7169651d3e8cc7abfcff6dec799170fa298539904a78b7f865534a3a2803`.
+[Deployment 36453234696](https://github.com/colophon-group/jobseek/actions/runs/36453234696)
+reached terminal success including promotion.
+
+The supported cold window retired c1 at epoch **128**, restored all five
+schedules, dropped zero terminals, cleared every write fence and cleared the
+exact 25 selectors. After promotion they were staged at the new full revision.
+Supported **`activate cdom` succeeded at epoch 129**: **22** schedules selected
+and activated, **17** rows already unqueued, lifetime headroom **2026**.
+Conservation is accepted/audit_ok with 22 ready and zero inflight after the first
+natural completions. Normal workers, browser, drain, producer, executor, claimant
+and Redis are healthy. All three enabled cohort boards remain owned; no pruned
+schedule was recreated and no due time or publisher request was forced.
+
+**Five naturally due Bunq DOM jobs rendered and committed through Go and the
+self-hosted Lightpanda service.** Their exact normal extraction inputs were
+captured privately. Offline Python/Go comparison matches the complete JobContent
+schema, including full descriptions (3,261–4,140 UTF-8 bytes), title, locations
+and job location type. Render-success and committed events correlate by exact
+posting identity with advanced PostgreSQL scrape timestamps. Identity, active
+flag, titles, description hash and failure count are unchanged for each job;
+all five retain zero failures. The before/after DB snapshots retain all 137 rows
+and all 39 active rows. Existing unrelated retry counts (one row at 1, one at 2)
+remain unchanged. This establishes actual rendered DOM output and DB effects.
+
+The queue was inspected **after** those five completions. Its next ready due
+is **2026-09-29 00:26:42.836 UTC** (Browser Use); Bunq **02:44:07.702 UTC**,
+Algorized **04:23:18.309 UTC**. These are remaining due times, not a claim that
+no Go run has happened. Further cycles must remain natural; continue independent
+migration implementation while waiting. Do not poll unchanged pending state.
+
+The renderer source remains `fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0`, image
+`ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:72b73991cc4a6820263970ccf07367b5d9193eb37cb9d742701fb78ea0104a21`.
+Production ARM64 bytes match the latest official **September 28 nightly**:
+`e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f`.
+Both upstream asset IDs/checksums were rechecked after admission; no renderer
+change was required for these control/Redis corrections. C2 Kandou remains dark.
+
+Before any further crawler deploy or selector mutation, use supported
+**`/home/deploy/scripts/lightpanda-b0-cutover.sh rollback cdom`**, then clear
+all **25** selectors under `/run/lock/jobseek-crawler-mutation.lock` with
+`scripts/migration-jsonld-selectors.py`, full promoted crawler revision
+**`7ce853c8fe10c925bcbc217a92eefd35434cdccb`** and exact Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Helper SHA-256 remains
+`8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743`.
+Stage only after terminal next-deployment success including promotion; reactivate
+cdom through the supported wrapper. Never manually edit `.env` or force due.
+
+See [sanitized admission and output evidence](evidence/lightpanda-dom-admission-2026-09-28.json).
+Protected input bytes, comparisons, readbacks and operational logs:
+`/Users/Viktor/.codex/migration-evidence/lightpanda-dom/2026-09-28/schedule-transfer/`.
+**This is the current production authority; all checkpoints below are history.**
+Python/Chromium still own remaining production work. Same actual-workload
+whole-lane CPU/RAM/density/cost and final full cutover/reversal remain required.
+Synthetic fixture density ratios are not production savings. The full Go +
+Typesense + Lightpanda transition goal remains active; owner-closed #7966 was
+not reopened.
+
 ## Production checkpoint: 2026-09-28 — wire deployed, DOM Redis correction pending
 
 [PR #10168](https://github.com/colophon-group/jobseek/pull/10168) merged as

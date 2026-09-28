@@ -1,0 +1,206 @@
+{
+  "schema": "jobseek.go-lightpanda-dom-admission/v1",
+  "date": "2026-09-28",
+  "verified_at": "2026-09-28T17:07:16.279366+00:00",
+  "status": "supported cdom active; five natural rendered DOM commits and exact-byte output parity proven",
+  "pull_request": 10170,
+  "tested_head": "250c128538e91f987ea420507969314e96eaad2e",
+  "crawler_revision": "7ce853c8fe10c925bcbc217a92eefd35434cdccb",
+  "crawler_version": "0.13.896",
+  "deployment_run": 36453234696,
+  "deployment_result": "success including promote",
+  "checks": {
+    "required_ci": 36451385963,
+    "deploy_gate": 36451379609,
+    "installed_runtime_contracts": 36451386032,
+    "results": "success"
+  },
+  "lua_sha256": "60bc7169651d3e8cc7abfcff6dec799170fa298539904a78b7f865534a3a2803",
+  "renderer": {
+    "source_revision": "fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0",
+    "image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:72b73991cc4a6820263970ccf07367b5d9193eb37cb9d742701fb78ea0104a21",
+    "deployment_run": 36431710458,
+    "lightpanda_release": "nightly-2026-09-28",
+    "arm64_asset_id": 594332898,
+    "arm64_sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f",
+    "installed_binary_matches_upstream": true,
+    "upstream_rechecked": "2026-09-28"
+  },
+  "cold_window": {
+    "cohort": "c1",
+    "retired_epoch": 128,
+    "schedules_restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "selectors_cleared": 25
+  },
+  "active_cohort": {
+    "cohort": "cdom",
+    "epoch": 129,
+    "selected": 22,
+    "activated": 22,
+    "unqueued": 17,
+    "lifetime_headroom": 2026,
+    "audit": {
+      "decision": "accepted",
+      "reason": "audit_ok",
+      "server_time_ms": 1790614907408,
+      "value": 22,
+      "secondary_value": 0
+    },
+    "boards": {
+      "bunq-careers": {
+        "schedules": 13,
+        "next_ready_due_utc": "2026-09-29T02:44:07.702000+00:00"
+      },
+      "algorized-careers": {
+        "schedules": 4,
+        "next_ready_due_utc": "2026-09-29T04:23:18.309000+00:00"
+      },
+      "browser-use-careers": {
+        "schedules": 5,
+        "next_ready_due_utc": "2026-09-29T00:26:42.836000+00:00"
+      }
+    },
+    "health": "all configured worker/browser/drain/producer/executor/claimant/Redis services healthy"
+  },
+  "database_readback": {
+    "snapshot_rows": 137,
+    "active_rows": 39,
+    "all_row_identities_active_flags_titles_description_hashes_and_failure_counts_preserved": true,
+    "existing_active_scrape_failures": {
+      "0": 37,
+      "1": 1,
+      "2": 1
+    },
+    "advanced_scrape_timestamps": 5
+  },
+  "natural_dom_commits": [
+    {
+      "request_sha256": "2a26519d3c01988748e5cd4503c773e19c83f5a7ce62da1a61d29463cbae3e17",
+      "html_sha256": "81e182e67b2742fcfcbc15be906e6f515cf37ec95b5bf642f11381a21469bd4e",
+      "fields_sha256": "eefb29f82dde6470e72d026001fcbb1498c650cef343046d93b883aad270a1b5",
+      "full_field_match": true,
+      "populated_fields": [
+        "description",
+        "job_location_type",
+        "locations",
+        "title"
+      ],
+      "description_bytes": 3261,
+      "posting_id_sha256": "3abbfbc9727bd35599db99e2c5634b00f5daa58922d10606f3f9d2e9087f60bd",
+      "source_url_sha256": "9cd7a4ddd70d50803591ae553cf5c474363b21b2983731300633b9e497acde9e",
+      "board_slug": "bunq-careers",
+      "render_success": true,
+      "committed": true,
+      "last_scraped_before": "2026-09-27 14:34:51.130250+00:00",
+      "last_scraped_after": "2026-09-28 17:00:57.016159+00:00",
+      "scrape_failures": 0,
+      "identity_active_title_description_hash_and_failures_unchanged": true
+    },
+    {
+      "request_sha256": "7ada3d888d93754557d1dd02f9f5a3898178190947e164595d2ec579a23b114f",
+      "html_sha256": "b7034c00883cc6f028a68e55372c0dec8057344099d00780fc8653a118302f05",
+      "fields_sha256": "d436709d59923cd735709ed4524ed1b866d0a7d7a125c93613055ca19844cb1f",
+      "full_field_match": true,
+      "populated_fields": [
+        "description",
+        "job_location_type",
+        "locations",
+        "title"
+      ],
+      "description_bytes": 4140,
+      "posting_id_sha256": "5c13e86c162a05d4e3844c89144751d938756a5e7de25d668b43bd751afdc2fa",
+      "source_url_sha256": "f31d7bba12820c516fd872a4de4cb0721d17f7677e47ce87aaee50711b3a9df4",
+      "board_slug": "bunq-careers",
+      "render_success": true,
+      "committed": true,
+      "last_scraped_before": "2026-09-27 16:58:35.049478+00:00",
+      "last_scraped_after": "2026-09-28 17:00:53.576997+00:00",
+      "scrape_failures": 0,
+      "identity_active_title_description_hash_and_failures_unchanged": true
+    },
+    {
+      "request_sha256": "5d7c1d803f656511008592b0e82b448e56d1941dfb0d53dd17bd50e1d3c8e8a2",
+      "html_sha256": "bcf82a20c355c384fbb87784c3478f51e23fb9dd012ad9b7233dd2bb89fe0942",
+      "fields_sha256": "f158d899846b048c622f7dec84ff50aa0ba57bcc6c61ef9a7549e86b8686d6c6",
+      "full_field_match": true,
+      "populated_fields": [
+        "description",
+        "job_location_type",
+        "locations",
+        "title"
+      ],
+      "description_bytes": 3655,
+      "posting_id_sha256": "87d95179916a1e9d064b1ab19ab7cbbfdfc65b260547831c041bfa6472899fce",
+      "source_url_sha256": "6d9d30b8c3818269b0b15dfee57ff711779d22f8234a0511db029088934d9d79",
+      "board_slug": "bunq-careers",
+      "render_success": true,
+      "committed": true,
+      "last_scraped_before": "2026-09-27 16:36:38.540324+00:00",
+      "last_scraped_after": "2026-09-28 17:00:50.322277+00:00",
+      "scrape_failures": 0,
+      "identity_active_title_description_hash_and_failures_unchanged": true
+    },
+    {
+      "request_sha256": "ff051006de01f41b922db27f2296ef7844099e0dbe9eb7eeaf60ac698e65f18d",
+      "html_sha256": "e82b392ad336c37ece6d873418391b988b6f5a21139f07814d7252402de429db",
+      "fields_sha256": "be00f4ad4df15dbc33a95edbbea213d962161700aac43c69423776374876e9d8",
+      "full_field_match": true,
+      "populated_fields": [
+        "description",
+        "job_location_type",
+        "locations",
+        "title"
+      ],
+      "description_bytes": 3688,
+      "posting_id_sha256": "601a3545c25c17ee7353e2c9038711d97ada340909f60c6f7c9f73e816537870",
+      "source_url_sha256": "306b0f15c0bc59ff441a9f576e752db9b7766deb4db0c9d73962ef9ce8925a47",
+      "board_slug": "bunq-careers",
+      "render_success": true,
+      "committed": true,
+      "last_scraped_before": "2026-09-27 16:35:27.372868+00:00",
+      "last_scraped_after": "2026-09-28 17:00:47.246234+00:00",
+      "scrape_failures": 0,
+      "identity_active_title_description_hash_and_failures_unchanged": true
+    },
+    {
+      "request_sha256": "8705419552401b7a95158e87429afb7a9c2bfbd2fa567a48c4e161ff68d8d973",
+      "html_sha256": "8dce2bced68002213e807bc8e1cee59b48d6a2a95b209a7bb67877cb359f3e39",
+      "fields_sha256": "c306d15c935adf3596f0880eb1c1a525e17326aab6b02d79105030299913973b",
+      "full_field_match": true,
+      "populated_fields": [
+        "description",
+        "job_location_type",
+        "locations",
+        "title"
+      ],
+      "description_bytes": 4092,
+      "posting_id_sha256": "58920c944c4fd6ea2164f5b78c183551d000e36fa42689b3aa902c486ea9d3fd",
+      "source_url_sha256": "c74bd7c3b94ca3a33c3789b8843f46d34dccedd9520e8d1c02dc0c816009c45c",
+      "board_slug": "bunq-careers",
+      "render_success": true,
+      "committed": true,
+      "last_scraped_before": "2026-09-27 14:32:32.746412+00:00",
+      "last_scraped_after": "2026-09-28 17:00:44.041294+00:00",
+      "scrape_failures": 0,
+      "identity_active_title_description_hash_and_failures_unchanged": true
+    }
+  ],
+  "production_origin_requests_forced": 0,
+  "capture_scope": "normal Go Lightpanda rendered DOM extraction inputs; no additional publisher request; comparison runs offline on exact same bytes",
+  "staged_selectors": {
+    "count": 25,
+    "revision": "7ce853c8fe10c925bcbc217a92eefd35434cdccb",
+    "helper": "scripts/migration-jsonld-selectors.py",
+    "helper_sha256": "8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743",
+    "kandou_detail_url": "https://kandou.bamboohr.com/careers/310"
+  },
+  "limitations": [
+    "Five Bunq DOM outputs are proven; other natural cohort cycles follow their existing due times.",
+    "The 17 unqueued rows have no existing transferable schedule; all enabled boards remain owned.",
+    "Python and Chromium still own remaining production work.",
+    "Same actual-workload whole-lane CPU/RAM/density/cost and final full cutover/reversal remain unfinished.",
+    "Synthetic whole-lane fixture ratios are not production savings."
+  ]
+}
