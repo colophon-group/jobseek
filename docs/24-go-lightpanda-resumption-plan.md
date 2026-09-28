@@ -6,6 +6,20 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Session checkpoint: Go salary candidate, 2026-09-28
+
+The user changed this session's goal to a **durable checkpoint another session
+can resume**. The complete Go salary candidate is saved on
+`fix-crawler/go-salary-extraction` (implementation
+`92dddb8ed65ef505626e98ddf7ede0e4a50e138d`, candidate v0.13.899).
+It is **not deployed**. Production remains v0.13.898 / cdom epoch 133 below.
+See the [self-contained resumption handoff](24-go-lightpanda-salary-checkpoint-2026-09-28.md)
+for verified results, exact production/Lightpanda identities, protected evidence
+locations, draft PR discovery and supported next deployment steps. This saves
+2,664 salary compatibility cases, 202 passing focused tests and exact parity on
+512 stored descriptions. Full production migration and resource/cutover gates
+remain incomplete. Resume from this candidate instead of reimplementing it.
+
 ## Production checkpoint: 2026-09-28 — shared Go language detection v0.13.898
 
 [PR #10174](https://github.com/colophon-group/jobseek/pull/10174) merged as

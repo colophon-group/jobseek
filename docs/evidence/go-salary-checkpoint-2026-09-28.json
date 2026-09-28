@@ -1,0 +1,110 @@
+{
+  "status": "durable reviewable Go salary candidate; not deployed",
+  "session_goal": "checkpoint resumable from another session; full transition remains incomplete",
+  "branch": "fix-crawler/go-salary-extraction",
+  "base_main": "ff249fa0b6b24273c2d8a2c89520ee2e9055d5e9",
+  "implementation_commit": "92dddb8ed65ef505626e98ddf7ede0e4a50e138d",
+  "candidate_version": "0.13.899",
+  "verification": {
+    "oracle_cases": 2664,
+    "positive_cases": 902,
+    "currencies": [
+      "AUD",
+      "BGN",
+      "BRL",
+      "CAD",
+      "CHF",
+      "CZK",
+      "DKK",
+      "EUR",
+      "GBP",
+      "HKD",
+      "HUF",
+      "MXN",
+      "NZD",
+      "PLN",
+      "RON",
+      "SEK",
+      "SGD",
+      "USD"
+    ],
+    "oracle_sha256": "5a426a207e0f26e6ee25668b1e23b899e992b66d98ec5eb71a28caaa6e6efb12",
+    "focused_python_tests_passed": 202,
+    "go_race_vet_tidy": "passed",
+    "ruff_pyright": "passed",
+    "local_installed_protocol": "passed; shipped-image required CI must be read from PR",
+    "initial_fixture_failure": "nested full Go race suite exceeded pytest 30-second fixture deadline; race gate now separate; final focused suite passed"
+  },
+  "stored_parity": {
+    "scope": "salary",
+    "sample_rows": 512,
+    "boards": 265,
+    "locales": [
+      "cs",
+      "de",
+      "en",
+      "es",
+      "fr",
+      "hu",
+      "it",
+      "ja",
+      "nl",
+      "pl",
+      "pt",
+      "ro",
+      "vi",
+      "zh"
+    ],
+    "completions": 512,
+    "input_sha256": "d88c0a7cb259073e872923e26998282ebae8b91c141cbf6edc26cc58ffa57681",
+    "output_sha256": "139ac773c655e07e9aa101086c952726bc9ebe3083465c032e3a5adedbaa8a83"
+  },
+  "limitations": [
+    "Candidate not deployed; no natural production salary execution/DB/failure proof yet",
+    "Stored replay rate maps absent; EUR rates covered by frozen cases",
+    "Compare run contains both engines; not a resource comparison",
+    "Full transition, whole-lane CPU/RAM/density/cost and final reversal remain incomplete"
+  ],
+  "production": {
+    "read_at": "2026-09-28T19:37:36.755347+00:00",
+    "release": {
+      "CRAWLER_IMAGE_TAG": "v0.13.898",
+      "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:5a1003ecf68d70b58c06a4c4c692c4aad28369754d8807a09a9b96c6d6b0102f",
+      "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:52763522dfce80079619d18aa0cb7ff372b883ea86b8a9797e19a00255cd266b",
+      "JOBSEEK_DEPLOY_REVISION": "20b4031ccc7e3056c6ca10b55b68bd5562c0c720"
+    },
+    "cohort": "cdom",
+    "epoch": 133,
+    "state": "active",
+    "plan_digest": "26caa86208735562361588bba69c8ec2e131d477396b6f763c486b167768d900",
+    "compose_digest": "9e91a4ada1493cca657f40d197ddf1d1f35557394e11f5c1ccfe7e39e8298f18",
+    "worker_set_healthy": true,
+    "exact_selectors": 25,
+    "kandou_url": "https://kandou.bamboohr.com/careers/310",
+    "selector_helper_sha256": "8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743"
+  },
+  "lightpanda": {
+    "schema_version": 1,
+    "repository": "https://github.com/lightpanda-io/browser",
+    "tag": "nightly",
+    "verified_at": "2026-09-28",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
+    "note": "Nightly tag is mutable. Asset IDs and SHA-256 bind this snapshot; builds fail closed if upstream removes or replaces these bytes. Tag creation time/commit does not identify the binary build.",
+    "assets": {
+      "amd64": {
+        "id": 594332787,
+        "name": "lightpanda-x86_64-linux",
+        "updated_at": "2026-09-28T02:56:04Z",
+        "sha256": "e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f"
+      },
+      "arm64": {
+        "id": 594332898,
+        "name": "lightpanda-aarch64-linux",
+        "updated_at": "2026-09-28T02:56:09Z",
+        "sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f"
+      }
+    }
+  },
+  "private_evidence_dir": "/Users/Viktor/.codex/migration-evidence/go-salary/2026-09-28",
+  "resumption_document": "docs/24-go-lightpanda-salary-checkpoint-2026-09-28.md"
+}
