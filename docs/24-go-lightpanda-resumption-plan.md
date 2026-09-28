@@ -6,6 +6,79 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — shared JSON-LD details v0.13.885
+
+PR #10122 merged as `a91adb088c9f2e5c6a0a2e29c56a03e7add220db`.
+[Deployment 36370674696](https://github.com/colophon-group/jobseek/actions/runs/36370674696)
+succeeded after Required CI, installed-image parity and the exact-head crawler
+deploy gate passed. Go now selects **700 of 802 primary JSON-LD configurations**.
+The protected predeploy inventory admitted all **312,629 active URLs** on those
+configurations. No enabled board was removed. The postactivation primary-detail
+census is **974 Go / 2,066 Python** of 3,040 resolved boards, with 4,839 rich-monitor
+skips and zero route errors across 7,879 enabled boards. Provided B0 runtimes are
+outside that census. Six of JOIN's eight JSON-LD configurations now select Go.
+
+At approximately 07:45 UTC, retained logs contained **1,188 natural Go JSON-LD
+completions**. Five passive envelopes from Gupy, iCIMS and NTT DATA match the
+Python parser across all ten fields and match the natural Go completion hashes.
+The two NTT DATA cases also prove the configured CSS description override.
+Four populated cases have exact canonical normalized description bytes,
+titles and employment types in PostgreSQL, matching description/R2 hashes,
+uploaded R2 descriptions and zero scrape failures. One iCIMS envelope produces
+the same empty extraction in both parsers; its existing active row is retained.
+It is an empty-result behavior check, not a populated output proof.
+
+The subsequent runtime counters report **1,237 successes / 250 errors**;
+success counters include empty extractions. A bounded read-only attribution of
+those error records finds **236 HTTP 410, 12 HTTP 404 and two transport failures**.
+The sampled Kuehne+Nagel HTTP 410 correctly tombstoned its posting. The two
+Swatch transport failures remain subject to normal transient handling; no
+origin replay or forced retry was performed. Typesense reports 27,930 successful
+exports, zero errors, zero lag and healthy status. Configured service health
+checks pass. These snapshots establish the recorded cases, not fleet-wide
+field parity or a paired resource comparison.
+
+Supported cold rollback retired c1 at **epoch 103**, restored all five schedules
+and left zero dropped tasks or write fences. The old 24 selectors cleared under
+the host mutation lock. After terminal deployment success, **25 selectors** were
+staged against the promoted revision and c1 reactivated at **epoch 104**. The
+current audit is accepted/audit_ok with five ready, zero inflight and no dead
+records; c2 remains dark. One previously due schedule advanced during the cold
+interval to 2026-09-29 02:46:23 UTC. Queue state alone does not identify that
+cycle's engine owner. See the
+[sanitized evidence](evidence/go-jsonld-detail-production-2026-09-28.json).
+
+Before any further crawler deploy or selector mutation, complete supported
+`rollback c1`, then clear the **25** selectors under
+`/run/lock/jobseek-crawler-mutation.lock` using the checked-in
+[`scripts/migration-jsonld-selectors.py`](../scripts/migration-jsonld-selectors.py)
+in `clear` mode against full revision
+`a91adb088c9f2e5c6a0a2e29c56a03e7add220db` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. The exact helper SHA-256 is
+`8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743`.
+After the next deployment reaches terminal success, stage only at its promoted
+revision and reactivate c1. These instructions supersede the older 24-selector
+checkpoint below. Restore the preceding release through the supported cold
+procedure to reverse this complete JSON-LD slice, including B0 parser ownership.
+
+The retained bytes and current configuration/posting readbacks are preserved in
+`/Users/Viktor/.codex/migration-evidence/go-jsonld/2026-09-28/`, directory mode
+0700 and capture/snapshot modes 0600. The original temporary predeploy snapshot
+has expired locally; its historical inventory and digest remain recorded.
+Use [`scripts/compare-jsonld-capture.py`](../scripts/compare-jsonld-capture.py)
+with the retained capture, native `--parse` binary, `--configs`, `--baseline`
+and `--completion-sha256` arguments to reproduce the comparison without HTTP.
+Keep future private evidence outside temporary directories.
+
+Continue implementation: **102 JSON-LD transport configurations** remain Python
+(79 rendered, including 13 also proxied; 20 other proxied; two skip-SSL; one
+Workday recovery). The next shared DOM inventory has **758 primary detail
+boards / 684 distinct configurations**, including 166 rendered and 45 proxied.
+Python worker/writer ownership, other monitor/detail profiles, Playwright and
+Chromium retirement, whole-lane same-actual-workload CPU/RAM/density/cost proof,
+and final cutover/reversal remain unfinished. The full migration goal is active;
+the owner-closed #7966 is not evidence that its completion requirements passed.
+
 ## Implementation PR #10122: shared JSON-LD details v0.13.885
 
 The isolated `fix-crawler/go-jsonld-detail` worktree implements the shared Go
@@ -20,10 +93,10 @@ Richemont fragment URLs. The protected predeploy snapshot contains 400,756
 active JSON-LD jobs across all 802 configs. Remaining
 transport obligations are 79 rendered (13 also proxied), 20 other proxied, two
 skip-SSL and one configured Workday recovery. No enabled board is removed.
-This is implementation evidence; merge, deployment, natural output, same-byte
-readback, database parity and actual-workload whole-lane measurements remain
-pending. Follow the current production cold rollback protocol below before
-any deploy or selector mutation. Overall migration completion is unproven.
+This historical implementation evidence is supplemented by the production
+checkpoint above. Actual-workload whole-lane measurements remain pending.
+Follow the latest production cold rollback protocol above before any deploy
+or selector mutation. Overall migration completion is unproven.
 
 ## Production checkpoint: 2026-09-28 — JOIN details v0.13.884
 

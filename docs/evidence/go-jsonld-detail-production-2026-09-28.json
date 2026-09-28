@@ -1,0 +1,327 @@
+{
+  "checkpoint": "Go JSON-LD detail v0.13.885",
+  "runtime_pr": "https://github.com/colophon-group/jobseek/pull/10122",
+  "runtime_revision": "a91adb088c9f2e5c6a0a2e29c56a03e7add220db",
+  "deployment": {
+    "run": "https://github.com/colophon-group/jobseek/actions/runs/36370674696",
+    "conclusion": "success"
+  },
+  "gates": {
+    "required_ci": "https://github.com/colophon-group/jobseek/actions/runs/36369736167",
+    "installed_image_parity": "https://github.com/colophon-group/jobseek/actions/runs/36369736303",
+    "crawler_deploy_gate": "https://github.com/colophon-group/jobseek/actions/runs/36369733155",
+    "exact_pr_head": "fef578c1d098f27091c5159a74746b176b6f5294",
+    "conclusions": "success"
+  },
+  "offline_evidence": {
+    "frozen_python_parser_cases": 167,
+    "frozen_python_css_description_cases": 9,
+    "native_race_vet": "pass",
+    "installed_browser_image_parser_oracle": "pass"
+  },
+  "predeploy_inventory": {
+    "enabled_jsonld_primary_configs": 802,
+    "admitted_configs": 700,
+    "admitted_active_urls": 312629,
+    "active_urls_on_all_jsonld_configs": 400756,
+    "sha256": "40bea2becb20971092e0de506e0c184fb7940ee9b1184952e74bd09bc30a3834",
+    "scope": "historical protected predeploy snapshot; temporary original no longer available locally"
+  },
+  "current_primary_detail_census": {
+    "enabled": 7879,
+    "resolved": 3040,
+    "rich_skip": 4839,
+    "go": 974,
+    "python": 2066,
+    "go_jsonld": 700,
+    "go_join_nextdata": 268,
+    "go_smartrecruiters": 5,
+    "go_workable": 1,
+    "errors": 0,
+    "scope": "primary resolved configurations; B0 provided runtimes excluded"
+  },
+  "remaining_jsonld_transport_configs": {
+    "rendered": 79,
+    "rendered_also_proxied": 13,
+    "other_proxied": 20,
+    "skip_ssl": 2,
+    "workday_recovery": 1,
+    "total": 102
+  },
+  "rollback": {
+    "retired_epoch": 103,
+    "restored_schedules": 5,
+    "terminal_drops": 0,
+    "remaining_write_fences": 0,
+    "cleared_old_selectors": 24
+  },
+  "activation": {
+    "epoch": 104,
+    "selected_schedules": 5,
+    "ready": 5,
+    "inflight": 0,
+    "dead": 0,
+    "audit": "accepted/audit_ok",
+    "configured_services_healthy": true,
+    "c2": "dark",
+    "one_previously_due_schedule_advanced_during_cold_interval": "2026-09-29T02:46:23.278Z",
+    "cold_interval_cycle_engine_owner": "not established from queue readback"
+  },
+  "selector_helper": {
+    "path": "scripts/migration-jsonld-selectors.py",
+    "sha256": "8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743",
+    "count": 25,
+    "staged_revision": "a91adb088c9f2e5c6a0a2e29c56a03e7add220db",
+    "kandou_url": "https://kandou.bamboohr.com/careers/310"
+  },
+  "natural_output": {
+    "log_completions_observed": 1188,
+    "log_snapshot_utc": "2026-09-28T07:45Z",
+    "runtime_counter_successes": 1237,
+    "runtime_counter_errors": 250,
+    "success_counter_includes_empty_extractions": true,
+    "failure_classification": {
+      "interval_since": "2026-09-28T02:53:00Z",
+      "selected_jsonld_pipeline_outcomes": {
+        "http_410": 236,
+        "Go JSON-LD fetch failed": 2,
+        "http_404": 12
+      },
+      "transport_failure_examples": [
+        {
+          "url": "https://www.swatchgroup.com/en/job/31681",
+          "posting_id": "338b61cb-eecb-45b3-a93e-0143c9305320",
+          "timestamp": "2026-09-28T03:17:58.038879Z"
+        },
+        {
+          "url": "https://www.swatchgroup.com/en/job/31359",
+          "posting_id": "2f428107-4144-402e-8d24-8bf08bcc6923",
+          "timestamp": "2026-09-28T06:40:39.341333Z"
+        }
+      ],
+      "scope": "current resolved primary/fallback JSON-LD route attribution; log and counter snapshots may differ in time"
+    },
+    "counter_snapshot": "subsequent read after the approximately 07:45 UTC log snapshot"
+  },
+  "same_byte_comparisons": [
+    {
+      "source_url": "https://corporacaogpa.gupy.io/jobs/12574754",
+      "retained_fetch_url": "https://corporacaogpa.gupy.io/jobs/12574754",
+      "posting_id": "7fc81774-6c61-4563-bf86-4480befa34b2",
+      "board_id": "c62248df-74cb-4886-a728-658b217c9dc4",
+      "html_bytes": 119363,
+      "html_sha256": "c21da85ac4ddcbd991be5f96ce1b6c0d7be909f388121d8dc0f3dd24aeb266b2",
+      "parser_fields_equal": true,
+      "populated_fields": [
+        "title",
+        "description",
+        "locations",
+        "employment_type",
+        "date_posted",
+        "extras"
+      ],
+      "expected_complete_fields_sha256": "2c10b63f8d1e3b9e16d913acbb66f633f279ba398138898d535b528abfe5ec69",
+      "completion_log_hash_match": "match"
+    },
+    {
+      "source_url": "https://careers-gdbiw.icims.com/jobs/5151/designer---on-site-representative-%28osr%29%2c-norfolk%2c-va/job",
+      "retained_fetch_url": "https://careers-gdbiw.icims.com/jobs/5151/designer---on-site-representative-%28osr%29%2c-norfolk%2c-va/job",
+      "posting_id": "a0ad7ee6-9151-4168-82ac-7a5123450dbe",
+      "board_id": "aea7e8d8-a355-43d0-ade4-2078db38cb9e",
+      "html_bytes": 22530,
+      "html_sha256": "43d43c4c8d2df4438480c17aed48677e073712a70522f94a2f34c0ac10482a27",
+      "parser_fields_equal": true,
+      "populated_fields": [],
+      "expected_complete_fields_sha256": "778b56f88547fa63a7f70a84fbd2a82b9bf56e5ada0969c25dfbd5d4de74442b",
+      "completion_log_hash_match": "match"
+    },
+    {
+      "source_url": "https://nttdata.jobs/vacancies/7438/banking_consulting_director/",
+      "retained_fetch_url": "https://nttdata.jobs/vacancies/7438/banking_consulting_director/",
+      "posting_id": "c5acc098-f9a7-4d7a-9f9e-8d540ec17ebe",
+      "board_id": "27768448-78af-42d2-9b91-bd1834fd0c96",
+      "html_bytes": 73676,
+      "html_sha256": "a5cb2119864daea2e77b2c370d23a02a7ffb7350b44a93dd69309a497bc22593",
+      "parser_fields_equal": true,
+      "populated_fields": [
+        "title",
+        "description",
+        "employment_type",
+        "date_posted",
+        "extras"
+      ],
+      "expected_complete_fields_sha256": "2e3df6faa1667230106a4ab07b0772c0218d1ef3a107db9c4e6ffbcf94c44a75",
+      "completion_log_hash_match": "match"
+    },
+    {
+      "source_url": "https://corporacaogpa.gupy.io/jobs/12202583",
+      "retained_fetch_url": "https://corporacaogpa.gupy.io/jobs/12202583",
+      "posting_id": "8ec31f7b-5e13-4129-9fa7-5a6e085cea55",
+      "board_id": "c62248df-74cb-4886-a728-658b217c9dc4",
+      "html_bytes": 108336,
+      "html_sha256": "d99b083339887026dc4ff774d2a5e9f42ae739c1abd8f015f0741e5be9b7fcbb",
+      "parser_fields_equal": true,
+      "populated_fields": [
+        "title",
+        "description",
+        "locations",
+        "employment_type",
+        "date_posted",
+        "extras"
+      ],
+      "expected_complete_fields_sha256": "9cd044493d1901fb4ae9b229e558a0fa3e8555302d073f24c5af0e889224338d",
+      "completion_log_hash_match": "match"
+    },
+    {
+      "source_url": "https://nttdata.jobs/vacancies/7592/lead_service_ux_designer/",
+      "retained_fetch_url": "https://nttdata.jobs/vacancies/7592/lead_service_ux_designer/",
+      "posting_id": "c1a16f86-47cf-4688-ac5b-b8ee2f1264e6",
+      "board_id": "27768448-78af-42d2-9b91-bd1834fd0c96",
+      "html_bytes": 75781,
+      "html_sha256": "cba5e79b59b1d913c467dac0f7aa7b57cedce25aa26aef218afcaa8c7b78072b",
+      "parser_fields_equal": true,
+      "populated_fields": [
+        "title",
+        "description",
+        "employment_type",
+        "date_posted",
+        "extras"
+      ],
+      "expected_complete_fields_sha256": "2c405878f5656072ffdde906ee2ae0e009a5b8b6433b7585956b4ac00d22c585",
+      "completion_log_hash_match": "match"
+    }
+  ],
+  "database_comparisons": [
+    {
+      "posting_id": "7fc81774-6c61-4563-bf86-4480befa34b2",
+      "source_url": "https://corporacaogpa.gupy.io/jobs/12574754",
+      "scrape_failures": 0,
+      "is_active": true,
+      "last_scraped_at": "2026-09-28 07:42:33.394275+00:00",
+      "next_scrape_at": "2026-09-29 07:42:33.394275+00:00",
+      "css_description": false,
+      "case": "populated output persisted",
+      "title_equal": true,
+      "employment_equal": true,
+      "description_bytes": 6206,
+      "description_sha256": "fdff279283b9775efb083d5e744acd044c7cf0832d48eedc5248b768246f4a73",
+      "description_equal": true,
+      "r2_uploaded": true,
+      "posting_description_hash_matches": true
+    },
+    {
+      "posting_id": "a0ad7ee6-9151-4168-82ac-7a5123450dbe",
+      "source_url": "https://careers-gdbiw.icims.com/jobs/5151/designer---on-site-representative-%28osr%29%2c-norfolk%2c-va/job",
+      "scrape_failures": 1,
+      "is_active": true,
+      "last_scraped_at": "2026-09-28 05:26:57.417761+00:00",
+      "next_scrape_at": "2026-09-28 05:56:57.417761+00:00",
+      "css_description": false,
+      "case": "canonical empty extraction; existing row retained"
+    },
+    {
+      "posting_id": "c5acc098-f9a7-4d7a-9f9e-8d540ec17ebe",
+      "source_url": "https://nttdata.jobs/vacancies/7438/banking_consulting_director/",
+      "scrape_failures": 0,
+      "is_active": true,
+      "last_scraped_at": "2026-09-28 06:50:00.691848+00:00",
+      "next_scrape_at": "2026-09-29 06:50:00.691848+00:00",
+      "css_description": true,
+      "case": "populated output persisted",
+      "title_equal": true,
+      "employment_equal": true,
+      "description_bytes": 8956,
+      "description_sha256": "418f755dfcbc31ee36b5133d92ac4d468312341d77f7da1e7665dd93f91ea2c6",
+      "description_equal": true,
+      "r2_uploaded": true,
+      "posting_description_hash_matches": true
+    },
+    {
+      "posting_id": "8ec31f7b-5e13-4129-9fa7-5a6e085cea55",
+      "source_url": "https://corporacaogpa.gupy.io/jobs/12202583",
+      "scrape_failures": 0,
+      "is_active": true,
+      "last_scraped_at": "2026-09-28 04:05:15.689640+00:00",
+      "next_scrape_at": "2026-09-29 04:05:15.689640+00:00",
+      "css_description": false,
+      "case": "populated output persisted",
+      "title_equal": true,
+      "employment_equal": true,
+      "description_bytes": 3183,
+      "description_sha256": "3c7057e60fbd5771f8623c1fd4f073c2984e7b9a6ff133eaad2c62da4a9a86ff",
+      "description_equal": true,
+      "r2_uploaded": true,
+      "posting_description_hash_matches": true
+    },
+    {
+      "posting_id": "c1a16f86-47cf-4688-ac5b-b8ee2f1264e6",
+      "source_url": "https://nttdata.jobs/vacancies/7592/lead_service_ux_designer/",
+      "scrape_failures": 0,
+      "is_active": true,
+      "last_scraped_at": "2026-09-28 03:22:22.058845+00:00",
+      "next_scrape_at": "2026-09-29 03:22:22.058845+00:00",
+      "css_description": true,
+      "case": "populated output persisted",
+      "title_equal": true,
+      "employment_equal": true,
+      "description_bytes": 11004,
+      "description_sha256": "e3fc60b98eeff0f22b25d2117edf4ecab57a3b0f29918b4fb291d1cd3101d1c0",
+      "description_equal": true,
+      "r2_uploaded": true,
+      "posting_description_hash_matches": true
+    }
+  ],
+  "typesense": {
+    "successful_exports": 27930,
+    "export_errors": 0,
+    "lag": 0,
+    "healthy": true
+  },
+  "private_artifacts": {
+    "directory": "/Users/Viktor/.codex/migration-evidence/go-jsonld/2026-09-28",
+    "directory_mode": "0700",
+    "capture_snapshot_modes": "0600",
+    "fixtures_include": "retained publisher bytes, current configs, matching posting/description readbacks, native replay binary, completion logs",
+    "public_html_uploaded_to_repository": false
+  },
+  "scope_limits": [
+    "Python worker/writer and other detail profiles remain",
+    "Playwright and Chromium production ownership remains",
+    "Whole-lane same-actual-workload CPU/RAM/density/cost evidence remains pending",
+    "Final all-Go cutover and cold reversal remain pending",
+    "Two Swatch transport failures are classified transient; do not force their retry",
+    "One retained iCIMS input is canonical empty extraction, not a populated output proof"
+  ],
+  "next_implementation_inventory": {
+    "dom_primary_detail_boards": 758,
+    "distinct_dom_configs": 684,
+    "rendered_dom_configs": 166,
+    "proxy_dom_configs": 45
+  },
+  "due_scores_forced": false,
+  "duplicate_origin_fetches_for_parity": false,
+  "full_migration_complete": false,
+  "transport_failure_job_readback": [
+    {
+      "posting_id": "338b61cb-eecb-45b3-a93e-0143c9305320",
+      "is_active": true,
+      "scrape_failures": 2,
+      "last_scraped_at": "2026-09-28T03:17:58.039569Z",
+      "next_scrape_at": "2026-09-28T04:17:58.039569Z"
+    },
+    {
+      "posting_id": "2f428107-4144-402e-8d24-8bf08bcc6923",
+      "is_active": true,
+      "scrape_failures": 3,
+      "last_scraped_at": "2026-09-28T06:40:39.342932Z",
+      "next_scrape_at": null
+    }
+  ],
+  "sampled_gone_readback": {
+    "posting_id": "605c56d8-7c57-468c-b1a2-43f12a3882fc",
+    "upstream_status": 410,
+    "is_active": false,
+    "last_scraped_at": "2026-09-28T02:55:19.166302Z",
+    "next_scrape_at": null
+  }
+}
