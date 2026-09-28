@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+/* Reserve the detail column for the whole page, including company/watchlist
+ * controls. Keep the selector on each page (not the shared app layout) so a
+ * page retained by Next's Activity boundary cannot narrow another route. */
+.posting-detail-panel { display: none; }
+@media (min-width: 1024px) {
+  .posting-detail-layout:has(.posting-detail-panel) {
+    padding-right: calc(420px + 1.25rem);
+  }
+  .posting-detail-panel {
+    display: block;
+    position: fixed;
+    top: calc(4rem + var(--app-alert-height, 0px));
+    right: max(1rem, calc((100vw - 1200px) / 2 + 1rem));
+    z-index: 40;
+    width: 420px;
+    height: max(0px, calc(100dvh - 5rem - var(--app-alert-height, 0px)));
+  }
+}
+
 /* Cached Explore HTML is the default feed. A parser-time script marks visits
  * that require URL or viewer-specific results before those cards can paint. */
 [data-explore-pending-skeleton] { display: none; }

@@ -41,7 +41,7 @@ describe("robots", () => {
     const disallow = wildcard!.disallow as string[];
     expect(disallow).toContain("/api/auth/");
     expect(disallow).toContain("/api/admin/");
-    expect(disallow).toContain("/api/stripe/");
+    expect(disallow).toContain("/api/paddle/");
     expect(disallow).not.toContain("/api/");
   });
 

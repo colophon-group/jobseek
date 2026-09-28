@@ -229,7 +229,7 @@ describe("SearchPage — mount direct refresh ownership (#8259)", () => {
     expect(tryListTopCompaniesDirectMock).not.toHaveBeenCalled();
   });
 
-  it("keeps the visible companies stable until the visitor accepts fresher results", async () => {
+  it("automatically replaces cached results and enables pagination for the fresh feed", async () => {
     const original = {
       company: { id: "original", name: "Original", slug: "original", icon: null },
       activeMatches: 1,
@@ -266,11 +266,7 @@ describe("SearchPage — mount direct refresh ownership (#8259)", () => {
       />,
     );
 
-    const latest = await screen.findByRole("button", { name: "Show latest results" });
-    expect(screen.getByTestId("visible-company-ids").textContent).toBe("original");
-    expect(screen.queryByRole("button", { name: "Load more results" })).toBeNull();
-    fireEvent.click(latest);
-    expect(screen.getByTestId("visible-company-ids").textContent).toBe("fresh");
+    await waitFor(() => expect(screen.getByTestId("visible-company-ids").textContent).toBe("fresh"));
     expect(screen.queryByRole("button", { name: "Show latest results" })).toBeNull();
     expect(screen.getByRole("button", { name: "Load more results" })).toBeTruthy();
   });
@@ -308,6 +304,31 @@ describe("SearchPage — mount direct refresh ownership (#8259)", () => {
     expect(runListTopCompaniesMock).not.toHaveBeenCalled();
     await act(async () => { resolveRefresh(null); });
     expect(screen.getByRole("button", { name: "Load more results" })).toBeTruthy();
+  });
+
+  it("does not let a late automatic refresh overwrite a newer filter search", async () => {
+    let resolveRefresh!: (value: Awaited<ReturnType<typeof tryListTopCompaniesDirect>>) => void;
+    tryListTopCompaniesDirectMock.mockImplementationOnce(() =>
+      new Promise((resolve) => { resolveRefresh = resolve; }),
+    );
+    runListTopCompaniesMock.mockResolvedValueOnce({
+      companies: [{
+        company: { id: "remote", name: "Remote", slug: "remote", icon: null },
+        activeMatches: 1, yearMatches: 1, postings: [],
+      }],
+      totalCompanies: 1,
+    });
+    render(<SearchPage
+      initialCompanies={[]} initialTotalCompanies={0} initialKeywords={[]}
+      initialLocations={[]} initialOccupations={[]} initialSeniorities={[]}
+      initialTechnologies={[]} initialEmploymentTypes={[]} initialWorkMode={[]}
+      locale="en" displayCurrency="EUR" jobLanguages={[]} languages={[]}
+    />);
+    await waitFor(() => expect(tryListTopCompaniesDirectMock).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole("button", { name: "toggle remote" }));
+    await waitFor(() => expect(screen.getByTestId("visible-company-ids").textContent).toBe("remote"));
+    await act(async () => { resolveRefresh({ companies: [], totalCompanies: 0 }); });
+    expect(screen.getByTestId("visible-company-ids").textContent).toBe("remote");
   });
 
   it("does not paginate old cards while a filter search is in flight", async () => {
@@ -358,7 +379,7 @@ describe("SearchPage — mount direct refresh ownership (#8259)", () => {
     expect(runListTopCompaniesMock).toHaveBeenCalledTimes(1);
   });
 
-  it("offers a fresh first page again after returning to a restored feed", async () => {
+  it("keeps the current feed and avoids another read when returning via Back", async () => {
     const original = {
       company: { id: "original", name: "Original", slug: "original", icon: null },
       activeMatches: 1,
@@ -396,14 +417,15 @@ describe("SearchPage — mount direct refresh ownership (#8259)", () => {
     };
 
     const first = render(<SearchPage {...props} />);
-    await screen.findByRole("button", { name: "Show latest results" });
+    await waitFor(() => expect(screen.getByTestId("visible-company-ids").textContent).toBe("fresh"));
     first.unmount();
-    expect(snapshotMocks.snapshot?.companies[0]?.company.id).toBe("original");
+    expect(snapshotMocks.snapshot?.companies[0]?.company.id).toBe("fresh");
 
     render(<SearchPage {...props} />);
-    await screen.findByRole("button", { name: "Show latest results" });
-    expect(screen.getByTestId("visible-company-ids").textContent).toBe("original");
-    expect(tryListTopCompaniesDirectMock).toHaveBeenCalledTimes(2);
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.queryByRole("button", { name: "Show latest results" })).toBeNull();
+    expect(screen.getByTestId("visible-company-ids").textContent).toBe("fresh");
+    expect(tryListTopCompaniesDirectMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not refresh queryless defaults while browser-specific data is pending", async () => {

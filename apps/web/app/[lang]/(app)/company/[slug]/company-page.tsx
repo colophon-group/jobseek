@@ -790,9 +790,7 @@ export function CompanyPage({
       <div className="min-w-0 flex-1">{mainContent}</div>
       {showPostingId && (
         <>
-          {/* Desktop: side-by-side sticky panel. Matches
-              watchlist-job-list.tsx pattern. */}
-          <div className="sticky top-[4.5rem] z-40 hidden h-[calc(100vh-5.5rem)] w-[420px] shrink-0 lg:block">
+          <div className="posting-detail-panel">
             <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
           </div>
           <MobileJobDetailDialog postingId={showPostingId} onClose={handleClosePosting} />

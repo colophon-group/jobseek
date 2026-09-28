@@ -241,11 +241,8 @@ class TestTruncatedSuppressesGoneDetection:
     4. Still inserts the URLs that ARE in the (capped) batch.
     """
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_truncated_url_only_skips_mark_gone(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_truncated_url_only_skips_mark_gone(self, mock_monitor, mock_pool, mock_http):
         """URL-only truncated batch: _MARK_GONE_BY_TIMESTAMP must not run."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -278,11 +275,8 @@ class TestTruncatedSuppressesGoneDetection:
         # The cycle is still recorded as success — failure budget unchanged.
         conn.fetchval.assert_any_await(_RECORD_SUCCESS_NONEMPTY, "board-1", None)
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_truncated_rich_skips_mark_gone(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_truncated_rich_skips_mark_gone(self, mock_monitor, mock_pool, mock_http):
         """Rich (greenhouse/lever/ashby/...) truncated batch: same contract."""
         pool, conn = mock_pool
         url1 = "https://example.com/job/1"
@@ -307,11 +301,8 @@ class TestTruncatedSuppressesGoneDetection:
         # Success still recorded.
         conn.fetchval.assert_any_await(_RECORD_SUCCESS_NONEMPTY, "board-1", None)
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_any_truncated_batch_flips_whole_cycle(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_any_truncated_batch_flips_whole_cycle(self, mock_monitor, mock_pool, mock_http):
         """One truncated batch in a multi-batch stream is enough — even if
         earlier batches were clean, the cycle is partial because we know
         we didn't see the full set."""
@@ -343,11 +334,8 @@ class TestTruncatedSuppressesGoneDetection:
         fetch_sqls = [c.args[0] for c in conn.fetch.await_args_list]
         assert _MARK_GONE_BY_TIMESTAMP not in fetch_sqls
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_truncated_increments_metric(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
+    async def test_truncated_increments_metric(self, mock_monitor, mock_pool, mock_http):
         """``crawler_monitor_truncated_total{board_id=...}`` increments once
         per cycle on truncation; not at all on a clean cycle. Counter is
         scoped by ``board_id`` so a noisy board is attributable in Grafana
@@ -371,10 +359,9 @@ class TestTruncatedSuppressesGoneDetection:
         after = _counter_value(monitor_truncated_total, board_id="board-truncated-test")
         assert after - before == 1
 
-    @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_clean_run_runs_mark_gone_and_no_counter(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+        self, mock_monitor, mock_pool, mock_http
     ):
         """Control: a normal (untruncated) cycle still runs gone-detection
         and does NOT increment the truncation counter."""

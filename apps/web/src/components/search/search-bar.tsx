@@ -24,7 +24,6 @@ import type { WorkMode } from "@/lib/search/types";
 import { useSearchStateStore, usePageActions } from "@/components/providers/SearchStateProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { ScrollFade } from "@/components/ui/scroll-fade";
-import { useBrowserCoordinates } from "@/lib/search/browser-geolocation";
 import { SearchBarSuggestionSection } from "@/components/search/search-bar-suggestion-section";
 import { matchWorkModes, useSearchBarTypeahead } from "@/components/search/search-bar-typeahead";
 import { useSearchBarQueryIntent } from "@/components/search/use-search-bar-query-intent";
@@ -103,8 +102,8 @@ export function SearchBar({
   employmentTypes: employmentTypesProp,
   languages: languagesProp,
   companyId,
-  userLat: serverLat,
-  userLng: serverLng,
+  userLat,
+  userLng,
   className,
   placeholder: placeholderProp,
   accessibleLabel: accessibleLabelProp,
@@ -141,10 +140,6 @@ export function SearchBar({
   const submissionVersion = useRef(0);
   const inputEditVersion = useRef(0);
   const listboxId = useId();
-
-  const browserGeo = useBrowserCoordinates(serverLat);
-  const userLat = serverLat ?? browserGeo?.lat;
-  const userLng = serverLng ?? browserGeo?.lng;
 
   // Current filter state: from props if available, otherwise derive from URL
   const currentKeywords = keywordsProp ?? (searchParams.get("q")?.split(",").filter(Boolean) ?? []);

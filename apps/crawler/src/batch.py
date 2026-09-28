@@ -151,7 +151,6 @@ from src.queries.scrape import (  # noqa: F401
     _UPDATE_ENRICH_CONTENT,
     _UPDATE_JOB_CONTENT,
 )
-from src.shared.redis import get_redis  # noqa: F401
 
 # ── Re-exports: queries/lookups.py ───────────────────────────────────
 _flush_location_misses = _lookups_mod._flush_location_misses
@@ -272,7 +271,6 @@ __all__ = (
     "ScrapeResult",
     "api_monitor_types",
     "dry_run_single_board",
-    "get_redis",
     "get_stream_fn",
     "monitor_needs_browser",
     "monitor_one",

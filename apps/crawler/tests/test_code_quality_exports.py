@@ -12,7 +12,6 @@ from src.core.enrich import taxonomy
 from src.queries import monitor as monitor_queries
 from src.queries import scrape as scrape_queries
 from src.shared import http_retry
-from src.shared import redis as redis_module
 
 MONITOR_QUERY_EXPORTS = [
     "_BATCH_UPDATE_RICH_CONTENT",
@@ -84,7 +83,6 @@ def test_scrape_query_exports_are_explicit_and_available():
 
 def test_shared_compatibility_globals_are_explicit_exports():
     assert "_RETRYABLE_STATUSES" in http_retry.__all__
-    assert "_checked" in redis_module.__all__
     assert "_warned_empty" in taxonomy.__all__
 
 

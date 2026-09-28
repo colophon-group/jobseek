@@ -360,7 +360,7 @@ class DailyRoutineRunner:
             count=self.count,
             error_bundle=self.error_bundle,
         )
-        cmd = build_codex_command(cfg, prompt)
+        cmd = build_codex_command(cfg, prompt, worktree=worktree)
         started_at = time.time()
         with (
             self.ledger.worktree_execution_lease(run_id),

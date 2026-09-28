@@ -267,16 +267,13 @@ def test_sql_rechecks_terminal_state_and_fences_cdc() -> None:
 
 
 @pytest.mark.asyncio
-async def test_refresh_invalidates_cache_and_recomputes_typesense_counts(monkeypatch) -> None:
-    redis = AsyncMock()
+async def test_refresh_recomputes_typesense_counts(monkeypatch) -> None:
     client = object()
     refresh = AsyncMock()
-    monkeypatch.setattr("src.redis_queue.get_redis", lambda: redis)
     monkeypatch.setattr("src.typesense_client.get_typesense_client", lambda: client)
     monkeypatch.setattr("src.sync.refresh_typesense_counts", refresh)
 
     conn = object()
     await refresh_derived_surfaces(_Pool(conn))
 
-    redis.delete.assert_awaited_once_with("cache:platform-stats")
     refresh.assert_awaited_once_with(conn, client)

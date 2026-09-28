@@ -126,9 +126,6 @@ vi.mock("@/lib/search/typesense-filters", () => ({
   POSTING_FLOW_FILTER: "has_content:!=false",
 }));
 
-vi.mock("@/lib/search/pg-filters", () => ({
-  localesOrNoneClause: vi.fn(),
-}));
 
 vi.mock("@/lib/search/constants", () => ({
   ANON_MAX_WATCHLIST_POSTINGS: 50,

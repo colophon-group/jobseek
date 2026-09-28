@@ -4,6 +4,7 @@ import { cacheLife } from "next/cache";
 
 import { AppBootstrapProvider } from "@/components/providers/AppBootstrapProvider";
 import { AppHeader } from "@/components/AppHeader";
+import { AppContentFrame } from "@/components/AppContentFrame";
 import { CookieBanner } from "@/components/CookieBanner";
 import { SearchStateProvider } from "@/components/providers/SearchStateProvider";
 import { ViewerTimezoneCookie } from "@/components/ViewerTimezoneCookie";
@@ -44,9 +45,7 @@ export default async function AppLayout({ children }: Props) {
         <SkipToContentLink />
         <div className="flex min-h-dvh flex-col">
           <AppHeader />
-          <div className="flex min-h-0 flex-1 flex-col md:pt-12">
-            <CookieBanner aboveBottomBar />
-            <UpgradeBanner aboveBottomBar />
+          <AppContentFrame alerts={<><CookieBanner aboveBottomBar /><UpgradeBanner aboveBottomBar /></>}>
             <main
               id="main-content"
               tabIndex={-1}
@@ -54,7 +53,7 @@ export default async function AppLayout({ children }: Props) {
             >
               {children}
             </main>
-          </div>
+          </AppContentFrame>
           <BackToTop />
         </div>
       </SearchStateProvider>

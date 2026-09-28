@@ -1396,6 +1396,10 @@ async def probe_pw(urls: list[str], pw) -> tuple[dict | None, str]:
 
 def parse_html(html: str, config: dict) -> JobContent:
     """Extract job data from pre-fetched HTML using step-based extraction."""
+    from src.runtime import dom_go_parse
+
+    if dom_go_parse.enabled():
+        return dom_go_parse.parse_html(html, config)
     config = _runtime_config(html, config)
     steps = config.get("steps")
     if not steps:
@@ -1878,7 +1882,16 @@ async def _scrape_once(
                 html = await _render_with_challenge_retry(p)
     else:
         retry_limits = _status_retry_limits(config, url)
-        if request_headers:
+        from src.runtime import dom_go_http
+
+        if dom_go_http.eligible(fetch_url, config, http):
+            resp = await dom_go_http.fetch_response(
+                fetch_url,
+                headers=request_headers,
+                retry_limits=retry_limits,
+                same_origin_redirects=same_origin_redirects,
+            )
+        elif request_headers:
             resp = await public_get(http, fetch_url, headers=request_headers)
         else:
             resp = await fetch_response_with_status_retries(
@@ -1913,6 +1926,19 @@ async def _scrape_once(
         _raise_if_bot_challenge(str(resp.url), html)
 
     source_html = html
+    from src.runtime import dom_go_parse
+
+    if dom_go_parse.enabled():
+        content = await dom_go_parse.parse_fetched_html(source_html, config, url)
+        if artifact_dir is not None:
+            with contextlib.suppress(Exception):
+                # Debug artifacts retain the reference flat representation.
+                elements = _flatten_html(source_html, _runtime_config(source_html, config))
+                (artifact_dir / "flat.json").write_text(
+                    json.dumps(elements, indent=2, ensure_ascii=False),
+                )
+        return await _fill_linked_description(content, source_html, url, linked_description, http)
+
     config = _runtime_config(html, config)
     steps = config["steps"]
     html = _scope_html(html, config)

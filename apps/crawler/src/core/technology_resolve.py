@@ -17,9 +17,8 @@ import re
 from html.parser import HTMLParser
 from typing import TYPE_CHECKING
 
-import polars as pl
-
 from src.shared.constants import get_data_dir
+from src.shared.csv_io import read_csv
 
 if TYPE_CHECKING:
     import asyncpg
@@ -73,10 +72,10 @@ def _load_patterns() -> list[tuple[str, re.Pattern[str]]]:
     Returns list of (slug, compiled_pattern) tuples.
     """
     path = get_data_dir() / "technologies.csv"
-    df = pl.read_csv(path, infer_schema_length=0)
+    _, rows = read_csv(path)
 
     result: list[tuple[str, re.Pattern[str]]] = []
-    for row in df.iter_rows(named=True):
+    for row in rows:
         slug = row["slug"]
         raw_patterns = row.get("patterns", "")
         flags_str = row.get("flags", "") or ""
@@ -107,9 +106,9 @@ def _load_patterns_with_keywords() -> list[tuple[str, re.Pattern[str], tuple[str
     only then is the full regex invoked.
     """
     path = get_data_dir() / "technologies.csv"
-    df = pl.read_csv(path, infer_schema_length=0)
+    _, rows = read_csv(path)
     slug_keywords: dict[str, tuple[str, ...]] = {}
-    for row in df.iter_rows(named=True):
+    for row in rows:
         raw = row.get("patterns", "")
         if not raw:
             continue

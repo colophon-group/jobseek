@@ -63,7 +63,6 @@ vi.mock("@/lib/search/typesense-filters", () => ({
   buildFilterString: mocks.buildFilterString,
   POSTING_BASE_FILTER: "is_active:=true",
 }));
-vi.mock("@/lib/search/pg-filters", () => ({ localesOrNoneClause: vi.fn() }));
 vi.mock("@/lib/services/search-input", () => ({
   parseSearchFilters: mocks.parseSearchFilters,
 }));

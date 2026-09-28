@@ -130,9 +130,6 @@ vi.mock("@/lib/search/typesense-filters", () => ({
   buildFilterString: vi.fn(),
 }));
 
-vi.mock("@/lib/search/pg-filters", () => ({
-  localesOrNoneClause: vi.fn(),
-}));
 
 vi.mock("@/lib/search/constants", () => ({
   ANON_MAX_WATCHLIST_POSTINGS: 50,

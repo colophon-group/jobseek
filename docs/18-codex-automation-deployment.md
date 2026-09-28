@@ -168,9 +168,19 @@ Expected filesystem layout:
 ```
 
 Install runtime tools in user-owned paths where possible: `git`, `gh`, Python,
-`uv`, and Node/npm for the Codex CLI. The deployment script updates the Codex
-CLI in the runner's home, verifies `gpt-6-astra` with a short model request,
-and puts the verified binary first on the runner's `PATH`. The
+`uv`, and Node/npm for the Codex CLI. The deployment script installs the exact version in `deploy/codex-version`
+in the runner's home. It verifies the exact model reply, then runs a disposable
+skill/custom-agent smoke with the repository normalizer role. The smoke has no
+routine credentials or live postings, and its shell network access is disabled.
+The headless runner explicitly registers each canonical `.codex/agents/*.toml`
+file in its command arguments, including for newly created worktrees without
+persisted trust settings. The multi-agent smoke keeps its native rollout because
+children require parent history; normal trace-retention rules apply. The separate
+single-response authentication probe remains ephemeral.
+Only a verified binary is placed first on the runner's `PATH`. Update the pin
+through a PR; roll back by reverting it and redeploying. Never resolve `latest`
+during deployment. The installed revision/version and agent instruction digest
+are recorded under `/usr/local/lib/jobseek-codex/` for incident correlation. The
 runner also needs the normal crawler browser/rendering stack: `libcairo2`,
 `librsvg2-bin`, Playwright system dependencies, and Chromium installed into the
 `codex-runner` browser cache. Do not grant write access to production crawler
@@ -266,52 +276,31 @@ Committed deployment templates:
 - [`examples/company-resolver-codex-prompt.md`](examples/company-resolver-codex-prompt.md)
   - self-contained prompt template used by the governor for a single issue.
 
-Install the unit and config as root, but keep the repo and run state owned by
-`codex-runner`:
+Deploy units and privileged helpers through the reviewed workflow:
 
 ```bash
-id -u codex-runner >/dev/null 2>&1 || \
-  useradd --system --user-group --create-home \
-    --home-dir /home/codex-runner --shell /bin/bash codex-runner
-getent group docker >/dev/null 2>&1 && gpasswd --delete codex-runner docker || true
-
-install -d -o codex-runner -g codex-runner -m 0750 /srv/jobseek-codex
-install -d -o codex-runner -g codex-runner -m 0700 \
-  /srv/jobseek-codex/worktrees \
-  /srv/jobseek-codex/traces \
-  /srv/jobseek-codex/state \
-  /srv/jobseek-codex/logs \
-  /srv/jobseek-codex/data/postings-labelled
-install -d -o root -g codex-runner -m 0750 /srv/jobseek-codex/inputs
-install -d -o root -g codex-runner -m 0750 /etc/jobseek-codex
-
-install -o root -g root -m 0644 deploy/systemd/jobseek-codex-governor.service \
-  /etc/systemd/system/jobseek-codex-governor.service
-install -o root -g root -m 0644 deploy/systemd/jobseek-codex-governor.timer \
-  /etc/systemd/system/jobseek-codex-governor.timer
-install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-annotations.service \
-  /etc/systemd/system/jobseek-codex-daily-annotations.service
-install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-annotations.timer \
-  /etc/systemd/system/jobseek-codex-daily-annotations.timer
-install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-error-review.service \
-  /etc/systemd/system/jobseek-codex-daily-error-review.service
-install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-error-review.timer \
-  /etc/systemd/system/jobseek-codex-daily-error-review.timer
-install -o root -g root -m 0644 deploy/systemd/jobseek-codex-docker-lifecycle.service \
-  /etc/systemd/system/jobseek-codex-docker-lifecycle.service
-install -o root -g codex-runner -m 0640 \
-  deploy/systemd/jobseek-codex-governor.env.example \
-  /etc/jobseek-codex/governor.env
-systemctl daemon-reload
-systemd-analyze verify \
-  /etc/systemd/system/jobseek-codex-governor.service \
-  /etc/systemd/system/jobseek-codex-governor.timer \
-  /etc/systemd/system/jobseek-codex-daily-annotations.service \
-  /etc/systemd/system/jobseek-codex-daily-annotations.timer \
-  /etc/systemd/system/jobseek-codex-daily-error-review.service \
-  /etc/systemd/system/jobseek-codex-daily-error-review.timer \
-  /etc/systemd/system/jobseek-codex-docker-lifecycle.service
+gh workflow run deploy-codex-runner.yml --ref main
 ```
+
+The workflow copies the scripts, helper import closure, units and CLI version
+pin from the exact GitHub revision into a root-owned bundle under
+`/opt/jobseek-codex-deploy/<sha>`. The installer rejects symlinks, non-root
+ownership and group/world writes throughout that bundle and its ancestors.
+Privileged Python lives under `/usr/local/lib/jobseek-codex`, uses isolated
+Python (`-I`), and never imports or executes code from the runner checkout.
+The maintenance wrapper is also installed exclusively from that trusted bundle.
+
+`/srv/jobseek-codex` and `inputs/` are root-owned. The runner owns only its
+checkout, worktrees, traces, state, logs, data and home. Error-review status is
+root-written to `inputs/error-review-status.json`; observability reads that
+path. A replaced or writable privileged input directory stops deployment.
+Do not restore the old runner-owned parent layout or copy privileged helpers
+out of `/srv/jobseek-codex/repo`.
+
+On initial provisioning, create the root-owned `/etc/jobseek-codex` directory
+and deliver the protected governor/labeller environment files before dispatch.
+Retain the authentication setup above. The deployment preserves existing timer
+enablement; an initial activation is a separate documented operator step.
 
 Before enabling the timer, edit `/etc/jobseek-codex/governor.env` for the
 host and keep `JOBSEEK_CODEX_DRY_RUN=true` until issue selection, host checks,

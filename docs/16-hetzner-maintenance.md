@@ -1009,9 +1009,9 @@ critical alerts. If these fire, inspect:
 ```bash
 systemctl status jobseek-codex-daily-error-review.service --no-pager
 journalctl -u jobseek-codex-daily-error-review.service -n 160 --no-pager
-stat -c '%U:%G:%a %y' /srv/jobseek-codex/state/error-review-status.json
+stat -c '%U:%G:%a %y' /srv/jobseek-codex/inputs/error-review-status.json
 jq '{last_attempt_unixtime,last_success_unixtime,last_attempt_success,run_in_progress}' \
-  /srv/jobseek-codex/state/error-review-status.json
+  /srv/jobseek-codex/inputs/error-review-status.json
 ```
 
 After repairing the Codex routine, run the service once and require a fresh
@@ -1349,8 +1349,7 @@ docker exec deploy-worker-1-1 uv run --no-sync crawler sweep-phantoms
 
 Every tombstone sets `updated_at=clock_timestamp()` so the ordered exporter
 publishes it through the normal local PostgreSQL-to-Typesense CDC path. The
-command also invalidates `cache:platform-stats` and recomputes Typesense
-company/taxonomy counts. A signal or failure rolls back only the current
+command also recomputes Typesense company/taxonomy counts. A signal or failure rolls back only the current
 chunk; already committed chunks remain safe and the next invocation resumes
 from the remaining active rows.
 

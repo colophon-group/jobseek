@@ -982,7 +982,7 @@ export function WatchlistViewPage({
   ) : undefined;
 
   return (
-    <div className="space-y-6">
+    <div className="posting-detail-layout space-y-6">
       {isSessionWatchlist ? (
         <p className="flex items-start gap-2 rounded-md border border-warning-border/60 bg-warning-bg px-3 py-2 text-xs leading-relaxed text-warning" role="status">
           <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />

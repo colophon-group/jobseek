@@ -28,6 +28,7 @@ instruction stream unless explicitly copied into the sources above.
 from __future__ import annotations
 
 import copy
+import json
 import os
 import re
 
@@ -247,8 +248,7 @@ def _pre_verify(issue: int) -> None:
     template = template_path.read_text()
     rendered = template.format(
         issue=issue,
-        issue_title=title,
-        issue_body=body,
+        issue_evidence=json.dumps({"title": title, "body": body}, ensure_ascii=True),
         ats_inventory_context=ats_inventory_context,
     )
 

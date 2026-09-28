@@ -191,7 +191,7 @@ export const siteConfig = {
   seo: {
     // Public HTML shells stay crawlable so search engines can read noindex.
     // Authentication/authorization, not robots.txt, protects account data.
-    disallow: ["/api/auth/", "/api/admin/", "/api/stripe/", "/api/paddle/"],
+    disallow: ["/api/auth/", "/api/admin/", "/api/paddle/"],
     // Only pages users actually search for. Legal/policy pages
     // (license, privacy-policy, terms, how-we-index) are reached from
     // the footer of every page and are noindex per #2822 — adding

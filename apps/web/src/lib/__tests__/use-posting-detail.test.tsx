@@ -109,7 +109,7 @@ describe("usePostingDetail", () => {
       "https://r2.example/job/posting-1/fr/latest.html",
     );
     expectTestIdText("loading", "false");
-    expectTestIdText("error", "false");
+    expectTestIdText("error", "null");
     expectTestIdText("description-loaded", "true");
   });
 
@@ -163,8 +163,23 @@ describe("usePostingDetail", () => {
     );
 
     expectTestIdText("loading", "false");
-    expectTestIdText("error", "false");
+    expectTestIdText("error", "null");
     expectTestIdText("description", "");
+  });
+
+  it("marks a missing posting separately from a failed request", async () => {
+    getPostingDetailMock.mockResolvedValue(null);
+    render(<HookHarness postingId="missing-posting" />);
+    await waitFor(() => expectTestIdText("error", "not_found"));
+    expectTestIdText("loading", "false");
+  });
+
+  it("reports unavailable when a server action rejects, including rate-limited requests", async () => {
+    getPostingDetailMock.mockRejectedValue(new Error("An unexpected response was received from the server."));
+    render(<HookHarness postingId="posting-1" />);
+    await waitFor(() => expectTestIdText("error", "unavailable"));
+    expectTestIdText("loading", "false");
+    expectTestIdText("title", "");
   });
 
   it("resets without fetching when there is no posting id", () => {
@@ -172,7 +187,7 @@ describe("usePostingDetail", () => {
 
     expect(getPostingDetailMock).not.toHaveBeenCalled();
     expectTestIdText("loading", "false");
-    expectTestIdText("error", "false");
+    expectTestIdText("error", "null");
     expectTestIdText("description-loaded", "false");
   });
 });

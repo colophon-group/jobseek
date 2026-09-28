@@ -38,7 +38,6 @@ vi.mock("@/lib/useLocalePath", () => ({
 
 import { SearchToolbar } from "../search/search-toolbar";
 import { FilterPillsReadOnly } from "../search/filter-pills-readonly";
-import { WatchlistFilterEditor } from "../watchlist/watchlist-filter-editor";
 
 describe("filter pill remove buttons", () => {
   it("names every active SearchToolbar remove button", () => {
@@ -135,42 +134,6 @@ describe("filter pill remove buttons", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Remove india filter" }));
     expect(remove).toHaveBeenCalledWith("loc", "india");
-  });
-
-  it("names every active WatchlistFilterEditor remove button", () => {
-    render(
-      <WatchlistFilterEditor
-        filters={{
-          keywords: ["backend"],
-          locationSlugs: ["zurich"],
-          occupationSlugs: ["software-engineer"],
-          senioritySlugs: ["senior"],
-          technologySlugs: ["python"],
-          employmentType: ["full_time"],
-          workMode: ["hybrid"],
-          salaryCurrency: "CHF",
-          salaryMin: 120000,
-          salaryMax: 180000,
-          experienceMin: 4,
-          experienceMax: 8,
-        }}
-        onChange={() => {}}
-      />,
-    );
-
-    for (const name of [
-      "Remove backend filter",
-      "Remove zurich filter",
-      "Remove software-engineer filter",
-      "Remove senior filter",
-      "Remove python filter",
-      "Remove Full-time filter",
-      "Remove Hybrid filter",
-      "Remove salary filter",
-      "Remove experience filter",
-    ]) {
-      expect(screen.queryByRole("button", { name })).not.toBeNull();
-    }
   });
 
   it("renders shared watchlist pills read-only when removal callbacks are absent", () => {

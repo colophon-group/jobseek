@@ -16,6 +16,7 @@ import tempfile
 import uuid
 from collections.abc import Generator
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -63,6 +64,8 @@ class Board:
     detections: dict[str, Any] = field(default_factory=dict)
     configs: dict[str, dict[str, Any]] = field(default_factory=dict)
     log: list[dict[str, Any]] = field(default_factory=list)
+
+    _baseline: dict[str, Any] | None = field(default=None, repr=False, compare=False)
 
     # ── Internal helpers ───────────────────────────────────────────
 
@@ -167,9 +170,9 @@ class Board:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Board:
-        if "configs" in data:
-            return cls._from_v2(data)
-        return cls._from_v1(data)
+        board = cls._from_v2(data) if "configs" in data else cls._from_v1(data)
+        board._baseline = deepcopy(board.to_dict())
+        return board
 
     @classmethod
     def _from_v2(cls, data: dict[str, Any]) -> Board:
@@ -488,17 +491,76 @@ def load_workspace(slug: str) -> Workspace:
     return Workspace.from_dict(data)
 
 
+def _merge_board_changes(base: dict, proposed: dict, current: dict) -> dict:
+    """Merge independent config slots; reject stale changes to the same slot.
+
+    A whole config is the compare-and-swap unit: results/feedback computed
+    against old monitor inputs must never be attached to new inputs.
+    """
+    from src.workspace.errors import WorkspaceStateError
+
+    if base and proposed.get("configs") != base.get("configs"):
+        for key in ("url", "slug", "job_link_pattern"):
+            if current.get(key) != base.get(key):
+                raise WorkspaceStateError(
+                    f"Concurrent board edit at {key}; reload before saving configuration results"
+                )
+
+    merged = deepcopy(current)
+    missing = object()
+
+    def apply(before: dict, after: dict, latest: dict, target: dict, prefix: str) -> None:
+        for key in before.keys() | after.keys():
+            old, new = before.get(key, missing), after.get(key, missing)
+            if old == new:
+                continue
+            actual = latest.get(key, missing)
+            if actual != old and actual != new:
+                raise WorkspaceStateError(
+                    f"Concurrent board edit at {prefix}{key}; reload and retry the operation"
+                )
+            if new is missing:
+                target.pop(key, None)
+            else:
+                target[key] = deepcopy(new)
+
+    apply(
+        base.get("configs", {}),
+        proposed.get("configs", {}),
+        current.get("configs", {}),
+        merged.setdefault("configs", {}),
+        "configs.",
+    )
+    excluded = {"configs", "log", "active_config"}
+    apply(
+        {k: v for k, v in base.items() if k not in excluded},
+        {k: v for k, v in proposed.items() if k not in excluded},
+        current,
+        merged,
+        "",
+    )
+    # Explicit selections may race, but a save that did not change selection
+    # must preserve the other writer's choice. Parallel commands use --as/--config.
+    if proposed.get("active_config") != base.get("active_config"):
+        merged["active_config"] = proposed.get("active_config")
+    old_log, new_log = base.get("log", []), proposed.get("log", [])
+    if new_log[: len(old_log)] != old_log:
+        raise WorkspaceStateError("Board action log is append-only; reload and retry")
+    if len(new_log) > len(old_log):
+        merged["log"] = current.get("log", []) + deepcopy(new_log[len(old_log) :])
+    return merged
+
+
 def save_board(slug: str, board: Board) -> None:
-    """Write a board YAML file atomically under advisory lock."""
+    """Persist only changes since load under a lock, with stale-result rejection."""
     path = board_yaml_path(slug, board.alias)
     path.parent.mkdir(parents=True, exist_ok=True)
+    proposed = board.to_dict()
     with file_lock(path):
-        content = yaml.dump(
-            board.to_dict(),
-            default_flow_style=False,
-            sort_keys=False,
-        )
-        _atomic_write(path, content)
+        current = load_board(slug, board.alias).to_dict() if path.exists() else {}
+        merged = _merge_board_changes(board._baseline or {}, proposed, current)
+        _atomic_write(path, yaml.dump(merged, default_flow_style=False, sort_keys=False))
+        board._baseline = deepcopy(proposed)
 
 
 def load_board(slug: str, alias: str) -> Board:

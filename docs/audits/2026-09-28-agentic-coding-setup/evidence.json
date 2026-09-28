@@ -1,0 +1,117 @@
+{
+  "instruction_budget": {
+    "root_bytes": 15844,
+    "crawler_bytes": 45792,
+    "combined_bytes": 61636,
+    "default_budget_bytes": 32768,
+    "crawler_cutoff_line_upper_bound": 281,
+    "caveat": "Excludes global instructions and separators; not a live Codex session capture."
+  },
+  "ci_classification": {
+    "AGENTS.md": {
+      "code": "false",
+      "crawler_code": "false",
+      "go_http_pilot": "false",
+      "boards_csv": "false",
+      "codeql": "false",
+      "is_pr": "true",
+      "base_ref": "main"
+    },
+    "apps/crawler/AGENTS.md": {
+      "code": "false",
+      "crawler_code": "false",
+      "go_http_pilot": "false",
+      "boards_csv": "false",
+      "codeql": "false",
+      "is_pr": "true",
+      "base_ref": "main"
+    },
+    ".agents/skills/jobseek-label-daily/SKILL.md": {
+      "code": "false",
+      "crawler_code": "false",
+      "go_http_pilot": "false",
+      "boards_csv": "false",
+      "codeql": "false",
+      "is_pr": "true",
+      "base_ref": "main"
+    },
+    ".agents/labeller/extractor.md": {
+      "code": "false",
+      "crawler_code": "false",
+      "go_http_pilot": "false",
+      "boards_csv": "false",
+      "codeql": "false",
+      "is_pr": "true",
+      "base_ref": "main"
+    },
+    "apps/crawler/src/workspace/steps/parallel/config-tester.md": {
+      "code": "false",
+      "crawler_code": "false",
+      "go_http_pilot": "false",
+      "boards_csv": "false",
+      "codeql": "false",
+      "is_pr": "true",
+      "base_ref": "main"
+    },
+    "docs/18-codex-automation-deployment.md": {
+      "code": "false",
+      "crawler_code": "false",
+      "go_http_pilot": "false",
+      "boards_csv": "false",
+      "codeql": "false",
+      "is_pr": "true",
+      "base_ref": "main"
+    },
+    ".codex/agents/jobseek-config-tester.toml": {
+      "code": "true",
+      "crawler_code": "false",
+      "go_http_pilot": "false",
+      "boards_csv": "false",
+      "codeql": "true",
+      "is_pr": "true",
+      "base_ref": "main"
+    }
+  },
+  "parallel_board_state": {
+    "after_two_stale_board_saves": [
+      "agent-b"
+    ],
+    "scraper_selected_by_resuming_agent_a": {
+      "agent-a": null,
+      "agent-b": "json-ld"
+    },
+    "cli_exit_code": 0
+  },
+  "merge_interleaving": {
+    "calls": [
+      "gh pr view 1 --repo audit/repo --json state,isDraft,headRefName,headRepositoryOwner --jq {state,isDraft,headRefName,headRepositoryOwner}",
+      "gh api --paginate repos/audit/repo/pulls/1/files --jq .[].filename",
+      "classified head A as config-only",
+      "git config user.name github-actions[bot]",
+      "git config user.email github-actions[bot]@users.noreply.github.com",
+      "git fetch origin main refs/heads/add-company/audit:refs/remotes/origin/add-company/audit",
+      "git checkout -B add-company/audit origin/add-company/audit",
+      "git merge-base --is-ancestor origin/main HEAD",
+      "gh pr view 1 --repo audit/repo --json statusCheckRollup --jq ",
+      "    [",
+      "      .statusCheckRollup[]",
+      "      | select(",
+      "          (.__typename == \"StatusContext\" and .context == \"Required CI\")",
+      "          or (.__typename == \"CheckRun\" and .name == \"Required CI\")",
+      "        )",
+      "      | if .__typename == \"StatusContext\" then .state else .conclusion end",
+      "    ]",
+      "    | last // \"\"",
+      "  ",
+      "simulated head advanced from A to B before CI success",
+      "gh pr merge 1 --repo audit/repo --rebase",
+      "simulated merge attempt on current head B"
+    ],
+    "stdout": [
+      "PR #1 is already up to date",
+      "PR #1 Required CI is successful",
+      "PR #1 merged"
+    ],
+    "caveat": "Mocked GitHub/Git; demonstrates an unbound merge request, not a live merge."
+  }
+}
