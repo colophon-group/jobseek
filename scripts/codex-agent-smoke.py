@@ -92,6 +92,7 @@ Wait for it to finish. Do not write its result for it. Reply exactly SMOKE_OK.
         with subprocess.Popen(
             command,
             env=child_env,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
