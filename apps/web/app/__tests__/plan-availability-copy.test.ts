@@ -29,7 +29,7 @@ describe("public Pro-plan availability claims", () => {
     );
 
     expect(faq).toContain(
-      "Pro adds Narrowed results for your watchlists.",
+      "Pro adds Narrowed results.",
     );
   });
 });
