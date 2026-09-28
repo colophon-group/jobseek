@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 import { describe, expect, it } from "vitest";
 
 import { normalizeClassifierInputV1 } from "./classifier-input";
@@ -72,7 +74,7 @@ describe("AI filter global exact cache identity", () => {
     }))).toMatchObject({
       keyVersion: "ai-filter-cache-hmac-v1",
       model: "jev-1.13.0",
-      promptVersion: "jev-job-fit-choice-v1",
+      promptVersion: "jev-job-fit-choice-v2",
       schemaVersion: "classifier-input-v1",
       normalizerVersion: "classifier-input-normalizer-v4",
       query: "remote Rust",
@@ -81,6 +83,16 @@ describe("AI filter global exact cache identity", () => {
         title: "Platform Engineer",
       },
     });
+  });
+
+  it("cannot reuse a decision cached under the shared-job prompt", () => {
+    const input = { queryText: "remote Rust", classifierInput: job() };
+    const current = serializeAiFilterCacheSemanticInput(input);
+    const previous = current.replace("jev-job-fit-choice-v2", "jev-job-fit-choice-v1");
+    expect(previous).not.toBe(current);
+    const previousKey = createHmac("sha256", secret).update(previous, "utf8").digest("hex");
+    expect(buildAiFilterCacheIdentity({ ...input, hmacSecret: secret }).cacheKey)
+      .not.toBe(previousKey);
   });
 
   it("rejects short HMAC secrets", () => {

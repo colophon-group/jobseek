@@ -239,7 +239,13 @@ export async function putAiFilterConfiguration(input: {
         ))
         .limit(1);
       if (!currentQuery) throw new Error("AI filter current query version is missing");
+      const classifierVersionChanged =
+        currentQuery.model !== JEV_MODEL ||
+        currentQuery.promptVersion !== AI_FILTER_PROMPT_VERSION ||
+        currentQuery.schemaVersion !== CLASSIFIER_INPUT_SCHEMA_VERSION ||
+        currentQuery.normalizerVersion !== CLASSIFIER_INPUT_NORMALIZER_VERSION;
       if (
+        !classifierVersionChanged &&
         currentQuery.normalizedQuery === normalizedQuery &&
         currentQuery.filterFingerprint === fingerprint &&
         currentQuery.horizonStartedAt.getTime() <=
@@ -320,9 +326,11 @@ export async function putAiFilterConfiguration(input: {
         type: "query_changed",
         payload: {
           revision,
-          reason: currentQuery.normalizedQuery === normalizedQuery
-            ? "search_scope_changed"
-            : "query_changed",
+          reason: currentQuery.normalizedQuery !== normalizedQuery
+            ? "query_changed"
+            : classifierVersionChanged
+              ? "classifier_version_changed"
+              : "search_scope_changed",
         },
         idempotencyKey: `query:${queryVersionId}:created`,
         createdAt: now,

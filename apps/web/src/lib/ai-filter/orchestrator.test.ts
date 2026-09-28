@@ -58,7 +58,7 @@ function repository(resolutionFactory: (
 function jevResult(jobs: readonly ReturnType<typeof candidate>[]) {
   return {
     model: "jev-1.13.0" as const,
-    promptVersion: "jev-job-fit-choice-v1" as const,
+    promptVersion: "jev-job-fit-choice-v2" as const,
     decisions: jobs.map((job) => ({
       candidateId: job.candidateId,
       decision: "accepted" as const,
