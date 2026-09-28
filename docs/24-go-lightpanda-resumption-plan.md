@@ -6,6 +6,22 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Next implementation slice: shared JSON-LD details v0.13.885
+
+The isolated `fix-crawler/go-jsonld-detail` worktree implements the shared Go
+parser, direct HTTP transport and parser ownership for validated Lightpanda HTML.
+The frozen oracle covers 167 distinct parser inputs and nine CSS-description
+cases; native transport tests preserve bounded 403/Avature 406 retries,
+content/iframe recovery, typed terminal status and publisher policy. Local
+native race/vet checks and 62 bridge/Lightpanda/JOIN runtime tests pass.
+The current registry admits **700 of 802** primary JSON-LD configs. Remaining
+transport obligations are 79 rendered (13 also proxied), 20 other proxied, two
+skip-SSL and one configured Workday recovery. No enabled board is removed.
+This is implementation evidence; merge, deployment, natural output, same-byte
+readback, database parity and actual-workload whole-lane measurements remain
+pending. Follow the current production cold rollback protocol below before
+any deploy or selector mutation. Overall migration completion is unproven.
+
 ## Production checkpoint: 2026-09-28 — JOIN details v0.13.884
 
 PR #10120 merged as `cc1e273aa35b3f72b53eb82930fc4e39c9380e51`.

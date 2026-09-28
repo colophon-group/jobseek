@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Any, Final
 from urllib.parse import urlsplit
 
 from src.core.job_content import JobContent
-from src.core.jsonld import parse_rendered_html
 from src.lightpanda.client import LightpandaB0Reservation
 from src.lightpanda.routing import resolve_render_assignment
+from src.runtime.jsonld_go_detail import parse_rendered_html
 from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
 
 if TYPE_CHECKING:
@@ -39,7 +39,10 @@ class LightpandaB0ScrapeRuntime:
         self,
         task: LightpandaB0Task,
         reservation: LightpandaB0Reservation,
+        *,
+        parser_binary: str = "/usr/local/bin/jsonld-detail-live",
     ) -> None:
+        self._parser_binary = parser_binary
         self._task = task
         self._reservation = reservation
         self._used = False
@@ -89,7 +92,7 @@ class LightpandaB0ScrapeRuntime:
 
         result = await self._reservation.execute(self._task)
         html = _validated_rendered_html(result, requested_url=url)
-        return parse_rendered_html(url, scraper_config, html)
+        return await parse_rendered_html(url, scraper_config, html, binary=self._parser_binary)
 
 
 def _validated_rendered_html(result: Any, *, requested_url: str) -> str:

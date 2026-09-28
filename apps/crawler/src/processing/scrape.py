@@ -76,6 +76,11 @@ def _runtime_for_scrape(
 ) -> ScrapeRuntime | None:
     if provided is not None or not board_id:
         return provided
+    if scraper_type == "json-ld" and url is not None:
+        from src.runtime.jsonld_go_detail import GoJsonLdDetailRuntime, percentage_selected
+
+        if percentage_selected(board_id, url, scraper_config):
+            return GoJsonLdDetailRuntime()
     if scraper_type == "nextdata" and url is not None:
         from src.runtime.join_go_detail import GoJoinDetailRuntime, percentage_selected
 

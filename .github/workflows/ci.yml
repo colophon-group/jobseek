@@ -803,6 +803,14 @@ jobs:
             --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
             -I /fixtures/verify_installed.py /usr/local/bin/join-monitor-live
 
+      - name: Verify installed JSON-LD parser parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/jsonld-detail/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_installed.py /usr/local/bin/jsonld-detail-live
+
       - name: Self-test sampler container probe
         run: python3 .github/scripts/crawler-sampler-container-smoke.py --self-test
 
