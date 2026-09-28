@@ -1,0 +1,187 @@
+{
+  "status": "implementation verified offline; production deployment pending",
+  "scope": "Shared monitor/detail HTML normalization only; full Go/Typesense/Lightpanda goal remains active",
+  "platform": "macOS-14.4-arm64-arm-64bit-Mach-O",
+  "oracle_cases": 8567,
+  "stored_sample": {
+    "sample_rows": 512,
+    "boards": 265,
+    "locales": [
+      "cs",
+      "de",
+      "en",
+      "es",
+      "fr",
+      "hu",
+      "it",
+      "ja",
+      "nl",
+      "pl",
+      "pt",
+      "ro",
+      "vi",
+      "zh"
+    ],
+    "input_sha256": "d88c0a7cb259073e872923e26998282ebae8b91c141cbf6edc26cc58ffa57681",
+    "output_sha256": "4900a07b8123545ea2353200d02440c9870acdd4175f05530fee1ffed1135d87"
+  },
+  "source": "Read-only PostgreSQL descriptions TABLESAMPLE SYSTEM (0.2) REPEATABLE (928), active postings, limit 512; exact mode0600 capture; no publisher requests",
+  "canonical_normalized_bytes_match": true,
+  "natural_DOM_captures": [
+    {
+      "capture_sha256": "2a26519d3c01988748e5cd4503c773e19c83f5a7ce62da1a61d29463cbae3e17",
+      "description_bytes": 3261,
+      "normalized_bytes": 3201,
+      "normalized_sha256": "c7b1aa91841bee5f78779de3654e2b5fe37fd758e4c7efa3a788dbf384fead3d",
+      "full_normalized_match": true
+    },
+    {
+      "capture_sha256": "5d7c1d803f656511008592b0e82b448e56d1941dfb0d53dd17bd50e1d3c8e8a2",
+      "description_bytes": 3655,
+      "normalized_bytes": 3610,
+      "normalized_sha256": "81ca64e617b7ca8fb0f8973aaf8bf72637e479917cec831aff03fe8934e781c8",
+      "full_normalized_match": true
+    },
+    {
+      "capture_sha256": "7ada3d888d93754557d1dd02f9f5a3898178190947e164595d2ec579a23b114f",
+      "description_bytes": 4140,
+      "normalized_bytes": 4120,
+      "normalized_sha256": "86d67efb0fdd3b2e27cfeeb292594b4e551a59797788251b7b27349eceeb819b",
+      "full_normalized_match": true
+    },
+    {
+      "capture_sha256": "8705419552401b7a95158e87429afb7a9c2bfbd2fa567a48c4e161ff68d8d973",
+      "description_bytes": 4092,
+      "normalized_bytes": 4022,
+      "normalized_sha256": "b853fa76bde884c7d3adbe71ef83bd86c4609f0a5e8d0866e9a2513730346aea",
+      "full_normalized_match": true
+    },
+    {
+      "capture_sha256": "ff051006de01f41b922db27f2296ef7844099e0dbe9eb7eeaf60ac698e65f18d",
+      "description_bytes": 3688,
+      "normalized_bytes": 3628,
+      "normalized_sha256": "60db591e511c12237cf565ea438bd359ea8542ad952a2f28ffa2d0f6d200a5d2",
+      "full_normalized_match": true
+    }
+  ],
+  "rounds": [
+    {
+      "engine": "python",
+      "scope": "normalize_html",
+      "sample_rows": 512,
+      "boards": 265,
+      "locales": [
+        "cs",
+        "de",
+        "en",
+        "es",
+        "fr",
+        "hu",
+        "it",
+        "ja",
+        "nl",
+        "pl",
+        "pt",
+        "ro",
+        "vi",
+        "zh"
+      ],
+      "completions": 10240,
+      "input_sha256": "d88c0a7cb259073e872923e26998282ebae8b91c141cbf6edc26cc58ffa57681",
+      "output_sha256": "ba0f79141a394178f768c7fb887b2fb0acf423fa6d319381de367f88462965f7",
+      "wall_seconds": 1.9814242089996696,
+      "cpu_seconds": 1.973381,
+      "parent_peak_rss_bytes": 57311232,
+      "child_peak_rss_bytes": 0
+    },
+    {
+      "engine": "go",
+      "scope": "normalize_html",
+      "sample_rows": 512,
+      "boards": 265,
+      "locales": [
+        "cs",
+        "de",
+        "en",
+        "es",
+        "fr",
+        "hu",
+        "it",
+        "ja",
+        "nl",
+        "pl",
+        "pt",
+        "ro",
+        "vi",
+        "zh"
+      ],
+      "completions": 10240,
+      "input_sha256": "d88c0a7cb259073e872923e26998282ebae8b91c141cbf6edc26cc58ffa57681",
+      "output_sha256": "ba0f79141a394178f768c7fb887b2fb0acf423fa6d319381de367f88462965f7",
+      "wall_seconds": 1.4300065409988747,
+      "cpu_seconds": 1.85181,
+      "parent_peak_rss_bytes": 50970624,
+      "child_peak_rss_bytes": 17793024
+    },
+    {
+      "engine": "go",
+      "scope": "normalize_html",
+      "sample_rows": 512,
+      "boards": 265,
+      "locales": [
+        "cs",
+        "de",
+        "en",
+        "es",
+        "fr",
+        "hu",
+        "it",
+        "ja",
+        "nl",
+        "pl",
+        "pt",
+        "ro",
+        "vi",
+        "zh"
+      ],
+      "completions": 10240,
+      "input_sha256": "d88c0a7cb259073e872923e26998282ebae8b91c141cbf6edc26cc58ffa57681",
+      "output_sha256": "ba0f79141a394178f768c7fb887b2fb0acf423fa6d319381de367f88462965f7",
+      "wall_seconds": 1.4310808340014773,
+      "cpu_seconds": 1.8519219999999998,
+      "parent_peak_rss_bytes": 50905088,
+      "child_peak_rss_bytes": 17678336
+    },
+    {
+      "engine": "python",
+      "scope": "normalize_html",
+      "sample_rows": 512,
+      "boards": 265,
+      "locales": [
+        "cs",
+        "de",
+        "en",
+        "es",
+        "fr",
+        "hu",
+        "it",
+        "ja",
+        "nl",
+        "pl",
+        "pt",
+        "ro",
+        "vi",
+        "zh"
+      ],
+      "completions": 10240,
+      "input_sha256": "d88c0a7cb259073e872923e26998282ebae8b91c141cbf6edc26cc58ffa57681",
+      "output_sha256": "ba0f79141a394178f768c7fb887b2fb0acf423fa6d319381de367f88462965f7",
+      "wall_seconds": 1.8701239580041147,
+      "cpu_seconds": 1.8643219999999998,
+      "parent_peak_rss_bytes": 57475072,
+      "child_peak_rss_bytes": 0
+    }
+  ],
+  "resource_limits": "Offline normalization stage, including bridge and resident child CPU. Results hashed incrementally without retaining every output. Parent and child peak RSS are separate maxima; this does not establish simultaneous whole-lane RAM, density or cost.",
+  "boundaries": "Requests below16MiB, HTML response sixfold bound plus envelope, deadline10s, open-element stack512. Failure reaps child; no Python fallback or truncation."
+}

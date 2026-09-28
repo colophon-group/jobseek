@@ -47,6 +47,10 @@ try:
             case["min"],
             case["max"],
         ), case["text"]
+    html_cases = json.loads(Path(__file__).with_name("python_html.json").read_text())["cases"]
+    for case in html_cases:
+        result = request("normalize_html", description=case["text"])
+        assert result["normalized_html"] == case["html"], "canonical HTML drift"
 finally:
     proc.stdin.close()
     try:
@@ -59,5 +63,5 @@ assert proc.returncode == 0
 print(
     f"Resident Go enrichment matches {len(titles)} title "
     f"and {len(cases['technologies'])} technology cases; "
-    f"{len(experience_cases)} experience cases"
+    f"{len(experience_cases)} experience and {len(html_cases)} HTML cases"
 )

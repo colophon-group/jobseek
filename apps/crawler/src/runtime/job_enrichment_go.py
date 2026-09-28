@@ -1,4 +1,4 @@
-"""Resident Go taxonomy matcher shared by monitor and detail processing."""
+"""Resident Go enrichment and HTML normalization for monitors and details."""
 
 from __future__ import annotations
 
@@ -19,6 +19,10 @@ from src.shared.egress import record_runtime_capability
 
 _MAX_REQUEST = (16 << 20) - 1
 _MAX_RESPONSE = 1 << 20
+# HTML serialization can expand text delimiters up to fivefold. Go emits UTF-8
+# and does not JSON-escape HTML delimiters. Bound this operation separately;
+# the taxonomy/experience response bound and handshake stay at 1 MiB.
+_MAX_HTML_RESPONSE = 6 * _MAX_REQUEST + 1024
 
 
 class GoJobEnrichment:
@@ -42,16 +46,16 @@ class GoJobEnrichment:
         if not read and not write:
             raise TimeoutError("Go enrichment response deadline exceeded")
 
-    def _read(self, deadline: float) -> dict:
+    def _read(self, deadline: float, *, limit: int = _MAX_RESPONSE) -> dict:
         assert self.proc is not None and self.proc.stdout is not None
         fd = self.proc.stdout.fileno()
         while b"\n" not in self.buffer:
             self._wait(fd, deadline)
-            chunk = os.read(fd, min(65536, _MAX_RESPONSE + 1 - len(self.buffer)))
+            chunk = os.read(fd, min(65536, limit + 1 - len(self.buffer)))
             if not chunk:
                 raise RuntimeError("Go enrichment exited before its response")
             self.buffer.extend(chunk)
-            if len(self.buffer) > _MAX_RESPONSE:
+            if len(self.buffer) > limit:
                 raise ValueError("Go enrichment response exceeds bound")
         line, _, remainder = self.buffer.partition(b"\n")
         self.buffer = bytearray(remainder)
@@ -124,7 +128,10 @@ class GoJobEnrichment:
                 while offset < len(payload):
                     self._wait(fd, deadline, writing=True)
                     offset += os.write(fd, payload[offset : offset + 65536])
-                result = self._read(deadline)
+                result = self._read(
+                    deadline,
+                    limit=_MAX_HTML_RESPONSE if operation == "normalize_html" else _MAX_RESPONSE,
+                )
                 if type(result.get("id")) is not int or result["id"] != self.sequence:
                     raise ValueError("Go enrichment response ID mismatch")
                 if result.get("error"):
@@ -146,7 +153,7 @@ class GoJobEnrichment:
                     implementation="go-job-enrichment",
                     capability=operation,
                     allowed_capabilities=frozenset(
-                        {"occupation_seniority", "technology", "experience"}
+                        {"occupation_seniority", "technology", "experience", "normalize_html"}
                     ),
                     outcome=outcome,
                 )
@@ -241,3 +248,15 @@ def experience_fields(description):
     ) or (values[1] is not None and (values[0] is None or values[1] < values[0])):
         raise ValueError("invalid Go experience requirement")
     return values
+
+
+def normalize_html(description: str | None) -> str | None:
+    if description is None:
+        return None
+    result = client().request("normalize_html", description=description)
+    if "normalized_html" not in result:
+        raise ValueError("missing Go normalized HTML")
+    value = result["normalized_html"]
+    if value is not None and (not isinstance(value, str) or not value):
+        raise ValueError("invalid Go normalized HTML")
+    return value

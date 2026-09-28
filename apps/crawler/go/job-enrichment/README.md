@@ -1,20 +1,25 @@
-# Shared Go job classification
+# Shared Go job enrichment
 
-The resident `job-enrichment` binary owns occupation, seniority, technology and experience
-matching for the monitor and detail CPU helpers. It loads the same read-only
+The resident `job-enrichment` binary owns occupation, seniority, technology,
+experience matching and description HTML normalization for monitor and detail
+processing. It loads the same read-only
 CSV taxonomy once, returns taxonomy slugs and experience bounds, and leaves
 database ID resolution to the caller. `Matcher` is directly reusable by the future native worker.
 
 Compose selects `JOB_ENRICHMENT_ENGINE=go`. Outside Compose the default is
 `python`; explicitly selecting `python` is the cold rollback path. There is
 no same-task Python fallback. Unknown engine names fail. The worker and
-remaining CPU stages (HTML, language, location, salary), scheduling
+remaining CPU stages (language, location, salary), scheduling
 and persistence still run in Python. This is not the full #7966 completion.
 
 Each Python worker process creates one child on first use. A lock serializes
 newline JSON requests; forked processes discard inherited pipe descriptors
 without signalling the parent's child. Each request has a ten-second deadline,
-a request bound below 16 MiB, response bound of 1 MiB, and sequence check.
+a request bound below 16 MiB, taxonomy/experience response bound of 1 MiB,
+and sequence check. HTML responses have a separate sixfold request-size bound
+(approximately 96 MiB) to preserve delimiter/entity expansion without truncation.
+The Go JSONL encoder emits UTF-8 without optional HTML-safe JSON escaping;
+this pipe is never embedded in HTML. The handshake retains its 1 MiB bound.
 Errors reap the child before another call may replace it. Normal EOF exits the
 child. No network, publisher fetch, database access or file writes occur.
 
@@ -43,7 +48,38 @@ not whole-lane RAM, density or cost.
 
 Production instrumentation uses `stage="enrichment"`,
 `implementation="go-job-enrichment"`, and the bounded capabilities
-`occupation_seniority` / `technology` / `experience`. These executions add no origin traffic.
+`occupation_seniority` / `technology` / `experience` / `normalize_html`.
+These executions add no origin traffic.
+
+## Description HTML normalization
+
+All shared `normalize_description_html` call sites (rich monitor results,
+detail extraction, and CPU processing) dispatch through the same resident
+process when Go is selected. Go owns the entire parse, subtree removal, tag
+unwrapping, attribute cleanup and serialization. Python retains the offline
+oracle and explicit cold reversal; failures never call it automatically.
+The pinned Go parser rejects an open-element stack above 512 nodes; the IPC
+request size and ten-second deadline remain enforced. Rejection fails the
+task and reaps the child, without truncating content or returning empty success.
+
+The HTML5 document parse uses the legacy scripting-disabled/body context.
+Serialization preserves quotes in text, comments, formatting reconstruction,
+table foster parenting, escaped-markup detection with Python Unicode boundaries,
+Python's numeric-reference exclusions, and NBSP replacement **after** serialized
+whitespace trimming. Empty unknown elements, including their attributes, are
+retained exactly as the existing Lexbor `unwrap` behavior requires. This keeps
+canonical description bytes and R2 hashes stable.
+
+`testdata/generate_html.py` freezes 8,567 Python/Lexbor cases: every HTML5 named
+entity, numeric controls/noncharacters, all tag policies, Unicode boundaries,
+and 2,000 deterministic malformed-markup combinations. Go race tests, the
+shared public Python bridge and installed-image offline verification exercise
+this oracle. Bridge tests also cover expanded responses above 1 MiB, request
+and response bounds, reaping and mixed operations in one resident process.
+
+`testdata/replay_stored.py --scope normalize_html` compares the full normalized
+bytes on stored production content. This is an offline stage measurement;
+it does not establish whole-lane production CPU, RAM, density or cost.
 
 ## Experience requirements
 

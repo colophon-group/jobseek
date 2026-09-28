@@ -5,8 +5,6 @@ from __future__ import annotations
 import re
 from html import unescape
 
-from selectolax.lexbor import LexborHTMLParser
-
 _DROP_SUBTREE_TAGS = frozenset(
     {
         "script",
@@ -65,6 +63,15 @@ def _maybe_decode_escaped_html(text: str) -> str:
 
 
 def normalize_description_html(description: str | None) -> str | None:
+    """Normalize shared monitor/detail HTML using the selected CPU runtime."""
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.normalize_html(description)
+    return _normalize_description_html_python(description)
+
+
+def _normalize_description_html_python(description: str | None) -> str | None:
     """Normalize description HTML for storage and rendering.
 
     - Decodes escaped markup like ``&lt;p&gt;...`` when present.
@@ -78,6 +85,8 @@ def normalize_description_html(description: str | None) -> str | None:
     raw = description.strip()
     if not raw:
         return None
+
+    from selectolax.lexbor import LexborHTMLParser
 
     normalized = _maybe_decode_escaped_html(raw)
     tree = LexborHTMLParser(normalized)
@@ -102,7 +111,7 @@ def normalize_description_html(description: str | None) -> str | None:
         else:
             node.unwrap()
 
-    cleaned = body.inner_html.strip()
+    cleaned = (body.inner_html or "").strip()
     if not cleaned:
         return None
     # Normalize non-breaking spaces to regular spaces to avoid spurious diffs

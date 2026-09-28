@@ -33,13 +33,14 @@ type TitleResult struct {
 	Seniority  *string `json:"seniority"`
 }
 type Response struct {
-	ID            uint64        `json:"id"`
-	Titles        []TitleResult `json:"titles,omitempty"`
-	Intern        bool          `json:"intern"`
-	Technologies  []string      `json:"technologies"`
-	Error         string        `json:"error,omitempty"`
-	ExperienceMin *float64      `json:"experience_min,omitempty"`
-	ExperienceMax *float64      `json:"experience_max,omitempty"`
+	ID             uint64        `json:"id"`
+	Titles         []TitleResult `json:"titles,omitempty"`
+	Intern         bool          `json:"intern"`
+	Technologies   []string      `json:"technologies"`
+	Error          string        `json:"error,omitempty"`
+	ExperienceMin  *float64      `json:"experience_min,omitempty"`
+	ExperienceMax  *float64      `json:"experience_max,omitempty"`
+	NormalizedHTML *string       `json:"normalized_html"`
 }
 
 func (m *Matcher) Process(r Request) (Response, error) {
@@ -58,6 +59,12 @@ func (m *Matcher) Process(r Request) (Response, error) {
 		out.Technologies = m.Technologies(r.Description)
 	case "experience":
 		out.ExperienceMin, out.ExperienceMax = Experience(r.Description)
+	case "normalize_html":
+		var err error
+		out.NormalizedHTML, err = NormalizeDescriptionHTML(r.Description)
+		if err != nil {
+			return out, fmt.Errorf("HTML normalization failed")
+		}
 	default:
 		return out, fmt.Errorf("unsupported operation")
 	}

@@ -16,6 +16,7 @@ from src.processing.cpu import (
     _resolve_technology_ids,
 )
 from src.runtime import job_enrichment_go as bridge
+from src.shared import html_normalize
 
 MODULE = Path(__file__).resolve().parents[1] / "go/job-enrichment"
 DATA = Path(__file__).resolve().parents[1] / "data"
@@ -87,6 +88,75 @@ def test_experience_bridge_uses_resident_for_all_python_cases(native):
     assert child is not None and child.poll() is None
     assert _resolve_technology_ids("Python", {"python": 1}) == [1]
     assert native.proc is child
+
+
+def test_shared_html_owns_full_oracle_without_python_fallback(native, monkeypatch):
+    cases = json.loads((MODULE / "testdata/python_html.json").read_text())["cases"]
+    for case in cases:
+        assert html_normalize._normalize_description_html_python(case["text"]) == case["html"]
+
+    def reject_python(_):
+        raise AssertionError("Go normalization called the Python parser")
+
+    monkeypatch.setattr(html_normalize, "_normalize_description_html_python", reject_python)
+    assert html_normalize.normalize_description_html(None) is None
+    for case in cases:
+        assert html_normalize.normalize_description_html(case["text"]) == case["html"]
+    child = native.proc
+    assert child is not None and child.poll() is None
+    assert _resolve_technology_ids("Python", {"python": 1}) == [1]
+    assert native.proc is child
+
+
+def test_html_response_larger_than_taxonomy_bound_keeps_same_resident(native):
+    # Escaping a delimiter expands even a small input beyond the old 1 MiB
+    # response bound. Never truncate normalized HTML or silently change hashes.
+    raw = "&" * 300_000
+    assert html_normalize.normalize_description_html(raw) == "&amp;" * 300_000
+    child = native.proc
+    assert _extract_experience_fields("5 years experience") == (5, None)
+    assert native.proc is child
+
+
+def test_html_request_bound_reaps_before_next_operation(native, monkeypatch):
+    native.request("technology", description="Python")
+    child = native.proc
+    monkeypatch.setattr(bridge, "_MAX_REQUEST", 100)
+    with pytest.raises(ValueError, match="request exceeds bound"):
+        html_normalize.normalize_description_html("X" * 200)
+    assert native.proc is None and child.poll() is not None
+    assert _resolve_technology_ids("Python", {"python": 1}) == [1]
+    assert native.proc is not child
+
+
+def test_html_response_bound_reaps_without_truncation(native, monkeypatch):
+    monkeypatch.setattr(bridge, "_MAX_HTML_RESPONSE", 150)
+    with pytest.raises(ValueError, match="response exceeds bound"):
+        html_normalize.normalize_description_html("&" * 100)
+    assert native.proc is None
+
+
+def test_html_parse_failure_reaps_without_python_fallback(native, monkeypatch):
+    def reject_python(_):
+        raise AssertionError("failed Go normalization called Python")
+
+    monkeypatch.setattr(html_normalize, "_normalize_description_html_python", reject_python)
+    # The Go HTML5 parser bounds the open-element stack at 512 nodes.
+    with pytest.raises(RuntimeError, match="rejected the request"):
+        html_normalize.normalize_description_html("<div>" * 600 + "X")
+    assert native.proc is None
+    assert _resolve_technology_ids("Python", {"python": 1}) == [1]
+
+
+@pytest.mark.parametrize("result", [{}, {"normalized_html": 1}, {"normalized_html": ""}])
+def test_invalid_normalized_html_is_rejected(monkeypatch, result):
+    class Broken:
+        def request(self, *args, **kwargs):
+            return result
+
+    monkeypatch.setattr(bridge, "client", Broken)
+    with pytest.raises(ValueError, match="Go normalized HTML"):
+        bridge.normalize_html("<p>Hello</p>")
 
 
 def test_failure_reaps_and_does_not_fall_back(tmp_path, monkeypatch):

@@ -23,6 +23,9 @@ func main() {
 		os.Exit(1)
 	}
 	output := json.NewEncoder(os.Stdout)
+	// This is an internal JSONL pipe, never embedded in HTML. Avoid multiplying
+	// normalized descriptions by JSON's optional HTML-safe escaping.
+	output.SetEscapeHTML(false)
 	if err = output.Encode(map[string]any{"ready": true, "protocol": 1}); err != nil {
 		os.Exit(1)
 	}
