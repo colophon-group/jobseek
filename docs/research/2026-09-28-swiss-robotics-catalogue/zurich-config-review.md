@@ -37,3 +37,22 @@ Verified on 28 September 2026. Changes are configuration and catalogue data only
 `WS_LOCAL=1` submissions for Swisslog and roboa passed board quality gates and global CSV validation. `git diff --check` passed. Local mode performed no commit or push. An earlier global validation failure caused by a concurrently edited empty-name stub cleared after that worker completed its metadata; neither submission used `--force`.
 
 Counts and vacancies are verification snapshots, not promises of continuing availability. Production ingestion and public catalogue visibility must be checked after the normal deployment.
+
+## roboa HTTP compatibility follow-up
+
+The first GitHub board probe failed with HTTP 403 on all three attempts. A
+read-only comparison from the production crawler host reproduced the listing
+and detail failures with the default HTTP client headers. The same URLs returned
+HTTP 200 with a browser User-Agent. Testing headers separately established that
+**User-Agent alone** was sufficient; adding only `Accept` or only
+`Accept-Language` still returned 403. The bare hostname redirects to `www`, so a
+hostname change would not resolve the cause.
+
+Both the static monitor and detail scraper now set the allowlisted public
+`request_headers.User-Agent`. The corrected requests returned the complete
+listing and all three detail pages from the production host. Repeated `ws`
+verification still found three vacancies and extracted all three titles,
+locations, descriptions and on-site work modes. No browser or proxy mode was
+enabled, and the CI static board probe remains active. The upstream sitemap was
+also inspected but contained different, stale career links, so it was not used
+as a replacement for the current careers listing.
