@@ -6,6 +6,61 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — current Lightpanda nightly
+
+[PR #10156](https://github.com/colophon-group/jobseek/pull/10156) replaced
+Lightpanda 0.4.0 with the official nightly assets updated on **2026-09-28**.
+The nightly tag is mutable; its old tag creation time/commit does not identify
+these binaries. Downloads bind immutable asset IDs and fail closed on SHA-256
+mismatch. The [release snapshot](../pilots/go-lightpanda/lightpanda-release.json)
+is included in the image.
+
+- Linux amd64 asset **594332787**, updated 02:56:04 UTC:
+  `e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f`.
+- Linux arm64 asset **594332898**, updated 02:56:09 UTC:
+  `e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f`.
+
+Required CI and Crawler Deploy Gate passed at exact head
+`9f888a5603d392efb595f1071effcb8b10547e40`. The real native browser, egress,
+cleanup and child-isolation contracts passed on **both architectures** in
+[run 36421148740](https://github.com/colophon-group/jobseek/actions/runs/36421148740).
+The ARM64 service deployment contract also passed. Density smoke results are
+fixtures; they do not prove production whole-lane savings.
+
+The renderer source is **`ffb8d6902260eee91728e5121ca016e42275c6e1`**.
+[Deployment 36422355712](https://github.com/colophon-group/jobseek/actions/runs/36422355712)
+reached terminal overall success. Installed production ARM64 bytes match the
+upstream checksum above. The immutable image is
+`ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:5b43d7017393a70f0531d494bf183aa8c4a259eb38119255aa9aa0cd3c1d6c55`.
+The installed release metadata and source tuple match that deployment.
+
+Supported cold rollback retired c1 at **epoch 115**, restored all five schedules,
+and left zero terminal drops and write fences. Supported reactivation completed
+at **epoch 116** with five ready, zero inflight and accepted/audit_ok conservation.
+All configured worker/browser/drain/producer/executor/claimant/Redis services
+are healthy. No new boards were admitted and no publisher request or schedule
+was forced. The crawler remains **v0.13.890** at
+**`e62cec0d4349b72c39071bf3d0834456cdfab728`**; all **25** staged selectors remain
+at that crawler revision. This renderer-only rollout did not mutate selectors.
+Use that promoted crawler revision and the unchanged selector helper for the
+next supported cold crawler rollout, as described immediately below.
+
+See the [sanitized production record](evidence/lightpanda-nightly-production-2026-09-28.json).
+Private rollback, activation and conservation records are retained at
+`/Users/Viktor/.codex/migration-evidence/lightpanda-latest/2026-09-28/`
+(directory 0700; files 0600).
+
+Rendered DOM implementation is saved in draft
+[PR #10157](https://github.com/colophon-group/jobseek/pull/10157), based on this
+nightly. It adds typed DOM assignments, all four navigation waits, a bounded
+current-document timeout fallback with one navigation, native parsing, and a
+fixed Browser Use/Bunq/Algorized cohort. Local Go race, 143 focused Python tests,
+Pyright and Ruff checks passed. **Before admission, preserve the existing inline
+fresh-context challenge/transport retry policy and pass the changed native
+integration/installed-image contracts.** cdom has not been activated. Further
+native profiles, Go runtime ownership, actual-workload resource evidence and
+final cutover/reversal remain unfinished. The full migration goal stays active.
+
 ## Production checkpoint: 2026-09-28 — Go DOM direct HTTP v0.13.890
 
 [PR #10154](https://github.com/colophon-group/jobseek/pull/10154) merged as

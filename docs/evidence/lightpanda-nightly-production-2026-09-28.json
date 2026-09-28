@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "status": "deployed_c1_active",
+  "verified_at": "2026-09-28",
+  "implementation_pr": 10156,
+  "implementation_head": "9f888a5603d392efb595f1071effcb8b10547e40",
+  "renderer_source_commit": "ffb8d6902260eee91728e5121ca016e42275c6e1",
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:5b43d7017393a70f0531d494bf183aa8c4a259eb38119255aa9aa0cd3c1d6c55",
+  "renderer_deploy_run": 36422355712,
+  "renderer_deploy_conclusion": "success",
+  "native_integration_run": 36421148740,
+  "native_integration_architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "native_integration_conclusion": "success",
+  "required_ci_run": 36421148755,
+  "required_ci_conclusion": "success",
+  "deploy_gate_run": 36421148962,
+  "deploy_gate_conclusion": "success",
+  "upstream_release": {
+    "schema_version": 1,
+    "repository": "https://github.com/lightpanda-io/browser",
+    "tag": "nightly",
+    "verified_at": "2026-09-28",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
+    "note": "Nightly tag is mutable. Asset IDs and SHA-256 bind this snapshot; builds fail closed if upstream removes or replaces these bytes. Tag creation time/commit does not identify the binary build.",
+    "assets": {
+      "amd64": {
+        "id": 594332787,
+        "name": "lightpanda-x86_64-linux",
+        "updated_at": "2026-09-28T02:56:04Z",
+        "sha256": "e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f"
+      },
+      "arm64": {
+        "id": 594332898,
+        "name": "lightpanda-aarch64-linux",
+        "updated_at": "2026-09-28T02:56:09Z",
+        "sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f"
+      }
+    }
+  },
+  "production_architecture": "arm64",
+  "installed_binary_sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f",
+  "crawler_version": "0.13.890",
+  "crawler_revision": "e62cec0d4349b72c39071bf3d0834456cdfab728",
+  "selector_count": 25,
+  "selectors_changed": false,
+  "rollback": {
+    "cohort": "c1",
+    "retired_epoch": 115,
+    "ready_restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0
+  },
+  "new_boards_admitted": 0,
+  "publisher_requests_forced": 0,
+  "full_migration_complete": false,
+  "production_resource_savings_proven": false,
+  "activation": {
+    "cohort": "c1",
+    "routing_epoch": 116,
+    "selected": 5,
+    "activated": 5,
+    "ready": 5,
+    "inflight": 0,
+    "conservation_decision": "accepted",
+    "conservation_reason": "audit_ok",
+    "services_healthy": [
+      "worker-1",
+      "worker-2",
+      "worker-3",
+      "browser-1",
+      "drain",
+      "lightpanda-producer",
+      "lightpanda-executor",
+      "lightpanda-claimant",
+      "redis"
+    ]
+  },
+  "next_implementation_pr": 10157,
+  "next_implementation_status": "draft; preserve inline DOM challenge/transport retries before admission"
+}
