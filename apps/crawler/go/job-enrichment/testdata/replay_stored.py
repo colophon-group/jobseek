@@ -17,6 +17,7 @@ from src.core.seniority_resolve import match_seniority
 from src.core.technology_resolve import match_technologies
 from src.runtime.job_enrichment_go import GoJobEnrichment
 from src.shared.html_normalize import _normalize_description_html_python
+from src.shared.langdetect import _detect_all_languages_python, _detect_language_python
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("sample", type=Path)
@@ -25,7 +26,9 @@ parser.add_argument("--binary", default="/usr/local/bin/job-enrichment")
 parser.add_argument("--data-dir", type=Path, required=True)
 parser.add_argument("--rounds", type=int, default=1)
 parser.add_argument(
-    "--scope", choices=("classification", "experience", "normalize_html"), default="classification"
+    "--scope",
+    choices=("classification", "experience", "normalize_html", "language"),
+    default="classification",
 )
 args = parser.parse_args()
 assert 1 <= args.rounds <= 100
@@ -35,6 +38,11 @@ client = GoJobEnrichment(args.binary, args.data_dir) if args.engine in {"compare
 
 
 def legacy(row):
+    if args.scope == "language":
+        return {
+            "language": _detect_language_python(row["html"]),
+            "languages": _detect_all_languages_python(row["html"]),
+        }
     if args.scope == "normalize_html":
         return {"normalized_html": _normalize_description_html_python(row["html"])}
     if args.scope == "experience":
@@ -55,6 +63,10 @@ def legacy(row):
 
 def native(row):
     assert client is not None
+    if args.scope == "language":
+        primary = client.request("language", description=row["html"])
+        multi = client.request("all_languages", description=row["html"])
+        return {"language": primary["language"], "languages": multi["languages"]}
     if args.scope == "normalize_html":
         result = client.request("normalize_html", description=row["html"])
         return {"normalized_html": result["normalized_html"]}

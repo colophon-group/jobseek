@@ -16,7 +16,7 @@ from src.processing.cpu import (
     _resolve_technology_ids,
 )
 from src.runtime import job_enrichment_go as bridge
-from src.shared import html_normalize
+from src.shared import html_normalize, langdetect
 
 MODULE = Path(__file__).resolve().parents[1] / "go/job-enrichment"
 DATA = Path(__file__).resolve().parents[1] / "data"
@@ -229,3 +229,76 @@ def test_unknown_engine_is_rejected(monkeypatch):
     monkeypatch.setenv("JOB_ENRICHMENT_ENGINE", "typo")
     with pytest.raises(ValueError):
         bridge.enabled()
+
+
+def test_shared_language_matches_oracle_without_loading_python_model(native, monkeypatch):
+    cases = json.loads((MODULE / "testdata/python_language.json").read_text())["cases"]
+    for case in cases:
+        assert langdetect._detect_language_python(case["text"]) == case["language"]
+        assert langdetect._detect_all_languages_python(case["text"]) == case["languages"]
+
+    def reject_python(*args, **kwargs):
+        raise AssertionError("Go language called the Python detector")
+
+    monkeypatch.setattr(langdetect, "detect", reject_python)
+    for case in cases:
+        assert langdetect.detect_language(case["text"]) == case["language"]
+        assert langdetect.detect_all_languages(case["text"]) == case["languages"]
+    child = native.proc
+    assert _resolve_technology_ids("Python", {"python": 1}) == [1]
+    assert native.proc is child
+
+
+def test_language_request_failure_does_not_become_inconclusive_success(native, monkeypatch):
+    def reject_python(*args, **kwargs):
+        raise AssertionError("failed Go language called Python")
+
+    monkeypatch.setattr(langdetect, "detect", reject_python)
+    monkeypatch.setattr(bridge, "_MAX_REQUEST", 100)
+    with pytest.raises(ValueError, match="request exceeds bound"):
+        langdetect.detect_all_languages("X" * 200)
+    assert native.proc is None
+
+
+@pytest.mark.parametrize("result", [{}, {"language": 1}, {"language": ""}, {"language": "EN"}])
+def test_invalid_go_primary_language_is_rejected(monkeypatch, result):
+    class Broken:
+        def request(self, *args, **kwargs):
+            return result
+
+    monkeypatch.setattr(bridge, "client", Broken)
+    with pytest.raises(ValueError, match="Go language"):
+        bridge.detect_language("description")
+
+
+@pytest.mark.parametrize("values", [None, "en", [1], ["EN"], ["en", "en"], [""]])
+def test_invalid_go_all_languages_are_rejected(monkeypatch, values):
+    class Broken:
+        def request(self, *args, **kwargs):
+            return {"languages": values}
+
+    monkeypatch.setattr(bridge, "client", Broken)
+    with pytest.raises(ValueError, match="Go languages"):
+        bridge.detect_all_languages("description")
+
+
+def test_go_language_cold_process_does_not_import_python_detector(binary):
+    script = """
+import sys
+from pathlib import Path
+from src.runtime import job_enrichment_go as bridge
+from src.shared.langdetect import detect_language, detect_all_languages
+bridge._client = bridge.GoJobEnrichment(sys.argv[1], Path(sys.argv[2]))
+assert detect_language("This is a job posting written in English.") == "en"
+text = "We are looking for a software engineer to join our team. " * 12
+assert detect_all_languages(text) == ["en"]
+assert not any(name.startswith(("fast_langdetect", "fasttext")) for name in sys.modules)
+bridge.close_client()
+"""
+    subprocess.run(
+        [os.sys.executable, "-c", script, binary, str(DATA)],
+        env={**os.environ, "JOB_ENRICHMENT_ENGINE": "go"},
+        check=True,
+        capture_output=True,
+        timeout=15,
+    )

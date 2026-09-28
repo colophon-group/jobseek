@@ -7,8 +7,22 @@ languages.  The compressed model (~1 MB) is loaded once on first call.
 from __future__ import annotations
 
 import re
+from typing import Literal, TypedDict, cast
 
-from fast_langdetect import detect
+from src.runtime import job_enrichment_go
+
+
+class _Prediction(TypedDict):
+    lang: str
+    score: float
+
+
+def detect(text: str, *, model: Literal["lite"]) -> list[_Prediction]:
+    """Load the retained Python oracle only for explicit cold reversal/replay."""
+    from fast_langdetect import detect as legacy_detect
+
+    return cast(list[_Prediction], legacy_detect(text, model=model))
+
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
@@ -16,6 +30,13 @@ _MIN_SCORE = 0.3
 
 
 def detect_language(description: str) -> str | None:
+    """Detect the primary language using the selected enrichment runtime."""
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.detect_language(description)
+    return _detect_language_python(description)
+
+
+def _detect_language_python(description: str) -> str | None:
     """Detect language from job description HTML.
 
     Returns an ISO 639-1 code (e.g. "en", "de") or None if detection
@@ -60,6 +81,13 @@ def _split_chunks(text: str, size: int = _CHUNK_SIZE) -> list[str]:
 
 
 def detect_all_languages(description: str) -> list[str]:
+    """Return significant languages in their original first-seen order."""
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.detect_all_languages(description)
+    return _detect_all_languages_python(description)
+
+
+def _detect_all_languages_python(description: str) -> list[str]:
     """Detect all significant languages in a job description.
 
     Strips HTML, splits the plain text into ~500-char chunks, runs fasttext
