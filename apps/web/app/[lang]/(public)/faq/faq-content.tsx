@@ -6,6 +6,7 @@ import { eyebrowClass, sectionHeadingClass } from "@/lib/styles";
 import { siteConfig } from "@/content/config";
 
 type FaqItem = { q: string; a: string };
+type FaqSection = { id: string; title: string; items: FaqItem[] };
 
 // Native `<details>/<summary>` accordion — no client state, the answer
 // paragraph is in the initial HTML for every item. Crawlers / AI fetchers
@@ -15,19 +16,20 @@ type FaqItem = { q: string; a: string };
 function FaqItem({ item }: { item: FaqItem }) {
   return (
     <details className="group border-b border-border-soft">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-medium transition-colors hover:text-muted [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-sm py-4 font-medium transition-colors hover:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">
         <span>{item.q}</span>
         <ChevronDown
           size={18}
+          aria-hidden="true"
           className="shrink-0 transition-transform group-open:rotate-180"
         />
       </summary>
-      <p className="pb-5 text-muted">{item.a}</p>
+      <p className="pb-5 leading-7 text-muted">{item.a}</p>
     </details>
   );
 }
 
-export function FaqContent({ items }: { items: FaqItem[] }) {
+export function FaqContent({ sections }: { sections: FaqSection[] }) {
   return (
     <main id="main-content" tabIndex={-1} className="scroll-mt-12 py-12 md:py-20">
       <div className="mx-auto max-w-[720px] px-4">
@@ -46,10 +48,14 @@ export function FaqContent({ items }: { items: FaqItem[] }) {
           </p>
         </div>
 
-        <div className="mt-12">
-          {items.map((item) => (
-            <FaqItem key={item.q} item={item} />
-          ))}
+        <div className="mt-8 flex flex-wrap justify-center gap-2">
+          {sections.map(section => <a key={section.id} href={`#${section.id}`} className="rounded-full border border-border-soft px-3 py-2 text-sm transition-colors hover:bg-border-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{section.title}</a>)}
+        </div>
+        <div className="mt-10 space-y-10">
+          {sections.map(section => <section key={section.id} aria-labelledby={section.id}>
+            <h2 id={section.id} className="mb-2 scroll-mt-24 text-xl font-semibold tracking-tight">{section.title}</h2>
+            {section.items.map(item => <FaqItem key={item.q} item={item} />)}
+          </section>)}
         </div>
       </div>
     </main>

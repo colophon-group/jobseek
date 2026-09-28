@@ -710,6 +710,12 @@ msgstr "Chi siamo"
 msgid "about.meta.title"
 msgstr "Chi siamo"
 
+#. FAQ topic heading and jump link
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.sections.indexing"
+msgstr "Informazioni su Job Seek e sull’indicizzazione"
+
 #. Account bottom bar label
 #. js-lingui-explicit-id
 #: src/components/AppHeader.tsx
@@ -830,12 +836,6 @@ msgstr "Hai già un account? <0>Accedi</0>"
 msgid "settings.account.username.taken"
 msgstr "Già in uso"
 
-#. SEO description for the public FAQ page.
-#. js-lingui-explicit-id
-#: app/[lang]/(public)/faq/page.tsx
-msgid "faq.meta.description"
-msgstr "Risposte alle domande frequenti su Job Seek — come scansioniamo le pagine carriere, cosa includono i piani, come gestiamo i tuoi dati e come disiscriversi."
-
 #. Any experience level
 #. js-lingui-explicit-id
 #: src/components/search/experience-modal.tsx
@@ -901,6 +901,12 @@ msgstr "Gestione delle candidature"
 #: src/components/search/job-detail-dialog.tsx
 msgid "search.detail.applicationTracker"
 msgstr "Monitoraggio candidatura"
+
+#. FAQ topic heading and jump link
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.sections.tracking"
+msgstr "Candidature e account"
 
 #. Subtitle showing total applications in past year
 #. js-lingui-explicit-id
@@ -1114,6 +1120,12 @@ msgstr "Utilizzando Job Seek accetti questi termini. Ecco un riassunto in parole
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.q.optOut"
 msgstr "Posso rifiutare l'indicizzazione della mia azienda da parte di Jobseek?"
+
+#. FAQ question about narrowedEvidence
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.q.narrowedEvidence"
+msgstr "Posso fidarmi di ogni risultato di Narrowed?"
 
 #. Customer question about externalTracking
 #. js-lingui-explicit-id
@@ -1984,6 +1996,12 @@ msgstr "Descrivi esattamente cosa cerchi. Creeremo una watchlist da questa ricer
 msgid "search.aiFilter.description"
 msgstr "Descrivi esattamente cosa cerchi. La tua richiesta verrà valutata rispetto a ogni offerta in questo feed per restringere con precisione i risultati."
 
+#. FAQ answer about narrowedRequest
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.a.narrowedRequest"
+msgstr "Descrivi il lavoro che desideri e ciò che vuoi evitare. Per esempio: «Voglio lavorare direttamente con gli utenti e trasformare i loro problemi in miglioramenti del prodotto. Senza gestione del personale.» Questa richiesta riguarda responsabilità che un titolo o una parola chiave da soli non possono dimostrare."
+
 #. Placeholder for watchlist description textarea
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-view-page.tsx
@@ -2458,6 +2476,12 @@ msgstr "Concentrati su ciò che conta con Narrowed"
 msgid "marketing.common.related"
 msgstr "Trova il prossimo passo"
 
+#. FAQ topic heading and jump link
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.sections.start"
+msgstr "Trovare lavoro"
+
 #. Feature: focused search title
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
@@ -2513,7 +2537,7 @@ msgstr "fondata nel {year}"
 msgid "company.head.founded"
 msgstr "Fondata nel {year}"
 
-#. FAQ answer summarizing Free and the upcoming Pro plan.
+#. FAQ answer summarizing Free, Pro, and where to check trial availability.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.freeVsPro"
@@ -2675,6 +2699,12 @@ msgstr "all'ora"
 msgid "settings.general.salary.period.hourly"
 msgstr "Orario"
 
+#. FAQ question about apply
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.q.apply"
+msgstr "Come mi candido e tengo traccia dei progressi?"
+
 #. FAQ question about requesting a missing company.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -2717,6 +2747,12 @@ msgstr "Come gli annunci entrano nell'indice"
 #: src/content/marketing.ts
 msgid "marketing.guide.link"
 msgstr "Come monitorare le pagine carriere"
+
+#. SEO description for the public FAQ page.
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.meta.description"
+msgstr "Come funzionano watchlist, avvisi settimanali, monitoraggio delle candidature e Narrowed. Risposte su funzioni gratuite, Pro, condivisione e indicizzazione delle pagine carriera."
 
 #. Indexing page title
 #. js-lingui-explicit-id
@@ -3527,11 +3563,23 @@ msgstr "Narrowed"
 msgid "marketing.narrowed.metaTitle"
 msgstr "Narrowed — cerca oltre il titolo"
 
+#. FAQ topic heading and jump link
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.sections.narrowed"
+msgstr "Narrowed e Pro"
+
 #. Narrowed marketing page: link
 #. js-lingui-explicit-id
 #: src/content/narrowed.ts
 msgid "marketing.narrowed.link"
 msgstr "Ricerca con Narrowed"
+
+#. FAQ answer about narrowed
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.a.narrowed"
+msgstr "Narrowed legge le descrizioni degli annunci nella tua watchlist e le confronta con una richiesta scritta da te, poi riunisce i ruoli corrispondenti. Usa i filtri di ricerca per scegliere dove cercare e Narrowed per i dettagli del lavoro. È incluso in Pro."
 
 #. State-neutral title of the scroll reminder for an already-narrowed watchlist
 #. js-lingui-explicit-id
@@ -3759,7 +3807,7 @@ msgstr "No. Il tracker delle candidature non ha limiti — salva quante offerte 
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.dataPrivacy"
-msgstr "No. Non vendiamo, affittiamo né condividiamo i tuoi dati a fini di marketing. I cookie sono solo di sessione, senza pubblicità né tracciamento. Puoi eliminare il tuo account e tutti i dati verranno cancellati entro 30 giorni."
+msgstr "No. Non vendiamo, affittiamo o condividiamo i tuoi dati per scopi di marketing. Usiamo cookie necessari per l’accesso e memorizziamo le preferenze, in parte anche tra una visita e l’altra. L’eliminazione dell’account rimuove i dati attivi dell’account; backup e dati conservati dai fornitori hanno periodi di conservazione distinti, spiegati nella nostra informativa sulla privacy."
 
 #. Application tracker status: not applied
 #. js-lingui-explicit-id
@@ -3868,6 +3916,12 @@ msgstr "In sede"
 #: src/components/search/search-unavailable.tsx
 msgid "search.unavailable.heading"
 msgstr "Ops, qualcosa è andato storto."
+
+#. FAQ answer about apply
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.a.apply"
+msgstr "Apri un annuncio e segui il link per candidarti sul sito del datore di lavoro. Salvalo su Job Seek, aggiornane lo stato quando ti candidi o sostieni un colloquio e aggiungi date e note dei colloqui. Gestisci tu il tracker; Job Seek non invia candidature e non ne aggiorna automaticamente lo stato."
 
 #. Explains where subscribed users can use Pro
 #. js-lingui-explicit-id
@@ -4427,6 +4481,12 @@ msgstr "Leggi la licenza CC BY-NC 4.0"
 #: src/components/LicenseContent.tsx
 msgid "license.code.linkLabel"
 msgstr "Leggi la licenza MIT completa"
+
+#. FAQ answer about narrowedEvidence
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.a.narrowedEvidence"
+msgstr "Leggi la descrizione originale prima di candidarti. Narrowed può tralasciare dettagli o commettere errori, e un annuncio può lasciare domande importanti senza risposta. Se non specifica reperibilità, trasferte o orari, verifica questi aspetti con il datore di lavoro."
 
 #. WebApplication JSON-LD feature list item about job alert notifications.
 #. js-lingui-explicit-id
@@ -5929,6 +5989,12 @@ msgstr "Watchlist e avvisi"
 msgid "app.schema.feature.watchlists"
 msgstr "Watchlist e tracciamento delle candidature"
 
+#. FAQ topic heading and jump link
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.sections.watchlists"
+msgstr "Watchlist ed e-mail"
+
 #. What the service does
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
@@ -6079,6 +6145,12 @@ msgstr "Email settimanale"
 msgid "auth.signIn.subtitle"
 msgstr "Bentornato"
 
+#. FAQ question about narrowed
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.q.narrowed"
+msgstr "Che cosa fa Narrowed?"
+
 #. FAQ question defining a watchlist.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -6096,6 +6168,12 @@ msgstr "Cos'è Job Seek?"
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.q.differentiation"
 msgstr "Cosa rende Job Seek diverso da LinkedIn o Indeed?"
+
+#. FAQ question about narrowedRequest
+#. js-lingui-explicit-id
+#: app/[lang]/(public)/faq/page.tsx
+msgid "faq.q.narrowedRequest"
+msgstr "Che cosa devo scrivere in Narrowed?"
 
 #. Accessible label for the AI filter natural-language criteria
 #. js-lingui-explicit-id
