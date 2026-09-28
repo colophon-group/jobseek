@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -211,21 +210,10 @@ func browserInput(task queueTask) (*runtimev1.BrowserExecutionInput, error) {
 	if task.RenderAttempt != 0 {
 		originID += ":challenge-retry-" + strconv.Itoa(task.RenderAttempt)
 	}
-	request := struct {
-		Body    string   `json:"body"`
-		Headers []string `json:"headers"`
-		Method  string   `json:"method"`
-		URL     string   `json:"url"`
-	}{
-		Body: "", Headers: []string{}, Method: "GET", URL: task.Envelope.SourceURL,
-	}
-	var canonicalRequest bytes.Buffer
-	encoder := json.NewEncoder(&canonicalRequest)
-	encoder.SetEscapeHTML(false)
-	if err := encoder.Encode(request); err != nil {
+	payload, err := canonicalJSON(map[string]any{"body": "", "headers": []any{}, "method": "GET", "url": task.Envelope.SourceURL}, true)
+	if err != nil {
 		return nil, err
 	}
-	payload := bytes.TrimSuffix(canonicalRequest.Bytes(), []byte{'\n'})
 	fingerprint := sha256.Sum256(payload)
 	waits := map[string]runtimev1.WaitCondition{
 		"commit":           runtimev1.WaitCondition_WAIT_CONDITION_COMMIT,

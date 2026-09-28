@@ -71,3 +71,19 @@ func TestBrowserRequestFingerprintMatchesPythonCanonicalJSON(t *testing.T) {
 		t.Fatalf("request fingerprint diverged from Python canonical JSON: got %s", got)
 	}
 }
+
+func TestBrowserOriginFingerprintPreservesUnicodePythonEscaping(t *testing.T) {
+	task := validQueueTask(t)
+	task.Envelope.SourceURL = "https://jobs.example.com/posting/Café/日本/🚀?a=1&b=<x>"
+	task.Envelope.ScraperType = "dom"
+	request, err := browserInput(task)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const expected = "af434bd4ef099efc2fc3253005c8339f9198d45f85b1668de36e0d1de409cab0"
+	for _, operation := range request.Plan.OriginOperations {
+		if operation.RequestFingerprint != expected {
+			t.Fatal("Unicode request fingerprint differs from canonical Python")
+		}
+	}
+}
