@@ -4,13 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - '.codex/agents/**'
+      - '.codex/**'
       - '.agents/**'
       - 'AGENTS.md'
       - 'apps/crawler/AGENTS.md'
       - 'apps/crawler/src/labeller/**'
       - 'apps/crawler/src/workspace/**'
       - 'deploy/systemd/jobseek-codex-*'
+      - 'deploy/codex-version'
       - 'docs/14-error-review-routine.md'
       - 'docs/15-data-sampling-routine.md'
       - 'docs/16-hetzner-maintenance.md'
@@ -52,9 +53,8 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/deploy-codex-runner-host.sh
-          target: /tmp/jobseek-codex-runner-deploy/${{ github.sha }}
-          strip_components: 1
+          source: scripts/deploy-codex-runner-host.sh,scripts/codex-routine-status.py,scripts/codex-error-review-bundle.py,scripts/codex-docker-lifecycle-watch.py,scripts/jobseek_maintenance_provenance.py,scripts/jobseek-maintenance.py,deploy/systemd/jobseek-codex-*,deploy/codex-version
+          target: /opt/jobseek-codex-deploy/${{ github.sha }}
 
       - name: Deploy Codex runner host surface
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
@@ -71,7 +71,7 @@ jobs:
             export JOBSEEK_CODEX_BRANCH=main
             export JOBSEEK_CODEX_EXPECTED_SHA="${GITHUB_SHA}"
             export JOBSEEK_CODEX_START_TIMERS=0
-            bash "/tmp/jobseek-codex-runner-deploy/${GITHUB_SHA}/deploy-codex-runner-host.sh"
+            bash "/opt/jobseek-codex-deploy/${GITHUB_SHA}/scripts/deploy-codex-runner-host.sh"
             test "$(stat -c '%U:%G:%a' /usr/local/sbin/jobseek-maintenance)" = "root:root:755"
             ! id -nG codex-runner | tr ' ' '\n' | grep -qx docker
             runuser -u codex-runner -- test ! -w /var/run/docker.sock

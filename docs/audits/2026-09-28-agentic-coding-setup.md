@@ -214,3 +214,35 @@ node --test scripts/ci-workflow.test.mjs scripts/docs-index.test.mjs
 Read-only GitHub queries examined effective `main` rules and legacy branch protection; responses are saved in [github-main-rules.json](2026-09-28-agentic-coding-setup/github-main-rules.json). Official Codex instruction, subagent and permissions documentation and the GitHub CLI merge reference were consulted on the audit date.
 
 No production SSH session, privileged execution, real merge, external publication, or live model evaluation was performed. Installed Hetzner file ownership, effective Codex configuration, token scopes and runtime host overrides remain unverified. The complete application test suite, frontend build, and production service-backed tests were outside this targeted audit. Findings distinguish locally reproduced behavior, static deployment contracts and live GitHub configuration accordingly.
+
+
+## Remediation in this branch
+
+The original findings and evidence above describe the audited base revision.
+The archived `verify.py` intentionally reproduces the old defects; use the
+regression suite below on the repaired branch.
+
+| Finding | Resolution |
+|---|---|
+| F01 | Root executes only CI-delivered, root-owned helpers and their import closure under `/usr/local/lib/jobseek-codex`, with isolated Python. The runner parent and privileged inputs are protected; source ancestors, ownership and symlinks are validated. A disposable Linux negative test attempts writes, unlink and rename as an unprivileged user. |
+| F02 | Immutable head/base classification before rebase and merge, explicit push leases, fresh required-check/state/hold validation and `--match-head-commit`. All automatic merge triggers, including image cleanup, use one serialized workflow. |
+| F03 | Removed stale mandatory human-review statements. Zero approving reviews remain intentional; separate merge authorization still applies outside the company bot's narrow scope. |
+| F04 | Explicitly documented CodeQL as advisory, matching the existing live and checked-in ruleset. No unrequested new review/security gate was imposed; Workflow Security and agent regression checks remain within Required CI. |
+| F05 | Root/crawler startup guidance reduced to roughly 9 KB combined, with detailed reference moved on demand. A 24 KiB repository instruction-chain budget reserves room below Codex's default cap. |
+| F06 | Always-required Workflow Security now validates skills, roles, instruction budgets, templates and focused workflow/runner/state regressions, including Markdown-only PRs. Removed a personal absolute skill-validator dependency. |
+| F07 | Board writes merge independent named slots under a lock and reject stale writes to changed/deleted slots or changed board identity. Logs append safely; scraper selection and parallel prompts explicitly target `--board` and `--as`. |
+| F08 | Replaced live-rsync/mutable-image/partial-restart instructions with the supported deployment and rollback contract. Local experiments preserve unrelated CSV edits. |
+| F09 | Codex pinned to 0.158.0 in a versioned install; activation follows exact-reply and real skill/custom-agent smoke verification. Deployment records revision, CLI version and instruction digest. The live fixture exposed an older CLI/model mismatch and missing role registration in fresh headless checkouts; both are covered by the repaired command path. |
+| F10 | Resolver guidance distinguishes trusted templates from external evidence. Issue title/body are serialized into one escaped JSON record with an explicit trust boundary; an injection fixture checks multiline headings and delimiters cannot escape that record. |
+
+Validation commands (from `apps/crawler` unless stated otherwise):
+
+- `uv run --frozen python ../../scripts/check-agent-contracts.py`
+- `uv run --frozen pytest tests/test_agent_contracts.py tests/test_workspace_state.py tests/test_ws_commands.py tests/workspace/lib/test_select.py tests/test_labeller_render.py tests/test_codex_runner.py tests/test_codex_runner_deploy_config.py -q`
+- Repository root: `node --test scripts/ci-workflow.test.mjs scripts/docs-index.test.mjs`
+- Disposable Linux CI only: `sudo python3 scripts/test-codex-privilege-boundary.py`
+- Authenticated runner: `python scripts/codex-agent-smoke.py --codex <pinned-binary>`
+
+The live host filesystem was not modified during local implementation. Production
+installation is handled by the deployment workflows after merge. The portable
+smoke uses only a synthetic HTML fixture and does not sample/upload postings.

@@ -10,8 +10,32 @@ SCRIPTS_DIR="${TRUSTED_SCRIPTS_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd
 OWNER="${REPO%%/*}"
 
 pr_json=$(gh pr view "$PR" --repo "$REPO" \
-  --json state,isDraft,headRefName,headRepositoryOwner \
-  --jq '{state,isDraft,headRefName,headRepositoryOwner}')
+  --json state,isDraft,headRefName,headRepositoryOwner,headRefOid,baseRefOid,baseRefName,labels,reviewDecision,mergeStateStatus)
+
+EXPECTED_HEAD=$(jq -r '.headRefOid' <<< "$pr_json")
+EXPECTED_BASE=$(jq -r '.baseRefOid' <<< "$pr_json")
+export EXPECTED_HEAD EXPECTED_BASE
+
+eligible_snapshot() {
+  jq -e --arg owner "$OWNER" --arg head "$EXPECTED_HEAD" --arg base "$EXPECTED_BASE" '
+    .state == "OPEN" and .isDraft == false and .baseRefName == "main"
+    and .reviewDecision != "CHANGES_REQUESTED"
+    and .headRepositoryOwner.login == $owner
+    and (.headRefName | startswith("add-company/"))
+    and .headRefOid == $head and .baseRefOid == $base
+    and ([.labels[]?.name | select(test("^(hold|do-not-merge|no-merge|blocked|deployment-hold)(:|$)"))] | length == 0)
+  ' >/dev/null
+}
+
+read_snapshot() {
+  gh pr view "$PR" --repo "$REPO" \
+    --json state,isDraft,headRefName,headRepositoryOwner,headRefOid,baseRefOid,baseRefName,labels,reviewDecision,mergeStateStatus
+}
+
+if ! eligible_snapshot <<< "$pr_json"; then
+  echo "PR #$PR is not eligible for automated merge"
+  exit 0
+fi
 
 state=$(jq -r '.state' <<< "$pr_json")
 draft=$(jq -r '.isDraft' <<< "$pr_json")
@@ -41,16 +65,6 @@ fi
 files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
 if grep -q '^apps/crawler/data/images/' <<< "$files"; then
   echo "PR #$PR has pending image files; upload-company-images will handle it"
-  exit 0
-fi
-
-label_output=$(mktemp)
-GITHUB_OUTPUT="$label_output" "$SCRIPTS_DIR/label-pr.sh"
-labels=$(grep '^labels=' "$label_output" | tail -1 | cut -d= -f2- || true)
-rm -f "$label_output"
-
-if [[ ",$labels," != *",auto-merge,"* ]]; then
-  echo "PR #$PR labels are '$labels'; not auto-merging"
   exit 0
 fi
 
@@ -100,7 +114,22 @@ git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 
 git fetch origin main "refs/heads/$branch:refs/remotes/origin/$branch"
+if [[ "$(git rev-parse "origin/$branch")" != "$EXPECTED_HEAD" ||
+      "$(git rev-parse origin/main)" != "$EXPECTED_BASE" ]]; then
+  echo "PR or base changed before checkout; retry on the next run"
+  exit 0
+fi
 git checkout -B "$branch" "origin/$branch"
+
+# Refuse to rewrite a branch outside the company auto-merger's authority.
+label_output=$(mktemp)
+GITHUB_OUTPUT="$label_output" "$SCRIPTS_DIR/label-pr.sh"
+labels=$(sed -n 's/^labels=//p' "$label_output" | tail -1)
+rm -f "$label_output"
+if [[ "$labels" != "auto-merge" ]]; then
+  echo "PR #$PR requires separate merge authorization ($labels)"
+  exit 0
+fi
 
 if git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
   echo "PR #$PR is already up to date"
@@ -145,7 +174,12 @@ else
     done
   fi
 
-  git push --force-with-lease origin "$branch"
+  if ! read_snapshot | eligible_snapshot; then
+    echo "PR changed during rebase; stopping"
+    exit 0
+  fi
+  git push --force-with-lease="refs/heads/$branch:$EXPECTED_HEAD" origin "$branch"
+  EXPECTED_HEAD=$(git rev-parse HEAD)
   "$SCRIPTS_DIR/dispatch-pr-checks.sh"
   echo "PR #$PR branch updated; dispatched checks before merge"
 fi
@@ -156,7 +190,36 @@ if ! wait_for_required_ci; then
 fi
 
 for attempt in 1 2 3; do
-  if gh pr merge "$PR" --repo "$REPO" --rebase 2>/tmp/maybe-auto-merge.err; then
+  snapshot=$(read_snapshot)
+  if ! eligible_snapshot <<< "$snapshot"; then
+    echo "PR or base changed; merge authority expired"
+    exit 0
+  fi
+  # Classification reads the immutable fetched OIDs, including after our rebase.
+  label_output=$(mktemp)
+  GITHUB_OUTPUT="$label_output" "$SCRIPTS_DIR/label-pr.sh"
+  labels=$(sed -n 's/^labels=//p' "$label_output" | tail -1)
+  rm -f "$label_output"
+  if [[ "$labels" != "auto-merge" ]]; then
+    echo "PR #$PR labels are '$labels'; not auto-merging"
+    exit 0
+  fi
+  if ! gh pr checks "$PR" --repo "$REPO" --required --json name,state \
+      --jq 'length > 0 and all(.[]; .state == "SUCCESS")' | grep -qx true; then
+    echo "Required checks are not all successful"
+    exit 0
+  fi
+  final_snapshot=$(read_snapshot)
+  if ! eligible_snapshot <<< "$final_snapshot"; then
+    echo "PR changed during final validation; stopping"
+    exit 0
+  fi
+  if ! jq -e '.mergeStateStatus == "CLEAN" or .mergeStateStatus == "HAS_HOOKS"' \
+      >/dev/null <<< "$final_snapshot"; then
+    echo "PR merge state is not clean; stopping"
+    exit 0
+  fi
+  if gh pr merge "$PR" --repo "$REPO" --rebase --match-head-commit "$EXPECTED_HEAD" 2>/tmp/maybe-auto-merge.err; then
     echo "PR #$PR merged"
     "$SCRIPTS_DIR/dispatch-company-production-sync.sh"
     "$SCRIPTS_DIR/close-linked-company-request-issues.sh"

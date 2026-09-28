@@ -1,0 +1,885 @@
+# Crawler reference
+
+On-demand reference. Start with [crawler instructions](../../apps/crawler/AGENTS.md).
+Commands below assume `apps/crawler` as the working directory.
+
+## Architecture
+
+Redis-orchestrated workers writing to local Postgres, with CDC export to
+Typesense:
+
+1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
+2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
+3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Typesense; the
+   production CLI advances only the `typesense:job_posting` cursor
+4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
+5. **Registry Sync** (`src/sync.py`) — commits CSV state to authoritative local
+   Postgres first, then updates Redis and Typesense
+
+See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
+See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
+
+## Key Files
+
+```
+src/
+├── core/
+│   ├── monitors/          # Monitor implementations (35+ types)
+│   │   ├── __init__.py    # Registry + DiscoveredJob dataclass
+│   │   ├── accenture.py   # Accenture Career API (dedicated, auto-partitioned)
+│   │   ├── api_sniffer.py # API capture (httpx for public APIs, Playwright for browser-dependent)
+│   │   ├── ashby.py       # Ashby Job Board API
+│   │   ├── gem.py         # Gem ATS Job Board API
+│   │   ├── greenhouse.py  # Greenhouse JSON API
+│   │   ├── hirehive.py    # HireHive public Jobs API
+│   │   ├── hireology.py   # Hireology Careers API
+│   │   ├── lever.py       # Lever Postings API
+│   │   ├── personio.py    # Personio Public XML Feed
+│   │   ├── recruitee.py   # Recruitee Careers Site API
+│   │   ├── rippling.py    # Rippling ATS Job Board API
+│   │   ├── rss.py         # RSS 2.0 feed monitor (SuccessFactors, Teamtailor, generic)
+│   │   ├── workday.py     # Workday Job Board API
+│   │   ├── sitemap.py     # XML sitemap parser
+│   │   ├── nextdata.py    # Next.js __NEXT_DATA__ discovery
+│   │   ├── dom.py         # Playwright DOM-based discovery
+│   │   └── inline.py      # Single-page inline job extraction (rich)
+│   ├── scrapers/          # Scraper implementations
+│   │   ├── __init__.py    # Registry + JobContent dataclass
+│   │   ├── api_sniffer.py # XHR/fetch API capture for single pages
+│   │   ├── jsonld.py      # JSON-LD extractor
+│   │   ├── nextdata.py    # Next.js data extractor (thin wrapper for embedded)
+│   │   ├── embedded.py    # Generalized embedded JSON extractor
+│   │   └── dom.py         # Step-based extraction (static or Playwright)
+│   ├── description_store.py # R2 put/get
+│   ├── enum_normalize.py  # employment_type + job_location_type normalizers
+│   ├── location_resolve.py # Location -> GeoNames ID resolution
+│   ├── salary_extract.py  # Heuristic salary parsing from HTML
+│   ├── monitor.py         # monitor_one, monitor_one_stream dispatchers
+│   └── scrape.py          # scrape_one dispatcher
+├── workers/
+│   ├── pipeline.py        # Discovery coroutines, claim from Redis, dispatch
+│   └── r2_drain.py        # Producer-consumer: descriptions -> R2
+├── processing/
+│   ├── board.py           # Streaming monitor processing, timestamp gone detection
+│   ├── scrape.py          # Single-job scraping, fallback chain
+│   ├── cpu.py             # CPU-bound processing (salary, location, tech matching)
+│   └── r2_stage.py        # Stage descriptions for R2 upload
+├── queries/
+│   ├── monitor.py         # SQL: DIFF_BATCH, MARK_GONE_BY_TIMESTAMP, record success/fail
+│   ├── scrape.py          # SQL: UPDATE_JOB_CONTENT (conditional updated_at), RECORD_SCRAPE_*
+│   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
+├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
+├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
+├── exporter.py            # Commit-safe Typesense CDC
+├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
+├── sync.py                # CSV -> local Postgres, then Redis + Typesense
+├── bootstrap.py           # Non-executable rollback helpers for the retired mirror
+├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
+├── config.py              # Settings (pydantic-settings)
+├── db.py                  # asyncpg pools (local, optional mirror, web-owned data)
+├── metrics.py             # Prometheus metrics
+├── migrations/            # Alembic migrations for local Postgres
+├── workspace/             # Workspace CLI (ws command)
+│   ├── cli.py             # Click entry point + groups
+│   ├── commands/          # Command implementations
+│   │   ├── lifecycle.py   # new, reject, del, submit, status, validate, resume
+│   │   ├── config.py      # set, add board, del board
+│   │   ├── crawl.py       # probe, select/run monitor/scraper, feedback, compare-boards
+│   │   ├── task.py        # Workflow: task, troubleshoot, learn, casestudy
+│   │   └── help.py        # Reference docs for monitors, scrapers, config
+│   ├── state.py           # YAML workspace state (v2: named configs)
+│   ├── log.py             # Action log + transcript
+│   ├── git.py             # Git/GitHub CLI wrappers (retry, error wrapping)
+│   ├── errors.py          # Exception hierarchy
+│   ├── preflight.py       # Pre-flight checks (branch, PR state)
+│   ├── filelock.py        # Advisory file locking
+│   ├── output.py          # Terminal output helpers
+│   ├── artifacts.py       # Debug artifact storage
+│   └── url_check.py       # URL validation helpers
+├── shared/
+│   ├── api_sniff.py       # API sniffing utilities (data classes, scoring, pagination)
+│   ├── browser.py         # Playwright browser launch (stealth, proxy support)
+│   ├── constants.py       # DATA_DIR, WORKSPACE_DIR, SLUG_RE, URL_RE
+│   ├── csv_io.py          # CSV read/write utilities
+│   ├── http.py            # httpx client factory
+│   ├── nextdata.py        # Shared field extraction (extract_field, map, list spec, each+wrap)
+│   ├── proxy.py           # Webshare pool health/selection (see Proxy-routed transport)
+│   ├── logging.py         # structlog config
+│   └── slug.py            # slugify utility
+├── inspect.py             # CSV validation + diagnostic library
+└── csvtool.py             # CSV management library
+```
+
+## Commands
+
+```bash
+# Install deps
+uv sync
+
+# Workspace CLI (alias for convenience)
+alias ws='uv run ws'
+
+# Workspace lifecycle — ws new sets the active workspace; slug is omitted after that
+ws new <slug> --issue <N>              # Create local workspace + branch (sets active; no PR yet)
+ws new <slug> --issue <N> --separate-identity  # Verified distinct employer despite related slug
+ws use <slug>                          # Switch active workspace (multi-workspace only)
+ws set --name "..." --website "..."
+ws set --board <alias> --job-link-pattern "<regex>"  # Optional manual job-link filter
+ws add board <alias> --url <board-url> [--job-link-pattern "<regex>"]
+ws probe monitor -n <N>                # Probe all monitor types (N = job count from website)
+ws probe scraper                       # Probe all scraper types against sample URLs
+ws probe deep -n <N>                   # Playwright-based api_sniffer detection
+ws probe api <url>                     # Analyze API endpoint for api_sniffer config
+ws select monitor <type> [--as <name>] # Select monitor (named configs)
+ws run monitor [--config <name>]        # Test crawl (--config for parallel testing)
+ws select scraper <type> [--config JSON] # Select scraper
+ws run scraper [--url URL ...] [--config <name>]  # Test scrape
+ws feedback [<config>] --verdict good  # Record extraction quality (mandatory)
+ws select config <name>                # Re-activate a previously tested config
+ws reject-config <name> --reason "..." # Mark a config as rejected
+ws compare-boards                      # Detect mirror/subset/overlapping boards
+ws submit [--summary "..."] [--force]  # Validate, commit, push, create/update draft PR
+
+# Search + discovery
+ws search "<query>"                    # Search existing companies by name/slug/website
+ws logos                               # Show discovered logo candidates + current selection
+
+# Parallel mode
+ws await-board [--exclude ALIAS ...]   # Block until new board appears (for parallel pipeline)
+ws boards-done                         # Signal board discovery complete (unblocks await-board)
+ws task back --to <step> --reason "..."  # Backtrack to earlier step on new evidence
+
+# Reconfiguration
+ws new <slug> --reconfig [--start-at <step>]  # Reconfigure existing company
+
+# Utilities
+ws validate                            # Validate CSVs
+ws status                              # Show active workspace + discovery status
+ws resume                              # Diagnose workspace state + suggest next action
+ws use --board <alias>                 # Switch active board
+ws del                                 # Remove workspace + CSV rows + close PR
+
+# Rejection
+ws reject --issue <N> --reason <key> --message "..."
+ws reject --reason <key> --message "..."  # Uses active workspace's issue
+
+# Run crawler workers
+uv run crawler run                     # HTTP worker (claims from simple queues)
+uv run crawler run-browser             # Browser worker (claims from browser queues)
+uv run crawler export                  # Typesense CDC
+uv run crawler drain                   # R2 description uploader
+uv run crawler sync                    # CSV -> local Postgres, then Redis + Typesense
+uv run crawler proxy-audit             # Sanitized operator-only Webshare usage/source audit
+uv run crawler proxy-configure-webshare --env-file .env.local  # Backup + refresh pool
+uv run crawler proxy-replace-webshare-pool --env-file .env.local  # Validate blocked-pool rotation
+uv run crawler reconcile               # Read-only Typesense reconciliation slice
+uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs (host timer uses this)
+uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
+uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
+uv run crawler refresh-typesense       # Refresh taxonomy/company counts (every 4h and after sync)
+uv run crawler purge-retired-watchlist-index --confirm  # One-time purge of legacy public-discovery docs
+uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (RETIRED in #2821 — kept for revival; no scheduler invokes it)
+uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-strike-stalled postings (#2738; see docs/03-crawler-architecture.md "Delisting model" section 5)
+uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing
+uv run crawler sweep-phantoms --dry-run  # Classify terminal-board active postings
+uv run crawler sweep-phantoms            # Bounded/resumable terminal-board delist
+uv run crawler retire-stale-boards --format md    # Current provider evidence report
+uv run crawler retire-stale-boards --format json  # Machine-readable reason codes
+uv run crawler retire-stale-boards --format shell # Commands only for fully verified gone rows
+uv run crawler reprocess-experience --dry-run   # Report active postings whose stored descriptions would update experience_min/max (#3289)
+uv run crawler reprocess-experience             # Apply the #3289 experience_min/max correction locally; exporter propagates changes
+uv run crawler reprocess-occupations --dry-run  # Report occupation_id changes after taxonomy splits (#3360)
+uv run crawler reprocess-occupations --live     # Apply the #3360 occupation_id correction locally; exporter propagates changes
+uv run crawler board <slug>            # Process single board (debug)
+uv run crawler board <slug> --dry-run  # Test without DB writes
+uv run crawler board <slug> --dry-run --verbose  # Show all extracted fields
+uv run crawler board <slug> --pcsx-full-crawl  # Force full PCSX crawl for
+                                                # eightfold boards, bypassing
+                                                # the incremental watermark.
+                                                # Used for manual backfills of
+                                                # very large boards (Starbucks).
+
+# Run tests
+uv run pytest tests/
+```
+
+## Proxy-routed transport
+
+Some hosts (e.g. `apply.starbucks.com`, `citi.eightfold.ai`) block
+Hetzner datacenter IPs with AWS WAF captcha pages. The crawler routes
+httpx requests and Playwright launches for those boards through an
+external HTTP proxy. Webshare is the only supported provider. Selection,
+quarantine, and recovery live in `src/shared/proxy.py`; per-request httpx
+routing lives in `src/shared/http.py`.
+
+A board opts in by setting `"proxy": true` inside `monitor_config`
+and/or `scraper_config` JSON in `data/boards.csv` — same place as
+`render`, `skip_ssl`, `rescrape_policy`. The two flags are independent;
+typically both are set for a WAF-blocked host.
+
+```csv
+starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
+```
+
+Active provider is chosen by env:
+
+```bash
+PROXY_PROVIDER=webshare         # webshare | none
+# JSON array of per-proxy backbone URLs returned by Webshare mode=backbone.
+WEBSHARE_PROXY_URLS='["http://user-a:pass-a@p.webshare.io:10000"]'
+# Migration-only fallback; a direct IP becomes stale at monthly replacement.
+WEBSHARE_PROXY_URL=http://user:pass@direct-address:port
+```
+
+`PROXY_PROVIDER=none` is the explicit direct-egress switch. If `webshare` is
+selected but both URL settings are empty, proxy-required work fails closed;
+it never silently leaks that request through the crawler IP.
+
+Webshare recurring replacement changes the direct proxy list every 30 days.
+Per-proxy backbone credentials keep using `p.webshare.io` and survive that
+replacement, so they are the runtime source of truth. To create or refresh a
+local operator configuration, run:
+
+```bash
+uv run crawler proxy-configure-webshare --env-file .env.local
+```
+
+The command requires the operator-only `WEBSHARE_API_KEY`, creates a
+timestamped mode-0600 backup before every mutation, writes atomically, and
+never prints proxy credentials. The API key is deliberately absent from
+Compose and the deployment workflow. `DECODO_PROXY_URL` is retired and the
+configurator removes it from the target env file after the backup.
+
+The `production` GitHub environment secret is the only deployment authority
+for `WEBSHARE_PROXY_URLS`; do not keep a repository-level secret with the same
+name. Pipe the validated JSON into
+`gh secret set WEBSHARE_PROXY_URLS --env production` without `--body` because
+the argument `--body -` stores a literal dash rather than reading stdin. Start
+a new manual `Deploy Crawler (Hetzner)` run on `main` after the update; reruns
+retain the original run's secret snapshot. The workflow validates the secret
+inside the exact built image before SSH can mutate production and logs only
+the proxy mode and pool cardinality.
+
+If every pool slot receives a typed block from the same origin after a full
+quarantine cooldown, stop probing the target. Do not attempt to solve or
+bypass its CAPTCHA. First run `proxy-audit` and confirm that the configured
+backbone pool still matches, the subscription is active, and a whole-pool
+replacement fits within `proxy_replacements_available`. Then use the guarded
+two-phase operator workflow:
+
+```bash
+# Read-only provider validation. Save the numeric validation_id from its
+# sanitized JSON output; this does not change the proxy list. Apply it before
+# the reported 15-minute validation expiry.
+uv run crawler proxy-replace-webshare-pool --env-file .env.local
+
+# External mutation: applies only if that dry run still describes the exact
+# current pool and the plan still has enough included replacement capacity.
+uv run crawler proxy-replace-webshare-pool --env-file .env.local \
+  --apply-validation-id <validation_id>
+```
+
+The apply command verifies that every direct exit changed, pool size stayed
+constant, and the deployed backbone credential signatures remained valid. It
+rejects missing, malformed, future, or more-than-15-minute-old dry-run
+completion timestamps, even when the pool is otherwise unchanged. A
+status of `attention` exits nonzero: refresh the operator env through
+`proxy-configure-webshare`, update the runtime secret through the approved
+deployment path, and do not resume target probes until credentials match.
+Rotations are a bounded incident-recovery action, never an automatic response
+to a single block and never a substitute for request pacing.
+
+For a same-egress diagnostic (especially the resource-policy anti-bot A/B), set
+`WEBSHARE_PROXY_CANARY_SLOT=0` in the command environment for both arms. This
+pins one eligible slot and fails if that slot is quarantined. It is deliberately
+not forwarded by Compose or deployment and must never be persisted in a board.
+
+### Rotation, quarantine, and recovery
+
+- httpx selects a pool slot before every top-level caller request. Redirects
+  keep that slot for cookie/IP coherence; a caller retry selects again and
+  therefore moves to another eligible slot.
+- Playwright selects once per browser launch, keyed by the planned navigation
+  origin supplied by the monitor/scraper. The document, scripts, and assets
+  retain one exit IP for the whole launch; rotating subresources would create
+  an anti-bot fingerprint.
+- A local `WEBSHARE_PROXY_CANARY_SLOT` pin disables rotation for a diagnostic
+  only; production does not receive this setting.
+- HTTP 407 and explicit proxy transport failures quarantine a slot globally.
+  Target 403/429 and ambiguous target transport failures quarantine only the
+  `(slot, origin)` pair, leaving the slot usable elsewhere. Three distinct
+  origins with transport failures on one slot within five minutes promote it
+  to a global transport quarantine.
+- Cooldowns grow exponentially to a cap. After expiry, one request receives a
+  half-open probe while concurrent requests keep skipping the slot. Only that
+  generation's completed top-level request (after redirects and streamed body)
+  can restore it; stale concurrent responses are ignored. Failure starts
+  another bounded cooldown. State is process-local, so each worker learns
+  independently and recovers after restart.
+- When every eligible slot is cooling down, the request fails with a bounded
+  pool-exhausted error instead of bypassing the proxy.
+
+Metrics contain provider/mode/transport and health event/scope only. URLs,
+credentials, client/exit IPs, target origins, and board slugs are excluded from
+labels and logs.
+
+### Billing and credential-source audit
+
+The current Webshare shared-ISP plan has five proxies, a monthly 1,000 GB
+bandwidth allowance, and recurring 30-day replacements. Bandwidth therefore
+matters: request volume and large browser assets consume the plan even when the
+proxy count is unchanged.
+
+Run the read-only audit locally; never add the API key to a worker deployment:
+
+```bash
+# Example: inspect from the reported 2026-08-12 increase through 2026-08-30.
+uv run crawler proxy-audit --since-hours 432 --max-activity-records 20000
+```
+
+Configure `WEBSHARE_EXPECTED_CLIENT_IPS` as a JSON array containing production
+crawler egress IPs. Do not permanently allowlist an operator workstation;
+pass an intentional temporary source with `--expected-client-ip` for that run.
+The report emits only counts and assessments, never source/exit IPs, targets,
+URLs, or credentials. `unexpected_client_sources` is positive leak evidence;
+`inconclusive_no_allowlist`, truncation, or missing source data is not proof of
+a leak. Webshare's live activity API currently rejects data older than six
+days and a plan upgrade starts a new activity boundary; the report marks such
+historical source windows clipped/inconclusive while retaining aggregate byte
+and request totals. On an alert, rotate the Webshare proxy password and API key, inspect
+deployment and CI secret access, disable with `PROXY_PROVIDER=none`, and then
+update the pool through the backup-first configurator.
+
+### Disabling re-scrapes on paid-proxy boards
+
+Set `monitor_config.rescrape_policy = "never"` in `data/boards.csv`
+for WAF-blocked boards whose content rarely changes. The reasons are:
+
+1. **Bandwidth and concurrency.** Each needless re-scrape consumes bytes and
+   holds a connection slot. A board with thousands of postings can dominate
+   both budgets at the 24h refresh cadence without adding new information.
+2. **Origin good-neighborliness.** The proxy exit IP hitting the
+   origin at high volume for stale data is more likely to be blocked
+   by the origin's WAF.
+
+Mechanics: `_RECORD_SCRAPE_SUCCESS` sets `next_scrape_at = NULL` after
+each successful scrape when the flag is set. The first scrape still
+runs (so descriptions are filled when a posting is first discovered),
+and relisted jobs still re-scrape once (because
+`_enqueue_scrapes_for_relisted` directly sets `next_scrape_at =
+now()`); only the periodic refresh tail is suppressed.
+
+```csv
+starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"":""/careers/job/"",""rescrape_policy"":""never""}",json-ld,"{""enrich"":[""description""]}"
+```
+
+`inspect.validate_csvs()` rejects unknown values (only `"never"` is
+supported today).
+
+### Browser resource policy
+
+Every Playwright context defaults to `resource_policy: "none"` in
+`src/shared/browser.py`, so blocking is opt-in:
+
+- `none` installs no route, leaves HTTP cache and service workers alone, and
+  blocks no resources; it is an absolute off switch even if stale additive
+  lists remain in the config;
+- `auto` is a recon-driven opt-in: it resolves to `lean` only with an explicit
+  `bot_protection:false` finding and no anti-bot-shaped transport/profile
+  settings; missing/unknown evidence and protected boards resolve to `none`.
+  It cannot be combined with additive block lists;
+- `lean` aborts only fonts and media;
+- `aggressive` additionally blocks images and known video/analytics hosts.
+
+Service workers remain enabled under every policy. Request interception itself
+can alter network timing and disables Playwright's HTTP cache, so never force
+`lean` or `aggressive` on a board without an A/B canary against `none`. This is
+especially important for proxy, persistent-context, stealth, headful,
+Chrome-channel, cookie-seeded, custom-user-agent, or warmed flows. Compare
+status/final URL, challenge markers, discovered count, and required extracted
+fields using the same sample and egress. See
+`ws help browser-resources` for the configuring-agent runbook.
+
+For a board that has passed that canary, explicitly use `lean`; for a reviewed
+text-only board, use `aggressive` or extend one of those fixed policies in the
+relevant monitor or scraper config. Additive lists are ignored by `none` and
+the omitted-policy default:
+
+```json
+{
+  "resource_policy": "aggressive",
+  "block_resource_types": ["image"],
+  "block_hosts": ["video-cdn.example.com"]
+}
+```
+
+For routine rendered-board recon that found no bot protection and passed the
+same-egress canary, agents may persist the conservative automatic choice:
+
+```json
+{
+  "render": true,
+  "resource_policy": "auto",
+  "bot_protection": false
+}
+```
+
+Do not infer `bot_protection:false` merely because a challenge page returned
+HTTP 200. Record it only after checking final URL/title/body, 401/403/429
+responses, challenge markers, discovered count, and required fields. If the
+control is itself blocked or the evidence is ambiguous, omit the field and keep
+`none`.
+
+`inspect.validate_csvs()` validates the policy, bot-protection finding,
+resource types, and host suffix syntax before deployment.
+
+## Eightfold hybrid monitor (sitemap + PCSX incremental)
+
+The `eightfold` monitor runs in a hybrid mode for PCSX-enabled tenants: it
+fetches the sitemap for the canonical URL set (gone detection works
+unchanged) **and** paginates the Eightfold PCSX API (`/api/pcsx/search`)
+incrementally via a high-water mark on `postedTs`. See `ws help monitor
+eightfold` for the full reference.
+
+### Watermark state
+
+Stored as `job_board.metadata.pcsx_watermark` (runtime-written — preserved
+across `crawler sync` by `_UPSERT_BOARD_LOCAL`'s JSONB merge):
+
+```json
+{
+  "max_ts": 1775606400,
+  "last_full_at": "2026-04-08T23:00:00+00:00",
+  "last_incremental_at": "2026-04-09T09:00:00+00:00",
+  "interval_days": 7,
+  "enabled": true,
+  "auto_full_crawl": true,
+  "extra": {"host": "careers.kering.com", "domain": "kering"}
+}
+```
+
+- `max_ts` — drives incremental stop (paginate until all items on a page
+  have `postedTs <= max_ts`, then 3 safety pages for boundary jitter)
+- `last_full_at` / `interval_days` — weekly forced full crawl for drift
+  correction (content changes on existing jobs via json-ld enrichment)
+- `enabled` — cached result of the `/api/pcsx/search` probe. `false` for
+  the 7 tenants that return `"PCSX is not enabled for this user."`
+- `auto_full_crawl` — if `false`, skip the automatic full crawl on first
+  run. Used for boards too large to crawl inside the scheduled worker pool
+
+### Manual backfill for very large boards
+
+Starbucks (~21k jobs) has `monitor_config.pcsx_watermark.auto_full_crawl:
+false` in `data/boards.csv` so scheduled runs don't start a 30-60 minute
+full crawl. Operator runs the backfill manually from the Hetzner box:
+
+```bash
+ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>
+docker exec crawler-slim uv run crawler board starbucks-eightfold --pcsx-full-crawl
+```
+
+After success, the watermark is populated and subsequent scheduled runs
+do fast incremental top-ups (~30-60 seconds). The 7 PCSX-disabled boards
+(bayer, american-express, hsbc, stmicroelectronics, symetra, vale, zebra)
+stay on the sitemap-only path automatically — their probes fail and
+`enabled=false` gets cached.
+
+### CSV config for PCSX-enabled eightfold boards
+
+Each PCSX-enabled eightfold board needs `scraper_config: {"enrich":
+["description"]}` in `data/boards.csv` so the pipeline runs a one-shot
+json-ld scrape per new job to fill descriptions (PCSX doesn't return
+them). 15 boards migrated: citigroup, dexcom, eaton, hasbro, kering,
+lam-research, mercado-libre, micron, microsoft, northrop-grumman, ptc,
+qualcomm, starbucks, tailored-brands, vodafone.
+
+### Rollback paths
+
+1. Per-board kill switch — `metadata.pcsx_watermark.enabled = false` via SQL
+2. Disable auto-full-crawl — `metadata.pcsx_watermark.auto_full_crawl = false`
+3. CSV revert — remove `scraper_config: {enrich: [description]}` and sync
+4. Full git revert — safe; the `board.py` partial-rich fix is a strict
+   superset of pre-refactor behaviour
+
+## Crawler Setup Agent Instruction Sources
+
+For agents running the guided setup workflow (`ws task --issue ...`), behavior is driven by runtime instruction files:
+
+- Step content: `src/workspace/steps/*.md`
+- Workflow sequence and gates: `src/workspace/workflow.yaml`
+- `ws help` command text: `src/workspace/commands/help.py`
+- Troubleshooting KB used by `ws task troubleshoot`: `src/workspace/kb/*.md`
+
+To change crawler setup agent behavior, edit those files. AGENTS/docs updates alone do not affect the runtime instruction stream.
+
+Use repo skills from `.agents/skills` when present. The Hetzner Codex runner
+schedules recurring production routines, `codex exec --json` supports
+traceable bounded recovery, and GitHub Actions deploys the runner host surface.
+
+## Decision Mindset
+
+Use `ws` output as evidence, not as an instruction oracle.
+
+- Prefer reasoning from observations (what was found), method (how it was found), and interpretation (what it likely means).
+- Treat auto-detected monitor/scraper suggestions as hypotheses that require verification.
+- Prefer directly referenced board evidence over unreferenced slug guesses.
+- When signals conflict, explain the conflict and why one signal is stronger.
+
+See [docs/agents.md](../../docs/agents.md) for the full mindset reference.
+
+## Adding a New Monitor Type
+
+1. Create `src/core/monitors/<name>.py`
+2. Implement `async def discover(board: dict, client: httpx.AsyncClient) -> list[DiscoveredJob] | set[str]`
+3. Optionally implement `async def can_handle(url: str, client: httpx.AsyncClient) -> dict | None`
+4. Register at module bottom: `register("<name>", discover, cost=<N>, can_handle=can_handle)`
+   - `rich=True` if the monitor returns full job data (scraper step is skipped)
+   - `stream=<async_generator>` for large datasets that yield batches
+5. Import in `src/core/monitors/__init__.py`
+
+## Adding a New Scraper Type
+
+1. Create `src/core/scrapers/<name>.py`
+2. Implement `async def scrape(url: str, config: dict, http: httpx.AsyncClient) -> JobContent`
+3. Register at module bottom: `register("<name>", scrape)`
+   - `can_handle=<func>` for auto-detection in `ws probe scraper`
+   - `parse_html=<func>` for fast HTML-only extraction (avoids HTTP call in fallback chain)
+   - `needs_browser=True` if the scraper requires Playwright
+4. Import in `src/core/scrapers/__init__.py`
+
+## Scraper Evaluation Guidelines
+
+See [docs/08-job-data-fields.md](../../docs/08-job-data-fields.md) for the complete field reference (types, formats, accepted values, per-ATS source mapping, and `fields` mapping syntax).
+
+When evaluating scraper probe results and extraction output:
+
+- Read "Next:" suggestions as one interpretation of current evidence, not as a required action.
+- Check evidence provenance: static HTML, rendered DOM, embedded JSON, API capture can disagree.
+- Verify content quality from samples, not only N/N counts.
+- For DOM extraction, verify step order in `flat.json` (forward cursor behavior can hide misses).
+- Prefer extracting complete upstream data over post-processing partial/garbled text.
+- Validate field formats (`locations`, HTML `description`, salary structure, location type values).
+- If evidence is ambiguous, capture one more validating signal before choosing a final config.
+
+## Local Mode (`WS_LOCAL=1`)
+
+Set `WS_LOCAL=1` to run `ws` commands without git/GitHub side effects (no
+branches, PRs, pushes, or issue comments). Useful for:
+
+- **Bulk operations** — processing many companies without creating PRs for each
+- **Logo discovery** — `ws new <slug> --issue 1 && ws set <slug> --website <url>`
+  triggers async logo/enrichment discovery. Check results with `ws logos <slug>`.
+- **Testing configs** — iterate on monitor/scraper configs without committing
+- **Debugging** — inspect ws behavior locally
+
+Local mode skips: worktree creation, git commit/push, PR creation/update,
+issue comments, branch cleanup. Everything else works normally (CSV writes,
+logo discovery, monitor probes, scraper tests, validation).
+
+```bash
+# Example: bulk logo discovery
+export WS_LOCAL=1
+for slug in starbucks hsbc bayer; do
+  ws new "$slug" --issue 1
+  ws set "$slug" --website "https://www.${slug}.com"
+done
+sleep 15  # wait for async discovery
+for slug in starbucks hsbc bayer; do
+  ws logos "$slug"
+  ws set "$slug" --logo-candidate 1 --icon-candidate 2 --logo-type wordmark --no-discover
+done
+```
+
+**Note:** `ws new` in local mode still writes stub CSV rows. Use a disposable
+worktree for experiments and inspect the diff before removing only your rows.
+Preserve unrelated edits.
+`ws del` in local mode also removes CSV rows — use with caution on
+companies that already exist.
+
+## Proposing Code Changes
+
+When existing monitors/scrapers can't handle a site, agents may propose code changes.
+
+### Before writing code
+
+1. Exhaust all config options (different monitor type, different scraper type, different selectors)
+2. Document what was tried and why it failed
+3. Check if a similar issue exists or was resolved before
+
+### Code change scope
+
+- Prefer extending existing types over adding new ones
+- If adding a new type, follow the "Adding a New Monitor/Scraper Type" sections above
+- Keep changes minimal — fix the specific issue, don't refactor
+- Include tests for new code when feasible
+
+### PR requirements
+
+- Label: `review-code`
+- Branch: `fix-crawler/<description>`
+- PR body: what was tried, what failed, what the code change does
+- Include CSV config for the company alongside the code change
+
+## Hetzner Operations
+
+All crawler services run on Hetzner. Machine addresses, credentials, and API
+keys are supplied through protected deployment/host environments; ignored
+`apps/crawler/.env.local` files are for local operator access only. Never
+hardcode or commit them.
+
+See [docs/16-hetzner-maintenance.md](../../docs/16-hetzner-maintenance.md)
+for disk triage, Docker image garbage collection, Redis disk-full recovery,
+and resize procedures.
+
+### SSH Access
+
+```bash
+ssh -i ~/.ssh/hetzner_deploy root@<WORKER_IP>      # Worker machine (Redis, workers, exporter, drain, alloy)
+ssh -i ~/.ssh/hetzner_deploy root@<POSTGRES_IP>     # Postgres machine
+ssh -i ~/.ssh/hetzner_deploy root@<TYPESENSE_IP>    # Typesense machine
+```
+
+IPs are in `.env.local` (`HETZNER_HOST` for worker, `LOCAL_DATABASE_URL` contains the Postgres IP, `TYPESENSE_HOST` for Typesense).
+
+### Private Network Layout
+
+All machines communicate via Hetzner private network (10.0.0.0/16). See `.env.local` for actual IPs.
+
+| Machine | Role |
+|---------|------|
+| Crawler box | Workers, exporter, drain, Redis, Alloy |
+| Postgres box | Local Postgres (source of truth) |
+| Typesense box | Typesense 27.1, Cloudflare tunnel (`cloudflared`), encrypted web PostgreSQL logical backups |
+
+### Container Management
+
+Use the supported exact-revision deployment and recovery workflows in
+[ADR 006](../../docs/adr/006-crawler-deploy-quiescence-and-rollback.md) and
+[Hetzner maintenance](../../docs/16-hetzner-maintenance.md).
+Do not rsync live source, deploy mutable `:latest` images, or restart only one
+writer during a generation change. Preserve quiescence, mutation locks, and
+verified rollback of the complete writer generation.
+
+### Disk and Docker GC
+
+All Hetzner hosts should run the `jobseek-docker-gc.timer` systemd timer.
+Its repository source is `scripts/jobseek-docker-gc.py`. It prunes unused
+builder cache; image deletion is limited to crawler/browser generations on the
+crawler host. It keeps active container and published-release images plus two
+verified prior successful releases while removing failed candidates and older
+digest-only generations by immutable image ID. It shares the crawler mutation
+lock and defers during deployments. The crawler floor is 15 GiB; an unmet
+floor or failed prune must fail the service without widening deletion scope.
+Do not prune unrelated images, containers, or Docker volumes.
+
+```bash
+systemctl is-active jobseek-docker-gc.timer
+systemctl show jobseek-docker-gc.timer \
+  -p ActiveState -p SubState -p NextElapseUSecMonotonic
+systemctl list-timers --all jobseek-docker-gc.timer --no-pager
+journalctl -u jobseek-docker-gc.service -n 80 --no-pager
+df -h /
+docker system df
+```
+
+Require `ActiveState=active`. A quiescent timer must have `SubState=waiting`
+and a finite non-empty next trigger. `SubState=running` is healthy while its
+target service is in flight; verify that service and require the timer to
+return to waiting afterward. `is-active` alone also accepts the broken
+`active (elapsed)` state.
+
+If Redis reports `MISCONF` after a disk-full event, free disk first, then
+verify Redis persistence and writes:
+
+```bash
+docker exec deploy-redis-1 redis-cli INFO persistence | tr -d '\r' \
+  | grep -E '^(rdb_bgsave_in_progress|rdb_last_bgsave_status|aof_enabled):'
+docker exec deploy-redis-1 redis-cli SET disk_probe ok EX 60
+```
+
+### Current Container Layout (metrics ports)
+
+| Container | Image | Metrics Port | CPU | Memory |
+|-----------|-------|-------------|-----|--------|
+| worker-1 | crawler-slim | 9095 | 1 | 1GB |
+| worker-2 | crawler-slim | 9096 | 1 | 1GB |
+| worker-3 | crawler-slim | 9097 | 1 | 1GB |
+| browser-1 | crawler-full | 9098 | 3 | 6GB |
+| exporter | crawler-slim | 9093 | — | — |
+| drain | crawler-slim | 9094 | — | — |
+| alloy | grafana/alloy | 12346 | 0.5 | 512MB (256MiB Go soft limit) |
+| redis | redis:7-alpine | — | — | 1.5GB (1GB maxmemory) |
+
+### Querying Metrics
+
+```bash
+# Prometheus metrics from any container
+curl -s http://localhost:<port>/metrics | grep "crawler_"
+
+# Redis queue state
+redis-cli ZCARD ready:simple:0   # first-time domains
+redis-cli ZCARD ready:simple:1   # monitor domains
+redis-cli ZCARD ready:simple:2   # scrape domains
+
+# Local Postgres (via docker exec on Postgres machine)
+ssh ... root@<POSTGRES_IP> "docker exec -i postgres psql -U crawler -d crawler -c '<SQL>'"
+```
+
+### Grafana Dashboard
+
+Dashboard is managed as JSON at `apps/crawler/grafana-dashboard.json` and pushed via the Grafana HTTP API.
+
+```bash
+# Push dashboard update
+curl -s -X POST "https://colophongroup.grafana.net/api/dashboards/db" \
+  -H "Authorization: Bearer <GRAFANA_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"dashboard": <json>, "overwrite": true}'
+```
+
+`GRAFANA_API_KEY` is in `.env.local`. The dashboard UID is `jobseek-crawler-pipeline`.
+
+### Alert Rules
+
+Alert rules are managed as Prometheus YAML at `apps/crawler/alerts.yaml`
+and transactionally synced to Grafana Cloud Mimir by
+`.github/workflows/deploy-hetzner-observability.yml` after all three host
+collectors pass deployment. The set covers crawler availability/queues/
+export/delisting plus all-host silence, disk/inodes, backup freshness,
+PostgreSQL readiness/archive/connections, Typesense/tunnel health, and pending
+reboots. Every alert must carry a repository runbook plus
+`owner=codex-error-review` and `route=codex-daily`. The daily Hetzner Codex
+review owns deduplicated GitHub issue delivery. Every critical alert must also
+carry `page=production` and a pending duration of at most three minutes.
+Production email paging is disabled: the observability deployment removes the
+Jobseek contact, notification routes, bridge/deadman rules, and synthetic test
+rule before syncing Mimir rules. The former scheduled paging workflow is not
+installed, and the paging utility has no activation CLI mode.
+`ExporterStale` must retain `instance="exporter"` because the shared metrics
+module exposes a default-zero gauge from other crawler endpoints.
+
+```bash
+# Validate source/ownership without a remote write
+cd apps/crawler
+uv run python ../../scripts/sync-grafana-rules.py --dry-run
+uv run python ../../scripts/sync-grafana-alertmanager.py \
+  --dry-run --url https://grafana.example.com --api-key test-only
+
+# Production deploys run the paging utility only with --disable, then sync and
+# verify the Mimir rules. There is no supported paging activation command.
+```
+
+The `RedisMemoryPressure` alert depends on the `redis_exporter` block
+in `apps/crawler/alloy.river`. Removing or moving it will silently
+disable the alert, since `redis_memory_max_bytes` will stop being
+ingested.
+
+### Typesense Operations
+
+Typesense 27.1 runs as a Docker container on a dedicated Hetzner CX22 (4 GB RAM, 2 vCPU). Data stored at `/mnt/typesense-data`. The container runs with `--network host`.
+
+```bash
+# SSH to Typesense machine
+ssh -i ~/.ssh/hetzner_deploy root@<TYPESENSE_IP>
+
+# Check unauthenticated health
+curl --fail --silent http://localhost:8108/health
+
+# View container
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.MemUsage}}"
+docker logs typesense 2>&1 | tail -20
+
+# Verify protected credential delivery without printing secrets
+/usr/local/sbin/jobseek-verify-typesense-host-credentials
+```
+
+Never recreate Typesense with an inline `--api-key`. The bootstrap key belongs
+only in the root-owned server config; crawler commands use the generated
+`TYPESENSE_OPERATIONS_KEY`, and backups use their separate generated key.
+Restart/reconcile the reviewed host surface through the manual
+`.github/workflows/deploy-typesense-host.yml` dispatch described in
+`docs/16-hetzner-maintenance.md#typesense-host-credentials`.
+
+**Cloudflare tunnel**: `cloudflared` runs as a dedicated unprivileged systemd
+service, routing `typesense.colophon-group.org` to `localhost:8108`. Its token
+is delivered from a root-only source through systemd `LoadCredential`; never
+place it directly in the unit or process arguments.
+
+```bash
+# Check tunnel status
+systemctl status cloudflared
+
+# Reconcile or rotate via the reviewed host workflow
+gh workflow run deploy-typesense-host.yml --ref main -f component=cloudflared
+```
+
+**Collection management** (from `apps/crawler/` on any machine with connectivity):
+
+```bash
+# Create/recreate collections + aliases
+uv run python ../../scripts/typesense-setup.py [--force]
+
+# Full re-index
+uv run crawler backfill-typesense
+
+# Refresh taxonomy/company counts
+uv run crawler refresh-typesense
+
+# One-time cleanup after retiring public watchlist discovery
+uv run crawler purge-retired-watchlist-index --confirm
+```
+
+**Grafana metrics**: `typesense_export_docs_total`, `typesense_export_lag`, `typesense_export_duration_seconds`, `typesense_healthy` (0/1), `typesense_memory_bytes`, and durable host metrics under `jobseek_cross_store_reconciliation_*`. Posting reconciliation runs from `jobseek-crawler-reconciliation.timer`, not from the exporter process or GitHub cron; see `docs/03-crawler-architecture.md#cross-store-reconciliation`.
+
+### Alloy (Metrics + Logs Collector)
+
+The crawler Compose Alloy scrapes crawler application and Redis metrics and
+tails crawler Docker logs. Its official 1.19.2 image is digest-pinned,
+read-only, capability-dropped, and no longer privileged or host-PID aware.
+Its remote-write queue uses one bounded shard, Redis metrics use an explicit
+operational allowlist, and per-origin circuit-breaker metrics are dropped in
+favor of bounded fleet task outcomes plus Loki attribution. These controls are
+part of the Grafana 15,000-active-series safety budget and must not be removed
+without measuring production cardinality first.
+When adding/removing crawler containers, update the static scrape targets in
+`apps/crawler/alloy.river`; crawler deployment recreates only this collector.
+
+Host metrics and allowlisted journals are a separate fleet surface on the
+crawler, PostgreSQL, and Typesense machines. An unprivileged native
+`jobseek-alloy.service` listens only on loopback, while the root-owned
+`jobseek-host-observability.timer` performs bounded read-only Docker/database
+probes and writes an atomic textfile. Deploy and rollback behavior lives in
+`deploy/observability/` and `.github/workflows/deploy-hetzner-observability.yml`;
+operator checks are in `docs/16-hetzner-maintenance.md#fleet-observability`.
+Neither the native collector nor `codex-runner` receives Docker-socket access.
+
+Local operator credentials for Grafana Cloud Prometheus and Loki may be in the
+ignored `.env.local` (`GRAFANA_*` vars); production copies are protected
+deployment secrets. Prometheus and Loki have **different user IDs**
+(`GRAFANA_USER_ID` for Prometheus; Loki has its own instance ID).
+
+Production paging is disabled. The observability deployment removes the
+retired Jobseek notification routes, email contact, bridge/deadman rules, and
+synthetic test rule on every run. Do not add a paging schedule, contact,
+route, test, or activation command without an explicit new operator decision.
+Rule state remains visible in Grafana; the daily Codex error-review workflow
+owns deduplicated issue delivery. See
+`docs/16-hetzner-maintenance.md#production-paging-is-disabled`.
+
+### Deploying Code Changes
+
+Use the supported exact-revision deployment and recovery workflows in
+[ADR 006](../../docs/adr/006-crawler-deploy-quiescence-and-rollback.md) and
+[Hetzner maintenance](../../docs/16-hetzner-maintenance.md).
+Do not rsync live source, deploy mutable `:latest` images, or restart only one
+writer during a generation change. Preserve quiescence, mutation locks, and
+verified rollback of the complete writer generation.
+
+## Code Conventions
+
+- `from __future__ import annotations` in every module
+- Async everywhere — `asyncpg`, `httpx.AsyncClient`
+- Structured logging: `log = structlog.get_logger()`, then `log.info("event.name", key=value)`
+- SQL in raw strings (no ORM), using `$1` positional params for asyncpg
+- Concurrency: `asyncio.TaskGroup` for parallel work, Redis Lua scripts for atomic claiming
+- Error handling: exponential backoff on failures (interval doubles, capped at 24h, auto-disable at 5 consecutive failures)

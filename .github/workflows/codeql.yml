@@ -97,7 +97,7 @@ jobs:
     steps:
       - name: Skip CodeQL analysis for non-code PR
         if: needs.changes.outputs.codeql != 'true'
-        run: echo "Only non-code paths changed; preserving the required CodeQL status without running analysis."
+        run: echo "Only non-code paths changed; preserving the advisory CodeQL status without running analysis."
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: needs.changes.outputs.codeql == 'true'

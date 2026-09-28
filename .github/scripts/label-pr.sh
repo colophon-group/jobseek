@@ -18,7 +18,7 @@ set -euo pipefail
 
 SCRIPTS_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
-# Only label add-company/* branches — developer branches are reviewed manually
+# Only classify add-company/* branches; other branches need task-specific authorization.
 BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
 if [[ "$BRANCH" != add-company/* ]]; then
   echo "Skipping label-pr for non-company branch: $BRANCH"
@@ -35,7 +35,11 @@ SLUG_RE='^[a-z0-9]+(-[a-z0-9]+)*$'
 URL_RE='^https?://'
 # --- Check changed files ---
 
-FILES=$(gh pr diff "$PR" --repo "$REPO" --name-only)
+if [[ -n "${EXPECTED_HEAD:-}" && -n "${EXPECTED_BASE:-}" ]]; then
+  FILES=$(git diff --name-only "$EXPECTED_BASE...$EXPECTED_HEAD")
+else
+  FILES=$(gh pr diff "$PR" --repo "$REPO" --name-only)
+fi
 echo "Changed files:"
 echo "$FILES"
 
@@ -65,7 +69,11 @@ done <<< "$FILES"
 
 # --- Check diff size and content ---
 
-DIFF=$(gh pr diff "$PR" --repo "$REPO")
+if [[ -n "${EXPECTED_HEAD:-}" && -n "${EXPECTED_BASE:-}" ]]; then
+  DIFF=$(git diff "$EXPECTED_BASE...$EXPECTED_HEAD")
+else
+  DIFF=$(gh pr diff "$PR" --repo "$REPO")
+fi
 # Validate only semantic CSV additions. Stale company branches commonly move
 # already-merged rows while restoring sort order; treating the added half of a
 # remove/add pair as new made unrelated historical monitor types affect the
@@ -180,11 +188,11 @@ done <<< "$CSV_ADDITIONS"
 INCOMPLETE=false
 
 COMPLETENESS=$(python3 - "$PR" "$REPO" <<'PYEOF'
-import csv, io, json, subprocess, sys
+import csv, io, json, os, subprocess, sys
 
 pr, repo = sys.argv[1], sys.argv[2]
 
-branch = subprocess.check_output(
+branch = os.environ.get("EXPECTED_HEAD") or subprocess.check_output(
     ["gh", "pr", "view", pr, "--repo", repo, "--json", "headRefName", "-q", ".headRefName"],
     text=True,
 ).strip()
@@ -192,13 +200,13 @@ branch = subprocess.check_output(
 def get_raw(ref, path):
     try:
         return subprocess.check_output(
-            ["gh", "api", f"repos/{repo}/contents/{path}",
+            ["gh", "api", "--method", "GET", f"repos/{repo}/contents/{path}",
              "-H", "Accept: application/vnd.github.raw+json",
              "-f", f"ref={ref}"],
             text=True, stderr=subprocess.DEVNULL,
         )
-    except Exception:
-        return ""
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(f"Cannot fetch immutable classification input: {path}") from exc
 
 def parse_csv(text):
     if not text.strip():
@@ -207,7 +215,7 @@ def parse_csv(text):
 
 pr_companies = parse_csv(get_raw(branch, "apps/crawler/data/companies.csv"))
 pr_boards = parse_csv(get_raw(branch, "apps/crawler/data/boards.csv"))
-main_companies = parse_csv(get_raw("main", "apps/crawler/data/companies.csv"))
+main_companies = parse_csv(get_raw(os.environ.get("EXPECTED_BASE", "main"), "apps/crawler/data/companies.csv"))
 
 main_slugs = {r["slug"] for r in main_companies}
 new_slugs = {r["slug"] for r in pr_companies if r["slug"] not in main_slugs}

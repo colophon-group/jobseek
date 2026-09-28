@@ -6,14 +6,14 @@ Requires=docker.service
 After=docker.service
 StartLimitIntervalSec=120
 StartLimitBurst=10
-ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-docker-lifecycle-watch.py
+ConditionPathExists=/usr/local/lib/jobseek-codex/codex-docker-lifecycle-watch.py
 ConditionPathExists=/run/docker.sock
 
 [Service]
 Type=simple
 User=root
 Group=root
-ExecStart=/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-docker-lifecycle-watch.py
+ExecStart=/usr/bin/python3 -I /usr/local/lib/jobseek-codex/codex-docker-lifecycle-watch.py
 Restart=always
 RestartSec=2
 TimeoutStopSec=15

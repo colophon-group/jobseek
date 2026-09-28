@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-DEFAULT_STATUS = Path("/srv/jobseek-codex/state/error-review-status.json")
+DEFAULT_STATUS = Path("/srv/jobseek-codex/inputs/error-review-status.json")
 VALID_RESULTS = frozenset(
     {
         "success",
