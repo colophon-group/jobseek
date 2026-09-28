@@ -36,3 +36,25 @@ go test -race ./...
 go vet ./...
 go mod tidy -diff
 ```
+
+## Verified direct HTTP transport
+
+`dom-detail-fetch` reads a bounded URL/options request on stdin and returns the
+exact response bytes, content type, status/final URL and request accounting.
+Its public document transport reuses the existing native JSON-LD DNS/IP checks,
+TDM metadata parser, default public headers and body-idle bounds. It preserves
+configured status retry counts, default Avature 406 retries, cookie-aware
+same-origin redirects, and the separate five-hop/no-cookie/no-status-retry
+contract used with configured public headers. Other redirects retain the
+20-hop bound. Each response is bounded at 16 MiB; a fetch task at 10 minutes.
+
+The DOM caller selects native fetch by default (`DOM_GO_HTTP_ENABLED=1`) only
+when both config and the effective caller client use verified direct HTTP.
+Proxy, insecure TLS, rendering/actions and custom/logging clients retain their
+configured transport. No enabled configuration is disabled. Exact raw bytes
+preserve configured codecs and PDF/DOCX detection. The existing caller still
+owns decoding, gone/challenge classification, document conversion and linked
+fetch; normal DOM extraction remains native. Fetch metrics use
+`stage=fetch, implementation=go-dom-http`; they do not claim full scrape
+ownership or whole-lane resource improvements. Reversal restores the preceding
+runtime release through the supported cold procedure.

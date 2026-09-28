@@ -860,7 +860,7 @@ jobs:
             docker run --rm --network none --read-only \
             --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/dom-detail/testdata,target=/fixtures,readonly" \
             --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
-            -I /fixtures/verify_installed.py /usr/local/bin/dom-detail-parse
+            -I /fixtures/verify_installed.py /usr/local/bin/dom-detail-parse /usr/local/bin/dom-detail-fetch
 
       - name: Self-test sampler container probe
         run: python3 .github/scripts/crawler-sampler-container-smoke.py --self-test

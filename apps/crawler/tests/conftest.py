@@ -20,6 +20,7 @@ def python_adapter_tests(monkeypatch):
     monkeypatch.setenv("JSONLD_GO_DETAIL_PERCENT", "0")
     monkeypatch.setenv("SMARTRECRUITERS_GO_DETAIL_PERCENT", "0")
     monkeypatch.setenv("DOM_GO_PARSE_ENABLED", "0")
+    monkeypatch.setenv("DOM_GO_HTTP_ENABLED", "0")
 
 
 @pytest.fixture(scope="session")

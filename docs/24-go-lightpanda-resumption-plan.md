@@ -6,6 +6,46 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: Go DOM direct HTTP transport v0.13.890
+
+The installed `dom-detail-fetch` candidate moves direct DOM origin reads to
+native Go. The 11:08 UTC protected inventory admits **549 of 758 primary DOM
+board URLs/configurations**, with zero admission errors; 209 rendered/proxied/
+insecure configurations retain their existing transport. Admission also checks
+each actual posting fetch URL and the effective caller client, so metadata-based
+insecure TLS, proxy routing and custom/logging clients keep their configured
+behavior. Every enabled board remains configured and available.
+
+The native transport preserves raw response bytes, content type and final URL;
+configured status retries, default Avature 406 retries, cookie-aware same-origin
+redirects and public request headers retain their existing contracts. Configured
+public headers use five redirects, no forwarded cookies and no status retry;
+other routes keep the 20-redirect bound. DNS/IP validation and TDM header/meta
+checks apply before extraction. Response bodies are bounded at 16 MiB and the
+native task at 10 minutes. Normal callers still own configured decoding, gone/
+challenge classification, PDF/DOCX conversion and linked-description fetches;
+the existing installed Go parser then owns DOM extraction. Fetch metrics/logs
+identify `go-dom-http` at stage `fetch` and do not label the whole scrape Go.
+
+Focused validation passed 263 Python tests, native race/vet/tidy for both modules,
+500 frozen parser cases and four installed HTTP private-target rejection cases.
+Native tests cover status retry/exhaustion, TDM denial before retry, redirect
+bounds/cross-origin refusal, cookie handshakes/stripping, malformed config and
+raw document bytes. **Deployment and natural output/database evidence for this
+transport slice are pending**; the promoted production revision and current
+25-selector cold procedure remain those in the production checkpoint below.
+Restore the preceding v0.13.889 runtime through that supported procedure for
+complete transport reversal. `DOM_GO_HTTP_ENABLED=0` is the configuration
+reversal contract; do not edit the host environment by hand.
+
+The protected inventory is retained at
+`/Users/Viktor/.codex/migration-evidence/go-dom-http/2026-09-28/`
+(directory 0700; snapshots 0600), SHA-256
+`fa0e92cc60c79be2ddec2c8e42367fda47c53c52903de2bee374a755fec96c31`.
+No same-workload whole-lane resource improvement or full migration completion
+is established by these tests. Continue natural proof and rendered-DOM
+Lightpanda admission alongside the remaining runtime migration.
+
 ## Production checkpoint: 2026-09-28 — shared DOM extraction v0.13.889
 
 [PR #10146](https://github.com/colophon-group/jobseek/pull/10146) migrated the

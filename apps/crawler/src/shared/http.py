@@ -686,6 +686,11 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
     kw.setdefault("cookies", CookieJar(policy=_Rfc6265CookiePolicy()))
     inner = kw.pop("transport", None)
     proxy_aware = isinstance(inner, RotatingProxyTransport)
+    native_direct_verified = (
+        inner is None
+        and kw.get("verify", True) is not False
+        and not any(kw.get(k) for k in ("event_hooks", "auth", "proxy", "mounts"))
+    )
     if inner is None:
         verify = kw.pop("verify", True)
         inner = httpx.AsyncHTTPTransport(verify=verify)
@@ -703,7 +708,12 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
         RequestHostTrackingTransport(inner, egress=metered_egress)
     )
     client_type = ProxyAwareAsyncClient if proxy_aware else httpx.AsyncClient
-    return client_type(**kw)
+    client = client_type(**kw)
+    # Effective board transport can come from the caller rather than config
+    # (for example metadata.ssl_verify=false). Native fetch admission must not
+    # replace an insecure/proxied/custom client with verified direct egress.
+    client.__dict__["_jobseek_verified_direct_http"] = native_direct_verified
+    return client
 
 
 def create_http_client(*, verify: bool = True, use_proxy: bool = False) -> httpx.AsyncClient:

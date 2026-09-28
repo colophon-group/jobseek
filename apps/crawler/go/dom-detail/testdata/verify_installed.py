@@ -22,3 +22,23 @@ for index, case in enumerate(cases):
         actual = json.loads(result.stdout)
         assert actual == case["expected"], (index, actual, case["expected"])
 print(f"{len(cases)} installed DOM extractor cases match Python")
+
+# The second installed binary owns direct HTTP. Literal private targets must
+# fail before any origin response, even in an otherwise networkless container.
+if len(sys.argv) > 2:
+    for url in (
+        "http://127.0.0.1/job",
+        "http://10.0.0.5/job",
+        "http://169.254.169.254/job",
+        "http://[::1]/job",
+    ):
+        result = subprocess.run(
+            [sys.argv[2]],
+            input=json.dumps({"url": url, "options": {}}).encode(),
+            capture_output=True,
+            timeout=15,
+        )
+        assert result.returncode == 1, url
+        payload = json.loads(result.stdout)
+        assert payload["responses"] == 0 and payload["bytes"] == 0 and payload["error"], url
+    print("4 installed DOM HTTP private-target cases rejected before origin response")

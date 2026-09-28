@@ -1882,7 +1882,16 @@ async def _scrape_once(
                 html = await _render_with_challenge_retry(p)
     else:
         retry_limits = _status_retry_limits(config, url)
-        if request_headers:
+        from src.runtime import dom_go_http
+
+        if dom_go_http.eligible(fetch_url, config, http):
+            resp = await dom_go_http.fetch_response(
+                fetch_url,
+                headers=request_headers,
+                retry_limits=retry_limits,
+                same_origin_redirects=same_origin_redirects,
+            )
+        elif request_headers:
             resp = await public_get(http, fetch_url, headers=request_headers)
         else:
             resp = await fetch_response_with_status_retries(
