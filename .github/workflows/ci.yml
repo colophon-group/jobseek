@@ -1367,6 +1367,11 @@ jobs:
           "$protoc_root/bin/protoc" --version | grep -Fx "libprotoc $version"
           printf '%s\n' "$protoc_root/bin" >>"$GITHUB_PATH"
 
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/jsonld-detail/go.mod
+          cache-dependency-path: apps/crawler/go/jsonld-detail/go.sum
+
       - run: uv sync --group dev --extra enrich
         working-directory: apps/crawler
 
