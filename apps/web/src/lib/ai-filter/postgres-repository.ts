@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import {
   and,
+  desc,
   eq,
   gt,
   inArray,
@@ -252,6 +253,15 @@ export class PostgresAiFilterExecutionRepository
           continue;
         }
 
+        if (
+          existing?.status === "pending" &&
+          existing.leaseExpiresAt &&
+          existing.leaseExpiresAt.getTime() >= input.now.getTime()
+        ) {
+          waitingCacheKeys.push(candidate.cacheKey);
+          continue;
+        }
+
         if (!existing) {
           const inserted = await tx
             .insert(aiFilterGlobalCache)
@@ -283,12 +293,18 @@ export class PostgresAiFilterExecutionRepository
             ownerId: aiFilterUsageLedger.ownerId,
             monthStart: aiFilterUsageLedger.monthStart,
             reservedNanodollars: aiFilterUsageLedger.reservedNanodollars,
+            reconciledAt: aiFilterUsageLedger.reconciledAt,
           })
           .from(aiFilterUsageLedger)
           .where(and(
             inArray(aiFilterUsageLedger.status, ["reserved", "uncertain"]),
             sql`${candidate.cacheKey} = ANY(${aiFilterUsageLedger.cacheKeys})`,
           ))
+          // A historical uncertain charge must never hide a live reservation.
+          .orderBy(
+            desc(sql`${aiFilterUsageLedger.status} = 'reserved'`),
+            desc(aiFilterUsageLedger.createdAt),
+          )
           .for("update")
           .limit(1);
 
@@ -299,8 +315,9 @@ export class PostgresAiFilterExecutionRepository
         );
         const uncertainCooldownElapsed = Boolean(
           existing?.status === "failed" &&
-          existing.failureCode === "uncertain_provider_unavailable" &&
-          existing.updatedAt.getTime() <=
+          unresolvedReservation?.status === "uncertain" &&
+          unresolvedReservation.reconciledAt &&
+          unresolvedReservation.reconciledAt.getTime() <=
             input.now.getTime() - UNCERTAIN_RETRY_COOLDOWN_MS,
         );
         let reservationBlocksClaim = Boolean(unresolvedReservation);
@@ -340,6 +357,10 @@ export class PostgresAiFilterExecutionRepository
           unresolvedReservation?.status === "uncertain" &&
           (pendingLeaseExpired || uncertainCooldownElapsed || !existing)
         ) {
+          // This charge stays in the ledger. A later, non-ambiguous failure can
+          // change the cache failure code without making that old charge live.
+          // The atomic cache update below still enforces its own latest lease
+          // and uncertain-failure cooldown against concurrent workers.
           reservationBlocksClaim = false;
         }
         if (reservationBlocksClaim) {
