@@ -20,3 +20,14 @@ Pillow). The original JPEGs are unmodified. Display crops live in
 `src/content/config.ts`: the tracker crop preserves the central figures and removes the paper border.
 The existing `PublicDomainArt` component provides theme inversion, image
 optimization, and the same overlay source credits used across the site.
+
+
+## Narrowed illustration
+
+`the_woodcutter`: Jost Amman, *A craftsman making a woodcut* ("Der
+Formschneider"), 1568. [Wellcome Collection, 34981i](https://wellcomecollection.org/works/sdq6u6kq),
+Public Domain Mark. [Source image](https://iiif.wellcomecollection.org/image/V0040551ETC/full/full/0/default.jpg).
+The original is kept under `master/`; both transparent line variants use
+`script/stylize_images.py` with the existing threshold of 150. Display cropping
+is configured in `publicDomainAssets`; the existing artwork component supplies
+the overlay credit and dark-theme inversion.

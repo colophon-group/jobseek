@@ -230,6 +230,19 @@ export const siteConfig = {
 } as const;
 
 export const publicDomainAssets: Record<string, PublicDomainAsset> = {
+  the_woodcutter: {
+    href: "/publicdomain/master/the_woodcutter.jpg",
+    light: "/publicdomain/the_woodcutter_dark.png",
+    dark: "/publicdomain/the_woodcutter_light.png",
+    width: 1561,
+    height: 2055,
+    crop: { top: 370, right: 45, bottom: 80, left: 45 },
+    alt: "A craftsman carving a woodblock in his workshop",
+    title: "The Woodcutter",
+    author: "Jost Amman",
+    date: "1568",
+    link: "https://wellcomecollection.org/works/sdq6u6kq",
+  },
   the_ploughman: {
     href: "/publicdomain/master/the_ploughman.jpg",
     light: "/publicdomain/the_ploughman_dark.png",

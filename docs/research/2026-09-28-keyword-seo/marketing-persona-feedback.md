@@ -136,3 +136,22 @@ ESLint, 21 SEO/sitemap tests, and 16 browser checks (four locales × two themes 
 overflow. Four additional 320px homepage checks confirmed the new Narrowed
 links and pricing layout. Translated requests were subsequently tested
 independently; the validation report records varying results and known misses.
+
+## Compact product-led revision
+
+The user rejected the report-like Narrowed page and long prompt. The revision
+leads with “Find the work you want to do,” a short tested request, and the same
+Narrowed drawer used by shared watchlists. Real recorded results replace the
+fictional match/exclusion cards; method details remain in the research report.
+
+Follow-up persona review identified an orphaned desktop headline word, mobile
+status labels competing with job titles, and excessive space before product
+proof. The revision balances the headline, removes those custom result cards,
+reduces mobile art height and section gaps, and compacts setup/pricing. The
+alerts and tracker pages also remove their redundant invented example panels;
+their genuine screenshots carry the product explanation.
+
+The README now leads with job search, company watchlists, weekly email alerts,
+application tracking, and Narrowed. Full-width watchlist and tracker screenshots
+join search and company screenshots. Obsolete one-watchlist and coming-soon
+email claims have been removed. User UI review remains required before merge.

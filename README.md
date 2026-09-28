@@ -2,11 +2,11 @@
 
 # Job Seek
 
-**Open-source job search built from 5,300+ company career sites and ATS feeds.**
+**Follow companies you care about. Find the right jobs. Keep your applications moving.**
 
-Find roles soon after employers publish them, search them through one consistent schema, and track the applications that matter to you.
+Job Seek brings jobs from thousands of company career pages into one search. Build watchlists, get weekly email job alerts, and track applications in one place. Free to start, with English, German, French, and Italian interfaces.
 
-[**Try jseek.co →**](https://jseek.co) &nbsp;·&nbsp; [Use the MCP server](#use-job-seek-from-ai-tools-and-code) &nbsp;·&nbsp; [Add a company](#add-a-company) &nbsp;·&nbsp; [Run it yourself](#run-it-yourself)
+[**Try jseek.co →**](https://jseek.co) &nbsp;·&nbsp; [See the features](#what-you-get-on-jseekco) &nbsp;·&nbsp; [Use the MCP server](#use-job-seek-from-ai-tools-and-code) &nbsp;·&nbsp; [Add a company](#add-a-company) &nbsp;·&nbsp; [Run it yourself](#run-it-yourself)
 
 [![MIT License](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE) [![Job data CC BY-NC 4.0](https://img.shields.io/badge/data-CC%20BY--NC%204.0-lightgrey.svg)](LICENSE-JOB-DATA) [![CI](https://github.com/colophon-group/jobseek/actions/workflows/ci.yml/badge.svg)](https://github.com/colophon-group/jobseek/actions/workflows/ci.yml) [![CodeQL](https://github.com/colophon-group/jobseek/actions/workflows/codeql.yml/badge.svg)](https://github.com/colophon-group/jobseek/actions/workflows/codeql.yml) [![PyPI](https://img.shields.io/pypi/v/jobseek-crawler-setup.svg)](https://pypi.org/project/jobseek-crawler-setup/) [![GitHub stars](https://img.shields.io/github/stars/colophon-group/jobseek?style=social)](https://github.com/colophon-group/jobseek)
 
@@ -20,28 +20,53 @@ Find roles soon after employers publish them, search them through one consistent
 
 ## Why Job Seek
 
-Job Seek is for people who already have a sense of where they want to work. Instead of starting with reposted listings, it monitors employer career sites and their applicant-tracking systems, then normalizes each source into one searchable model.
+Your next role might be at a company you already admire—or one you haven’t discovered yet. Search across employer career sites, follow a shortlist of companies, and spend less time checking the same pages for updates.
 
-| | |
-|---|---|
-| **Broad direct-source coverage** | 5,300+ companies across 6,200+ configured career boards, primarily employer-hosted sites and ATS feeds, plus a small number of platform-hosted sources. |
-| **One search model** | Typesense-backed keyword search and facets for occupation, seniority, technology, location, work mode, employment type, salary, experience, and posting language. |
-| **Source-URL identity** | Postings are canonicalized and deduplicated by source URL, while every result links back to the original listing. |
-| **A complete job-search workspace** | Public watchlists, saved roles, application stages, interview notes, and pipeline statistics live alongside search. |
-| **Open interfaces** | Use the web app, the public REST API, or the hosted read-only MCP server from any compatible AI client. |
+- **Jobs from the source.** Browse employer career pages and ATS feeds. Every listing links back to the original posting.
+- **Filters that travel with you.** Combine role, seniority, location, technology, work mode, salary, experience, and posting language, then save your search as a watchlist.
+- **A free job-search workspace.** Up to 10 watchlists, weekly email digests, and an application tracker for jobs saved on Job Seek.
+- **A closer fit with Pro.** Narrowed reads job descriptions against your personal criteria, beyond job titles and standard filters.
+- **Open-source and accessible from your tools.** Use the web app, public REST API, or hosted MCP server.
 
 ## What you get on jseek.co
 
-| | |
-|---|---|
-| [![Explore jobs](.github/assets/readme/explore.png)](https://jseek.co/en/explore) | **Explore.** Search postings across every tracked company and combine filters without creating an account. |
-| [![Stripe company page](.github/assets/readme/company.png)](https://jseek.co/en/company/stripe) | **Company pages.** See active and last-year posting counts, filter within one company, explore similar employers, and open every role at its source. |
+### Search jobs across company career pages
 
-With a free account, you can create one watchlist and use the built-in **application tracker** to move roles through `saved → applied → interviewing → offered/rejected`, record interview rounds, and review pipeline statistics.
+Explore without an account. Combine filters to find relevant openings across thousands of employers, from engineering and design to finance, operations, healthcare, and more.
 
-**Pro is coming soon.** The planned $10/month tier adds unlimited watchlists and email alerts for new matches.
+[![Job search with company results and filters for role, location, and work preferences](.github/assets/readme/explore.png)](.github/assets/readme/explore.png)
 
-> Built by [Colophon Group](https://colophon-group.org), a small team in Switzerland — so German, French, and Italian are first-class product languages, not afterthoughts.
+### Follow companies and get weekly job alerts
+
+Save a watchlist for each direction you’re considering: selected employers, a role, a location, or a combination. Enable notifications to receive a weekly email digest of new matches. Share a watchlist by link with someone else looking for similar work.
+
+[![A watchlist following ABB, Google, and Siemens for software engineering jobs in Switzerland](.github/assets/readme/watchlists.png)](.github/assets/readme/watchlists.png)
+
+### Track applications, interviews, and offers
+
+Save a job, record when you apply, add interview rounds and notes, and update the outcome. Your application tracker keeps the original job details alongside your progress; pipeline statistics help you see how the search is going.
+
+[![Application tracker showing saved jobs, applied roles, offers, and interview controls beside the job description](.github/assets/readme/application-tracker.png)](.github/assets/readme/application-tracker.png)
+
+### Find the work behind the job title with Narrowed
+
+Two roles can have the same title and very different responsibilities. Describe what matters to you in plain language:
+
+> I want to work directly with users and turn their problems into product improvements. No people management.
+
+Narrowed checks the descriptions in your watchlist and picks out the matches. It is included with **Job Seek Pro**; regular search, watchlists, weekly email digests, and application tracking remain free. [See Pro details and current availability.](https://jseek.co/en/#pricing)
+
+[![Narrowed matching request and matching roles from Microsoft, NVIDIA, and Swisscom](.github/assets/readme/narrowed.png)](.github/assets/readme/narrowed.png)
+
+### Get to know an employer’s hiring
+
+Company pages bring together current openings, posting activity, and similar employers. Open a role at its source or use what you find to build your next watchlist.
+
+[![Stripe company page with hiring activity, company details, and open jobs](.github/assets/readme/company.png)](.github/assets/readme/company.png)
+
+[**Start your job search →**](https://jseek.co/en/explore)
+
+> Built by [Colophon Group](https://colophon-group.org), a small team in Switzerland. Available in [English](https://jseek.co/en), [Deutsch](https://jseek.co/de), [français](https://jseek.co/fr), and [italiano](https://jseek.co/it).
 
 ---
 
@@ -59,7 +84,7 @@ It uses Streamable HTTP and does not require authentication. Add the URL as a cu
 npx @jseek/mcp-server
 ```
 
-See [`packages/mcp-server/README.md`](packages/mcp-server/README.md) for client-specific setup and tool examples. For direct HTTP integrations, the public REST contract is available at [`/api/openapi.json`](https://jseek.co/api/openapi.json).
+See [`packages/mcp-server/README.md`](packages/mcp-server/README.md) for client-specific setup and tool examples. For direct HTTP integrations, the public REST contract is available at [`/openapi.json`](https://jseek.co/openapi.json).
 
 ---
 

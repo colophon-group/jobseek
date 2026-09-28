@@ -3,6 +3,45 @@
 Date: 28 September 2026. These are live product checks and manual description
 reviews, not a statistical accuracy benchmark. Counts are a dated snapshot.
 No model decisions were overridden for the screenshots.
+## Current marketing request
+
+> I want to work directly with users and turn their problems into product improvements. No people management.
+
+The short request replaces the longer experiments below. It was run against the
+20-company Switzerland / Software Engineer watchlist and checked manually.
+
+| Request language | Accepted | Rejected | Evaluated |
+| --- | ---: | ---: | ---: |
+| English | 4 | 63 | 67 |
+| German | 6 | 61 | 67 |
+| French | 4 | 62 | 66 |
+| Italian | 4 | 62 | 66 |
+
+All runs reached `caught_up`. One posting left the active corpus between runs.
+The showcase was restored to the English request and reached `caught_up` with
+4 accepted / 62 rejected / 66 evaluated at 11:26 UTC on 28 September.
+
+English, French, and Italian retained Microsoft Senior Software Engineer,
+NVIDIA Senior CPU Performance Developer Technology Engineer, NVIDIA Developer
+Technology Engineer (Energy), and Swisscom IT Consultant & Full Stack Software
+Engineer. German also retained the two Google roles discussed below. The
+Microsoft/NVIDIA/Google descriptions were reviewed in the earlier iterations;
+the Swisscom role was checked against its original German description, which
+explicitly combines understanding customer needs and building applications.
+The short request does not exclude client projects. The stored English version
+of that Swisscom description was anomalous and was not used as manual evidence.
+
+The marketing preview reuses the actual read-only `AiSearchFilter` drawer and
+`CompanyIcon`, populated with public fields from these recorded results in
+`apps/web/src/content/narrowed-results.json`. It does not make live requests,
+show fictional matched/excluded quotations, or present these checks as a
+benchmark. Translated previews use the corresponding tested result sets.
+
+## Historical prompt experiments
+
+The following longer prompts and counts are retained as research history. They
+are superseded in the page, shared pricing preview, and screenshot watchlist.
+
 
 ## Engineering: turning user problems into product improvements
 
