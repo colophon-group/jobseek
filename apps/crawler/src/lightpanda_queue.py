@@ -527,7 +527,10 @@ class LightpandaB0Queue:
             and task.initial_ready_at_ms != 0
             and (not operator_transfer or not legacy_schedule_score)
         ):
-            raise ValueError("first-time activation must bind its existing deferred schedule")
+            raise ValueError(
+                "first-time activation must be immediately ready unless operator transfer "
+                "binds its existing deferred schedule"
+            )
 
         _validate_task_identity(task)
         if task.route.engine_owner != "go":
