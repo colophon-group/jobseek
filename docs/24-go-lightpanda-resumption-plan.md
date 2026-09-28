@@ -1,10 +1,80 @@
 # Go + Lightpanda migration: resumption plan
 
-Status: implementation checkpoint, 2026-09-24. The initial review used
+Status: ongoing migration; latest deployed checkpoint, 2026-09-28. The initial review used
 `origin/main` `6abfa52e1b061f2898a46355c48105accd1c01f9`; the B0 producer
 implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
+
+## Production checkpoint: 2026-09-28 — SmartRecruiters broad details v0.13.886
+
+PR #10141 merged as `be97fa7a2c5edf5afe7c604b4a5a049cf2d17aca`.
+[Deployment 36398199996](https://github.com/colophon-group/jobseek/actions/runs/36398199996)
+reached terminal overall success after Required CI, installed-image parity and
+the crawler deploy gate passed at exact head
+`06329780dd436cec8bb015a223e28620e2659b85`. The browser image and lifecycle
+gate also passed. The default-100 SmartRecruiters detail route is deployed.
+No enabled boards or active URLs were removed to make the route pass.
+
+The 08:50 UTC read-only census selects Go for **all 121 SmartRecruiters boards
+with active URLs**, up from five exact selected boards. Five other enabled
+SmartRecruiters boards have no active URLs; all 126 resolved configurations
+remain enabled and default/null. The current active inventory is 109,873 jobs.
+The earlier exact offline corpus proved admission and canonical Python identity
+for all 109,792 then-active URLs; the later inventory is a separate snapshot.
+
+Using **one minimum active URL per resolved board**, the whole primary-detail
+sample changed from **838 Go / 2,202 Python** to **955 Go / 2,085 Python** across
+the same 3,040 resolved boards, with 4,839 rich-monitor skips and no route errors.
+SmartRecruiters accounts for 116 newly selected boards; one JSON-LD board also
+gained an admitted representative URL. Empty boards and provided B0 runtimes
+limit this sampling method, so these counts must not be substituted for the
+earlier configuration-based census or claimed as complete per-URL coverage.
+
+Supported rollback retired c1 at **epoch 105**, restored all five schedules,
+and left zero dropped tasks or write fences. All 25 selectors cleared under
+the mutation lock. After terminal deployment success, the unchanged 25-selector
+overlay was staged at the promoted revision and c1 reactivated at **epoch 106**.
+The current conservation audit is accepted/audit_ok with five ready, zero
+inflight and no dead records. Configured worker/browser/drain/producer/executor/
+claimant/Redis health checks pass; c2 remains dark. Typesense reports 1,927
+successful documents, zero errors, a 15-row lag and healthy status in the recorded
+startup observation.
+
+**Natural SmartRecruiters detail proof remains pending.** The 08:55 UTC sample
+contains zero new detail completion records and zero retained API samples.
+The normal recurring domain has 229,641 queued entries; its subsequent tier-2
+rank was 1,337 among 1,377 due domains. No due dates, queue priority or origin
+requests were forced. These deployment and routing results establish the
+durable code checkpoint; they do not establish live rich-field/database parity
+for this detail slice or a paired production resource comparison. See the
+[sanitized release evidence](evidence/go-smartrecruiters-detail-production-2026-09-28.json).
+
+Before any further crawler deploy or selector mutation, finish supported
+`rollback c1`, then clear all **25** selectors under
+`/run/lock/jobseek-crawler-mutation.lock` with
+[`scripts/migration-jsonld-selectors.py`](../scripts/migration-jsonld-selectors.py)
+in `clear` mode, full promoted revision
+`be97fa7a2c5edf5afe7c604b4a5a049cf2d17aca`, and exact Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Helper SHA-256 remains
+`8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743`.
+After terminal next-deployment success, stage only at its promoted full revision
+and reactivate c1. This supersedes the earlier JSON-LD release instructions.
+Broad-detail reversal uses `SMARTRECRUITERS_GO_DETAIL_PERCENT=0` through the
+supported cold procedure; exact detail selectors retain precedence and must
+also be cleared for complete reversal, or restore the preceding runtime release.
+
+Private inventories, routing readbacks, normal queue position, B0 audit and
+release logs are retained at
+`/Users/Viktor/.codex/migration-evidence/go-smartrecruiters-detail/2026-09-28/`
+(directory 0700; snapshots 0600). The protected `collect-production.py` reads
+existing worker captures/completions and internal metrics without publisher
+traffic. Once passive API samples arrive, securely copy the original envelopes
+mode 0600 and use the checked-in offline comparator below against the natural
+completion hash, followed by PostgreSQL description/content/failure readback.
+Continue implementation while the normal queue is pending. Full zero-Python/
+Playwright/Chromium ownership, final reversal and paired whole-lane resource
+proof remain unfinished; overall migration completion is not claimed.
 
 ## Implementation checkpoint: SmartRecruiters broad details v0.13.886
 
@@ -31,9 +101,9 @@ oneclick identity, ambiguous/encoded URL rejection, idle browser handling,
 single-request capture, policy denial and four-sample bounds; the existing
 86 installed-image fixture cases remain the runtime deployment gate.
 
-Deployment and natural Go detail/database proof are pending for this slice.
-Before deployment use the current **25-selector** supported cold procedure in
-the JSON-LD production checkpoint below. Reversal sets the detail percentage
+Deployment and routing readback are recorded in the production checkpoint above;
+natural Go detail/database proof remains pending. Use its current **25-selector**
+supported cold procedure before any further deployment. Reversal sets the detail percentage
 to zero and removes exact detail selectors through that procedure, or restores
 the preceding runtime release. This slice retains Python enrichment, persistence
 and scheduling ownership; it does not prove overall migration completion or

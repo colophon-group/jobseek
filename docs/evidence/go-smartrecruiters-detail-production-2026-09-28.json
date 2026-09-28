@@ -1,0 +1,174 @@
+{
+  "schema": "jobseek.go-smartrecruiters-detail-production/v1",
+  "date": "2026-09-28",
+  "runtime_pr": 10141,
+  "runtime_revision": "be97fa7a2c5edf5afe7c604b4a5a049cf2d17aca",
+  "version": "0.13.886",
+  "deployment": {
+    "run_id": 36398199996,
+    "terminal_conclusion": "success"
+  },
+  "required_gates": {
+    "required_ci": 36396704057,
+    "installed_image_parity": 36396704051,
+    "crawler_deploy_gate": 36396704137,
+    "conclusion": "success",
+    "head": "06329780dd436cec8bb015a223e28620e2659b85"
+  },
+  "offline_admission": {
+    "configs": 126,
+    "all_default_configs": true,
+    "active_urls": 109792,
+    "admitted_urls": 109792,
+    "omitted_urls": 0,
+    "python_identity_mismatches": 0,
+    "snapshot_sha256": "a91b169264fa19fedc43042f7b73e8869b5fb09c2aea7197274af3e1ab0ea8df"
+  },
+  "routing_readback": {
+    "method": "one minimum active URL per resolved board; no provided B0 runtime",
+    "enabled": 7879,
+    "resolved": 3040,
+    "rich_skips": 4839,
+    "pre": {
+      "utc": "2026-09-28T08:27:22.452321+00:00",
+      "totals": {
+        "python": 2202,
+        "go": 838
+      }
+    },
+    "post": {
+      "utc": "2026-09-28T08:50:50.507126+00:00",
+      "totals": {
+        "python": 2085,
+        "go": 955
+      }
+    },
+    "smartrecruiters": {
+      "resolved": 126,
+      "active_jobs": 109873,
+      "previous_go_boards": 5,
+      "go_boards_with_active_url": 121,
+      "newly_selected_boards": 116,
+      "no_active_url_boards": 5
+    },
+    "other_change": "One JSON-LD board gained an admitted representative URL; the total Go delta of 117 is not all attributable to SmartRecruiters.",
+    "errors": []
+  },
+  "cutover": {
+    "retired_epoch": 105,
+    "ready_restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "selectors": 25,
+    "selector_helper": "scripts/migration-jsonld-selectors.py",
+    "selector_helper_sha256": "8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743",
+    "kandou_url": "https://kandou.bamboohr.com/careers/310",
+    "active_audit": {
+      "epoch": 106,
+      "shard_id": "lightpanda-b0",
+      "accepted": true,
+      "decision": "accepted",
+      "reason": "audit_ok",
+      "value": 5,
+      "inflight": 0,
+      "states": {
+        "ready": 5
+      }
+    },
+    "c2": "dark"
+  },
+  "natural_observation": {
+    "utc": "2026-09-28T08:55:44.685356+00:00",
+    "smartrecruiters_detail_completions": 0,
+    "retained_api_samples": 0,
+    "status": "pending normal recurring work",
+    "queue": {
+      "unix_time": 1790585743.619277,
+      "queues": [
+        {
+          "queue": "ft_scrapes_simple:jobs.smartrecruiters.com",
+          "count": 0,
+          "first": []
+        },
+        {
+          "queue": "scrapes_simple:jobs.smartrecruiters.com",
+          "count": 229641,
+          "first": [
+            [
+              "1589114a-a9d3-4215-abfc-184560bd1951",
+              1786402581.615868
+            ]
+          ]
+        },
+        {
+          "queue": "ft_scrapes_browser:jobs.smartrecruiters.com",
+          "count": 0,
+          "first": []
+        },
+        {
+          "queue": "scrapes_browser:jobs.smartrecruiters.com",
+          "count": 0,
+          "first": []
+        },
+        {
+          "queue": "ft_scrapes_simple:careers.smartrecruiters.com",
+          "count": 0,
+          "first": []
+        },
+        {
+          "queue": "scrapes_simple:careers.smartrecruiters.com",
+          "count": 0,
+          "first": []
+        },
+        {
+          "queue": "ft_scrapes_browser:careers.smartrecruiters.com",
+          "count": 0,
+          "first": []
+        },
+        {
+          "queue": "scrapes_browser:careers.smartrecruiters.com",
+          "count": 0,
+          "first": []
+        }
+      ]
+    },
+    "ready_position": {
+      "unix_time": 1790585829.5145333,
+      "domain": "jobs.smartrecruiters.com",
+      "tier2_rank": 1337,
+      "tier2_score": 1790585720.4403,
+      "rotation_rank": 915,
+      "tier0_due_domains": 0,
+      "tier1_due_domains": 74,
+      "tier2_due_domains": 1377
+    },
+    "collector_errors": [],
+    "health": [
+      "deploy-lightpanda-claimant-1 Up 6 minutes (healthy)",
+      "deploy-browser-1-1 Up 6 minutes (healthy)",
+      "deploy-lightpanda-executor-1 Up 6 minutes (healthy)",
+      "deploy-worker-3-1 Up 6 minutes (healthy)",
+      "deploy-worker-1-1 Up 6 minutes (healthy)",
+      "deploy-worker-2-1 Up 6 minutes (healthy)",
+      "deploy-drain-1 Up 6 minutes (healthy)",
+      "deploy-lightpanda-producer-1 Up 6 minutes (healthy)",
+      "deploy-alloy-1 Up 9 minutes",
+      "deploy-exporter-1 Up 9 minutes",
+      "deploy-redis-1 Up 13 days (healthy)"
+    ]
+  },
+  "typesense": {
+    "utc": "2026-09-28T08:55:44.685356+00:00",
+    "success_docs": 1927,
+    "errors": 0,
+    "lag": 15,
+    "healthy": 1
+  },
+  "remaining_proof": [
+    "natural newly selected Go detail completion and database readback",
+    "same-byte passive API response Python/Go/completion-hash parity",
+    "same actual workload whole-lane CPU, RAM, density and cost",
+    "complete zero-Python/Playwright/Chromium production ownership and final reversal"
+  ],
+  "private_evidence_directory": "/Users/Viktor/.codex/migration-evidence/go-smartrecruiters-detail/2026-09-28"
+}
