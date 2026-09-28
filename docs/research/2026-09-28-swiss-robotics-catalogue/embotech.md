@@ -57,6 +57,6 @@ distinct compact mark:
 - [White wordmark and mark](https://cdn.prod.website-files.com/69dc93b3821010806c215f9b/69dc93b3821010806c215fbf_embotech-logo_weiss.svg)
 - [Compact red mark](https://cdn.prod.website-files.com/69dc93b3821010806c215f9b/69dc93b3821010806c216047_Webclip.svg)
 
-The standard workspace pipeline staged PNG representations in
+The standard workspace pipeline staged the selected SVG artwork in
 `apps/crawler/data/images/embotech/`. R2 publication and registry URL updates
 remain the normal image-upload workflow step.
