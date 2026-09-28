@@ -1,0 +1,56 @@
+[
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_replaces_only_jsonld_boilerplate",
+    "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"AI Architect\",\n         \"description\":\"<p>Generic company boilerplate.</p>\",\n         \"datePosted\":\"2026-09-12\"}\n        </script></head><body>\n        <div class=\"vacancy-description\"><h3>Role</h3><p>Design AI systems.</p></div>\n        </body></html>",
+    "selector": ".vacancy-description",
+    "expected": "<h3>Role</h3><p>Design AI systems.</p>"
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_rejects_invalid_or_missing_content[]",
+    "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Boilerplate\"}\n        </script>",
+    "selector": "",
+    "expected_error": true
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_rejects_invalid_or_missing_content[a[]",
+    "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Boilerplate\"}\n        </script>",
+    "selector": "a[",
+    "expected_error": true
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_rejects_invalid_or_missing_content[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]",
+    "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Boilerplate\"}\n        </script>",
+    "selector": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "expected_error": true
+  },
+  {
+    "name": "selected-description-edge",
+    "html": "<section class=\"vacancy_description\"><p>Build &amp; test 'now'.</p></section>",
+    "selector": ".vacancy_description",
+    "expected": "<p>Build &amp; test 'now'.</p>"
+  },
+  {
+    "name": "selected-description-edge",
+    "html": "<section class=\"vacancy_description\"><p title=\"a &amp; b\">text<br>next&nbsp;line</p></section>",
+    "selector": ".vacancy_description",
+    "expected": "<p title=\"a &amp; b\">text<br>next&nbsp;line</p>"
+  },
+  {
+    "name": "selected-description-edge",
+    "html": "<section class=\"vacancy_description\"><ul><li>one<li>two</ul></section>",
+    "selector": ".vacancy_description",
+    "expected": "<ul><li>one</li><li>two</li></ul>"
+  },
+  {
+    "name": "selected-description-edge",
+    "html": "<section class=\"vacancy_description\">text<!--comment--><hr></section>",
+    "selector": ".vacancy_description",
+    "expected": "text<!--comment--><hr>"
+  },
+  {
+    "name": "selected-description-edge",
+    "html": "<section class=\"vacancy_description\"><div data-x=\"a\"b\">nested</div></section>",
+    "selector": ".vacancy_description",
+    "expected": "<div data-x=\"a\" b\"=\"\">nested</div>"
+  }
+]

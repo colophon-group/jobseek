@@ -803,6 +803,14 @@ jobs:
             --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
             -I /fixtures/verify_installed.py /usr/local/bin/join-monitor-live
 
+      - name: Verify installed JSON-LD parser parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/jsonld-detail/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_installed.py /usr/local/bin/jsonld-detail-live
+
       - name: Self-test sampler container probe
         run: python3 .github/scripts/crawler-sampler-container-smoke.py --self-test
 
@@ -1359,6 +1367,11 @@ jobs:
           "$protoc_root/bin/protoc" --version | grep -Fx "libprotoc $version"
           printf '%s\n' "$protoc_root/bin" >>"$GITHUB_PATH"
 
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/jsonld-detail/go.mod
+          cache-dependency-path: apps/crawler/go/jsonld-detail/go.sum
+
       - run: uv sync --group dev --extra enrich
         working-directory: apps/crawler
 
@@ -1492,6 +1505,11 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/jsonld-detail/go.mod
+          cache-dependency-path: apps/crawler/go/jsonld-detail/go.sum
 
       - run: uv sync --group dev
         working-directory: apps/crawler

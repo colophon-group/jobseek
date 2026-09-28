@@ -87,14 +87,17 @@ def _result(body: bytes) -> runtime_pb2.BrowserResult:
     )
 
 
-async def test_runtime_validates_and_parses_only_the_frozen_jsonld_invocation() -> None:
+@pytest.mark.asyncio
+async def test_runtime_validates_and_parses_only_the_frozen_jsonld_invocation(
+    jsonld_binary,
+) -> None:
     task, config = _task()
     html = b"""<script type="application/ld+json">
     {"@type":"JobPosting","title":"Engineer"}
     </script>"""
     reservation = AsyncMock()
     reservation.execute.return_value = _result(html)
-    runtime = LightpandaB0ScrapeRuntime(task, reservation)
+    runtime = LightpandaB0ScrapeRuntime(task, reservation, parser_binary=jsonld_binary)
     local_http = AsyncMock()
 
     content = await runtime.scrape(

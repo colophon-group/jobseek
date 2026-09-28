@@ -12,6 +12,7 @@ import struct
 import tempfile
 import uuid
 from datetime import UTC, datetime
+from functools import partial
 from typing import Any, cast
 from unittest.mock import AsyncMock
 
@@ -147,7 +148,13 @@ async def test_executor_reads_mutable_detail_inputs_from_current_postgres() -> N
 
 async def test_executor_authorizes_before_db_and_commits_before_ack(
     monkeypatch: pytest.MonkeyPatch,
+    jsonld_binary: str,
 ) -> None:
+    monkeypatch.setattr(
+        executor,
+        "LightpandaB0ScrapeRuntime",
+        partial(executor.LightpandaB0ScrapeRuntime, parser_binary=jsonld_binary),
+    )
     task, config = _task()
     events: list[str] = []
 

@@ -8,6 +8,7 @@ import json
 import os
 import uuid
 from datetime import UTC, datetime
+from functools import partial
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -391,7 +392,13 @@ class _RenderedReservation:
 
 async def test_claim_render_parse_fenced_commit_and_redis_reschedule(
     monkeypatch: pytest.MonkeyPatch,
+    jsonld_binary: str,
 ) -> None:
+    monkeypatch.setattr(
+        claimant_module,
+        "LightpandaB0ScrapeRuntime",
+        partial(claimant_module.LightpandaB0ScrapeRuntime, parser_binary=jsonld_binary),
+    )
     dsn = os.environ["LOCAL_DATABASE_URL"]
     pool = await asyncpg.create_pool(dsn, min_size=1, max_size=4)
     redis = fakeredis.aioredis.FakeRedis(decode_responses=True, protocol=2)

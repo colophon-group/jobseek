@@ -1,0 +1,3938 @@
+[
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_extracts_vagas_style_javascript_cdata_block",
+    "request": {
+      "url": "",
+      "html": "<html><head><script type=\"application/ld+json\">\n        //<![CDATA[\n        {\"@context\":\"https://schema.org\",\"@type\":\"JobPosting\",\n         \"title\":\"Analista Contábil\",\n         \"description\":\"Responsabilidades e requisitos da função.\",\n         \"datePosted\":\"2026-07-17\",\"validThrough\":\"2026-08-17\",\n         \"jobLocation\":{\"@type\":\"Place\",\"address\":{\"@type\":\"PostalAddress\",\n         \"addressLocality\":\"Campinas\",\"addressRegion\":\"SP\",\"addressCountry\":\"Brasil\"}}}\n        //]]>\n        </script></head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Analista Contábil",
+      "description": "Responsabilidades e requisitos da função.",
+      "locations": [
+        "Campinas, SP, Brasil"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-07-17",
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "valid_through": "2026-08-17"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_parses_talentbrew_double_escaped_description_line_breaks",
+    "request": {
+      "url": "",
+      "html": "<html><head><script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\n         \"description\":\"<p>Build devices.</p>&amp;#xa;&amp;#xa;<p>Test them.</p>\",\n         \"jobLocation\":{\"name\":\"Franklin Lakes, NJ\"}}\n        </script></head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Engineer",
+      "description": "<p>Build devices.</p>\n\n<p>Test them.</p>",
+      "locations": [
+        "Franklin Lakes, NJ"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_ignores_icims_unavailable_location_parts",
+    "request": {
+      "url": "",
+      "html": "<html><head><script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Director\",\"description\":\"Lead programs.\",\n         \"jobLocation\":{\"@type\":\"Place\",\"address\":{\"@type\":\"PostalAddress\",\n         \"addressLocality\":\"UNAVAILABLE\",\"addressRegion\":\"UNAVAILABLE\",\n         \"addressCountry\":\"US\"}}}\n        </script></head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Director",
+      "description": "Lead programs.",
+      "locations": [
+        "US"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_repairs_talemetry_missing_property_comma",
+    "request": {
+      "url": "",
+      "html": "<html><head><script type=\"application/ld+json\">\n        {\n          \"@context\": \"https://schema.org\",\n          \"@type\": \"JobPosting\",\n          \"title\": \"Sanitation Team Member\",\n          \"description\": \"<p>Keep the facility safe.</p>\",\n          \"datePosted\": \"2026-08-15\"\n          \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"OFI\"},\n          \"jobLocation\": {\n            \"@type\": \"Place\",\n            \"address\": {\n              \"@type\": \"PostalAddress\",\n              \"addressLocality\": \"Bayonne\",\n              \"addressRegion\": \"NJ\",\n              \"addressCountry\": \"United States\"\n            }\n          }\n        }\n        </script></head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Sanitation Team Member",
+      "description": "<p>Keep the facility safe.</p>",
+      "locations": [
+        "Bayonne, NJ, United States"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-15",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestJsonLdExtractor::test_repairs_talemetry_invalid_dollar_escape",
+    "request": {
+      "url": "",
+      "html": "<html><head><script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Program Manager\",\n         \"description\":\"The salary range is \\$106490 to \\$177476.\"}\n        </script></head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Program Manager",
+      "description": "The salary range is $106490 to $177476.",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_parse_html_uses_meta_location_when_jsonld_missing_location",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n        <meta name=\"gtm_tbcn_location\" content=\"Bengaluru~Karnataka~India\">\n        <script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Business Analyst\",\"description\":\"<p>Analyze data</p>\"}\n        </script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Business Analyst",
+      "description": "<p>Analyze data</p>",
+      "locations": [
+        "Bengaluru, Karnataka, India"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_parse_html_prefers_jsonld_location_over_meta_location",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n        <meta name=\"gtm_tbcn_location\" content=\"Bengaluru~Karnataka~India\">\n        <script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Business Analyst\",\n         \"jobLocation\":{\"name\":\"Bangalore, Karnataka, IN\"}}\n        </script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Business Analyst",
+      "description": null,
+      "locations": [
+        "Bangalore, Karnataka, IN"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_parse_html_can_ignore_incorrect_provider_locations",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n        <meta name=\"job-city\" content=\"Wrong meta fallback\">\n        <script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Apprentice\",\n         \"description\":\"<p>Learn precision manufacturing.</p>\",\n         \"jobLocation\":{\"name\":\"VAT Group\"}}\n        </script>\n        </head></html>",
+      "config": {
+        "ignore_locations": true
+      }
+    },
+    "expected": {
+      "title": "Apprentice",
+      "description": "<p>Learn precision manufacturing.</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_parse_html_can_ignore_incorrect_address_region",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Chassis Application Advisor\",\n         \"jobLocation\":{\"address\":{\"addressLocality\":\"Dorking\",\n         \"addressRegion\":\"Region Zürich / Schaffhausen\",\n         \"addressCountry\":\"GB\"}}}\n        </script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Chassis Application Advisor",
+      "description": null,
+      "locations": [
+        "Dorking, Region Zürich / Schaffhausen, GB"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_parse_html_can_ignore_incorrect_address_region",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Chassis Application Advisor\",\n         \"jobLocation\":{\"address\":{\"addressLocality\":\"Dorking\",\n         \"addressRegion\":\"Region Zürich / Schaffhausen\",\n         \"addressCountry\":\"GB\"}}}\n        </script>\n        </head></html>",
+      "config": {
+        "ignore_address_region": true
+      }
+    },
+    "expected": {
+      "title": "Chassis Application Advisor",
+      "description": null,
+      "locations": [
+        "Dorking, GB"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_ignore_locations_also_covers_meta_only_jobs",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n        <meta name=\"job-title\" content=\"Apprentice\">\n        <meta name=\"job-description\" content=\"&lt;p&gt;Learn precision manufacturing.&lt;/p&gt;\">\n        <meta name=\"job-city\" content=\"Wrong provider city\">\n        </head></html>",
+      "config": {
+        "ignore_locations": true
+      }
+    },
+    "expected": {
+      "title": "Apprentice",
+      "description": "<p>Learn precision manufacturing.</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_parse_html_can_ignore_provider_generated_posting_date",
+    "request": {
+      "url": "",
+      "html": "<html><head><script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Housekeeper\",\n         \"datePosted\":\"2024-08-11T08:17:42.806Z\",\n         \"validThrough\":\"2027-08-11T08:17:42.806Z\"}\n        </script></head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Housekeeper",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2024-08-11T08:17:42.806Z",
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "valid_through": "2027-08-11T08:17:42.806Z"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_parse_html_can_ignore_provider_generated_posting_date",
+    "request": {
+      "url": "",
+      "html": "<html><head><script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Housekeeper\",\n         \"datePosted\":\"2024-08-11T08:17:42.806Z\",\n         \"validThrough\":\"2027-08-11T08:17:42.806Z\"}\n        </script></head></html>",
+      "config": {
+        "ignore_date_posted": true,
+        "ignore_valid_through": true
+      }
+    },
+    "expected": {
+      "title": "Housekeeper",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_parses_job_meta_fallback_with_secondary_locations",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n        <meta name=\"job-title\" content=\"Lead Product Owner\">\n        <meta name=\"job-workingmode\" content=\"Hybrid\">\n        <meta name=\"job-posteddate\" content=\"2026-05-28T04:51:22Z\">\n        <meta name=\"job-city\" content=\"Manila\">\n        <meta name=\"job-region\" content=\"\">\n        <meta name=\"job-country\" content=\"Philippines\">\n        <meta name=\"job-id\" content=\"21014070\">\n        <meta name=\"job-function\" content=\"Product Management\">\n        <meta name=\"job-experiencelevel\" content=\"Experienced\">\n        <meta name=\"job-secondarylocations\"\n              content=\"Hyderabad,India; Mumbai,India; New Delhi,India\">\n        <meta name=\"job-description\"\n              content=\"&lt;p&gt;Own the product roadmap &amp;amp; delivery.&lt;/p&gt;\">\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Lead Product Owner",
+      "description": "<p>Own the product roadmap &amp; delivery.</p>",
+      "locations": [
+        "Manila, Philippines",
+        "Hyderabad, India",
+        "Mumbai, India",
+        "New Delhi, India"
+      ],
+      "employment_type": null,
+      "job_location_type": "Hybrid",
+      "date_posted": "2026-05-28T04:51:22Z",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "requisition_id": "21014070",
+        "job_function": "Product Management",
+        "experience_level": "Experienced"
+      }
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaLocationFallback::test_job_meta_fallback_requires_full_description",
+    "request": {
+      "url": "",
+      "html": "<html><head>\n        <meta name=\"job-title\" content=\"Engineer\">\n        <meta name=\"job-city\" content=\"London\">\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestParsePosting::test_falls_back_to_page_title_when_organization_suffix_matches",
+    "request": {
+      "url": "",
+      "html": "\n        <html><head><title>Pharmacy Technician - Full Time - Lewis Drug</title></head>\n        <body><script type=\"application/ld+json\">\n        {\n          \"@context\": \"https://schema.org\",\n          \"@type\": \"JobPosting\",\n          \"title\": null,\n          \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Lewis Drug\"}\n        }\n        </script></body></html>\n        ",
+      "config": {}
+    },
+    "expected": {
+      "title": "Pharmacy Technician - Full Time",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestParsePosting::test_does_not_use_generic_page_title_without_matching_organization",
+    "request": {
+      "url": "",
+      "html": "\n        <html><head><title>Explore our careers</title></head>\n        <body><script type=\"application/ld+json\">\n        {\n          \"@context\": \"https://schema.org\",\n          \"@type\": \"JobPosting\",\n          \"title\": null,\n          \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Example Corp\"}\n        }\n        </script></body></html>\n        ",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_extracts_from_page",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"Build stuff\"}\n        </script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Engineer",
+      "description": "Build stuff",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_replaces_only_jsonld_boilerplate",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"AI Architect\",\n         \"description\":\"<p>Generic company boilerplate.</p>\",\n         \"datePosted\":\"2026-09-12\"}\n        </script></head><body>\n        <div class=\"vacancy-description\"><h3>Role</h3><p>Design AI systems.</p></div>\n        </body></html>",
+      "config": {
+        "description_selector": ".vacancy-description"
+      }
+    },
+    "expected": {
+      "title": "AI Architect",
+      "description": "<p>Generic company boilerplate.</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-09-12",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_rejects_invalid_or_missing_content[42]",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Boilerplate\"}\n        </script>",
+      "config": {
+        "description_selector": 42
+      }
+    },
+    "expected": {
+      "title": "Engineer",
+      "description": "Boilerplate",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_rejects_invalid_or_missing_content[]",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Boilerplate\"}\n        </script>",
+      "config": {
+        "description_selector": ""
+      }
+    },
+    "expected": {
+      "title": "Engineer",
+      "description": "Boilerplate",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_rejects_invalid_or_missing_content[a[]",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Boilerplate\"}\n        </script>",
+      "config": {
+        "description_selector": "a["
+      }
+    },
+    "expected": {
+      "title": "Engineer",
+      "description": "Boilerplate",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_description_selector_rejects_invalid_or_missing_content[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Boilerplate\"}\n        </script>",
+      "config": {
+        "description_selector": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    "expected": {
+      "title": "Engineer",
+      "description": "Boilerplate",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_defaults_by_url_fill_only_matching_missing_fields",
+    "request": {
+      "url": "https://example.com/job/locationless",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Structural Designer\",\n         \"description\":\"<p>Design advanced facilities.</p>\"}\n        </script>\n        </head></html>",
+      "config": {
+        "defaults_by_url": {
+          "https://example.com/job/locationless": {
+            "locations": [
+              "Albany, New York, United States"
+            ]
+          },
+          "https://example.com/job/other": {
+            "locations": [
+              "London"
+            ]
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Structural Designer",
+      "description": "<p>Design advanced facilities.</p>",
+      "locations": [
+        "Albany, New York, United States"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_defaults_by_url_never_replace_extracted_fields",
+    "request": {
+      "url": "https://example.com/job/located",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\",\n         \"jobLocation\":{\"name\":\"Cary, North Carolina, United States\"}}\n        </script>",
+      "config": {
+        "defaults_by_url": {
+          "https://example.com/job/located": {
+            "locations": [
+              "Wrong location"
+            ]
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Engineer",
+      "description": null,
+      "locations": [
+        "Cary, North Carolina, United States"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_defaults_by_url_rejects_invalid_config[defaults_by_url0]",
+    "request": {
+      "url": "https://example.com/job/42",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\"}\n        </script>",
+      "config": {
+        "defaults_by_url": []
+      }
+    },
+    "expected_error": "ValueError"
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_defaults_by_url_rejects_invalid_config[defaults_by_url2]",
+    "request": {
+      "url": "https://example.com/job/42",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\"}\n        </script>",
+      "config": {
+        "defaults_by_url": {
+          "https://example.com/job/42": [
+            "London"
+          ]
+        }
+      }
+    },
+    "expected_error": "ValueError"
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_defaults_by_url_rejects_invalid_config[defaults_by_url3]",
+    "request": {
+      "url": "https://example.com/job/42",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\":\"JobPosting\",\"title\":\"Engineer\"}\n        </script>",
+      "config": {
+        "defaults_by_url": {
+          "https://example.com/job/42": {
+            "unknown": "value"
+          }
+        }
+      }
+    },
+    "expected_error": "ValueError"
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_no_jsonld_returns_empty",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><body>No JSON-LD</body></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_multiple_blocks_finds_job_posting",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">{\"@type\": \"Organization\", \"name\": \"Acme\"}</script>\n        <script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Dev\"}</script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Dev",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_graph_format",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@context\": \"https://schema.org\", \"@graph\": [\n            {\"@type\": \"WebPage\"},\n            {\"@type\": \"JobPosting\", \"title\": \"GraphJob\"}\n        ]}\n        </script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "GraphJob",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_render_uses_playwright",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@type\": \"JobPosting\", \"title\": \"Rendered\"}\n        </script>\n        </head></html>",
+      "config": {
+        "render": true
+      }
+    },
+    "expected": {
+      "title": "Rendered",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_render_forwards_proxy_to_browser",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\": \"JobPosting\", \"title\": \"Proxied\"}\n        </script>",
+      "config": {
+        "render": true,
+        "proxy": true
+      }
+    },
+    "expected": {
+      "title": "Proxied",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_render_rotates_typed_blocks_then_uses_explicit_direct_fallback",
+    "request": {
+      "url": "https://cgi.njoyn.com/job/1",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\": \"JobPosting\", \"title\": \"Recovered\"}\n        </script>",
+      "config": {
+        "render": true,
+        "proxy": true,
+        "transport_attempts": 2,
+        "direct_fallback_on_origin_block": true
+      }
+    },
+    "expected": {
+      "title": "Recovered",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_render_rotates_navigation_403_to_a_fresh_proxy",
+    "request": {
+      "url": "https://jobs.example.com/job/1",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\": \"JobPosting\", \"title\": \"Recovered\"}\n        </script>",
+      "config": {
+        "render": true,
+        "proxy": true,
+        "transport_attempts": 2
+      }
+    },
+    "expected": {
+      "title": "Recovered",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_render_direct_fallback_survives_pool_exhaustion_after_typed_block",
+    "request": {
+      "url": "https://cgi.njoyn.com/job/1",
+      "html": "<script type=\"application/ld+json\">\n        {\"@type\": \"JobPosting\", \"title\": \"Recovered\"}\n        </script>",
+      "config": {
+        "render": true,
+        "proxy": true,
+        "transport_attempts": 5,
+        "direct_fallback_on_origin_block": true
+      }
+    },
+    "expected": {
+      "title": "Recovered",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_render_false_uses_http",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@type\": \"JobPosting\", \"title\": \"Static\"}\n        </script>\n        </head></html>",
+      "config": {
+        "render": false
+      }
+    },
+    "expected": {
+      "title": "Static",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_retries_successful_page_when_required_content_is_temporarily_missing",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><body>Temporary shell</body></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_retries_successful_page_when_required_content_is_temporarily_missing",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Recovered role\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Recovered role",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_follows_same_detail_icims_iframe_when_outer_shell_has_no_jsonld",
+    "request": {
+      "url": "https://careers-acme.icims.com/jobs/123/job",
+      "html": "<iframe src=\"?in_iframe=1\"></iframe>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_follows_same_detail_icims_iframe_when_outer_shell_has_no_jsonld",
+    "request": {
+      "url": "https://careers-acme.icims.com/jobs/123/job?in_iframe=1",
+      "html": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"iCIMS role\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "iCIMS role",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestScrape::test_pascalcase_csod_style",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">\n        {\"@context\":\"http://schema.org\",\"@type\":\"JobPosting\",\n         \"Title\":\"Senior Engineer\",\"Description\":\"<p>Build things</p>\",\n         \"DatePosted\":\"2026-01-01\",\"ValidThrough\":\"2026-06-01\",\n         \"jobLocation\":[{\"@type\":\"Place\",\"Address\":{\"@type\":\"PostalAddress\",\n         \"addressLocality\":\"Geneva\",\"addressCountry\":\"CH\"}}],\n         \"HiringOrganization\":{\"@type\":\"Organization\",\"Name\":\"IATA\"}}\n        </script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Senior Engineer",
+      "description": "<p>Build things</p>",
+      "locations": [
+        "Geneva, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-01-01",
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "valid_through": "2026-06-01"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestFetchRetry403::test_retries_once_on_403_then_succeeds",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"T\"}</script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "T",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestFetchRetry403::test_proxy_transport_attempts_rotate_additional_403_responses",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"T\"}</script>\n        </head></html>",
+      "config": {
+        "proxy": true,
+        "transport_attempts": 5
+      }
+    },
+    "expected": {
+      "title": "T",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestFetchRetry403::test_configured_headers_are_cleaned_and_sent_on_every_attempt",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"T\"}</script>\n        </head></html>",
+      "config": {
+        "request_headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Host": "untrusted.example",
+          "Connection": "close"
+        }
+      }
+    },
+    "expected": {
+      "title": "T",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestFetchRetry403::test_avature_406_retries_and_recovers",
+    "request": {
+      "url": "https://jobs.ea.com/en_US/careers/JobDetail/Role/123",
+      "html": "<html><head>\n        <script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"T\"}</script>\n        </head></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "T",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaCareersFixture::test_parses_meta_jobposting_jsonld",
+    "request": {
+      "url": "",
+      "html": "<!DOCTYPE html><html><head><title>Meta Job</title><script type=\"application/ld+json\" nonce=\"test\">{\"@context\": \"http://schema.org/\", \"@type\": \"JobPosting\", \"title\": \"Software Engineer, Infrastructure\", \"description\": \"Meta is seeking talented engineers to join our teams in building cutting-edge products that connect billions of people around the world. As a member of our team, you will have the opportunity to work on complex technical problems, build new features, and improve existing products across various platforms, including mobile devices and web applications. Our teams are constantly pushing the boundaries of user experience, and we're looking for passionate individuals who can help us advance the way people connect globally. If you're interested in joining a world-class team of industry veterans and working on exciting projects that have a significant impact, we encourage you to apply.\", \"responsibilities\": \"Collaborate with cross-functional teams (product, design, operations, infrastructure) to build innovative application experiences&nbsp;Implement custom user interfaces using latest programming techniques and technologies&nbsp;Develop reusable software components for interfacing with back-end platforms&nbsp;Analyze and optimize code for quality, efficiency, and performance&nbsp;Lead complex technical or product efforts and provide technical guidance to peers&nbsp;Architect efficient and scalable systems that drive complex applications&nbsp;Identify and resolve performance and scalability issues&nbsp;Work on a variety of coding languages and technologies&nbsp;Establish ownership of components, features, or systems with expert end-to-end understanding\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Meta\", \"sameAs\": \"https://www.meta.com/\", \"logo\": \"https://static.xx.fbcdn.net/rsrc.php/y3/r/7ngPh_7s-rQ.webp\"}, \"datePosted\": \"2025-06-10T13:07:44-07:00\", \"validThrough\": \"2026-06-08T12:50:57-07:00\", \"jobLocation\": [{\"@type\": \"Place\", \"name\": \"Sunnyvale, CA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Bellevue, WA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Redmond, WA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Austin, TX\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Menlo Park, CA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Seattle, WA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Burlingame, CA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Remote, US\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"New York, NY\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}], \"qualifications\": \"Bachelor's degree in Computer Science, Computer Engineering, relevant technical field, or equivalent practical experience&nbsp;Experience building maintainable and testable code bases, including API design and unit testing techniques&nbsp;Track record of setting technical direction for a team, driving consensus and successful cross-functional partnerships&nbsp;6+ years of programming experience in a relevant language or 3+ years of experience + PhD Experience building and shipping high quality work and achieving high reliability&nbsp;Experience improving quality through thoughtful code reviews, appropriate testing, proper rollout, monitoring, and proactive changes&nbsp;Experience owning a component, feature or system&nbsp;Experience in programming languages such as C, C++, Java&nbsp;Experience designing, analyzing and improving efficiency, scalability, and stability of various system resources&nbsp;Exposure to architectural patterns of large scale software applications&nbsp;6+ years relevant experience building large-scale infrastructure applications or similar experience&nbsp;Experience with scripting languages such as Python, Javascript or Hack&nbsp;Demonstrated ability to integrate AI tools to optimize/redesign workflows and drive measurable impact (e.g., efficiency gains, quality improvements)&nbsp;Experience adhering to and implementing responsible, ethical AI practices (e.g., risk assessment, bias mitigation, quality and accuracy reviews)&nbsp;Demonstrated ongoing AI skill development (e.g., prompt/context engineering, agent orchestration) and staying current with emerging AI technologies\", \"employmentType\": \"Full-time\", \"directApply\": true}</script></head><body></body></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Software Engineer, Infrastructure",
+      "description": "Meta is seeking talented engineers to join our teams in building cutting-edge products that connect billions of people around the world. As a member of our team, you will have the opportunity to work on complex technical problems, build new features, and improve existing products across various platforms, including mobile devices and web applications. Our teams are constantly pushing the boundaries of user experience, and we're looking for passionate individuals who can help us advance the way people connect globally. If you're interested in joining a world-class team of industry veterans and working on exciting projects that have a significant impact, we encourage you to apply.",
+      "locations": [
+        "Sunnyvale, CA",
+        "Bellevue, WA",
+        "Redmond, WA",
+        "Austin, TX",
+        "Menlo Park, CA",
+        "Seattle, WA",
+        "Burlingame, CA",
+        "Remote, US",
+        "New York, NY"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2025-06-10T13:07:44-07:00",
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "responsibilities": [
+          "Collaborate with cross-functional teams (product, design, operations, infrastructure) to build innovative application experiences&nbsp;Implement custom user interfaces using latest programming techniques and technologies&nbsp;Develop reusable software components for interfacing with back-end platforms&nbsp;Analyze and optimize code for quality, efficiency, and performance&nbsp;Lead complex technical or product efforts and provide technical guidance to peers&nbsp;Architect efficient and scalable systems that drive complex applications&nbsp;Identify and resolve performance and scalability issues&nbsp;Work on a variety of coding languages and technologies&nbsp;Establish ownership of components, features, or systems with expert end-to-end understanding"
+        ],
+        "qualifications": [
+          "Bachelor's degree in Computer Science, Computer Engineering, relevant technical field, or equivalent practical experience&nbsp;Experience building maintainable and testable code bases, including API design and unit testing techniques&nbsp;Track record of setting technical direction for a team, driving consensus and successful cross-functional partnerships&nbsp;6+ years of programming experience in a relevant language or 3+ years of experience + PhD Experience building and shipping high quality work and achieving high reliability&nbsp;Experience improving quality through thoughtful code reviews, appropriate testing, proper rollout, monitoring, and proactive changes&nbsp;Experience owning a component, feature or system&nbsp;Experience in programming languages such as C, C++, Java&nbsp;Experience designing, analyzing and improving efficiency, scalability, and stability of various system resources&nbsp;Exposure to architectural patterns of large scale software applications&nbsp;6+ years relevant experience building large-scale infrastructure applications or similar experience&nbsp;Experience with scripting languages such as Python, Javascript or Hack&nbsp;Demonstrated ability to integrate AI tools to optimize/redesign workflows and drive measurable impact (e.g., efficiency gains, quality improvements)&nbsp;Experience adhering to and implementing responsible, ethical AI practices (e.g., risk assessment, bias mitigation, quality and accuracy reviews)&nbsp;Demonstrated ongoing AI skill development (e.g., prompt/context engineering, agent orchestration) and staying current with emerging AI technologies"
+        ],
+        "valid_through": "2026-06-08T12:50:57-07:00"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestMetaCareersFixture::test_render_true_uses_playwright_for_meta",
+    "request": {
+      "url": "https://www.metacareers.com/profile/job_details/677160418622314",
+      "html": "<!DOCTYPE html><html><head><title>Meta Job</title><script type=\"application/ld+json\" nonce=\"test\">{\"@context\": \"http://schema.org/\", \"@type\": \"JobPosting\", \"title\": \"Software Engineer, Infrastructure\", \"description\": \"Meta is seeking talented engineers to join our teams in building cutting-edge products that connect billions of people around the world. As a member of our team, you will have the opportunity to work on complex technical problems, build new features, and improve existing products across various platforms, including mobile devices and web applications. Our teams are constantly pushing the boundaries of user experience, and we're looking for passionate individuals who can help us advance the way people connect globally. If you're interested in joining a world-class team of industry veterans and working on exciting projects that have a significant impact, we encourage you to apply.\", \"responsibilities\": \"Collaborate with cross-functional teams (product, design, operations, infrastructure) to build innovative application experiences&nbsp;Implement custom user interfaces using latest programming techniques and technologies&nbsp;Develop reusable software components for interfacing with back-end platforms&nbsp;Analyze and optimize code for quality, efficiency, and performance&nbsp;Lead complex technical or product efforts and provide technical guidance to peers&nbsp;Architect efficient and scalable systems that drive complex applications&nbsp;Identify and resolve performance and scalability issues&nbsp;Work on a variety of coding languages and technologies&nbsp;Establish ownership of components, features, or systems with expert end-to-end understanding\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Meta\", \"sameAs\": \"https://www.meta.com/\", \"logo\": \"https://static.xx.fbcdn.net/rsrc.php/y3/r/7ngPh_7s-rQ.webp\"}, \"datePosted\": \"2025-06-10T13:07:44-07:00\", \"validThrough\": \"2026-06-08T12:50:57-07:00\", \"jobLocation\": [{\"@type\": \"Place\", \"name\": \"Sunnyvale, CA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Bellevue, WA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Redmond, WA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Austin, TX\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Menlo Park, CA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Seattle, WA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Burlingame, CA\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"Remote, US\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}, {\"@type\": \"Place\", \"name\": \"New York, NY\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Sunnyvale\", \"addressRegion\": \"CA\", \"addressCountry\": {\"@type\": \"Country\", \"name\": [\"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\", \"USA\"]}}}], \"qualifications\": \"Bachelor's degree in Computer Science, Computer Engineering, relevant technical field, or equivalent practical experience&nbsp;Experience building maintainable and testable code bases, including API design and unit testing techniques&nbsp;Track record of setting technical direction for a team, driving consensus and successful cross-functional partnerships&nbsp;6+ years of programming experience in a relevant language or 3+ years of experience + PhD Experience building and shipping high quality work and achieving high reliability&nbsp;Experience improving quality through thoughtful code reviews, appropriate testing, proper rollout, monitoring, and proactive changes&nbsp;Experience owning a component, feature or system&nbsp;Experience in programming languages such as C, C++, Java&nbsp;Experience designing, analyzing and improving efficiency, scalability, and stability of various system resources&nbsp;Exposure to architectural patterns of large scale software applications&nbsp;6+ years relevant experience building large-scale infrastructure applications or similar experience&nbsp;Experience with scripting languages such as Python, Javascript or Hack&nbsp;Demonstrated ability to integrate AI tools to optimize/redesign workflows and drive measurable impact (e.g., efficiency gains, quality improvements)&nbsp;Experience adhering to and implementing responsible, ethical AI practices (e.g., risk assessment, bias mitigation, quality and accuracy reviews)&nbsp;Demonstrated ongoing AI skill development (e.g., prompt/context engineering, agent orchestration) and staying current with emerging AI technologies\", \"employmentType\": \"Full-time\", \"directApply\": true}</script></head><body></body></html>",
+      "config": {
+        "render": true,
+        "wait": "networkidle",
+        "timeout": 45000
+      }
+    },
+    "expected": {
+      "title": "Software Engineer, Infrastructure",
+      "description": "Meta is seeking talented engineers to join our teams in building cutting-edge products that connect billions of people around the world. As a member of our team, you will have the opportunity to work on complex technical problems, build new features, and improve existing products across various platforms, including mobile devices and web applications. Our teams are constantly pushing the boundaries of user experience, and we're looking for passionate individuals who can help us advance the way people connect globally. If you're interested in joining a world-class team of industry veterans and working on exciting projects that have a significant impact, we encourage you to apply.",
+      "locations": [
+        "Sunnyvale, CA",
+        "Bellevue, WA",
+        "Redmond, WA",
+        "Austin, TX",
+        "Menlo Park, CA",
+        "Seattle, WA",
+        "Burlingame, CA",
+        "Remote, US",
+        "New York, NY"
+      ],
+      "employment_type": "Full-time",
+      "job_location_type": null,
+      "date_posted": "2025-06-10T13:07:44-07:00",
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "responsibilities": [
+          "Collaborate with cross-functional teams (product, design, operations, infrastructure) to build innovative application experiences&nbsp;Implement custom user interfaces using latest programming techniques and technologies&nbsp;Develop reusable software components for interfacing with back-end platforms&nbsp;Analyze and optimize code for quality, efficiency, and performance&nbsp;Lead complex technical or product efforts and provide technical guidance to peers&nbsp;Architect efficient and scalable systems that drive complex applications&nbsp;Identify and resolve performance and scalability issues&nbsp;Work on a variety of coding languages and technologies&nbsp;Establish ownership of components, features, or systems with expert end-to-end understanding"
+        ],
+        "qualifications": [
+          "Bachelor's degree in Computer Science, Computer Engineering, relevant technical field, or equivalent practical experience&nbsp;Experience building maintainable and testable code bases, including API design and unit testing techniques&nbsp;Track record of setting technical direction for a team, driving consensus and successful cross-functional partnerships&nbsp;6+ years of programming experience in a relevant language or 3+ years of experience + PhD Experience building and shipping high quality work and achieving high reliability&nbsp;Experience improving quality through thoughtful code reviews, appropriate testing, proper rollout, monitoring, and proactive changes&nbsp;Experience owning a component, feature or system&nbsp;Experience in programming languages such as C, C++, Java&nbsp;Experience designing, analyzing and improving efficiency, scalability, and stability of various system resources&nbsp;Exposure to architectural patterns of large scale software applications&nbsp;6+ years relevant experience building large-scale infrastructure applications or similar experience&nbsp;Experience with scripting languages such as Python, Javascript or Hack&nbsp;Demonstrated ability to integrate AI tools to optimize/redesign workflows and drive measurable impact (e.g., efficiency gains, quality improvements)&nbsp;Experience adhering to and implementing responsible, ethical AI practices (e.g., risk assessment, bias mitigation, quality and accuracy reviews)&nbsp;Demonstrated ongoing AI skill development (e.g., prompt/context engineering, agent orchestration) and staying current with emerging AI technologies"
+        ],
+        "valid_through": "2026-06-08T12:50:57-07:00"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestNeuraRoboticsFixture::test_parses_neura_jobposting_jsonld",
+    "request": {
+      "url": "",
+      "html": "<!DOCTYPE html><html><head><title>Neura Job</title><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Manager Ecosystem Integration & Certification (Human)\", \"description\": \"\\u00a0\\\\n\\\\n<strong>Your mission &amp; challenges</strong>\\n<p>As the Manager Ecosystem Integration &amp; Certification, you play a key role in shaping our NeuraVerse into an intelligent, connected, and high-quality ecosystem. You ensure that partner solutions \\u2013 from hardware to software \\u2013 are technically integrated, validated, and certified to perfection. In this role, you work closely with Engineering, AI, Quality Management, and Product teams to ensure that every integration meets our highest technological and quality standards.</p>\\n<p>You bring structure, precision, and innovative thinking together: You coordinate integration and certification processes, define standards, and create the technical foundations that enable partners to successfully integrate their solutions into the NeuraVerse. At the same time, you actively drive the evolution of our integration and quality guidelines, ensuring that our ecosystem sets benchmarks in reliability, performance, and compatibility.</p>\\n<p>Your main tasks include:</p>\\n<ul>\\n <li>Technically integrate external partner hardware and software components into the NeuraVerse</li>\\n <li>Define, develop, and ensure adherence to integration, testing, and quality standards</li>\\n <li>Manage and document testing, certification, and approval processes</li>\\n <li>Collaborate closely with R&amp;D, AI, Product Management, and Quality teams on system validation</li>\\n <li>Support partners with testing, data integration, and compliance requirements</li>\\n <li>Continuously improve guidelines and processes for integration, quality, and approvals</li>\\n</ul>\\\\n\\\\n\\\\n\\u00a0\\\\n\\\\n<strong>What we can look forward to\\u00a0</strong>\\n<ul>\\n <li>Completed degree in Engineering, Computer Science, Robotics, or a comparable field</li>\\n <li>Experience in system integration, quality assurance, or technical project coordination</li>\\n <li>Solid knowledge of robotics, AI, and peripheral systems</li>\\n <li>Analytical thinking, structured working style, and strong quality orientation</li>\\n <li>Team player with excellent communication skills and a passion for interdisciplinary collaboration</li>\\n <li>Excellent German and English skills; additional languages are a plus</li>\\n <li>Willingness to travel for regular client meetings</li>\\n</ul>\", \"identifier\": {\"@type\": \"PropertyValue\", \"name\": \"id\", \"value\": \"00df0928-b013-448c-b3dd-6c6fb80eadc2\"}, \"datePosted\": \"2025-11-06T00:00:00+01:00\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Neura Robotics GmbH\", \"legalName\": \"Neura Robotics GmbH\", \"logo\": \"https://jobs.neura-robotics.com/uploads/013afa23-9bcb-476e-ad6f-9965eacc5874/settings/creators/career-306-67850496e7b33.png\", \"url\": \"https://jobs.neura-robotics.com/\", \"sameAs\": [\"https://www.instagram.com/neurarobotics\", \"https://www.facebook.com/NEURARobotics/\", \"https://www.youtube.com/c/NEURARobotics\", \"https://www.linkedin.com/company/neura-robotics/\", \"https://twitter.com/neurarobotics\"], \"contactPoint\": [{\"@type\": \"ContactPoint\", \"contactType\": \"customer support\", \"name\": \"Serafina Gross\", \"url\": \"https://jobs.neura-robotics.com/\"}]}, \"jobLocation\": [{\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Metzingen\", \"addressCountry\": \"DE\"}}], \"url\": \"https://jobs.neura-robotics.com/offer/manager-ecosystem-integration-certi/00df0928-b013-448c-b3dd-6c6fb80eadc2\", \"incentiveCompensation\": [\"Creative Freedom and Agility: Enjoy a dynamic, self-reliant work culture with flat hierarchies, flexible hours, and 30 vacation days. Ideal for those seeking an inspiring professional setting, whether you're starting out or an experienced exec.\", \"Passion for Winning: A passionate and highly skilled team of international experts aiming to redefine robot assistants.\", \"Attractive Compensation: Enjoy a competitive salary package along with exclusive employee discounts.\", \"One Team: Whether it's a summer party or company town hall meetings, we celebrate our successes together.\", \"Professional Growth: Support for your personal and professional development.\"], \"validThrough\": \"2035-11-06T00:00:00+01:00\", \"image\": \"https://jobs.neura-robotics.com/uploads/013afa23-9bcb-476e-ad6f-9965eacc5874/contents/headers/8538d000-ea46-42db-8628-e46b44f09c01/image-677ba0de7ea0b-1736155358.jpg\"}</script></head><body></body></html>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Manager Ecosystem Integration & Certification (Human)",
+      "description": " \\n\\n<strong>Your mission &amp; challenges</strong>\n<p>As the Manager Ecosystem Integration &amp; Certification, you play a key role in shaping our NeuraVerse into an intelligent, connected, and high-quality ecosystem. You ensure that partner solutions – from hardware to software – are technically integrated, validated, and certified to perfection. In this role, you work closely with Engineering, AI, Quality Management, and Product teams to ensure that every integration meets our highest technological and quality standards.</p>\n<p>You bring structure, precision, and innovative thinking together: You coordinate integration and certification processes, define standards, and create the technical foundations that enable partners to successfully integrate their solutions into the NeuraVerse. At the same time, you actively drive the evolution of our integration and quality guidelines, ensuring that our ecosystem sets benchmarks in reliability, performance, and compatibility.</p>\n<p>Your main tasks include:</p>\n<ul>\n <li>Technically integrate external partner hardware and software components into the NeuraVerse</li>\n <li>Define, develop, and ensure adherence to integration, testing, and quality standards</li>\n <li>Manage and document testing, certification, and approval processes</li>\n <li>Collaborate closely with R&amp;D, AI, Product Management, and Quality teams on system validation</li>\n <li>Support partners with testing, data integration, and compliance requirements</li>\n <li>Continuously improve guidelines and processes for integration, quality, and approvals</li>\n</ul>\\n\\n\\n \\n\\n<strong>What we can look forward to </strong>\n<ul>\n <li>Completed degree in Engineering, Computer Science, Robotics, or a comparable field</li>\n <li>Experience in system integration, quality assurance, or technical project coordination</li>\n <li>Solid knowledge of robotics, AI, and peripheral systems</li>\n <li>Analytical thinking, structured working style, and strong quality orientation</li>\n <li>Team player with excellent communication skills and a passion for interdisciplinary collaboration</li>\n <li>Excellent German and English skills; additional languages are a plus</li>\n <li>Willingness to travel for regular client meetings</li>\n</ul>",
+      "locations": [
+        "Metzingen, DE"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2025-11-06T00:00:00+01:00",
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "valid_through": "2035-11-06T00:00:00+01:00"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "tests/test_jsonld_scraper.py::TestNeuraRoboticsFixture::test_render_true_uses_playwright_for_neura",
+    "request": {
+      "url": "https://jobs.neura-robotics.com/offer/manager-ecosystem-integration-certi/00df0928-b013-448c-b3dd-6c6fb80eadc2",
+      "html": "<!DOCTYPE html><html><head><title>Neura Job</title><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Manager Ecosystem Integration & Certification (Human)\", \"description\": \"\\u00a0\\\\n\\\\n<strong>Your mission &amp; challenges</strong>\\n<p>As the Manager Ecosystem Integration &amp; Certification, you play a key role in shaping our NeuraVerse into an intelligent, connected, and high-quality ecosystem. You ensure that partner solutions \\u2013 from hardware to software \\u2013 are technically integrated, validated, and certified to perfection. In this role, you work closely with Engineering, AI, Quality Management, and Product teams to ensure that every integration meets our highest technological and quality standards.</p>\\n<p>You bring structure, precision, and innovative thinking together: You coordinate integration and certification processes, define standards, and create the technical foundations that enable partners to successfully integrate their solutions into the NeuraVerse. At the same time, you actively drive the evolution of our integration and quality guidelines, ensuring that our ecosystem sets benchmarks in reliability, performance, and compatibility.</p>\\n<p>Your main tasks include:</p>\\n<ul>\\n <li>Technically integrate external partner hardware and software components into the NeuraVerse</li>\\n <li>Define, develop, and ensure adherence to integration, testing, and quality standards</li>\\n <li>Manage and document testing, certification, and approval processes</li>\\n <li>Collaborate closely with R&amp;D, AI, Product Management, and Quality teams on system validation</li>\\n <li>Support partners with testing, data integration, and compliance requirements</li>\\n <li>Continuously improve guidelines and processes for integration, quality, and approvals</li>\\n</ul>\\\\n\\\\n\\\\n\\u00a0\\\\n\\\\n<strong>What we can look forward to\\u00a0</strong>\\n<ul>\\n <li>Completed degree in Engineering, Computer Science, Robotics, or a comparable field</li>\\n <li>Experience in system integration, quality assurance, or technical project coordination</li>\\n <li>Solid knowledge of robotics, AI, and peripheral systems</li>\\n <li>Analytical thinking, structured working style, and strong quality orientation</li>\\n <li>Team player with excellent communication skills and a passion for interdisciplinary collaboration</li>\\n <li>Excellent German and English skills; additional languages are a plus</li>\\n <li>Willingness to travel for regular client meetings</li>\\n</ul>\", \"identifier\": {\"@type\": \"PropertyValue\", \"name\": \"id\", \"value\": \"00df0928-b013-448c-b3dd-6c6fb80eadc2\"}, \"datePosted\": \"2025-11-06T00:00:00+01:00\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Neura Robotics GmbH\", \"legalName\": \"Neura Robotics GmbH\", \"logo\": \"https://jobs.neura-robotics.com/uploads/013afa23-9bcb-476e-ad6f-9965eacc5874/settings/creators/career-306-67850496e7b33.png\", \"url\": \"https://jobs.neura-robotics.com/\", \"sameAs\": [\"https://www.instagram.com/neurarobotics\", \"https://www.facebook.com/NEURARobotics/\", \"https://www.youtube.com/c/NEURARobotics\", \"https://www.linkedin.com/company/neura-robotics/\", \"https://twitter.com/neurarobotics\"], \"contactPoint\": [{\"@type\": \"ContactPoint\", \"contactType\": \"customer support\", \"name\": \"Serafina Gross\", \"url\": \"https://jobs.neura-robotics.com/\"}]}, \"jobLocation\": [{\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Metzingen\", \"addressCountry\": \"DE\"}}], \"url\": \"https://jobs.neura-robotics.com/offer/manager-ecosystem-integration-certi/00df0928-b013-448c-b3dd-6c6fb80eadc2\", \"incentiveCompensation\": [\"Creative Freedom and Agility: Enjoy a dynamic, self-reliant work culture with flat hierarchies, flexible hours, and 30 vacation days. Ideal for those seeking an inspiring professional setting, whether you're starting out or an experienced exec.\", \"Passion for Winning: A passionate and highly skilled team of international experts aiming to redefine robot assistants.\", \"Attractive Compensation: Enjoy a competitive salary package along with exclusive employee discounts.\", \"One Team: Whether it's a summer party or company town hall meetings, we celebrate our successes together.\", \"Professional Growth: Support for your personal and professional development.\"], \"validThrough\": \"2035-11-06T00:00:00+01:00\", \"image\": \"https://jobs.neura-robotics.com/uploads/013afa23-9bcb-476e-ad6f-9965eacc5874/contents/headers/8538d000-ea46-42db-8628-e46b44f09c01/image-677ba0de7ea0b-1736155358.jpg\"}</script></head><body></body></html>",
+      "config": {
+        "render": true,
+        "wait": "networkidle",
+        "timeout": 45000
+      }
+    },
+    "expected": {
+      "title": "Manager Ecosystem Integration & Certification (Human)",
+      "description": " \\n\\n<strong>Your mission &amp; challenges</strong>\n<p>As the Manager Ecosystem Integration &amp; Certification, you play a key role in shaping our NeuraVerse into an intelligent, connected, and high-quality ecosystem. You ensure that partner solutions – from hardware to software – are technically integrated, validated, and certified to perfection. In this role, you work closely with Engineering, AI, Quality Management, and Product teams to ensure that every integration meets our highest technological and quality standards.</p>\n<p>You bring structure, precision, and innovative thinking together: You coordinate integration and certification processes, define standards, and create the technical foundations that enable partners to successfully integrate their solutions into the NeuraVerse. At the same time, you actively drive the evolution of our integration and quality guidelines, ensuring that our ecosystem sets benchmarks in reliability, performance, and compatibility.</p>\n<p>Your main tasks include:</p>\n<ul>\n <li>Technically integrate external partner hardware and software components into the NeuraVerse</li>\n <li>Define, develop, and ensure adherence to integration, testing, and quality standards</li>\n <li>Manage and document testing, certification, and approval processes</li>\n <li>Collaborate closely with R&amp;D, AI, Product Management, and Quality teams on system validation</li>\n <li>Support partners with testing, data integration, and compliance requirements</li>\n <li>Continuously improve guidelines and processes for integration, quality, and approvals</li>\n</ul>\\n\\n\\n \\n\\n<strong>What we can look forward to </strong>\n<ul>\n <li>Completed degree in Engineering, Computer Science, Robotics, or a comparable field</li>\n <li>Experience in system integration, quality assurance, or technical project coordination</li>\n <li>Solid knowledge of robotics, AI, and peripheral systems</li>\n <li>Analytical thinking, structured working style, and strong quality orientation</li>\n <li>Team player with excellent communication skills and a passion for interdisciplinary collaboration</li>\n <li>Excellent German and English skills; additional languages are a plus</li>\n <li>Willingness to travel for regular client meetings</li>\n</ul>",
+      "locations": [
+        "Metzingen, DE"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2025-11-06T00:00:00+01:00",
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "valid_through": "2035-11-06T00:00:00+01:00"
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-YEAR-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"YEAR\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-YEAR-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"YEAR\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-YEAR-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"YEAR\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-YEAR-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"YEAR\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-YEAR-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"YEAR\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-YEAR-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"YEAR\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-annual-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"annual\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-annual-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"annual\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-annual-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"annual\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-annual-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"annual\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-annual-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"annual\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-annual-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"annual\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-yr-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"yr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-yr-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"yr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-yr-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"yr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-yr-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"yr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-yr-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"yr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "year"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-yr-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"yr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-monthly-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"monthly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-monthly-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"monthly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-monthly-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"monthly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-monthly-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"monthly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-monthly-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"monthly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-monthly-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"monthly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-mo-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"mo\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-mo-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"mo\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-mo-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"mo\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-mo-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"mo\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-mo-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"mo\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "month"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-mo-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"mo\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-week-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"week\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-week-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"week\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-week-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"week\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-week-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"week\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-week-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"week\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-week-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"week\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-two_weeks-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"two_weeks\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-two_weeks-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"two_weeks\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-two_weeks-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"two_weeks\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-two_weeks-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"two_weeks\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-two_weeks-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"two_weeks\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "week"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-two_weeks-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"two_weeks\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-daily-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"daily\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "day"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-daily-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"daily\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "day"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-daily-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"daily\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "day"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-daily-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"daily\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "day"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-daily-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"daily\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "day"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-daily-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"daily\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hr-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"hr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hr-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"hr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hr-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"hr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hr-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"hr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hr-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"hr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hr-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"hr\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hourly-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"hourly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hourly-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"hourly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hourly-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"hourly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hourly-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"hourly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hourly-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"hourly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-hourly-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"hourly\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-unknown-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": \"unknown\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-unknown-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": \"unknown\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-unknown-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": \"unknown\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-unknown-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": \"unknown\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-unknown-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": \"unknown\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-unknown-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": \"unknown\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-None-50000",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 50000, \"unitText\": null}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 50000,
+        "max": 50000,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-None-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 0, \"unitText\": null}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 0,
+        "max": 0,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-None-True",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": true, \"unitText\": null}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": true,
+        "max": true,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-None-123.4",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": 123.4, \"unitText\": null}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 123.4,
+        "max": 123.4,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-None-{'minValue': 10, 'maxValue': 50}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 10, \"maxValue\": 50}, \"unitText\": null}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 10,
+        "max": 50,
+        "unit": null
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "salary-None-{'minValue': 15, 'unitText': 'HOUR'}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Salary\", \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 15, \"unitText\": \"HOUR\"}, \"unitText\": null}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Salary",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "EUR",
+        "min": 15,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "employment-  full time ",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"employmentType\": \"  full time \"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": "full time",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "employment-['FULL_TIME', 'PART_TIME']",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"employmentType\": [\"FULL_TIME\", \"PART_TIME\"]}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": "FULL_TIME, PART_TIME",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "employment-['Full Time', 'Intern']",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"employmentType\": [\"Full Time\", \"Intern\"]}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": "Intern",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "employment-['TEMPORARY', 'CONTRACTOR']",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"employmentType\": [\"TEMPORARY\", \"CONTRACTOR\"]}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": "TEMPORARY",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "employment-['unknown', 1, 'part-time']",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"employmentType\": [\"unknown\", 1, \"part-time\"]}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": "part-time",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "employment-['  ']",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"employmentType\": [\"  \"]}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "employment-None",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"employmentType\": null}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "extras-[0, False, ' ', 'raw', {'b': 1, 'a': [None, True, 'x']}]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"skills\": [0, false, \" \", \"raw\", {\"b\": 1, \"a\": [null, true, \"x\"]}], \"responsibilities\": [0, false, \" \", \"raw\", {\"b\": 1, \"a\": [null, true, \"x\"]}], \"educationRequirements\": [0, false, \" \", \"raw\", {\"b\": 1, \"a\": [null, true, \"x\"]}]}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "skills": [
+          "",
+          "raw",
+          "{'b': 1, 'a': [None, True, 'x']}"
+        ],
+        "responsibilities": [
+          "",
+          "raw",
+          "{'b': 1, 'a': [None, True, 'x']}"
+        ],
+        "qualifications": [
+          "",
+          "raw",
+          "{'b': 1, 'a': [None, True, 'x']}"
+        ]
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "extras- raw ",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"skills\": \" raw \", \"responsibilities\": \" raw \", \"educationRequirements\": \" raw \"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "skills": [
+          " raw "
+        ],
+        "responsibilities": [
+          " raw "
+        ],
+        "qualifications": [
+          " raw "
+        ]
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "extras-[]",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"skills\": [], \"responsibilities\": [], \"educationRequirements\": []}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "extras-0",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"skills\": 0, \"responsibilities\": 0, \"educationRequirements\": 0}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "extras-None",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"skills\": null, \"responsibilities\": null, \"educationRequirements\": null}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'Acme', 'address': {'addressLocality': ' Zürich ', 'addressRegion': 'ZH', 'addressCountry': {'name': 'Switzerland'}}}-{}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"Acme\", \"address\": {\"addressLocality\": \" Zürich \", \"addressRegion\": \"ZH\", \"addressCountry\": {\"name\": \"Switzerland\"}}}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "Zürich, ZH, Switzerland"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'Acme', 'address': {'addressLocality': ' Zürich ', 'addressRegion': 'ZH', 'addressCountry': {'name': 'Switzerland'}}}-{'ignore_locations': True}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"Acme\", \"address\": {\"addressLocality\": \" Zürich \", \"addressRegion\": \"ZH\", \"addressCountry\": {\"name\": \"Switzerland\"}}}}</script>",
+      "config": {
+        "ignore_locations": true
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'Acme', 'address': {'addressLocality': ' Zürich ', 'addressRegion': 'ZH', 'addressCountry': {'name': 'Switzerland'}}}-{'ignore_address_region': True}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"Acme\", \"address\": {\"addressLocality\": \" Zürich \", \"addressRegion\": \"ZH\", \"addressCountry\": {\"name\": \"Switzerland\"}}}}</script>",
+      "config": {
+        "ignore_address_region": true
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "Zürich, Switzerland"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'Acme', 'address': {'addressLocality': ' Zürich ', 'addressRegion': 'ZH', 'addressCountry': {'name': 'Switzerland'}}}-{'ignore_locations': 1}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"Acme\", \"address\": {\"addressLocality\": \" Zürich \", \"addressRegion\": \"ZH\", \"addressCountry\": {\"name\": \"Switzerland\"}}}}</script>",
+      "config": {
+        "ignore_locations": 1
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "Zürich, ZH, Switzerland"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'Acme', 'address': {'addressLocality': ' Zürich ', 'addressRegion': 'ZH', 'addressCountry': {'name': 'Switzerland'}}}-{'ignore_locations': []}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"Acme\", \"address\": {\"addressLocality\": \" Zürich \", \"addressRegion\": \"ZH\", \"addressCountry\": {\"name\": \"Switzerland\"}}}}</script>",
+      "config": {
+        "ignore_locations": []
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "Zürich, ZH, Switzerland"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'None', 'address': 'Berlin'}-{}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"None\", \"address\": \"Berlin\"}}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "Berlin"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'None', 'address': 'Berlin'}-{'ignore_locations': True}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"None\", \"address\": \"Berlin\"}}</script>",
+      "config": {
+        "ignore_locations": true
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'None', 'address': 'Berlin'}-{'ignore_address_region': True}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"None\", \"address\": \"Berlin\"}}</script>",
+      "config": {
+        "ignore_address_region": true
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "Berlin"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'None', 'address': 'Berlin'}-{'ignore_locations': 1}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"None\", \"address\": \"Berlin\"}}</script>",
+      "config": {
+        "ignore_locations": 1
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "Berlin"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-{'name': 'None', 'address': 'Berlin'}-{'ignore_locations': []}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": {\"name\": \"None\", \"address\": \"Berlin\"}}</script>",
+      "config": {
+        "ignore_locations": []
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "Berlin"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-[{'address': {'addressCountry': 'DE'}}, {'address': {'addressCountry': 'DE'}}]-{}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": [{\"address\": {\"addressCountry\": \"DE\"}}, {\"address\": {\"addressCountry\": \"DE\"}}]}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "DE"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-[{'address': {'addressCountry': 'DE'}}, {'address': {'addressCountry': 'DE'}}]-{'ignore_locations': True}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": [{\"address\": {\"addressCountry\": \"DE\"}}, {\"address\": {\"addressCountry\": \"DE\"}}]}</script>",
+      "config": {
+        "ignore_locations": true
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-[{'address': {'addressCountry': 'DE'}}, {'address': {'addressCountry': 'DE'}}]-{'ignore_address_region': True}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": [{\"address\": {\"addressCountry\": \"DE\"}}, {\"address\": {\"addressCountry\": \"DE\"}}]}</script>",
+      "config": {
+        "ignore_address_region": true
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "DE"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-[{'address': {'addressCountry': 'DE'}}, {'address': {'addressCountry': 'DE'}}]-{'ignore_locations': 1}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": [{\"address\": {\"addressCountry\": \"DE\"}}, {\"address\": {\"addressCountry\": \"DE\"}}]}</script>",
+      "config": {
+        "ignore_locations": 1
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "DE"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-[{'address': {'addressCountry': 'DE'}}, {'address': {'addressCountry': 'DE'}}]-{'ignore_locations': []}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": [{\"address\": {\"addressCountry\": \"DE\"}}, {\"address\": {\"addressCountry\": \"DE\"}}]}</script>",
+      "config": {
+        "ignore_locations": []
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": [
+        "DE"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-None-{}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": null}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-None-{'ignore_locations': True}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": null}</script>",
+      "config": {
+        "ignore_locations": true
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-None-{'ignore_address_region': True}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": null}</script>",
+      "config": {
+        "ignore_address_region": true
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-None-{'ignore_locations': 1}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": null}</script>",
+      "config": {
+        "ignore_locations": 1
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "locations-None-{'ignore_locations': []}",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"title\": \"Job\", \"hiringOrganization\": {\"name\": \"acme\"}, \"jobLocation\": null}</script>",
+      "config": {
+        "ignore_locations": []
+      }
+    },
+    "expected": {
+      "title": "Job",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "description-<b>R&amp;amp;D</b>",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"description\": \"<b>R&amp;amp;D</b>\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": "<b>R&amp;amp;D</b>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "description-&amp;#xa;&amp;#9;&amp;#13; &amp;amp;",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"description\": \"&amp;#xa;&amp;#9;&amp;#13; &amp;amp;\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": "\n\t\r &amp;amp;",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "description-",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"description\": \"\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": "",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "source-edge",
+    "request": {
+      "url": "",
+      "html": "<script type=\"text/plain\" type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"last attr\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "last attr",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "source-edge",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\" type=\"text/plain\">{\"@type\":\"JobPosting\",\"title\":\"ignored\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "source-edge",
+    "request": {
+      "url": "",
+      "html": "<script type=\"APPLICATION/LD+JSON\">{\"@type\":\"JobPosting\",\"title\":\"ignored\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "source-edge",
+    "request": {
+      "url": "",
+      "html": "<meta name=\"job-title\" content=\"one\" content=\"two\"<>meta name=\"job-description\" content=\"&lt;p&gt;Hi&lt;/p&gt;\">",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "source-edge",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@graph\":[{\"@type\":[\"Thing\",\"JobPosting\"],\"Title\":\"graph\",\"Skills\":[true,1.0]}]}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": "graph",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": {
+        "skills": [
+          "True",
+          "1.0"
+        ]
+      },
+      "metadata": null
+    }
+  },
+  {
+    "name": "source-edge",
+    "request": {
+      "url": "",
+      "html": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"datePosted\":\"2026-09-28\" \"hiringOrganization\":{\"name\":\"Acme\"},\"description\":\"pay \\$10\nnow\"}</script>",
+      "config": {}
+    },
+    "expected": {
+      "title": null,
+      "description": "pay $10\nnow",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "exact-url-default",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"extras\":{}}</script>",
+      "config": {
+        "defaults_by_url": {
+          "https://example.com/job": {
+            "title": "Missing",
+            "locations": [
+              "Paris"
+            ],
+            "base_salary": {
+              "min": 1
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Missing",
+      "description": null,
+      "locations": [
+        "Paris"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "min": 1
+      },
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "exact-url-default",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"extras\":{}}</script>",
+      "config": {
+        "defaults_by_url": []
+      }
+    },
+    "expected_error": "ValueError"
+  },
+  {
+    "name": "exact-url-default",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"extras\":{}}</script>",
+      "config": {
+        "defaults_by_url": {
+          "https://example.com/job": {
+            "unknown": "bad"
+          }
+        }
+      }
+    },
+    "expected_error": "ValueError"
+  },
+  {
+    "name": "exact-url-default",
+    "request": {
+      "url": "https://example.com/job",
+      "html": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"extras\":{}}</script>",
+      "config": {
+        "defaults_by_url": {
+          "https://elsewhere/job": {
+            "unknown": "unused"
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  }
+]
