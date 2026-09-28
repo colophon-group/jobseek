@@ -1860,6 +1860,28 @@ jobs:
           BASE_REF: ${{ needs.changes.outputs.base_ref }}
         run: uv run python ../../scripts/probe-new-boards.py --base-ref "origin/$BASE_REF"
 
+  roboa-transport-diagnostic:
+    name: Temporary roboa transport diagnostic
+    if: github.event_name == 'pull_request' && github.head_ref == 'add-company/swiss-robotics'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Install locked diagnostic dependencies
+        working-directory: apps/crawler
+        run: uv sync --frozen
+      - name: Compare public roboa transports from this runner
+        working-directory: apps/crawler
+        run: uv run python ../../scripts/roboa-transport-diagnostic.py
+
   required-ci:
     name: Required CI
     if: always()
