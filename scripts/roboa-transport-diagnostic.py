@@ -10,10 +10,13 @@ import httpx
 from playwright.async_api import async_playwright
 
 URLS = [
-    "https://www.roboa.ch/career",
-    "https://roboa.ch/career",
-    "https://www.roboa.ch/career/jobs/software-intern",
+    "https://www.roboa.ch/career/jobs/rss.xml",
+    "https://roboa-lp.webflow.io/career",
+    "https://roboa-lp.webflow.io/career/jobs/software-intern",
+    "https://roboa-lp.webflow.io/career/jobs/field-hardware-engineer",
+    "https://roboa-lp.webflow.io/career/jobs/service-und-produktionstechniker",
 ]
+
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 
@@ -25,6 +28,8 @@ def summarize(label, url, status, body, headers=None):
         "length": len(body),
         "title": re.findall(r"<title[^>]*>(.*?)</title>", body, re.S)[:1],
         "job_links": sorted(set(re.findall(r'[/]career/jobs/[^"<>\\s]+', body)))[:8],
+        "webflow_site": re.findall(r'data-wf-site="([^"]+)', body),
+        "h1": re.findall(r"<h1[^>]*>(.*?)</h1>", body, re.S),
         "has_software_intern": "Software Intern" in body,
         "prefix": re.sub(r"\\s+", " ", body[:400]),
         "response_headers": {k: v for k, v in (headers or {}).items() if k.lower() in {"server", "cf-mitigated", "content-type", "location"}},
