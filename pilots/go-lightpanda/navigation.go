@@ -19,9 +19,23 @@ var errNavigationTimeout = errors.New("navigation readiness timed out")
 // navigationOptions is copied from a validated render-only plan. Fallback
 // checks the current document; it can never cause a second Page.navigate.
 type navigationOptions struct {
-	wait     runtimev1.WaitCondition
-	timeout  time.Duration
-	fallback *navigationOptions
+	wait             runtimev1.WaitCondition
+	timeout          time.Duration
+	fallback         *navigationOptions
+	transportRetries uint32
+}
+
+// Only explicit native receive/send failures and the canonical browser network
+// markers permit a retry. Provider text remains private to this classifier.
+type navigationTransportError struct{ retryable bool }
+
+func (failure *navigationTransportError) Error() string {
+	return "main-document navigation transport failed"
+}
+func navigationError(text string) error {
+	retryable := text == "RecvError" || text == "SendError" || text == "net::ERR_CONNECTION_RESET" ||
+		text == "net::ERR_NETWORK_CHANGED" || text == "net::ERR_SOCKET_NOT_CONNECTED"
+	return &navigationTransportError{retryable: retryable}
 }
 
 type navigationState struct {
@@ -70,11 +84,11 @@ func validNavigationOptions(options *navigationOptions) bool {
 	validWait := func(wait runtimev1.WaitCondition) bool {
 		return wait >= runtimev1.WaitCondition_WAIT_CONDITION_COMMIT && wait <= runtimev1.WaitCondition_WAIT_CONDITION_NETWORK_IDLE
 	}
-	if !validWait(options.wait) || options.timeout <= 0 || options.timeout > 120*time.Second {
+	if !validWait(options.wait) || options.timeout <= 0 || options.timeout > 120*time.Second || options.transportRetries > 1 {
 		return false
 	}
 	if fallback := options.fallback; fallback != nil {
-		return validWait(fallback.wait) && fallback.wait != options.wait && fallback.timeout > 0 && fallback.timeout <= 5*time.Second && fallback.timeout <= options.timeout && fallback.fallback == nil
+		return validWait(fallback.wait) && fallback.wait != options.wait && fallback.timeout > 0 && fallback.timeout <= 5*time.Second && fallback.timeout <= options.timeout && fallback.fallback == nil && fallback.transportRetries == 0
 	}
 	return true
 }
@@ -179,6 +193,32 @@ func waitForNavigation(ctx context.Context, state *navigationState, wait runtime
 }
 
 func navigateDocument(ctx context.Context, state *navigationState, options navigationOptions, navigate func(context.Context) error) error {
+	for attempt := uint32(0); ; attempt++ {
+		err := navigateDocumentOnce(ctx, state, options, navigate)
+		var failure *navigationTransportError
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if attempt >= options.transportRetries || !errors.As(err, &failure) || !failure.retryable {
+			return err
+		}
+		timer := time.NewTimer(500 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+		state.mu.Lock()
+		state.loader = ""
+		state.committed, state.domReady, state.loaded = false, false, false
+		state.requests = make(map[network.RequestID]struct{})
+		state.idleSince = time.Time{}
+		state.mu.Unlock()
+	}
+}
+
+func navigateDocumentOnce(ctx context.Context, state *navigationState, options navigationOptions, navigate func(context.Context) error) error {
 	primary, cancelPrimary := context.WithTimeout(ctx, options.timeout)
 	err := navigate(primary)
 	if err == nil {

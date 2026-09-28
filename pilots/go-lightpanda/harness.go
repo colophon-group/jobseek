@@ -841,7 +841,7 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 					return err
 				}
 				if errorText != "" {
-					return errors.New("main-document navigation failed")
+					return navigationError(errorText)
 				}
 				state.commit(loader, time.Now())
 				return nil

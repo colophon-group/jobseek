@@ -4952,9 +4952,13 @@ type NavigationPlan struct {
 	// Optional readiness check on the already navigated document after a primary
 	// wait timeout. Absence preserves the original one-wait contract. This never
 	// authorizes another navigation or any additional origin operation.
-	Fallback      *NavigationFallback `protobuf:"bytes,6,opt,name=fallback,proto3" json:"fallback,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Fallback *NavigationFallback `protobuf:"bytes,6,opt,name=fallback,proto3" json:"fallback,omitempty"`
+	// Conditional retry of an explicitly classified transient navigation
+	// transport failure on the same page. Only 0 or 1 is admitted; a retry needs
+	// its own predeclared origin operation. Readiness timeouts are never retried.
+	TransportRetries uint32 `protobuf:"varint,7,opt,name=transport_retries,json=transportRetries,proto3" json:"transport_retries,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *NavigationPlan) Reset() {
@@ -5027,6 +5031,13 @@ func (x *NavigationPlan) GetFallback() *NavigationFallback {
 		return x.Fallback
 	}
 	return nil
+}
+
+func (x *NavigationPlan) GetTransportRetries() uint32 {
+	if x != nil {
+		return x.TransportRetries
+	}
+	return 0
 }
 
 type NavigationFallback struct {
@@ -7449,7 +7460,7 @@ const file_runtime_proto_rawDesc = "" +
 	"\x11origin_request_id\x18\a \x01(\tH\x01R\x0foriginRequestId\x88\x01\x01\x12W\n" +
 	"\x0enetwork_effect\x18\b \x01(\x0e20.jobseek.crawler.runtime.v1.BrowserNetworkEffectR\rnetworkEffectB\b\n" +
 	"\x06actionB\x14\n" +
-	"\x12_origin_request_id\"\xdb\x02\n" +
+	"\x12_origin_request_id\"\x88\x03\n" +
 	"\x0eNavigationPlan\x12H\n" +
 	"\n" +
 	"wait_until\x18\x01 \x01(\x0e2).jobseek.crawler.runtime.v1.WaitConditionR\twaitUntil\x12\x1d\n" +
@@ -7458,7 +7469,8 @@ const file_runtime_proto_rawDesc = "" +
 	"\aheaders\x18\x03 \x03(\v2\".jobseek.crawler.runtime.v1.HeaderR\aheaders\x12*\n" +
 	"\x11ignore_tls_errors\x18\x04 \x01(\bR\x0fignoreTlsErrors\x12*\n" +
 	"\x11origin_request_id\x18\x05 \x01(\tR\x0foriginRequestId\x12J\n" +
-	"\bfallback\x18\x06 \x01(\v2..jobseek.crawler.runtime.v1.NavigationFallbackR\bfallback\"}\n" +
+	"\bfallback\x18\x06 \x01(\v2..jobseek.crawler.runtime.v1.NavigationFallbackR\bfallback\x12+\n" +
+	"\x11transport_retries\x18\a \x01(\rR\x10transportRetries\"}\n" +
 	"\x12NavigationFallback\x12H\n" +
 	"\n" +
 	"wait_until\x18\x01 \x01(\x0e2).jobseek.crawler.runtime.v1.WaitConditionR\twaitUntil\x12\x1d\n" +

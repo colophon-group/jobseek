@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
@@ -31,7 +32,27 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	var documentRequests atomic.Int64
+	var resetRequests atomic.Int64
 	origin := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/reset" {
+			attempt := resetRequests.Add(1)
+			if attempt == 1 || r.URL.Query().Get("always") == "1" {
+				connection, _, err := w.(http.Hijacker).Hijack()
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				if tcp, ok := connection.(*net.TCPConn); ok {
+					_ = tcp.SetLinger(0)
+				}
+				_ = connection.Close()
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(201)
+			_, _ = io.WriteString(w, "<html><body><h1>Recovered Engineer</h1></body></html>")
+			return
+		}
 		if r.URL.Path == "/held" {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(200)
@@ -63,6 +84,7 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 		input := bridgeInput(origin.URL+"/document", "", 1024)
 		input.Plan.Navigation.WaitUntil = wait
 		input.Plan.Navigation.TimeoutMs = 10000
+		bindTransportRetry(input)
 		before := documentRequests.Load()
 		result := adapter.Execute(context.Background(), input)
 		if success := result.GetSuccess(); success == nil || success.GetStatus() != 201 || !strings.Contains(string(bridgeManifestBody(success.Html)), "Engineer") {
@@ -76,6 +98,7 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 	input.Plan.Navigation.WaitUntil = 4
 	input.Plan.Navigation.TimeoutMs = 1500
 	input.Plan.Navigation.Fallback = &runtimev1.NavigationFallback{WaitUntil: 2, TimeoutMs: 1000}
+	bindTransportRetry(input)
 	before := documentRequests.Load()
 	result := adapter.Execute(context.Background(), input)
 	if success := result.GetSuccess(); success == nil || success.GetStatus() != 201 || !strings.Contains(string(bridgeManifestBody(success.Html)), "Rendered Engineer") {
@@ -84,4 +107,32 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 	if documentRequests.Load() != before+1 {
 		t.Fatal("fallback repeated origin navigation")
 	}
+	for _, always := range []bool{false, true} {
+		resetRequests.Store(0)
+		url := origin.URL + "/reset"
+		if always {
+			url += "?always=1"
+		}
+		input := bridgeInput(url, "", 1024)
+		input.Plan.Navigation.TimeoutMs = 10000
+		bindTransportRetry(input)
+		start := time.Now()
+		result := adapter.Execute(context.Background(), input)
+		if resetRequests.Load() != 2 || time.Since(start) < 500*time.Millisecond {
+			t.Fatalf("native reset retry bound/delay differed: requests=%d result=%v", resetRequests.Load(), result)
+		}
+		if always {
+			if failure := result.GetError(); failure == nil || failure.Error.Code != runtimev1.ErrorCode_ERROR_CODE_TRANSPORT {
+				t.Fatalf("exhausted reset was accepted: %v", result)
+			}
+		} else if success := result.GetSuccess(); success == nil || success.GetStatus() != 201 || !strings.Contains(string(bridgeManifestBody(success.Html)), "Recovered Engineer") {
+			t.Fatalf("native reset did not recover: %v", result)
+		}
+	}
+}
+
+func bindTransportRetry(input *runtimev1.BrowserExecutionInput) {
+	input.Plan.Navigation.TransportRetries = 1
+	parent := input.Plan.Navigation.OriginRequestId
+	input.Plan.OriginOperations = append(input.Plan.OriginOperations, &runtimev1.OriginOperationRef{OriginRequestId: parent + ":transport-retry-1", OperationSequence: 2, Role: "transport_retry", ParentOriginRequestId: &parent, RequestFingerprint: input.Plan.OriginOperations[0].RequestFingerprint})
 }

@@ -51,6 +51,13 @@ func pythonPattern(pattern string) (string, error) {
 			continue
 		}
 		if c != '[' {
+			if c == '(' && strings.HasPrefix(pattern[i:], "(?P=") {
+				if end := strings.IndexByte(pattern[i+4:], ')'); end >= 0 {
+					out.WriteString(`\k<` + pattern[i+4:i+4+end] + `>`)
+					i += 4 + end
+					continue
+				}
+			}
 			out.WriteByte(c)
 			continue
 		}

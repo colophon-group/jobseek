@@ -1,0 +1,979 @@
+[
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/.well-known/captcha",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/.WELL-KNOWN/CAPTCHA",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test//.well-known/captcha",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/.well-known/captcha",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/.well-known/captcha",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/.well-known/sgcaptcha",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/.WELL-KNOWN/SGCAPTCHA",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test//.well-known/sgcaptcha",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/.well-known/sgcaptcha",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/.well-known/sgcaptcha",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<TITLE>JUST A MOMENT</TITLE>",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/<title>Just_a_moment</title>",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/cdn-cgi/challenge-platform/ enable javascript and cookies",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/CDN-CGI/CHALLENGE-PLATFORM/ ENABLE JAVASCRIPT AND COOKIES",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test//cdn-cgi/challenge-platform/_enable_javascript_and_cookies",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/cdn-cgi/challenge-platform/ enable javascript and cookies",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/cdn-cgi/challenge-platform/ enable javascript and cookies",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/cdn-cgi/challenge-platform/ Sorry, you have been blocked",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/CDN-CGI/CHALLENGE-PLATFORM/ SORRY, YOU HAVE BEEN BLOCKED",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test//cdn-cgi/challenge-platform/_Sorry,_you_have_been_blocked",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/cdn-cgi/challenge-platform/ Sorry, you have been blocked",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/cdn-cgi/challenge-platform/ Sorry, you have been blocked",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "please wait while your request is being verified",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "PLEASE WAIT WHILE YOUR REQUEST IS BEING VERIFIED",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/please_wait_while_your_request_is_being_verified",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "please wait while your request is being verified",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "please wait while your request is being verified",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "id=\"main-iframe\" /_Incapsula_Resource?CWUDNSAI=",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "ID=\"MAIN-IFRAME\" /_INCAPSULA_RESOURCE?CWUDNSAI=",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/id=\"main-iframe\"_/_Incapsula_Resource?CWUDNSAI=",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "id=\"main-iframe\" /_Incapsula_Resource?CWUDNSAI=",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "id=\"main-iframe\" /_Incapsula_Resource?CWUDNSAI=",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "validate.perfdrive.com",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "VALIDATE.PERFDRIVE.COM",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/validate.perfdrive.com",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "validate.perfdrive.com",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "validate.perfdrive.com",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Radware CAPTCHA Page",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<TITLE>RADWARE CAPTCHA PAGE",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/<title>Radware_CAPTCHA_Page",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Radware CAPTCHA Page",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Radware CAPTCHA Page",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "botmanager_support@radware.com",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "BOTMANAGER_SUPPORT@RADWARE.COM",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/botmanager_support@radware.com",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "botmanager_support@radware.com",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "botmanager_support@radware.com",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "captcha.perfdrive.com/captcha-public/",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "CAPTCHA.PERFDRIVE.COM/CAPTCHA-PUBLIC/",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/captcha.perfdrive.com/captcha-public/",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "captcha.perfdrive.com/captcha-public/",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "captcha.perfdrive.com/captcha-public/",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Validation Request</title> user validation required to continue action=\"/captcha_resp\"",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<TITLE>VALIDATION REQUEST</TITLE> USER VALIDATION REQUIRED TO CONTINUE ACTION=\"/CAPTCHA_RESP\"",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/<title>Validation_Request</title>_user_validation_required_to_continue_action=\"/captcha_resp\"",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Validation Request</title> user validation required to continue action=\"/captcha_resp\"",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Validation Request</title> user validation required to continue action=\"/captcha_resp\"",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "safe.liepin.com/ captchapage_ip_pc",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "SAFE.LIEPIN.COM/ CAPTCHAPAGE_IP_PC",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1>",
+      "url": "https://example.test/safe.liepin.com/_captchapage_ip_pc",
+      "config": {}
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "safe.liepin.com/ captchapage_ip_pc",
+      "url": "https://example.test/gone",
+      "config": {
+        "gone_url_pattern": "/gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "safe.liepin.com/ captchapage_ip_pc",
+      "url": "https://example.test/job",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<h1>Engineer</h1><p>Work.</p>",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/_Incapsula_Resource?ordinary=sensor",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/_Incapsula_Resource?CWUDNSAI=",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "id=\"main-iframe\"",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Validation Request</title> user validation required to continue",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "user validation required to continue action=\"/captcha_resp\"",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Validation Request</title> action=\"/captcha_resp\"",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "safe.liepin.com/",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "captchapage_ip_pc",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "/cdn-cgi/challenge-platform/ ordinary content",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "enable javascript and cookies",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<tİtle>Just a moment",
+      "url": "https://example.test/job",
+      "config": {}
+    },
+    "expected": {
+      "classification": "okay"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/job/gone",
+      "config": {
+        "gone_url_pattern": "(?<=/job/)gone$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/job/gone-gone",
+      "config": {
+        "gone_url_pattern": "(?P<state>gone)-(?P=state)$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/job/²",
+      "config": {
+        "gone_url_pattern": "/\\w+$"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/job/²",
+      "config": {
+        "gone_url_pattern": "/\\d+$"
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/job/gone",
+      "config": {
+        "gone_url_pattern": "/gone\\Z"
+      }
+    },
+    "expected": {
+      "classification": "gone"
+    }
+  },
+  {
+    "request": {
+      "mode": "classify-rendered",
+      "html": "<title>Just a moment</title>",
+      "url": "https://example.test/job/gone",
+      "config": {
+        "gone_url_pattern": "["
+      }
+    },
+    "expected": {
+      "classification": "challenge"
+    }
+  }
+]

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 cases = json.loads(Path(__file__).with_name("python_cases.json").read_text())
+cases += json.loads(Path(__file__).with_name("python_render_policy.json").read_text())
 for index, case in enumerate(cases):
     result = subprocess.run(
         [sys.argv[1]],

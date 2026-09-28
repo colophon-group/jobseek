@@ -12,7 +12,13 @@ import (
 // These are frozen outputs from the Python extraction and scraper regression
 // suites. No interpreter, network, browser, or publisher traffic is needed.
 func TestCanonicalPythonCorpus(t *testing.T) {
-	body, err := os.ReadFile("testdata/python_cases.json")
+	for _, path := range []string{"testdata/python_cases.json", "testdata/python_render_policy.json"} {
+		t.Run(path, func(t *testing.T) { testCanonicalCorpus(t, path) })
+	}
+}
+
+func testCanonicalCorpus(t *testing.T, path string) {
+	body, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,6 +57,8 @@ func TestCanonicalPythonCorpus(t *testing.T) {
 				var cursor int
 				fields, cursor, err = WalkSteps(r.Elements, r.Steps, r.Start)
 				actual = Object{"fields": fields, "cursor": cursor}
+			case "classify-rendered":
+				actual, err = ClassifyRendered(r.HTML, r.Config, *r.URL)
 			default:
 				t.Fatal("unknown fixture mode")
 			}

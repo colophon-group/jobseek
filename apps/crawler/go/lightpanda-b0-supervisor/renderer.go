@@ -14,10 +14,12 @@ import (
 	"io"
 	"net"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -138,7 +140,7 @@ func (r *reservation) execute(ctx context.Context, task queueTask) ([]byte, erro
 		return nil, err
 	}
 	record = append(record, 0)
-	deadline := time.Now().Add(time.Duration(task.Envelope.TimeoutMS)*time.Millisecond + 15*time.Second)
+	deadline := time.Now().Add(lightpandaadapter.NavigationExecutionBudget(request.Plan.Navigation) + 15*time.Second)
 	if contextDeadline, ok := ctx.Deadline(); ok && contextDeadline.Before(deadline) {
 		deadline = contextDeadline
 	}
@@ -202,7 +204,13 @@ func writeAll(output io.Writer, payload []byte) error {
 }
 
 func browserInput(task queueTask) (*runtimev1.BrowserExecutionInput, error) {
+	if task.RenderAttempt < 0 || task.RenderAttempt > 1 || (task.RenderAttempt != 0 && task.Envelope.ScraperType != "dom") {
+		return nil, errors.New("invalid render retry ordinal")
+	}
 	originID := "lightpanda-b0:" + task.PayloadSHA256
+	if task.RenderAttempt != 0 {
+		originID += ":challenge-retry-" + strconv.Itoa(task.RenderAttempt)
+	}
 	request := struct {
 		Body    string   `json:"body"`
 		Headers []string `json:"headers"`
@@ -237,8 +245,13 @@ func browserInput(task queueTask) (*runtimev1.BrowserExecutionInput, error) {
 		}
 		navigation.Fallback = &runtimev1.NavigationFallback{WaitUntil: fallbackWait, TimeoutMs: min(uint64(task.Envelope.TimeoutMS), 5000)}
 	}
+	operations := []*runtimev1.OriginOperationRef{{OriginRequestId: originID, OperationSequence: 1, Role: "navigation", RequestFingerprint: hex.EncodeToString(fingerprint[:])}}
+	if task.Envelope.ScraperType == "dom" {
+		navigation.TransportRetries = 1
+		operations = append(operations, &runtimev1.OriginOperationRef{OriginRequestId: originID + ":transport-retry-1", OperationSequence: 2, Role: "transport_retry", ParentOriginRequestId: &originID, RequestFingerprint: operations[0].RequestFingerprint})
+	}
 	return &runtimev1.BrowserExecutionInput{
 		Assignment: &runtimev1.BrowserAssignment{Backend: runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA, CapabilityClass: runtimev1.BrowserCapabilityClass_BROWSER_CAPABILITY_CLASS_NAVIGATION_EVALUATION, ServiceLane: runtimev1.BrowserServiceLane_BROWSER_SERVICE_LANE_LIGHTPANDA, RoutingRevision: task.Envelope.RoutingRevision},
-		Plan:       &runtimev1.BrowserPlan{ContractVersion: runtimeContract, TargetUrl: task.Envelope.SourceURL, RequiredCapabilities: []runtimev1.BrowserCapability{runtimev1.BrowserCapability_BROWSER_CAPABILITY_RENDER}, Navigation: navigation, OriginOperations: []*runtimev1.OriginOperationRef{{OriginRequestId: originID, OperationSequence: 1, Role: "navigation", RequestFingerprint: hex.EncodeToString(fingerprint[:])}}},
+		Plan:       &runtimev1.BrowserPlan{ContractVersion: runtimeContract, TargetUrl: task.Envelope.SourceURL, RequiredCapabilities: []runtimev1.BrowserCapability{runtimev1.BrowserCapability_BROWSER_CAPABILITY_RENDER}, Navigation: navigation, OriginOperations: operations},
 	}, nil
 }

@@ -600,6 +600,10 @@ message NavigationPlan {
   // wait timeout. Absence preserves the original one-wait contract. This never
   // authorizes another navigation or any additional origin operation.
   NavigationFallback fallback = 6;
+  // Conditional retry of an explicitly classified transient navigation
+  // transport failure on the same page. Only 0 or 1 is admitted; a retry needs
+  // its own predeclared origin operation. Readiness timeouts are never retried.
+  uint32 transport_retries = 7;
 }
 
 message NavigationFallback {

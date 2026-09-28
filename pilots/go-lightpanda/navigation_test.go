@@ -138,3 +138,51 @@ func TestNavigationErrorCancellationAndMissingCommitFail(t *testing.T) {
 		})
 	}
 }
+
+func TestNavigationTransportRetryIsConditionalSamePageAndBounded(t *testing.T) {
+	for _, failure := range []string{"RecvError", "SendError", "net::ERR_CONNECTION_RESET", "CouldntConnect", "ResolveHost", "timeout", "cancelled", "disabled", "twice"} {
+		t.Run(failure, func(t *testing.T) {
+			state := newNavigationState("main")
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			options := navigationOptions{wait: 1, timeout: 20 * time.Millisecond, transportRetries: 1}
+			if failure == "disabled" {
+				options.transportRetries = 0
+			}
+			calls := 0
+			start := time.Now()
+			err := navigateDocument(ctx, state, options, func(call context.Context) error {
+				calls++
+				if calls == 2 && failure != "twice" {
+					state.commit("recovered", time.Now())
+					return nil
+				}
+				if failure == "timeout" {
+					<-call.Done()
+					return call.Err()
+				}
+				if failure == "cancelled" {
+					cancel()
+					return ctx.Err()
+				}
+				if failure == "disabled" || failure == "twice" {
+					return navigationError("RecvError")
+				}
+				return navigationError(failure)
+			})
+			wantRetry := failure == "RecvError" || failure == "SendError" || failure == "net::ERR_CONNECTION_RESET" || failure == "twice"
+			if wantRetry && (calls != 2 || time.Since(start) < 500*time.Millisecond) {
+				t.Fatalf("transport retry count/delay changed: %d %v", calls, err)
+			}
+			if !wantRetry && calls != 1 {
+				t.Fatal("non-retryable navigation repeated")
+			}
+			if wantRetry && failure != "twice" && err != nil {
+				t.Fatal(err)
+			}
+			if (!wantRetry || failure == "twice") && err == nil {
+				t.Fatal("failed navigation admitted")
+			}
+		})
+	}
+}

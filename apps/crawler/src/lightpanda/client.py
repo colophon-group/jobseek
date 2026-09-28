@@ -144,7 +144,7 @@ class LightpandaB0Reservation:
         # The canonical empty frame is application-level write closure. TLS
         # streams cannot half-close before receiving the server response.
         outbound = request_record + b"\x00"
-        timeout_seconds = canonical_task.assignment.timeout_ms / 1000 + 15
+        timeout_seconds = _navigation_budget_ms(canonical_task) / 1000 + 15
 
         try:
             async with asyncio.timeout(timeout_seconds):
@@ -341,6 +341,25 @@ def _execution_input(task: LightpandaB0Task) -> Message:
         + b"}"
     ).hexdigest()
     navigation.origin_request_id = origin_request_id
+    operations = [
+        runtime.OriginOperationRef(
+            origin_request_id=origin_request_id,
+            operation_sequence=1,
+            role="navigation",
+            request_fingerprint=request_fingerprint,
+        )
+    ]
+    if task.assignment.scraper_type == "dom":
+        navigation.transport_retries = 1
+        operations.append(
+            runtime.OriginOperationRef(
+                origin_request_id=origin_request_id + ":transport-retry-1",
+                operation_sequence=2,
+                role="transport_retry",
+                parent_origin_request_id=origin_request_id,
+                request_fingerprint=request_fingerprint,
+            )
+        )
     return runtime.BrowserExecutionInput(
         assignment=runtime.BrowserAssignment(
             backend=runtime.BROWSER_BACKEND_LIGHTPANDA,
@@ -353,16 +372,18 @@ def _execution_input(task: LightpandaB0Task) -> Message:
             target_url=task.source_url,
             required_capabilities=[runtime.BROWSER_CAPABILITY_RENDER],
             navigation=navigation,
-            origin_operations=[
-                runtime.OriginOperationRef(
-                    origin_request_id=origin_request_id,
-                    operation_sequence=1,
-                    role="navigation",
-                    request_fingerprint=request_fingerprint,
-                )
-            ],
+            origin_operations=operations,
         ),
     )
+
+
+def _navigation_budget_ms(task: LightpandaB0Task) -> int:
+    budget = task.assignment.timeout_ms
+    if task.assignment.wait_fallback not in {None, task.assignment.wait}:
+        budget += min(task.assignment.timeout_ms, 5000)
+    if task.assignment.scraper_type == "dom":
+        budget = budget * 2 + 500
+    return budget
 
 
 def _encode_record(payload: bytes, maximum: int) -> bytes:

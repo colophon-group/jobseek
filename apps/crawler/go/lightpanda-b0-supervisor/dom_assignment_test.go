@@ -42,7 +42,7 @@ func TestDOMProducerPreservesNavigationAndFrozenParserIdentity(t *testing.T) {
 			if wantsFallback && input.Plan.Navigation.Fallback.TimeoutMs != 5000 {
 				t.Fatal("fallback not bounded")
 			}
-			if input.Plan.Navigation.WaitUntil == runtimev1.WaitCondition_WAIT_CONDITION_UNSPECIFIED || len(input.Plan.OriginOperations) != 1 {
+			if input.Plan.Navigation.WaitUntil == runtimev1.WaitCondition_WAIT_CONDITION_UNSPECIFIED || len(input.Plan.OriginOperations) != 2 || input.Plan.Navigation.TransportRetries != 1 {
 				t.Fatal("navigation changed operation cardinality")
 			}
 			task.Envelope.Wait = "invalid"

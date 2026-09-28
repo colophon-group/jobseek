@@ -259,11 +259,7 @@ func (adapter *Adapter) Execute(
 		return contextFailureResult(err)
 	}
 
-	deadlineMS := bound.input.Plan.Navigation.TimeoutMs
-	if fallback := bound.input.Plan.Navigation.Fallback; fallback != nil {
-		deadlineMS += fallback.TimeoutMs
-	}
-	runnerCtx, cancelRunner := context.WithTimeout(ctx, time.Duration(deadlineMS)*time.Millisecond)
+	runnerCtx, cancelRunner := context.WithTimeout(ctx, NavigationExecutionBudget(bound.input.Plan.Navigation))
 	outcome, runnerPanicked := runOnce(adapter.runner, runnerCtx, bound)
 	runnerContextErr := runnerCtx.Err()
 	cancelRunner()
@@ -374,7 +370,7 @@ func shallowB1Cardinalities(input *runtimev1.BrowserExecutionInput) bool {
 		len(plan.RequiredCapabilities) > int(runtimev1.BrowserCapability_BROWSER_CAPABILITY_TRANSPORT_OVERRIDES) ||
 		plan.Navigation == nil || len(plan.Navigation.Headers) != 0 || plan.Session != nil ||
 		len(plan.Actions) != 0 || len(plan.Captures) != 0 || len(plan.Evaluations) > maxEvaluations ||
-		len(plan.Interceptions) != 0 || len(plan.OriginOperations) != 1 {
+		len(plan.Interceptions) != 0 || len(plan.OriginOperations) < 1 || len(plan.OriginOperations) > 2 {
 		return false
 	}
 	return true
@@ -416,16 +412,17 @@ func validB1Plan(plan *runtimev1.BrowserPlan, navigationWaits bool) bool {
 		plan.Navigation == nil || plan.Session != nil || len(plan.Actions) != 0 ||
 		len(plan.Captures) != 0 || len(plan.Interceptions) != 0 ||
 		len(plan.Evaluations) > maxEvaluations ||
-		len(plan.OriginOperations) != 1 {
+		len(plan.OriginOperations) < 1 || len(plan.OriginOperations) > 2 {
 		return false
 	}
 	navigation := plan.Navigation
 	if navigation.TimeoutMs == 0 || navigation.TimeoutMs > maxNavigationTimeoutMS ||
-		len(navigation.Headers) != 0 || navigation.IgnoreTlsErrors || navigation.OriginRequestId == "" {
+		len(navigation.Headers) != 0 || navigation.IgnoreTlsErrors || navigation.OriginRequestId == "" ||
+		navigation.TransportRetries > 1 || len(plan.OriginOperations) != 1+int(navigation.TransportRetries) {
 		return false
 	}
 	if !navigationWaits {
-		if navigation.WaitUntil != runtimev1.WaitCondition_WAIT_CONDITION_LOAD || navigation.Fallback != nil {
+		if navigation.WaitUntil != runtimev1.WaitCondition_WAIT_CONDITION_LOAD || navigation.Fallback != nil || navigation.TransportRetries != 0 {
 			return false
 		}
 	} else {
@@ -454,6 +451,14 @@ func validB1Plan(plan *runtimev1.BrowserPlan, navigationWaits bool) bool {
 		operation.ParentOriginRequestId != nil || !lowerSHA256Pattern.MatchString(operation.RequestFingerprint) {
 		return false
 	}
+	if navigation.TransportRetries == 1 {
+		retry := plan.OriginOperations[1]
+		if retry == nil || retry.OriginRequestId != operation.OriginRequestId+":transport-retry-1" ||
+			retry.OperationSequence != 2 || retry.Role != "transport_retry" || retry.ParentOriginRequestId == nil ||
+			*retry.ParentOriginRequestId != operation.OriginRequestId || retry.RequestFingerprint != operation.RequestFingerprint || hasEvaluate {
+			return false
+		}
+	}
 	seenEvaluations := make(map[string]bool, len(plan.Evaluations))
 	for _, evaluation := range plan.Evaluations {
 		if evaluation == nil || evaluation.EvaluationId == "" ||
@@ -471,6 +476,31 @@ func validB1Plan(plan *runtimev1.BrowserPlan, navigationWaits bool) bool {
 
 func validWait(wait runtimev1.WaitCondition) bool {
 	return wait >= runtimev1.WaitCondition_WAIT_CONDITION_COMMIT && wait <= runtimev1.WaitCondition_WAIT_CONDITION_NETWORK_IDLE
+}
+
+// NavigationExecutionBudget is only used after full plan validation. Each
+// transport attempt gets the canonical readiness budget; the one conditional
+// retry waits 500ms on the same page. A readiness fallback adds no navigation.
+func NavigationExecutionBudget(navigation *runtimev1.NavigationPlan) time.Duration {
+	budget := time.Duration(navigation.TimeoutMs) * time.Millisecond
+	if fallback := navigation.Fallback; fallback != nil {
+		budget += time.Duration(fallback.TimeoutMs) * time.Millisecond
+	}
+	if navigation.TransportRetries == 1 {
+		budget = 2*budget + 500*time.Millisecond
+	}
+	return budget
+}
+
+// ValidatedRenderExecutionBudget grants additional connection time only for a
+// fully admitted render-only input. Unknown fields and unsupported plans cannot
+// extend the service's initial connection window.
+func ValidatedRenderExecutionBudget(input *runtimev1.BrowserExecutionInput) (time.Duration, bool) {
+	bound, unsupported, valid := bindNavigation(input, true)
+	if !valid || len(unsupported) != 0 || len(bound.input.Plan.Evaluations) != 0 {
+		return 0, false
+	}
+	return NavigationExecutionBudget(bound.input.Plan.Navigation), true
 }
 
 func runOnce(

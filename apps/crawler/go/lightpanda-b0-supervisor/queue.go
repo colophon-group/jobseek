@@ -32,7 +32,7 @@ const (
 	producerOwnerKey         = "lightpanda-b0:producer-owner"
 	legacyGuardKey           = "lightpanda-b0:legacy-guard"
 	producerOwnerV1          = "jobseek.lightpanda.producer-owner/v1"
-	expectedLuaSHA256        = "5cf344b6b20f5ca1650a876d85226d1ac82308cda911602e659735cbcee39d3b"
+	expectedLuaSHA256        = "fee66a72d3ee57f2480a8a5c657b4d3bee72eeb708b33613a5a80dbf702fa750"
 )
 
 var (
@@ -88,6 +88,8 @@ type queueTask struct {
 	Payload       string
 	PayloadSHA256 string
 	PayloadSHA1   string
+	// Local fresh-context ordinal; never part of the queue identity or payload.
+	RenderAttempt int
 }
 
 func decodeQueueTask(payload, expectedDigest string, route routeIdentity) (queueTask, error) {

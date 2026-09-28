@@ -419,6 +419,45 @@ def test_client_builds_only_the_closed_b0_runtime_input() -> None:
     assert len(request.plan.origin_operations) == 1
 
 
+def test_dom_client_declares_conditional_transport_retry_without_actions() -> None:
+    assignment = resolve_render_assignment(
+        "dom",
+        {
+            "browser_backend": "lightpanda",
+            "routing_revision": "dom-test-1",
+            "render": True,
+            "timeout": 120_000,
+            "wait": "networkidle",
+            "wait_fallback": "domcontentloaded",
+            "steps": [{"tag": "h1", "field": "title"}],
+        },
+    )
+    assert assignment is not None
+    original = _task()
+    task = LightpandaB0Task.create(
+        task_id=original.task_id,
+        board_id=original.board_id,
+        source_url=original.source_url,
+        policy_key=original.policy_key,
+        domain=original.domain,
+        route=original.route,
+        config_revision=original.config_revision,
+        initial_ready_at_ms=original.initial_ready_at_ms,
+        assignment=assignment,
+    )
+    request = _execution_input(task)
+    primary, retry = request.plan.origin_operations
+    assert request.plan.navigation.transport_retries == 1
+    assert retry.parent_origin_request_id == primary.origin_request_id
+    assert retry.request_fingerprint == primary.request_fingerprint
+    assert retry.role == "transport_retry"
+    assert retry.operation_sequence == 2
+    assert request.plan.actions == []
+    assert request.plan.session.ListFields() == []
+    assert client_module._navigation_budget_ms(task) == 250_500
+    assert client_module._navigation_budget_ms(original) == 1_250
+
+
 @pytest.mark.parametrize(
     "payload",
     [
