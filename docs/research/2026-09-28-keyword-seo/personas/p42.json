@@ -1,0 +1,271 @@
+{
+  "id": "p42",
+  "name": "Eindhoven hardware engineer seeking a reduced workweek",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Hardware/semiconductor engineer",
+    "seniority": "Experienced",
+    "geography": "Netherlands; Eindhoven area or feasible EU remote role",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed; selective",
+    "constraints": [
+      "Four days and approximately 32 hours, not compressed 40 hours",
+      "Product company preferred",
+      "English-speaking work",
+      "Hardware lab presence may limit remote options"
+    ],
+    "company_awareness": "Knows semiconductor and hardware firms; wants to follow suitable roles"
+  },
+  "overlap_tags": [
+    "hardware",
+    "semiconductor",
+    "eindhoven",
+    "english",
+    "32-hours",
+    "employed",
+    "product-company"
+  ],
+  "trigger": "The engineer decides that the next move must reduce weekly hours, then finds four-day claims and 32–40-hour ranges that need closer interpretation.",
+  "searches_run": [
+    {
+      "query": "hardware engineer semiconductor Eindhoven jobs 32 hours English",
+      "observation": "Results included engineering recruiters, campus postings and adjacent electrical work with weekly-hour ranges. English queries also returned Dutch pages; neither language sufficiency nor direct product-company employment was established by the title.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "electronics engineer Netherlands four day week 32 hours not compressed",
+      "observation": "A specialist four-day directory and broad discussions appeared alongside engineering vacancies. The inspected campus advert states 32–40 hours, but does not specify four working days or remote eligibility.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.hightechcampus.com/jobs/test-service-engineer/",
+      "title": "Test- & Service engineer — High Tech Campus Eindhoven / VEDS",
+      "supports": "Direct campus-posting inspection states 32–40 hours and hardware test/service duties at a design partner. It does not establish a four-day pattern, an exclusively owned-product business or remote work."
+    },
+    {
+      "id": "s2",
+      "url": "https://evokestaffing.com/nl/vacature/firmware-engineer-eindhoven/",
+      "title": "Firmware Engineer Eindhoven — Evoke",
+      "supports": "Retrieved staffing page labels semiconductor work at 32–40 hours. Staffing employment is distinct from direct employment by the named product ecosystem."
+    },
+    {
+      "id": "s3",
+      "url": "https://4dayweek.io/companies-in-netherlands",
+      "title": "Four-day-week companies in the Netherlands — 4dayweek.io",
+      "supports": "Retrieved specialist directory distinguishes 32-hour policies and 80% variants and includes hardware design-house QBayLogic. Company policies and vacancies were not independently verified."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "hardware engineer 32 hours Eindhoven",
+    "promise": "Find hardware roles with published weekly-hour options and compare days, workplace requirements and employer type before following companies.",
+    "cta": "Select covered hardware employers and save role searches; inspect 32-hour wording in descriptions.",
+    "proof_needed": [
+      "Verify semiconductor/product-company coverage.",
+      "Separate reduced weekly hours, compressed hours and unspecified four-day language.",
+      "A 32–40 range is an option to clarify, not a guaranteed 32-hour offer.",
+      "Do not equate part-time with reduced pay or four-day with full pay; report stated terms only.",
+      "Separate remote design work from physical lab/testing duties and country restrictions.",
+      "Create a new indexable guide; filtered results remain noindex."
+    ]
+  },
+  "conversion_objections": [
+    "Is four days really 32 hours?",
+    "Does a 32–40 range apply to this particular team?",
+    "Am I joining the product company or a staffing firm?",
+    "How often must I be in the lab?",
+    "Does an English posting mean English is sufficient?",
+    "Can I follow known firms even when no reduced-hours role is open?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "all semiconductor jobs remote Europe",
+      "reason": "Hardware work may require physical facilities; no universal remote promise."
+    },
+    {
+      "query": "four day full salary hardware guaranteed",
+      "reason": "Hours, pay and acceptance vary by role."
+    },
+    {
+      "query": "right to 32 hours Netherlands",
+      "reason": "Legal rights are outside this product-research scope."
+    }
+  ],
+  "message_to_founder": "Simulation: I am happy to come to the lab, but I want fewer weekly hours, not forty squeezed into four days. Let me follow the companies I know and show the exact hours and on-site expectations when a relevant opening appears.",
+  "confidence_and_limits": "Synthetic English-speaking engineer. Two queries and one campus-page inspection; no working-time law, language eligibility or company-policy verification. Exact hardware specialism, desired pay arrangement and permissible commute are unspecified.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "hardware engineer jobs Eindhoven",
+      "language": "en",
+      "english_gloss": "hardware engineer jobs Eindhoven",
+      "intent": "commercial",
+      "need": "Survey local openings.",
+      "cluster": "eindhoven-hardware",
+      "product_fit": "high",
+      "fit_reason": "Role and place filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "semiconductor jobs Netherlands",
+      "language": "en",
+      "english_gloss": "semiconductor jobs Netherlands",
+      "intent": "commercial",
+      "need": "Explore product employers.",
+      "cluster": "dutch-semiconductor",
+      "product_fit": "high",
+      "fit_reason": "Company discovery is useful.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "electronics engineer part time",
+      "language": "en",
+      "english_gloss": "electronics engineer part time",
+      "intent": "commercial",
+      "need": "Find reduced workload.",
+      "cluster": "part-time-electronics",
+      "product_fit": "medium",
+      "fit_reason": "Employment type helps; hours need source detail.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "hardware engineer semiconductor Eindhoven jobs 32 hours English",
+      "language": "en",
+      "english_gloss": "hardware engineer semiconductor Eindhoven jobs 32 hours English",
+      "intent": "commercial",
+      "need": "Combine skill, hours and location.",
+      "cluster": "32-hour-hardware",
+      "product_fit": "medium",
+      "fit_reason": "Multiple constraints depend on source completeness.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "electronics engineer Netherlands four day week 32 hours not compressed",
+      "language": "en",
+      "english_gloss": "electronics engineer Netherlands four day week 32 hours not compressed",
+      "intent": "commercial",
+      "need": "Distinguish reduced from compressed hours.",
+      "cluster": "reduced-engineering-hours",
+      "product_fit": "medium",
+      "fit_reason": "Pro text checks can inspect explicit wording.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "ASML hardware engineer part time careers",
+      "language": "en",
+      "english_gloss": "ASML hardware engineer part time careers",
+      "intent": "navigational",
+      "need": "Check a plausible known firm.",
+      "cluster": "named-hardware-employer",
+      "product_fit": "high",
+      "fit_reason": "Monitoring fits if covered; part-time policy not assumed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "32 40 hours job can I work four days",
+      "language": "en",
+      "english_gloss": "32 40 hours job can I work four days",
+      "intent": "informational",
+      "need": "Understand an advertised range.",
+      "cluster": "hours-range-meaning",
+      "product_fit": "medium",
+      "fit_reason": "Employer confirmation is required for actual arrangement.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "hardware design engineer remote Europe lab visits",
+      "language": "en",
+      "english_gloss": "hardware design engineer remote Europe lab visits",
+      "intent": "commercial",
+      "need": "Find feasible remote design work.",
+      "cluster": "remote-hardware",
+      "product_fit": "medium",
+      "fit_reason": "Work mode needs lab/travel and country conditions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "4dayweek hardware engineer Netherlands",
+      "language": "en",
+      "english_gloss": "4dayweek hardware engineer Netherlands",
+      "intent": "navigational",
+      "need": "Try a specialist alternative.",
+      "cluster": "four-day-board",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation primarily serves another site.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "semiconductor jobs English Dutch required Eindhoven",
+      "language": "en",
+      "english_gloss": "semiconductor jobs English Dutch required Eindhoven",
+      "intent": "commercial",
+      "need": "Check working-language requirements.",
+      "cluster": "hardware-language",
+      "product_fit": "medium",
+      "fit_reason": "Posting language does not certify English sufficiency.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "alerts hardware engineer jobs selected companies Netherlands",
+      "language": "en",
+      "english_gloss": "alerts hardware engineer jobs selected companies Netherlands",
+      "intent": "commercial",
+      "need": "Follow the employer shortlist.",
+      "cluster": "hardware-company-alerts",
+      "product_fit": "high",
+      "fit_reason": "Free saved searches directly fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions recruiter 32 hour contract lab days",
+      "language": "en",
+      "english_gloss": "questions recruiter 32 hour contract lab days",
+      "intent": "informational",
+      "need": "Clarify hours and attendance before switching.",
+      "cluster": "hardware-schedule-questions",
+      "product_fit": "low",
+      "fit_reason": "Search can identify missing details, not negotiate them.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

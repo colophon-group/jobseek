@@ -1,0 +1,275 @@
+{
+  "id": "p12",
+  "name": "Hamburg nurse seeking confirmed daytime work",
+  "context": {
+    "occupation": "Registered nurse",
+    "seniority": "Experienced",
+    "geography": "Hamburg",
+    "languages": [
+      "de"
+    ],
+    "employment_state": "Employed; seeking a more predictable alternative",
+    "constraints": [
+      "Employed clinic or outpatient role",
+      "No night shifts",
+      "Actual rota evidence, not generic work-life balance",
+      "Wants a direct employment relationship"
+    ],
+    "company_awareness": "Knows UKE and Asklepios; open to smaller outpatient and day clinics"
+  },
+  "overlap_tags": [
+    "healthcare",
+    "experienced",
+    "Germany",
+    "German",
+    "shift-constraints",
+    "partly-known-employers"
+  ],
+  "trigger": "A new rota includes nights again, prompting a search for a clinic or outpatient position with explicitly compatible hours.",
+  "searches_run": [
+    {
+      "query": "Pflegefachkraft Hamburg Tagesklinik Stellenangebote",
+      "observation": "Retrieval returned direct Asklepios and alanta day-clinic vacancies alongside job boards. Direct inspection of alanta confirmed permanent part-time employment and general regular-hours wording, but no exact rota or explicit no-night statement.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "Pflegefachkraft Hamburg ohne Nachtdienst feste Arbeitszeiten ambulant",
+      "observation": "Results included no-night claims from placement/aggregation pages and an outpatient nursing listing categorized with shift/night/weekend work. Outpatient work alone therefore did not establish this constraint.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://jobs.alanta-group.de/Gesundheits-und-Krankenpfleger-Krankenschwester-Pflegefach-de-j2125.html",
+      "title": "Pflegefachkraft Tagesklinik und Institutsambulanz — alanta",
+      "supports": "Direct inspection shows Hamburg, 25–30 hours weekly, permanent contract and regular-hours wording; the inspected text does not specify exact start/end times or exclude nights explicitly."
+    },
+    {
+      "id": "s2",
+      "url": "https://karriere.asklepios.com/Pflegefachkraft-Altenpfleger-oder-Gesundheits-und-Krankenp-de-j26922.html",
+      "title": "Pflegefachkraft Geriatrische Tagesklinik — Asklepios",
+      "supports": "Retrieved employer result establishes a day-clinic nursing vacancy category in Hamburg, not verified shift terms."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.pflegero.de/job/pflegefachkraft-m-w-d-ambulante-pflege-hamburg-billbrook-ab-4-480-monat-keine-berstunden-tour-immer-realistisch-geplant/",
+      "title": "Ambulante Pflege Hamburg-Billbrook — Pflegero",
+      "supports": "Retrieved placement page advertises no nights and early/late shifts; claims were not independently verified."
+    },
+    {
+      "id": "s4",
+      "url": "https://www.arbeitsagentur.de/jobsuche/jobdetail/10001-1001891078-S",
+      "title": "Pflegefachkraft ambulanter Pflegedienst Hamburg-Altona — BA",
+      "supports": "Retrieved listing includes shift/night/weekend labeling despite an outpatient title."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "Pflege Jobs Hamburg ohne Nachtdienst",
+    "promise": "Help compare employer-stated hours for nursing roles and identify the rota questions still unanswered before applying.",
+    "cta": "Arbeitszeiten in passenden Ausschreibungen prüfen",
+    "proof_needed": [
+      "Verified Hamburg nursing employer coverage",
+      "Dated source passages for every claimed shift arrangement",
+      "Unknown values where hours are absent",
+      "Separate no-night work from no-weekend or fixed daytime work",
+      "Explain that text matching does not verify a rota",
+      "New indexable guide; existing company/search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Are these hospitals and smaller clinics actually covered?",
+    "Does no night shift still mean late shifts and weekends?",
+    "Is this the employing clinic or a staffing agency?",
+    "Will a generic regular-hours phrase be treated as proof?",
+    "Why pay if I still have to ask the employer for a rota?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "Pflege garantiert nie Nachtdienst Hamburg",
+      "reason": "Only the employer can substantiate actual rota arrangements."
+    },
+    {
+      "query": "Nachtdienst gesundheitliche Risiken Behandlung",
+      "reason": "Medical advice is outside this employment search and product scope."
+    },
+    {
+      "query": "Pflege Personaldienstplanung Software",
+      "reason": "Employer scheduling software is a different audience."
+    }
+  ],
+  "message_to_founder": "Simulation: Ich kenne schon einige Kliniken, aber deren Namen sagen mir nichts über den konkreten Dienstplan. Zeigt mir genau, was zur Arbeitszeit in der Anzeige steht, und lasst offen, was ich noch erfragen muss.",
+  "confidence_and_limits": "Synthetic persona. Two retrieval queries and one direct inspection; remaining searches are hypotheses. No medical or employment-law advice. No vacancy, rota, employer coverage or no-night guarantee is independently verified. Search results demonstrate wording differences, not their prevalence.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "Pflege Jobs Hamburg",
+      "language": "de",
+      "english_gloss": "nursing jobs Hamburg",
+      "intent": "transactional",
+      "need": "Find local employers.",
+      "cluster": "local nursing jobs",
+      "product_fit": "medium",
+      "fit_reason": "Occupation/location search fits if coverage exists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Pflegefachkraft Hamburg Tagesklinik Stellenangebote",
+      "language": "de",
+      "english_gloss": "nurse Hamburg day clinic vacancies",
+      "intent": "transactional",
+      "need": "See day-clinic positions.",
+      "cluster": "day clinic jobs",
+      "product_fit": "medium",
+      "fit_reason": "Facility type is relevant but not proof of hours.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Krankenpfleger Ambulanz Hamburg Stellen",
+      "language": "de",
+      "english_gloss": "nurse outpatient clinic Hamburg vacancies",
+      "intent": "transactional",
+      "need": "Explore outpatient alternatives.",
+      "cluster": "outpatient jobs",
+      "product_fit": "medium",
+      "fit_reason": "Titles can guide discovery but cannot guarantee no nights.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "Pflegefachkraft Hamburg ohne Nachtdienst feste Arbeitszeiten ambulant",
+      "language": "de",
+      "english_gloss": "nurse Hamburg no nights fixed hours outpatient",
+      "intent": "transactional",
+      "need": "Find explicit shift terms.",
+      "cluster": "no-night nursing",
+      "product_fit": "medium",
+      "fit_reason": "Description matching can surface claims, not verify them.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "Tagesklinik Pflege Arbeitszeiten Wochenende",
+      "language": "de",
+      "english_gloss": "day clinic nurse hours weekends",
+      "intent": "informational",
+      "need": "Check whether day clinic means weekends off.",
+      "cluster": "shift definitions",
+      "product_fit": "medium",
+      "fit_reason": "Useful guide if distinctions remain explicit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "UKE Pflege Ambulanz Stellenangebote",
+      "language": "de",
+      "english_gloss": "UKE nursing outpatient vacancies",
+      "intent": "navigational",
+      "need": "Inspect a familiar employer.",
+      "cluster": "known employer jobs",
+      "product_fit": "medium",
+      "fit_reason": "Monitoring might help after coverage verification; navigation favors the employer.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Asklepios Hamburg Pflege Tagesklinik",
+      "language": "de",
+      "english_gloss": "Asklepios Hamburg nursing day clinic",
+      "intent": "navigational",
+      "need": "Review known hospital opportunities.",
+      "cluster": "known employer jobs",
+      "product_fit": "medium",
+      "fit_reason": "Relevant company-first starting point if indexed coverage exists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Pflege Hamburg Festanstellung keine Zeitarbeit",
+      "language": "de",
+      "english_gloss": "nursing Hamburg permanent employment no agency work",
+      "intent": "transactional",
+      "need": "Identify the actual employer.",
+      "cluster": "direct employment",
+      "product_fit": "medium",
+      "fit_reason": "Source text may clarify employment relationship; no automatic verification.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Pflege Hamburg Montag Freitag Frühdienst",
+      "language": "de",
+      "english_gloss": "nursing Hamburg Monday Friday early shift",
+      "intent": "transactional",
+      "need": "Narrow to compatible working times.",
+      "cluster": "daytime weekdays",
+      "product_fit": "medium",
+      "fit_reason": "Exact schedule criteria need explicit posting evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "Vorstellungsgespräch Pflege Fragen Dienstplan",
+      "language": "de",
+      "english_gloss": "nursing interview questions rota",
+      "intent": "informational",
+      "need": "Ask for concrete schedule details.",
+      "cluster": "rota due diligence",
+      "product_fit": "medium",
+      "fit_reason": "A guide and interview notes fit; not a rota verification service.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Pflege Tagesklinik Hamburg Teilzeit 30 Stunden",
+      "language": "de",
+      "english_gloss": "nursing day clinic Hamburg part time 30 hours",
+      "intent": "transactional",
+      "need": "Compare a lower-hours option.",
+      "cluster": "part-time nursing",
+      "product_fit": "medium",
+      "fit_reason": "Hours can be evaluated where stated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Pflege Bewerbung Gespräche Notizen organisieren",
+      "language": "de",
+      "english_gloss": "nursing application interview notes organize",
+      "intent": "informational",
+      "need": "Record each clinic's answers about shifts.",
+      "cluster": "interview comparison",
+      "product_fit": "high",
+      "fit_reason": "Interview notes support remembering employer statements.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

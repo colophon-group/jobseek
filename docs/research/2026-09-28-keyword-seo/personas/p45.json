@@ -1,0 +1,268 @@
+{
+  "id": "p45",
+  "name": "South Africa frontend engineer checking remote country eligibility",
+  "context": {
+    "occupation": "Frontend engineer",
+    "seniority": "Midlevel",
+    "geography": "Resident in South Africa; seeks remote work from there",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Actively exploring a move with moderate urgency",
+    "constraints": [
+      "South Africa must be genuinely accepted for this role",
+      "EMEA, Europe and timezone wording alone insufficient",
+      "Relevant frontend scope",
+      "Employment versus contractor relationship must be visible"
+    ],
+    "company_awareness": "Some global remote employers known; no firm shortlist until country evidence is checked"
+  },
+  "overlap_tags": [
+    "software-engineering",
+    "frontend",
+    "remote",
+    "South-Africa",
+    "English",
+    "country-eligibility"
+  ],
+  "trigger": "An EMEA remote application later reveals country restrictions, wasting time on a role that cannot hire from South Africa.",
+  "searches_run": [
+    {
+      "query": "frontend engineer remote jobs South Africa",
+      "observation": "Retrieval returned South Africa-specific LinkedIn, Indeed and remote-board category pages. These location pages establish a retrieval pattern, not employer-confirmed eligibility for every result.",
+      "source_ids": [
+        "s1"
+      ]
+    },
+    {
+      "query": "frontend engineer EMEA remote South Africa eligible countries",
+      "observation": "Results included a Moniepoint snippet explicitly listing South Africa and an Insense snippet using EMEA timezone wording. Direct opens found the Moniepoint job redirected to its board with an error parameter and Insense marked inactive, so neither established a current usable opening.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://za.linkedin.com/jobs/front-end-developer-remote-jobs",
+      "title": "Front End Developer Remote Jobs in South Africa — LinkedIn",
+      "supports": "Retrieved regional category contains remote frontend listings; country labels and counts are not independently verified eligibility."
+    },
+    {
+      "id": "s2",
+      "url": "https://job-boards.eu.greenhouse.io/moniepoint/jobs/4906474101",
+      "title": "Senior Frontend Engineer / Moniepoint jobs board",
+      "supports": "Retrieved snippet listed South Africa among locations; direct opening redirected to the employer board with error=true, preventing vacancy-level confirmation."
+    },
+    {
+      "id": "s3",
+      "url": "https://insense.na.teamtailor.com/jobs/684104-frontend-developer",
+      "title": "Frontend Developer — Insense",
+      "supports": "Retrieved snippet described an EMEA-timezone contractor role; direct inspection states the position is no longer active. Historical snippet wording is not a current offer."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "EMEA remote developer jobs South Africa eligible",
+    "promise": "Explain how to check vacancy-level country wording, employment relationship and source status before applying from South Africa.",
+    "cta": "Inspect the source and shortlist compatible employers",
+    "proof_needed": [
+      "Explicit country evidence for any asserted fit",
+      "Distinguish country list, region, timezone and company-wide remote policy",
+      "Unknown eligibility remains unknown",
+      "South Africa employer coverage verified",
+      "No employee/contractor equivalence or legal advice",
+      "Active source verification for examples",
+      "New indexable guide; search/company pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Does South Africa appear in the employer's own wording?",
+    "Is EMEA being treated as a timezone rather than a hiring region?",
+    "Is the job still open at source?",
+    "Is this salaried employment or contracting?",
+    "Can I exclude Europe-only roles without removing genuine EMEA opportunities?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "all EMEA remote jobs open to South Africans",
+      "reason": "Regional labels do not guarantee country acceptance."
+    },
+    {
+      "query": "remote Europe jobs South Africa guaranteed eligibility",
+      "reason": "Europe and South Africa are not interchangeable hiring geographies."
+    },
+    {
+      "query": "South Africa remote contractor tax setup",
+      "reason": "Tax and employment setup are outside this product research."
+    }
+  ],
+  "message_to_founder": "Simulation: My timezone overlaps with European teams, but that has not always meant they can hire me. Show the actual country wording and whether the source is still active before asking me to apply.",
+  "confidence_and_limits": "Synthetic persona, exactly two separate queries and two direct inspections. Other rows are hypotheses. No visa, tax or employment-law advice. Source failures establish only those pages' observed state. No current eligible vacancy, aggregate coverage, market demand or rankings verified.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "frontend engineer remote jobs South Africa",
+      "language": "en",
+      "english_gloss": "frontend engineer remote jobs South Africa",
+      "intent": "transactional",
+      "need": "Find geographically relevant roles.",
+      "cluster": "South Africa frontend",
+      "product_fit": "medium",
+      "fit_reason": "Role/work-mode/location filters help but labels need checking.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "React developer jobs South Africa",
+      "language": "en",
+      "english_gloss": "React developer jobs South Africa",
+      "intent": "transactional",
+      "need": "Search by core technology.",
+      "cluster": "React South Africa",
+      "product_fit": "high",
+      "fit_reason": "Technology and location fit if coverage exists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "remote software engineer jobs EMEA",
+      "language": "en",
+      "english_gloss": "remote software engineer jobs EMEA",
+      "intent": "transactional",
+      "need": "Broaden the pool.",
+      "cluster": "EMEA engineering",
+      "product_fit": "medium",
+      "fit_reason": "Regional discovery is useful, eligibility remains unknown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "frontend engineer EMEA remote South Africa eligible countries",
+      "language": "en",
+      "english_gloss": "frontend engineer EMEA remote South Africa eligible countries",
+      "intent": "transactional",
+      "need": "Find explicit country fit.",
+      "cluster": "remote country evidence",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria can surface country lists, not certify eligibility.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "remote frontend jobs South Africa employee not contractor",
+      "language": "en",
+      "english_gloss": "remote frontend jobs South Africa employee not contractor",
+      "intent": "transactional",
+      "need": "Clarify working relationship.",
+      "cluster": "remote contract type",
+      "product_fit": "medium",
+      "fit_reason": "Employment-type and description evidence help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "does remote EMEA include South Africa job application",
+      "language": "en",
+      "english_gloss": "does remote EMEA include South Africa job application",
+      "intent": "informational",
+      "need": "Understand ambiguity before applying.",
+      "cluster": "regional label ambiguity",
+      "product_fit": "high",
+      "fit_reason": "An evidence-focused guide directly addresses this.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "React TypeScript remote GMT plus 2 jobs",
+      "language": "en",
+      "english_gloss": "React TypeScript remote GMT plus 2 jobs",
+      "intent": "transactional",
+      "need": "Find compatible collaboration hours.",
+      "cluster": "timezone compatibility",
+      "product_fit": "medium",
+      "fit_reason": "Hours compatibility is distinct from hireability.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "remote developer Europe only South Africa excluded",
+      "language": "en",
+      "english_gloss": "remote developer Europe only South Africa excluded",
+      "intent": "informational",
+      "need": "Recognize country restrictions.",
+      "cluster": "remote exclusions",
+      "product_fit": "medium",
+      "fit_reason": "Source clauses help; missing clauses are not permission.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "companies hiring frontend developers in South Africa remotely",
+      "language": "en",
+      "english_gloss": "companies hiring frontend developers in South Africa remotely",
+      "intent": "informational",
+      "need": "Build a country-compatible shortlist.",
+      "cluster": "employer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company selection fits after vacancy-specific evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "mid level frontend remote South Africa three years",
+      "language": "en",
+      "english_gloss": "mid level frontend remote South Africa three years",
+      "intent": "transactional",
+      "need": "Reduce seniority mismatch.",
+      "cluster": "frontend experience",
+      "product_fit": "high",
+      "fit_reason": "Experience and seniority filters fit stated requirements.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions recruiter remote job hiring from South Africa",
+      "language": "en",
+      "english_gloss": "questions recruiter remote job hiring from South Africa",
+      "intent": "informational",
+      "need": "Confirm country and contract details.",
+      "cluster": "eligibility confirmation",
+      "product_fit": "medium",
+      "fit_reason": "Guide and interview notes support questions, not legal decisions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "new remote React jobs South Africa email",
+      "language": "en",
+      "english_gloss": "new remote React jobs South Africa email",
+      "intent": "transactional",
+      "need": "Follow verified relevant employers.",
+      "cluster": "country-aware alerts",
+      "product_fit": "medium",
+      "fit_reason": "Alerts help discovery but cannot promise every match is eligible.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

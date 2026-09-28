@@ -1,0 +1,315 @@
+{
+  "id": "p01",
+  "name": "Selective London Python engineer",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Python backend engineer",
+    "seniority": "Senior individual contributor",
+    "geography": "London; considering European product companies that employ remote workers based in the UK",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed, quietly and selectively looking",
+    "constraints": [
+      "Little time for repeated searching",
+      "Already has a shortlist of 15 employers",
+      "Remote work from the UK must be explicitly supported",
+      "Wants published salary ranges",
+      "No on-call duties",
+      "English-speaking work environment"
+    ],
+    "company_awareness": "High employer awareness; knows 15 target employers but has not discovered Job Seek"
+  },
+  "overlap_tags": [
+    "employed",
+    "senior-engineer",
+    "python",
+    "uk-remote",
+    "europe",
+    "english",
+    "company-shortlist",
+    "salary-transparency",
+    "no-on-call",
+    "low-urgency",
+    "time-poor"
+  ],
+  "trigger": "A team reorganisation makes another year at the current employer less appealing. A bookmarked role at a preferred employer closes before the engineer notices it, prompting a search for a low-maintenance way to follow the shortlist.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "remote python jobs UK",
+      "language": "en",
+      "english_gloss": "remote python jobs UK",
+      "intent": "commercial",
+      "need": "Find plausible opportunities without leaving London.",
+      "cluster": "remote-python-jobs",
+      "product_fit": "medium",
+      "fit_reason": "Relevant role and location filters exist, but broad discovery does not yet use the existing employer shortlist.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "senior backend engineer jobs Europe",
+      "language": "en",
+      "english_gloss": "senior backend engineer jobs Europe",
+      "intent": "commercial",
+      "need": "Survey whether an attractive move is available.",
+      "cluster": "senior-backend-jobs",
+      "product_fit": "medium",
+      "fit_reason": "Useful discovery filters; Europe alone does not establish UK employment eligibility.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "software engineering jobs with salary listed",
+      "language": "en",
+      "english_gloss": "software engineering jobs with salary listed",
+      "intent": "commercial",
+      "need": "Avoid investing in roles with unknown compensation.",
+      "cluster": "salary-transparent-jobs",
+      "product_fit": "medium",
+      "fit_reason": "Salary filters help where postings disclose compensation; completeness needs evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "senior python backend engineer remote UK salary Europe product companies",
+      "language": "en",
+      "english_gloss": "senior python backend engineer remote UK salary Europe product companies",
+      "intent": "commercial",
+      "need": "Combine core role, location and pay needs.",
+      "cluster": "remote-python-jobs",
+      "product_fit": "medium",
+      "fit_reason": "Several filters fit, but company type and source completeness remain checks.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "backend engineer jobs without on call",
+      "language": "en",
+      "english_gloss": "backend engineer jobs without on call",
+      "intent": "commercial",
+      "need": "Avoid roles with an operational rota.",
+      "cluster": "engineering-work-conditions",
+      "product_fit": "medium",
+      "fit_reason": "Pro description checks can assess explicit statements; missing policy cannot count as absence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "European tech companies hiring remotely in the UK",
+      "language": "en",
+      "english_gloss": "European tech companies hiring remotely in the UK",
+      "intent": "informational",
+      "need": "Check which companies can accommodate the UK location.",
+      "cluster": "uk-remote-eligibility",
+      "product_fit": "medium",
+      "fit_reason": "Company discovery helps, but role-specific source evidence is needed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "English speaking backend jobs Europe remote",
+      "language": "en",
+      "english_gloss": "English speaking backend jobs Europe remote",
+      "intent": "commercial",
+      "need": "Avoid openings requiring another working language.",
+      "cluster": "english-speaking-engineering",
+      "product_fit": "medium",
+      "fit_reason": "Posting-language filtering is useful but does not verify workplace language.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job alerts from specific companies",
+      "language": "en",
+      "english_gloss": "job alerts from specific companies",
+      "intent": "commercial",
+      "need": "Replace repeated visits to the existing shortlist.",
+      "cluster": "company-job-alerts",
+      "product_fit": "high",
+      "fit_reason": "Company selection plus saved searches and email alerts directly address the workflow.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "get job alerts from specific companies careers pages keyword filters no on call",
+      "language": "en",
+      "english_gloss": "get job alerts from specific companies careers pages keyword filters no on call",
+      "intent": "commercial",
+      "need": "Find monitoring that also handles a deal-breaker in description text.",
+      "cluster": "career-page-monitoring",
+      "product_fit": "high",
+      "fit_reason": "Core monitoring fits and Pro checks add description criteria, with unknowns preserved.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s4"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "LinkedIn job alerts only companies I choose",
+      "language": "en",
+      "english_gloss": "LinkedIn job alerts only companies I choose",
+      "intent": "informational",
+      "need": "Try an already familiar platform before adding another account.",
+      "cluster": "company-job-alerts",
+      "product_fit": "high",
+      "fit_reason": "A useful alternative-oriented entry point, provided comparisons are tested and accurate.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "JobBeacon alternative salary filters",
+      "language": "en",
+      "english_gloss": "JobBeacon alternative salary filters",
+      "intent": "commercial",
+      "need": "Compare a retrieved monitoring tool with a search that includes pay.",
+      "cluster": "career-page-monitor-comparison",
+      "product_fit": "high",
+      "fit_reason": "Job Seek can demonstrate salary search and additional description criteria without making unsupported competitor claims.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "how to tell if remote Europe jobs accept UK applicants",
+      "language": "en",
+      "english_gloss": "how to tell if remote Europe jobs accept UK applicants",
+      "intent": "informational",
+      "need": "Resolve ambiguous remote labels before applying.",
+      "cluster": "uk-remote-eligibility",
+      "product_fit": "medium",
+      "fit_reason": "A source-reading guide could lead to the product, but employer confirmation may still be necessary.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Job Seek company coverage",
+      "language": "en",
+      "english_gloss": "Job Seek company coverage",
+      "intent": "navigational",
+      "need": "Verify that the existing shortlist can be followed.",
+      "cluster": "jobseek-coverage",
+      "product_fit": "high",
+      "fit_reason": "Coverage is the decisive activation test; missing-company requests are available.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Job Seek free job alerts multiple companies",
+      "language": "en",
+      "english_gloss": "Job Seek free job alerts multiple companies",
+      "intent": "transactional",
+      "need": "Set up a small number of useful alerts.",
+      "cluster": "jobseek-alert-setup",
+      "product_fit": "high",
+      "fit_reason": "Free search and alerts fit; explain grouping and the ten-watchlist limit clearly.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "searches_run": [
+    {
+      "query": "senior python backend engineer remote UK salary Europe product companies",
+      "observation": "Retrieval returned recruiter listings, job aggregators and direct employer/ATS pages. Several snippets displayed salary ranges, but remote wording ranged from UK to Europe/EMEA. The opened KoreLabs employer page includes a salary band and UK/EU work-rights wording; its text does not specify an on-call policy. This is a mixed retrieval sample, not a ranking study.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "query": "get job alerts from specific companies careers pages keyword filters no on call",
+      "observation": "Retrieval surfaced JobBeacon, forum discussions and general alert advice. The opened JobBeacon page markets employer-career-page monitoring with keyword/location filtering and email alerts. Its described feature set does not establish a filter for confirmed absence of on-call duties.",
+      "source_ids": [
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.korelabs.cloud/careers/senior-backend-engineer",
+      "title": "Senior Backend Engineer — KoreLabs Cloud",
+      "supports": "Directly opened employer page describes remote Europe, Python among acceptable languages, a €85,000–€115,000 base band and EU/UK work-rights requirements. No on-call policy appears in the retrieved page text; absence does not prove no on-call."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.interactconsulting.co.uk/view-job-details-senior-python-backend-engineer-fully-remote-uk-v6046.aspx",
+      "title": "Senior Python Backend Engineer — Fully Remote, UK | interAct Consulting",
+      "supports": "Search result snippet presents a recruiter listing with explicit UK-based remote wording and a salary range. Not independently opened or checked for availability."
+    },
+    {
+      "id": "s3",
+      "url": "https://job-boards.greenhouse.io/grafanalabs/jobs/6126889004?from_theconsensus=1",
+      "title": "Senior Backend Engineer - Databases Pyroscope | UK | Remote at Grafana Labs",
+      "supports": "Search result snippet presents a direct ATS page with UK remote wording and a country-specific compensation range. It does not establish a Python-primary role or suitability for this persona."
+    },
+    {
+      "id": "s4",
+      "url": "https://jobbeacon.app/",
+      "title": "JobBeacon - Career Page Monitor & Job Posting Alerts",
+      "supports": "Directly opened vendor page advertises tracking company career pages, keyword/location filters and email notifications, plus a comparison with manual checking and LinkedIn alerts. These are vendor claims, not independently tested capabilities."
+    }
+  ],
+  "best_entry_page": {
+    "type": "product landing",
+    "primary_query": "job alerts from specific companies",
+    "promise": "Follow selected employers and receive email alerts for roles matching saved search filters; check description text for additional criteria while keeping missing details visible as unknown.",
+    "cta": "Check whether your target employers are covered, then save a filtered search.",
+    "proof_needed": [
+      "An indexable acquisition page must be created; current search and company pages are noindex.",
+      "Show actual coverage for the visitor’s 15 employers and the missing-company request route.",
+      "Demonstrate a multi-company saved search so 15 employers are not confused with the free limit of 10 watchlists.",
+      "Show a real alert and source posting, with timestamp semantics accurately explained.",
+      "Demonstrate distinct handling of explicit no-on-call, explicit on-call and unknown policy.",
+      "Show UK eligibility evidence separately from generic remote-Europe wording.",
+      "Explain that description checks are Pro at $10/month after a seven-day trial while base alerts and search are free."
+    ]
+  },
+  "conversion_objections": [
+    "Are all 15 companies covered, and what happens when one is missing?",
+    "Does remote Europe really include UK-based employees for this role?",
+    "Will missing salary or on-call information silently pass my criteria?",
+    "Can I group employers in one alert rather than setting up 15 separate searches?",
+    "Does description matching save enough time to justify Pro when basic company alerts are free?",
+    "Will broad titles such as software engineer be missed by a Python/backend-only search?",
+    "Will emails create another inbox chore rather than reduce checking?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "guaranteed remote UK jobs no on call",
+      "reason": "Eligibility and on-call policy require source evidence; monitoring cannot guarantee either."
+    },
+    {
+      "query": "apply to 100 python jobs automatically",
+      "reason": "This persona values selectivity and the product does not demonstrate auto-apply."
+    },
+    {
+      "query": "python salary calculator UK tax",
+      "reason": "Compensation calculations are outside the demonstrated product and the immediate alerting need."
+    },
+    {
+      "query": "best companies with no on call engineering",
+      "reason": "A definitive employer-wide list would overgeneralise team-specific policies without verified evidence; only an evidence-qualified guide would be credible."
+    }
+  ],
+  "message_to_founder": "Simulation: I already know where I would consider moving, so help me stop checking fifteen careers pages. I would try your free alerts if coverage is clear, and consider paying for description checks if you show me what is confirmed and what I still need to ask about UK hiring, pay and on-call.",
+  "confidence_and_limits": "Synthetic scenario, not an interview or measured customer behaviour. Only two representative queries were browsed; all other searches are hypotheses. Retrieval confirms examples of employer monitoring positioning and posting-level salary/location detail, not query volume, ranking difficulty, conversion, coverage, listing freshness or employer legitimacy. The main opportunity is reducing repeated shortlist checking; the hardest constraint is treating silence about on-call or UK eligibility as unknown."
+}

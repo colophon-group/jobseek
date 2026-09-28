@@ -1,0 +1,289 @@
+{
+  "id": "p50",
+  "name": "Ticino pharma quality and regulatory specialist",
+  "context": {
+    "occupation": "Pharmaceutical quality assurance / regulatory affairs specialist",
+    "seniority": "Experienced",
+    "geography": "Lives in Ticino; selectively considers Switzerland and northern Italy",
+    "languages": [
+      "it",
+      "en"
+    ],
+    "employment_state": "Employed, selective rather than urgent search",
+    "constraints": [
+      "80–100% workload",
+      "Limited travel",
+      "Pharmaceutical quality/regulatory responsibilities",
+      "Exclude laboratory research and production-operator roles",
+      "Italian and English search; working-language requirements checked separately"
+    ],
+    "company_awareness": "Selective employer list across the region; open to a few additional relevant companies"
+  },
+  "overlap_tags": [
+    "pharma",
+    "quality-regulatory",
+    "Ticino",
+    "Switzerland",
+    "northern-Italy",
+    "Italian-English",
+    "selective-search",
+    "limited-travel"
+  ],
+  "trigger": "Checks a known employer's vacancy but finds broad pharma searches mixing laboratory, production, cosmetics and regulatory roles without clear workload or travel requirements.",
+  "searches_run": [
+    {
+      "query": "quality assurance regulatory affairs farmaceutico Ticino lavoro",
+      "observation": "Retrieval included Lugano pharma regulatory work, a Balerna cosmetics QA/regulatory role and an Italian locality named Santo Stefano Ticino. Direct inspections confirmed materially different sectors and duties despite overlapping titles.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "query": "quality assurance regulatory affairs Ticino 80 100 limited travel",
+      "observation": "Results mixed older Lugano listings, Switzerland-wide aggregations, medtech and non-pharma jobs. No inspected source established all of pharma scope, 80–100% flexibility and limited travel together. An inspected pharma role states full time; the cosmetics role states unspecified part-time and supplier audits.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.orienta.ch/it/orienta-job/offerta-di-lavoro/regulatory-affairs-specialist/162192.html?cHash=82ae544a016674b6489e82b2e0c89120",
+      "title": "Regulatory Affairs Specialist — Orienta Lugano",
+      "supports": "Direct agency-source inspection states pharma regulatory dossiers, permanent full-time Monday–Friday work, English required and German optional. Exact employer, 80% availability and travel frequency are not stated."
+    },
+    {
+      "id": "s2",
+      "url": "https://svlaboratoires.ch/careers/",
+      "title": "Regulatory Affairs & Quality Assurance Specialist — SV Laboratoires",
+      "supports": "Direct employer page concerns cosmetics in Balerna, Italian/English fluency, unspecified part-time work and supplier/lab audits. It also contains conflicting no-open-positions text, leaving availability unresolved; not a confirmed pharma match."
+    },
+    {
+      "id": "s3",
+      "url": "https://it.indeed.com/q-quality-assurance-farmaceutico-l-santo-stefano-ticino%2C-lombardia-offerte-lavoro.html?l=santo+stefano+ticino%2C+lombardia&q=quality+assurance+farmaceutico",
+      "title": "Quality Assurance Farmaceutico Santo Stefano Ticino — Indeed",
+      "supports": "Retrieved locality is in Lombardy, not Swiss Ticino; relevant to explicit geography selection rather than automatic rejection of northern Italy."
+    },
+    {
+      "id": "s4",
+      "url": "https://frontaliereticino.ch/en/find-jobs-ticino/search-regulatory-affairs-specialist/",
+      "title": "Regulatory Affairs Specialist search — Frontaliere Ticino",
+      "supports": "Retrieved page mixes Swiss locations and unrelated quality/regulatory contexts. Its legal, tax, refresh and eligibility claims were not adopted or verified."
+    }
+  ],
+  "best_entry_page": {
+    "type": "curated employer guide",
+    "primary_query": "quality assurance regulatory affairs farmaceutico Ticino",
+    "promise": "Map covered regional pharmaceutical employers and distinguish QA/regulatory roles from laboratory, production and adjacent-sector jobs using source responsibilities.",
+    "cta": "Verificare gli employer e confrontare i requisiti",
+    "proof_needed": [
+      "Verified pharmaceutical employer and site coverage",
+      "Clear Swiss Ticino versus northern-Italy geography",
+      "QA, regulatory, QC lab and production duties distinguished",
+      "Workload percentage quoted only where explicit",
+      "Travel frequency unknown unless stated; audits do not quantify travel",
+      "Resolve conflicting source availability before showing live roles",
+      "New indexable guide; company/search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Are these pharma roles or cosmetics, medical devices and generic quality jobs?",
+    "Does 80–100% mean 80% is available for this exact position?",
+    "How often would supplier audits require travel?",
+    "Can I follow my own selected employers?",
+    "Does the Italian page still require another working language?",
+    "Is the location the plant, headquarters or a similarly named Italian town?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "lavoro laboratorio chimico Ticino",
+      "reason": "Different function from the targeted QA/regulatory work."
+    },
+    {
+      "query": "regulatory affairs senza trasferte garantito",
+      "reason": "Absence of travel wording cannot establish no travel."
+    },
+    {
+      "query": "permesso frontaliere fiscalità Svizzera Italia",
+      "reason": "Cross-border legal/tax advice is outside the product and this assignment."
+    },
+    {
+      "query": "QA software tester Ticino",
+      "reason": "QA abbreviation describes a different occupation."
+    }
+  ],
+  "message_to_founder": "Simulation: Conosco già alcune aziende e posso aspettare il ruolo giusto. Aiutatemi a distinguere qualità e regolatorio farmaceutico dalle altre funzioni, indicando chiaramente percentuale d'impiego e trasferte quando sono davvero specificate.",
+  "confidence_and_limits": "Synthetic persona, exactly two searches and two direct inspections. Other rows are hypotheses. No residence/citizenship/work-permit inference, regulatory advice or tax guidance. Current vacancy availability, workload flexibility and travel remain partly unknown. Italian interface/posting language is not proof of workplace-language eligibility. Selective employer monitoring fits after coverage validation.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "quality assurance regulatory affairs farmaceutico Ticino lavoro",
+      "language": "it",
+      "english_gloss": "pharmaceutical quality assurance regulatory affairs jobs Ticino",
+      "intent": "transactional",
+      "need": "Find relevant regional functions.",
+      "cluster": "Ticino pharma QA RA",
+      "product_fit": "high",
+      "fit_reason": "Role/location discovery fits with sector verification.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "offerte lavoro affari regolatori Lugano",
+      "language": "it",
+      "english_gloss": "regulatory affairs jobs Lugano",
+      "intent": "transactional",
+      "need": "Use the Italian function name.",
+      "cluster": "regulatory locality",
+      "product_fit": "high",
+      "fit_reason": "Role and locality filters help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "pharma quality assurance jobs Switzerland",
+      "language": "en",
+      "english_gloss": "pharma quality assurance jobs Switzerland",
+      "intent": "transactional",
+      "need": "Include English advertisements.",
+      "cluster": "Swiss pharma quality",
+      "product_fit": "high",
+      "fit_reason": "Posting-language and role search fit; working languages need checking.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "quality assurance regulatory affairs Ticino 80 100 limited travel",
+      "language": "en",
+      "english_gloss": "quality assurance regulatory affairs Ticino 80 100 limited travel",
+      "intent": "transactional",
+      "need": "Intersect workload and travel criteria.",
+      "cluster": "workload travel fit",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria help only when details exist.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s4"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "regulatory affairs farmaceutico Lombardia offerte",
+      "language": "it",
+      "english_gloss": "pharmaceutical regulatory affairs Lombardy jobs",
+      "intent": "transactional",
+      "need": "Explore northern Italy deliberately.",
+      "cluster": "northern Italy regulatory",
+      "product_fit": "high",
+      "fit_reason": "Separate geographic searches avoid Ticino ambiguity.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "quality assurance pharma 80% Ticino",
+      "language": "it",
+      "english_gloss": "pharma quality assurance 80 percent Ticino",
+      "intent": "transactional",
+      "need": "Check a reduced-workload option.",
+      "cluster": "workload percentage",
+      "product_fit": "medium",
+      "fit_reason": "Part-time labels do not prove a specific percentage.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "quality assurance quality control laboratorio differenza offerte lavoro",
+      "language": "it",
+      "english_gloss": "quality assurance versus laboratory quality control job postings",
+      "intent": "informational",
+      "need": "Avoid laboratory-role mismatch.",
+      "cluster": "quality function ambiguity",
+      "product_fit": "high",
+      "fit_reason": "Responsibilities can clarify function; no regulatory guidance needed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "regulatory affairs specialist trasferte limitate",
+      "language": "it",
+      "english_gloss": "regulatory affairs specialist limited travel",
+      "intent": "transactional",
+      "need": "Find explicit travel wording.",
+      "cluster": "travel constraint",
+      "product_fit": "medium",
+      "fit_reason": "Missing frequency stays unknown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "pharma quality assurance supplier audits travel percentage",
+      "language": "en",
+      "english_gloss": "pharma quality assurance supplier audits travel percentage",
+      "intent": "informational",
+      "need": "Check travel implicit in audit duties.",
+      "cluster": "audit travel detail",
+      "product_fit": "medium",
+      "fit_reason": "Source descriptions and recruiter questions help; audits alone do not quantify travel.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Sintetica Mendrisio regulatory affairs careers",
+      "language": "en",
+      "english_gloss": "Sintetica Mendrisio regulatory affairs careers",
+      "intent": "navigational",
+      "need": "Check a plausible target employer.",
+      "cluster": "known employer roles",
+      "product_fit": "medium",
+      "fit_reason": "Employer monitoring fits if coverage and live roles are confirmed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "domande colloquio quality assurance orario trasferte",
+      "language": "it",
+      "english_gloss": "quality assurance interview questions hours travel",
+      "intent": "informational",
+      "need": "Confirm workload and visit expectations.",
+      "cluster": "interview due diligence",
+      "product_fit": "medium",
+      "fit_reason": "Notes support indexed-role comparisons.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "nuove posizioni regulatory affairs aziende farmaceutiche Ticino email",
+      "language": "it",
+      "english_gloss": "new regulatory affairs pharmaceutical company roles Ticino email",
+      "intent": "transactional",
+      "need": "Monitor a small researched shortlist.",
+      "cluster": "target pharma alerts",
+      "product_fit": "high",
+      "fit_reason": "Selective monitoring fits this employed searcher.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

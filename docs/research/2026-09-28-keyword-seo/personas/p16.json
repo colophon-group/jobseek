@@ -1,0 +1,276 @@
+{
+  "id": "p16",
+  "name": "Laid-off London product manager with an existing application pipeline",
+  "context": {
+    "occupation": "B2B SaaS product manager",
+    "seniority": "Experienced",
+    "geography": "London; considers UK-compatible remote roles",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Recently laid off; 40 applications already tracked in a spreadsheet",
+    "constraints": [
+      "Relevant B2B SaaS product ownership",
+      "Organize several interview processes",
+      "Preserve existing application history",
+      "Reduce irrelevant product-adjacent roles",
+      "Avoid maintaining two trackers"
+    ],
+    "company_awareness": "Broad role-led search across SaaS employers; some known names but no fixed shortlist"
+  },
+  "overlap_tags": [
+    "product-management",
+    "UK",
+    "London",
+    "English",
+    "laid-off",
+    "existing-spreadsheet",
+    "interview-organization",
+    "broad-search"
+  ],
+  "trigger": "Prepares for an interview and finds recruiter details and round-specific notes scattered across spreadsheet cells and documents.",
+  "searches_run": [
+    {
+      "query": "product manager B2B SaaS jobs London",
+      "observation": "Retrieval surfaced a dedicated LinkedIn category page for B2B SaaS product manager jobs in London; direct opening confirmed the page. Its aggregate count is not treated as a verified number of fitting vacancies.",
+      "source_ids": [
+        "s1"
+      ]
+    },
+    {
+      "query": "job application tracker import spreadsheet interview notes",
+      "observation": "Results mixed downloadable spreadsheet templates, tracker vendors and a small open-source tracker. Direct inspection of JobDrop's README documented spreadsheet import, field mapping, notes and export claims; the software was not executed or audited.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://uk.linkedin.com/jobs/product-manager-saas-b2b-jobs-london",
+      "title": "Product Manager SaaS B2B Jobs London — LinkedIn",
+      "supports": "Retrieved and opened category page matches the role-sector-location combination; no ranking or accurate fitting-vacancy total is inferred."
+    },
+    {
+      "id": "s2",
+      "url": "https://github.com/Abdallahabusnineh/jobdrop-tracker",
+      "title": "JobDrop Tracker — GitHub repository",
+      "supports": "Direct README inspection documents XLSX/CSV field-mapped import, notes, status history and export. These are publisher claims, not tested capabilities or a recommendation."
+    },
+    {
+      "id": "s3",
+      "url": "https://go.careercircle.com/job-application-tracker-landing-page",
+      "title": "CareerCircle Job Application Tracker",
+      "supports": "Retrieved template page describes interview-round organization and spreadsheet import instructions, supporting spreadsheets as a visible alternative in the result set."
+    }
+  ],
+  "best_entry_page": {
+    "type": "comparison",
+    "primary_query": "job application tracker spreadsheet vs app",
+    "promise": "Explain when a spreadsheet remains useful and demonstrate Job Seek's interview notes and application stages for jobs indexed by Job Seek, with clear migration limits.",
+    "cta": "Try tracking a Job Seek role and compare the workflow",
+    "proof_needed": [
+      "Prominent disclosure that arbitrary external-job import is not demonstrated",
+      "Accurate demo of interview notes and stage updates",
+      "Keep existing sheet rather than suggest destructive migration",
+      "Verify free tracker scope and limits",
+      "No claim to import all 40 applications",
+      "A useful comparison even for people who stay with their spreadsheet",
+      "New indexable comparison page; account/search pages remain noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Can I import my forty applications without retyping?",
+    "Will this track roles from recruiters and other boards?",
+    "I cannot have two conflicting versions of my interview history.",
+    "How do I retrieve or export my notes later?",
+    "Will a product manager search keep showing product marketing, project management or jobs requiring a different domain?",
+    "Does description matching help enough to justify paying during unemployment?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "import Excel job applications into Job Seek",
+      "reason": "Spreadsheet import and arbitrary external application records are not demonstrated."
+    },
+    {
+      "query": "automatic Gmail interview tracker",
+      "reason": "Email ingestion is not demonstrated."
+    },
+    {
+      "query": "best recruiter ATS for product managers",
+      "reason": "This is a candidate workflow, not employer applicant management."
+    },
+    {
+      "query": "guaranteed B2B SaaS product manager interviews",
+      "reason": "No interview outcome can be promised."
+    }
+  ],
+  "message_to_founder": "Simulation: I already have forty applications recorded, so your tracker has to respect the work I have done. I would try better notes for a new role, but I will not rebuild my entire search just to see whether the app helps.",
+  "confidence_and_limits": "Synthetic persona, two search queries, two direct opens. Other searches are hypotheses. No tested competitor feature, search volume or conversion conclusion. The product can track indexed postings; external/manual import is unproven and materially limits the spreadsheet-replacement pitch. B2B/domain fit needs description evidence rather than title matching alone.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "product manager jobs London",
+      "language": "en",
+      "english_gloss": "product manager jobs London",
+      "intent": "transactional",
+      "need": "See broad local opportunities.",
+      "cluster": "product management locality",
+      "product_fit": "high",
+      "fit_reason": "Role and location filtering match if coverage is sufficient.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "product manager B2B SaaS jobs London",
+      "language": "en",
+      "english_gloss": "product manager B2B SaaS jobs London",
+      "intent": "transactional",
+      "need": "Keep sector experience relevant.",
+      "cluster": "B2B SaaS product roles",
+      "product_fit": "high",
+      "fit_reason": "Description criteria can refine sector fit; coverage still needs proof.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "senior product manager remote UK",
+      "language": "en",
+      "english_gloss": "senior product manager remote UK",
+      "intent": "transactional",
+      "need": "Broaden geography without losing seniority.",
+      "cluster": "remote product roles",
+      "product_fit": "medium",
+      "fit_reason": "Work-mode and seniority filters help; UK eligibility needs source detail.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "product manager search results product marketing jobs",
+      "language": "en",
+      "english_gloss": "product manager search results product marketing jobs",
+      "intent": "informational",
+      "need": "Reduce adjacent-role noise.",
+      "cluster": "title ambiguity",
+      "product_fit": "medium",
+      "fit_reason": "Descriptions and occupation mapping can help but need validation.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "B2B SaaS product manager discovery roadmap ownership jobs",
+      "language": "en",
+      "english_gloss": "B2B SaaS product manager discovery roadmap ownership jobs",
+      "intent": "transactional",
+      "need": "Find substantive product ownership.",
+      "cluster": "role substance",
+      "product_fit": "high",
+      "fit_reason": "Description-based criteria fit explicit responsibilities.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "job application tracker import spreadsheet interview notes",
+      "language": "en",
+      "english_gloss": "job application tracker import spreadsheet interview notes",
+      "intent": "commercial",
+      "need": "Preserve forty records while improving interview organization.",
+      "cluster": "tracker migration",
+      "product_fit": "low",
+      "fit_reason": "Indexed-job tracking does not demonstrate external-sheet import.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "free job application tracker with interview stages",
+      "language": "en",
+      "english_gloss": "free job application tracker with interview stages",
+      "intent": "commercial",
+      "need": "Compare a dedicated workflow with the sheet.",
+      "cluster": "free application tracker",
+      "product_fit": "medium",
+      "fit_reason": "Free stages and notes fit for indexed jobs, not every existing record.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job application tracker spreadsheet vs app",
+      "language": "en",
+      "english_gloss": "job application tracker spreadsheet vs app",
+      "intent": "commercial",
+      "need": "Decide whether switching is worth the effort.",
+      "cluster": "tracker alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Honest comparison can make product limits clear.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job tracker add external jobs manually",
+      "language": "en",
+      "english_gloss": "job tracker add external jobs manually",
+      "intent": "commercial",
+      "need": "Include recruiter and direct-network opportunities.",
+      "cluster": "external job records",
+      "product_fit": "low",
+      "fit_reason": "Manual external records are not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "organise notes multiple product manager interviews",
+      "language": "en",
+      "english_gloss": "organise notes multiple product manager interviews",
+      "intent": "informational",
+      "need": "Keep interviewer details and decisions per process.",
+      "cluster": "interview organization",
+      "product_fit": "high",
+      "fit_reason": "Interview notes fit when the role is indexed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "LinkedIn B2B SaaS product manager London",
+      "language": "en",
+      "english_gloss": "LinkedIn B2B SaaS product manager London",
+      "intent": "navigational",
+      "need": "Continue a familiar broad search.",
+      "cluster": "existing job board",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation is not a useful acquisition target.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions ask product manager interview team ownership",
+      "language": "en",
+      "english_gloss": "questions ask product manager interview team ownership",
+      "intent": "informational",
+      "need": "Check whether scope matches the advertisement.",
+      "cluster": "role interview checks",
+      "product_fit": "medium",
+      "fit_reason": "A guide and notes can support due diligence, not verify employer answers.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

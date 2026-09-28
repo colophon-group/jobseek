@@ -1,0 +1,279 @@
+{
+  "id": "p14",
+  "name": "Leeds immediate-work searcher without a car",
+  "context": {
+    "occupation": "Retail and customer-service worker; open to adjacent local work",
+    "seniority": "Experienced frontline worker",
+    "geography": "Near Leeds; reachable on foot or public transport from home",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Needs immediate local paid work",
+    "constraints": [
+      "No car",
+      "Strict affordable commute at actual shift times",
+      "Uses phone for search and applications",
+      "Low budget",
+      "Flexible job title, less flexible workplace location"
+    ],
+    "company_awareness": "No target-company strategy; knows local shops but searches by distance and availability"
+  },
+  "overlap_tags": [
+    "frontline",
+    "UK",
+    "English",
+    "urgent-search",
+    "commute-constrained",
+    "mobile-first",
+    "low-budget",
+    "company-unaware"
+  ],
+  "trigger": "Finds an immediate-start opening, then discovers the earliest bus arrives after the required start time.",
+  "searches_run": [
+    {
+      "query": "retail customer service jobs Leeds immediate start",
+      "observation": "Retrieval returned national job-board categories, local listings and a Tate temporary customer-service result. Attempting to inspect the Tate page returned HTTP 410 Gone; its snippet could not establish a current opening.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "jobs Leeds no car bus accessible early late shifts",
+      "observation": "Results included local commute discussions, care roles requiring driving and a theatre job description. Direct inspection of the theatre document found unsociable hours and evening shifts, but no exact finishing times to validate a bus journey.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.tate.co.uk/job/customer-service-advisor-202/",
+      "title": "Customer Service Advisor — Tate",
+      "supports": "Retrieved snippet advertised an immediate-start three-month Leeds role; direct open returned 410 Gone, so the vacancy was not confirmed available."
+    },
+    {
+      "id": "s2",
+      "url": "https://uk.indeed.com/q-retail-immediate-start-l-leeds-jobs.html",
+      "title": "Retail Immediate Start Jobs Leeds — Indeed",
+      "supports": "Retrieved category page targets local urgent retail intent; no live vacancy availability or ranking claim is derived."
+    },
+    {
+      "id": "s3",
+      "url": "https://images.leedsheritagetheatres.com/uploads/2026/05/Customer-Experience-Assistant-part-time-JD-Apr-2026.pdf",
+      "title": "Customer Experience Assistant job description — Leeds Heritage Theatres",
+      "supports": "Direct employer PDF describes permanent annualised part-time hours, unsociable work and Thursday–Saturday matinee/evening shifts; exact finishes and commute feasibility remain unspecified."
+    },
+    {
+      "id": "s4",
+      "url": "https://www.jobs.service.gov.uk/jobs/6a970499bf554a22b1f82849",
+      "title": "Healthcare Support Worker Leeds, Driver with Manual Licence — Work Hub",
+      "supports": "Retrieved public jobs result explicitly requires driving and lists early/late shifts; a broad local query can surface roles unsuitable for this person's transport constraint."
+    }
+  ],
+  "best_entry_page": {
+    "type": "do not target",
+    "primary_query": "jobs near me Leeds immediate start no car",
+    "promise": "No dedicated acquisition promise until the product demonstrates local frontline coverage, exact workplace locations and a workable way to check shift-time commutes.",
+    "cta": "Use employer vacancy details and a transport planner to check a specific shift before applying",
+    "proof_needed": [
+      "Substantial verified local frontline coverage",
+      "Mobile search and application handoff tested",
+      "Exact workplace addresses rather than company headquarters",
+      "Shift start/end details or explicit unknowns",
+      "Journey-time/transport integration is not demonstrated",
+      "Evidence that company selection does not block a role-flexible search"
+    ]
+  },
+  "conversion_objections": [
+    "I do not care which company it is if I can get there and start soon.",
+    "Does Leeds mean the centre or an industrial estate?",
+    "I cannot pay for another search tool.",
+    "Will this work entirely on my phone?",
+    "Can I get home after a closing shift?",
+    "A saved-company list adds work before I can see useful openings."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "jobs near me accessible by bus guaranteed",
+      "reason": "No public-transport routing or commute guarantee is demonstrated."
+    },
+    {
+      "query": "start work today Leeds guaranteed",
+      "reason": "Start dates and hiring speed are employer-controlled."
+    },
+    {
+      "query": "jobs no CV instant apply Leeds",
+      "reason": "No automatic or universal instant application flow is shown."
+    }
+  ],
+  "message_to_founder": "Simulation: I need a job I can reach by bus, not a list of companies to follow. If I have to make an account and choose employers before I can check the place and shift times, I will go back to a local jobs page.",
+  "confidence_and_limits": "Synthetic poor-fit test, not a customer interview. Two searches, one failed direct opening and one successfully inspected employer PDF. Other searches are hypotheses. No exact home address was assigned, so no commute is inferred. No traffic, conversion, freshness or regional coverage claims. Company-first discovery and missing transport verification are material mismatches, not issues that alerts alone solve.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "jobs Leeds immediate start",
+      "language": "en",
+      "english_gloss": "jobs Leeds immediate start",
+      "intent": "transactional",
+      "need": "Find work quickly.",
+      "cluster": "urgent local jobs",
+      "product_fit": "low",
+      "fit_reason": "Company-first selection adds friction and speed is not guaranteed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "retail jobs Leeds",
+      "language": "en",
+      "english_gloss": "retail jobs Leeds",
+      "intent": "transactional",
+      "need": "See local shop openings.",
+      "cluster": "retail locality",
+      "product_fit": "medium",
+      "fit_reason": "Role/location works if frontline coverage exists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "customer service jobs Leeds city centre",
+      "language": "en",
+      "english_gloss": "customer service jobs Leeds city centre",
+      "intent": "transactional",
+      "need": "Find reachable alternatives.",
+      "cluster": "customer service locality",
+      "product_fit": "medium",
+      "fit_reason": "Exact workplaces must be checked beyond city labels.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "retail customer service jobs Leeds immediate start",
+      "language": "en",
+      "english_gloss": "retail customer service jobs Leeds immediate start",
+      "intent": "transactional",
+      "need": "Combine experience with urgency.",
+      "cluster": "urgent service work",
+      "product_fit": "low",
+      "fit_reason": "Need immediate usable vacancies, not long-term company monitoring.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "jobs Leeds no car bus accessible early late shifts",
+      "language": "en",
+      "english_gloss": "jobs Leeds no car bus accessible early late shifts",
+      "intent": "informational",
+      "need": "Avoid impossible journeys.",
+      "cluster": "shift commute",
+      "product_fit": "low",
+      "fit_reason": "No shift-aware public transport routing is demonstrated.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "part time jobs near me",
+      "language": "en",
+      "english_gloss": "part time jobs near me",
+      "intent": "transactional",
+      "need": "Check nearby options on a phone.",
+      "cluster": "nearby hourly work",
+      "product_fit": "low",
+      "fit_reason": "Precise proximity and local density are unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "shop assistant Leeds weekday hours",
+      "language": "en",
+      "english_gloss": "shop assistant Leeds weekday hours",
+      "intent": "transactional",
+      "need": "Look for predictable reachable shifts.",
+      "cluster": "hours locality",
+      "product_fit": "medium",
+      "fit_reason": "Description text may show hours; unknowns remain.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Leeds jobs no driving licence needed",
+      "language": "en",
+      "english_gloss": "Leeds jobs no driving licence needed",
+      "intent": "transactional",
+      "need": "Exclude jobs that require driving.",
+      "cluster": "transport eligibility",
+      "product_fit": "medium",
+      "fit_reason": "Explicit requirements can be checked; omission is not proof.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "last bus Leeds city centre after work",
+      "language": "en",
+      "english_gloss": "last bus Leeds city centre after work",
+      "intent": "informational",
+      "need": "Check return journey after a late shift.",
+      "cluster": "public transport planning",
+      "product_fit": "low",
+      "fit_reason": "Transport timetables are outside the product.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Indeed Leeds immediate start retail",
+      "language": "en",
+      "english_gloss": "Indeed Leeds immediate start retail",
+      "intent": "navigational",
+      "need": "Use a familiar job board.",
+      "cluster": "existing job board",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation offers little useful acquisition fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "apply retail jobs Leeds on phone",
+      "language": "en",
+      "english_gloss": "apply retail jobs Leeds on phone",
+      "intent": "transactional",
+      "need": "Complete a job application using only mobile.",
+      "cluster": "mobile application",
+      "product_fit": "low",
+      "fit_reason": "Employer application usability is not controlled by Job Seek.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "customer service jobs Leeds weekly pay",
+      "language": "en",
+      "english_gloss": "customer service jobs Leeds weekly pay",
+      "intent": "transactional",
+      "need": "Check when first income might arrive.",
+      "cluster": "pay schedule",
+      "product_fit": "medium",
+      "fit_reason": "Payment cadence is only usable when explicitly stated, not a promised filter.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

@@ -1,0 +1,269 @@
+{
+  "id": "p18",
+  "name": "Virginia security engineer seeking sustainable hours",
+  "context": {
+    "occupation": "Cybersecurity engineer",
+    "seniority": "Midcareer",
+    "geography": "Virginia, US; local hybrid or eligible US remote",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed, exploring alternatives",
+    "constraints": [
+      "No active clearance requirement",
+      "No rotating 24/7 SOC shifts",
+      "Prefers hands-on security engineering",
+      "Civilian product companies and selected defense contractors"
+    ],
+    "company_awareness": "Some product employers known; assumes many nearby contractors require clearance but will inspect exceptions."
+  },
+  "overlap_tags": [
+    "cybersecurity",
+    "US",
+    "Virginia",
+    "midcareer",
+    "negative-requirements",
+    "work-hours",
+    "company-selection"
+  ],
+  "trigger": "Another overnight operational escalation makes the engineer search for application or product security work, but nearby results repeatedly mention active clearances.",
+  "searches_run": [
+    {
+      "query": "cybersecurity engineer jobs Virginia no clearance required",
+      "observation": "Retrieval included a no-clearance Indeed landing page containing clearance-required titles, a purported Amentum no-clearance opening, and SAIC employer search. Amentum returned 404 when opened. Direct SAIC inspection showed an explicit None clearance facet alongside other categories.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "query": "security engineer jobs no on call no SOC shifts",
+      "observation": "Results included Indeed and discussion threads about on-call and shifts. The no-on-call Indeed result still mentioned a SOC analyst. These results do not establish which employers offer daytime-only work.",
+      "source_ids": [
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.indeed.com/q-Cyber-Security-No-Clearance-l-Virginia-jobs.html",
+      "title": "Cyber Security No Clearance Jobs in Virginia | Indeed",
+      "supports": "Retrieved snippet includes roles explicitly requiring clearance despite search heading."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.amentumcareers.com/jobs/senior-cybersecurity-engineer-iam-richmond-virginia-united-states",
+      "title": "Senior Cybersecurity Engineer IAM | Amentum",
+      "supports": "Search snippet stated no clearance; direct open failed with 404, so current availability is unverified."
+    },
+    {
+      "id": "s3",
+      "url": "https://jobs.saic.com/search/jobs/in/va-virginia?q=Cybersecurity",
+      "title": "Virginia Careers | SAIC",
+      "supports": "Direct inspection found clearance None, remote-work filters and employer job-alert form; shows contractors cannot be excluded wholesale."
+    },
+    {
+      "id": "s4",
+      "url": "https://www.indeed.com/q-no-on-call-cyber-security-jobs-jobs.html",
+      "title": "No On Call Cyber Security Jobs | Indeed",
+      "supports": "Retrieved snippet under no-on-call heading mentions SOC analyst; no hours guarantee established."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "cybersecurity engineer jobs Virginia no clearance required",
+    "promise": "Find covered employers and learn to distinguish explicitly stated clearance and shift requirements from missing details.",
+    "cta": "Choose covered security employers and create role alerts; inspect original requirements before applying.",
+    "proof_needed": [
+      "Examples of explicit no-clearance versus active-clearance language",
+      "Coverage of civilian product employers and relevant contractor roles",
+      "Separate handling of shift work and on-call",
+      "A visible unknown state where source text is silent"
+    ]
+  },
+  "conversion_objections": [
+    "Will no-clearance search still include active Secret requirements?",
+    "No SOC shifts does not automatically mean no on-call.",
+    "Will a description check silently assume missing text means no requirement?",
+    "Why pay for a filter if employer career sites already have clearance categories?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "security clearance eligibility advice",
+      "reason": "Legal or eligibility advice is not the product; do not infer eligibility."
+    },
+    {
+      "query": "guaranteed cybersecurity jobs no on call",
+      "reason": "Work schedules cannot be guaranteed from absent posting details."
+    }
+  ],
+  "message_to_founder": "Simulation: I would pay attention to fewer plausible openings, not a larger security-job count. Show the actual clearance and hours wording, let me keep unknowns separate, and do not discard every contractor just because of its industry.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "cybersecurity engineer jobs Virginia no clearance required",
+      "language": "en",
+      "english_gloss": "cybersecurity engineer jobs Virginia no clearance required",
+      "intent": "transactional",
+      "need": "Find roles without active-clearance prerequisite",
+      "cluster": "clearance exclusions",
+      "product_fit": "medium",
+      "fit_reason": "Text checks can assist; explicit evidence remains necessary.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "application security engineer jobs Richmond",
+      "language": "en",
+      "english_gloss": "application security engineer jobs Richmond",
+      "intent": "transactional",
+      "need": "Find local hands-on alternatives",
+      "cluster": "security city jobs",
+      "product_fit": "high",
+      "fit_reason": "Role and location search fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "product security jobs remote USA",
+      "language": "en",
+      "english_gloss": "product security jobs remote USA",
+      "intent": "transactional",
+      "need": "Explore civilian product teams",
+      "cluster": "product security",
+      "product_fit": "high",
+      "fit_reason": "Role and employer discovery fit within covered sources.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "security engineer jobs no on call no SOC shifts",
+      "language": "en",
+      "english_gloss": "security engineer jobs no on call no SOC shifts",
+      "intent": "informational",
+      "need": "Avoid another overnight schedule",
+      "cluster": "security working hours",
+      "product_fit": "medium",
+      "fit_reason": "Source descriptions may support filtering but omissions stay unknown.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s4"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "difference between security engineer and SOC analyst duties",
+      "language": "en",
+      "english_gloss": "difference between security engineer and SOC analyst duties",
+      "intent": "informational",
+      "need": "Interpret titles before narrowing search",
+      "cluster": "security role ambiguity",
+      "product_fit": "medium",
+      "fit_reason": "Useful guide intent; title alone cannot establish work pattern.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "defense contractor cyber jobs clearance not required",
+      "language": "en",
+      "english_gloss": "defense contractor cyber jobs clearance not required",
+      "intent": "transactional",
+      "need": "Retain plausible contractor exceptions",
+      "cluster": "contractor clearance",
+      "product_fit": "medium",
+      "fit_reason": "Company and description search help when wording is explicit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "SaaS companies hiring security engineers Virginia",
+      "language": "en",
+      "english_gloss": "SaaS companies hiring security engineers Virginia",
+      "intent": "informational",
+      "need": "Build a civilian employer list",
+      "cluster": "security employer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first discovery aligns well.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "SAIC cyber jobs clearance none",
+      "language": "en",
+      "english_gloss": "SAIC cyber jobs clearance none",
+      "intent": "navigational",
+      "need": "Inspect employer's own requirement filters",
+      "cluster": "employer careers",
+      "product_fit": "medium",
+      "fit_reason": "Employer site is a strong direct alternative.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job alerts exclude active secret clearance",
+      "language": "en",
+      "english_gloss": "job alerts exclude active secret clearance",
+      "intent": "commercial",
+      "need": "Remove known disqualifying requirements",
+      "cluster": "negative alert criteria",
+      "product_fit": "medium",
+      "fit_reason": "Paid description checks may help; ordinary exclusion controls are unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job search filter out rotating shifts",
+      "language": "en",
+      "english_gloss": "job search filter out rotating shifts",
+      "intent": "commercial",
+      "need": "Reduce schedule mismatch before opening each advert",
+      "cluster": "working-hours filters",
+      "product_fit": "medium",
+      "fit_reason": "Only explicit source wording can support a match.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "email alerts application security jobs selected companies",
+      "language": "en",
+      "english_gloss": "email alerts application security jobs selected companies",
+      "intent": "transactional",
+      "need": "Follow chosen employers over time",
+      "cluster": "company alerts",
+      "product_fit": "high",
+      "fit_reason": "Covered-company alerts directly fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "track security engineer applications and interview notes",
+      "language": "en",
+      "english_gloss": "track security engineer applications and interview notes",
+      "intent": "transactional",
+      "need": "Record questions about hours during interviews",
+      "cluster": "application tracking",
+      "product_fit": "high",
+      "fit_reason": "Tracker and interview notes can preserve unresolved questions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

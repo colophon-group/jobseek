@@ -1,0 +1,271 @@
+{
+  "id": "p08",
+  "name": "India-based data engineer investigating European relocation",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Data engineer",
+    "seniority": "Experienced",
+    "geography": "India; seeks Germany or Netherlands",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed; researching an international move",
+    "constraints": [
+      "Needs explicitly stated employer sponsorship and relocation support",
+      "English-language work",
+      "Relevant data engineering stack",
+      "Will not infer eligibility from employer reputation"
+    ],
+    "company_awareness": "Most employers unknown; starting with roles and destination countries"
+  },
+  "overlap_tags": [
+    "data-engineering",
+    "india",
+    "germany",
+    "netherlands",
+    "sponsorship",
+    "relocation",
+    "english",
+    "employer-discovery"
+  ],
+  "trigger": "A professional contact relocates to Europe, prompting the engineer to test whether comparable roles explicitly support international applicants before investing in applications.",
+  "searches_run": [
+    {
+      "query": "data engineer jobs Germany Netherlands visa sponsorship relocation",
+      "observation": "Results included sponsor-focused aggregators, employer postings and role mismatches. Some aggregators equated recognised-employer status with sponsorship-labelled roles; these claims were not verified or adopted as eligibility evidence.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "data engineer Amsterdam Berlin relocation support no visa sponsorship job",
+      "observation": "Results surfaced explicit negative sponsorship language, including a Berlin ATS posting. The opened HSO role describes support limited to the Netherlands alongside European residence/work-rights wording; this requires clarification for an India-based applicant.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://konijnjobs.com/jobs/data-engineer",
+      "title": "Data Engineer jobs in the Netherlands — Konijn Jobs",
+      "supports": "Retrieved aggregator page markets sponsorship using recognised employer status. Recorded only as competitor positioning; no legal thresholds, role-level sponsorship or counts are accepted as verified."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.hso.com/careers/vacancies/hso-international-data-engineer/",
+      "title": "HSO International - Data Engineer",
+      "supports": "Direct employer inspection shows Netherlands-limited sponsorship/relocation wording, a European work-rights statement, English fluency and Microsoft data-stack requirements. It does not clearly establish that this India-based persona can be hired."
+    },
+    {
+      "id": "s3",
+      "url": "https://jobs.ashbyhq.com/Clera/3c0ec8af-7b73-4f99-8448-b02bb7e39bcb",
+      "title": "Data Engineer — Clera",
+      "supports": "Retrieved ATS snippet states Berlin on-site work and that visa sponsorship is unavailable. Not independently opened."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "data engineer jobs Europe relocation support",
+    "promise": "Find relevant data roles and inspect the employer's published sponsorship and relocation statements, separating explicit support, exclusions and unknowns.",
+    "cta": "Search by destination and stack, then save alerts after checking the source requirements.",
+    "proof_needed": [
+      "Demonstrate role-level source text rather than a company-wide sponsor badge.",
+      "Keep sponsorship and moving-cost support as separate criteria.",
+      "Clarify contradictory or conditional text without treating it as approval.",
+      "Verify employer coverage and data-stack filtering.",
+      "Show how Pro description checks preserve unknowns; they are not immigration or employer verification.",
+      "Create a new indexable guide with carefully limited claims."
+    ]
+  },
+  "conversion_objections": [
+    "Will sponsorship results actually include people applying from India?",
+    "Are employer-wide badges being confused with this vacancy?",
+    "Can I see the exact sentence before spending time applying?",
+    "Will I discover employers before being asked to choose them?",
+    "Does relocation mean payment, administrative help or merely permission to move?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "guaranteed Germany job visa India",
+      "reason": "Neither hiring nor legal approval can be guaranteed."
+    },
+    {
+      "query": "Netherlands visa salary threshold calculator",
+      "reason": "Immigration calculations are not this product's demonstrated capability."
+    },
+    {
+      "query": "all recognised sponsors hiring data engineers",
+      "reason": "Registered company status does not establish current role-level support."
+    }
+  ],
+  "message_to_founder": "Simulation: I do not have a European employer shortlist yet. Help me find technically relevant roles and show exactly what each employer says about sponsorship and moving, including the cases where the answer is unclear.",
+  "confidence_and_limits": "Synthetic scenario, not immigration advice. Two queries and one employer inspection reveal ambiguous support wording and strong aggregator promises; they establish neither legal eligibility nor hiring probability. Exact stack and citizenship are not supplied; no personal eligibility conclusion is made.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "data engineer jobs Germany",
+      "language": "en",
+      "english_gloss": "data engineer jobs Germany",
+      "intent": "commercial",
+      "need": "Explore a destination.",
+      "cluster": "germany-data-jobs",
+      "product_fit": "high",
+      "fit_reason": "Role/location discovery fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "data engineering jobs Netherlands",
+      "language": "en",
+      "english_gloss": "data engineering jobs Netherlands",
+      "intent": "commercial",
+      "need": "Explore a second destination.",
+      "cluster": "netherlands-data-jobs",
+      "product_fit": "high",
+      "fit_reason": "Core role search fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "English speaking data engineer jobs Europe",
+      "language": "en",
+      "english_gloss": "English speaking data engineer jobs Europe",
+      "intent": "commercial",
+      "need": "Find accessible working-language roles.",
+      "cluster": "english-data-jobs",
+      "product_fit": "medium",
+      "fit_reason": "Posting language helps but workplace language needs source evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "data engineer jobs Germany Netherlands visa sponsorship relocation",
+      "language": "en",
+      "english_gloss": "data engineer jobs Germany Netherlands visa sponsorship relocation",
+      "intent": "commercial",
+      "need": "Locate explicitly supported international moves.",
+      "cluster": "data-relocation",
+      "product_fit": "medium",
+      "fit_reason": "Pro text checks can assess statements; cannot certify support.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "senior data engineer Spark Python Berlin",
+      "language": "en",
+      "english_gloss": "senior data engineer Spark Python Berlin",
+      "intent": "commercial",
+      "need": "Test a plausible technical match.",
+      "cluster": "data-stack",
+      "product_fit": "high",
+      "fit_reason": "Technology, seniority and city filters fit; stack is illustrative.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "companies hiring data engineers from India Europe",
+      "language": "en",
+      "english_gloss": "companies hiring data engineers from India Europe",
+      "intent": "informational",
+      "need": "Build an employer shortlist.",
+      "cluster": "international-employers",
+      "product_fit": "medium",
+      "fit_reason": "Company discovery helps but hiring from India needs explicit evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "data engineer Amsterdam Berlin relocation support no visa sponsorship job",
+      "language": "en",
+      "english_gloss": "data engineer Amsterdam Berlin relocation support no visa sponsorship job",
+      "intent": "commercial",
+      "need": "Recognise negative support conditions.",
+      "cluster": "sponsorship-exclusions",
+      "product_fit": "medium",
+      "fit_reason": "Negation and conditional wording are a meaningful description-check test.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "Relocate.me data engineer Netherlands",
+      "language": "en",
+      "english_gloss": "Relocate.me data engineer Netherlands",
+      "intent": "navigational",
+      "need": "Try a relocation-focused alternative.",
+      "cluster": "relocation-job-boards",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation is primarily another site's traffic.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "data engineer relocation package visa support difference",
+      "language": "en",
+      "english_gloss": "data engineer relocation package visa support difference",
+      "intent": "informational",
+      "need": "Understand two different employer promises.",
+      "cluster": "relocation-terms",
+      "product_fit": "medium",
+      "fit_reason": "A source-reading guide fits; no legal conclusion needed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "data engineer Germany English German required",
+      "language": "en",
+      "english_gloss": "data engineer Germany English German required",
+      "intent": "commercial",
+      "need": "Avoid a language mismatch.",
+      "cluster": "data-work-language",
+      "product_fit": "medium",
+      "fit_reason": "Requirements must be read beyond an English title.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "email alerts data engineer relocation Germany Netherlands",
+      "language": "en",
+      "english_gloss": "email alerts data engineer relocation Germany Netherlands",
+      "intent": "commercial",
+      "need": "Follow relevant new postings.",
+      "cluster": "relocation-alerts",
+      "product_fit": "high",
+      "fit_reason": "Alerts fit once role criteria and source limits are clear.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "ask recruiter if sponsorship available for this role",
+      "language": "en",
+      "english_gloss": "ask recruiter if sponsorship available for this role",
+      "intent": "informational",
+      "need": "Resolve conditional language before applying.",
+      "cluster": "sponsorship-clarification",
+      "product_fit": "low",
+      "fit_reason": "Product can identify unknowns but not answer for the recruiter.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

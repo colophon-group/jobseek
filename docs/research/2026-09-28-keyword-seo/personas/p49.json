@@ -1,0 +1,283 @@
+{
+  "id": "p49",
+  "name": "UK university careers adviser evaluating student self-service tools",
+  "context": {
+    "occupation": "University careers adviser",
+    "seniority": "Experienced adviser",
+    "geography": "United Kingdom",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed; researching resources for hundreds of students rather than a personal job",
+    "constraints": [
+      "Dependable free tools students can use independently",
+      "Clear access and paid-feature boundaries",
+      "Coverage across varied student interests",
+      "No assumed adviser access to student records",
+      "Needs evidence for a resource-list recommendation"
+    ],
+    "company_awareness": "Aware of careers platforms and graduate employers; evaluating tools rather than building a personal employer shortlist"
+  },
+  "overlap_tags": [
+    "adviser",
+    "UK",
+    "English",
+    "referral-user",
+    "student-resources",
+    "free-tools",
+    "non-jobseeker"
+  ],
+  "trigger": "Updates a student resource list after noticing that several free tools depend on university subscriptions or narrow eligibility.",
+  "searches_run": [
+    {
+      "query": "free job search tools university students UK careers service",
+      "observation": "Retrieval included public careers services and university resource pages. Newcastle's inspected page distinguishes free access for its own students/graduates, authentication routes and resource-specific access conditions; a stated expiry date also shows why dated checks matter.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "university careers service free job application tracker students spreadsheet",
+      "observation": "Results included spreadsheet vendors and university-hosted resources recommending application organization tools. These show resource-list and student self-service formats, not demand for an institutional administration product.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.ncl.ac.uk/careers/support-and-resources/online-resources/tools/",
+      "title": "Online Career Resources — Newcastle University",
+      "supports": "Direct inspection says tools are free for its students/graduates and gives differing login/access instructions. One access period ends 30 June 2026; continued availability cannot be inferred from the live page."
+    },
+    {
+      "id": "s2",
+      "url": "https://nationalcareers.service.gov.uk/",
+      "title": "National Careers Service",
+      "supports": "Retrieved public service offers career profiles and resources, illustrating an information alternative rather than a commercial tracker."
+    },
+    {
+      "id": "s3",
+      "url": "https://careertools.binghamton.edu/resources/manage-your-applications-efficiently-with-these-free-tools/",
+      "title": "Manage Your Applications with Free Tools — Binghamton University",
+      "supports": "Retrieved university resource discusses spreadsheets and application organization; non-UK example of a referral format, not institutional endorsement of Job Seek."
+    },
+    {
+      "id": "s4",
+      "url": "https://sites.google.com/cornell.edu/job-recruitment-tools/application-tracker",
+      "title": "Application Tracker — Cornell-domain resource",
+      "supports": "Retrieved resource describes a downloadable student application spreadsheet; no current quality or privacy audit conducted."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "free job search tools for university students",
+    "promise": "Provide a plain student self-service walkthrough of Job Seek's free search, saved searches and indexed-job tracker, including limitations and links to product policies.",
+    "cta": "Try the student workflow before adding it to a resource list",
+    "proof_needed": [
+      "Current free limits and clear optional paid matching",
+      "Account requirements and public privacy/accessibility documentation verified",
+      "Relevant graduate and entry-level employer coverage",
+      "Indexed-job tracking limitation; no external imports promised",
+      "No adviser dashboard, institution contract or student-record access claims",
+      "Stable public guide suitable for linking",
+      "New indexable resource page; account/search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Is free access ongoing or just a trial?",
+    "Can students use it after graduation?",
+    "Does it cover their disciplines and locations?",
+    "What data must students provide and where are policies documented?",
+    "Will students understand company-first search if they have no employer shortlist?",
+    "Is it useful beside our existing resources without requiring me to manage accounts?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "university careers management student dashboard",
+      "reason": "Institutional administration is not demonstrated."
+    },
+    {
+      "query": "monitor all students job applications adviser",
+      "reason": "Shared student records and permissions are not demonstrated or assumed."
+    },
+    {
+      "query": "student job search GDPR certified platform",
+      "reason": "No institutional privacy/security certification verified."
+    },
+    {
+      "query": "guaranteed sponsored graduate jobs",
+      "reason": "Sponsorship and eligibility depend on employers and individual roles."
+    }
+  ],
+  "message_to_founder": "Simulation: I could recommend a useful free tool without buying an institutional platform. Give me an honest walkthrough, clear limits and current policy links so students can decide whether to use it themselves.",
+  "confidence_and_limits": "Synthetic referral-user scenario, not an institutional buyer interview. Exactly two searches and one direct university-page inspection. Other queries are hypotheses. No endorsement, institutional feature, privacy certification or student-outcome evidence inferred. Resource pages can contain expired access wording. Best fit is a transparent referral resource, not adviser account administration.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "free job search tools university students UK careers service",
+      "language": "en",
+      "english_gloss": "free job search tools university students UK careers service",
+      "intent": "informational",
+      "need": "Find resources worth referring.",
+      "cluster": "student free resources",
+      "product_fit": "medium",
+      "fit_reason": "Free individual tools may fit; institutional features are absent.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "graduate job websites UK",
+      "language": "en",
+      "english_gloss": "graduate job websites UK",
+      "intent": "informational",
+      "need": "Review broad vacancy sources.",
+      "cluster": "graduate sources",
+      "product_fit": "medium",
+      "fit_reason": "Coverage must be shown rather than assumed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "job search resources for students",
+      "language": "en",
+      "english_gloss": "job search resources for students",
+      "intent": "informational",
+      "need": "Build a useful resource list.",
+      "cluster": "student guidance",
+      "product_fit": "medium",
+      "fit_reason": "A public walkthrough can support independent use.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "university careers service free job application tracker students spreadsheet",
+      "language": "en",
+      "english_gloss": "university careers service free job application tracker students spreadsheet",
+      "intent": "commercial",
+      "need": "Compare student-controlled tracking options.",
+      "cluster": "student tracker alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Job Seek tracks indexed jobs; spreadsheets can hold arbitrary applications.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "job search tools free after graduation",
+      "language": "en",
+      "english_gloss": "job search tools free after graduation",
+      "intent": "commercial",
+      "need": "Avoid institution-only access assumptions.",
+      "cluster": "access continuity",
+      "product_fit": "high",
+      "fit_reason": "Public free features can be explained with current limits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "free job tracker trial versus free account",
+      "language": "en",
+      "english_gloss": "free job tracker trial versus free account",
+      "intent": "informational",
+      "need": "Clarify ongoing cost.",
+      "cluster": "free-feature boundaries",
+      "product_fit": "high",
+      "fit_reason": "Clear separation of free core and paid description matching fits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "career tool student privacy policy account requirements",
+      "language": "en",
+      "english_gloss": "career tool student privacy policy account requirements",
+      "intent": "informational",
+      "need": "Evaluate published information before referral.",
+      "cluster": "tool due diligence",
+      "product_fit": "medium",
+      "fit_reason": "Requires actual policies; no compliance assurance implied.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "accessible job search websites students",
+      "language": "en",
+      "english_gloss": "accessible job search websites students",
+      "intent": "informational",
+      "need": "Check usability across students.",
+      "cluster": "tool accessibility",
+      "product_fit": "medium",
+      "fit_reason": "Own product accessibility needs testing.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "how students find employers beyond graduate schemes",
+      "language": "en",
+      "english_gloss": "how students find employers beyond graduate schemes",
+      "intent": "informational",
+      "need": "Teach employer exploration.",
+      "cluster": "employer discovery education",
+      "product_fit": "high",
+      "fit_reason": "Company-first discovery can be taught through examples.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "free job tracker no university email required",
+      "language": "en",
+      "english_gloss": "free job tracker no university email required",
+      "intent": "commercial",
+      "need": "Find an independently accessible option.",
+      "cluster": "independent access",
+      "product_fit": "high",
+      "fit_reason": "Individual account flow should be verified and explained.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "job search workshop company research activity students",
+      "language": "en",
+      "english_gloss": "job search workshop company research activity students",
+      "intent": "informational",
+      "need": "Use a public demonstration in guidance.",
+      "cluster": "workshop resource",
+      "product_fit": "medium",
+      "fit_reason": "No bulk accounts or student monitoring needed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Job Seek free features application tracker",
+      "language": "en",
+      "english_gloss": "Job Seek free features application tracker",
+      "intent": "navigational",
+      "need": "Verify claims after discovering the tool.",
+      "cluster": "branded referral evaluation",
+      "product_fit": "high",
+      "fit_reason": "Only a post-awareness search; not evidence of existing demand.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

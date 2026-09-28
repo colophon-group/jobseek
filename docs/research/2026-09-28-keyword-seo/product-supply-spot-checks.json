@@ -1,0 +1,149 @@
+{
+  "checked_at": "2026-09-28T08:52:27.610513+00:00",
+  "method": "Four illustrative public API queries after resolving exact location slugs. Not exhaustive coverage, source-status verification, or search-demand evidence. Locale labels do not filter posting language. Returned counts belong to this query snapshot only.",
+  "results": [
+    {
+      "url": "https://jseek.co/api/v1/search?q=robotics&loc=zurich&locale=en",
+      "status": 200,
+      "api_reported_total_companies": 18,
+      "returned_company_count": 5,
+      "sample_companies": [
+        {
+          "name": "CDDS AG",
+          "slug": "cdds-ag",
+          "api_reported_active_jobs": 19,
+          "sample_titles": [
+            "Mechanical Engineer Robotics",
+            "(Robotics) Electrical Engineer",
+            "Robotics Electrical Engineer"
+          ]
+        },
+        {
+          "name": "RIVR",
+          "slug": "rivr",
+          "api_reported_active_jobs": 2,
+          "sample_titles": [
+            "Robotics Wireless & Network Engineer Intern",
+            "Robotics Trade Manager"
+          ]
+        },
+        {
+          "name": "Meta",
+          "slug": "meta",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Research Engineer, Robotics & Embodied AI"
+          ]
+        },
+        {
+          "name": "Intrinsic",
+          "slug": "intrinsic",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Robotics Software Engineer - Grasping"
+          ]
+        },
+        {
+          "name": "Gravis Robotics",
+          "slug": "gravis-robotics",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Senior Robotics Software Engineer - Autonomy Architecture"
+          ]
+        }
+      ]
+    },
+    {
+      "url": "https://jseek.co/api/v1/search?q=Pflege&loc=hamburg-hamburg-germany&locale=de",
+      "status": 200,
+      "api_reported_total_companies": 1,
+      "returned_company_count": 1,
+      "sample_companies": [
+        {
+          "name": "Alloheim Senioren-Residenzen SE",
+          "slug": "alloheim",
+          "api_reported_active_jobs": 20,
+          "sample_titles": [
+            "Pflegefachperson als Dauernachtwache (m/w/d) bis zu 4.200 EUR Gehalt + 3.000 EUR Willkommensprämie",
+            "Pflegefachassistenz (m/w/d)",
+            "Pflegefachperson (m/w/d) im Springerpool, bis zu 4900 € Gehalt + Tankkarte"
+          ]
+        }
+      ]
+    },
+    {
+      "url": "https://jseek.co/api/v1/search?q=data+analyst&loc=lyon&locale=fr",
+      "status": 200,
+      "api_reported_total_companies": 2,
+      "returned_company_count": 2,
+      "sample_companies": [
+        {
+          "name": "Devoteam",
+          "slug": "devoteam",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Senior Data Analyst / Business Analyst Data Power BI - F/H"
+          ]
+        },
+        {
+          "name": "PwC",
+          "slug": "pwc",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Senior Data Analyst | Deals (M&A) | Lyon | CDI | H/F"
+          ]
+        }
+      ]
+    },
+    {
+      "url": "https://jseek.co/api/v1/search?q=retail&loc=leeds&locale=en",
+      "status": 200,
+      "api_reported_total_companies": 10,
+      "returned_company_count": 5,
+      "sample_companies": [
+        {
+          "name": "HSBC",
+          "slug": "hsbc",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Retail Banking - Rotational Degree Apprenticeship"
+          ]
+        },
+        {
+          "name": "Cracker Barrel",
+          "slug": "cracker-barrel",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Retail Sales"
+          ]
+        },
+        {
+          "name": "Next",
+          "slug": "next",
+          "api_reported_active_jobs": 9,
+          "sample_titles": [
+            "Team Member - Leeds Birstall Retail Park (N129885)",
+            "Team Member - Leeds Birstall Retail Park (N129886)",
+            "Team Member - Leeds Birstall Retail Park (N129884)"
+          ]
+        },
+        {
+          "name": "ENGIE",
+          "slug": "engie",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Retail Operations Administrator - 12 month FTC"
+          ]
+        },
+        {
+          "name": "Nike",
+          "slug": "nike",
+          "api_reported_active_jobs": 1,
+          "sample_titles": [
+            "Retail Lead - Leeds Crown Point"
+          ]
+        }
+      ]
+    }
+  ]
+}

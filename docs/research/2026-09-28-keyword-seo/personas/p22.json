@@ -1,0 +1,269 @@
+{
+  "id": "p22",
+  "name": "Swiss operations director selectively considering COO roles",
+  "context": {
+    "occupation": "Operations director",
+    "seniority": "Senior executive",
+    "geography": "Switzerland, flexible across suitable business locations",
+    "languages": [
+      "en",
+      "de"
+    ],
+    "employment_state": "Employed; confidential, selective search",
+    "constraints": [
+      "Midsize firms with substantive operating responsibility",
+      "Few relevant openings",
+      "Avoid public jobseeker signalling",
+      "Interested in COO and head-of-operations titles",
+      "Values source credibility and minimal noise"
+    ],
+    "company_awareness": "Has a considered list of companies and executive-search contacts."
+  },
+  "overlap_tags": [
+    "executive",
+    "operations",
+    "Switzerland",
+    "passive-search",
+    "confidentiality",
+    "known-employers",
+    "rare-openings"
+  ],
+  "trigger": "Following an ownership change, the director quietly prepares alternatives but will only move for the right operating mandate.",
+  "searches_run": [
+    {
+      "query": "COO head of operations jobs Switzerland midsize",
+      "observation": "Retrieved a jobs.ch COO page with varied operations titles and older direct vacancy PDFs. This shows title and company-context variety, not the number of suitable midsize executive mandates.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "diskrete Stellensuche COO Schweiz Stellen Executive Search",
+      "observation": "Results prominently included executive-search firms marketing discretion, often to employers. Direct Abexis inspection explicitly says some mandates are not publicly advertised and accepts speculative candidate profiles.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.jobs.ch/de/stellenangebote/?term=coo",
+      "title": "Coo Jobs | jobs.ch",
+      "supports": "Retrieved page includes COO and head-of-operations titles; broad title match is not proof of executive scope."
+    },
+    {
+      "id": "s2",
+      "url": "https://baselaunch.ch/wp-content/uploads/2024/09/COO-Advertisement_BaseLaunch_portfolio-copmany-in-stealth.pdf",
+      "title": "Chief Operating Officer | BaseLaunch portfolio company",
+      "supports": "Retrieved older public COO advert represents a specific company context, not a verified current opening."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.abexis.ch/executive-search",
+      "title": "Executive Search | Abexis",
+      "supports": "Directly inspected firm page states some mandates are unpublished and invites candidate profiles; establishes a public-monitoring coverage limit and alternative channel, not market-wide prevalence."
+    }
+  ],
+  "best_entry_page": {
+    "type": "product landing",
+    "primary_query": "Stellenalarm Führungspositionen ausgewählte Unternehmen Schweiz",
+    "promise": "Monitor public career-page openings at covered target companies and inspect leadership scope in the original posting.",
+    "cta": "Save your target employers and selected executive role searches.",
+    "proof_needed": [
+      "Verified coverage of target midsize firms",
+      "Recall across COO, operations director and German equivalents",
+      "Accurate leadership-scope examples rather than title alone",
+      "Verified visibility and data-handling documentation",
+      "Clear limit to published covered openings; no hidden-mandate claim"
+    ]
+  },
+  "conversion_objections": [
+    "My best opportunity may never reach a public careers page.",
+    "Many head-of-operations roles lack executive authority.",
+    "I do not want my target-company list publicly visible.",
+    "Silence is useful only if I trust coverage is working.",
+    "Application counts and mass-apply tools are irrelevant to me."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "executive search COO Schweiz",
+      "reason": "Broad query frequently seeks retained recruiting services; Job Seek is not an executive-search consultancy."
+    },
+    {
+      "query": "hidden executive jobs Switzerland access",
+      "reason": "Public-career monitoring cannot promise unpublished mandates."
+    },
+    {
+      "query": "guaranteed confidential COO search",
+      "reason": "Absolute confidentiality is not verified."
+    }
+  ],
+  "message_to_founder": "Simulation: I would use this as a quiet extra channel alongside trusted contacts, not as the whole search. Tell me exactly which companies you cover and why a role has real operating authority; the number of alerts is not a success measure.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "COO head of operations jobs Switzerland midsize",
+      "language": "en",
+      "english_gloss": "COO head of operations jobs Switzerland midsize",
+      "intent": "transactional",
+      "need": "Find suitable operating mandates",
+      "cluster": "Swiss executive operations",
+      "product_fit": "medium",
+      "fit_reason": "Search helps with public roles but firm size and scope require review.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "COO Stellen Schweiz",
+      "language": "de",
+      "english_gloss": "COO vacancies Switzerland",
+      "intent": "transactional",
+      "need": "Survey published opportunities",
+      "cluster": "COO jobs",
+      "product_fit": "medium",
+      "fit_reason": "Role and geography fit; inventory may be sparse.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Head of Operations Zürich",
+      "language": "en",
+      "english_gloss": "Head of Operations Zürich",
+      "intent": "transactional",
+      "need": "Explore alternative senior title",
+      "cluster": "operations leadership jobs",
+      "product_fit": "medium",
+      "fit_reason": "Title often spans different authority levels.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "diskrete Stellensuche COO Schweiz Stellen Executive Search",
+      "language": "de",
+      "english_gloss": "Discreet COO job search Switzerland executive search",
+      "intent": "commercial",
+      "need": "Compare confidential channels",
+      "cluster": "executive search alternatives",
+      "product_fit": "low",
+      "fit_reason": "Search-firm mandates and relationships exceed product capability.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Leiter Operations Mitglied Geschäftsleitung Stellen",
+      "language": "de",
+      "english_gloss": "Head of operations executive management member vacancies",
+      "intent": "transactional",
+      "need": "Find roles with management-team responsibility",
+      "cluster": "executive scope",
+      "product_fit": "medium",
+      "fit_reason": "Description checks may identify explicitly stated scope.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "operations director jobs Swiss medium sized companies",
+      "language": "en",
+      "english_gloss": "operations director jobs Swiss medium sized companies",
+      "intent": "transactional",
+      "need": "Match company scale",
+      "cluster": "midsize operations",
+      "product_fit": "medium",
+      "fit_reason": "Company facts and source review needed; size filter is not assumed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "COO versus head of operations reporting to CEO job description",
+      "language": "en",
+      "english_gloss": "COO versus head of operations reporting to CEO job description",
+      "intent": "informational",
+      "need": "Interpret responsibilities behind titles",
+      "cluster": "leadership title ambiguity",
+      "product_fit": "medium",
+      "fit_reason": "A source-based guide can assist without universal definitions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Stellenalarm nur ausgewählte Firmen Schweiz",
+      "language": "de",
+      "english_gloss": "Job alerts only selected companies Switzerland",
+      "intent": "commercial",
+      "need": "Monitor a small company list",
+      "cluster": "company alerts",
+      "product_fit": "high",
+      "fit_reason": "Strong fit for published openings at covered employers.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "private job alerts without public candidate profile",
+      "language": "en",
+      "english_gloss": "private job alerts without public candidate profile",
+      "intent": "commercial",
+      "need": "Avoid public availability signals",
+      "cluster": "discreet monitoring",
+      "product_fit": "medium",
+      "fit_reason": "Needs verified product visibility documentation.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Monitor Karriereseiten Führungskräfte Stellen",
+      "language": "de",
+      "english_gloss": "Monitor careers pages for leadership vacancies",
+      "intent": "commercial",
+      "need": "Stop checking infrequent openings manually",
+      "cluster": "career-page monitoring",
+      "product_fit": "high",
+      "fit_reason": "Core monitoring mechanism aligns.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "COO operations director job alerts Switzerland",
+      "language": "en",
+      "english_gloss": "COO operations director job alerts Switzerland",
+      "intent": "transactional",
+      "need": "Save several relevant titles",
+      "cluster": "executive alerts",
+      "product_fit": "high",
+      "fit_reason": "Saved search alerts fit within verified coverage.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Interviewnotizen Bewerbungen Führungskräfte speichern",
+      "language": "de",
+      "english_gloss": "Save interview notes for executive applications",
+      "intent": "transactional",
+      "need": "Preserve details of a few indexed opportunities",
+      "cluster": "executive application notes",
+      "product_fit": "medium",
+      "fit_reason": "Indexed-job notes fit; offline recruiter mandates cannot be assumed importable.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

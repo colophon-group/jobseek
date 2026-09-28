@@ -1,0 +1,266 @@
+{
+  "id": "p30",
+  "name": "Bologna industrial technician seeking a predictable schedule",
+  "context": {
+    "occupation": "Industrial maintenance technician",
+    "seniority": "Experienced",
+    "geography": "Bologna area, Italy; manageable daily commute",
+    "languages": [
+      "it"
+    ],
+    "employment_state": "Employed on rotating shifts",
+    "constraints": [
+      "Permanent role",
+      "Explicit predictable schedule",
+      "Manageable commute",
+      "Must distinguish day work from on-call duties",
+      "Some manufacturers known"
+    ],
+    "company_awareness": "Knows nearby manufacturing names but sees many anonymous recruiter listings."
+  },
+  "overlap_tags": [
+    "maintenance",
+    "Italy",
+    "Bologna",
+    "Italian",
+    "permanent",
+    "shift-exclusions",
+    "commute",
+    "manufacturing"
+  ],
+  "trigger": "Another rota change interferes with planned commitments, making a predictable local role more attractive than headline salary alone.",
+  "searches_run": [
+    {
+      "query": "manutentore industriale Bologna tempo indeterminato",
+      "observation": "Retrieved several recruiter listings with permanent labels and local municipalities. Direct Adecco inspection confirms direct permanent hiring but also emergency on-call duties; full-time label does not resolve schedule.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "manutentore Bologna orario giornaliero no turni tempo indeterminato",
+      "observation": "Results remained a mix of relevant maintenance listings and irrelevant schedule documents. No retrieved evidence established a dependable no-shift filter.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.adecco.com/it-it/cerca-lavoro/manutentore-di-impianti-industriali-monte-san-pietro-bologna/0163-12625",
+      "title": "Manutentore di impianti industriali Monte San Pietro | Adecco",
+      "supports": "Direct listing states permanent direct employment, municipality and emergency on-call; ordinary hours remain unspecified."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.manpower.it/it/annuncio-lavoro/engineering/engineering/manutentore-elettrico/1038832",
+      "title": "Manutentore/Installatore Elettrico Anzola dell'Emilia | Manpower",
+      "supports": "Retrieved listing has permanent status and specific municipality; no verified timetable."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.randstad.com/jobs/manutentore-elettromeccanico-mfnb_bologna_47485823/",
+      "title": "Manutentore elettromeccanico Bologna | Randstad",
+      "supports": "Retrieved snippet names Interporto location and direct permanent contract; hours require inspection."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "manutentore Bologna orario giornaliero tempo indeterminato",
+    "promise": "Find covered maintenance employers and compare contract, plant location and stated hours, distinguishing rotating shifts from emergency on-call.",
+    "cta": "Search permanent maintenance openings and follow local covered manufacturers.",
+    "proof_needed": [
+      "Italian industrial employer coverage",
+      "Italian synonyms for maintenance occupations",
+      "Explicit shift/day/on-call evidence and unknown handling",
+      "Plant location instead of recruiter branch address",
+      "Do not claim commute-time filtering without implementation"
+    ]
+  },
+  "conversion_objections": [
+    "Most results hide the manufacturer behind an agency.",
+    "Full-time says nothing about shifts.",
+    "Daytime work can still include emergency calls.",
+    "Bologna province is too large to assume a practical commute."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "manutentore Bologna garantito senza reperibilità",
+      "reason": "No schedule guarantee from missing text."
+    },
+    {
+      "query": "calcolo stipendio netto CCNL metalmeccanico",
+      "reason": "Payroll/legal calculation is outside job discovery."
+    }
+  ],
+  "message_to_founder": "Simulation: Cambierei per un orario chiaro e una sede raggiungibile, non solo per una RAL maggiore. Fatemi vedere cosa dice l'annuncio su turni e reperibilità, e non scambiate tempo pieno per lavoro in giornata.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "manutentore industriale Bologna tempo indeterminato",
+      "language": "it",
+      "english_gloss": "Industrial maintenance technician Bologna permanent",
+      "intent": "transactional",
+      "need": "Find stable local work",
+      "cluster": "Bologna maintenance",
+      "product_fit": "high",
+      "fit_reason": "Role/location/employment filtering fit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "manutentore elettromeccanico Bologna",
+      "language": "it",
+      "english_gloss": "Electromechanical maintenance technician Bologna",
+      "intent": "transactional",
+      "need": "Use a close occupational title",
+      "cluster": "electromechanical jobs",
+      "product_fit": "high",
+      "fit_reason": "Occupation/title variants fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "tecnico manutenzione aziende Bologna provincia",
+      "language": "it",
+      "english_gloss": "Maintenance technician companies Bologna province",
+      "intent": "transactional",
+      "need": "Survey manufacturing opportunities",
+      "cluster": "industrial technician jobs",
+      "product_fit": "high",
+      "fit_reason": "Company and regional discovery fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "manutentore Bologna orario giornaliero no turni tempo indeterminato",
+      "language": "it",
+      "english_gloss": "Maintenance Bologna day hours no shifts permanent",
+      "intent": "transactional",
+      "need": "Avoid another rotating schedule",
+      "cluster": "maintenance schedule",
+      "product_fit": "medium",
+      "fit_reason": "Explicit source text needed; generic full-time insufficient.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "annuncio manutentore giornata con reperibilità",
+      "language": "it",
+      "english_gloss": "Daytime maintenance advert with on-call",
+      "intent": "informational",
+      "need": "Understand two separate schedule conditions",
+      "cluster": "day work and on-call",
+      "product_fit": "medium",
+      "fit_reason": "Guide can distinguish wording without employment-law advice.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "aziende manifatturiere Bologna lavora con noi manutenzione",
+      "language": "it",
+      "english_gloss": "Bologna manufacturers careers maintenance",
+      "intent": "informational",
+      "need": "Find named employers directly",
+      "cluster": "manufacturer discovery",
+      "product_fit": "high",
+      "fit_reason": "Company-first approach useful if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "manutentore Anzola Casalecchio tempo indeterminato",
+      "language": "it",
+      "english_gloss": "Permanent maintenance jobs Anzola Casalecchio",
+      "intent": "transactional",
+      "need": "Narrow to practical municipalities",
+      "cluster": "local maintenance jobs",
+      "product_fit": "high",
+      "fit_reason": "Location filtering helps; real commute still user-assessed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "offerte manutentore assunzione diretta non somministrazione",
+      "language": "it",
+      "english_gloss": "Maintenance vacancies direct employment not agency assignment",
+      "intent": "commercial",
+      "need": "Clarify who employs the candidate",
+      "cluster": "employment arrangement",
+      "product_fit": "medium",
+      "fit_reason": "Contract type alone may not encode agency relationship.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "alert lavoro manutentore solo aziende scelte",
+      "language": "it",
+      "english_gloss": "Maintenance job alerts selected companies only",
+      "intent": "commercial",
+      "need": "Monitor known manufacturers",
+      "cluster": "manufacturer alerts",
+      "product_fit": "high",
+      "fit_reason": "Selected-company alerts align.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "filtro offerte lavoro turni orario giornaliero",
+      "language": "it",
+      "english_gloss": "Job filter shifts daytime hours",
+      "intent": "commercial",
+      "need": "Reduce manual reading",
+      "cluster": "schedule filtering",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria can assist; hours filter unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "avvisi gratuiti manutentore Bologna",
+      "language": "it",
+      "english_gloss": "Free maintenance job alerts Bologna",
+      "intent": "transactional",
+      "need": "Test relevance with low commitment",
+      "cluster": "free maintenance alerts",
+      "product_fit": "high",
+      "fit_reason": "Free alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "salvare candidature note colloquio turni sede",
+      "language": "it",
+      "english_gloss": "Save applications interview notes shifts location",
+      "intent": "transactional",
+      "need": "Record exact schedules discussed",
+      "cluster": "application notes",
+      "product_fit": "medium",
+      "fit_reason": "Indexed posting notes fit; no timetable guarantee.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

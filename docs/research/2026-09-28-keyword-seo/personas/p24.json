@@ -1,0 +1,278 @@
+{
+  "id": "p24",
+  "name": "Developer assembling a personal job-search automation",
+  "context": {
+    "occupation": "Software developer building personal search tooling",
+    "seniority": "Technically experienced; desired job seniority unspecified",
+    "geography": "Location unspecified; needs configurable geography",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Exploring jobs while building a reusable personal workflow",
+    "constraints": [
+      "Prefers inspectable open-source components",
+      "Wants programmatic search and career-page monitoring",
+      "Needs stable IDs and incremental updates",
+      "API/MCP documentation matters more than a polished dashboard",
+      "No commercial redistribution rights assumed"
+    ],
+    "company_awareness": "Has a target list and can identify ATS providers, but wants to reduce scraper maintenance."
+  },
+  "overlap_tags": [
+    "developer",
+    "API",
+    "MCP",
+    "open-source",
+    "personal-automation",
+    "career-page-monitoring",
+    "integration-intent"
+  ],
+  "trigger": "A hand-written career-page checker breaks after a site redesign, prompting a search for maintained APIs or an MCP server that can plug into a personal assistant.",
+  "searches_run": [
+    {
+      "query": "job search API MCP server open source",
+      "observation": "Retrieved several GitHub projects offering MCP job-search interfaces, including self-hosted tools and provider-connected adapters. A source-code repository is a competing implementation path, not evidence of willingness to buy a jobseeker subscription.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "open source monitor company careers pages new jobs alerts personal automation",
+      "observation": "Retrieved a self-hosted ATS polling project, a managed alert service and generic page-monitoring guidance. Direct inspection of job-alerts documents title/location filters, known-job state, configurable company registry and SMTP setup.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://github.com/TadMSTR/jobsearch-mcp",
+      "title": "jobsearch-mcp | TadMSTR on GitHub",
+      "supports": "Retrieved repository advertises self-hosted MCP job search and lists API data providers; runtime behavior not tested."
+    },
+    {
+      "id": "s2",
+      "url": "https://github.com/JoboAI/jobo-mcp",
+      "title": "Jobo jobs MCP server | JoboAI on GitHub",
+      "supports": "Retrieved repository describes structured search tools and provider authentication. Direct page opened, but no integration test or licensing assessment performed."
+    },
+    {
+      "id": "s3",
+      "url": "https://github.com/SirFuzzyWalls/job-alerts",
+      "title": "job-alerts | SirFuzzyWalls on GitHub",
+      "supports": "Directly inspected README describes ATS polling, configurable employers and title/location filters, state retention, local dashboard and SMTP requirements; GitHub shows AGPL-3.0 code license, not data redistribution rights."
+    },
+    {
+      "id": "s4",
+      "url": "https://firstpost.io/",
+      "title": "FirstPost personalised job alerts",
+      "supports": "Retrieved service description offers monitored career-page alerts, illustrating a managed alternative to self-hosting; claims not tested."
+    },
+    {
+      "id": "r1",
+      "url": "/Users/Viktor/.codex/worktrees/seo-surface-audit/jobseek/packages/mcp-server/README.md",
+      "title": "Job Seek MCP server README — repository evidence verified by parent agent",
+      "supports": "Documents hosted https://jseek.co/mcp without authentication, local @jseek/mcp-server package and search_jobs/get_job_detail/search_companies/list_taxonomies/resolve_slugs/create_watchlist_link. Parent also verified /openapi.json redirects to /api/openapi.json. This is repository evidence, not a third external search."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "job search API MCP server",
+    "promise": "Document how to use the existing hosted MCP endpoint or local package to search jobs and companies, inspect details and create watchlist links for personal workflows.",
+    "cta": "Read the MCP setup guide and try a documented search; use create_watchlist_link to continue into a saved-search flow.",
+    "proof_needed": [
+      "Publish accurate hosted/local setup and tool examples",
+      "Document operational limits and expected freshness without inventing guarantees",
+      "State permitted personal use and commercial redistribution terms separately",
+      "Validate examples against the running endpoint",
+      "Measure developer activation separately from paid jobseeker conversion"
+    ]
+  },
+  "conversion_objections": [
+    "Will the documented endpoint remain stable for a personal workflow?",
+    "I can self-host a basic company watcher.",
+    "I need stable identifiers and clear update/deletion semantics.",
+    "Does Pro change API usage or only description filtering? Do not assume the former.",
+    "A working MCP interface does not establish commercial redistribution rights."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "free unlimited job postings API commercial redistribution",
+      "reason": "No unlimited-service promise or commercial data rights are established."
+    },
+    {
+      "query": "automated mass apply job API",
+      "reason": "Auto-apply is not among the verified tools and is a different intent."
+    }
+  ],
+  "message_to_founder": "Simulation: Your existing MCP interface could save me scraper maintenance, so clear examples and predictable limits matter. I may use it for a personal assistant and later adopt managed alerts, but developer activation should not be counted as demand for a paid jobseeker plan without evidence.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "job search API MCP server open source",
+      "language": "en",
+      "english_gloss": "job search API MCP server open source",
+      "intent": "commercial",
+      "need": "Find an interface for a personal assistant",
+      "cluster": "job API MCP",
+      "product_fit": "high",
+      "fit_reason": "Existing hosted MCP and local package meet interface discovery intent; code/data terms still need explicit documentation.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "open source job search tools",
+      "language": "en",
+      "english_gloss": "open source job search tools",
+      "intent": "informational",
+      "need": "Survey reusable components",
+      "cluster": "open-source job tools",
+      "product_fit": "medium",
+      "fit_reason": "Local MCP package offers a technical entry point; clarify source availability and licensing rather than assuming all data is open.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "company careers page job alerts",
+      "language": "en",
+      "english_gloss": "company careers page job alerts",
+      "intent": "commercial",
+      "need": "Consider a managed alternative",
+      "cluster": "career-page alerts",
+      "product_fit": "high",
+      "fit_reason": "Managed covered-company alerts directly fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "open source monitor company careers pages new jobs alerts personal automation",
+      "language": "en",
+      "english_gloss": "open source monitor company careers pages new jobs alerts personal automation",
+      "intent": "informational",
+      "need": "Replace fragile hand-written monitoring",
+      "cluster": "self-hosted job monitoring",
+      "product_fit": "medium",
+      "fit_reason": "Managed monitoring is an alternative, but self-hosting intent differs.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "deduplicate job postings stable id career page monitor",
+      "language": "en",
+      "english_gloss": "deduplicate job postings stable id career page monitor",
+      "intent": "informational",
+      "need": "Avoid repeated notifications from changed pages",
+      "cluster": "job deduplication engineering",
+      "product_fit": "medium",
+      "fit_reason": "Developer guide can explain verified identifiers; incremental/deletion semantics require documentation.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Greenhouse Lever Ashby job board API personal job search",
+      "language": "en",
+      "english_gloss": "Greenhouse Lever Ashby job board API personal job search",
+      "intent": "informational",
+      "need": "Use direct ATS integrations where possible",
+      "cluster": "ATS APIs",
+      "product_fit": "medium",
+      "fit_reason": "Existing aggregated MCP/API is an alternative to maintaining direct ATS integrations; coverage must be shown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "self hosted job watcher versus paid job alerts",
+      "language": "en",
+      "english_gloss": "self hosted job watcher versus paid job alerts",
+      "intent": "commercial",
+      "need": "Trade maintenance time against hosted convenience",
+      "cluster": "build versus buy alerts",
+      "product_fit": "medium",
+      "fit_reason": "Potential managed-alert conversion, requiring coverage proof.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job search API updated since timestamp deleted jobs",
+      "language": "en",
+      "english_gloss": "job search API updated since timestamp deleted jobs",
+      "intent": "commercial",
+      "need": "Assess incremental sync capabilities",
+      "cluster": "incremental job API",
+      "product_fit": "medium",
+      "fit_reason": "Public interface exists, but these synchronization semantics are not established by verified tool list.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "MCP job search server location salary filters",
+      "language": "en",
+      "english_gloss": "MCP job search server location salary filters",
+      "intent": "commercial",
+      "need": "Compare programmatic query support",
+      "cluster": "MCP structured search",
+      "product_fit": "high",
+      "fit_reason": "Verified search_jobs tool is relevant; document exactly which filters it accepts.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "job data API personal use license",
+      "language": "en",
+      "english_gloss": "job data API personal use license",
+      "intent": "informational",
+      "need": "Find explicit permitted-use terms",
+      "cluster": "job data permissions",
+      "product_fit": "medium",
+      "fit_reason": "Legitimate documentation need; actual terms determine permitted uses.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "free job alerts specific companies email",
+      "language": "en",
+      "english_gloss": "free job alerts specific companies email",
+      "intent": "transactional",
+      "need": "Try a simpler hosted workflow",
+      "cluster": "free company alerts",
+      "product_fit": "high",
+      "fit_reason": "Existing free alerts can satisfy personal monitoring.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "connect job search API to personal assistant",
+      "language": "en",
+      "english_gloss": "connect job search API to personal assistant",
+      "intent": "transactional",
+      "need": "Integrate selected provider",
+      "cluster": "personal job automation",
+      "product_fit": "high",
+      "fit_reason": "Hosted unauthenticated MCP and local package provide documented integration paths.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief. Correction based on parent-verified repository evidence: the product already has hosted MCP, a local MCP package and public OpenAPI endpoints. Developer-doc acquisition is legitimate and separate from paid jobseeker intent. Public mcp.json is intentionally 404 and is not cited as discovery. Operational limits, commercial data rights and conversion remain unverified. The two external searches are unchanged."
+}

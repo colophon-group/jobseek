@@ -1,0 +1,272 @@
+{
+  "id": "p39",
+  "name": "Lausanne hotel receptionist planning the next season",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Hotel front-desk worker",
+    "seniority": "Experienced frontline hospitality",
+    "geography": "Lausanne; willing to relocate within Switzerland if accommodation works",
+    "languages": [
+      "fr",
+      "en"
+    ],
+    "employment_state": "Looking for the next seasonal or permanent role",
+    "constraints": [
+      "French and English fluent; German not fluent",
+      "Start date must match availability",
+      "Accommodation needed if relocating",
+      "Direct hotel opportunities preferred over agency noise"
+    ],
+    "company_awareness": "Knows local hotels; fewer seasonal resort employers"
+  },
+  "overlap_tags": [
+    "hospitality",
+    "french",
+    "switzerland",
+    "seasonal",
+    "accommodation",
+    "start-date",
+    "languages"
+  ],
+  "trigger": "Planning the end of the current engagement prompts an early winter-season search, with housing and starting date determining whether a distant resort is practical.",
+  "searches_run": [
+    {
+      "query": "réceptionniste hôtel Suisse français anglais logement saison hiver",
+      "observation": "Results mixed Swiss and French resorts, receptionist and reception-manager roles, seasonal and permanent contracts. A hotel called Suisse in a French location also appeared, so name-based country inference would fail.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "réceptionniste hôtel Suisse saison hiver décembre logement français anglais allemand",
+      "observation": "Listings stated differing language requirements and housing arrangements. The inspected Glacier multi-role advert starts in mid-December and treats German as a plus for a reception-manager role; it does not establish the persona's management fit or housing cost.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.lhotellerie-restauration.fr/emploi/345b6f79/the-glacier-hotel-4-superieur-aux-diable/4c6c7d37",
+      "title": "The Glacier Hotel — reception and hospitality recruitment",
+      "supports": "Directly inspected trade-publication advert names a Swiss hotel, mid-December 2026 start, accommodation label and mixed CDI/CDD roles. Reception-manager requirements include French/English, with German optional. Housing costs and allocation were not specified."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.hellowork.com/fr-fr/emplois/77397403.html",
+      "title": "Réceptionniste tournant — Park Hôtel Suisse & Spa",
+      "supports": "Retrieved listing is in Chamonix, France despite Suisse in the hotel name. Used only to illustrate geographic false positives."
+    },
+    {
+      "id": "s3",
+      "url": "https://jobportalschweiz.ch/fr/jobs/ea0c3f89-4090-4b07-bcc1-3595c9b1094a",
+      "title": "Réceptionniste — Hotel Schweizerhof winter 2026/27",
+      "supports": "Retrieved aggregator text makes German mandatory and offers help finding accommodation; that differs from French/English sufficiency or provided housing."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "réceptionniste Suisse saison hiver logement français anglais",
+    "promise": "Compare Swiss hotel openings by actual location, published season dates, working languages and accommodation wording.",
+    "cta": "Browse covered hotels and save alerts for reception roles that match your dates.",
+    "proof_needed": [
+      "Demonstrate independent hotel and resort coverage.",
+      "Assign each condition to the correct role in multi-role adverts.",
+      "Separate accommodation provided, availability-dependent housing and help finding housing.",
+      "Show required versus optional languages; posting language is not enough.",
+      "Show exact start/end wording and leave missing dates unknown.",
+      "New indexable French acquisition guide required."
+    ]
+  },
+  "conversion_objections": [
+    "Will I see French resorts when I asked for Switzerland?",
+    "Is German required or just useful?",
+    "Does accommodation mean an allocated room, and what does it cost?",
+    "Is this receptionist work or reception management?",
+    "Can I start on my available date?",
+    "Are the hotels themselves covered?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "emploi Suisse logement gratuit garanti",
+      "reason": "Housing cost and availability cannot be assumed."
+    },
+    {
+      "query": "permis travail saisonnier Suisse",
+      "reason": "Legal eligibility is outside this product promise."
+    },
+    {
+      "query": "réceptionniste hôtel Suisse sans allemand garanti",
+      "reason": "Language requirements vary by vacancy and may be omitted."
+    }
+  ],
+  "message_to_founder": "Simulation: Je peux travailler en français et en anglais, mais pas tenir une réception en allemand. Avant de changer de région, j'ai besoin de la vraie date de début et de savoir ce que signifie exactement le logement proposé.",
+  "confidence_and_limits": "Synthetic French-language searcher. Two queries, one failed page open and one successful trade-advert inspection. Start date is an illustrative December search, not supplied availability. No accommodation availability, employer legitimacy or legal eligibility verified.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "emploi réceptionniste Suisse",
+      "language": "fr",
+      "english_gloss": "Receptionist jobs Switzerland",
+      "intent": "commercial",
+      "need": "Survey vacancies.",
+      "cluster": "swiss-reception",
+      "product_fit": "high",
+      "fit_reason": "Role/location filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "réceptionniste hôtel Lausanne CDI",
+      "language": "fr",
+      "english_gloss": "Hotel receptionist Lausanne permanent",
+      "intent": "commercial",
+      "need": "Explore staying locally.",
+      "cluster": "lausanne-hospitality",
+      "product_fit": "high",
+      "fit_reason": "Local role and employment filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "travail saison hiver hôtel Suisse",
+      "language": "fr",
+      "english_gloss": "Winter seasonal hotel work Switzerland",
+      "intent": "commercial",
+      "need": "Explore resort work.",
+      "cluster": "swiss-seasonal",
+      "product_fit": "medium",
+      "fit_reason": "Dates and contract details need text evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "réceptionniste hôtel Suisse français anglais logement saison hiver",
+      "language": "fr",
+      "english_gloss": "Swiss hotel receptionist French English accommodation winter",
+      "intent": "commercial",
+      "need": "Combine practical needs.",
+      "cluster": "housed-reception",
+      "product_fit": "medium",
+      "fit_reason": "Coverage and source details are decisive.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "réceptionniste hôtel Suisse saison hiver décembre logement français anglais allemand",
+      "language": "fr",
+      "english_gloss": "Swiss hotel winter receptionist December accommodation French English German",
+      "intent": "commercial",
+      "need": "Check start and languages.",
+      "cluster": "hospitality-start-language",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria can help without guarantees.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "hôtels Vaud Valais recrutement réception",
+      "language": "fr",
+      "english_gloss": "Vaud Valais hotels reception recruitment",
+      "intent": "commercial",
+      "need": "Identify employers.",
+      "cluster": "resort-employers",
+      "product_fit": "high",
+      "fit_reason": "Employer discovery supports later alerts.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "réceptionniste Suisse allemand souhaité pas obligatoire",
+      "language": "fr",
+      "english_gloss": "Swiss receptionist German desired not mandatory",
+      "intent": "commercial",
+      "need": "Avoid a language mismatch.",
+      "cluster": "hospitality-language",
+      "product_fit": "medium",
+      "fit_reason": "Required versus optional must be distinguished.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "emploi hôtel logement fourni ou aide logement",
+      "language": "fr",
+      "english_gloss": "Hotel work accommodation provided or housing assistance",
+      "intent": "informational",
+      "need": "Interpret a relocation condition.",
+      "cluster": "staff-accommodation",
+      "product_fit": "medium",
+      "fit_reason": "Guide can compare wording; cannot reserve housing.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "réceptionniste saison hiver date début à convenir",
+      "language": "fr",
+      "english_gloss": "Winter receptionist start date negotiable",
+      "intent": "commercial",
+      "need": "Match availability.",
+      "cluster": "hospitality-start-date",
+      "product_fit": "medium",
+      "fit_reason": "Needs explicit start-date flexibility.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Hotelcareer Suisse réceptionniste français",
+      "language": "fr",
+      "english_gloss": "Hotelcareer Switzerland receptionist French",
+      "intent": "navigational",
+      "need": "Try a specialist alternative.",
+      "cluster": "hospitality-board",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation is a weak landing target.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "alerte emploi réceptionniste hôtels Suisse",
+      "language": "fr",
+      "english_gloss": "Swiss hotel receptionist job alerts",
+      "intent": "commercial",
+      "need": "Follow matching hotels.",
+      "cluster": "hotel-alerts",
+      "product_fit": "high",
+      "fit_reason": "Free alerts fit if hotels are covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions employeur logement personnel coût chambre hôtel",
+      "language": "fr",
+      "english_gloss": "Questions employer staff housing cost hotel room",
+      "intent": "informational",
+      "need": "Resolve housing terms.",
+      "cluster": "housing-clarification",
+      "product_fit": "low",
+      "fit_reason": "Employer confirmation required.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

@@ -1,0 +1,270 @@
+{
+  "id": "p23",
+  "name": "French independent career coach supporting ten clients",
+  "context": {
+    "occupation": "Independent career coach",
+    "seniority": "Experienced practitioner",
+    "geography": "France, clients in several French regions",
+    "languages": [
+      "fr"
+    ],
+    "employment_state": "Self-employed, serving ten clients",
+    "constraints": [
+      "Clients include career changers and returners",
+      "Different goals and experience per client",
+      "Needs client autonomy and clear privacy boundaries",
+      "Wants reusable employer-research habits",
+      "Cannot assume shared accounts or access to private applications"
+    ],
+    "company_awareness": "Knows recurring employers but each client's target list differs."
+  },
+  "overlap_tags": [
+    "career-coach",
+    "France",
+    "French",
+    "referrer",
+    "career-change",
+    "return-to-work",
+    "multi-client-intent"
+  ],
+  "trigger": "Three clients arrive at sessions with scattered links and inconsistent searches, consuming time intended for career decisions and interview preparation.",
+  "searches_run": [
+    {
+      "query": "outil suivi recherche emploi clients coach carrière",
+      "observation": "Retrieval included coach-targeted commercial platforms and candidate-focused tracking resources. Direct JobWinner inspection advertised organizational branding and client application monitoring—capabilities distinct from a personal tracker.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "partager liste offres emploi accompagnement reconversion clients alertes",
+      "observation": "Results mixed coaching tools, jobseekers' guidance and France Travail employer/candidate pages. The inspected France Travail article describes personal contact/application organization; it does not establish coach access or shared-list functionality.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://jobwinner.ai/fr/plateforme-de-carriere/conseillers-de-carriere/",
+      "title": "Outils d'IA pour les coachs de carrière | JobWinner",
+      "supports": "Directly inspected vendor page markets white-label coaching tools and client monitoring; feature and outcome claims were not tested."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.francetravail.fr/candidat/vos-services-en-ligne/emploi-store/emploi-store-prepare-candidature/myjob-booster-gerer-candidature.html",
+      "title": "Myjob-booster : gérer vos candidatures et vos contacts | France Travail",
+      "supports": "Direct article describes candidate-side organization of contacts, tasks, meetings and applications; not a multi-client coaching dashboard."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.hatch.jobs/fr/",
+      "title": "Hatch | Coach de carrière personnel",
+      "supports": "Retrieved vendor description targets advisers and client progress workflows, demonstrating an organizational-tool alternative."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "aider un client à cibler des entreprises recherche emploi",
+    "promise": "A French guide coaches can use to help each client select covered employers, refine role searches and create their own alerts.",
+    "cta": "Explore the free search with a client, then let them create and control their own saved searches.",
+    "proof_needed": [
+      "French-language onboarding understandable to nontechnical clients",
+      "Examples of broader transferable-skill searches without automatic eligibility claims",
+      "Exact free-plan limits and covered employers",
+      "Verify any link-sharing functionality before presenting shared lists",
+      "Clearly distinguish individual tracker use from coach access and client management"
+    ]
+  },
+  "conversion_objections": [
+    "Ten saved searches is not a ten-client management plan.",
+    "I need boundaries between clients' records.",
+    "Can clients understand the tool without ongoing help?",
+    "Career changers may miss opportunities if filters use only former job titles.",
+    "Can I refer a client without implying I can see their private progress?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "logiciel gestion multi clients coach carrière",
+      "reason": "No multi-client dashboard or organizational permissions demonstrated."
+    },
+    {
+      "query": "ATS coach recrutement suivi candidats",
+      "reason": "Recruiter ATS intent exceeds candidate-side product."
+    },
+    {
+      "query": "plateforme coaching emploi marque blanche",
+      "reason": "White-label and commercial client-management capabilities are unverified."
+    }
+  ],
+  "message_to_founder": "Simulation: Je peux recommander un outil simple que mes clients gardent en main, surtout pour choisir des entreprises et recevoir leurs propres alertes. Ne présentez pas dix recherches sauvegardées comme un espace pour dix clients : j'aurais alors besoin de permissions, de séparation des dossiers et de fonctions de suivi que vous n'avez pas démontrées.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "outil suivi recherche emploi clients coach carrière",
+      "language": "fr",
+      "english_gloss": "Job-search tracking tool for career coach clients",
+      "intent": "commercial",
+      "need": "Find a professional workflow aid",
+      "cluster": "coach tools",
+      "product_fit": "low",
+      "fit_reason": "Personal tracking is not multi-client administration.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "sites emploi reconversion professionnelle France",
+      "language": "fr",
+      "english_gloss": "Job sites for career change France",
+      "intent": "informational",
+      "need": "Find resources useful across clients",
+      "cluster": "career-change resources",
+      "product_fit": "medium",
+      "fit_reason": "Role discovery can help but skills-transfer coaching is separate.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "offres emploi retour après pause professionnelle",
+      "language": "fr",
+      "english_gloss": "Jobs returning after a career break",
+      "intent": "transactional",
+      "need": "Identify plausible opportunities for returners",
+      "cluster": "return-to-work jobs",
+      "product_fit": "medium",
+      "fit_reason": "Source descriptions help; inclusion or acceptance cannot be guaranteed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "partager liste offres emploi accompagnement reconversion clients alertes",
+      "language": "fr",
+      "english_gloss": "Share job lists and alerts with career-change coaching clients",
+      "intent": "commercial",
+      "need": "Coordinate research without scattered links",
+      "cluster": "shared job research",
+      "product_fit": "low",
+      "fit_reason": "Shared lists and permissions are unverified.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "aider un client à cibler des entreprises recherche emploi",
+      "language": "fr",
+      "english_gloss": "Help a client target employers in a job search",
+      "intent": "informational",
+      "need": "Teach a reusable search method",
+      "cluster": "employer targeting coaching",
+      "product_fit": "high",
+      "fit_reason": "Company-first discovery supports a referral guide.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "entreprises qui recrutent profils en reconversion",
+      "language": "fr",
+      "english_gloss": "Companies hiring career changers",
+      "intent": "informational",
+      "need": "Build target lists grounded in actual requirements",
+      "cluster": "career-change employer discovery",
+      "product_fit": "medium",
+      "fit_reason": "Need explicit source evidence, not employer-wide labels.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "tableau suivi candidatures gratuit français",
+      "language": "fr",
+      "english_gloss": "Free French application tracking table",
+      "intent": "commercial",
+      "need": "Recommend a low-barrier personal tracker",
+      "cluster": "free candidate tracking",
+      "product_fit": "medium",
+      "fit_reason": "Indexed-job tracker fits; external manual entries unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "France Travail alertes emploi plusieurs métiers",
+      "language": "fr",
+      "english_gloss": "France Travail job alerts for several occupations",
+      "intent": "informational",
+      "need": "Compare clients' existing service",
+      "cluster": "public-service alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Alternative may solve the basic alert need.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "logiciel coach emploi accès clients confidentialité",
+      "language": "fr",
+      "english_gloss": "Career coach software client access confidentiality",
+      "intent": "commercial",
+      "need": "Check permissions before sharing records",
+      "cluster": "coach permissions",
+      "product_fit": "low",
+      "fit_reason": "No coach role or delegated private access demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "recherche emploi compétences transférables sans même intitulé",
+      "language": "fr",
+      "english_gloss": "Job search transferable skills without same title",
+      "intent": "informational",
+      "need": "Avoid trapping changers in old occupation labels",
+      "cluster": "transferable-skill search",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria may support exploration, not establish fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "créer une alerte emploi gratuite entreprises choisies",
+      "language": "fr",
+      "english_gloss": "Create free job alerts for chosen companies",
+      "intent": "transactional",
+      "need": "Have each client configure their own search",
+      "cluster": "client self-service alerts",
+      "product_fit": "high",
+      "fit_reason": "Individual free alerts are a credible referral outcome.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "suivre ses candidatures et notes entretien en français",
+      "language": "fr",
+      "english_gloss": "Track one's applications and interview notes in French",
+      "intent": "transactional",
+      "need": "Let clients maintain records for indexed jobs",
+      "cluster": "personal application notes",
+      "product_fit": "high",
+      "fit_reason": "French interface and indexed-posting notes fit; clients decide what to share.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

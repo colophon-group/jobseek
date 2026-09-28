@@ -1,0 +1,265 @@
+{
+  "id": "p43",
+  "name": "UK QA engineer seeking concrete accessibility policies",
+  "context": {
+    "occupation": "QA automation engineer",
+    "seniority": "Experienced",
+    "geography": "United Kingdom",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Selectively considering a move",
+    "constraints": [
+      "Self-stated need for an accessible workplace",
+      "Self-stated interview accommodations",
+      "Remote or hybrid flexibility",
+      "Concrete role-specific arrangements before committing"
+    ],
+    "company_awareness": "Selective employer shortlist, expanded only when policy and role fit look credible"
+  },
+  "overlap_tags": [
+    "software-engineering",
+    "QA",
+    "UK",
+    "accessibility",
+    "selective-search",
+    "employer-policy"
+  ],
+  "trigger": "A promising technical role offers an inclusion statement but no clear way to discuss interview or workplace adjustments.",
+  "searches_run": [
+    {
+      "query": "QA automation engineer jobs UK remote hybrid",
+      "observation": "Submitted as the broad query in a two-query batch. The returned output was dominated by the policy query, so no specific QA vacancy or broad-query result ordering is claimed.",
+      "source_ids": []
+    },
+    {
+      "query": "software engineering interview reasonable adjustments accessibility employer UK careers",
+      "observation": "Retrieval returned government/charity guidance and employer process pages from FCA, VodafoneThree and DWP Digital. Direct FCA inspection gave named stages, contact routes and possible adjustments while explicitly retaining individual and role-specific conditions.",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.fca.org.uk/careers/working-here/workplace-adjustments",
+      "title": "Workplace adjustments for candidates — FCA",
+      "supports": "Direct inspection documents contact routes, possible accessible formats/locations and assessment adjustments, with role-specific conditions. It does not prove this persona's needs will be met or that a QA vacancy exists."
+    },
+    {
+      "id": "s2",
+      "url": "https://careers.vodafone.com/uk/reasonable-adjustments/",
+      "title": "Reasonable Adjustments — VodafoneThree Careers",
+      "supports": "Retrieved employer page discusses assessment accessibility and alternative formats; an example of a policy source, not verified implementation."
+    },
+    {
+      "id": "s3",
+      "url": "https://careers.dwp.gov.uk/how-we-recruit/",
+      "title": "How we recruit — DWP Digital",
+      "supports": "Retrieved employer process page explains where candidates can state adjustment needs; no individual outcome is inferred."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "software engineering jobs accessible interview process UK",
+    "promise": "Show how to compare employer-published recruitment and workplace policies alongside QA role requirements, with contact routes and unanswered questions.",
+    "cta": "Compare the role and employer policy sources",
+    "proof_needed": [
+      "Dated employer policy links separate from vacancy text",
+      "No accessibility certification inferred from inclusion language",
+      "Verified employer and QA-role coverage",
+      "Job Seek's own accessibility tested before targeting this audience",
+      "Individual preferences collected without assumptions",
+      "New indexable guide; current company/search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Does accessible mean anything specific for my stated needs?",
+    "Can I find a contact before entering a long application?",
+    "Does remote flexibility apply to this team?",
+    "Will your own search and tracker be accessible?",
+    "Are policies current, and do you distinguish a policy from an agreed arrangement?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "guaranteed disability friendly QA employers",
+      "reason": "No employer accessibility guarantee or certification is demonstrated."
+    },
+    {
+      "query": "jobs suitable for my disability",
+      "reason": "Suitability cannot be inferred from disability; use the applicant's stated requirements."
+    },
+    {
+      "query": "legal claim reasonable adjustments rejected",
+      "reason": "Legal advice is outside the product and this research."
+    }
+  ],
+  "message_to_founder": "Simulation: I know the QA work I want to do and the arrangements I need. Help me find the employer's actual process and contact person, without guessing what I can do or treating an inclusion slogan as confirmation.",
+  "confidence_and_limits": "Synthetic persona, two queries and one direct inspection. No disability type, capability limitation or accommodation preference beyond the assignment is inferred. No legal advice, employer implementation audit, volume or ranking claim. Broad-query evidence is limited by combined retrieval output; remaining queries are hypotheses.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "QA automation engineer jobs UK remote hybrid",
+      "language": "en",
+      "english_gloss": "QA automation engineer jobs UK remote hybrid",
+      "intent": "transactional",
+      "need": "Find technical vacancies.",
+      "cluster": "QA UK jobs",
+      "product_fit": "high",
+      "fit_reason": "Role and work-mode filtering fit; coverage needs verification.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "senior test automation engineer jobs UK",
+      "language": "en",
+      "english_gloss": "senior test automation engineer jobs UK",
+      "intent": "transactional",
+      "need": "Search a common adjacent title.",
+      "cluster": "test automation jobs",
+      "product_fit": "high",
+      "fit_reason": "Role and seniority filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "SDET jobs UK",
+      "language": "en",
+      "english_gloss": "SDET jobs UK",
+      "intent": "transactional",
+      "need": "Include software-development-in-test roles.",
+      "cluster": "SDET jobs",
+      "product_fit": "high",
+      "fit_reason": "Technology and occupation search can support this.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "software engineering interview reasonable adjustments accessibility employer UK careers",
+      "language": "en",
+      "english_gloss": "software engineering interview reasonable adjustments accessibility employer UK careers",
+      "intent": "informational",
+      "need": "Find concrete employer processes.",
+      "cluster": "interview accessibility",
+      "product_fit": "medium",
+      "fit_reason": "Policy links help; job-text matching is not verification.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "QA engineer hybrid office attendance policy",
+      "language": "en",
+      "english_gloss": "QA engineer hybrid office attendance policy",
+      "intent": "informational",
+      "need": "Check team-specific attendance.",
+      "cluster": "work-mode detail",
+      "product_fit": "medium",
+      "fit_reason": "Source descriptions can state attendance; gaps remain unknown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "employer accessible workplace policy UK tech",
+      "language": "en",
+      "english_gloss": "employer accessible workplace policy UK tech",
+      "intent": "informational",
+      "need": "Compare workplace policies.",
+      "cluster": "workplace accessibility",
+      "product_fit": "medium",
+      "fit_reason": "A guide can link policies without judging personal suitability.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "technical interview adjustments contact recruiter",
+      "language": "en",
+      "english_gloss": "technical interview adjustments contact recruiter",
+      "intent": "informational",
+      "need": "Find who can confirm arrangements.",
+      "cluster": "recruitment contact",
+      "product_fit": "medium",
+      "fit_reason": "Useful source-linked information; no messaging service implied.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "DWP Digital test engineer careers",
+      "language": "en",
+      "english_gloss": "DWP Digital test engineer careers",
+      "intent": "navigational",
+      "need": "Inspect a candidate employer.",
+      "cluster": "known employer roles",
+      "product_fit": "medium",
+      "fit_reason": "Company-first workflow fits after coverage checks.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "software engineering assessment format before interview",
+      "language": "en",
+      "english_gloss": "software engineering assessment format before interview",
+      "intent": "informational",
+      "need": "Understand the planned assessment.",
+      "cluster": "assessment transparency",
+      "product_fit": "medium",
+      "fit_reason": "Posting/policy evidence may help but team confirmation matters.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "remote QA job occasional office visits UK",
+      "language": "en",
+      "english_gloss": "remote QA job occasional office visits UK",
+      "intent": "transactional",
+      "need": "Check exceptions to remote wording.",
+      "cluster": "remote exceptions",
+      "product_fit": "high",
+      "fit_reason": "Description criteria fit explicit requirements.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions recruiter workplace accessibility hybrid role",
+      "language": "en",
+      "english_gloss": "questions recruiter workplace accessibility hybrid role",
+      "intent": "informational",
+      "need": "Prepare specific questions about stated needs.",
+      "cluster": "employer due diligence",
+      "product_fit": "medium",
+      "fit_reason": "Guide and notes fit without assuming needs.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "track interview arrangements job applications",
+      "language": "en",
+      "english_gloss": "track interview arrangements job applications",
+      "intent": "commercial",
+      "need": "Keep agreed arrangements per process.",
+      "cluster": "interview notes",
+      "product_fit": "medium",
+      "fit_reason": "Notes fit indexed jobs; external-job import and sensitive-data guarantees are unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

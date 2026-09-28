@@ -1,0 +1,267 @@
+{
+  "id": "p31",
+  "name": "Toulouse communications specialist seeking a fixed-term public-interest role",
+  "context": {
+    "occupation": "Communications specialist",
+    "seniority": "Experienced individual contributor",
+    "geography": "Toulouse and nearby area, France",
+    "languages": [
+      "fr"
+    ],
+    "employment_state": "Actively exploring a fixed-term move",
+    "constraints": [
+      "Public-sector or nonprofit employer",
+      "Actual fixed-term vacancy",
+      "Clear recruitment process and required documents",
+      "Avoid exam-preparation pages",
+      "Duration and deadline matter"
+    ],
+    "company_awareness": "Knows major local public institutions but fewer associations."
+  },
+  "overlap_tags": [
+    "communications",
+    "France",
+    "Toulouse",
+    "French",
+    "public-sector",
+    "nonprofit",
+    "fixed-term",
+    "application-process"
+  ],
+  "trigger": "A search for public communications work returns civil-service guidance and expired PDF adverts instead of clearly applicable CDD openings.",
+  "searches_run": [
+    {
+      "query": "chargé communication CDD Toulouse association secteur public",
+      "observation": "Retrieved official public-service vacancies, association postings and older PDF adverts. Public and nonprofit results have different recruitment paths; a generic contract label cannot explain all conditions.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "offre emploi communication Toulouse contractuel CDD recrutement sans concours",
+      "observation": "Retrieved both official vacancy pages and general Toulouse application guidance. Direct university vacancy inspection showed CDD, contract-only recruitment, required documents and a deadline of 27 September 2026, already past on research date. Its duration text also conflicts with its October start.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://choisirleservicepublic.gouv.fr/offre-emploi/dircom-charge-de-communication-digitale-reference-2026-2403091/",
+      "title": "Chargé de communication digitale Toulouse Capitole | Choisir le service public",
+      "supports": "Direct page lists contract-only CDD, CV/letter and 27 September deadline; inconsistent contract-end text and elapsed deadline mean not a verified current opportunity."
+    },
+    {
+      "id": "s2",
+      "url": "https://emploi.toulouse-metropole.fr/candidat/offres/offre-d-emploi-charge-de-communication-h-f-balma-occitanie-sports-cdd-555455",
+      "title": "Chargé de Communication et d'Administration PSA31 | Toulouse Métropole emploi",
+      "supports": "Retrieved association CDD posting in Balma; actual current availability not checked."
+    },
+    {
+      "id": "s3",
+      "url": "https://metropole.toulouse.fr/postuler-mode-demploi",
+      "title": "Postuler : mode d'emploi | Toulouse Mairie Métropole",
+      "supports": "Retrieved general application-process page, distinct from a specific live vacancy; no legal rules generalized from it."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "offres communication CDD Toulouse secteur public association",
+    "promise": "Find covered public-interest employers and inspect actual vacancies, recruitment wording, required documents and source dates.",
+    "cta": "Search fixed-term communications roles and follow covered local employers.",
+    "proof_needed": [
+      "Coverage of public institutions and associations",
+      "Actual vacancy versus evergreen advice/PDF classification",
+      "Source-linked deadline, duration and process details",
+      "Flag conflicting dates rather than silently resolving them",
+      "Avoid broad civil-service eligibility claims"
+    ]
+  },
+  "conversion_objections": [
+    "Are public institutions and small associations covered?",
+    "A CDD can still have a specific recruitment route.",
+    "I do not want another guide to passing exams.",
+    "A visible Apply button may remain after the deadline.",
+    "Conflicting dates make me distrust extracted fields."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "concours attaché territorial préparation communication",
+      "reason": "Exam preparation is a different intent."
+    },
+    {
+      "query": "devenir fonctionnaire sans concours droits",
+      "reason": "Civil-service legal guidance is outside the vacancy-discovery promise."
+    }
+  ],
+  "message_to_founder": "Simulation: Je veux une offre précise à laquelle je peux répondre, avec la durée, la procédure et les pièces demandées. Ne me renvoyez pas vers une page générale sur les concours, et signalez quand la date limite est passée ou que l'annonce se contredit.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "chargé communication CDD Toulouse association secteur public",
+      "language": "fr",
+      "english_gloss": "Communications CDD Toulouse nonprofit public sector",
+      "intent": "transactional",
+      "need": "Find fixed-term public-interest roles",
+      "cluster": "Toulouse CDD communications",
+      "product_fit": "medium",
+      "fit_reason": "Role/type/location fit; sector coverage needs proof.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "emploi communication Toulouse CDD",
+      "language": "fr",
+      "english_gloss": "Communications jobs Toulouse fixed-term",
+      "intent": "transactional",
+      "need": "Start broad local search",
+      "cluster": "communications jobs",
+      "product_fit": "high",
+      "fit_reason": "Basic role/location/type filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "recrutement communication association Toulouse",
+      "language": "fr",
+      "english_gloss": "Association communications recruitment Toulouse",
+      "intent": "transactional",
+      "need": "Find nonprofit opportunities",
+      "cluster": "nonprofit communications",
+      "product_fit": "medium",
+      "fit_reason": "Small association coverage is uncertain.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "offre emploi communication Toulouse contractuel CDD recrutement sans concours",
+      "language": "fr",
+      "english_gloss": "Communications vacancy Toulouse fixed-term contract recruitment without exam",
+      "intent": "transactional",
+      "need": "Find a concrete contract route",
+      "cluster": "public contract vacancies",
+      "product_fit": "medium",
+      "fit_reason": "Surface exact recruitment text without legal inference.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "annonce CDD communication date limite passée encore en ligne",
+      "language": "fr",
+      "english_gloss": "CDD communications advert deadline passed still online",
+      "intent": "informational",
+      "need": "Avoid expired listings",
+      "cluster": "public vacancy freshness",
+      "product_fit": "medium",
+      "fit_reason": "Monitoring may help; freshness cannot be guaranteed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "universités Toulouse recrutement communication",
+      "language": "fr",
+      "english_gloss": "Toulouse universities communications recruitment",
+      "intent": "navigational",
+      "need": "Check a local employer group",
+      "cluster": "university communications",
+      "product_fit": "high",
+      "fit_reason": "Employer monitoring fits if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "chargé communication mairie Toulouse contractuel",
+      "language": "fr",
+      "english_gloss": "Toulouse city communications fixed-term contract role",
+      "intent": "transactional",
+      "need": "Explore local-government vacancies",
+      "cluster": "municipal communications",
+      "product_fit": "medium",
+      "fit_reason": "Need exact source application route.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Choisir le service public alerte communication Toulouse",
+      "language": "fr",
+      "english_gloss": "Public service job alerts communications Toulouse",
+      "intent": "navigational",
+      "need": "Compare a specialized official source",
+      "cluster": "public-sector alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Official board may have stronger process metadata.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "alerte emploi associations collectivités Toulouse",
+      "language": "fr",
+      "english_gloss": "Job alerts associations local authorities Toulouse",
+      "intent": "commercial",
+      "need": "Consolidate employer types",
+      "cluster": "public-interest alerts",
+      "product_fit": "high",
+      "fit_reason": "Covered-company alerts can span them.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "filtrer CDD communication pas alternance stage",
+      "language": "fr",
+      "english_gloss": "Filter communications fixed-term not apprenticeship internship",
+      "intent": "commercial",
+      "need": "Remove contracts with different purpose",
+      "cluster": "contract-purpose filtering",
+      "product_fit": "high",
+      "fit_reason": "Employment-type filtering helps but classification accuracy matters.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "avertissement nouvelles offres CDD communication gratuit",
+      "language": "fr",
+      "english_gloss": "Free new communications fixed-term vacancy alerts",
+      "intent": "transactional",
+      "need": "Monitor new openings",
+      "cluster": "free communications alerts",
+      "product_fit": "high",
+      "fit_reason": "Free alerts fit; not deadline reminders.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "suivre candidatures CDD pièces demandées",
+      "language": "fr",
+      "english_gloss": "Track fixed-term applications required documents",
+      "intent": "transactional",
+      "need": "Record submission requirements",
+      "cluster": "CDD application tracking",
+      "product_fit": "medium",
+      "fit_reason": "Indexed-job notes fit; no automated document checking assumed.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

@@ -1,0 +1,266 @@
+{
+  "id": "p34",
+  "name": "Selective UK SaaS account executive",
+  "hypothetical": true,
+  "context": {
+    "occupation": "B2B account executive",
+    "seniority": "Experienced individual contributor",
+    "geography": "United Kingdom",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Employed; selective search",
+    "constraints": [
+      "Real fixed base salary plus commission",
+      "Exclude commission-only and door-to-door roles",
+      "Prefer SaaS product employers",
+      "Wants compensation components distinguished"
+    ],
+    "company_awareness": "Has preferred SaaS employers and can name several"
+  },
+  "overlap_tags": [
+    "sales",
+    "uk",
+    "saas",
+    "employed",
+    "base-salary",
+    "company-shortlist"
+  ],
+  "trigger": "A recruiter promotes an attractive earnings figure that turns out to be entirely variable, making the candidate more careful about compensation wording.",
+  "searches_run": [
+    {
+      "query": "account executive SaaS jobs UK base salary commission",
+      "observation": "Results mixed recruiter ads, employer ATS pages and salary guides. DualEntry's snippet separated base and commission; an Indeed page also surfaced a commission-only opportunity under broad B2B SaaS search.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "account executive UK jobs guaranteed basic salary not commission only",
+      "observation": "Retrieved pages used base, commission, OTE and earnings inconsistently. Direct PIE inspection found a base-plus-commission role with different lower bounds in its heading and body, supporting the need to inspect source detail.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://jobs.ashbyhq.com/dualentry/aeb4a7cf-e9a1-40ef-a653-97c70cd53931/",
+      "title": "Account Executive — DualEntry",
+      "supports": "Search snippet distinguishes base salary, commission and OTE. Direct opening returned a JavaScript shell, so current details were not independently inspected."
+    },
+    {
+      "id": "s2",
+      "url": "https://uk.indeed.com/q-account-executive-saas-b2b-l-london-jobs.html",
+      "title": "Account Executive SaaS B2B jobs — Indeed",
+      "supports": "Retrieved snippet includes a self-employed commission-only role. It shows broad retrieval can contain the persona's excluded compensation model."
+    },
+    {
+      "id": "s3",
+      "url": "https://pie-recruitment.com/job-details/account-executive-ai-saas-819476",
+      "title": "Account Executive - AI SaaS — PIE Recruitment",
+      "supports": "Directly inspected recruiter page states base plus commission and consultative SaaS duties; heading and body show different base lower bounds. This is evidence of advertised wording, not contractual guarantees or attainable earnings."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "SaaS account executive jobs UK base salary commission",
+    "promise": "Compare published base salary and variable-pay wording in SaaS openings, then follow selected employers.",
+    "cta": "Search account executive roles at your target companies and inspect the compensation breakdown.",
+    "proof_needed": [
+      "Demonstrate whether salary filtering distinguishes base from OTE; do not imply it already does.",
+      "Show source compensation text and conflicting or missing figures.",
+      "Pro description checks must distinguish no base from base plus commission.",
+      "Verify target-employer coverage.",
+      "New indexable guide needed; search/company pages remain noindex."
+    ]
+  },
+  "conversion_objections": [
+    "Is the salary figure base, OTE or estimated earnings?",
+    "Can a no-commission filter accidentally remove base-plus-commission roles?",
+    "Are named SaaS employers covered?",
+    "Can you identify door-to-door duties without excluding legitimate client visits?",
+    "Why use this instead of employer alerts?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "guaranteed 150k SaaS earnings",
+      "reason": "Compensation achievement cannot be guaranteed."
+    },
+    {
+      "query": "commission plan legal advice UK",
+      "reason": "Contract/legal advice is outside the demonstrated product."
+    },
+    {
+      "query": "sales employer verified legitimate",
+      "reason": "Description checks do not verify employers."
+    }
+  ],
+  "message_to_founder": "Simulation: Commission is welcome; pretending it is my basic salary is not. Show the advertised base separately from the upside, and let me follow the SaaS companies I would actually join.",
+  "confidence_and_limits": "Synthetic persona. Two searches and one successful direct inspection; no salary benchmark or earnings forecast is derived. Exact base requirement and target companies are unspecified.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "account executive jobs UK",
+      "language": "en",
+      "english_gloss": "account executive jobs UK",
+      "intent": "commercial",
+      "need": "Survey openings.",
+      "cluster": "uk-account-executive",
+      "product_fit": "high",
+      "fit_reason": "Role and location fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "SaaS sales jobs",
+      "language": "en",
+      "english_gloss": "SaaS sales jobs",
+      "intent": "commercial",
+      "need": "Find product-sales roles.",
+      "cluster": "saas-sales",
+      "product_fit": "medium",
+      "fit_reason": "Company context matters beyond title.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "sales jobs basic salary plus commission",
+      "language": "en",
+      "english_gloss": "sales jobs basic salary plus commission",
+      "intent": "commercial",
+      "need": "Find fixed-pay work.",
+      "cluster": "base-plus-commission",
+      "product_fit": "medium",
+      "fit_reason": "Requires component-aware source reading.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "account executive SaaS jobs UK base salary commission",
+      "language": "en",
+      "english_gloss": "account executive SaaS jobs UK base salary commission",
+      "intent": "commercial",
+      "need": "Combine sector and pay needs.",
+      "cluster": "saas-base-salary",
+      "product_fit": "medium",
+      "fit_reason": "Text checks help; salary field semantics need proof.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "account executive UK jobs guaranteed basic salary not commission only",
+      "language": "en",
+      "english_gloss": "account executive UK jobs guaranteed basic salary not commission only",
+      "intent": "commercial",
+      "need": "Exclude variable-only pay.",
+      "cluster": "commission-only-exclusion",
+      "product_fit": "medium",
+      "fit_reason": "Explicit wording can be assessed but no contract guarantee.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "HubSpot account executive UK careers",
+      "language": "en",
+      "english_gloss": "HubSpot account executive UK careers",
+      "intent": "navigational",
+      "need": "Check a plausible preferred employer.",
+      "cluster": "named-saas-careers",
+      "product_fit": "high",
+      "fit_reason": "Monitoring fits if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "account executive advertised salary OTE or base",
+      "language": "en",
+      "english_gloss": "account executive advertised salary OTE or base",
+      "intent": "informational",
+      "need": "Interpret pay labels.",
+      "cluster": "sales-pay-terms",
+      "product_fit": "medium",
+      "fit_reason": "Guide can explain source distinctions.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "B2B SaaS sales jobs no door to door",
+      "language": "en",
+      "english_gloss": "B2B SaaS sales jobs no door to door",
+      "intent": "commercial",
+      "need": "Exclude unwanted selling method.",
+      "cluster": "sales-duties",
+      "product_fit": "medium",
+      "fit_reason": "Description criteria can help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "mid market account executive permanent UK",
+      "language": "en",
+      "english_gloss": "mid market account executive permanent UK",
+      "intent": "commercial",
+      "need": "Match employment and scope.",
+      "cluster": "midmarket-ae",
+      "product_fit": "high",
+      "fit_reason": "Employment type, role and location fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "RepVue SaaS companies UK account executive",
+      "language": "en",
+      "english_gloss": "RepVue SaaS companies UK account executive",
+      "intent": "navigational",
+      "need": "Investigate employers through an alternative.",
+      "cluster": "sales-employer-research",
+      "product_fit": "low",
+      "fit_reason": "Employer reviews are not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "job alerts account executive specific companies",
+      "language": "en",
+      "english_gloss": "job alerts account executive specific companies",
+      "intent": "commercial",
+      "need": "Follow selected SaaS businesses.",
+      "cluster": "sales-company-alerts",
+      "product_fit": "high",
+      "fit_reason": "Free company-filtered alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions recruiter base salary commission ramp",
+      "language": "en",
+      "english_gloss": "questions recruiter base salary commission ramp",
+      "intent": "informational",
+      "need": "Clarify offer structure.",
+      "cluster": "sales-interview-questions",
+      "product_fit": "low",
+      "fit_reason": "Employer answers are needed; search cannot confirm terms.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

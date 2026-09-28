@@ -1,0 +1,269 @@
+{
+  "id": "p04",
+  "name": "Robotics engineer relocating toward Swiss scaleups",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Robotics and embedded software engineer",
+    "seniority": "Midcareer",
+    "geography": "Netherlands; targets Zurich or Lausanne",
+    "languages": [
+      "en",
+      "de"
+    ],
+    "employment_state": "Employed; exploring a relocation",
+    "constraints": [
+      "Fluent English, basic German",
+      "Relocation acceptable",
+      "Avoid constant international travel",
+      "Wants hands-on robotics work at a scaleup"
+    ],
+    "company_awareness": "Some Swiss robotics names known; needs to discover the rest"
+  },
+  "overlap_tags": [
+    "engineering",
+    "switzerland",
+    "relocation",
+    "english",
+    "embedded",
+    "travel-limit",
+    "company-discovery"
+  ],
+  "trigger": "A prototype programme at the current employer ends, making a Swiss robotics move worth exploring before accepting another maintenance assignment.",
+  "searches_run": [
+    {
+      "query": "robotics embedded engineer jobs Zurich Lausanne English relocation",
+      "observation": "Results included employer and aggregator listings around Zurich, English-language requirements, and relocation wording on Hexagon listings. Lausanne evidence was thinner in this sample; returned internships and older PDFs were not all level-appropriate.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "Swiss robotics startup engineer jobs travel requirements English",
+      "observation": "Results included explicitly travel-heavy deployment roles and a PREEN engineering role stating up to 30% travel. Product engineering and field deployment can share robotics terminology while implying different working lives.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://ch.linkedin.com/jobs/view/senior-embedded-software-engineer-f-m-d-at-hexagon-robotics-4403705677",
+      "title": "Senior Embedded Software Engineer — Hexagon Robotics",
+      "supports": "Retrieved snippet describes English required, basic German advantageous and relocation support. Not directly inspected or verified as currently available."
+    },
+    {
+      "id": "s2",
+      "url": "https://preentechnologies.com/careers/machine-design-engineer/",
+      "title": "Machine Design Engineer — PREEN Technologies",
+      "supports": "Directly inspected employer page states Zurich or remote Europe, up to 30% international travel, fluent English and German as a plus. This is adjacent mechanical work, not proof of a matching embedded vacancy."
+    },
+    {
+      "id": "s3",
+      "url": "https://jobs.ashbyhq.com/flink/02e4083f-fdf4-4fd5-a283-1de1436d6420",
+      "title": "Forward Deployed Software Engineer - Intern — Flink Robotics",
+      "supports": "Retrieved ATS snippet specifies fluent English and 50–100% customer-site travel. Its internship level does not fit this persona."
+    }
+  ],
+  "best_entry_page": {
+    "type": "curated employer guide",
+    "primary_query": "robotics companies in Zurich and Lausanne hiring engineers",
+    "promise": "Discover robotics employers by city and follow their relevant openings, with source-backed language and travel details where published.",
+    "cta": "Choose employers and save a robotics or embedded search.",
+    "proof_needed": [
+      "Verify actual company coverage and distinguish Lausanne from wider western Switzerland.",
+      "Show embedded, controls and deployment roles separately through concrete examples.",
+      "Cite role-specific travel requirements; missing travel information must stay unknown.",
+      "An indexable guide would be new; company and search pages currently remain noindex.",
+      "Do not infer scaleup stage or working language from an English posting alone."
+    ]
+  },
+  "conversion_objections": [
+    "Will you cover small robotics employers rather than mostly web software companies?",
+    "Can you distinguish embedded development from field deployment?",
+    "Is the advertised language sufficient for the team?",
+    "Can I inspect actual travel requirements before committing to a move?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "Swiss work permit Netherlands citizen",
+      "reason": "Citizenship is not supplied and legal eligibility is outside this acquisition promise."
+    },
+    {
+      "query": "robotics internships Switzerland",
+      "reason": "Wrong seniority despite frequent retrieval overlap."
+    },
+    {
+      "query": "robotics jobs Switzerland no travel guaranteed",
+      "reason": "Descriptions cannot guarantee travel policy or reveal omitted requirements."
+    }
+  ],
+  "message_to_founder": "Simulation: I would move for the right robot, but I do not want to spend half the year installing it at customer sites. Help me discover the smaller Swiss teams and show the actual language and travel wording before I subscribe.",
+  "confidence_and_limits": "Synthetic search journey, not customer testimony. Two retrieval queries and one direct inspection establish examples, not demand, rankings or market coverage. Zurich evidence dominated; no conclusion about relative Lausanne opportunity is justified.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "robotics jobs Switzerland",
+      "language": "en",
+      "english_gloss": "Robotics jobs Switzerland",
+      "intent": "commercial",
+      "need": "Survey available work.",
+      "cluster": "robotics-jobs",
+      "product_fit": "medium",
+      "fit_reason": "Occupation/location search fits but includes many adjacent disciplines.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "embedded software engineer jobs Zurich",
+      "language": "en",
+      "english_gloss": "Embedded software engineer jobs Zurich",
+      "intent": "commercial",
+      "need": "Find local embedded roles.",
+      "cluster": "embedded-zurich",
+      "product_fit": "high",
+      "fit_reason": "Role, technology and place align with basic search.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "engineering jobs Lausanne English",
+      "language": "en",
+      "english_gloss": "Engineering jobs Lausanne English",
+      "intent": "commercial",
+      "need": "Test the alternative destination.",
+      "cluster": "english-lausanne",
+      "product_fit": "medium",
+      "fit_reason": "Posting language helps discovery, not workplace-language verification.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "robotics embedded engineer jobs Zurich Lausanne English relocation",
+      "language": "en",
+      "english_gloss": "Robotics embedded engineer jobs Zurich Lausanne English relocation",
+      "intent": "commercial",
+      "need": "Combine technical and relocation needs.",
+      "cluster": "swiss-robotics-relocation",
+      "product_fit": "medium",
+      "fit_reason": "Several filters fit; relocation remains description evidence.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "robotics companies Zurich Lausanne careers",
+      "language": "en",
+      "english_gloss": "Robotics companies Zurich Lausanne careers",
+      "intent": "informational",
+      "need": "Build an employer shortlist.",
+      "cluster": "robotics-employers",
+      "product_fit": "high",
+      "fit_reason": "Company-first discovery is useful before alerts.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "ROS2 C++ robotics engineer Switzerland",
+      "language": "en",
+      "english_gloss": "ROS2 C++ robotics engineer Switzerland",
+      "intent": "commercial",
+      "need": "Match practical tooling.",
+      "cluster": "robotics-skills",
+      "product_fit": "high",
+      "fit_reason": "Technology and location filtering can narrow roles.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Swiss robotics startup engineer jobs travel requirements English",
+      "language": "en",
+      "english_gloss": "Swiss robotics startup engineer jobs travel requirements English",
+      "intent": "commercial",
+      "need": "Screen for travel-heavy work.",
+      "cluster": "engineering-travel",
+      "product_fit": "medium",
+      "fit_reason": "Pro description checks can help if travel terms are explicit.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "ANYbotics careers embedded engineer",
+      "language": "en",
+      "english_gloss": "ANYbotics careers embedded engineer",
+      "intent": "navigational",
+      "need": "Check a plausible target employer.",
+      "cluster": "named-employer",
+      "product_fit": "high",
+      "fit_reason": "Coverage-dependent monitoring matches known-company intent.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "robotics engineer Switzerland German required",
+      "language": "en",
+      "english_gloss": "Robotics engineer Switzerland German required",
+      "intent": "informational",
+      "need": "Assess whether basic German is enough.",
+      "cluster": "work-language",
+      "product_fit": "medium",
+      "fit_reason": "Need source requirements rather than posting locale alone.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "SwissDevJobs embedded English jobs",
+      "language": "en",
+      "english_gloss": "SwissDevJobs embedded English jobs",
+      "intent": "navigational",
+      "need": "Try a specialist alternative.",
+      "cluster": "specialist-job-board",
+      "product_fit": "medium",
+      "fit_reason": "Competitor navigation is weak direct acquisition but clarifies expectations.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "alerts new embedded jobs Swiss companies",
+      "language": "en",
+      "english_gloss": "Alerts new embedded jobs Swiss companies",
+      "intent": "commercial",
+      "need": "Follow the shortlist during relocation planning.",
+      "cluster": "engineering-alerts",
+      "product_fit": "high",
+      "fit_reason": "Saved searches and alerts fit repeated monitoring.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "track engineering job applications and interview notes",
+      "language": "en",
+      "english_gloss": "Track engineering job applications and interview notes",
+      "intent": "commercial",
+      "need": "Compare technical interviews across employers.",
+      "cluster": "application-tracking",
+      "product_fit": "medium",
+      "fit_reason": "Tracker supports indexed postings and interview notes; arbitrary external application imports are not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

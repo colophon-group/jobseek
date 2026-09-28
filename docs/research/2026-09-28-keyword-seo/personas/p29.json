@@ -1,0 +1,265 @@
+{
+  "id": "p29",
+  "name": "Cologne vocational student finding an electrical apprenticeship",
+  "context": {
+    "occupation": "Vocational-school student seeking electrician/electronics apprenticeship",
+    "seniority": "First job; trainee",
+    "geography": "Cologne and practical local commute",
+    "languages": [
+      "de"
+    ],
+    "employment_state": "In school; seeking 2027 training start",
+    "constraints": [
+      "Local training employer",
+      "Correct apprenticeship specialization",
+      "Opening and start year",
+      "School/workshop locations may differ",
+      "Limited familiarity with application systems"
+    ],
+    "company_awareness": "Recognizes transit/utility brands but not smaller training firms."
+  },
+  "overlap_tags": [
+    "apprenticeship",
+    "Germany",
+    "Cologne",
+    "German",
+    "first-job",
+    "start-year",
+    "local-employers"
+  ],
+  "trigger": "A school adviser asks for a training-employer shortlist and the student discovers that 2027 applications are already advertised.",
+  "searches_run": [
+    {
+      "query": "Ausbildung Elektroniker Köln 2027",
+      "observation": "Retrieved BA apprenticeship searches and direct KVB, Siemens, SPIE and Deutsche Bahn listings. The inspected BA KVB listing provides training type, school qualification, start date and local address.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "Elektroniker Ausbildung Köln Ausbildungsbeginn Bewerbungsfrist 2027",
+      "observation": "Results included precise 2027 starts but did not establish a universal application deadline. Siemens snippets place vocational-school teaching in Düsseldorf despite a Cologne title, raising a second commute dimension.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.arbeitsagentur.de/jobsuche/jobdetail/10001-1003668060-S",
+      "title": "Elektroniker Betriebstechnik 2027 KVB | Bundesagentur für Arbeit",
+      "supports": "Direct inspection lists apprenticeship, Cologne address, required school qualification and 30 August 2027 start; deadline not established."
+    },
+    {
+      "id": "s2",
+      "url": "https://db.jobs/de-de/Suche/--13901374?jobId=628542",
+      "title": "Ausbildung Elektroniker Betriebstechnik 2027 | Deutsche Bahn",
+      "supports": "Retrieved employer snippet specifies Cologne, September 2027 start and training duration."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.ausbildung.siemens.com/offer/elektroniker-w-m-d-fur-it-iot-syste/9b9daf67-20f3-4d17-b719-c0e2d5b547df",
+      "title": "Elektroniker IT/IoT Gebäudetechnik 2027 Köln | Siemens",
+      "supports": "Retrieved snippet says teaching takes place in Düsseldorf with travel reimbursement; illustrates training-location complexity."
+    }
+  ],
+  "best_entry_page": {
+    "type": "curated employer guide",
+    "primary_query": "Ausbildung Elektroniker Köln 2027",
+    "promise": "A local guide to covered training employers, electrical specializations and source-linked 2027 openings, with start dates kept separate from application deadlines.",
+    "cta": "Explore covered local employers and save apprenticeship searches; check each original application page.",
+    "proof_needed": [
+      "Actual Cologne apprenticeship coverage including smaller employers",
+      "Apprenticeship classification and 2027 extraction",
+      "School and workplace locations",
+      "Source-backed deadlines if stated, unknown otherwise",
+      "German first-time applicant flow"
+    ]
+  },
+  "conversion_objections": [
+    "Does this include apprenticeships or mostly jobs for qualified people?",
+    "I do not know the correct specialization name.",
+    "Large brands are visible already on BA; are local firms included?",
+    "A new-job email will not remind me before a closing date."
+  ],
+  "avoid_targeting": [
+    {
+      "query": "Elektroniker Ausbildung garantierter Platz Köln",
+      "reason": "No training-place guarantee."
+    },
+    {
+      "query": "Ausbildung Elektroniker Prüfungsfragen",
+      "reason": "Exam preparation is unrelated to discovery functionality."
+    }
+  ],
+  "message_to_founder": "Simulation: Ich suche einen Ausbildungsbetrieb in erreichbarer Nähe und muss erst verstehen, welche Elektroniker-Ausbildung zu mir passt. Zeigt mir Startjahr, Lernorte und die echte Bewerbungsseite; professionelle Netzwerkfunktionen brauche ich dafür nicht.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "Ausbildung Elektroniker Köln 2027",
+      "language": "de",
+      "english_gloss": "Electronics apprenticeship Cologne 2027",
+      "intent": "transactional",
+      "need": "Find local training openings",
+      "cluster": "Cologne apprenticeships",
+      "product_fit": "medium",
+      "fit_reason": "Good conditional fit if apprenticeship inventory is substantial.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Elektriker Ausbildung Köln",
+      "language": "de",
+      "english_gloss": "Electrician apprenticeship Cologne",
+      "intent": "transactional",
+      "need": "Use ordinary language for the trade",
+      "cluster": "electrician apprenticeship terms",
+      "product_fit": "medium",
+      "fit_reason": "Needs mapping to formal specializations.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Ausbildungsplätze Elektrotechnik Köln Umgebung",
+      "language": "de",
+      "english_gloss": "Electrical training places around Cologne",
+      "intent": "transactional",
+      "need": "Broaden nearby options",
+      "cluster": "local training jobs",
+      "product_fit": "medium",
+      "fit_reason": "Location filters help; school commute remains separate.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "Elektroniker Ausbildung Köln Ausbildungsbeginn Bewerbungsfrist 2027",
+      "language": "de",
+      "english_gloss": "Electronics Cologne apprenticeship start and application deadline 2027",
+      "intent": "informational",
+      "need": "Avoid missing the correct intake",
+      "cluster": "apprenticeship timing",
+      "product_fit": "medium",
+      "fit_reason": "Sources provide starts; deadline reminders are not demonstrated.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "Elektroniker Betriebstechnik oder Energie Gebäudetechnik Ausbildung",
+      "language": "de",
+      "english_gloss": "Industrial electronics or building energy electronics apprenticeship",
+      "intent": "informational",
+      "need": "Choose between formal training occupations",
+      "cluster": "trade specialization",
+      "product_fit": "medium",
+      "fit_reason": "Guide can support discovery but not replace career counselling.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "kleine Elektrobetriebe Köln Ausbildung",
+      "language": "de",
+      "english_gloss": "Small electrical companies Cologne apprenticeships",
+      "intent": "informational",
+      "need": "Find employers beyond large brands",
+      "cluster": "local employer discovery",
+      "product_fit": "medium",
+      "fit_reason": "Smaller employer coverage needs proof.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "KVB Ausbildung Elektroniker 2027",
+      "language": "de",
+      "english_gloss": "KVB electronics apprenticeship 2027",
+      "intent": "navigational",
+      "need": "Check a familiar local employer",
+      "cluster": "training employer careers",
+      "product_fit": "high",
+      "fit_reason": "Company monitoring fits if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Arbeitsagentur Ausbildung Elektroniker Köln Umkreis",
+      "language": "de",
+      "english_gloss": "Employment agency electrical apprenticeships Cologne radius",
+      "intent": "navigational",
+      "need": "Compare a dedicated public search",
+      "cluster": "apprenticeship alternatives",
+      "product_fit": "medium",
+      "fit_reason": "BA already exposes training-specific facts.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Ausbildungsplatz Suche nur 2027 nicht Fachkraft",
+      "language": "de",
+      "english_gloss": "Search training places only 2027 not qualified workers",
+      "intent": "commercial",
+      "need": "Avoid qualified job noise",
+      "cluster": "apprenticeship filtering",
+      "product_fit": "medium",
+      "fit_reason": "Employment type helps; intake-year filter is unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Benachrichtigung neue Ausbildungsplätze Köln",
+      "language": "de",
+      "english_gloss": "Notifications of new Cologne training places",
+      "intent": "commercial",
+      "need": "Stop manually checking employers",
+      "cluster": "training alerts",
+      "product_fit": "high",
+      "fit_reason": "Covered opening alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "kostenlose Ausbildung Stellenalarme Elektroniker",
+      "language": "de",
+      "english_gloss": "Free electrical apprenticeship job alerts",
+      "intent": "transactional",
+      "need": "Set up simple monitoring",
+      "cluster": "free apprentice alerts",
+      "product_fit": "high",
+      "fit_reason": "Free alerts fit first-time search.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Bewerbungen Ausbildung Übersicht speichern",
+      "language": "de",
+      "english_gloss": "Save an overview of apprenticeship applications",
+      "intent": "transactional",
+      "need": "Track submissions and contacts",
+      "cluster": "training application tracking",
+      "product_fit": "medium",
+      "fit_reason": "Indexed-posting tracker fits; deadline automation unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "confidence_and_limits": "Synthetic simulation, not an interview or an independent respondent. Two queries retrieved on 2026-09-28, with at least one direct page inspection. Queries without observed source IDs are hypotheses. Combined retrieval is not a controlled ranking report. No volume, difficulty or conversion inference. Source claims and role availability can change; product fit uses the supplied repository brief."
+}

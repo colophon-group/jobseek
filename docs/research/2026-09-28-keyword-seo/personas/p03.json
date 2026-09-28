@@ -1,0 +1,309 @@
+{
+  "id": "p03",
+  "name": "Final-year student seeking a first developer role",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Computer science student seeking software development work",
+    "seniority": "Graduate / first professional role",
+    "geography": "Manchester, UK; willing to move to another UK city",
+    "languages": [
+      "en"
+    ],
+    "employment_state": "Final-year university student with academic projects but no commercial experience",
+    "constraints": [
+      "Low budget for job-search subscriptions",
+      "Needs roles compatible with graduating in 2027",
+      "Cannot satisfy multiple years of commercial experience",
+      "Wants opening alerts before graduate programmes close",
+      "Flexible UK city, with relocation costs to consider"
+    ],
+    "company_awareness": "Knows a few prominent technology employers and local companies, but lacks an employer shortlist or knowledge of hiring cycles."
+  },
+  "overlap_tags": [
+    "software-engineering",
+    "graduate",
+    "no-commercial-experience",
+    "UK",
+    "Manchester",
+    "low-budget",
+    "alerts",
+    "application-tracking",
+    "relocation-flexible"
+  ],
+  "trigger": "At the start of final year, a coursemate mentions applying to a 2027 graduate scheme. The student finds an attractive programme already accepting applications and several entry-level adverts asking for commercial experience, then worries that searching only after exams will be too late.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "graduate software developer jobs UK no experience",
+      "language": "en",
+      "english_gloss": "graduate software developer jobs UK no experience",
+      "intent": "transactional",
+      "need": "Find first-job vacancies without professional experience.",
+      "cluster": "graduate developer jobs",
+      "product_fit": "high",
+      "fit_reason": "Role, location and seniority search fit; actual experience requirements still need inspection.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "junior developer jobs Manchester",
+      "language": "en",
+      "english_gloss": "junior developer jobs Manchester",
+      "intent": "transactional",
+      "need": "Try the local market before committing to relocation.",
+      "cluster": "junior developer jobs by city",
+      "product_fit": "high",
+      "fit_reason": "City and role filtering map directly to the search.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "software engineering graduate schemes 2027",
+      "language": "en",
+      "english_gloss": "software engineering graduate schemes 2027",
+      "intent": "transactional",
+      "need": "Find next-year programmes while still studying.",
+      "cluster": "graduate intake year",
+      "product_fit": "medium",
+      "fit_reason": "Can find covered postings, but intake-year accuracy and scheme coverage are unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "why do entry level developer jobs ask for 3 years experience",
+      "language": "en",
+      "english_gloss": "why do entry level developer jobs ask for 3 years experience",
+      "intent": "informational",
+      "need": "Understand whether the label is trustworthy and whether to apply.",
+      "cluster": "entry-level requirement confusion",
+      "product_fit": "medium",
+      "fit_reason": "A source-based guide can help interpretation; seniority alone cannot establish eligibility.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "do university coding projects count as experience for graduate jobs",
+      "language": "en",
+      "english_gloss": "do university coding projects count as experience for graduate jobs",
+      "intent": "informational",
+      "need": "Work out how coursework relates to requirements without assuming acceptance.",
+      "cluster": "graduate experience interpretation",
+      "product_fit": "low",
+      "fit_reason": "Informational entry point, but the product cannot determine employer acceptance of projects.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "graduate software jobs Leeds Birmingham Bristol",
+      "language": "en",
+      "english_gloss": "graduate software jobs Leeds Birmingham Bristol",
+      "intent": "transactional",
+      "need": "Broaden to several affordable-looking relocation options without a fixed city.",
+      "cluster": "UK graduate location discovery",
+      "product_fit": "high",
+      "fit_reason": "Location filtering supports exploration; the product does not assess personal affordability.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "companies hiring computer science graduates without placement year",
+      "language": "en",
+      "english_gloss": "companies hiring computer science graduates without placement year",
+      "intent": "informational",
+      "need": "Build a company list when familiar brands feel too narrow.",
+      "cluster": "graduate employer discovery",
+      "product_fit": "medium",
+      "fit_reason": "Company-first discovery is useful if coverage and evidence of requirements are shown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "when do 2027 software graduate schemes open UK",
+      "language": "en",
+      "english_gloss": "when do 2027 software graduate schemes open UK",
+      "intent": "informational",
+      "need": "Know when to start checking and avoid discovering schemes after closing.",
+      "cluster": "graduate recruitment timing",
+      "product_fit": "medium",
+      "fit_reason": "Opening alerts help future monitoring, but a calendar needs sourced dates.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "how to track software engineering graduate scheme deadlines UK alerts",
+      "language": "en",
+      "english_gloss": "how to track software engineering graduate scheme deadlines UK alerts",
+      "intent": "commercial",
+      "need": "Find a tool that prevents missed opportunities during final-year study.",
+      "cluster": "graduate alerts and deadlines",
+      "product_fit": "medium",
+      "fit_reason": "New-posting alerts and tracking fit; closing-date reminders are not demonstrated.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "stage": "evaluation",
+      "query": "free graduate job application tracker",
+      "language": "en",
+      "english_gloss": "free graduate job application tracker",
+      "intent": "commercial",
+      "need": "Keep applications, interview details and next steps together on a student budget.",
+      "cluster": "free application tracking",
+      "product_fit": "high",
+      "fit_reason": "Free pipeline tracking and notes are relevant; deadline automation must not be implied.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "LinkedIn graduate job alerts too many senior roles",
+      "language": "en",
+      "english_gloss": "LinkedIn graduate job alerts too many senior roles",
+      "intent": "informational",
+      "need": "Reduce unsuitable results rather than increase email volume.",
+      "cluster": "job alert relevance",
+      "product_fit": "medium",
+      "fit_reason": "Filters and optional description checks could help, but missing requirements remain unknown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Gradbeam vs spreadsheet application tracker",
+      "language": "en",
+      "english_gloss": "Gradbeam vs spreadsheet application tracker",
+      "intent": "commercial",
+      "need": "Decide whether another account is worth maintaining.",
+      "cluster": "graduate tracker alternatives",
+      "product_fit": "medium",
+      "fit_reason": "Free tracking can compete, but a comparison needs fair feature verification.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "email alerts for new graduate developer jobs UK free",
+      "language": "en",
+      "english_gloss": "email alerts for new graduate developer jobs UK free",
+      "intent": "transactional",
+      "need": "Set up useful notifications without a paid plan.",
+      "cluster": "free graduate job alerts",
+      "product_fit": "high",
+      "fit_reason": "Free saved-search email alerts match, subject to covered employers and clear limits.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "get notified when a company opens graduate applications",
+      "language": "en",
+      "english_gloss": "get notified when a company opens graduate applications",
+      "intent": "transactional",
+      "need": "Follow a short list of employers once discovered.",
+      "cluster": "company careers alerts",
+      "product_fit": "high",
+      "fit_reason": "Career-page monitoring fits covered company postings; it does not guarantee every opening or closing date.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ],
+  "searches_run": [
+    {
+      "query": "graduate software developer jobs UK no experience",
+      "observation": "The combined retrieval included Indeed, LinkedIn and Glassdoor job landing pages and older employer vacancy PDFs. The directly opened Indeed page labelled for graduate/no-experience searches included lead and principal roles and an embedded role requiring commercial delivery experience. This is a concrete relevance mismatch in that retrieved page, not a measurement of the whole market.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "how to track software engineering graduate scheme deadlines UK alerts",
+      "observation": "The retrieval surfaced Gradbeam and a Trackr technology tracker. Gradbeam explicitly markets opening notifications, application tracking and deadline reminders; its inspected tracker page distinguishes free tracking from paid alert/reminder features. Trackr retrieval showed opening and closing-date columns, including blank dates.",
+      "source_ids": [
+        "s3",
+        "s4"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://uk.indeed.com/q-software-engineering-graduate-no-experience-jobs.html",
+      "title": "Software Engineering Graduate No Experience Jobs | Indeed UK",
+      "supports": "Directly inspected page contains senior roles and a commercial-experience requirement despite its no-experience search heading; supports concern about keyword-result relevance only."
+    },
+    {
+      "id": "s2",
+      "url": "https://uk.linkedin.com/jobs/no-experience-software-developer-jobs",
+      "title": "No Experience Software Developer jobs in United Kingdom | LinkedIn",
+      "supports": "Retrieved page offers job-alert creation and includes graduate role titles; counts and eligibility were not validated."
+    },
+    {
+      "id": "s3",
+      "url": "https://gradbeam.co.uk/application-tracker",
+      "title": "Free job application tracker for UK students | Gradbeam",
+      "supports": "Directly inspected product page advertises a free tracker for students and graduates, plus paid instant alerts and scheduled reminders. This is a vendor claim, not tested performance."
+    },
+    {
+      "id": "s4",
+      "url": "https://app.the-trackr.com/uk-technology/graduate-programmes?p=cjj408b9iu",
+      "title": "UK Tech Tracker | Trackr",
+      "supports": "Retrieved technology tracker shows opening/closing dates and notification entry point. Some dates were blank and the returned tab content included internships; graduate coverage was not independently verified."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "graduate software developer jobs UK no experience",
+    "promise": "A practical guide to finding first developer roles, reading commercial-experience requirements, and building a shortlist of covered UK employers to follow for new openings. Distinguish graduate programmes from general junior vacancies and tell readers to verify intake dates and deadlines on employer pages.",
+    "cta": "Search graduate and junior developer openings free, then save suitable companies and criteria for email alerts.",
+    "proof_needed": [
+      "Verified UK graduate-employer coverage with original careers links and a stated review date",
+      "Examples of source requirements that distinguish academic projects from required commercial experience",
+      "Demonstrated free search, alerts and tracker flow, with the ten-watchlist limit explained",
+      "Clear separation between new-posting alerts and deadline reminders, which are not demonstrated Job Seek functionality",
+      "Evidence that employer and role filters yield a useful number of genuinely relevant first-job options before publishing the guide"
+    ]
+  },
+  "conversion_objections": [
+    "Will a junior filter still send jobs requiring three years of experience?",
+    "I do not yet know which companies to follow; making a shortlist feels like the hard part.",
+    "Will alerts cover my target graduate schemes, including employers missing from the service?",
+    "Can I get useful alerts without paying $10 per month?",
+    "Does this remind me before closing dates, or only when new jobs appear?",
+    "Why move from LinkedIn alerts or a graduate-specific tracker if I already use a spreadsheet?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "guaranteed software developer job no experience UK",
+      "reason": "No product can guarantee hiring or eligibility; this promise would mislead."
+    },
+    {
+      "query": "graduate scheme deadline reminder app",
+      "reason": "Do not position Job Seek as a deadline reminder tool until that capability and reliable deadline data are demonstrated."
+    },
+    {
+      "query": "free graduate CV builder",
+      "reason": "CV creation is outside demonstrated functionality."
+    },
+    {
+      "query": "all 2027 software graduate schemes open now",
+      "reason": "Exhaustive coverage and live programme status are unverified; avoid an all-employers or guaranteed-current promise."
+    }
+  ],
+  "message_to_founder": "Simulation: I need to find companies willing to consider university projects instead of professional experience, and I do not know enough companies to build a useful list myself. Show me a few believable examples before asking me to sign up, make the free alerts easy to understand, and be clear if closing-date reminders are something I still need to manage elsewhere.",
+  "confidence_and_limits": "Synthetic persona, not an interview or observed user session. Two representative searches and two direct page inspections on 2026-09-28 support relevance and alternative-tool observations only. The remaining queries are hypotheses. Retrieval was combined, so source grouping reflects content relevance rather than isolated per-query ranking. No keyword volumes, ranking difficulty, conversion rates or population-wide claims are inferred. Job availability, graduate intake, employer coverage and competitor functionality require fresh verification. Product fit follows the supplied repository brief; proposed guide is not an existing indexed page."
+}

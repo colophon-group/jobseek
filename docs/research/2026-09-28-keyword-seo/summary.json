@@ -1,0 +1,25 @@
+{
+  "date": "2026-09-28",
+  "target_persona_assignments": 50,
+  "completed_persona_assignments": 50,
+  "persistent_subagent_threads": 3,
+  "independent_human_respondents": 0,
+  "hypothesis_query_rows": 606,
+  "unique_language_query_pairs": 606,
+  "persona_searches_executed": 100,
+  "hypothesis_rows_with_exact_query_executed": 100,
+  "unique_persona_source_urls": 166,
+  "query_rows_by_language": {
+    "en": 349,
+    "de": 111,
+    "fr": 102,
+    "it": 44
+  },
+  "query_rows_by_stated_intent": {
+    "commercial": 203,
+    "informational": 156,
+    "navigational": 43,
+    "transactional": 204
+  },
+  "caveat": "Counts describe a designed synthetic research corpus, not user frequency, market share, independent votes or measured search demand. All volume/difficulty/CPC fields are unknown."
+}

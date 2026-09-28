@@ -1,0 +1,268 @@
+{
+  "id": "p11",
+  "name": "Lyon teacher entering data analysis",
+  "context": {
+    "occupation": "Secondary-school teacher retraining for data analysis",
+    "seniority": "Entry level in data; completed training and portfolio projects, no industry experience",
+    "geography": "Lyon and nearby commutable employers",
+    "languages": [
+      "fr"
+    ],
+    "employment_state": "Transitioning out of teaching after training",
+    "constraints": [
+      "Real paid junior role",
+      "No further paid courses",
+      "Training and project work must be considered without industry experience",
+      "Lyon-based search"
+    ],
+    "company_awareness": "No fixed employer shortlist; knows education better than local data employers"
+  },
+  "overlap_tags": [
+    "career-change",
+    "data-analysis",
+    "entry-level",
+    "France",
+    "French",
+    "company-unaware"
+  ],
+  "trigger": "Finishes a data project portfolio and discovers that several junior advertisements demand professional experience or sell another course.",
+  "searches_run": [
+    {
+      "query": "data analyst junior Lyon débutant reconversion emploi",
+      "observation": "Retrieval mixed employer vacancies, alternance, internships, a career guide and training providers. One direct employer junior vacancy was a CDI, but inspection showed two to three years of BI experience required.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "data analyst junior sans expérience première expérience emploi France",
+      "observation": "Results included beginner-job aggregations, training/career content and discussions about obtaining a first role. A junior label therefore did not isolate a no-experience vacancy in this retrieval.",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://careers.werecruit.io/fr/arc-europe-france/offres/data-analyst-junior-b2bfac",
+      "title": "Data Analyst Junior F/H — ARC Europe France",
+      "supports": "Directly inspected employer posting calls the role junior but requests two to three years of BI experience and advanced English; this single example demonstrates title/requirements mismatch."
+    },
+    {
+      "id": "s2",
+      "url": "https://groupe-atlantic.nous-recrutons.fr/poste/3lyowyxcyp-alternance-data-analyst-junior/",
+      "title": "Alternance Data Analyst Junior — Groupe Atlantic",
+      "supports": "Retrieved employer result describes a one-year alternance starting September 2025, illustrating contract and date distinctions, not a current accessible opening."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.coursera.org/fr-FR/articles/entry-level-data-analyst",
+      "title": "Data analyst junior : ses missions + comment débuter — Coursera",
+      "supports": "Retrieved career/training content answers beginner questions; the result set includes education content despite employment intent."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "data analyst junior sans expérience",
+    "promise": "Explain how to read experience and contract requirements in junior data advertisements, using dated examples that distinguish jobs, internships, alternance and training.",
+    "cta": "Explorer les offres et vérifier les exigences",
+    "proof_needed": [
+      "Dated employer examples with exact required versus preferred experience",
+      "Clear handling of missing requirements as unknown",
+      "Verified coverage of Lyon employers before adding a local jobs claim",
+      "A real route into role and location search without a pre-existing company list",
+      "New indexable guide; existing search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Does junior actually mean no commercial experience?",
+    "Will I see another course funnel?",
+    "Can I search without knowing employers?",
+    "Does a French advertisement mean French is sufficient at work?",
+    "Can the product distinguish required experience from a preference?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "formation data analyst reconversion CPF",
+      "reason": "The persona has completed training and the product does not offer courses."
+    },
+    {
+      "query": "emploi data analyst sans expérience garanti",
+      "reason": "Neither hiring nor acceptance of a career change can be guaranteed."
+    },
+    {
+      "query": "validation diplôme enseignant data analyst",
+      "reason": "Credential equivalence is not a demonstrated product service."
+    }
+  ],
+  "message_to_founder": "Simulation : J’ai déjà fait la formation et préparé mes projets ; je cherche maintenant un employeur. Montrez-moi les exigences réelles derrière le mot junior et ne me renvoyez pas vers une nouvelle formation.",
+  "confidence_and_limits": "Synthetic scenario, not an interview. Only two queries were run; other searches are hypotheses. Retrieved results are not ranking, volume or employability evidence. One inspected posting establishes a concrete mismatch, not its prevalence. Teaching skills may be relevant but employer acceptance is unknown. No current Lyon coverage was verified.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "emploi data analyst Lyon",
+      "language": "fr",
+      "english_gloss": "data analyst jobs Lyon",
+      "intent": "transactional",
+      "need": "See local jobs.",
+      "cluster": "data jobs Lyon",
+      "product_fit": "medium",
+      "fit_reason": "Role/location fits; local coverage is unverified.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "analyste de données débutant Lyon",
+      "language": "fr",
+      "english_gloss": "beginner data analyst Lyon",
+      "intent": "transactional",
+      "need": "Find a first industry role.",
+      "cluster": "entry-level local jobs",
+      "product_fit": "medium",
+      "fit_reason": "Seniority filtering helps but cannot establish eligibility.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "emploi Power BI junior Lyon",
+      "language": "fr",
+      "english_gloss": "junior Power BI jobs Lyon",
+      "intent": "transactional",
+      "need": "Search by a practiced tool.",
+      "cluster": "Power BI junior",
+      "product_fit": "medium",
+      "fit_reason": "Technology labels may help; no-experience acceptance requires reading.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "data analyst junior Lyon débutant reconversion emploi",
+      "language": "fr",
+      "english_gloss": "junior data analyst Lyon beginner career-change jobs",
+      "intent": "transactional",
+      "need": "Find roles open to a retrained applicant.",
+      "cluster": "career-change data jobs",
+      "product_fit": "medium",
+      "fit_reason": "Description evidence matters more than junior titles.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "data analyst junior sans expérience première expérience emploi France",
+      "language": "fr",
+      "english_gloss": "junior data analyst without experience first job France",
+      "intent": "informational",
+      "need": "Understand where a first role is realistic.",
+      "cluster": "first data job",
+      "product_fit": "medium",
+      "fit_reason": "A requirements guide helps without promising access.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "offre junior demande trois ans expérience data analyst",
+      "language": "fr",
+      "english_gloss": "junior data analyst posting asks three years experience",
+      "intent": "informational",
+      "need": "Decide whether a junior label is misleading for this profile.",
+      "cluster": "experience mismatch",
+      "product_fit": "high",
+      "fit_reason": "Source-linked requirement explanations fit the need.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "data analyst débutant CDI pas alternance Lyon",
+      "language": "fr",
+      "english_gloss": "beginner data analyst permanent not apprenticeship Lyon",
+      "intent": "transactional",
+      "need": "Separate salaried vacancies from training contracts.",
+      "cluster": "contract mismatch",
+      "product_fit": "medium",
+      "fit_reason": "Description checking can distinguish explicit contract wording; filter support must be checked.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "professeur reconversion data analyst compétences transférables",
+      "language": "fr",
+      "english_gloss": "teacher changing to data analyst transferable skills",
+      "intent": "informational",
+      "need": "Explain relevant skills in an application.",
+      "cluster": "career-change positioning",
+      "product_fit": "low",
+      "fit_reason": "Job discovery is not career coaching.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "projets portfolio data analyst premier emploi",
+      "language": "fr",
+      "english_gloss": "data analyst portfolio projects first job",
+      "intent": "informational",
+      "need": "Check how to demonstrate practical ability.",
+      "cluster": "portfolio evidence",
+      "product_fit": "low",
+      "fit_reason": "No portfolio assessment service is demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "entreprises recrutent data analyst débutant Lyon",
+      "language": "fr",
+      "english_gloss": "companies hiring beginner data analysts Lyon",
+      "intent": "informational",
+      "need": "Build an employer shortlist.",
+      "cluster": "employer discovery",
+      "product_fit": "medium",
+      "fit_reason": "Useful only with verified examples rather than generic company lists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Apec data analyst Lyon débutant",
+      "language": "fr",
+      "english_gloss": "Apec data analyst Lyon beginner",
+      "intent": "navigational",
+      "need": "Search an established alternative.",
+      "cluster": "existing job board",
+      "product_fit": "low",
+      "fit_reason": "A competitor navigation query is not a good acquisition page.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "candidature data analyst junior sans expérience professionnelle",
+      "language": "fr",
+      "english_gloss": "junior data analyst application without professional experience",
+      "intent": "informational",
+      "need": "Submit a credible first application.",
+      "cluster": "first application",
+      "product_fit": "low",
+      "fit_reason": "Tracker supports organization, not application writing or assessment.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

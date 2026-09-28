@@ -1,0 +1,259 @@
+{
+  "id": "p05",
+  "name": "Senior engineer seeking an 80% role near Stuttgart",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Mechanical engineer",
+    "seniority": "Senior",
+    "geography": "Near Stuttgart; commute up to 40 km",
+    "languages": [
+      "de"
+    ],
+    "employment_state": "Employed; considering a change for reduced hours",
+    "constraints": [
+      "80% workload or comparable part-time arrangement",
+      "Predictable schedule",
+      "Retain experienced technical responsibility",
+      "Maximum 40 km commute"
+    ],
+    "company_awareness": "Knows regional manufacturers; also open to discovering smaller employers"
+  },
+  "overlap_tags": [
+    "engineering",
+    "german",
+    "stuttgart",
+    "part-time",
+    "schedule",
+    "senior",
+    "commute"
+  ],
+  "trigger": "Recurring late project meetings make the present full-time arrangement unsustainable; the engineer looks for a reduced-hours role without starting over professionally.",
+  "searches_run": [
+    {
+      "query": "Maschinenbau Ingenieur Teilzeit 80 Prozent Stuttgart",
+      "observation": "The sample returned the federal job search, employer pages and adjacent engineering roles. Federal results visibly mixed experienced positions with student roles; a part-time tag alone did not resolve seniority.",
+      "source_ids": [
+        "s1"
+      ]
+    },
+    {
+      "query": "Ingenieur Teilzeit Stuttgart 32 Stunden planbare Arbeitszeiten Hersteller",
+      "observation": "Results included a K2 Systems technical design role with a 32-hour minimum, general flexible-working claims and unrelated roles. The directly inspected K2 posting specifies hours and location but is not a demonstrated senior mechanical-engineering match.",
+      "source_ids": [
+        "s2"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://www.arbeitsagentur.de/jobsuche/suche?arbeitszeit=tz&suchbereich=jobs&was=Ingenieur%2Fin+Maschinenbau&wo=Stuttgart",
+      "title": "Jobs für Ingenieur/in Maschinenbau in Teilzeit in Stuttgart — Bundesagentur für Arbeit",
+      "supports": "Retrieved public employment-service result contains both engineering and student roles under part-time, illustrating the need to inspect role type. Counts are not treated as market size."
+    },
+    {
+      "id": "s2",
+      "url": "https://k2-systems-gmbh.jobs.personio.com/job/2753101",
+      "title": "Technischer Produktdesigner Fachrichtung Maschinen- und Anlagenkonstruktion — K2 Systems",
+      "supports": "Directly inspected employer ATS page states permanent full/part-time work in Renningen, at least 32 hours weekly, CAD duties and some mobile working. It does not establish fixed daily hours or a senior engineer vacancy."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "Ingenieur Teilzeit Stuttgart 80 Prozent",
+    "promise": "Find regional engineering employers and learn to distinguish stated hours, workload percentages and general flexibility before following their openings.",
+    "cta": "Select nearby employers and save an engineering search.",
+    "proof_needed": [
+      "Demonstrate experienced roles rather than student-heavy examples.",
+      "Show percentage and hours as reported; do not assume 80% means 32 hours for every employer.",
+      "Verify commute manually from actual workplace; radius routing is not demonstrated.",
+      "Show source text for working hours and unknown daily schedules.",
+      "New indexable guide required; existing search pages are noindex."
+    ]
+  },
+  "conversion_objections": [
+    "Does part-time really include senior engineering work?",
+    "Can I preserve responsibility without compressing five days of work into four?",
+    "Are manufacturers near my home covered?",
+    "Will vague flexibility claims pass the description checks?",
+    "Do I need Pro merely to read working hours?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "Recht auf Teilzeit Ingenieur",
+      "reason": "Legal entitlement advice is outside this product journey."
+    },
+    {
+      "query": "Maschinenbau Werkstudent Stuttgart",
+      "reason": "Wrong experience level."
+    },
+    {
+      "query": "80 Prozent Ingenieur garantiert ohne Überstunden",
+      "reason": "Workload and overtime cannot be guaranteed from a posting."
+    }
+  ],
+  "message_to_founder": "Simulation: Ich suche keine Karriereberatung, sondern eine erfahrene Ingenieurstelle mit wirklich passendem Stundenumfang. Zeigt mir konkrete Angaben zu Wochenstunden und Arbeitsort; allgemeine Flexibilität reicht mir nicht.",
+  "confidence_and_limits": "Synthetic, gender-neutral persona. Two queries and one employer-page inspection reveal retrieval ambiguity, not regional supply, conversion or search volume. The exact home location and schedule preferences are unspecified; 40 km cannot be assessed from Stuttgart city centre.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "Maschinenbau Jobs Stuttgart",
+      "language": "de",
+      "english_gloss": "Mechanical engineering jobs Stuttgart",
+      "intent": "commercial",
+      "need": "Survey regional work.",
+      "cluster": "mechanical-stuttgart",
+      "product_fit": "high",
+      "fit_reason": "Occupation and location are supported.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "Ingenieur Teilzeit Stuttgart",
+      "language": "de",
+      "english_gloss": "Part-time engineer Stuttgart",
+      "intent": "commercial",
+      "need": "Find reduced-hours engineering work.",
+      "cluster": "part-time-engineering",
+      "product_fit": "medium",
+      "fit_reason": "Employment-type filtering supports part-time; exact percentage and daily pattern still require description evidence.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "Entwicklungsingenieur Stellenangebote Stuttgart Umgebung",
+      "language": "de",
+      "english_gloss": "Development engineer vacancies around Stuttgart",
+      "intent": "commercial",
+      "need": "Explore nearby employers.",
+      "cluster": "regional-engineering",
+      "product_fit": "high",
+      "fit_reason": "Role and location discovery fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Maschinenbau Ingenieur Teilzeit 80 Prozent Stuttgart",
+      "language": "de",
+      "english_gloss": "Mechanical engineer part-time 80 percent Stuttgart",
+      "intent": "commercial",
+      "need": "Search the intended workload.",
+      "cluster": "engineering-80-percent",
+      "product_fit": "medium",
+      "fit_reason": "Explicit percentages can be assessed in descriptions when present.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Ingenieur Teilzeit Stuttgart 32 Stunden planbare Arbeitszeiten Hersteller",
+      "language": "de",
+      "english_gloss": "Engineer part-time Stuttgart 32 hours predictable schedules manufacturers",
+      "intent": "commercial",
+      "need": "Find measurable hours at a manufacturer.",
+      "cluster": "engineering-schedule",
+      "product_fit": "medium",
+      "fit_reason": "Criteria are useful but schedule predictability often remains unknown.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "Bosch Ingenieur Teilzeit Stellen Stuttgart",
+      "language": "de",
+      "english_gloss": "Bosch engineer part-time jobs Stuttgart",
+      "intent": "navigational",
+      "need": "Check a familiar regional employer.",
+      "cluster": "named-manufacturer",
+      "product_fit": "high",
+      "fit_reason": "Company selection is useful if covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "Festo Konstruktion Teilzeit Karriere",
+      "language": "de",
+      "english_gloss": "Festo design engineering part-time careers",
+      "intent": "navigational",
+      "need": "Explore a second target.",
+      "cluster": "named-manufacturer",
+      "product_fit": "high",
+      "fit_reason": "Monitoring can follow selected companies.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Senior Konstrukteur Teilzeit keine Werkstudenten",
+      "language": "de",
+      "english_gloss": "Senior design engineer part-time no student jobs",
+      "intent": "commercial",
+      "need": "Remove junior and student mismatch.",
+      "cluster": "experienced-part-time",
+      "product_fit": "medium",
+      "fit_reason": "Seniority and text checks can reduce noise.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Ingenieur 80 Prozent vier Tage oder fünf Tage",
+      "language": "de",
+      "english_gloss": "Engineer 80 percent four days or five days",
+      "intent": "informational",
+      "need": "Understand how hours may be distributed.",
+      "cluster": "working-hours",
+      "product_fit": "low",
+      "fit_reason": "An employer discussion is needed; percentage alone is insufficient.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Maschinenbau Teilzeit Jobs 40 km Stuttgart",
+      "language": "de",
+      "english_gloss": "Mechanical engineering part-time jobs 40 km Stuttgart",
+      "intent": "commercial",
+      "need": "Stay within commuting tolerance.",
+      "cluster": "local-commute",
+      "product_fit": "medium",
+      "fit_reason": "Location search fits; exact commute calculation is not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Job Alarm Ingenieur Teilzeit bestimmte Firmen",
+      "language": "de",
+      "english_gloss": "Job alert engineer part-time selected companies",
+      "intent": "commercial",
+      "need": "Watch infrequent suitable openings.",
+      "cluster": "engineering-alerts",
+      "product_fit": "high",
+      "fit_reason": "Company-based saved searches and alerts fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "Stellenanzeige Arbeitszeit nicht angegeben nachfragen",
+      "language": "de",
+      "english_gloss": "Job posting working hours not given ask employer",
+      "intent": "informational",
+      "need": "Resolve missing schedule details.",
+      "cluster": "schedule-verification",
+      "product_fit": "low",
+      "fit_reason": "Can surface unknowns but cannot answer for employers.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

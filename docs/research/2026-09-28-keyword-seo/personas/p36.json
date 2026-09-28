@@ -1,0 +1,268 @@
+{
+  "id": "p36",
+  "name": "Turin primary teacher exploring employed education roles",
+  "hypothetical": true,
+  "context": {
+    "occupation": "Primary-school teacher",
+    "seniority": "Experienced teacher; new to adjacent occupations",
+    "geography": "Turin and feasible local commute",
+    "languages": [
+      "it"
+    ],
+    "employment_state": "Considering a career transition",
+    "constraints": [
+      "Employed work rather than self-employed coaching",
+      "Private schools, educational publishing or learning coordination",
+      "Local or hybrid work",
+      "Wants jobs rather than courses",
+      "No assumed credential equivalence"
+    ],
+    "company_awareness": "Knows schools and some publishers but not their role vocabulary"
+  },
+  "overlap_tags": [
+    "education",
+    "italian",
+    "turin",
+    "career-transition",
+    "local",
+    "hybrid"
+  ],
+  "trigger": "The teacher wants to use curriculum and learning-design experience outside the current classroom role and starts comparing nearby employers.",
+  "searches_run": [
+    {
+      "query": "lavoro insegnante scuola primaria privata Torino",
+      "observation": "Retrieval mixed private-school pages, language teaching, classroom support and job boards. Some results concerned different age groups or internships rather than an experienced primary-school role.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "lavoro editoria scolastica coordinatore didattico Torino dipendente",
+      "observation": "The small sample did not establish a current salaried educational-publishing match; results included institutional material, older coordination recruitment and broad education pages. Role translation is still needed.",
+      "source_ids": [
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://gionoturin.it/lavora-con-noi/",
+      "title": "Offerte di lavoro — Lycée Français International Jean Giono",
+      "supports": "Directly inspected school page advertises 2025–2026 replacement roles, specific language/system experience and collaboration/fixed-term wording. It is not evidence of a current permanent job or this persona's eligibility."
+    },
+    {
+      "id": "s2",
+      "url": "https://it.indeed.com/viewjob?jk=eaf97eb20168a20e",
+      "title": "Insegnante — Istituto San Secondo on Indeed",
+      "supports": "Retrieved snippet describes secondary-school science/technical support as an internship in Turin, illustrating title and experience mismatch."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.comune.torino.it/concorsi/2023/SP0223_bando.pdf",
+      "title": "Selezione Coordinatore Pedagogico — Città di Torino",
+      "supports": "An older official selection document surfaced for coordination work; it is not treated as a currently open vacancy or credential advice."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "lavori alternativi insegnante editoria scolastica Torino",
+    "promise": "Explore nearby education employers and the job titles they use, with concrete duties and employment terms where current postings exist.",
+    "cta": "Browse covered schools and education companies before deciding whether alerts would help.",
+    "proof_needed": [
+      "Verify school and publisher coverage before investing in this niche landing.",
+      "Provide current employed-role examples, not stale school-year notices.",
+      "Explain adjacent titles without promising qualification equivalence.",
+      "Separate employment, internships and freelance collaboration using source terms.",
+      "Make clear that learning coordination and teaching are different roles.",
+      "New indexable Italian guide would be required."
+    ]
+  },
+  "conversion_objections": [
+    "Do you cover local schools and publishers?",
+    "Will every result be private lessons or a training course?",
+    "Which titles actually use my classroom experience?",
+    "Is hybrid stated for this vacancy?",
+    "Does a school careers page contain a real opening for this school year?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "abilitazione insegnante scuola privata requisiti legali",
+      "reason": "Credentials and legal requirements are outside this research promise."
+    },
+    {
+      "query": "corso per diventare instructional designer",
+      "reason": "Course-purchase intent is not the desired employed-work outcome."
+    },
+    {
+      "query": "guadagna insegnando online partita IVA",
+      "reason": "Self-employment conflicts with the scenario."
+    }
+  ],
+  "message_to_founder": "Simulation: So progettare attività e materiali didattici, ma non so quali titoli cercare fuori dalla scuola. Fatemi vedere lavori da dipendente a Torino e mansioni concrete; non voglio arrivare su un altro corso da comprare.",
+  "confidence_and_limits": "Synthetic transition search. Two queries and one direct school-page inspection show retrieval ambiguity, not an established viable market for this niche. Current coverage, qualifications, experience in publishing and exact commute are unknown; conversion may be poor without relevant employers.",
+  "search_journey": [
+    {
+      "stage": "problem",
+      "query": "lavoro insegnante Torino",
+      "language": "it",
+      "english_gloss": "Teacher jobs Turin",
+      "intent": "commercial",
+      "need": "Survey nearby work.",
+      "cluster": "teaching-turin",
+      "product_fit": "medium",
+      "fit_reason": "Local education coverage must be proven.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "offerte lavoro editoria Torino",
+      "language": "it",
+      "english_gloss": "Publishing vacancies Turin",
+      "intent": "commercial",
+      "need": "Explore a new sector.",
+      "cluster": "publishing-turin",
+      "product_fit": "medium",
+      "fit_reason": "Discovery fits if employers are covered.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "cambiare lavoro dopo insegnamento",
+      "language": "it",
+      "english_gloss": "Change work after teaching",
+      "intent": "informational",
+      "need": "Find possible directions.",
+      "cluster": "teacher-transition",
+      "product_fit": "low",
+      "fit_reason": "Broad career counselling is outside core product.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "lavoro insegnante scuola primaria privata Torino",
+      "language": "it",
+      "english_gloss": "Primary teacher private school jobs Turin",
+      "intent": "commercial",
+      "need": "Check classroom alternatives.",
+      "cluster": "private-school-jobs",
+      "product_fit": "medium",
+      "fit_reason": "Job titles may include wrong age groups.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "lavoro editoria scolastica coordinatore didattico Torino dipendente",
+      "language": "it",
+      "english_gloss": "Employed educational publishing learning coordinator work Turin",
+      "intent": "commercial",
+      "need": "Explore employed adjacent roles.",
+      "cluster": "education-adjacent-roles",
+      "product_fit": "medium",
+      "fit_reason": "Role vocabulary and contract evidence matter.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s3"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "redattore contenuti didattici Torino lavoro",
+      "language": "it",
+      "english_gloss": "Educational content editor work Turin",
+      "intent": "commercial",
+      "need": "Search a concrete publishing title.",
+      "cluster": "educational-content",
+      "product_fit": "medium",
+      "fit_reason": "Description fit more useful than teacher title alone.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "coordinatore formazione Torino assunzione",
+      "language": "it",
+      "english_gloss": "Training coordinator Turin employment",
+      "intent": "commercial",
+      "need": "Consider coordination duties.",
+      "cluster": "learning-coordination",
+      "product_fit": "medium",
+      "fit_reason": "Needs evidence of employed rather than freelance work.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "editoria scolastica lavoro ibrido Torino",
+      "language": "it",
+      "english_gloss": "Educational publishing hybrid work Turin",
+      "intent": "commercial",
+      "need": "Check location flexibility.",
+      "cluster": "hybrid-education",
+      "product_fit": "medium",
+      "fit_reason": "Work-mode filters help where populated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "case editrici scolastiche Torino lavora con noi",
+      "language": "it",
+      "english_gloss": "Educational publishers Turin careers",
+      "intent": "informational",
+      "need": "Identify employers.",
+      "cluster": "education-employers",
+      "product_fit": "high",
+      "fit_reason": "Company discovery is useful after role exploration.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "offerte formazione non partita IVA Torino",
+      "language": "it",
+      "english_gloss": "Training jobs not self-employed Turin",
+      "intent": "commercial",
+      "need": "Exclude freelance contracts.",
+      "cluster": "education-employment-type",
+      "product_fit": "medium",
+      "fit_reason": "Employment type and text checks may help.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "avvisi lavoro contenuti didattici Torino",
+      "language": "it",
+      "english_gloss": "Educational content job alerts Turin",
+      "intent": "commercial",
+      "need": "Follow relevant openings.",
+      "cluster": "education-alerts",
+      "product_fit": "medium",
+      "fit_reason": "Useful only if local coverage is adequate.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "mansioni redattore scolastico esperienza insegnante",
+      "language": "it",
+      "english_gloss": "Educational editor duties teaching experience",
+      "intent": "informational",
+      "need": "Assess transferable experience.",
+      "cluster": "teacher-role-fit",
+      "product_fit": "low",
+      "fit_reason": "No credential or career-transition assessment is demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}

@@ -1,0 +1,277 @@
+{
+  "id": "p17",
+  "name": "Paris UX designer seeking genuine product-design scope",
+  "context": {
+    "occupation": "UX and digital product designer",
+    "seniority": "Midlevel",
+    "geography": "Paris; remote within France acceptable",
+    "languages": [
+      "fr",
+      "en"
+    ],
+    "employment_state": "Recent contract ended; portfolio ready and actively applying",
+    "constraints": [
+      "Digital product design with discovery/research and delivery",
+      "Exclude graphic-design and UI-only roles",
+      "Remote roles must accept France-based work",
+      "Relevant midlevel scope, not automatic senior/lead substitution"
+    ],
+    "company_awareness": "Knows some French product companies but starts from role scope and working arrangement"
+  },
+  "overlap_tags": [
+    "design",
+    "France",
+    "Paris",
+    "French-English",
+    "active-search",
+    "remote-country-constraints",
+    "role-ambiguity"
+  ],
+  "trigger": "Opens several design results that either focus on marketing graphics or describe remote work unavailable from France.",
+  "searches_run": [
+    {
+      "query": "product designer UX Paris emploi",
+      "observation": "Retrieval returned category pages mixing product design, UX/UI, research, senior roles and contracts. Direct inspection of Welcome to the Jungle's category also included a software-engineer title, demonstrating that a matching category is not exact occupation proof.",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "query": "product designer remote France user research full remote France only",
+      "observation": "The batched retrieval included remote-labeled design listings and generic remote community posts, without conclusive France-residence eligibility. Following a remote-labeled Yubo listing exposed concrete product-design duties but also two required office days monthly despite the full-remote summary label.",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://fr.indeed.com/q-product-designer-l-paris-%2875%29-emplois.html",
+      "title": "Product Designer Paris — Indeed",
+      "supports": "Retrieved category combines product/UX-related titles; result counts do not measure genuinely suitable openings."
+    },
+    {
+      "id": "s2",
+      "url": "https://www.welcometothejungle.com/fr/pages/emploi-product-designer-paris-75000",
+      "title": "Product Designer à Paris — Welcome to the Jungle",
+      "supports": "Directly inspected category displays mixed seniority, contracts, telework labels and a software-engineer entry; illustrates the need to inspect role details."
+    },
+    {
+      "id": "s3",
+      "url": "https://www.welcometothejungle.com/fr/companies/yubo/jobs/mobile-product-designer_paris",
+      "title": "Mobile Product Designer — Yubo",
+      "supports": "Directly inspected employer-authored listing describes discovery, experiments, prototypes and product collaboration, requires three to four-plus years, and states two office days monthly beneath a full-remote summary. Country eligibility is not fully resolved."
+    }
+  ],
+  "best_entry_page": {
+    "type": "guide",
+    "primary_query": "emploi product designer télétravail France",
+    "promise": "Show how to assess product-design responsibilities and France-compatible remote conditions from actual job descriptions, with unknown or contradictory details called out.",
+    "cta": "Chercher des rôles et comparer les critères",
+    "proof_needed": [
+      "Source-linked examples distinguishing research/discovery from visual production",
+      "Remote label checked against office attendance and country wording",
+      "Missing residence or employment eligibility left unknown",
+      "Verified France design-employer coverage",
+      "Accurate work-mode and experience filters",
+      "Do not treat Figma mentions as sufficient product-design proof",
+      "New indexable guide; current search pages are noindex"
+    ]
+  },
+  "conversion_objections": [
+    "Will this return graphic designers just because design appears in the title?",
+    "Does remote mean France is accepted and how often must I visit an office?",
+    "Can I search in both French and English without losing relevant roles?",
+    "I already have a portfolio; I do not want another portfolio course.",
+    "Will midlevel results be swamped by senior or lead positions?",
+    "Can description matching show its evidence rather than only a score?"
+  ],
+  "avoid_targeting": [
+    {
+      "query": "product designer work from anywhere guaranteed",
+      "reason": "Work mode does not establish country eligibility or unrestricted mobility."
+    },
+    {
+      "query": "portfolio UX formation débutant",
+      "reason": "This experienced applicant has a completed portfolio; training is not the need."
+    },
+    {
+      "query": "graphiste freelance Paris logo",
+      "reason": "Different occupation and deliverables."
+    },
+    {
+      "query": "automated UX portfolio review",
+      "reason": "Portfolio evaluation is not demonstrated."
+    }
+  ],
+  "message_to_founder": "Simulation : Mon portfolio est prêt ; je veux savoir si le poste comporte vraiment de la recherche, des décisions produit et du travail avec les développeurs. Et si vous affichez télétravail, montrez-moi les restrictions pour quelqu’un qui reste en France.",
+  "confidence_and_limits": "Synthetic persona. Two queries were submitted together; their combined retrieval is not a controlled ranking report and individual-result attribution is limited. Direct category and employer-listing inspections supplied the concrete mismatch. Other queries are hypotheses. No country eligibility, job availability, coverage or language requirement is guaranteed. The observed remote-summary/body inconsistency is one example, not a prevalence estimate.",
+  "hypothetical": true,
+  "search_journey": [
+    {
+      "stage": "discovery",
+      "query": "emploi UX designer Paris",
+      "language": "fr",
+      "english_gloss": "UX designer jobs Paris",
+      "intent": "transactional",
+      "need": "Find local UX openings.",
+      "cluster": "UX locality",
+      "product_fit": "high",
+      "fit_reason": "Occupation and location search fit if coverage exists.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "product designer UX Paris emploi",
+      "language": "fr",
+      "english_gloss": "product designer UX Paris jobs",
+      "intent": "transactional",
+      "need": "Include common English job titles.",
+      "cluster": "product design locality",
+      "product_fit": "high",
+      "fit_reason": "Role search is useful but description scope needs review.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "stage": "discovery",
+      "query": "product designer jobs France",
+      "language": "en",
+      "english_gloss": "product designer jobs France",
+      "intent": "transactional",
+      "need": "Expand beyond Paris.",
+      "cluster": "France design jobs",
+      "product_fit": "high",
+      "fit_reason": "Location and role filters fit.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "product designer remote France user research full remote France only",
+      "language": "en",
+      "english_gloss": "product designer remote France user research full remote France only",
+      "intent": "transactional",
+      "need": "Intersect genuine design work with France-compatible remote work.",
+      "cluster": "remote design scope",
+      "product_fit": "medium",
+      "fit_reason": "Explicit wording can help; remote labels alone are insufficient.",
+      "evidence": "serp-observed",
+      "source_ids": [
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "stage": "problem",
+      "query": "offre UX designer seulement graphisme comment reconnaître",
+      "language": "fr",
+      "english_gloss": "how to recognize UX job that is only graphic design",
+      "intent": "informational",
+      "need": "Avoid misleading role labels.",
+      "cluster": "design role ambiguity",
+      "product_fit": "high",
+      "fit_reason": "Source duties can distinguish visual production from product scope.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "product designer recherche utilisateur discovery CDI Paris",
+      "language": "fr",
+      "english_gloss": "product designer user research discovery permanent Paris",
+      "intent": "transactional",
+      "need": "Find substantive end-to-end roles.",
+      "cluster": "design responsibilities",
+      "product_fit": "high",
+      "fit_reason": "Description criteria and employment-type filters can support this.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "remote product designer must be based in France",
+      "language": "en",
+      "english_gloss": "remote product designer must be based in France",
+      "intent": "transactional",
+      "need": "Find explicit country compatibility.",
+      "cluster": "remote country requirements",
+      "product_fit": "medium",
+      "fit_reason": "Country restrictions need evidence; absence remains unknown.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "problem",
+      "query": "télétravail total deux jours bureau par mois annonce",
+      "language": "fr",
+      "english_gloss": "full remote two office days a month job posting",
+      "intent": "informational",
+      "need": "Resolve contradictory remote wording.",
+      "cluster": "remote policy interpretation",
+      "product_fit": "high",
+      "fit_reason": "Guide and description comparison directly address the ambiguity.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "discovery",
+      "query": "UX designer 3 ans expérience Paris",
+      "language": "fr",
+      "english_gloss": "UX designer three years experience Paris",
+      "intent": "transactional",
+      "need": "Avoid senior and lead mismatch.",
+      "cluster": "design seniority",
+      "product_fit": "high",
+      "fit_reason": "Experience and seniority filtering help with stated criteria.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "evaluation",
+      "query": "Welcome to the Jungle product designer France",
+      "language": "en",
+      "english_gloss": "Welcome to the Jungle product designer France",
+      "intent": "navigational",
+      "need": "Check a familiar design-job alternative.",
+      "cluster": "existing job board",
+      "product_fit": "low",
+      "fit_reason": "Competitor navigation is not a strong acquisition target.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "questions entretien product designer place recherche utilisateur",
+      "language": "fr",
+      "english_gloss": "product designer interview questions role of user research",
+      "intent": "informational",
+      "need": "Confirm research time and decision-making authority.",
+      "cluster": "design interview checks",
+      "product_fit": "medium",
+      "fit_reason": "Notes help for indexed roles; employer answers still need assessment.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    },
+    {
+      "stage": "action",
+      "query": "organiser candidatures UX designer entretiens",
+      "language": "fr",
+      "english_gloss": "organize UX designer applications interviews",
+      "intent": "informational",
+      "need": "Track new applications and interview feedback.",
+      "cluster": "design application organization",
+      "product_fit": "medium",
+      "fit_reason": "Stages and notes fit indexed roles; external-job import is not demonstrated.",
+      "evidence": "hypothesis",
+      "source_ids": []
+    }
+  ]
+}
