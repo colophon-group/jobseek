@@ -38,7 +38,7 @@ overlay was staged at the promoted revision and c1 reactivated at **epoch 106**.
 The current conservation audit is accepted/audit_ok with five ready, zero
 inflight and no dead records. Configured worker/browser/drain/producer/executor/
 claimant/Redis health checks pass; c2 remains dark. Typesense reports 1,927
-successful documents, zero errors, zero lag and healthy status in the recorded
+successful documents, zero errors, a 15-row lag and healthy status in the recorded
 startup observation.
 
 **Natural SmartRecruiters detail proof remains pending.** The 08:55 UTC sample
