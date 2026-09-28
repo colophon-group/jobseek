@@ -6,6 +6,45 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Schedule-transfer implementation: 2026-09-28 — pending deployment
+
+The legacy publisher retains the original Redis `description_r2_hash` cache
+hint on recurring reschedule. PostgreSQL can hold a newer populated hash.
+Cold admission now binds the exact original Redis hint in its plan and atomic
+transfer, and binds the authoritative PostgreSQL hash separately. Board,
+posting, source URL, step, interval and queue membership still require exact
+authority. Invalid hints and hidden inflight/dead-letter work remain rejected.
+
+Queue pruning removes a ready membership and its hash while retaining the DB
+row. The cold plan records those rows as `unqueued_posting_ids`; it transfers
+only actual schedules. Enabled boards remain in the declared Go cohort and
+their subsequent normal publisher schedules use that ownership. It does not
+recreate a pruned request. Orphan hashes and ambiguous memberships still fail.
+
+The Go producer binds each original Redis score in its preparation digest;
+Lua checks that score and the full original hash atomically before transfer.
+Recurring Go readiness is the later of the DB due time and the existing Redis
+score. Deferred first-time schedules preserve their score. Conversion to
+milliseconds rounds upward, preventing an early request. An internal operator
+CAS marker is removed before hash validation/storage. Normal runtime callers
+cannot supply this authority.
+
+The implementation passes 93 focused Python tests, Go race tests, Ruff and
+Pyright. Tests cover blank cached hashes with populated DB content, pruned
+rows, deferred first-time work, fractional due times, and score changes between
+planning and atomic transfer. Production cdom admission and natural output
+evidence remain pending deployment.
+
+The intervening supported catalogue window retired c1 at epoch **120**, restored
+all five schedules with zero drops/fences, cleared all 25 exact selectors and
+ran [CSV sync 36436234866](https://github.com/colophon-group/jobseek/actions/runs/36436234866)
+to terminal success at revision `b6b1c60f9482ce06ff1a217bd7c888d676caf16d`.
+Flybotix, CASCINATION, RigiTech, Swisslog and Embotech have five enabled crawler
+boards and exact canonical company-ID parity in Typesense. Selectors were
+restaged at the unchanged promoted crawler revision below. Supported c1
+reactivation completed at epoch **121** with five schedules and all configured
+services healthy. No further catalogue sync is required for those companies.
+
 ## Production checkpoint: 2026-09-28 — Go rendered DOM implementation, cdom not admitted
 
 [PR #10157](https://github.com/colophon-group/jobseek/pull/10157) merged as

@@ -539,20 +539,41 @@ async def _legacy_preflight(
         config = item["legacy_config"]
         raw_config = await redis.hgetall(f"scrape:{task_id}")
         current_config = {_wire_text(key): _wire_text(value) for key, value in raw_config.items()}
-        if task_id not in existing:
-            required_fields = set(config) - {"scrape_interval_hours"}
-            accepted_fields = (required_fields, set(config))
-            if set(current_config) not in accepted_fields or any(
-                current_config.get(key) != value
-                for key, value in config.items()
-                if key in current_config
-            ):
-                raise ActivationError("legacy scrape hash disagrees with authoritative PostgreSQL")
         membership_kinds: list[str] = []
+        membership_scores: list[float] = []
         for worker_type in ("simple", "browser"):
             for prefix in ("ft_scrapes", "scrapes"):
-                if await redis.zscore(f"{prefix}_{worker_type}:{domain}", task_id) is not None:
+                score = await redis.zscore(f"{prefix}_{worker_type}:{domain}", task_id)
+                if score is not None:
+                    if worker_type != "browser":
+                        raise ActivationError("cohort legacy schedule is outside the browser lane")
                     membership_kinds.append(prefix)
+                    membership_scores.append(float(score))
+        if task_id not in existing:
+            # Queue pruning removes both hash and membership while retaining
+            # the DB row. Transfer actual work; never recreate a pruned request.
+            if not current_config and not membership_kinds:
+                continue
+            required_fields = set(config) - {"scrape_interval_hours"}
+            if set(current_config) not in (required_fields, set(config)) or any(
+                current_config.get(key) != value
+                for key, value in config.items()
+                if key in current_config and key != "description_r2_hash"
+            ):
+                raise ActivationError("legacy scrape hash disagrees with authoritative PostgreSQL")
+            hint = current_config["description_r2_hash"]
+            if hint != "" and (
+                len(hint) > 20
+                or re.fullmatch(r"-?(?:0|[1-9][0-9]*)", hint) is None
+                or str(int(hint)) != hint
+                or not -(2**63) <= int(hint) < 2**63
+            ):
+                raise ActivationError("legacy description cache hint is invalid")
+            # A recurring legacy reschedule keeps its original cached hash.
+            # Bind that exact hint in the plan/Lua CAS and retain DB authority
+            # separately; the cache is not an identity or content assertion.
+            item["postgres_description_r2_hash"] = config["description_r2_hash"]
+            config["description_r2_hash"] = hint
         expected = 0 if task_id in existing else 1
         if len(membership_kinds) != expected:
             raise ActivationError("legacy schedule membership is not exact for cold transfer")
@@ -566,6 +587,13 @@ async def _legacy_preflight(
             )
         else:
             first_time_by_id[task_id] = membership_kinds == ["ft_scrapes"]
+            score = membership_scores[0]
+            if not math.isfinite(score) or not 0 <= score <= 9_999_999_999.999:
+                raise ActivationError("legacy schedule score is invalid")
+            source_score = format(Decimal(str(score)), "f")
+            item["legacy_schedule_score"] = (
+                source_score.rstrip("0").rstrip(".") if "." in source_score else source_score
+            )
     return first_time_by_id
 
 
@@ -615,12 +643,6 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
     if baseline_occupancy != len(existing):
         raise ActivationError("producer lifetime occupancy disagrees with audited records")
     scheduled_ids = {_text(row, "posting_id") for row in schedulable}
-    new_record_count = len(scheduled_ids - set(existing))
-    projected_occupancy = baseline_occupancy + new_record_count
-    if new_record_count > lifetime_headroom:
-        raise ActivationError("fixed cohort exceeds the producer lifetime headroom")
-    if projected_occupancy > _PILOT_ROLLBACK_SIGNAL_THRESHOLD:
-        raise ActivationError("fixed cohort exceeds the fail-closed pilot occupancy limit")
     cohort_board_ids = set(boards)
     if any(
         stored.state != "terminal" or stored.task.board_id not in cohort_board_ids
@@ -671,11 +693,34 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
             }
         )
     first_time_by_id = await _legacy_preflight(redis, preliminary_tasks, existing)
+    unqueued_ids = sorted(
+        item["posting_id"]
+        for item in preliminary_tasks
+        if item["posting_id"] not in first_time_by_id
+    )
+    preliminary_tasks = [
+        item for item in preliminary_tasks if item["posting_id"] in first_time_by_id
+    ]
+    new_record_count = len(set(first_time_by_id) - set(existing))
+    projected_occupancy = baseline_occupancy + new_record_count
+    if new_record_count > lifetime_headroom:
+        raise ActivationError("fixed cohort exceeds the producer lifetime headroom")
+    if projected_occupancy > _PILOT_ROLLBACK_SIGNAL_THRESHOLD:
+        raise ActivationError("fixed cohort exceeds the fail-closed pilot occupancy limit")
+    if not preliminary_tasks:
+        raise ActivationError("fixed cohort has no transferable schedules")
     tasks: list[dict[str, Any]] = []
     for item in preliminary_tasks:
         posting_id = str(item["posting_id"])
         first_time = first_time_by_id[posting_id]
         go_ready_at = _go_ready_at(item["next_scrape_at"], first_time=first_time)
+        source_score = item.get("legacy_schedule_score", "")
+        if source_score:
+            go_ready_at = (
+                source_score
+                if first_time
+                else format(max(Decimal(go_ready_at), Decimal(source_score)), "f")
+            )
         try:
             prepared = await request_task(
                 operation="prepare",
@@ -686,6 +731,7 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
                 browser=True,
                 operator_transfer=True,
                 first_time=first_time,
+                legacy_schedule_score=source_score,
             )
         except ProducerClientError as exc:
             raise ActivationError("Go producer preparation failed closed") from exc
@@ -709,6 +755,10 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
                 "existing_state": stored.state if stored else None,
                 "existing_payload_sha256": stored.task.payload_sha256 if stored else None,
                 "legacy_config": item["legacy_config"],
+                "legacy_schedule_score": source_score,
+                "postgres_description_r2_hash": item.get(
+                    "postgres_description_r2_hash", item["legacy_config"]["description_r2_hash"]
+                ),
             }
         )
     document: dict[str, object] = {
@@ -720,6 +770,7 @@ async def build_activation_plan(pool: Any, redis: Redis, *, cohort: str) -> Cuto
         "routing_epoch": route.routing_epoch,
         "boards": board_documents,
         "tasks": tasks,
+        "unqueued_posting_ids": unqueued_ids,
         "retained_terminal_ids": sorted(set(existing) - scheduled_ids),
         "lifetime_occupancy": baseline_occupancy,
         "lifetime_capacity": lifetime_capacity,
@@ -751,6 +802,7 @@ async def apply_activation_plan(
                 browser=True,
                 operator_transfer=True,
                 first_time=item["first_time"],
+                legacy_schedule_score=item["legacy_schedule_score"],
                 expected_digest=item["preparation_digest"],
             )
         except (ProducerClientError, TypeError, ValueError) as exc:
@@ -788,6 +840,7 @@ async def apply_activation_plan(
         raise ActivationError("post-activation producer capacity attestation changed")
     return {
         "selected": plan.count,
+        "unqueued": len(plan.document["unqueued_posting_ids"]),
         "activated": activated,
         "already_activated": plan.count - activated,
         "digest": plan.digest,

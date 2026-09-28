@@ -860,7 +860,6 @@ if operation == "activate_legacy" then
     end
     if (operator_transfer ~= "0" and operator_transfer ~= "1")
         or (first_time ~= "0" and first_time ~= "1")
-        or (first_time == "1" and ready_at ~= 0)
         or not safe_identifier(namespace) or not safe_identifier(task_id)
         or canonical_positive(config_revision) == nil or ready_at == nil
         or type(payload) ~= "string" or #payload > MAX_PAYLOAD_BYTES
@@ -905,6 +904,18 @@ if operation == "activate_legacy" then
         or legacy_config.domain ~= candidate.domain
         or (legacy_config.scrape_step ~= nil and legacy_config.scrape_step ~= "0") then
         return result("not_current", "invalid_legacy_config")
+    end
+    local source_score_text = legacy_config.__operator_source_score
+    legacy_config.__operator_source_score = nil
+    local source_score = source_score_text ~= nil and tonumber(source_score_text) or nil
+    if source_score_text ~= nil and (operator_transfer ~= "1"
+        or type(source_score_text) ~= "string" or #source_score_text > 32
+        or source_score == nil or source_score ~= source_score
+        or source_score < 0 or source_score > MAX_INTEGER / 1000) then
+        return result("not_current", "invalid_legacy_config")
+    end
+    if first_time == "1" and ready_at ~= 0 and source_score == nil then
+        return result("not_current", "invalid_task_envelope")
     end
     local legacy_config_count = 0
     for field, value in pairs(legacy_config) do
@@ -1066,6 +1077,10 @@ if operation == "activate_legacy" then
             return result("not_current", "legacy_membership_conflict")
         end
         if existing == nil then
+            if source_score ~= nil and (tonumber(legacy_schedule_score) ~= source_score
+                or ready_at < source_score * 1000) then
+                return result("not_current", "legacy_schedule_mismatch")
+            end
             local legacy_first_time = string.sub(legacy_schedule_kind, 1, 3) == "ft_"
             if legacy_first_time ~= (first_time == "1") then
                 return result("not_current", "legacy_schedule_mismatch")

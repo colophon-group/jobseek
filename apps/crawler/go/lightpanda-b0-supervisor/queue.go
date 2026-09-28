@@ -32,7 +32,7 @@ const (
 	producerOwnerKey         = "lightpanda-b0:producer-owner"
 	legacyGuardKey           = "lightpanda-b0:legacy-guard"
 	producerOwnerV1          = "jobseek.lightpanda.producer-owner/v1"
-	expectedLuaSHA256        = "fee66a72d3ee57f2480a8a5c657b4d3bee72eeb708b33613a5a80dbf702fa750"
+	expectedLuaSHA256        = "d28176c623e1ecb5e331b3eac56b40f5028385838b70454c775dbf18655f341e"
 )
 
 var (
@@ -577,7 +577,7 @@ func (q *b0Queue) initializeProducer(ctx context.Context, owner producerOwnerIde
 
 func (q *b0Queue) activateLegacy(ctx context.Context, task *queueTask, readyAtMS int64, legacyConfig, previousPayloadSHA256 string, operatorTransfer, firstTime bool, owner producerOwnerIdentity) (transition, error) {
 	if task == nil || task.Envelope.EngineOwner != engineOwner || legacyConfig == "" ||
-		(firstTime && readyAtMS != 0) ||
+		(firstTime && readyAtMS != 0 && !operatorTransfer) ||
 		(previousPayloadSHA256 != "" && !hex256.MatchString(previousPayloadSHA256)) || owner.validate() != nil ||
 		owner.Namespace != q.namespace || owner.Route != q.route {
 		return transition{}, errors.New("invalid B0 legacy activation")

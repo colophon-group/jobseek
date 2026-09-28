@@ -125,17 +125,18 @@ func authorityErrorClass(err error) (string, bool) {
 }
 
 type producerRequest struct {
-	Version          string            `json:"version"`
-	Operation        string            `json:"operation"`
-	Cohort           string            `json:"cohort"`
-	Domain           string            `json:"domain"`
-	PostingID        string            `json:"posting_id"`
-	NextScrapeAtMS   int64             `json:"next_scrape_at_ms"`
-	Config           map[string]string `json:"config"`
-	Browser          bool              `json:"browser"`
-	FirstTime        bool              `json:"first_time"`
-	OperatorTransfer bool              `json:"operator_transfer"`
-	ExpectedDigest   string            `json:"expected_digest"`
+	Version             string            `json:"version"`
+	Operation           string            `json:"operation"`
+	Cohort              string            `json:"cohort"`
+	Domain              string            `json:"domain"`
+	PostingID           string            `json:"posting_id"`
+	NextScrapeAtMS      int64             `json:"next_scrape_at_ms"`
+	Config              map[string]string `json:"config"`
+	Browser             bool              `json:"browser"`
+	FirstTime           bool              `json:"first_time"`
+	OperatorTransfer    bool              `json:"operator_transfer"`
+	ExpectedDigest      string            `json:"expected_digest"`
+	LegacyScheduleScore string            `json:"legacy_schedule_score,omitempty"`
 }
 
 type producerResponse struct {
@@ -325,7 +326,7 @@ func newB0Producer(client *redis.Client, queue *b0Queue, cohort string, route ro
 func (p *b0Producer) manifest(request producerRequest) ([]string, error) {
 	if p == nil || request.Version != producerProtocol || request.Operation != "manifest" ||
 		!request.OperatorTransfer || request.Cohort != p.cohortName || request.Domain != "" ||
-		request.PostingID != "" || request.NextScrapeAtMS != 0 || len(request.Config) != 0 ||
+		request.PostingID != "" || request.NextScrapeAtMS != 0 || request.LegacyScheduleScore != "" || len(request.Config) != 0 ||
 		request.Browser || request.FirstTime || request.ExpectedDigest != "" {
 		return nil, errors.New("invalid producer manifest request")
 	}
@@ -371,7 +372,14 @@ func (p *b0Producer) prepareTask(ctx context.Context, request producerRequest) (
 	if _, ok := p.cohort[slug]; !ok {
 		return preparedTask{legacy: true}, nil
 	}
-	if request.FirstTime && request.NextScrapeAtMS != 0 {
+	if request.LegacyScheduleScore != "" {
+		score, parseErr := strconv.ParseFloat(request.LegacyScheduleScore, 64)
+		if !request.OperatorTransfer || len(request.LegacyScheduleScore) > 32 || parseErr != nil ||
+			math.IsNaN(score) || math.IsInf(score, 0) || score < 0 || score > float64(maxInteger)/1000 {
+			return preparedTask{}, errors.New("invalid legacy schedule score binding")
+		}
+	}
+	if request.FirstTime && request.NextScrapeAtMS != 0 && (!request.OperatorTransfer || request.LegacyScheduleScore == "") {
 		return preparedTask{}, errors.New("B0 first-time work must be immediately ready")
 	}
 	if !request.Browser || request.Config["scrape_step"] != "0" {
@@ -420,7 +428,7 @@ func (p *b0Producer) prepareTask(ctx context.Context, request producerRequest) (
 			}
 		}
 	}
-	legacyConfig, err := producerLegacyConfig(request.Config, desired)
+	legacyConfig, err := producerLegacyConfig(request.Config, desired, request.LegacyScheduleScore)
 	if err != nil {
 		return preparedTask{}, err
 	}
@@ -430,6 +438,9 @@ func (p *b0Producer) prepareTask(ctx context.Context, request producerRequest) (
 		"next_scrape_at_ms": request.NextScrapeAtMS, "operator_transfer": request.OperatorTransfer,
 		"posting_id": request.PostingID, "task_payload_sha256": desired.PayloadSHA256,
 		"version": producerProtocol,
+	}
+	if request.LegacyScheduleScore != "" {
+		digestDocument["legacy_schedule_score"] = request.LegacyScheduleScore
 	}
 	canonical, err := canonicalJSON(digestDocument, true)
 	if err != nil {
@@ -838,7 +849,7 @@ func sameProducerIdentity(current, wanted queueTask) bool {
 		current.Envelope.Wait == wanted.Envelope.Wait && sameOptionalString(current.Envelope.WaitFallback, wanted.Envelope.WaitFallback)
 }
 
-func producerLegacyConfig(config map[string]string, task queueTask) (string, error) {
+func producerLegacyConfig(config map[string]string, task queueTask, scheduleScore string) (string, error) {
 	normalized := make(map[string]any, len(config)+1)
 	for key, value := range config {
 		if !safeID.MatchString(key) {
@@ -852,6 +863,10 @@ func producerLegacyConfig(config map[string]string, task queueTask) (string, err
 		(hasDomain && suppliedDomain != task.Envelope.Domain) ||
 		(normalized["scrape_step"] != nil && normalized["scrape_step"] != "0") {
 		return "", errors.New("legacy config disagrees with B0 identity")
+	}
+	if scheduleScore != "" {
+		// Operator-only CAS metadata is removed by Lua before validating the hash.
+		normalized["__operator_source_score"] = scheduleScore
 	}
 	encoded, err := canonicalJSON(normalized, true)
 	if err != nil || len(encoded) > maxPayload {
