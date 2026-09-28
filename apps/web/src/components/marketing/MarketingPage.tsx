@@ -67,7 +67,7 @@ export function MarketingPage({ kind, locale }: { kind: MarketingKind; locale: L
           </div>
           <div className="mx-auto h-[280px] w-full max-w-[420px] sm:h-[360px] lg:ml-auto lg:mr-0">
             <PublicDomainArt
-              asset={publicDomainAssets[alerts ? "the_ploughman" : "poliphilus_writing"]}
+              asset={publicDomainAssets[alerts ? "the_ploughman" : "the_emperor"]}
               loading="eager"
               fetchPriority="high"
               themeRendering="css-invert"

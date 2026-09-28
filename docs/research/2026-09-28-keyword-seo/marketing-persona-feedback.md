@@ -93,3 +93,16 @@ The jump-link check exposed a real PPR issue: hidden article copies retain the
 same section IDs. The guide's links now resolve their target within the visible
 article, with keyboard focus and a regression test. Blog prose styles also no
 longer override the standard white artwork-credit overlay on these images.
+
+## Visual review follow-up
+
+The tracker now uses Holbein's *The Emperor*, selected for denser linework that
+matches the site's existing illustrations. The lighter writing illustration was
+removed. The existing artwork component and overlay credits are unchanged.
+The production build and desktop/mobile captures in both themes pass.
+
+Open before publication: refresh the watchlist product screenshots. The globe
+in the old capture is stale; the current application's sharing controls already
+use `Share2`. The original public watchlist URL is no longer available, and the
+configured capture-account login is rejected. Fresh authenticated captures are
+pending working capture access; do not alter the screenshot to fake a current UI.
