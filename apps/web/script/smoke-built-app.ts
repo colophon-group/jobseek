@@ -51,6 +51,10 @@ const discoveryRedirectRoutes = [
   ["/openapi.json", "/api/openapi.json"],
 ] as const;
 const missingResourceRoutes = [
+  ["/en/blog/definitely-not-a-real-post", "Article not found"],
+  ["/de/blog/definitely-not-a-real-post", "Artikel nicht gefunden"],
+  ["/fr/blog/definitely-not-a-real-post", "Article introuvable"],
+  ["/it/blog/definitely-not-a-real-post", "Articolo non trovato"],
   ["/en/company/definitely-not-a-real-company", "Company not found"],
   ["/de/company/definitely-not-a-real-company", "Unternehmen nicht gefunden"],
   ["/en/not-a-real-user/not-a-real-watchlist", "Watchlist not found"],
@@ -450,11 +454,31 @@ async function smokeMissingResource(
   console.log(`smoke ok ${route} GET/HEAD 404`);
 }
 
+async function smokeIndexingPolicy() {
+  const noindexPaths = ["explore", "sign-in", "sign-up", "forgot-password", "check-email", "reset-password", "verify-email", "my-jobs", "my-jobs/stats", "settings", "progress", "watchlists", "checkout"];
+  for (const locale of ["en", "de", "fr", "it"]) {
+    for (const path of noindexPaths) {
+      const response = await fetch(`${baseUrl}/${locale}/${path}`);
+      const html = await response.text();
+      if (!/<meta name="robots" content="[^"]*noindex/.test(html)) {
+        throw new Error(`/${locale}/${path} did not deliver noindex metadata`);
+      }
+    }
+    const home = await (await fetch(`${baseUrl}/${locale}`)).text();
+    if (home.includes("Job Seek | Job Seek")) throw new Error("Homepage repeats branding");
+    if (/<meta name="robots" content="[^"]*noindex/.test(home)) throw new Error("Homepage must remain indexable");
+  }
+  const sitemap = await (await fetch(`${baseUrl}/sitemap.xml`)).text();
+  if (sitemap.includes("/explore</loc>")) throw new Error("Explore remains in sitemap");
+  console.log("smoke ok indexing policy in all locales");
+}
+
 async function main() {
   const server = startServer();
   let browser: Browser | undefined;
   try {
     await waitForServer();
+    await smokeIndexingPolicy();
     await smokeCompanyRouteUpgrade();
     browser = await chromium.launch();
     for (const route of discoveryNotFoundRoutes) {

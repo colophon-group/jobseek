@@ -79,6 +79,7 @@ jobs:
           scripts/crawler-runtime-contract.test.mjs
           scripts/crawler-host-hygiene.test.mjs
           scripts/docs-index.test.mjs
+          scripts/seo-content-dates.test.mjs
           scripts/dealroom-company-requests.test.mjs
           scripts/vercel-web-deploy-paths.test.mjs
           scripts/vercel-server-action-key.test.mjs
@@ -86,6 +87,14 @@ jobs:
           scripts/vercel-company-cache.test.mjs
           scripts/vercel-production-sha.test.mjs
           scripts/vercel-promotion-identity.test.mjs
+
+      - name: Check dates on changed blog content
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --depth=1 origin "$BASE_SHA"
+          node .github/scripts/check-seo-content-dates.mjs "$BASE_SHA"
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:

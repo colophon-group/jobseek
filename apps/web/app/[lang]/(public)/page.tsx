@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: buildAlternates("", locale),
     openGraph: {

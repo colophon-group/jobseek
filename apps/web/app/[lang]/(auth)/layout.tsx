@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -5,6 +6,8 @@ import type { ReactNode } from "react";
 import { auth } from "@/lib/auth";
 import { shouldRedirectSignedInUser } from "@/lib/auth-page-session";
 import { AuthShell } from "@/components/AuthShell";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 type Props = {
   params: Promise<{ lang: string }>;

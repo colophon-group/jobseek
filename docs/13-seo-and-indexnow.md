@@ -1,240 +1,69 @@
 # SEO and IndexNow
 
-> **Status note (2026-05, #2821 / `area:seo` batch):** company pages
-> (`/{locale}/company/{slug}`) are now `noindex,follow` and excluded from
-> the sitemap. The crawler-side IndexNow notifier (which only ever
-> covered company URLs) has been retired from `docker-compose.yml`. The
-> watchlist-side IndexNow notifier in the web app is unaffected. The
-> sections below describing per-company SSR + crawler IndexNow
-> hashing remain accurate as a reference for how the surface worked
-> before the change and what the code in `apps/crawler/src/indexnow.py`
-> still does if it is invoked manually — but neither is wired into a
-> live deploy. Watchlist + blog surfaces are the active SEO
-> targets going forward.
+## Active search surface
 
-Covers the company-page SSR surface (head metadata, JSON-LD,
-similar-companies strip, watchlist stats row), the active watchlist/blog
-IndexNow paths, and the retired crawler company notifier for historical
-reference. IndexNow reaches Bing / Yandex / Seznam / Naver / Microsoft Yep;
-Google does **not** participate in IndexNow.
+The acquisition surface is localized home, about, FAQ, blog index, and translated blog articles. With three articles translated into four languages, the sitemap contains **28 URLs** (seven page concepts × four locales). This count grows when articles/translations are published.
 
-## On-page SEO
+| Route family | Policy |
+|---|---|
+| `/{locale}`, `/about`, `/faq`, `/blog`, `/blog/{slug}` | Indexable; self-canonical; sitemap |
+| `/explore`, `/company/{slug}` | `noindex,follow`; excluded from sitemap |
+| Account, authentication, checkout, watchlist routes | `noindex,nofollow`; excluded from sitemap |
+| `/terms`, `/privacy-policy`, `/license`, `/how-we-index` | `noindex,follow`; excluded from sitemap |
+| Legacy `/{locale}/{user}/{watchlist}` | Anonymous 404; owners may redirect to UUID route |
 
-### Company page — server-rendered head
+Explore remains an interactive product page. Its filter URLs canonicalize to the queryless locale URL. Its current JavaScript rendering dependency is not an acquisition requirement. Do not reinstate it in the sitemap without revisiting that product decision.
 
-`apps/web/app/[lang]/(app)/company/[slug]/page.tsx` fetches `getCompanyBySlug` on the server and renders `<CompanyHead>` (server component) before the client `<CompanyContent>` wrapper. The head includes, in the initial SSR payload:
+`apps/web/src/lib/sitemap.ts` owns the entry set and XML serializer; `app/sitemap.xml/route.ts` serves it. There are no company/watchlist shards or database reads in sitemap generation. Robots points to `/sitemap.xml`. Public HTML stays crawlable so engines can read noindex; private APIs remain disallowed. Robots is not an access-control mechanism.
 
-- `<h1>` with the company name (optionally wrapped in a `target="_blank" rel="noopener noreferrer"` anchor to the company's own website).
-- Localized description paragraph: `getCompanyBySlug` reads from the Typesense `company` collection, picking `description_{locale}` and falling back to `description` (English). On Typesense error or 0 hits, the SQL fallback path runs the same `COALESCE(cd.description, c.description)` join against Supabase `company_description` it always did.
-- Meta row: industry / employee-count range / founding year, all resolved to localized strings via `getI18n()` server-side.
-- Back-navigation `<BackLink>` to `/{locale}/explore` preserving the current query string.
-- `Organization` + `BreadcrumbList` JSON-LD blocks, via `<JsonLd>` in `apps/web/src/lib/seo.tsx`. `safeHttpUrl()` guards `logo` and `sameAs` so only http/https URLs reach the payload.
+Company pages still provide useful product information, company metadata, and share cards. Exclusion is deliberate. Individual jobs have no dedicated indexable detail route; JobPosting rich-result eligibility would require a separate product decision and an expiration policy.
 
-The **posting list stays client-rendered** deliberately. Postings are ephemeral (2–4 week shelf life) and duplicate of the origin career page's text — Google would canonicalize away to the source, and expired postings become dead indexed URLs.
+## Localization and blog routes
 
-### Similar companies strip
+`buildAlternates` emits canonical and language links, including English `x-default`. Each blog post advertises only its actual translated MDX siblings. Missing translations redirect permanently to the English article; they do not publish English content under a self-canonical foreign-language URL.
 
-`apps/web/src/components/company/similar-companies-strip.tsx` renders a horizontal strip of same-industry peers between the info row and the stats row. Implementation notes:
+`next.config.ts` builds `BLOG_ROUTE_MANIFEST` from repository filenames. Proxy uses this small build-time inventory to return a localized 404 for unknown blog slugs **before streaming**, for both GET and HEAD. It also redirects missing translations. There are no per-request filesystem or search-service lookups. Adding an article or translation requires a new deployment.
 
-- SSR-initial: `getSimilarCompanies` is called in `page.tsx` and its Promise is passed unawaited to `<SimilarSection>` wrapped in `<Suspense fallback={null}>`. If Typesense is slow, the head + postings column stream independently — the strip patches in when the Promise resolves.
-- Client-side: the strip subscribes to `useSearchParams()` and refetches on URL change. When filters are active, counts per card reflect the filtered `job_posting` facet — they show "12 open positions" meaning "12 matching your current search," not "12 total."
-- Pagination: reuses `useInfiniteScroll` + `InfiniteScrollSentinel` (horizontal orientation) + `ScrollFade` (horizontal orientation) to lazy-load batches as the user scrolls right.
-- Anonymous cap: reuses `ANON_MAX_COMPANIES` (15). At the cap, a geometry-matched sign-in CTA card replaces the last pagination slot.
-- Card links carry the current URL search params so filters survive lateral navigation between companies.
+Blog pages contain Article JSON-LD and matching article-specific Open Graph/Twitter images. The configured author links to a verified public profile. Other authors must have their identity reviewed before a profile URL is added; do not reuse the default author's URL for them. Shared JSON-LD serialization escapes `<`.
 
-### Watchlist view — shared stats row
+## Content dates
 
-`apps/web/src/components/search/language-stats-row.tsx` renders "Showing jobs in {lang} · change ... N active · M in the last year" with a responsive split (md+ inline, sm drops stats to a dedicated row with active-left / year-right). The component is mounted inside `WatchlistJobList`'s `listColumn` so the row stays aligned with the postings list when the job-detail panel opens on the right.
+- Update each static sitemap entry in `src/content/config.ts` after substantive visible content changes. Shared footer/navigation changes affect all public pages.
+- Update the changed article/translation's `dateModified` with the actual edit date; retain the original publication date.
+- Article sitemap entries use each translation's own modification date. A localized blog index uses the latest of its static revision date and its translated articles' dates.
+- Do not stamp every request/build with today's date.
+- CI runs `.github/scripts/check-seo-content-dates.mjs` against the PR base: changed existing MDX must advance its date (multiple edits on the current UTC day are allowed), and invalid/future dates fail. Correcting old date metadata without changing content is allowed. Static-page dates still require editorial review.
 
-`getWatchlistPostingYearCount` in `apps/web/src/lib/actions/watchlists.ts` runs in `Promise.all` with `getWatchlistPostings` inside `fetchWatchlistPageData`: one extra `job_posting` count query with `first_seen_at >= now() - 1 year` replacing `is_active:true`, same filters otherwise.
+## IndexNow lifecycle
 
-### Not covered
+**Automatic path:** `.github/workflows/deploy-web-production.yml` builds and stages the selected main revision, checks it, promotes it, and verifies that `jseek.co` resolves to the promoted deployment. Only then does it run `pnpm --filter @jobseek/web notify-blog-indexnow` from that same checkout.
 
-- **Per-posting URLs.** We don't expose `/job/{id}` routes. Google's Indexing API is restricted to `JobPosting` / `BroadcastEvent` schema; eligibility would require a strategic decision to expose posting detail pages, which we've ruled against.
-- **Google coverage.** IndexNow doesn't reach Google. Google discovery relies on `sitemap.xml` plus the on-page work above; the ~2k/16k coverage gap is an authority/backlink problem, not a discovery problem.
+Every successful web promotion submits current published articles. This intentionally includes unchanged articles: the small idempotent resubmission repairs missed notifications and covers cumulative deployments. A skipped or failed promotion does not submit. The notification step requires `INDEXNOW_KEY` from the `Production` GitHub environment and fails on a missing key, rejected HTTP response, or transport error. A notification failure after promotion does not roll back the site.
 
-## IndexNow
+**Manual retry:** dispatch `.github/workflows/notify-blog-indexnow.yml` on the deployed revision. It shares production-deploy concurrency and requires the selected checkout SHA to match the deployment currently serving `jseek.co`, using the Vercel API. It never waits for a nonexistent `vercel[bot]` GitHub deployment record. If main is ahead of production, let deployment complete before retrying.
 
-Split by where the active change event lives:
+The script loads published MDX and fans out only to each post's actual locales. The common `notifyIndexNow` helper sends to `https://api.indexnow.org/indexnow`, with `keyLocation=https://jseek.co/indexnow-key.txt`; 200/202 are acknowledgements, not proof of indexing. The helper retains safe no-op behavior for non-production callers without a key, but the production script explicitly rejects missing credentials.
 
-- **Watchlists** — change via user actions in the web app. Server actions call a fire-and-forget notifier from inside `after()` at mutation commit time.
-- **Blog posts** — change via blog content commits. A GitHub Actions deploy hook submits published blog URLs after the Vercel production deploy settle window.
+### Credentials and verification
 
-Company-page IndexNow submission is retired. Company pages are `noindex,follow`
-and excluded from the sitemap, so the crawler no longer runs an IndexNow
-container, timer, or deploy-time secret path for company URLs. The crawler
-hash-diff implementation remains in the repo only as a manual reference.
+- `INDEXNOW_KEY`: same value in Vercel production and GitHub environment `Production`.
+- Vercel serves the current proof at `/indexnow-key.txt` with `Cache-Control: no-store`. Verify status without printing the key into logs.
+- Automatic submission uses the existing deploy credentials; manual retry additionally reads production identity with `VERCEL_TOKEN` and `VERCEL_ORG_ID`.
 
-### Endpoint
-
-All submissions go to `https://api.indexnow.org/indexnow`. A single POST propagates to every participating engine — Bing, Yandex, Seznam, Naver, Microsoft Yep, and Bing-backed DuckDuckGo. Per-engine endpoints (e.g. `www.bing.com/indexnow`) are equivalent aliases; we use the generic one to keep the payload engine-neutral.
-
-### Key management
-
-Active IndexNow paths need `INDEXNOW_KEY` on the web/deploy-hook side. The
-crawler-only variables below are legacy/manual-only after #2821; the crawler
-deploy does not require or forward them.
-
-| Variable | Default | Where |
-|----------|---------|-------|
-| `INDEXNOW_KEY` | — (required to enable) | Vercel (Production + Preview); GitHub Actions secret for blog deploy-hook; `apps/*/.env.local` locally |
-| `INDEXNOW_SITE_URL` | — | Legacy crawler manual run only (`https://jseek.co`; web derives from `siteConfig.url`) |
-| `INDEXNOW_KEY_URL` | — | Legacy crawler manual run only (`https://jseek.co/indexnow-key.txt`) |
-| `INDEXNOW_INTERVAL` | `3600` | Legacy crawler loop only; no active deployment uses it |
-| `INDEXNOW_MAX_URLS_PER_TICK` | `500` | Legacy crawler manual run only; per-tick submission cap; `0` disables |
-
-The key file is served by `apps/web/app/indexnow-key.txt/route.ts` with `dynamic = "force-dynamic"` + `Cache-Control: no-store`, so rotating the key takes effect on the next request (no rebuild required).
-
-`INDEXNOW_HOST` on the crawler is derived from `INDEXNOW_SITE_URL` by a pydantic `@model_validator(mode="after")` — setting `indexnow_site_url=https://jseek.co` yields `indexnow_host=jseek.co` automatically, and trailing slashes are stripped to prevent double-slash URLs downstream.
-
-### Legacy crawler-side company notifier: content-hash diff
-
-`apps/crawler/src/indexnow.py::notify_indexnow` is retained as reference code
-for the retired company-page notifier. It is not scheduled in production, and
-`apps/crawler/docker-compose.yml` no longer defines an `indexnow` service. A
-manual operator run can still execute `crawler notify-indexnow` if the legacy
-environment variables are supplied, but that is outside the current deployment
-path.
-
-Single Postgres connection across the whole cycle to avoid TOCTOU races with `crawler sync`:
-
-1. Fetch every company + its stable fields (`name, website, logo, icon, industry, employee_count_range, founded_year`).
-2. Fetch all `company_description` rows for supported locales.
-3. Fetch the prior `{url: content_hash}` map from `indexnow_submission`.
-4. For each (company × locale) pair:
-   - `hash = "v2:" + sha256(stable_fields || description_for_locale || "")`
-   - If `prior.get(url) != hash`, enqueue the URL for submission.
-5. Batch ≤ 10 000 URLs per request (protocol cap), POST to the endpoint.
-6. On 200/202, upsert `(url, hash, now())` into `indexnow_submission`. On 4xx (ERROR log), 5xx / network error (WARNING log), leave the row untouched — the next tick retries with the same payload.
-
-**Hash scheme details:**
-
-- Exact formula (see `compute_company_locale_hash` in `indexnow.py`):
-  ```
-  hash = f"{_HASH_VERSION}:" + sha256_hex(
-      "\x1f".join([
-          str(row["name"] or ""),
-          str(row["website"] or ""),
-          str(row["logo"] or ""),
-          str(row["icon"] or ""),
-          str(row["industry"] or ""),
-          str(row["employee_count_range"] or ""),
-          str(row["founded_year"] or ""),
-          description or "",
-      ])
-  )
-  ```
-  Field order is locked; do not reorder without bumping `_HASH_VERSION`. `\x1f` (unit-separator) is the join delimiter — chosen so values with commas / colons / spaces don't collide.
-- Per-locale: a German description rewrite re-notifies `/de/company/{slug}` and leaves the other three URLs' stored hashes intact. See the `TestPerLocaleIsolation` class in `tests/test_indexnow.py`.
-- Versioned prefix (`_HASH_VERSION = "v2"`) so scheme changes force a one-off full resubmit on the next tick rather than silently looking current. First rollout of v2 to a population already carrying v1 hashes causes one big sweep (N companies × 4 locales) — expected and safe; IndexNow accepts ≤10 000 URLs per POST.
-
-**Why not `updated_at`:** `company.updated_at` is re-stamped by `crawler sync` on every row every run, regardless of whether any column actually changed. It's not a change signal. The hash is the change signal.
-
-**What's excluded:**
-
-- Ephemeral posting list (client-rendered, not in the SEO surface).
-- Company taxonomy changes that don't affect bot-visible HTML — tracked via the stable-field tuple.
-- Watchlist URLs (handled web-side; see below).
-
-### Web-side (watchlists): event-driven via `after()`
-
-`apps/web/src/lib/indexnow.ts::notifyIndexNow` — called from server actions in `apps/web/src/lib/actions/watchlists.ts` at four points:
-
-| Action | Trigger | URLs notified |
-|--------|---------|---------------|
-| `createWatchlist` | `isPublic && !trivial` | `/{userSlug}/{slug}` |
-| `updateWatchlist` (keep-indexed path) | `shouldIndex` | new slug; **and** old slug if title rename changed slug |
-| `updateWatchlist` (unindex path) | `else if (wasPublic)` | old slug — triggers re-crawl → 404 discovery |
-| `copyWatchlist` | `!trivial` | new copy's slug |
-| `deleteWatchlist` | `wl.isPublic` | old slug |
-
-Implementation:
-
-- No diff table. The mutation is the event — we know something changed because we just committed to Postgres.
-- Each call site wraps the post-mutation hook (Typesense upsert / delete + `notifyIndexNow`) in `after()` from `next/server`. `after()` must be invoked **synchronously inside the request scope** — calling it from a detached `.then()` chain (an earlier shape of this code) silently no-ops because the request context is already torn down by the time the chain resolves. `notifyIndexNow` itself is a plain async function and assumes the caller provides `after()`; it does not call `after()` internally.
-- `encodeURIComponent` per path segment guards against user slugs with spaces / unicode / `%`-sequences.
-- Gated on `owner.username` being truthy, matching the sitemap's `WHERE u.username IS NOT NULL` filter — we don't notify URLs the sitemap doesn't expose.
-- No-op if `process.env.INDEXNOW_KEY` is unset (safe locally + on preview deploys without the secret).
-- `AbortSignal.timeout(10000)` so a hung endpoint doesn't pin the function.
-
-### Web-side (blog posts): deploy-hook via GitHub Actions
-
-`.github/workflows/notify-blog-indexnow.yml` fires on `push` to `main` whenever an `apps/web/src/content/blog/**/*.mdx` file changes. After a 5-minute sleep (Vercel prod deploy settle window — typical build is 2–5 min, slow days are inside the engine retry cushion), the action runs `pnpm --filter @jobseek/web notify-blog-indexnow`, which:
-
-1. Reads every published post via `listBlogPosts()`.
-2. For each post, calls `getBlogPostLocales(slug)` — same per-post translation set the sitemap (`blogPostEntries`, #2828) and the page `<head>` hreflang (`buildAlternates(..., availableLocales)`, #2849) use.
-3. Calls `notifyIndexNow([\`/blog/${slug}\`], localesForPost)` — `availableLocales` restricts the locale fan-out so engines aren't pointed at locale variants that fall back to the EN canonical body.
-
-The action also exposes a `workflow_dispatch:` trigger for manual re-runs from the Actions UI (e.g., to re-pin engines after they drop a URL from their index without a corresponding content change).
-
-Re-submission of unchanged URLs is idempotent at the IndexNow side; the action runs on every blog content commit, not just first-publish, and that's intentional — engines treat resubmission as "please recrawl" and dedupe their own re-fetch behavior.
-
-### URL resolution alignment
-
-`getWatchlistByUserAndSlug` in `watchlists.ts` matches **either** `u.username` **or** `u.display_username` (preferring `username` via `ORDER BY (u.username = $1)::int DESC`). The sitemap emits URLs with `COALESCE(display_username, username)`, so without this fix a user with a distinct `display_username` would advertise URLs in `sitemap.xml` that the detail page couldn't resolve.
-
-## Deployment
-
-### Web (Vercel)
-
-1. Set `INDEXNOW_KEY` in Vercel env → Production + Preview scopes.
-2. Redeploy (env vars are baked per-deployment; existing deployments keep their snapshot).
-3. Verify: `curl https://jseek.co/indexnow-key.txt` returns the key with `HTTP/2 200`.
-
-### Crawler (Hetzner)
-
-There is no active crawler-side IndexNow deployment after #2821.
-`.github/workflows/deploy-crawler-browser.yml` builds immutable versioned
-crawler images, deploys that version to Hetzner, and promotes `latest` only
-after the SSH deploy succeeds. It does not provision `INDEXNOW_*` secrets and
-`deploy.sh` does not start an `indexnow` container.
-
-Crawler deploys therefore do not depend on IndexNow configuration. If an
-operator needs to inspect the legacy company notifier manually, run
-`crawler notify-indexnow --dry-run` from a configured crawler environment; do
-not treat that manual command as part of the normal deploy checklist.
-
-### Smoke tests
-
-```bash
-# Key file serves from Vercel
-curl -I https://jseek.co/indexnow-key.txt   # HTTP/2 200, body is the key
-
-# Blog deploy hook
-gh run list --workflow notify-blog-indexnow.yml --branch main
-
-# Legacy crawler notifier dry-run, only from a configured crawler environment
-uv run --no-sync crawler notify-indexnow --dry-run
-
-# Legacy per-URL state
-psql -c "SELECT url, last_submitted_at FROM indexnow_submission ORDER BY last_submitted_at DESC LIMIT 10;"
-
-# Bing Webmaster Tools → IndexNow dashboard registers submissions within a few minutes
+```sh
+curl -I https://jseek.co/indexnow-key.txt
+gh run list --workflow deploy-web-production.yml --branch main --limit 5
+gh run list --workflow notify-blog-indexnow.yml --limit 5
 ```
 
-## Metrics
+Watchlist actions no longer submit URLs. Crawler company notification is retired; `apps/crawler/src/indexnow.py` remains legacy reference code, not a scheduled service. Do not restore it while companies remain noindex. Google discovery relies on ordinary crawling and sitemaps; IndexNow does not notify Google.
 
-The active web and blog IndexNow paths do not expose Prometheus metrics today;
-the broader web-app metrics gap is tracked in #3182. Watchlist-side submissions
-emit structured Vercel log lines through `logIndexNowResult()` with the stable
-`indexnow.result` event name (#3202), and blog submissions rely on GitHub
-Actions logs.
+## Verification and monitoring
 
-The legacy `notify-indexnow` crawler subcommand starts a Prometheus metrics
-server on `METRICS_PORT=9099` only for the duration of a manual run. There is
-no production container loop anymore, so durable metrics + a Grafana dashboard
-should be added under #3182 if company-page submission is ever revived.
+The [September 2026 audit](audits/2026-09-28-seo-surface.md) records the original findings and live evidence. Its 32-URL inventory is a historical baseline before Explore was removed.
 
-Until then, legacy crawler observability is structured log events emitted by
-`indexnow.py`:
+Check canonical/hreflang and noindex on delivered HTML, all sitemap responses, missing-blog GET/HEAD status, and translation redirects. Unit tests cover metadata, sitemap per-translation dates, robots, Proxy, and the content-date gate. Production-build smoke tests cover account/Explore exclusions and blog status codes.
 
-| Event | Level | When |
-|-------|-------|------|
-| `indexnow.submit.ok` | INFO | Batch POST returned 200/202 |
-| `indexnow.submit.rejected` | ERROR (4xx) / WARNING (5xx) | Non-success response; body truncated to 500 chars |
-| `indexnow.submit.network_error` | WARNING | `httpx.HTTPError` or `TimeoutError` during POST |
-| `indexnow.nothing_to_submit` | INFO | All hashes match prior submissions — steady state |
-| `indexnow.misconfigured` | WARNING | Partial env (key set but host/site_url/key_url missing) |
-| `indexnow.disabled` | INFO | `INDEXNOW_KEY` unset — no-op run |
-| `indexnow.dry_run` | INFO | `--dry-run` path, shows would-submit count |
-| `indexnow.run.complete` | INFO | Final tick summary with `submitted` + `unchanged` counts |
+Search Console and Bing Webmaster Tools are required to determine actual indexed counts, selected canonicals, impressions, and clicks. Separate intentional company/watchlist/Explore removals from problems on marketing/article URLs. Historical coverage counts are not evidence of a current backlink or discovery problem.
+
+`/.well-known/llms.txt` links to product information and original research; `/llms.txt` redirects there. This is discovery hygiene, not a ranking guarantee. Continue publishing useful dated research rather than generating thin indexable filter permutations.

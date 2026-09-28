@@ -101,6 +101,36 @@ describe("proxy", () => {
     redirectSpy.mockRestore();
   });
 
+  it.each(["GET", "HEAD"])("returns a real localized 404 for an unknown blog slug (%s)", async (method) => {
+    vi.stubEnv("BLOG_ROUTE_MANIFEST", JSON.stringify({ known: ["en", "de"] }));
+    const response = await proxy(new NextRequest("http://localhost/fr/blog/missing", { method }));
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-robots-tag")).toContain("noindex");
+    const body = await response.text();
+    if (method === "HEAD") expect(body).toBe("");
+    else expect(body).toContain("Article introuvable");
+  });
+
+  it("redirects an untranslated post to English without changing its query", async () => {
+    vi.stubEnv("BLOG_ROUTE_MANIFEST", JSON.stringify({ known: ["en", "de"] }));
+    const response = await proxy(createRequest("/it/blog/known?utm_source=test"));
+    expect(response.status).toBe(308);
+    expect(response.headers.get("location")).toBe("http://localhost/en/blog/known?utm_source=test");
+    const translated = await proxy(createRequest("/de/blog/known"));
+    expect(translated.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("does not resolve inherited object keys as blog posts", async () => {
+    vi.stubEnv("BLOG_ROUTE_MANIFEST", "{}");
+    expect((await proxy(createRequest("/en/blog/constructor"))).status).toBe(404);
+  });
+
+  it("matches every localized blog detail path at the Proxy boundary", () => {
+    for (const locale of ["en", "de", "fr", "it"]) {
+      expect(unstable_doesMiddlewareMatch({ config, url: `/${locale}/blog/missing` })).toBe(true);
+    }
+  });
+
   it("redirects to default locale when no accept-language", () => {
     proxy(createRequest("/about"));
     expect(redirectSpy).toHaveBeenCalledTimes(1);
@@ -925,7 +955,6 @@ describe("proxy config", () => {
     "/en/my-jobs/stats",
     "/de/settings/account",
     "/fr/settings/billing",
-    "/it/blog/example-post",
     "/en/companies/example",
   ])("bypasses Proxy for reserved multi-segment app route %s", (url) => {
     expect(

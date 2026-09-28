@@ -275,3 +275,9 @@ jobs:
             exit 1
           fi
           echo "Production remains current for web inputs at main $current_main"
+
+      - name: Submit published blog URLs to IndexNow
+        if: steps.promote.outputs.promoted == 'true'
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: pnpm --filter @jobseek/web notify-blog-indexnow

@@ -1,0 +1,2554 @@
+{
+  "observed_at_utc": "2026-09-28T07:50:54.758943+00:00",
+  "source_commit": "a91adb088c9f2e5c6a0a2e29c56a03e7add220db",
+  "method": "Anonymous HTTPS GET; no redirects followed; raw HTML parsed without running JavaScript. Googlebot strings are simulations from the audit host, not verified Google crawl observations. Non-script word counts include title and hidden markup and are diagnostic, not ranking scores. Public IndexNow proof body omitted.",
+  "sitemap": [
+    {
+      "url": "https://jseek.co/en",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      }
+    },
+    {
+      "url": "https://jseek.co/de",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      }
+    },
+    {
+      "url": "https://jseek.co/fr",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      }
+    },
+    {
+      "url": "https://jseek.co/it",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      }
+    },
+    {
+      "url": "https://jseek.co/en/about",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/about",
+        "de": "https://jseek.co/de/about",
+        "fr": "https://jseek.co/fr/about",
+        "it": "https://jseek.co/it/about",
+        "x-default": "https://jseek.co/en/about"
+      }
+    },
+    {
+      "url": "https://jseek.co/de/about",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/about",
+        "de": "https://jseek.co/de/about",
+        "fr": "https://jseek.co/fr/about",
+        "it": "https://jseek.co/it/about",
+        "x-default": "https://jseek.co/en/about"
+      }
+    },
+    {
+      "url": "https://jseek.co/fr/about",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/about",
+        "de": "https://jseek.co/de/about",
+        "fr": "https://jseek.co/fr/about",
+        "it": "https://jseek.co/it/about",
+        "x-default": "https://jseek.co/en/about"
+      }
+    },
+    {
+      "url": "https://jseek.co/it/about",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/about",
+        "de": "https://jseek.co/de/about",
+        "fr": "https://jseek.co/fr/about",
+        "it": "https://jseek.co/it/about",
+        "x-default": "https://jseek.co/en/about"
+      }
+    },
+    {
+      "url": "https://jseek.co/en/faq",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/faq",
+        "de": "https://jseek.co/de/faq",
+        "fr": "https://jseek.co/fr/faq",
+        "it": "https://jseek.co/it/faq",
+        "x-default": "https://jseek.co/en/faq"
+      }
+    },
+    {
+      "url": "https://jseek.co/de/faq",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/faq",
+        "de": "https://jseek.co/de/faq",
+        "fr": "https://jseek.co/fr/faq",
+        "it": "https://jseek.co/it/faq",
+        "x-default": "https://jseek.co/en/faq"
+      }
+    },
+    {
+      "url": "https://jseek.co/fr/faq",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/faq",
+        "de": "https://jseek.co/de/faq",
+        "fr": "https://jseek.co/fr/faq",
+        "it": "https://jseek.co/it/faq",
+        "x-default": "https://jseek.co/en/faq"
+      }
+    },
+    {
+      "url": "https://jseek.co/it/faq",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/faq",
+        "de": "https://jseek.co/de/faq",
+        "fr": "https://jseek.co/fr/faq",
+        "it": "https://jseek.co/it/faq",
+        "x-default": "https://jseek.co/en/faq"
+      }
+    },
+    {
+      "url": "https://jseek.co/en/blog",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog",
+        "de": "https://jseek.co/de/blog",
+        "fr": "https://jseek.co/fr/blog",
+        "it": "https://jseek.co/it/blog",
+        "x-default": "https://jseek.co/en/blog"
+      }
+    },
+    {
+      "url": "https://jseek.co/de/blog",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog",
+        "de": "https://jseek.co/de/blog",
+        "fr": "https://jseek.co/fr/blog",
+        "it": "https://jseek.co/it/blog",
+        "x-default": "https://jseek.co/en/blog"
+      }
+    },
+    {
+      "url": "https://jseek.co/fr/blog",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog",
+        "de": "https://jseek.co/de/blog",
+        "fr": "https://jseek.co/fr/blog",
+        "it": "https://jseek.co/it/blog",
+        "x-default": "https://jseek.co/en/blog"
+      }
+    },
+    {
+      "url": "https://jseek.co/it/blog",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog",
+        "de": "https://jseek.co/de/blog",
+        "fr": "https://jseek.co/fr/blog",
+        "it": "https://jseek.co/it/blog",
+        "x-default": "https://jseek.co/en/blog"
+      }
+    },
+    {
+      "url": "https://jseek.co/en/explore",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      }
+    },
+    {
+      "url": "https://jseek.co/de/explore",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      }
+    },
+    {
+      "url": "https://jseek.co/fr/explore",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      }
+    },
+    {
+      "url": "https://jseek.co/it/explore",
+      "lastmod": "2026-05-01T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      }
+    },
+    {
+      "url": "https://jseek.co/en/blog/how-we-index-job-postings",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/how-we-index-job-postings",
+        "de": "https://jseek.co/de/blog/how-we-index-job-postings",
+        "fr": "https://jseek.co/fr/blog/how-we-index-job-postings",
+        "it": "https://jseek.co/it/blog/how-we-index-job-postings",
+        "x-default": "https://jseek.co/en/blog/how-we-index-job-postings"
+      }
+    },
+    {
+      "url": "https://jseek.co/de/blog/how-we-index-job-postings",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/how-we-index-job-postings",
+        "de": "https://jseek.co/de/blog/how-we-index-job-postings",
+        "fr": "https://jseek.co/fr/blog/how-we-index-job-postings",
+        "it": "https://jseek.co/it/blog/how-we-index-job-postings",
+        "x-default": "https://jseek.co/en/blog/how-we-index-job-postings"
+      }
+    },
+    {
+      "url": "https://jseek.co/fr/blog/how-we-index-job-postings",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/how-we-index-job-postings",
+        "de": "https://jseek.co/de/blog/how-we-index-job-postings",
+        "fr": "https://jseek.co/fr/blog/how-we-index-job-postings",
+        "it": "https://jseek.co/it/blog/how-we-index-job-postings",
+        "x-default": "https://jseek.co/en/blog/how-we-index-job-postings"
+      }
+    },
+    {
+      "url": "https://jseek.co/it/blog/how-we-index-job-postings",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/how-we-index-job-postings",
+        "de": "https://jseek.co/de/blog/how-we-index-job-postings",
+        "fr": "https://jseek.co/fr/blog/how-we-index-job-postings",
+        "it": "https://jseek.co/it/blog/how-we-index-job-postings",
+        "x-default": "https://jseek.co/en/blog/how-we-index-job-postings"
+      }
+    },
+    {
+      "url": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      }
+    },
+    {
+      "url": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      }
+    },
+    {
+      "url": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      }
+    },
+    {
+      "url": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      }
+    },
+    {
+      "url": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+        "de": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+        "fr": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+        "it": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+        "x-default": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      }
+    },
+    {
+      "url": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+        "de": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+        "fr": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+        "it": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+        "x-default": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      }
+    },
+    {
+      "url": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+        "de": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+        "fr": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+        "it": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+        "x-default": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      }
+    },
+    {
+      "url": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+      "lastmod": "2026-05-07T00:00:00.000Z",
+      "alternates": {
+        "en": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+        "de": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+        "fr": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+        "it": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+        "x-default": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      }
+    }
+  ],
+  "probes": [
+    {
+      "url": "https://jseek.co/en",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Track the companies you want to work at — Job Seek | Job Seek",
+      "description": "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
+      "canonical": [
+        "https://jseek.co/en"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      },
+      "robots": [],
+      "h1": [
+        "Track the companies you actually want to work at."
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 134322,
+      "approximate_non_script_words": 526,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/de",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "de",
+      "title": "Verfolge die Unternehmen, bei denen du arbeiten willst — Job Seek | Job Seek",
+      "description": "Erstelle Watchlists mit den Unternehmen, die dich interessieren, lasse dich per E-Mail benachrichtigen, wenn neue Stellen geöffnet werden, und verfolge Bewerbungen an einem Ort. Stellen kommen direkt von den Karriereseiten der Unternehmen, innerhalb weniger Stunden nach Veröffentlichung — kein Recruiter-Spam, keine wiederveröffentlichten Listings.",
+      "canonical": [
+        "https://jseek.co/de"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      },
+      "robots": [],
+      "h1": [
+        "Verfolge die Unternehmen, bei denen du wirklich arbeiten willst."
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 145392,
+      "approximate_non_script_words": 513,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/fr",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "fr",
+      "title": "Suis les entreprises pour lesquelles tu veux travailler — Job Seek | Job Seek",
+      "description": "Crée des watchlists des entreprises qui t'intéressent, reçois des alertes par e-mail dès qu'un nouveau poste s'ouvre, et suis tes candidatures en un seul endroit. Les offres viennent directement des pages carrières des entreprises, dans les heures suivant leur publication — pas de spam de recruteurs, pas d'annonces republiées.",
+      "canonical": [
+        "https://jseek.co/fr"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      },
+      "robots": [],
+      "h1": [
+        "Suis les entreprises pour lesquelles tu veux vraiment travailler."
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 147610,
+      "approximate_non_script_words": 600,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/it",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "it",
+      "title": "Monitora le aziende per cui vuoi lavorare — Job Seek | Job Seek",
+      "description": "Crea watchlist delle aziende che ti interessano, ricevi avvisi via email quando si aprono nuove posizioni, e monitora le candidature in un unico posto. Le offerte arrivano direttamente dalle pagine carriere delle aziende, entro poche ore dalla pubblicazione — niente spam dei recruiter, nessun annuncio ripubblicato.",
+      "canonical": [
+        "https://jseek.co/it"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      },
+      "robots": [],
+      "h1": [
+        "Monitora le aziende per cui vuoi davvero lavorare."
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 142807,
+      "approximate_non_script_words": 574,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/about",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "About | Job Seek",
+      "description": "Job Seek helps you track the companies you want to work at — watchlists, email alerts, and postings sourced directly from company career pages. Built by Colophon Group, a small developer studio in Switzerland.",
+      "canonical": [
+        "https://jseek.co/en/about"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/about",
+        "de": "https://jseek.co/de/about",
+        "fr": "https://jseek.co/fr/about",
+        "it": "https://jseek.co/it/about",
+        "x-default": "https://jseek.co/en/about"
+      },
+      "robots": [],
+      "h1": [
+        "Built by job seekers, for job seekers"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 113115,
+      "approximate_non_script_words": 297,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/de/about",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "de",
+      "title": "Über uns | Job Seek",
+      "description": "Job Seek hilft dir dabei, die Unternehmen zu verfolgen, bei denen du arbeiten möchtest — Watchlists, E-Mail-Benachrichtigungen und Stellen direkt von den Karriereseiten der Unternehmen. Entwickelt von Colophon Group, einem kleinen Entwicklerstudio in der Schweiz.",
+      "canonical": [
+        "https://jseek.co/de/about"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/about",
+        "de": "https://jseek.co/de/about",
+        "fr": "https://jseek.co/fr/about",
+        "it": "https://jseek.co/it/about",
+        "x-default": "https://jseek.co/en/about"
+      },
+      "robots": [],
+      "h1": [
+        "Von Jobsuchenden entwickelt, für Jobsuchende"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 123316,
+      "approximate_non_script_words": 278,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/fr/about",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "fr",
+      "title": "À propos | Job Seek",
+      "description": "Job Seek t'aide à suivre les entreprises pour lesquelles tu veux travailler — watchlists, alertes par e-mail et offres directement issues des pages carrières. Créé par Colophon Group, un petit studio de développeurs en Suisse.",
+      "canonical": [
+        "https://jseek.co/fr/about"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/about",
+        "de": "https://jseek.co/de/about",
+        "fr": "https://jseek.co/fr/about",
+        "it": "https://jseek.co/it/about",
+        "x-default": "https://jseek.co/en/about"
+      },
+      "robots": [],
+      "h1": [
+        "Créé par des chercheurs d'emploi, pour des chercheurs d'emploi"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 125385,
+      "approximate_non_script_words": 337,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/it/about",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "it",
+      "title": "Chi siamo | Job Seek",
+      "description": "Job Seek ti aiuta a monitorare le aziende per cui vuoi lavorare — watchlist, avvisi via email e offerte direttamente dalle pagine carriere delle aziende. Creato da Colophon Group, un piccolo studio di sviluppatori in Svizzera.",
+      "canonical": [
+        "https://jseek.co/it/about"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/about",
+        "de": "https://jseek.co/de/about",
+        "fr": "https://jseek.co/fr/about",
+        "it": "https://jseek.co/it/about",
+        "x-default": "https://jseek.co/en/about"
+      },
+      "robots": [],
+      "h1": [
+        "Creato da chi cerca lavoro, per chi cerca lavoro"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 121002,
+      "approximate_non_script_words": 330,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/faq",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "FAQ | Job Seek",
+      "description": "Answers to common questions about Job Seek — how we crawl career pages, what the free and Pro plans include, how we handle your data, and how to opt out.",
+      "canonical": [
+        "https://jseek.co/en/faq"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/faq",
+        "de": "https://jseek.co/de/faq",
+        "fr": "https://jseek.co/fr/faq",
+        "it": "https://jseek.co/it/faq",
+        "x-default": "https://jseek.co/en/faq"
+      },
+      "robots": [],
+      "h1": [
+        "Frequently asked questions"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "FAQPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 130408,
+      "approximate_non_script_words": 632,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/de/faq",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "de",
+      "title": "FAQ | Job Seek",
+      "description": "Antworten auf häufige Fragen zu Job Seek — wie wir Karriereseiten crawlen, was die Tarife enthalten, wie wir mit deinen Daten umgehen und wie du dich abmelden kannst.",
+      "canonical": [
+        "https://jseek.co/de/faq"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/faq",
+        "de": "https://jseek.co/de/faq",
+        "fr": "https://jseek.co/fr/faq",
+        "it": "https://jseek.co/it/faq",
+        "x-default": "https://jseek.co/en/faq"
+      },
+      "robots": [],
+      "h1": [
+        "Häufig gestellte Fragen"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "FAQPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 143360,
+      "approximate_non_script_words": 618,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/fr/faq",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "fr",
+      "title": "FAQ | Job Seek",
+      "description": "Réponses aux questions fréquentes sur Job Seek — comment nous scrapons les pages carrières, ce que contiennent les forfaits, la gestion de vos données et comment se désinscrire.",
+      "canonical": [
+        "https://jseek.co/fr/faq"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/faq",
+        "de": "https://jseek.co/de/faq",
+        "fr": "https://jseek.co/fr/faq",
+        "it": "https://jseek.co/it/faq",
+        "x-default": "https://jseek.co/en/faq"
+      },
+      "robots": [],
+      "h1": [
+        "Questions fréquentes"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "FAQPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 146473,
+      "approximate_non_script_words": 741,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/it/faq",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "it",
+      "title": "FAQ | Job Seek",
+      "description": "Risposte alle domande frequenti su Job Seek — come scansioniamo le pagine carriere, cosa includono i piani, come gestiamo i tuoi dati e come disiscriversi.",
+      "canonical": [
+        "https://jseek.co/it/faq"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/faq",
+        "de": "https://jseek.co/de/faq",
+        "fr": "https://jseek.co/fr/faq",
+        "it": "https://jseek.co/it/faq",
+        "x-default": "https://jseek.co/en/faq"
+      },
+      "robots": [],
+      "h1": [
+        "Domande frequenti"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "FAQPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 140606,
+      "approximate_non_script_words": 693,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/blog",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Blog | Job Seek",
+      "description": "Data analyses, news, and breakdowns of industry reports — drawn from the postings we monitor across thousands of company career pages.",
+      "canonical": [
+        "https://jseek.co/en/blog"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog",
+        "de": "https://jseek.co/de/blog",
+        "fr": "https://jseek.co/fr/blog",
+        "it": "https://jseek.co/it/blog",
+        "x-default": "https://jseek.co/en/blog"
+      },
+      "robots": [],
+      "h1": [
+        "Blog"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 113359,
+      "approximate_non_script_words": 198,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/de/blog",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "de",
+      "title": "Blog | Job Seek",
+      "description": "Datenanalysen, Nachrichten und Zusammenfassungen von Branchenberichten – basierend auf den Stellenanzeigen, die wir auf den Karriereseiten tausender Unternehmen verfolgen.",
+      "canonical": [
+        "https://jseek.co/de/blog"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog",
+        "de": "https://jseek.co/de/blog",
+        "fr": "https://jseek.co/fr/blog",
+        "it": "https://jseek.co/it/blog",
+        "x-default": "https://jseek.co/en/blog"
+      },
+      "robots": [],
+      "h1": [
+        "Blog"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 123258,
+      "approximate_non_script_words": 181,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/fr/blog",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "fr",
+      "title": "Blog | Job Seek",
+      "description": "Analyses de données, actualités et résumés de rapports sectoriels — issus des offres d'emploi que nous suivons sur les pages carrières de milliers d'entreprises.",
+      "canonical": [
+        "https://jseek.co/fr/blog"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog",
+        "de": "https://jseek.co/de/blog",
+        "fr": "https://jseek.co/fr/blog",
+        "it": "https://jseek.co/it/blog",
+        "x-default": "https://jseek.co/en/blog"
+      },
+      "robots": [],
+      "h1": [
+        "Blog"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 125509,
+      "approximate_non_script_words": 219,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/it/blog",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "it",
+      "title": "Blog | Job Seek",
+      "description": "Analisi dei dati, novità e riepiloghi di report di settore — tratti dagli annunci di lavoro che monitoriamo nelle pagine carriere di migliaia di aziende.",
+      "canonical": [
+        "https://jseek.co/it/blog"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog",
+        "de": "https://jseek.co/de/blog",
+        "fr": "https://jseek.co/fr/blog",
+        "it": "https://jseek.co/it/blog",
+        "x-default": "https://jseek.co/en/blog"
+      },
+      "robots": [],
+      "h1": [
+        "Blog"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 121121,
+      "approximate_non_script_words": 216,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/explore",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Explore Jobs | Job Seek",
+      "description": "Search jobs across thousands of companies scraped directly from career pages. Filter by seniority, tech stack, salary, and location — then save watchlists and get alerts.",
+      "canonical": [
+        "https://jseek.co/en/explore"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      },
+      "robots": [],
+      "h1": [
+        "Explore Jobs"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 145290,
+      "approximate_non_script_words": 17,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/de/explore",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "de",
+      "title": "Jobs entdecken | Job Seek",
+      "description": "Durchsuche Jobs bei Tausenden von Unternehmen, direkt von Karriereseiten gecrawlt. Filtere nach Erfahrungsstufe, Tech-Stack, Gehalt und Standort — erstelle Watchlists und erhalte Benachrichtigungen.",
+      "canonical": [
+        "https://jseek.co/de/explore"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      },
+      "robots": [],
+      "h1": [
+        "Jobs entdecken"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 155384,
+      "approximate_non_script_words": 18,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/fr/explore",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "fr",
+      "title": "Explorer les emplois | Job Seek",
+      "description": "Recherchez des emplois dans des milliers d'entreprises, scrapés directement des pages carrières. Filtrez par niveau, stack technique, salaire et localisation — créez des watchlists et recevez des alertes.",
+      "canonical": [
+        "https://jseek.co/fr/explore"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      },
+      "robots": [],
+      "h1": [
+        "Explorer les emplois"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 157513,
+      "approximate_non_script_words": 22,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/it/explore",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "it",
+      "title": "Esplora lavori | Job Seek",
+      "description": "Cerca lavori in migliaia di aziende, scansionati direttamente dalle pagine carriere. Filtra per livello, stack tecnologico, stipendio e località — crea watchlist e ricevi notifiche.",
+      "canonical": [
+        "https://jseek.co/it/explore"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      },
+      "robots": [],
+      "h1": [
+        "Esplora lavori"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 154235,
+      "approximate_non_script_words": 21,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/blog/how-we-index-job-postings",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Following one job posting from a careers page to your feed | Job Seek",
+      "description": "A new role goes up at 10:14 in the morning. By 11:32 it's in our index. This is the path it takes — and the reason every step exists.",
+      "canonical": [
+        "https://jseek.co/en/blog/how-we-index-job-postings"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/how-we-index-job-postings",
+        "de": "https://jseek.co/de/blog/how-we-index-job-postings",
+        "fr": "https://jseek.co/fr/blog/how-we-index-job-postings",
+        "it": "https://jseek.co/it/blog/how-we-index-job-postings",
+        "x-default": "https://jseek.co/en/blog/how-we-index-job-postings"
+      },
+      "robots": [],
+      "h1": [
+        "Following one job posting from a careers page to your feed"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/en/how-we-index-job-postings",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 136683,
+      "approximate_non_script_words": 1382,
+      "client_render_bailout": true,
+      "company_anchor_count": 1
+    },
+    {
+      "url": "https://jseek.co/de/blog/how-we-index-job-postings",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "de",
+      "title": "Eine Stellenanzeige von der Karriereseite bis in deinen Feed | Job Seek",
+      "description": "Eine neue Stelle erscheint um 10:14 Uhr morgens. Um 11:32 ist sie in unserem Index. Das ist der Weg, den sie zurücklegt — und der Grund, warum jeder Schritt existiert.",
+      "canonical": [
+        "https://jseek.co/de/blog/how-we-index-job-postings"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/how-we-index-job-postings",
+        "de": "https://jseek.co/de/blog/how-we-index-job-postings",
+        "fr": "https://jseek.co/fr/blog/how-we-index-job-postings",
+        "it": "https://jseek.co/it/blog/how-we-index-job-postings",
+        "x-default": "https://jseek.co/en/blog/how-we-index-job-postings"
+      },
+      "robots": [],
+      "h1": [
+        "Eine Stellenanzeige von der Karriereseite bis in deinen Feed"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/de/how-we-index-job-postings",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 148581,
+      "approximate_non_script_words": 1306,
+      "client_render_bailout": true,
+      "company_anchor_count": 1
+    },
+    {
+      "url": "https://jseek.co/fr/blog/how-we-index-job-postings",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "fr",
+      "title": "Suivre une offre d'emploi depuis la page carrière jusqu'à votre flux | Job Seek",
+      "description": "Une nouvelle offre apparaît à 10h14 le matin. À 11h32 elle est dans notre index. Voici le chemin qu'elle parcourt — et la raison d'être de chaque étape.",
+      "canonical": [
+        "https://jseek.co/fr/blog/how-we-index-job-postings"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/how-we-index-job-postings",
+        "de": "https://jseek.co/de/blog/how-we-index-job-postings",
+        "fr": "https://jseek.co/fr/blog/how-we-index-job-postings",
+        "it": "https://jseek.co/it/blog/how-we-index-job-postings",
+        "x-default": "https://jseek.co/en/blog/how-we-index-job-postings"
+      },
+      "robots": [],
+      "h1": [
+        "Suivre une offre d'emploi depuis la page carrière jusqu'à votre flux"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/fr/how-we-index-job-postings",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 151455,
+      "approximate_non_script_words": 1558,
+      "client_render_bailout": true,
+      "company_anchor_count": 1
+    },
+    {
+      "url": "https://jseek.co/it/blog/how-we-index-job-postings",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "it",
+      "title": "Seguire un annuncio di lavoro dalla pagina carriere al tuo feed | Job Seek",
+      "description": "Un nuovo ruolo compare alle 10:14 del mattino. Alle 11:32 è nel nostro indice. Questo è il percorso che fa — e il motivo per cui esiste ogni passaggio.",
+      "canonical": [
+        "https://jseek.co/it/blog/how-we-index-job-postings"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/how-we-index-job-postings",
+        "de": "https://jseek.co/de/blog/how-we-index-job-postings",
+        "fr": "https://jseek.co/fr/blog/how-we-index-job-postings",
+        "it": "https://jseek.co/it/blog/how-we-index-job-postings",
+        "x-default": "https://jseek.co/en/blog/how-we-index-job-postings"
+      },
+      "robots": [],
+      "h1": [
+        "Seguire un annuncio di lavoro dalla pagina carriere al tuo feed"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/it/how-we-index-job-postings",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 146016,
+      "approximate_non_script_words": 1450,
+      "client_render_bailout": true,
+      "company_anchor_count": 1
+    },
+    {
+      "url": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Where remote engineering still hires, May 2026 | Job Seek",
+      "description": "JLL says 54% of the Fortune 100 are on full RTO. We monitor 4,400 careers pages directly. Here's where remote engineering still hires in May 2026.",
+      "canonical": [
+        "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      },
+      "robots": [],
+      "h1": [
+        "Where remote engineering still hires, May 2026"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/en/remote-engineering-jobs-2026",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 217030,
+      "approximate_non_script_words": 1844,
+      "client_render_bailout": true,
+      "company_anchor_count": 25
+    },
+    {
+      "url": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "de",
+      "title": "Wo Remote-Engineering noch einstellt, Mai 2026 | Job Seek",
+      "description": "JLL meldet: 54% der Fortune 100 sind auf voller RTO. Wir beobachten 4.400 Karriereseiten direkt. Hier stellt Remote-Engineering im Mai 2026 noch ein.",
+      "canonical": [
+        "https://jseek.co/de/blog/remote-engineering-jobs-2026"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      },
+      "robots": [],
+      "h1": [
+        "Wo Remote-Engineering noch einstellt, Mai 2026"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/de/remote-engineering-jobs-2026",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 227922,
+      "approximate_non_script_words": 1680,
+      "client_render_bailout": true,
+      "company_anchor_count": 25
+    },
+    {
+      "url": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "fr",
+      "title": "Où le remote engineering recrute encore, mai 2026 | Job Seek",
+      "description": "JLL chiffre 54% des employés du Fortune 100 en RTO complet. Nous suivons 4 400 pages carrières en direct. Voici où le remote engineering recrute encore en mai 2026.",
+      "canonical": [
+        "https://jseek.co/fr/blog/remote-engineering-jobs-2026"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      },
+      "robots": [],
+      "h1": [
+        "Où le remote engineering recrute encore, mai 2026"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/fr/remote-engineering-jobs-2026",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 231232,
+      "approximate_non_script_words": 2071,
+      "client_render_bailout": true,
+      "company_anchor_count": 25
+    },
+    {
+      "url": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "it",
+      "title": "Dove l'engineering remoto assume ancora, maggio 2026 | Job Seek",
+      "description": "JLL: il 54% dei dipendenti Fortune 100 è in RTO totale. Noi seguiamo 4.400 pagine carriere in diretta. Ecco dove l'engineering remoto assume ancora a maggio 2026.",
+      "canonical": [
+        "https://jseek.co/it/blog/remote-engineering-jobs-2026"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      },
+      "robots": [],
+      "h1": [
+        "Dove l'engineering remoto assume ancora, maggio 2026"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/it/remote-engineering-jobs-2026",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 226124,
+      "approximate_non_script_words": 1992,
+      "client_render_bailout": true,
+      "company_anchor_count": 25
+    },
+    {
+      "url": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Welcome to the Job Seek blog | Job Seek",
+      "description": "Where we publish data-led analysis of hiring trends, ATS market shifts, and our take on industry reports — grounded in the postings we monitor across thousands of company career pages.",
+      "canonical": [
+        "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+        "de": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+        "fr": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+        "it": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+        "x-default": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      },
+      "robots": [],
+      "h1": [
+        "Welcome to the Job Seek blog"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/en/welcome-to-the-job-seek-blog",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 119231,
+      "approximate_non_script_words": 426,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "de",
+      "title": "Willkommen im Job-Seek-Blog | Job Seek",
+      "description": "Datenbasierte Analysen von Einstellungstrends, ATS-Marktverschiebungen und unsere Einschätzungen zu Branchenberichten — gestützt auf die Stellenanzeigen, die wir auf Karriereseiten tausender Unternehmen verfolgen.",
+      "canonical": [
+        "https://jseek.co/de/blog/welcome-to-the-job-seek-blog"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+        "de": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+        "fr": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+        "it": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+        "x-default": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      },
+      "robots": [],
+      "h1": [
+        "Willkommen im Job-Seek-Blog"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/de/welcome-to-the-job-seek-blog",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 129639,
+      "approximate_non_script_words": 410,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "fr",
+      "title": "Bienvenue sur le blog de Job Seek | Job Seek",
+      "description": "Analyses fondées sur les données concernant les tendances du recrutement, l'évolution du marché des ATS et nos lectures des rapports sectoriels — appuyées sur les offres d'emploi que nous suivons sur les pages carrières de milliers d'entreprises.",
+      "canonical": [
+        "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+        "de": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+        "fr": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+        "it": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+        "x-default": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      },
+      "robots": [],
+      "h1": [
+        "Bienvenue sur le blog de Job Seek"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/fr/welcome-to-the-job-seek-blog",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 132592,
+      "approximate_non_script_words": 486,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "it",
+      "title": "Benvenuti nel blog di Job Seek | Job Seek",
+      "description": "Analisi basate sui dati sulle tendenze delle assunzioni, sui cambiamenti del mercato degli ATS e sulle nostre letture dei report di settore — fondate sugli annunci di lavoro che monitoriamo nelle pagine carriere di migliaia di aziende.",
+      "canonical": [
+        "https://jseek.co/it/blog/welcome-to-the-job-seek-blog"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog",
+        "de": "https://jseek.co/de/blog/welcome-to-the-job-seek-blog",
+        "fr": "https://jseek.co/fr/blog/welcome-to-the-job-seek-blog",
+        "it": "https://jseek.co/it/blog/welcome-to-the-job-seek-blog",
+        "x-default": "https://jseek.co/en/blog/welcome-to-the-job-seek-blog"
+      },
+      "robots": [],
+      "h1": [
+        "Benvenuti nel blog di Job Seek"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/it/welcome-to-the-job-seek-blog",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 127685,
+      "approximate_non_script_words": 466,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 307,
+      "headers": {
+        "cache-control": "public, max-age=86400, s-maxage=86400",
+        "content-type": "text/html",
+        "location": "/en",
+        "vary": "Accept-Language"
+      },
+      "html_lang": null,
+      "title": "",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [
+        "Redirecting (307)"
+      ],
+      "schema_types": [],
+      "jsonld_parse_errors": 0,
+      "og_image": null,
+      "twitter_image": null,
+      "body_bytes": 117,
+      "approximate_non_script_words": 7,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/robots.txt",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/plain; charset=utf-8",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": null,
+      "title": "",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [],
+      "schema_types": [],
+      "jsonld_parse_errors": 0,
+      "og_image": null,
+      "twitter_image": null,
+      "body_bytes": 3390,
+      "approximate_non_script_words": 284,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/company/stripe",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Jobs at Stripe | Job Seek",
+      "description": "Open positions at Stripe. Financial infrastructure platform for internet businesses",
+      "canonical": [
+        "https://jseek.co/en/company/stripe"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/company/stripe",
+        "de": "https://jseek.co/de/company/stripe",
+        "fr": "https://jseek.co/fr/company/stripe",
+        "it": "https://jseek.co/it/company/stripe",
+        "x-default": "https://jseek.co/en/company/stripe"
+      },
+      "robots": [
+        "noindex, follow"
+      ],
+      "h1": [
+        "Stripe"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Organization",
+        "BreadcrumbList"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/company/3e40c77940a9f29e/en/stripe.png?v=7d524a94761d0d35",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/company/3e40c77940a9f29e/en/stripe.png?v=7d524a94761d0d35",
+      "body_bytes": 297602,
+      "approximate_non_script_words": 280,
+      "client_render_bailout": false,
+      "company_anchor_count": 10
+    },
+    {
+      "url": "https://jseek.co/en/company/seo-audit-missing-company-928",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 404,
+      "headers": {
+        "cache-control": "private, no-store",
+        "content-type": "text/html; charset=utf-8",
+        "x-robots-tag": "noindex, follow"
+      },
+      "html_lang": "en",
+      "title": "Company not found",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [
+        "noindex, follow"
+      ],
+      "h1": [
+        "Company not found"
+      ],
+      "schema_types": [],
+      "jsonld_parse_errors": 0,
+      "og_image": null,
+      "twitter_image": null,
+      "body_bytes": 1602,
+      "approximate_non_script_words": 24,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/blog/seo-audit-missing-post-928",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Job Seek",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [
+        "noindex"
+      ],
+      "h1": [],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 194432,
+      "approximate_non_script_words": 44,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/seo-audit-missing-page-928",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 404,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "x-vercel-cache": "MISS"
+      },
+      "html_lang": "en",
+      "title": "Page not found",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [
+        "noindex",
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "Page not found"
+      ],
+      "schema_types": [],
+      "jsonld_parse_errors": 0,
+      "og_image": null,
+      "twitter_image": null,
+      "body_bytes": 7410,
+      "approximate_non_script_words": 21,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/alice/seo-audit-missing-watchlist",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 404,
+      "headers": {
+        "cache-control": "private, no-store",
+        "content-type": "text/html; charset=utf-8",
+        "x-robots-tag": "noindex, follow"
+      },
+      "html_lang": "en",
+      "title": "Watchlist not found",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [
+        "noindex, follow"
+      ],
+      "h1": [
+        "Watchlist not found"
+      ],
+      "schema_types": [],
+      "jsonld_parse_errors": 0,
+      "og_image": null,
+      "twitter_image": null,
+      "body_bytes": 1498,
+      "approximate_non_script_words": 17,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/terms",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Terms of Service | Job Seek",
+      "description": "Terms of Service for Job Seek — usage rules, intellectual property, account responsibilities, limitation of liability, and governing law for the job search platform.",
+      "canonical": [
+        "https://jseek.co/en/terms"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/terms",
+        "de": "https://jseek.co/de/terms",
+        "fr": "https://jseek.co/fr/terms",
+        "it": "https://jseek.co/it/terms",
+        "x-default": "https://jseek.co/en/terms"
+      },
+      "robots": [
+        "noindex, follow"
+      ],
+      "h1": [
+        "Terms of Service"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 112241,
+      "approximate_non_script_words": 355,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/privacy-policy",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Privacy Policy | Job Seek",
+      "description": "Job Seek privacy policy — what personal data we collect, how we use it, your privacy rights, cookie policy, and how to request deletion of your account and data.",
+      "canonical": [
+        "https://jseek.co/en/privacy-policy"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/privacy-policy",
+        "de": "https://jseek.co/de/privacy-policy",
+        "fr": "https://jseek.co/fr/privacy-policy",
+        "it": "https://jseek.co/it/privacy-policy",
+        "x-default": "https://jseek.co/en/privacy-policy"
+      },
+      "robots": [
+        "noindex, follow"
+      ],
+      "h1": [
+        "Privacy at Job Seek"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 111941,
+      "approximate_non_script_words": 323,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/license",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "License | Job Seek",
+      "description": "Licensing for Job Seek — application source code is MIT-licensed, job posting data is CC BY-NC 4.0. Learn what you can and cannot do with our code and data.",
+      "canonical": [
+        "https://jseek.co/en/license"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/license",
+        "de": "https://jseek.co/de/license",
+        "fr": "https://jseek.co/fr/license",
+        "it": "https://jseek.co/it/license",
+        "x-default": "https://jseek.co/en/license"
+      },
+      "robots": [
+        "noindex, follow"
+      ],
+      "h1": [
+        "License of Job Seek"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 112322,
+      "approximate_non_script_words": 273,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/how-we-index",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "How We Index | Job Seek",
+      "description": "How Job Seek discovers and indexes job postings: sourcing, crawl frequency, rate limits, content restrictions, and how to opt out.",
+      "canonical": [
+        "https://jseek.co/en/how-we-index"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/how-we-index",
+        "de": "https://jseek.co/de/how-we-index",
+        "fr": "https://jseek.co/fr/how-we-index",
+        "it": "https://jseek.co/it/how-we-index",
+        "x-default": "https://jseek.co/en/how-we-index"
+      },
+      "robots": [
+        "noindex, follow"
+      ],
+      "h1": [
+        "How we find and process job postings"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/how-we-index/en",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 115759,
+      "approximate_non_script_words": 569,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/sign-in",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Job Seek",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [
+        "Sign in"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 192509,
+      "approximate_non_script_words": 33,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/sign-up",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Job Seek",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [
+        "Create an account"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 192695,
+      "approximate_non_script_words": 34,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/forgot-password",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Job Seek",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [
+        "Forgot password?"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 188270,
+      "approximate_non_script_words": 25,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/watchlists",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Job Seek",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [
+        "noindex, nofollow"
+      ],
+      "h1": [
+        "Watchlists"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 206101,
+      "approximate_non_script_words": 15,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/my-jobs",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Job Seek",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 206081,
+      "approximate_non_script_words": 24,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/settings",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": "en",
+      "title": "Job Seek",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [
+        "Settings"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 223686,
+      "approximate_non_script_words": 110,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/explore?q=python",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Explore Jobs | Job Seek",
+      "description": "Search jobs across thousands of companies scraped directly from career pages. Filter by seniority, tech stack, salary, and location — then save watchlists and get alerts.",
+      "canonical": [
+        "https://jseek.co/en/explore"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      },
+      "robots": [],
+      "h1": [
+        "Explore Jobs"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 145290,
+      "approximate_non_script_words": 17,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/.well-known/llms.txt",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/plain; charset=utf-8",
+        "x-vercel-cache": "MISS"
+      },
+      "html_lang": null,
+      "title": "",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [],
+      "schema_types": [],
+      "jsonld_parse_errors": 0,
+      "og_image": null,
+      "twitter_image": null,
+      "body_bytes": 2092,
+      "approximate_non_script_words": 295,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/llms.txt",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 308,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/plain; charset=utf-8",
+        "location": "/.well-known/llms.txt",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-robots-tag": "noindex",
+        "x-vercel-cache": "PRERENDER"
+      },
+      "html_lang": null,
+      "title": "",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [],
+      "schema_types": [],
+      "jsonld_parse_errors": 0,
+      "og_image": null,
+      "twitter_image": null,
+      "body_bytes": 12,
+      "approximate_non_script_words": 1,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/indexnow-key.txt",
+      "user_agent": "Jobseek-SEO-Audit/1.0",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "text/plain; charset=utf-8",
+        "x-vercel-cache": "MISS"
+      },
+      "html_lang": null,
+      "title": "",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [],
+      "h1": [],
+      "schema_types": [],
+      "jsonld_parse_errors": 0,
+      "og_image": null,
+      "twitter_image": null,
+      "body_bytes": 32,
+      "approximate_non_script_words": 1,
+      "client_render_bailout": false,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en",
+      "user_agent": "Googlebot",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Track the companies you want to work at — Job Seek | Job Seek",
+      "description": "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
+      "canonical": [
+        "https://jseek.co/en"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en",
+        "de": "https://jseek.co/de",
+        "fr": "https://jseek.co/fr",
+        "it": "https://jseek.co/it",
+        "x-default": "https://jseek.co/en"
+      },
+      "robots": [],
+      "h1": [
+        "Track the companies you actually want to work at."
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "WebPage"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 134322,
+      "approximate_non_script_words": 526,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/explore",
+      "user_agent": "Googlebot",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Explore Jobs | Job Seek",
+      "description": "Search jobs across thousands of companies scraped directly from career pages. Filter by seniority, tech stack, salary, and location — then save watchlists and get alerts.",
+      "canonical": [
+        "https://jseek.co/en/explore"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/explore",
+        "de": "https://jseek.co/de/explore",
+        "fr": "https://jseek.co/fr/explore",
+        "it": "https://jseek.co/it/explore",
+        "x-default": "https://jseek.co/en/explore"
+      },
+      "robots": [],
+      "h1": [
+        "Explore Jobs"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 145290,
+      "approximate_non_script_words": 17,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    },
+    {
+      "url": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+      "user_agent": "Googlebot",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Where remote engineering still hires, May 2026 | Job Seek",
+      "description": "JLL says 54% of the Fortune 100 are on full RTO. We monitor 4,400 careers pages directly. Here's where remote engineering still hires in May 2026.",
+      "canonical": [
+        "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      ],
+      "hreflang": {
+        "en": "https://jseek.co/en/blog/remote-engineering-jobs-2026",
+        "de": "https://jseek.co/de/blog/remote-engineering-jobs-2026",
+        "fr": "https://jseek.co/fr/blog/remote-engineering-jobs-2026",
+        "it": "https://jseek.co/it/blog/remote-engineering-jobs-2026",
+        "x-default": "https://jseek.co/en/blog/remote-engineering-jobs-2026"
+      },
+      "robots": [],
+      "h1": [
+        "Where remote engineering still hires, May 2026"
+      ],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication",
+        "Article"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jseek.co/og/blog/en/remote-engineering-jobs-2026",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 217030,
+      "approximate_non_script_words": 1844,
+      "client_render_bailout": true,
+      "company_anchor_count": 25
+    },
+    {
+      "url": "https://jseek.co/en/blog/seo-audit-missing-post-928",
+      "user_agent": "Googlebot",
+      "status": 200,
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-type": "text/html; charset=utf-8",
+        "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+        "x-vercel-cache": "HIT"
+      },
+      "html_lang": "en",
+      "title": "Job Seek",
+      "description": null,
+      "canonical": [],
+      "hreflang": {},
+      "robots": [
+        "noindex"
+      ],
+      "h1": [],
+      "schema_types": [
+        "Organization",
+        "WebSite",
+        "WebApplication"
+      ],
+      "jsonld_parse_errors": 0,
+      "og_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "twitter_image": "https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png",
+      "body_bytes": 98441,
+      "approximate_non_script_words": 2,
+      "client_render_bailout": true,
+      "company_anchor_count": 0
+    }
+  ],
+  "browser_checks": [
+    {
+      "js": false,
+      "status": 200,
+      "title": "Explore Jobs | Job Seek",
+      "text": "Skip to content\nExploreWatchlistsMy JobsSettings\nExplore Jobs\nLoading results",
+      "companyLinks": [],
+      "h1": [
+        "Explore Jobs"
+      ],
+      "errors": []
+    },
+    {
+      "js": true,
+      "status": 200,
+      "title": "Explore Jobs | Job Seek",
+      "text": "Skip to content\nLog in\n\nThis site uses cookies only for authentication and essential functionality.\n\nDetails\nOk\nExplore Jobs\nFilters\n\nShowing jobs in English·change\n\nShow latest results\nNational Health Service (NHS)\n\n47,792 active jobs · 133,741 in the last year\n\nMedical Administrator\nBlackburn\n12h\nSame Day Consultation Nurse\nBlackburn\n14h\nClinical Assistant MAC\nBlackpool\n16h\nActivities Programme Assistant\nIlford\n21h\nLR258277 Assistant Dispatcher\nElgin\n1d\nLR256089 - Assistant dispatcher Walk-in service\nAberdeen\n1d\nBHSCT- Specialist Dental Technologist - Band 6\nNorthern Ireland\n1d\nSPPG - MDT Business Manager - Band 8A\nNorthern Ireland\n1d\nBSO - CWS Admin Supervisor - Band 4\nNorthern Ireland\n1d\nWHSCT - Specialist Radiographer CT/Plain Film - Band 6\nNorthern Ireland\n1d\nAccenture\n\n45,708 active jobs · 145,067 in the last year\n\nI&P GN - SC&E – Consultant - S&P - Ivalua\nBengaluru\n2d\nApplication Support Engineer\nGurugram\n2d\nI&P GN - Song – Sales- Consultant - Process Excellence-PE\nMumbai\n2d\nCustom Software Engineer\nHyderabad\n2d\nI&P GN - SC&E – Consultant - Enterprise AI Value Strategy-EVS\nBengaluru\n2d\nI&P GN - SC&E – Manager - S&P - Coupa\nBengaluru\n2d\nGCC Sales Engine - Solution Advisory\nBengaluru\n2d\nProcure to Pay Operations Specialist\nBengaluru\n2d\nCustom Software Engineer\nHyderabad\n2d\nI&P GN - Song – Marketing- Consultant - Process Excellence-PE\nGurugram\n2d\nMcDonald's\n\n44,916 active jobs · 66,334 in the last year\n\nRestaurant Assistant Manager\nNew Castle\n17h\nHiring Third Shift Crew $13/HR!\nWichita\n17h\nCrew Member\nAustralia\n19h\nMcCafe Barista\nAustralia\n19h\nMcCafe Barista\nAustralia\n19h\nCustomer Care\nEngland\n19h\nCrew Member\nDublin\n19h\nCrew Member\nIreland\n19h\nCustomer Care\nWales\n19h\nCrew Member\nEngland\n19h\nMarriott International\n\n35,606 active jobs · 62,381 in the last year\n\nFront of the House Manager\nMaldives\n11h\nLoss Prevention Supervisor\nKampala\n12h\nFront Office Intern - Four Points by Sheraton Sheikh Zayed Road\nUnited Arab Emirates\n13h\nCluster Income Audit Clerk - Four Points by Sheraton Sheikh Zayed Road\nUnited Arab Emirates\n13h\nOutlet Manager\nShaviyani Atholhu\n14h\nAssistant Food & Beverage Manager\nShaviyani Atholhu\n14h\nCommis II - Four Points by Sheraton Sheikh Zayed Road\nUnited Arab Emirates\n14h\nCommis III - Four Points by Sheraton Sheikh Zayed Road\nUnited Arab Emirates\n14h\nCommis I - Four Points by Sheraton Sheikh Zayed Road\nUnited Arab Emirates\n14h\nCommis III - Four Points by Sheraton Bur Dubai\nUnited Arab Emirates\n14h\nDomino's\n\n32,915 active jobs · 100,509 ",
+      "companyLinks": [
+        "/en/company/nhs",
+        "/en/company/accenture",
+        "/en/company/mcdonalds",
+        "/en/company/marriott",
+        "/en/company/dominos",
+        "/en/company/autozone",
+        "/en/company/kroger",
+        "/en/company/compass-group",
+        "/en/company/walgreens",
+        "/en/company/starbucks"
+      ],
+      "h1": [
+        "Explore Jobs",
+        "Explore Jobs"
+      ],
+      "errors": []
+    }
+  ]
+}

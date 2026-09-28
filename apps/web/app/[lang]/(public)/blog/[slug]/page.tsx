@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { compileMDX } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
@@ -32,11 +32,10 @@ type Props = {
 
 export async function generateStaticParams(): Promise<{ lang: string; slug: string }[]> {
   const slugs = await listBlogSlugs();
-  // Emit one (lang, slug) pair per locale so all 4 paths prerender.
-  // English is the only locale with real content today; the others
-  // serve the same EN body until per-locale MDX siblings exist.
-  const locales = ["en", "de", "fr", "it"] as const;
-  return slugs.flatMap((slug) => locales.map((lang) => ({ lang, slug })));
+  const routes = await Promise.all(slugs.map(async (slug) =>
+    (await getBlogPostLocales(slug)).map((lang) => ({ lang, slug })),
+  ));
+  return routes.flat();
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -54,25 +53,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // off `<link rel="alternate" hreflang="de" ...>` instead of pointing
   // crawlers at duplicate-content fallbacks (#2849).
   const availableLocales = await getBlogPostLocales(slug);
-  const ogImageUrl = `${siteConfig.url}/og/blog/${locale}/${encodeURIComponent(slug)}`;
+  // Proxy redirects untranslated URLs before streaming; keep metadata aligned
+  // even when invoked directly by a build or client navigation.
+  const contentLocale = availableLocales.includes(locale) ? locale : defaultLocale;
+  const ogImageUrl = `${siteConfig.url}/og/blog/${contentLocale}/${encodeURIComponent(slug)}`;
 
   return {
     title: post.title,
     description: post.description,
-    alternates: buildAlternates(`/blog/${slug}`, locale, availableLocales),
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
+      images: [{ url: ogImageUrl, alt: post.title }],
+    },
+    alternates: buildAlternates(`/blog/${slug}`, contentLocale, availableLocales),
     // Keep the title/date/author card on a separate route so its
     // Satori/Resvg payload is absent from the ordinary post trace.
     openGraph: {
       title: post.title,
       description: post.description,
-      url: `${siteConfig.url}/${locale}/blog/${slug}`,
+      url: `${siteConfig.url}/${contentLocale}/blog/${slug}`,
       type: "article",
       publishedTime: post.datePublished,
       modifiedTime: post.dateModified,
       authors: [post.author],
-      locale: ogLocale(locale),
+      locale: ogLocale(contentLocale),
       alternateLocale: availableLocales
-        .filter((l) => l !== locale)
+        .filter((l) => l !== contentLocale)
         .map((l) => ogLocale(l)),
       images: [{
         url: ogImageUrl,
@@ -92,6 +100,7 @@ function buildArticleJsonLd(
     "@context": "https://schema.org",
     "@type": "Article",
     headline: post.title,
+    image: [`${siteConfig.url}/og/blog/${locale}/${encodeURIComponent(post.slug)}`],
     description: post.description,
     datePublished: post.datePublished,
     dateModified: post.dateModified,
@@ -99,6 +108,7 @@ function buildArticleJsonLd(
     author: {
       "@type": "Person",
       name: post.author,
+      url: post.author === siteConfig.creator ? siteConfig.creatorUrl : undefined,
     },
     publisher: {
       "@type": "Organization",
@@ -136,6 +146,10 @@ export default async function BlogPostPage({ params }: Props) {
   const i18n = getI18n()!;
   const { slug } = await params;
   cacheTag(blogPostCacheTag(slug));
+  const availableLocales = await getBlogPostLocales(slug);
+  if (availableLocales.length > 0 && !availableLocales.includes(locale)) {
+    permanentRedirect(`/${defaultLocale}/blog/${encodeURIComponent(slug)}`);
+  }
   const post = await getBlogPost(slug, locale);
   if (!post) notFound();
 
@@ -179,7 +193,9 @@ export default async function BlogPostPage({ params }: Props) {
           <header className="mb-8">
             <h1 className="text-3xl font-bold leading-tight">{post.title}</h1>
             <p className="mt-3 text-sm text-muted">
-              {formatDate(post.datePublished, locale)} · {post.author} · {readingTimeLabel}
+              {formatDate(post.datePublished, locale)} · {post.author === siteConfig.creator
+                ? <a href={siteConfig.creatorUrl} className="underline underline-offset-4">{post.author}</a>
+                : post.author} · {readingTimeLabel}
             </p>
             {post.tags.length > 0 && (
               <ul className="mt-4 flex flex-wrap gap-2">

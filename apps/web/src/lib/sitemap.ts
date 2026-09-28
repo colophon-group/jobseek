@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
-import { listBlogPosts, getBlogPostLocales, type BlogPostSummary } from "@/lib/blog";
+import { listBlogPosts, getBlogPost, getBlogPostLocales, type BlogPostSummary } from "@/lib/blog";
 import { logExternalError } from "@/lib/safe-external-error";
 
 /**
@@ -37,7 +37,7 @@ function langAlternates(path: string): Record<string, string> {
   return languages;
 }
 
-export function staticAndExploreEntries(): MetadataRoute.Sitemap {
+export function staticEntries(): MetadataRoute.Sitemap {
   const entries: MetadataRoute.Sitemap = [];
 
   for (const item of siteConfig.seo.sitemap) {
@@ -58,23 +58,6 @@ export function staticAndExploreEntries(): MetadataRoute.Sitemap {
         alternates: { languages },
       });
     }
-  }
-
-  const exploreLanguages = langAlternates("/explore");
-  // `/explore` hosts Typesense-backed search results that change
-  // continuously, but the bot-visible HTML shell (filters, top-level
-  // copy) only changes on deploy. A stable date pinned to recent
-  // explore-page deploys is a more honest signal than `new Date()`.
-  // Bump when the prerendered shell substantively changes.
-  const exploreLastModified = new Date(siteConfig.seo.exploreLastModified);
-  for (const locale of locales) {
-    entries.push({
-      url: `${siteConfig.url}/${locale}/explore`,
-      lastModified: exploreLastModified,
-      changeFrequency: "daily",
-      priority: 0.9,
-      alternates: { languages: exploreLanguages },
-    });
   }
 
   return entries;
@@ -107,9 +90,10 @@ export async function blogPostEntries(
     }
     languages["x-default"] = `${siteConfig.url}/en/blog/${post.slug}`;
     for (const locale of postLocales) {
+      const translatedPost = await getBlogPost(post.slug, locale);
       entries.push({
         url: `${siteConfig.url}/${locale}/blog/${post.slug}`,
-        lastModified: new Date(post.dateModified),
+        lastModified: new Date(translatedPost?.dateModified ?? post.dateModified),
         changeFrequency: "monthly" as const,
         priority: 0.6,
         alternates: { languages },
@@ -125,7 +109,7 @@ export async function blogPostEntries(
  *
  * Companies are excluded (#2821) — `/company/{slug}` is `noindex,follow`
  * and the per-company URLs are not emitted. The surviving surface is
- * static pages + explore + blog posts. Legacy public watchlist URLs are
+ * static pages + blog posts. Legacy public watchlist URLs are
  * deliberately absent: watchlists are now private account resources rather
  * than a discovery or search-index surface.
  *
@@ -144,10 +128,16 @@ export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     // down the whole urlset (which was the second half of #2694).
     logExternalError("error", { service: "external_http", operation: "sitemap_blog_entries" }, err);
   }
-  return [
-    ...staticAndExploreEntries(),
-    ...blogEntries,
-  ];
+  const pages = staticEntries();
+  // Each localized blog index changes when its newest translated article changes.
+  for (const entry of pages) {
+    if (!entry.url.endsWith("/blog")) continue;
+    const dates = blogEntries
+      .filter((post) => post.url.startsWith(`${entry.url}/`))
+      .map((post) => new Date(post.lastModified!).getTime());
+    entry.lastModified = new Date(Math.max(new Date(entry.lastModified!).getTime(), ...dates));
+  }
+  return [...pages, ...blogEntries];
 }
 
 /**

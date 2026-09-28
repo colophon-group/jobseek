@@ -141,7 +141,7 @@ The `MentionPill` skeleton is shared so a new type inherits the visual treatment
 
 ## Translation policy
 
-Posts are translated **per-post** rather than blog-wide. The canonical English source lives at `<slug>.mdx`; translations are sibling files at `<slug>.<locale>.mdx` (e.g. `welcome-to-the-job-seek-blog.de.mdx`). The post page (`app/[lang]/(public)/blog/[slug]/page.tsx`) calls `getBlogPost(slug, locale)` which looks up the translated file first and falls back to the canonical English source if it's missing.
+Posts are translated **per-post** rather than blog-wide. The canonical English source lives at `<slug>.mdx`; translations are sibling files at `<slug>.<locale>.mdx` (e.g. `welcome-to-the-job-seek-blog.de.mdx`). The post page (`app/[lang]/(public)/blog/[slug]/page.tsx`) calls `getBlogPost(slug, locale)` which looks up the translated file first and falls back to the canonical English source for internal readers. Public untranslated URLs redirect to English before streaming.
 
 The sitemap (`apps/web/src/lib/sitemap.ts::blogPostEntries`) emits one URL per (post, locale) pair **only for locales that have a translated MDX file on disk** — driven by `getBlogPostLocales(slug)`. Locales without a translation are skipped, so we never advertise a duplicate-content English-body URL under a foreign locale path. `x-default` always points at the EN canonical.
 
@@ -152,6 +152,10 @@ To translate a post:
 3. Verify the per-locale URL renders (`pnpm dev` → `/{locale}/blog/<slug>`) and the sitemap widens correctly.
 
 The blog page chrome (`<h1>`, "No posts yet" empty state, "min read", "← Blog" nav, etc.) IS translated for de/fr/it via Lingui — see `locales/{de,fr,it}.po` for the `blog.*` and `common.nav.blog` keys. A pre-commit hook (`scripts/check-i18n-coverage.sh`) blocks commits with untranslated chrome strings.
+
+Update `dateModified` in each edited translation when the content changes. CI rejects changed existing content with a stale date and rejects future/invalid dates; unchanged rebuilds must not advance dates. The sitemap uses per-translation modification dates, and each blog index inherits its latest article date.
+
+Public unknown slugs return 404 before streaming via the build-time blog route inventory in Proxy. Missing translations redirect to English. Add a translation MDX and deploy to make that locale URL available.
 
 **Known limitations** (tracked as follow-ups): none currently. The
 former `buildAlternates`-over-broad hreflang gap is now closed (PR

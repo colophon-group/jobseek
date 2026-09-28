@@ -5,6 +5,7 @@ import path from "node:path";
 import { computeCompanyOgRendererVersion } from "./src/lib/og/company-og-renderer-version";
 import { computeCompanyOgSourceVersion } from "./src/lib/og/company-og-source-version";
 import { SITE_OG_PUBLIC_URL } from "./src/lib/og/site-og-key";
+import { buildBlogRouteManifest } from "./script/blog-route-manifest";
 import { companyPrerenderSeed } from "./script/company-prerender-seed";
 
 const companyOgRendererVersion = computeCompanyOgRendererVersion(__dirname);
@@ -63,6 +64,7 @@ export const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "128kb" },
   },
   env: {
+    BLOG_ROUTE_MANIFEST: JSON.stringify(buildBlogRouteManifest(__dirname)),
     COMPANY_PRERENDER_SLUG: companyPrerenderSeed(__dirname),
     COMPANY_OG_RENDERER_VERSION: companyOgRendererVersion,
     COMPANY_OG_SOURCE_VERSION: companyOgSourceVersion,

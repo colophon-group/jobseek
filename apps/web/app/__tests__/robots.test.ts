@@ -21,28 +21,16 @@ describe("robots", () => {
     expect(wildcard?.allow).toContain("/");
   });
 
-  it("disallows dashboard and auth pages", () => {
+  it("allows crawlers to read noindex on product and account HTML", () => {
     const result = robots();
     const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
-    const wildcard = rules.find((r) => r.userAgent === "*");
-    expect(wildcard).toBeDefined();
-    const disallow = wildcard!.disallow as string[];
-    expect(disallow).toContain("/dashboard");
-    expect(disallow).toContain("/sign-in");
-    expect(disallow).toContain("/sign-up");
-  });
-
-  it("disallows locale-prefixed variants of private pages", () => {
-    const result = robots();
-    const rules = Array.isArray(result.rules) ? result.rules : [result.rules];
-    const wildcard = rules.find((r) => r.userAgent === "*");
-    const disallow = wildcard!.disallow as string[];
-    for (const locale of ["en", "de", "fr", "it"]) {
-      expect(disallow).toContain(`/${locale}/dashboard`);
-      expect(disallow).toContain(`/${locale}/sign-in`);
-      expect(disallow).toContain(`/${locale}/sign-up`);
-      expect(disallow).toContain(`/${locale}/settings`);
-      expect(disallow).toContain(`/${locale}/watchlists`);
+    for (const rule of rules) {
+      const disallow = rule.disallow as string[];
+      for (const prefix of ["", "/en", "/de", "/fr", "/it"]) {
+        for (const page of ["explore", "sign-in", "sign-up", "settings", "watchlists", "my-jobs", "progress", "reset-password", "verify-email", "forgot-password", "check-email", "checkout"]) {
+          expect(disallow).not.toContain(`${prefix}/${page}`);
+        }
+      }
     }
   });
 

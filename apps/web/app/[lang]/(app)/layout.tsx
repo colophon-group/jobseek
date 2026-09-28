@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { cacheLife } from "next/cache";
 
@@ -11,6 +12,8 @@ import { BackToTop } from "@/components/ui/back-to-top";
 import { SkipToContentLink } from "@/components/SkipToContentLink";
 import { getCurrencyRates } from "@/lib/services/search";
 import { CACHE_TTL_DAY } from "@/lib/cache-ttl";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 type Props = {
   children: ReactNode;

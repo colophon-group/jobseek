@@ -60,49 +60,19 @@ describe("sitemap data layer", () => {
     }
   });
 
-  it("static + explore lastModified are stable (not request-time, #2824)", async () => {
-    // Previously every regen claimed `lastModified: new Date()`, which
-    // Bing eventually discounts as a useless re-crawl signal. The
-    // values must come from `siteConfig.seo.sitemap[i].lastModified`
-    // and `siteConfig.seo.exploreLastModified`.
-    //
-    // Anchor on the actual static-page set: every URL listed in
-    // `siteConfig.seo.sitemap` plus the explicit `/explore` entry.
-    // A regex-based filter is too lenient — the previous version of
-    // this test matched only homepage + /explore, which let regressions
-    // on /about, /faq, /privacy-policy, /terms slip through.
-    const before = Date.now();
-    const result = await buildSitemap();
-    const after = Date.now();
-    const sitemapPaths = siteConfig.seo.sitemap.map((s) =>
-      s.path === "/" ? "" : s.path,
-    );
-    const expectedSuffixes = [...sitemapPaths, "/explore"];
-    const staticAndExplore = result.filter((e) =>
-      expectedSuffixes.some((suffix) => {
-        // URL pattern: ${siteConfig.url}/{locale}${suffix}
-        const url = e.url;
-        for (const locale of ["en", "de", "fr", "it"]) {
-          const expected = `${siteConfig.url}/${locale}${suffix}`;
-          if (url === expected) return true;
-        }
-        return false;
-      }),
-    );
-    // 4 locales × (sitemap entries + /explore) — sanity that the filter
-    // matched everything we expect, not just a subset.
-    expect(staticAndExplore.length).toBe(
-      (siteConfig.seo.sitemap.length + 1) * 4,
-    );
-    for (const entry of staticAndExplore) {
-      const ts = entry.lastModified instanceof Date
-        ? entry.lastModified.getTime()
-        : new Date(entry.lastModified!).getTime();
-      // A request-time `new Date()` would land between before/after.
-      // A stable hardcoded date pre-dates the test run by months.
-      expect(ts).toBeLessThan(before);
-      // sanity: not in the future
-      expect(ts).toBeLessThanOrEqual(after);
+  it("excludes Explore and keeps stable content dates", async () => {
+    const first = await buildSitemap();
+    const second = await buildSitemap();
+    expect(first).toEqual(second);
+    expect(first.some((entry) => entry.url.endsWith("/explore"))).toBe(false);
+    for (const item of siteConfig.seo.sitemap) {
+      const suffix = item.path === "/" ? "" : item.path;
+      for (const locale of ["en", "de", "fr", "it"]) {
+        const entry = first.find((row) => row.url === `${siteConfig.url}/${locale}${suffix}`);
+        expect(entry).toBeDefined();
+        expect(new Date(entry!.lastModified!).getTime()).toBeGreaterThanOrEqual(new Date(item.lastModified).getTime());
+        expect(new Date(entry!.lastModified!).getTime()).toBeLessThanOrEqual(Date.now());
+      }
     }
   });
 
