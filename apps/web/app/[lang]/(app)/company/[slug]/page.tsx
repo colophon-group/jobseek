@@ -161,7 +161,7 @@ export default async function CompanyPageRoute({ params }: Props) {
   // `useSearchParams()` so the shell here stays
   // cache-friendly. See issue #2243.
   return (
-    <div className="space-y-4">
+    <div className="posting-detail-layout space-y-4">
       <CompanyHead company={company} locale={locale} />
       <Suspense fallback={null}>
         <SimilarSection

@@ -1413,16 +1413,12 @@ export function SearchPage({
   );
 
   return (
-    <div className="flex gap-5">
+    <div className="posting-detail-layout flex gap-5">
       <div className="min-w-0 flex-1">{searchColumn}</div>
       {showPostingId && (
         <>
-          {/* Spacer reserves flex layout space on desktop */}
-          <div className="hidden w-[420px] shrink-0 lg:block" aria-hidden="true" />
-          {/* Fixed panel — immune to overscroll / layout shifts */}
           <div
-            className="fixed top-[4.5rem] z-40 hidden w-[420px] lg:block"
-            style={{ right: "max(1rem, calc((100vw - 1200px) / 2 + 1rem))", height: "calc(100vh - 5.5rem)" }}
+            className="posting-detail-panel"
           >
             <JobDetailPanel postingId={showPostingId} onClose={handleClosePosting} />
           </div>

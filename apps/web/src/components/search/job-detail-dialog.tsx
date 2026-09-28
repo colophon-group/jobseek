@@ -47,7 +47,7 @@ export function JobDetailPanel({ postingId, onClose }: JobDetailPanelProps) {
   if (!postingId) return null;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-md border border-divider bg-surface lg:h-[calc(100vh-5.5rem)]">
+    <div className="flex h-full flex-col overflow-hidden rounded-md border border-divider bg-surface">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-divider px-4 py-2.5">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted">
