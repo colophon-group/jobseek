@@ -219,6 +219,7 @@ COPY --from=go-dom-build /out/dom-detail-parse /usr/local/bin/dom-detail-parse
 COPY --from=go-dom-build /out/dom-detail-fetch /usr/local/bin/dom-detail-fetch
 COPY --from=go-recruitee-build /out/recruitee-monitor-live /usr/local/bin/recruitee-monitor-live
 COPY --from=go-job-enrichment-build /out/job-enrichment /usr/local/bin/job-enrichment
+COPY go/job-enrichment/models/ /usr/local/share/jobseek/language-model/
 COPY --from=go-smartrecruiters-build /out/smartrecruiters-monitor-live /usr/local/bin/smartrecruiters-monitor-live
 COPY --from=go-workable-build /out/workable-monitor-live /usr/local/bin/workable-monitor-live
 COPY --from=go-workable-build /out/workable-detail-live /usr/local/bin/workable-detail-live

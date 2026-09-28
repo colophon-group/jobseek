@@ -153,7 +153,14 @@ class GoJobEnrichment:
                     implementation="go-job-enrichment",
                     capability=operation,
                     allowed_capabilities=frozenset(
-                        {"occupation_seniority", "technology", "experience", "normalize_html"}
+                        {
+                            "occupation_seniority",
+                            "technology",
+                            "experience",
+                            "normalize_html",
+                            "language",
+                            "all_languages",
+                        }
                     ),
                     outcome=outcome,
                 )
@@ -260,3 +267,33 @@ def normalize_html(description: str | None) -> str | None:
     if value is not None and (not isinstance(value, str) or not value):
         raise ValueError("invalid Go normalized HTML")
     return value
+
+
+def detect_language(description: str) -> str | None:
+    result = client().request("language", description=description)
+    if "language" not in result:
+        raise ValueError("missing Go language")
+    value = result["language"]
+    if value is not None and (
+        not isinstance(value, str)
+        or not value.isascii()
+        or not value.isalpha()
+        or not value.islower()
+    ):
+        raise ValueError("invalid Go language")
+    return value
+
+
+def detect_all_languages(description: str) -> list[str]:
+    result = client().request("all_languages", description=description)
+    values = result.get("languages")
+    if (
+        not isinstance(values, list)
+        or any(
+            not isinstance(v, str) or not v.isascii() or not v.isalpha() or not v.islower()
+            for v in values
+        )
+        or len(values) != len(set(values))
+    ):
+        raise ValueError("invalid Go languages")
+    return values

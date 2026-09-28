@@ -51,6 +51,16 @@ try:
     for case in html_cases:
         result = request("normalize_html", description=case["text"])
         assert result["normalized_html"] == case["html"], "canonical HTML drift"
+    language_cases = json.loads(Path(__file__).with_name("python_language.json").read_text())[
+        "cases"
+    ]
+    for case in language_cases:
+        assert request("language", description=case["text"])["language"] == case["language"], (
+            "primary language drift"
+        )
+        assert (
+            request("all_languages", description=case["text"])["languages"] == case["languages"]
+        ), "language order/coverage drift"
 finally:
     proc.stdin.close()
     try:
@@ -63,5 +73,6 @@ assert proc.returncode == 0
 print(
     f"Resident Go enrichment matches {len(titles)} title "
     f"and {len(cases['technologies'])} technology cases; "
-    f"{len(experience_cases)} experience and {len(html_cases)} HTML cases"
+    f"{len(experience_cases)} experience, {len(html_cases)} HTML "
+    f"and {len(language_cases)} language cases"
 )

@@ -40,6 +40,8 @@ type Response struct {
 	Error          string        `json:"error,omitempty"`
 	ExperienceMin  *float64      `json:"experience_min,omitempty"`
 	ExperienceMax  *float64      `json:"experience_max,omitempty"`
+	Language       *string       `json:"language"`
+	Languages      []string      `json:"languages"`
 	NormalizedHTML *string       `json:"normalized_html"`
 }
 
@@ -59,6 +61,16 @@ func (m *Matcher) Process(r Request) (Response, error) {
 		out.Technologies = m.Technologies(r.Description)
 	case "experience":
 		out.ExperienceMin, out.ExperienceMax = Experience(r.Description)
+	case "language", "all_languages":
+		model, err := residentLanguageModel()
+		if err != nil {
+			return out, fmt.Errorf("language model unavailable")
+		}
+		if r.Operation == "language" {
+			out.Language = model.primary(r.Description)
+		} else {
+			out.Languages = model.all(r.Description)
+		}
 	case "normalize_html":
 		var err error
 		out.NormalizedHTML, err = NormalizeDescriptionHTML(r.Description)

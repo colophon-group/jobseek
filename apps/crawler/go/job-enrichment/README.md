@@ -1,7 +1,7 @@
 # Shared Go job enrichment
 
 The resident `job-enrichment` binary owns occupation, seniority, technology,
-experience matching and description HTML normalization for monitor and detail
+experience matching, language detection and description HTML normalization for monitor and detail
 processing. It loads the same read-only
 CSV taxonomy once, returns taxonomy slugs and experience bounds, and leaves
 database ID resolution to the caller. `Matcher` is directly reusable by the future native worker.
@@ -9,7 +9,7 @@ database ID resolution to the caller. `Matcher` is directly reusable by the futu
 Compose selects `JOB_ENRICHMENT_ENGINE=go`. Outside Compose the default is
 `python`; explicitly selecting `python` is the cold rollback path. There is
 no same-task Python fallback. Unknown engine names fail. The worker and
-remaining CPU stages (language, location, salary), scheduling
+remaining CPU stages (location, salary), scheduling
 and persistence still run in Python. This is not the full #7966 completion.
 
 Each Python worker process creates one child on first use. A lock serializes
@@ -48,7 +48,8 @@ not whole-lane RAM, density or cost.
 
 Production instrumentation uses `stage="enrichment"`,
 `implementation="go-job-enrichment"`, and the bounded capabilities
-`occupation_seniority` / `technology` / `experience` / `normalize_html`.
+`occupation_seniority` / `technology` / `experience` / `normalize_html` /
+`language` / `all_languages`.
 These executions add no origin traffic.
 
 ## Description HTML normalization
@@ -95,3 +96,34 @@ define the false-positive context window.
 1,967 oracle cases, including existing regression inputs and numeric boundary,
 multilingual-unit and prefix/context combinations. Installed-image CI and the
 shared bridge test exercise them through the same resident process.
+
+
+## Language detection
+
+Go owns both shared primary detection and ordered multilingual chunk detection
+when the enrichment engine is Go. The exact compressed `lid.176.ftz` model
+already used by locked fast-langdetect 1.0.1 is embedded (digest checked) and
+loaded once. Pure Go decodes its quantized vectors and hierarchical softmax;
+no Python/C++ binding, external model download or network is required.
+Model and adapted-code provenance/license notices are in `models/` and shipped
+in the image.
+
+Preserved contracts include regex tag stripping without entity unescaping,
+Unicode codepoint limits/trimming, the 500-character primary/chunk boundary,
+legacy hard-cut character skip, 80-character minimum chunk length,
+fast-langdetect's **80-character prediction limit** after LF replacement and
+before uppercase normalization, signed-byte UTF-8 hashing, EOS handling,
+quantized float32 accumulation, the 0.3 confidence boundary, the 15% ratio
+using all valid chunks as denominator, and insertion order. Scores can differ
+by floating-point rounding; exact public primary/multilingual outputs match.
+Runtime/model/IPC errors fail explicitly; they never become empty successful
+results or automatically call the Python model. Python is retained lazily for
+explicit cold reversal and offline comparison.
+
+The frozen oracle has 1,347 synthetic prediction/description cases across
+19 languages, mixed/minority descriptions, confidence/length boundaries,
+uppercase and UTF-8 inputs, plus 1,982 Unicode preparation checks. Go tests
+check predicted labels/scores (2e-6 tolerance), public results, and corrupted
+model rejection. Shared bridge tests and installed-image offline CI check
+public output and resident reuse. `testdata/replay_stored.py --scope language`
+compares private actual descriptions and measures this stage alone.
