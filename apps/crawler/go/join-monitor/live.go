@@ -10,7 +10,6 @@ import (
 	"net/http/cookiejar"
 	"net/netip"
 	"net/url"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -19,10 +18,6 @@ import (
 const maxResponseBytes = 16 << 20
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
 const accept = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-
-var metaRE = regexp.MustCompile(`(?is)<meta\b[^>]*>`)
-var tdmNameRE = regexp.MustCompile(`(?i)\bname\s*=\s*["']?tdm-reservation(?:["']|\s|/?>)`)
-var tdmContentRE = regexp.MustCompile(`(?i)\bcontent\s*=\s*["']?1(?:["']|\s|/?>)`)
 
 var nonPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("0.0.0.0/8"),
@@ -58,15 +53,6 @@ func publicAddress(ip netip.Addr) bool {
 	return true
 }
 
-func tdmMetaReserved(body []byte) bool {
-	for _, tag := range metaRE.FindAll(body, -1) {
-		if tdmNameRE.Match(tag) && tdmContentRE.Match(tag) {
-			return true
-		}
-	}
-	return false
-}
-
 type FetchResult struct {
 	URLs      []string `json:"urls"`
 	Requests  int      `json:"requests"`
@@ -76,6 +62,7 @@ type FetchResult struct {
 	FinalURL  string   `json:"final_url,omitempty"`
 	ErrorKind string   `json:"error_kind,omitempty"`
 	TDMPolicy string   `json:"tdm_policy,omitempty"`
+	TDMSource string   `json:"tdm_source,omitempty"`
 	Error     string   `json:"error,omitempty"`
 }
 
@@ -180,6 +167,7 @@ func fetchPage(ctx context.Context, client requestDoer, endpoint string, stats *
 		if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
 			response.Body.Close()
 			stats.ErrorKind = "tdm"
+			stats.TDMSource = "header"
 			stats.TDMPolicy = response.Header.Get("TDM-Policy")
 			return nil, errors.New("tdm-reservation=1")
 		}
@@ -192,9 +180,14 @@ func fetchPage(ctx context.Context, client requestDoer, endpoint string, stats *
 		if len(body) > maxResponseBytes {
 			return nil, errors.New("JOIN response exceeded 16 MiB")
 		}
-		if tdmMetaReserved(pythonHTML(body)) {
+		reservation, metaPolicy := tdmMetadata(body)
+		if reservation == "1" {
 			stats.ErrorKind = "tdm"
+			stats.TDMSource = "meta"
 			stats.TDMPolicy = response.Header.Get("TDM-Policy")
+			if metaPolicy != "" {
+				stats.TDMPolicy = metaPolicy
+			}
 			return nil, errors.New("tdm-reservation=1")
 		}
 		switch response.StatusCode {
@@ -233,6 +226,7 @@ func onePage(ctx context.Context, client requestDoer, boardURL, slug string, num
 			} else if result.stats.Status == 200 {
 				page, parseErr := ParsePage(body, slug, number == 1)
 				if parseErr == nil {
+					captureText("/tmp", endpoint, body, false)
 					result.page = page
 					return result
 				}
@@ -275,6 +269,7 @@ func Fetch(ctx context.Context, client requestDoer, boardURL, slug string) (Fetc
 	result.FinalURL = first.stats.FinalURL
 	result.ErrorKind = first.stats.ErrorKind
 	result.TDMPolicy = first.stats.TDMPolicy
+	result.TDMSource = first.stats.TDMSource
 	if first.err != nil {
 		return result, first.err
 	}
@@ -320,6 +315,7 @@ func Fetch(ctx context.Context, client requestDoer, boardURL, slug string) (Fetc
 			if outcome.stats.ErrorKind != "" && result.ErrorKind == "" {
 				result.ErrorKind = outcome.stats.ErrorKind
 				result.TDMPolicy = outcome.stats.TDMPolicy
+				result.TDMSource = outcome.stats.TDMSource
 			}
 			if outcome.err != nil && firstError == nil {
 				firstError = outcome.err

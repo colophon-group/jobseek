@@ -183,8 +183,12 @@ class GoJoinMonitorRuntime:
                 raise ValueError("invalid Go JOIN error classification")
             if proc.returncode != 0 or payload.get("error"):
                 if error_kind == "tdm":
+                    if payload.get("tdm_source") not in {"header", "meta"}:
+                        raise ValueError("invalid Go JOIN publisher policy source")
                     raise TDMReservedError(
-                        board_url, source="header", policy_url=payload.get("tdm_policy")
+                        board_url,
+                        source=payload["tdm_source"],
+                        policy_url=payload.get("tdm_policy"),
                     )
                 if error_kind == "gone" and status in {404, 410}:
                     raise BoardGoneError(
@@ -193,7 +197,7 @@ class GoJoinMonitorRuntime:
                         status_code=status,
                     )
                 if responses:
-                    mark_external_response(final_url, status)
+                    mark_external_response(final_url or board_url, status)
                 detail = payload.get("error") or "child process failed"
                 raise RuntimeError(f"Go JOIN inventory failed: {detail}")
             raw_urls = payload.get("urls")

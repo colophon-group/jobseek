@@ -1,0 +1,178 @@
+[
+  {
+    "name": "header",
+    "html": "",
+    "headers": {
+      "tdm-reservation": "1",
+      "tdm-policy": "https://policy/header"
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": true,
+      "source": "header",
+      "policy": "https://policy/header"
+    }
+  },
+  {
+    "name": "header-before-later-opt-in",
+    "html": "<meta name=\"tdm-reservation\" content=\"0\">",
+    "headers": {
+      "tdm-reservation": "1"
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": true,
+      "source": "header",
+      "policy": ""
+    }
+  },
+  {
+    "name": "meta",
+    "html": "<meta name=\"tdm-reservation\" content=\"1\">",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": true,
+      "source": "meta",
+      "policy": ""
+    }
+  },
+  {
+    "name": "meta-policy-entities",
+    "html": "<meta name=\"tdm-reservation\" content=\"1\"><meta name=\"tdm-policy\" content=\"https://policy/?a=1&amp;b=2\">",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": true,
+      "source": "meta",
+      "policy": "https://policy/?a=1&b=2"
+    }
+  },
+  {
+    "name": "meta-over-header-zero",
+    "html": "<meta name=\"tdm-reservation\" content=\"1\">",
+    "headers": {
+      "tdm-reservation": "0",
+      "tdm-policy": "https://policy/header"
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": true,
+      "source": "meta",
+      "policy": "https://policy/header"
+    }
+  },
+  {
+    "name": "last-zero",
+    "html": "<meta name=\"tdm-reservation\" content=\"1\"><meta name=\"tdm-reservation\" content=\"0\">",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": false,
+      "source": "",
+      "policy": ""
+    }
+  },
+  {
+    "name": "last-one",
+    "html": "<meta name=\"tdm-reservation\" content=\"0\"><meta name=\"tdm-reservation\" content=\"1\">",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": true,
+      "source": "meta",
+      "policy": ""
+    }
+  },
+  {
+    "name": "invalid-literal",
+    "html": "<meta name=\"tdm-reservation\" content=\"true\">",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": false,
+      "source": "",
+      "policy": ""
+    }
+  },
+  {
+    "name": "invalid-after-one",
+    "html": "<meta name=\"tdm-reservation\" content=\"1\"><meta name=\"tdm-reservation\" content=\"2\">",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": true,
+      "source": "meta",
+      "policy": ""
+    }
+  },
+  {
+    "name": "duplicate-attributes",
+    "html": "<META NAME=\"wrong\" NAME=\"tdm-reservation\" CONTENT=\"0\" CONTENT=\" 1 \">",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": true,
+      "source": "meta",
+      "policy": ""
+    }
+  },
+  {
+    "name": "comments-ignored",
+    "html": "<!--<meta name=\"tdm-reservation\" content=\"1\">-->",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": false,
+      "source": "",
+      "policy": ""
+    }
+  },
+  {
+    "name": "script-ignored",
+    "html": "<script><meta name=\"tdm-reservation\" content=\"1\"></script>",
+    "headers": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "reserved": false,
+      "source": "",
+      "policy": ""
+    }
+  },
+  {
+    "name": "unicode-inside",
+    "html": "<meta name=\"tdm-reservation\" content=\"1\">",
+    "headers": {},
+    "prefix": 65000,
+    "fill": "é",
+    "expected": {
+      "reserved": true,
+      "source": "meta",
+      "policy": ""
+    }
+  },
+  {
+    "name": "unicode-outside",
+    "html": "<meta name=\"tdm-reservation\" content=\"1\">",
+    "headers": {},
+    "prefix": 65536,
+    "fill": "é",
+    "expected": {
+      "reserved": false,
+      "source": "",
+      "policy": ""
+    }
+  }
+]

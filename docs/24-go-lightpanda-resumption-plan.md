@@ -6,6 +6,42 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Implementation checkpoint: JOIN Next.js details v0.13.884
+
+The new native JOIN detail route defaults to 100% in Compose and the runtime.
+A fresh read-only registry snapshot admits all **268 enabled JOIN Next.js detail
+configurations**: 265 mapped boards across four forms and three with no fields,
+which retain empty extraction without HTTP. Eight JSON-LD boards, resolved
+fallback steps and provided B0 runtimes retain their existing obligations.
+This is implementation evidence; merge/deployment and natural output readback
+are pending. Do not count it as deployed coverage yet.
+
+The Go binary owns one direct detail fetch with redirects/cookies and adds no
+retry. Non-200, missing data and malformed payloads preserve empty extraction
+without a tombstone. Configured scalar/list conversions, OR truthiness,
+trailing-comma cleanup, HTML attributes and full detail HTML parsing match 40
+frozen cases from the actual Python parser. Fourteen frozen publisher-policy
+cases cover the 65,536-character metadata bound, literal precedence, duplicate
+attributes, source and companion policy. Installed-image CI exercises both
+monitor and detail parsing offline. Native race/vet, focused tests and type
+checks passed locally; required hosted gates remain pending.
+
+Native passive capture now uses the existing `JOIN_CAPTURE_SLUGS` selector,
+retaining pages 1/2 and at most four detail jobs per selected slug as mode 0600
+exact-byte envelopes. No new overlay selector is needed. The unchanged 24-selector
+helper and latest deployed revision below remain authoritative for supported
+rollback/clear/stage/reactivation. Set `JOIN_GO_DETAIL_PERCENT=0` through the
+supported cold procedure or restore the preceding release to reverse this route.
+
+The private read-only pre-deploy baseline is retained mode 0600 at
+`/tmp/jobseek-join-detail-predeploy.json`, SHA-256
+`7872c4d494c32d5d04ea0ca504755315053354eb9e83c8f4a20abe3165a2cc97`.
+It contains 4,072 active postings on the 268 admitted boards. Existing scrape
+failure counts are 3,346 at zero, 175 at one, six at two, 544 at three and one
+at four; these are a baseline, not failures introduced by this release.
+Natural same-byte comparisons and persistence/failure readbacks remain pending.
+Whole-lane resource/cost proof and Python/browser retirement remain outstanding.
+
 ## Production checkpoint: 2026-09-28 — JOIN monitors v0.13.883
 
 PR #10118 merged as `9436ff0d9267c8e3657f1977ab35ced6195176c0`.

@@ -71,9 +71,16 @@ def _runtime_for_scrape(
     scraper_type: str,
     scraper_config: dict | None,
     provided: ScrapeRuntime | None,
+    *,
+    url: str | None = None,
 ) -> ScrapeRuntime | None:
     if provided is not None or not board_id:
         return provided
+    if scraper_type == "nextdata" and url is not None:
+        from src.runtime.join_go_detail import GoJoinDetailRuntime, percentage_selected
+
+        if percentage_selected(board_id, url, scraper_config):
+            return GoJoinDetailRuntime()
     if scraper_type == "smartrecruiters":
         selected = {
             value.strip()
@@ -1072,7 +1079,7 @@ async def _process_one_scrape(
                     enrich_fields,
                     pw=pw,
                     scrape_runtime=_runtime_for_scrape(
-                        item.board_id, scraper_type, scraper_config, scrape_runtime
+                        item.board_id, scraper_type, scraper_config, scrape_runtime, url=item.url
                     ),
                     write_fence=write_fence,
                     recover_browser_target=recover_browser_target,
@@ -1089,7 +1096,9 @@ async def _process_one_scrape(
             step_cfg or None,
             http,
             pw=pw,
-            scrape_runtime=_runtime_for_scrape(item.board_id, step_type, step_cfg, scrape_runtime),
+            scrape_runtime=_runtime_for_scrape(
+                item.board_id, step_type, step_cfg, scrape_runtime, url=item.url
+            ),
             recover_browser_target=recover_browser_target,
         )
         content = _apply_defaults(content, step_cfg)
