@@ -28,7 +28,7 @@ import { parseOfflineSearchFilters } from "@/lib/search/offline-filters";
 import { resolveJobLanguages } from "@/lib/job-languages";
 import { useLatest, useLatestState } from "@/lib/use-latest";
 import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
-import type { SearchResponse, SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
+import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
 import type { ExploreRepositoryCompany } from "@/lib/explore-repository-fallback";
 import {
   useSearchStateStore,
@@ -38,23 +38,6 @@ import {
 import { buildSearchWatchlistDraft } from "@/lib/search/watchlist-draft";
 
 const PAGE_SIZE = 10;
-
-function visibleFeedKey(companies: SearchResultCompany[]): string {
-  return JSON.stringify(companies.map(({ company, activeMatches, yearMatches, postings }) => [
-    company.id,
-    company.name,
-    company.icon,
-    activeMatches,
-    yearMatches,
-    postings.map((posting) => [
-      posting.id,
-      posting.title,
-      posting.isActive,
-      posting.firstSeenAt,
-      posting.locations,
-    ]),
-  ]));
-}
 
 type TaxonomyItem = { id: number; slug: string; name: string };
 type UnresolvedExplicitSlugs = NonNullable<
@@ -270,7 +253,6 @@ export function SearchPage({
   const [companies, setCompanies, companiesRef] = useLatestState<SearchResultCompany[]>(
     shouldRestore ? cached.companies : initialCompanies,
   );
-  const [pendingDefaultRefresh, setPendingDefaultRefresh] = useState<SearchResponse | null>(null);
   const [isCheckingDefaultRefresh, setIsCheckingDefaultRefresh] = useState(false);
   const defaultRefreshInFlightRef = useRef(false);
   const [totalCompanies, setTotalCompanies, totalCompaniesRef] = useLatestState(
@@ -826,7 +808,6 @@ export function SearchPage({
   /** Run a search using current ref state. */
   const runSearchRef = useRef(() => {});
   runSearchRef.current = () => {
-    setPendingDefaultRefresh(null);
     if (hasUnresolvedExplicitSlugs(unresolvedExplicitSlugsRef.current)) {
       searchCounterRef.current += 1;
       setCompanies([]);
@@ -924,11 +905,12 @@ export function SearchPage({
   // The server payload is deliberately cached longer to avoid continuous ISR
   // regeneration. Refresh the default inventory from browser-direct Typesense
   // after hydration, without a Server Action fallback, so visitors still see
-  // current results and the refresh cannot add Fluid CPU.
+  // current results and the refresh cannot add Fluid CPU. Restored feeds keep
+  // their loaded pages and cursor so Back navigation preserves the reading position.
   const directRefreshLanguagesKey = languages.join(",");
   useEffect(() => {
     if (
-      initialDirectRefreshAttempted || hasFilters ||
+      shouldRestore || initialDirectRefreshAttempted || hasFilters ||
       document.documentElement.hasAttribute("data-explore-pending")
     ) return;
 
@@ -964,13 +946,7 @@ export function SearchPage({
       isLoggedInRef.current,
     ).then((result) => {
       if (!result || searchCounterRef.current !== id) return;
-      if (visibleFeedKey(result.companies) !== visibleFeedKey(companiesRef.current.slice(0, PAGE_SIZE))) {
-        setPendingDefaultRefresh(result);
-        return;
-      }
-      // A restored snapshot may include additional pages. Its existing
-      // pagination cursor must stay paired with those displayed companies.
-      if (shouldRestore) return;
+      setCompanies(result.companies);
       serverOffsetRef.current = result.nextOffset ?? result.companies.length;
       setNextOffset(result.nextOffset);
       setTotalCompanies(result.totalCompanies);
@@ -998,20 +974,6 @@ export function SearchPage({
     userLat,
     userLng,
   ]);
-
-  function showLatestResults() {
-    if (!pendingDefaultRefresh) return;
-    const result = pendingDefaultRefresh;
-    setPendingDefaultRefresh(null);
-    setCompanies(result.companies);
-    serverOffsetRef.current = result.nextOffset ?? result.companies.length;
-    setNextOffset(result.nextOffset);
-    setTotalCompanies(result.totalCompanies);
-    setTotalPostings(result.totalPostings);
-    setIsTruncated(result.truncated ?? false);
-    setIsDegraded(false);
-    setRepositoryFallbackCompanies([]);
-  }
 
   const handleRemoveKeyword = useCallback(
     (keyword: string) => {
@@ -1181,9 +1143,8 @@ export function SearchPage({
   }, [displayCurrency]);
 
   async function handleLoadMore() {
-    // Until the visitor chooses the fresh first page, a second page from the
-    // live index cannot safely be appended to the cached first page.
-    if (pendingDefaultRefresh || defaultRefreshInFlightRef.current || searchInFlightRef.current) return;
+    // Keep the first page and pagination cursor from the same inventory read.
+    if (defaultRefreshInFlightRef.current || searchInFlightRef.current) return;
     const offset = serverOffsetRef.current;
     const searchId = searchCounterRef.current;
     const kws = keywordsRef.current;
@@ -1360,18 +1321,6 @@ export function SearchPage({
         }
       />
 
-      {pendingDefaultRefresh && !hasFilters && !isSearching && (
-        <button
-          type="button"
-          onClick={showLatestResults}
-          className="w-full rounded-md border border-primary bg-primary/5 px-4 py-2 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-        >
-          <Trans id="explore.results.showLatest" comment="Action shown when fresher Explore results are available without interrupting the current feed">
-            Show latest results
-          </Trans>
-        </button>
-      )}
-
       {companies.length === 0 && isSearching ? (
         <SkeletonCards count={3} />
       ) : repositoryFallbackCompanies.length > 0 ? (
@@ -1401,7 +1350,7 @@ export function SearchPage({
             experienceMin={experienceMin}
             experienceMax={experienceMax}
             languages={languages}
-            hasMore={hasMore && pendingDefaultRefresh === null && !isCheckingDefaultRefresh && !isSearching}
+            hasMore={hasMore && !isCheckingDefaultRefresh && !isSearching}
             truncated={isTruncated}
             load={handleLoadMore}
             onShowPosting={handleOpenPosting}

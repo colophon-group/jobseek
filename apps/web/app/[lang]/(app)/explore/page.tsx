@@ -21,7 +21,7 @@ const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v6";
 // Cached for one day. The anonymous, no-filter explore payload is rendered
 // server-side via `fetchExplorePageDefaults` and embedded as `initialData`.
 // `SearchPage` checks for fresh inventory directly from Typesense after
-// hydration and offers it without silently reordering the visible feed.
+// hydration and applies the current first page automatically.
 // See #2640 + #2243 + #10010.
 //
 // Do NOT add `searchParams` to Props or read `headers()`/`cookies()`
