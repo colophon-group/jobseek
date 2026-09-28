@@ -54,6 +54,8 @@ Two roles can have the same title and very different responsibilities. Describe 
 
 Narrowed checks the descriptions in your watchlist and picks out the matches. It is included with **Job Seek Pro**; regular search, watchlists, weekly email digests, and application tracking remain free. [See Pro details and current availability.](https://jseek.co/en/#pricing)
 
+[![Narrowed results in a Swiss robotics watchlist, with the matching request and selected jobs](.github/assets/readme/narrowed.png)](.github/assets/readme/narrowed.png)
+
 ### Get to know an employer’s hiring
 
 Company pages bring together current openings, posting activity, and similar employers. Open a role at its source or use what you find to build your next watchlist.

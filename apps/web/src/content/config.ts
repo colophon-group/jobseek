@@ -109,8 +109,8 @@ export const siteConfig = {
       },
       {
         screenshot: {
-          light: "/screenshots/{lang}/feature3-light.png",
-          dark: "/screenshots/{lang}/feature3-dark.png",
+          light: "/screenshots/{lang}/feature3-2026-09-light.png",
+          dark: "/screenshots/{lang}/feature3-2026-09-dark.png",
           width: 1200,
           height: 630,
         },

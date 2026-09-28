@@ -65,7 +65,7 @@ The user subsequently accepted the one remaining miss and explicitly authorized 
 
 Ship the exact evaluated request structure without changing the watchlist request, decision thresholds, retry policy, or budget behavior. Increment the classifier prompt version and ensure normal owner reconciliation creates a fresh revision for changed model, prompt, schema, or normalizer versions. Preserve historical decisions, caches and charges. Verify the deployed version through normal owner View, then check the shared feed and publication links.
 
-This limitation belongs in this internal QA report and release evidence. It must not be added to the article copy. Final production results will be recorded after deployment.
+This limitation belongs in this internal QA report and release evidence. It must not be added to the article copy. Final production results are recorded in the release verification section of [article PR #10159](https://github.com/colophon-group/jobseek/pull/10159) after deployment.
 
 ## Shorter request comparison
 
