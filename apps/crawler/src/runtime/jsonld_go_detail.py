@@ -89,7 +89,6 @@ def eligible(url: str, scraper_type: str, config: dict | None, pw=None) -> None:
         or parsed.username is not None
         or parsed.password is not None
         or parsed.port not in {None, expected_port}
-        or parsed.fragment
         or set(meta) - _ALLOWED
         or any(meta.get(k) for k in ("render", "proxy", "skip_ssl"))
     ):

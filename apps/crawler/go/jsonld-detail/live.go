@@ -115,7 +115,7 @@ func newClient() *http.Client {
 func validEndpoint(endpoint string) bool {
 	u, err := url.Parse(endpoint)
 	return err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Hostname() != "" && u.User == nil &&
-		(u.Port() == "" || u.Scheme == "https" && u.Port() == "443" || u.Scheme == "http" && u.Port() == "80") && u.Fragment == ""
+		(u.Port() == "" || u.Scheme == "https" && u.Port() == "443" || u.Scheme == "http" && u.Port() == "80")
 }
 
 type readIdleBody struct {

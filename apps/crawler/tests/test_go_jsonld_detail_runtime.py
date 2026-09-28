@@ -28,6 +28,7 @@ def test_route_preserves_provided_owner_and_transport_obligations(monkeypatch):
         _runtime_for_scrape("board", "json-ld", None, None, url=URL).implementation
         == "go-jsonld-detail"
     )
+    assert percentage_selected("board", URL + "#JobEntry", None)
     provided = object()
     assert _runtime_for_scrape("board", "json-ld", None, provided, url=URL) is provided
     for config in [

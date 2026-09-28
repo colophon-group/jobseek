@@ -161,3 +161,22 @@ func TestConfigAndWireEncoding(t *testing.T) {
 		t.Fatal("unsafe endpoint accepted")
 	}
 }
+
+func TestSourceFragmentIsKeptForDefaultsAndNotSentOnWire(t *testing.T) {
+	rawURL := "https://example.com/job#JobEntry"
+	config := map[string]any{"defaults_by_url": map[string]any{rawURL: map[string]any{"locations": []any{"Vienna"}}}}
+	client := doerFunc(func(r *http.Request) (*http.Response, error) {
+		var wire strings.Builder
+		if err := r.Write(&wire); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(wire.String(), "#JobEntry") {
+			t.Fatal("fragment sent to publisher")
+		}
+		return reply(r, 200, jobHTML), nil
+	})
+	result, err := fetchDetail(context.Background(), client, Request{URL: rawURL, Config: config}, noWait)
+	if err != nil || result.Content["locations"].([]any)[0] != "Vienna" {
+		t.Fatalf("%+v %v", result, err)
+	}
+}
