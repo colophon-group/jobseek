@@ -24,3 +24,17 @@ for case in cases:
         actual["urls"] = sorted(set(actual["urls"]))
         assert actual == case["expected"], (case["name"], actual, case["expected"])
 print(f"{len(cases)} installed JOIN parser cases match Python")
+
+cases = json.loads(Path(__file__).with_name("python_details.json").read_text())
+for case in cases:
+    body = case["fill"] * case["prefix"] + case["html"]
+    result = subprocess.run(
+        [sys.argv[1], "--parse-detail"],
+        input=json.dumps({"html": body, "config": case["config"]}, ensure_ascii=False).encode(),
+        capture_output=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, (case["name"], result.stderr.decode())
+    actual = json.loads(result.stdout)
+    assert actual == case["expected"], (case["name"], actual, case["expected"])
+print(f"{len(cases)} installed JOIN detail cases match Python")

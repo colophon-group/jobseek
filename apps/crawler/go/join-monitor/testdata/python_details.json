@@ -1,0 +1,1242 @@
+[
+  {
+    "name": "configuration-0",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "configuration-1",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "schemaDescription",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>Schema</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "configuration-2",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "date_posted": "createdAt",
+        "description": "schemaDescription",
+        "locations": [
+          "=Switzerland"
+        ]
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>Schema</p>",
+      "locations": [
+        "Switzerland"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "configuration-3",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "schemaDescription || unifiedDescription || description",
+        "employment_type": "employmentType.name",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>Schema</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-0",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": null, \"city\": {\"cityName\": null}, \"createdAt\": null, \"description\": null, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": null}, \"workplaceType\": null}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-1",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"\", \"city\": {\"cityName\": \"\"}, \"createdAt\": \"\", \"description\": \"\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"\"}, \"workplaceType\": \"\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "",
+      "description": "",
+      "locations": [
+        ""
+      ],
+      "employment_type": "",
+      "job_location_type": "",
+      "date_posted": "",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-2",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": [], \"city\": {\"cityName\": []}, \"createdAt\": [], \"description\": [], \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": []}, \"workplaceType\": []}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-3",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": {}, \"city\": {\"cityName\": {}}, \"createdAt\": {}, \"description\": {}, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": {}}, \"workplaceType\": {}}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "{}",
+      "description": "{}",
+      "locations": [
+        "{}"
+      ],
+      "employment_type": "{}",
+      "job_location_type": "{}",
+      "date_posted": "{}",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-4",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": 0, \"city\": {\"cityName\": 0}, \"createdAt\": 0, \"description\": 0, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": 0}, \"workplaceType\": 0}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "0",
+      "description": "0",
+      "locations": [
+        "0"
+      ],
+      "employment_type": "0",
+      "job_location_type": "0",
+      "date_posted": "0",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-5",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": -0.0, \"city\": {\"cityName\": -0.0}, \"createdAt\": -0.0, \"description\": -0.0, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": -0.0}, \"workplaceType\": -0.0}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "-0.0",
+      "description": "-0.0",
+      "locations": [
+        "-0.0"
+      ],
+      "employment_type": "-0.0",
+      "job_location_type": "-0.0",
+      "date_posted": "-0.0",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-6",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": 1.0, \"city\": {\"cityName\": 1.0}, \"createdAt\": 1.0, \"description\": 1.0, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": 1.0}, \"workplaceType\": 1.0}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "1.0",
+      "description": "1.0",
+      "locations": [
+        "1.0"
+      ],
+      "employment_type": "1.0",
+      "job_location_type": "1.0",
+      "date_posted": "1.0",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-7",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": 1e-05, \"city\": {\"cityName\": 1e-05}, \"createdAt\": 1e-05, \"description\": 1e-05, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": 1e-05}, \"workplaceType\": 1e-05}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "1e-05",
+      "description": "1e-05",
+      "locations": [
+        "1e-05"
+      ],
+      "employment_type": "1e-05",
+      "job_location_type": "1e-05",
+      "date_posted": "1e-05",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-8",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": 1e+16, \"city\": {\"cityName\": 1e+16}, \"createdAt\": 1e+16, \"description\": 1e+16, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": 1e+16}, \"workplaceType\": 1e+16}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "1e+16",
+      "description": "1e+16",
+      "locations": [
+        "1e+16"
+      ],
+      "employment_type": "1e+16",
+      "job_location_type": "1e+16",
+      "date_posted": "1e+16",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-9",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": 9007199254740993, \"city\": {\"cityName\": 9007199254740993}, \"createdAt\": 9007199254740993, \"description\": 9007199254740993, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": 9007199254740993}, \"workplaceType\": 9007199254740993}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "9007199254740993",
+      "description": "9007199254740993",
+      "locations": [
+        "9007199254740993"
+      ],
+      "employment_type": "9007199254740993",
+      "job_location_type": "9007199254740993",
+      "date_posted": "9007199254740993",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-10",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": false, \"city\": {\"cityName\": false}, \"createdAt\": false, \"description\": false, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": false}, \"workplaceType\": false}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "False",
+      "description": "False",
+      "locations": [
+        "False"
+      ],
+      "employment_type": "False",
+      "job_location_type": "False",
+      "date_posted": "False",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-11",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": true, \"city\": {\"cityName\": true}, \"createdAt\": true, \"description\": true, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": true}, \"workplaceType\": true}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "True",
+      "description": "True",
+      "locations": [
+        "True"
+      ],
+      "employment_type": "True",
+      "job_location_type": "True",
+      "date_posted": "True",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-12",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": [null, \" a \", false, 0, {\"z\": \"é\", \"a\": [1, null]}], \"city\": {\"cityName\": [null, \" a \", false, 0, {\"z\": \"é\", \"a\": [1, null]}]}, \"createdAt\": [null, \" a \", false, 0, {\"z\": \"é\", \"a\": [1, null]}], \"description\": [null, \" a \", false, 0, {\"z\": \"é\", \"a\": [1, null]}], \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": [null, \" a \", false, 0, {\"z\": \"é\", \"a\": [1, null]}]}, \"workplaceType\": [null, \" a \", false, 0, {\"z\": \"é\", \"a\": [1, null]}]}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": [
+        " a ",
+        "False",
+        "0",
+        "{'z': 'é', 'a': [1, None]}"
+      ],
+      "description": [
+        " a ",
+        "False",
+        "0",
+        "{'z': 'é', 'a': [1, None]}"
+      ],
+      "locations": [
+        " a ",
+        "False",
+        "0",
+        "{'z': 'é', 'a': [1, None]}"
+      ],
+      "employment_type": [
+        " a ",
+        "False",
+        "0",
+        "{'z': 'é', 'a': [1, None]}"
+      ],
+      "job_location_type": [
+        " a ",
+        "False",
+        "0",
+        "{'z': 'é', 'a': [1, None]}"
+      ],
+      "date_posted": [
+        " a ",
+        "False",
+        "0",
+        "{'z': 'é', 'a': [1, None]}"
+      ],
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "value-13",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": {\"z\": \"one's\", \"a\": \"\\n\\t\\u0000\", \"b\": \" ​😀\"}, \"city\": {\"cityName\": {\"z\": \"one's\", \"a\": \"\\n\\t\\u0000\", \"b\": \" ​😀\"}}, \"createdAt\": {\"z\": \"one's\", \"a\": \"\\n\\t\\u0000\", \"b\": \" ​😀\"}, \"description\": {\"z\": \"one's\", \"a\": \"\\n\\t\\u0000\", \"b\": \" ​😀\"}, \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": {\"z\": \"one's\", \"a\": \"\\n\\t\\u0000\", \"b\": \" ​😀\"}}, \"workplaceType\": {\"z\": \"one's\", \"a\": \"\\n\\t\\u0000\", \"b\": \" ​😀\"}}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "{'z': \"one's\", 'a': '\\n\\t\\x00', 'b': '\\xa0\\u200b😀'}",
+      "description": "{'z': \"one's\", 'a': '\\n\\t\\x00', 'b': '\\xa0\\u200b😀'}",
+      "locations": [
+        "{'z': \"one's\", 'a': '\\n\\t\\x00', 'b': '\\xa0\\u200b😀'}"
+      ],
+      "employment_type": "{'z': \"one's\", 'a': '\\n\\t\\x00', 'b': '\\xa0\\u200b😀'}",
+      "job_location_type": "{'z': \"one's\", 'a': '\\n\\t\\x00', 'b': '\\xa0\\u200b😀'}",
+      "date_posted": "{'z': \"one's\", 'a': '\\n\\t\\x00', 'b': '\\xa0\\u200b😀'}",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "or-truthiness-0",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": null, \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "schemaDescription || unifiedDescription || description",
+        "employment_type": "employmentType.name",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "Unified",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "or-truthiness-1",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": false, \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "schemaDescription || unifiedDescription || description",
+        "employment_type": "employmentType.name",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "Unified",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "or-truthiness-2",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "schemaDescription || unifiedDescription || description",
+        "employment_type": "employmentType.name",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "Unified",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "or-truthiness-3",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": [], \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "schemaDescription || unifiedDescription || description",
+        "employment_type": "employmentType.name",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "Unified",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "or-truthiness-4",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": {}, \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "schemaDescription || unifiedDescription || description",
+        "employment_type": "employmentType.name",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "Unified",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "or-truthiness-5",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": 0, \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "schemaDescription || unifiedDescription || description",
+        "employment_type": "employmentType.name",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "0",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "attribute-order-and-case",
+    "html": "<SCRIPT TYPE=\"application/json\" ID=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "entity-id",
+    "html": "<script id=\"__NEXT&#95;DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "duplicate-attrs-last-match",
+    "html": "<script id=\"wrong\" id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "duplicate-attrs-last-wrong",
+    "html": "<script id=\"__NEXT_DATA__\" id=\"wrong\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "last-script",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script><script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Last\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Last",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "last-script-malformed",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script><script id=\"__NEXT_DATA__\">{bad}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "empty-last-script",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script><script id=\"__NEXT_DATA__\"></script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "missing-close",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "missing-script",
+    "html": "<html></html>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "malformed-json",
+    "html": "<script id=\"__NEXT_DATA__\">{bad}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "trailing-comma",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\",}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "duplicate-json-keys",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"first\", \"title\": \"last\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": "last",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "missing-job",
+    "html": "<script id=\"__NEXT_DATA__\">{}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "no-fields",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {},
+    "prefix": 0,
+    "fill": "x",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "full-html-beyond-monitor-prefix",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 4001000,
+    "fill": "x",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "name": "unicode-full-html",
+    "html": "<script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"initialState\": {\"job\": {\"title\": \"Engineer Zürich\", \"city\": {\"cityName\": \"Zürich\"}, \"createdAt\": \"2026-09-28\", \"description\": \"<p>HTTP &amp; Go</p>\", \"schemaDescription\": \"<p>Schema</p>\", \"unifiedDescription\": \"Unified\", \"employmentType\": {\"googleType\": \"FULL_TIME\", \"name\": \"Full time\"}, \"workplaceType\": \"remote\"}}}}}</script>",
+    "config": {
+      "path": "props.pageProps.initialState.job",
+      "fields": {
+        "title": "title",
+        "locations": "city.cityName",
+        "date_posted": "createdAt",
+        "description": "description",
+        "employment_type": "employmentType.googleType",
+        "job_location_type": "workplaceType"
+      }
+    },
+    "prefix": 4001000,
+    "fill": "é",
+    "expected": {
+      "title": "Engineer Zürich",
+      "description": "<p>HTTP &amp; Go</p>",
+      "locations": [
+        "Zürich"
+      ],
+      "employment_type": "FULL_TIME",
+      "job_location_type": "remote",
+      "date_posted": "2026-09-28",
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  }
+]

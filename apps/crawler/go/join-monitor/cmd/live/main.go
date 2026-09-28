@@ -15,15 +15,53 @@ import (
 
 func main() {
 	var boardURL, slug string
-	var parsePage, first bool
+	var parsePage, first, detail, parseDetail bool
 	flag.StringVar(&boardURL, "board-url", "", "configured JOIN board URL")
 	flag.StringVar(&slug, "slug", "", "configured JOIN company slug")
 	flag.BoolVar(&parsePage, "parse-page", false, "parse a captured page from stdin without HTTP")
 	flag.BoolVar(&first, "first", true, "whether a captured page is the first page")
+	flag.BoolVar(&detail, "detail", false, "fetch a configured JOIN detail from a JSON stdin request")
+	flag.BoolVar(&parseDetail, "parse-detail", false, "parse captured detail HTML from JSON stdin without HTTP")
 	flag.Parse()
-	if flag.NArg() != 0 {
+	if flag.NArg() != 0 || (parsePage && (detail || parseDetail)) || (detail && parseDetail) {
 		fmt.Fprintln(os.Stderr, "unexpected positional argument")
 		os.Exit(2)
+	}
+	if detail || parseDetail {
+		limit := 64 << 10
+		if parseDetail {
+			limit = 64 << 20
+		}
+		body, err := io.ReadAll(io.LimitReader(os.Stdin, int64(limit)+1))
+		var request join.DetailRequest
+		if err != nil || len(body) > limit || json.Unmarshal(body, &request) != nil {
+			fmt.Fprintln(os.Stderr, "invalid or oversized JOIN detail request")
+			os.Exit(1)
+		}
+		if parseDetail {
+			content, err := join.ParseDetail([]byte(request.HTML), request.Config)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			if err := json.NewEncoder(os.Stdout).Encode(content); err != nil {
+				os.Exit(1)
+			}
+			return
+		}
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		result, err := join.FetchDetail(ctx, request)
+		if err != nil {
+			result.Error = err.Error()
+		}
+		if encodeErr := json.NewEncoder(os.Stdout).Encode(result); encodeErr != nil {
+			os.Exit(1)
+		}
+		if err != nil {
+			os.Exit(1)
+		}
+		return
 	}
 	if parsePage {
 		body, err := io.ReadAll(io.LimitReader(os.Stdin, (16<<20)+1))

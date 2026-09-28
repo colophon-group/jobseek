@@ -60,6 +60,7 @@ x-common-env: &common-env
   # JOIN embedded-data monitor defaults to Go; percentage zero reverses the route.
   JOIN_GO_BOARD_IDS: ${JOIN_GO_BOARD_IDS:-}
   JOIN_GO_PERCENT: ${JOIN_GO_PERCENT:-100}
+  JOIN_GO_DETAIL_PERCENT: ${JOIN_GO_DETAIL_PERCENT:-100}
   JOIN_CAPTURE_SLUGS: ${JOIN_CAPTURE_SLUGS:-}
   # Default-off Go Recruitee rich monitor and natural response capture.
   RECRUITEE_GO_BOARD_IDS: ${RECRUITEE_GO_BOARD_IDS:-}
