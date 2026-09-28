@@ -418,6 +418,11 @@ local function exact_fields(value, allowed, expected)
     return count == expected
 end
 
+local function valid_navigation_wait(value)
+    return value == "commit" or value == "domcontentloaded"
+        or value == "load" or value == "networkidle"
+end
+
 local function valid_record(record)
     if type(record) ~= "table" or not exact_fields(record, record_fields, 20)
         or not safe_identifier(record.task_id)
@@ -453,18 +458,21 @@ local function valid_record(record)
         or not bounded_number(envelope.initial_ready_at_ms, 0, MAX_INTEGER)
         or envelope.browser_backend ~= "lightpanda"
         or not routing_revision_valid(envelope.routing_revision)
-        or envelope.scraper_type ~= "json-ld"
+        or (envelope.scraper_type ~= "json-ld" and envelope.scraper_type ~= "dom")
         or envelope.scraper_step ~= 0
         or envelope.render ~= true
-        or envelope.wait ~= "load"
-        or envelope.wait_fallback ~= cjson.null
+        or not valid_navigation_wait(envelope.wait)
+        or (envelope.wait_fallback ~= cjson.null
+            and not valid_navigation_wait(envelope.wait_fallback))
+        or (envelope.scraper_type == "json-ld"
+            and (envelope.wait ~= "load" or envelope.wait_fallback ~= cjson.null))
         or not bounded_number(envelope.timeout_ms, 1, MAX_LEASE_TTL_MS)
         or type(envelope.parser_config) ~= "table"
         or envelope.parser_config.browser_backend ~= "lightpanda"
         or envelope.parser_config.routing_revision ~= envelope.routing_revision
         or envelope.parser_config.render ~= true
-        or envelope.parser_config.wait ~= "load"
-        or envelope.parser_config.wait_fallback ~= cjson.null
+        or envelope.parser_config.wait ~= envelope.wait
+        or envelope.parser_config.wait_fallback ~= envelope.wait_fallback
         or envelope.parser_config.timeout ~= envelope.timeout_ms
         or not valid_sha(envelope.assignment_digest_sha256, 64) then
         return false

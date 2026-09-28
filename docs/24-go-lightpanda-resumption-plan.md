@@ -6,6 +6,54 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — wire deployed, DOM Redis correction pending
+
+[PR #10168](https://github.com/colophon-group/jobseek/pull/10168) merged as
+**`5e45af793c0504fa77249977b648492cff349ce0`**, crawler **v0.13.895**.
+Required CI, Crawler Deploy Gate and installed runtime contracts passed at
+`96c380149886f7eb5b3c108d2e429dac0faaec8d`.
+[Deployment 36448259536](https://github.com/colophon-group/jobseek/actions/runs/36448259536)
+succeeded through promotion. The supported c1 source-bound control endpoint
+works in production; the original eleven-field request remains compatible.
+The installed renderer still matches the latest official September 28 nightly
+and immutable source/image tuple below.
+
+Supported cdom admission reserved epoch **125**, passed preparation, and failed
+at the first atomic Redis activation. The Lua record validator still required
+`json-ld`, `load`, and no fallback despite the Go task decoder supporting DOM.
+This is a missed migration boundary, not an origin response or missing test gate.
+The wrapper contained the lane and retained its pending receipt. Supported
+`recover-pending cdom` retired epoch **126**, restored zero transferred records,
+dropped zero terminals, cleared all write fences and its rollback tombstone.
+Supported `activate c1` then restored all **five** schedules at epoch **127**;
+normal workers, browser, drain, producer, executor, claimant and Redis are healthy.
+No publisher request or due time was forced.
+
+The **v0.13.896** candidate extends the same Lua validator to the declared DOM
+profile and four supported navigation waits, with a valid optional fallback.
+Parser and envelope readiness must agree; the JSON-LD profile still requires
+`load` and a null fallback. Unknown profiles, invalid waits, identity drift,
+field/schema/hash fences and conservation checks remain rejected. All **52**
+Python queue tests and Go race tests pass. The installed producer test now runs
+both JSON-LD and DOM through real UDS preparation, source-bound atomic transfer,
+claim, terminal, reactivation, health auditing, corruption and recovery. Required
+CI, deployment and actual DOM output evidence remain pending for this correction.
+
+All **25** selectors are staged at promoted revision
+**`5e45af793c0504fa77249977b648492cff349ce0`**. Before another crawler deploy or
+selector mutation, use supported `rollback c1`, then clear all 25 with
+`scripts/migration-jsonld-selectors.py` under
+`/run/lock/jobseek-crawler-mutation.lock`, that exact revision and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. The helper SHA-256 remains
+`8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743`.
+Stage only after terminal next-deployment success including promotion; then
+use supported `activate cdom`. C2 Kandou stays dark. Python/Chromium ownership,
+actual-workload whole-lane resources and final cutover/reversal remain unfinished.
+
+Protected endpoint, admission refusal, pending recovery and c1 restoration:
+`/Users/Viktor/.codex/migration-evidence/lightpanda-dom/2026-09-28/schedule-transfer/`.
+**This checkpoint supersedes every older current-state instruction below.**
+
 ## Production checkpoint: 2026-09-28 — schedule transfer deployed, wire correction pending
 
 [PR #10164](https://github.com/colophon-group/jobseek/pull/10164) merged as
