@@ -6,6 +6,67 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — JOIN details v0.13.884
+
+PR #10120 merged as `cc1e273aa35b3f72b53eb82930fc4e39c9380e51`.
+[Deployment 36365143439](https://github.com/colophon-group/jobseek/actions/runs/36365143439)
+succeeded. All **268 enabled JOIN Next.js detail configurations** now select
+Go: 265 mapped boards across four forms and three no-field boards retaining
+empty extraction before HTTP. The actual URL admission check selects all
+**4,072 active postings** on those boards with zero exclusions. Eight JOIN
+JSON-LD configurations remain separate migration obligations. No board was
+disabled. The live primary-detail census is **274 Go / 2,766 Python** of 3,040
+resolved boards, with 4,839 rich-monitor skips and zero route errors across
+7,879 enabled boards. This census excludes provided B0 runtimes.
+
+Required CI, installed-image parity and the exact-head deploy gate passed.
+The installed offline JOIN oracle includes 52 monitor and 40 detail cases;
+14 native policy fixtures also pass. The shared idle Playwright handle from
+mixed domain batches is ignored by the direct native config, preserving its
+HTTP ownership. The initial readback retains 4,169 active JOIN postings with
+no increased scrape failures. Typesense reports 182 successful exports, zero
+errors, zero lag and healthy status. All configured service health checks pass.
+
+Supported cold rollback retired c1 epoch 100 at **101**, restored all five
+schedules and left zero terminal drops or write fences. The **24 selectors**
+cleared under the host mutation lock, then restaged at the promoted revision.
+C1 reactivated at **epoch 102**, accepted/audit_ok with five ready, zero inflight
+and no dead records. All five retained due times are unchanged; c2 remains dark.
+See [sanitized production evidence](evidence/go-join-detail-production-2026-09-28.json).
+
+**Natural Go detail output and same-byte comparison remain pending.** The initial
+log snapshot contains zero detail cycles/captures. The selected Lebensmittel
+Knupfer detail is fourth inside JOIN's recurring detail queue, but the domain
+itself is rank 1,401 of 1,601 in the fleet's simple detail queue. Do not force
+its due score or fetch a duplicate response. Copy native passive envelopes from
+worker `/tmp/jobseek-join-go-detail-<slug>-<slot>.json` securely to local mode 0600.
+Use `/tmp/jobseek-join-captured-parity.py <capture> /tmp/jobseek-join-detail-live`
+with `PYTHONPATH=apps/crawler` for exact retained-byte Python/Go comparisons;
+`--parse-detail` performs no HTTP. `/tmp/jobseek-join-detail-db-read.py` accepts
+up to ten exact URLs for read-only title/description/hash/failure readback.
+These pending checks are explicit; fixture parity is not live output proof.
+
+Before any further crawler deploy or selector mutation, complete supported
+`rollback c1`, then clear all **24** selectors under
+`/run/lock/jobseek-crawler-mutation.lock` with
+`/tmp/jobseek-post-smart-personio-selectors.py` against full revision
+`cc1e273aa35b3f72b53eb82930fc4e39c9380e51` and Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Restage only at the next promoted
+revision after terminal deployment success, then reactivate c1. Helper SHA-256
+remains `07f3dca2e8d0c0185b12817f76ab9e1e8e6775d2df128f9f123abdc803cb97a5`.
+These instructions supersede the older revision/epoch checkpoints below.
+Reverse JOIN details by setting `JOIN_GO_DETAIL_PERCENT=0` through the supported
+cold procedure or by restoring the preceding release.
+
+Continue implementation while the normal queue is pending. The fresh JSON-LD
+primary-detail inventory contains **802 boards across 59 configs**, including
+638 null/default configs, 79 rendered configs and 33 proxy users. Its protected
+snapshot is `/tmp/jobseek-jsonld-detail-configs.json`. Port the shared parser and
+HTTP transport, preserving each resolved custom/fallback/browser obligation.
+Full enabled-profile coverage, Python worker/writer/browser retirement,
+actual-workload whole-lane CPU/RAM/density/cost proof and final cutover remain
+outstanding. The full migration goal remains active.
+
 ## Implementation checkpoint: JOIN Next.js details v0.13.884
 
 The new native JOIN detail route defaults to 100% in Compose and the runtime.
@@ -13,8 +74,8 @@ A fresh read-only registry snapshot admits all **268 enabled JOIN Next.js detail
 configurations**: 265 mapped boards across four forms and three with no fields,
 which retain empty extraction without HTTP. Eight JSON-LD boards, resolved
 fallback steps and provided B0 runtimes retain their existing obligations.
-This is implementation evidence; merge/deployment and natural output readback
-are pending. Do not count it as deployed coverage yet.
+Deployment is recorded above; natural output readback and retained-byte
+comparison remain pending.
 
 The Go binary owns one direct detail fetch with redirects/cookies and adds no
 retry. Non-200, missing data and malformed payloads preserve empty extraction
@@ -24,7 +85,7 @@ frozen cases from the actual Python parser. Fourteen frozen publisher-policy
 cases cover the 65,536-character metadata bound, literal precedence, duplicate
 attributes, source and companion policy. Installed-image CI exercises both
 monitor and detail parsing offline. Native race/vet, focused tests and type
-checks passed locally; required hosted gates remain pending.
+checks passed locally and the required hosted gates passed before merge.
 
 Native passive capture now uses the existing `JOIN_CAPTURE_SLUGS` selector,
 retaining pages 1/2 and at most four detail jobs per selected slug as mode 0600
