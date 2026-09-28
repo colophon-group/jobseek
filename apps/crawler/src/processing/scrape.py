@@ -924,6 +924,12 @@ async def _process_one_enrich_scrape(
                 source="scrape",
                 tech_ids=tech_ids,
             )
+            if staged:
+                # The primary locale must name the same R2 object we staged,
+                # even when the monitor already supplied a usable title.
+                locales = _build_locales(
+                    staged[1], None, detected_languages=detect_all_languages(staged[0])
+                )
 
         async with authoritative_write(
             pool,
@@ -1562,6 +1568,10 @@ async def _do_one_enrich_scrape(
             source="scrape",
             tech_ids=tech_ids,
         )
+        if staged:
+            locales = _build_locales(
+                staged[1], None, detected_languages=detect_all_languages(staged[0])
+            )
 
     params = (
         item.job_posting_id,

@@ -435,7 +435,10 @@ only the missing fields from detail pages:
 ```
 
 The batch processor calls the scraper for each job URL but only stores
-the fields listed in `enrich`. All other fields come from the monitor.
+the fields listed in `enrich`, plus their derived metadata. Description
+enrichment also sets the posting's primary locale to the staged R2 body's
+locale, even when the title remains monitor-owned. Later monitor refreshes
+preserve those detail-owned locales. Other fields come from the monitor.
 This avoids full scrape runs while filling gaps in API data.
 
 ### Example

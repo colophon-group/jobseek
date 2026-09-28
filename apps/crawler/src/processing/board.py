@@ -2611,10 +2611,14 @@ async def _process_one_board_streaming(
                                     pid,
                                     normalize_employment_type(raw_employment_type),
                                     all_titles,
-                                    _build_locales(
-                                        _coerce_text(j.language),
-                                        j.localizations,
-                                        detected_languages=detected_langs,
+                                    (
+                                        _build_locales(
+                                            _coerce_text(j.language),
+                                            j.localizations,
+                                            detected_languages=detected_langs,
+                                        )
+                                        if monitor_owns_existing_description
+                                        else None
                                     ),
                                     loc_ids,
                                     loc_types,
