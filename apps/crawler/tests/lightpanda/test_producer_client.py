@@ -200,3 +200,39 @@ async def test_noncanonical_frame_prefix_is_rejected() -> None:
     reader.feed_eof()
     with pytest.raises(client.ProducerClientError, match="prefix"):
         await client._read_frame(reader)
+
+
+async def test_operator_transfer_binds_source_score_without_advancing_due_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(client, "_enabled", lambda: True)
+    observed: dict[str, object] = {}
+
+    async def exchange(request: dict[str, object]) -> client.ProducerResult:
+        observed.update(request)
+        return client.ProducerResult("legacy")
+
+    monkeypatch.setattr(client, "_exchange", exchange)
+    await client.request_task(
+        operation="prepare",
+        domain="jobs.example.com",
+        posting_id="posting-1",
+        next_scrape_at=350.0001,
+        config={},
+        browser=True,
+        first_time=True,
+        operator_transfer=True,
+        legacy_schedule_score="350.0001",
+    )
+    assert observed["next_scrape_at_ms"] == 350_001
+    assert observed["legacy_schedule_score"] == "350.0001"
+    with pytest.raises(client.ProducerClientError, match="operator transfer"):
+        await client.request_task(
+            operation="enqueue",
+            domain="jobs.example.com",
+            posting_id="posting-1",
+            next_scrape_at=350.0001,
+            config={},
+            browser=True,
+            legacy_schedule_score="350.0001",
+        )

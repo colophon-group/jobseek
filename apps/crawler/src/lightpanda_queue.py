@@ -512,6 +512,7 @@ class LightpandaB0Queue:
         previous_payload_sha256: str = "",
         operator_transfer: bool = False,
         first_time: bool = False,
+        legacy_schedule_score: str = "",
     ) -> TransitionResult:
         """Atomically move one eligible legacy schedule under Go ownership.
 
@@ -521,8 +522,15 @@ class LightpandaB0Queue:
         legacy in-flight/dead-letter state and ambiguous duplicate schedules.
         """
 
-        if first_time and task.initial_ready_at_ms != 0:
-            raise ValueError("first-time activation must be immediately ready")
+        if (
+            first_time
+            and task.initial_ready_at_ms != 0
+            and (not operator_transfer or not legacy_schedule_score)
+        ):
+            raise ValueError(
+                "first-time activation must be immediately ready unless operator transfer "
+                "binds its existing deferred schedule"
+            )
 
         _validate_task_identity(task)
         if task.route.engine_owner != "go":
@@ -530,6 +538,22 @@ class LightpandaB0Queue:
         if previous_payload_sha256 and not _SHA256_RE.fullmatch(previous_payload_sha256):
             raise ValueError("previous_payload_sha256 must be lowercase SHA-256")
         canonical_legacy_config = _canonical_legacy_config(legacy_config, task)
+        if legacy_schedule_score:
+            if not operator_transfer or len(legacy_schedule_score) > 32:
+                raise ValueError("legacy schedule binding requires a bounded operator score")
+            try:
+                source = Decimal(legacy_schedule_score)
+            except InvalidOperation as exc:
+                raise ValueError("legacy schedule binding is invalid") from exc
+            if not source.is_finite() or not 0 <= source <= Decimal("9999999999.999"):
+                raise ValueError("legacy schedule binding is invalid")
+            bound = json.loads(canonical_legacy_config)
+            bound["__operator_source_score"] = legacy_schedule_score
+            canonical_legacy_config = json.dumps(
+                bound, ensure_ascii=True, separators=(",", ":"), sort_keys=True
+            )
+            if len(canonical_legacy_config.encode("utf-8")) > MAX_PAYLOAD_BYTES:
+                raise ValueError("legacy schedule binding exceeds the payload bound")
         raw = await self._invoke(
             "activate_legacy",
             route=task.route,

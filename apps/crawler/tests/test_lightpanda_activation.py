@@ -247,13 +247,19 @@ async def _activate_legacy(
     operator_transfer: bool = True,
     first_time: bool = False,
     cohort: str = "c1",
+    legacy_schedule_score: str = "",
 ) -> TransitionResult:
+    encoded = queue_module._canonical_legacy_config(legacy_config, task)
+    if legacy_schedule_score:
+        bound = json.loads(encoded)
+        bound["__operator_source_score"] = legacy_schedule_score
+        encoded = json.dumps(bound, sort_keys=True, separators=(",", ":"))
     raw = await queue._invoke(
         "activate_legacy",
         route=task.route,
         task=task,
         previous_payload_sha256=previous_payload_sha256,
-        legacy_config=queue_module._canonical_legacy_config(legacy_config, task),
+        legacy_config=encoded,
         operator_transfer=operator_transfer,
         first_time=first_time,
         producer_cohort=cohort,
@@ -1103,10 +1109,13 @@ async def test_rollback_rebuilds_first_time_ready_as_exclusive_tier_zero(redis: 
     assert await redis.zscore("ready:browser:2", task.domain) is None
 
 
+@pytest.mark.parametrize("deferred", [False, True])
 async def test_operator_feeder_activates_authoritative_existing_schedule(
-    redis: Any, monkeypatch: pytest.MonkeyPatch
+    redis: Any, monkeypatch: pytest.MonkeyPatch, deferred: bool
 ) -> None:
-    task = _task(ready_at_ms=0)
+    task = _task(ready_at_ms=350_001 if deferred else 0)
+    source_score = 350.0001 if deferred else 0
+    pruned_id = "00000000-0000-4000-8000-000000000002"
     parser_config = {
         "browser_backend": "lightpanda",
         "render": True,
@@ -1127,6 +1136,7 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
         },
     )
     await _seed_legacy_ready(redis, task, first_time=True)
+    await redis.zadd(f"ft_scrapes_browser:{task.domain}", {task.task_id: source_score})
     await redis.hset(
         f"scrape:{task.task_id}",
         mapping={
@@ -1179,6 +1189,7 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
             legacy_config=request["config"],
             operator_transfer=True,
             first_time=request["first_time"],
+            legacy_schedule_score=request["legacy_schedule_score"],
         )
         assert result.accepted
         return ProducerResult(
@@ -1205,25 +1216,28 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
                         "scrape_interval_hours": 12,
                     }
                 ]
+            row = {
+                "posting_id": task.task_id,
+                "board_id": task.board_id,
+                "source_url": task.source_url,
+                "description_r2_hash": -123,
+                "next_scrape_at": datetime.fromtimestamp(123, UTC),
+                "lease_active": False,
+                "leased_until": None,
+                "is_active": True,
+                "board_slug": "browser-use-careers",
+                "scraper_needs_browser": True,
+                "scrape_interval_hours": 12,
+            }
             return [
-                {
-                    "posting_id": task.task_id,
-                    "board_id": task.board_id,
-                    "source_url": task.source_url,
-                    "description_r2_hash": -123,
-                    "next_scrape_at": datetime.fromtimestamp(123, UTC),
-                    "lease_active": False,
-                    "leased_until": None,
-                    "is_active": True,
-                    "board_slug": "browser-use-careers",
-                    "scraper_needs_browser": True,
-                    "scrape_interval_hours": 12,
-                }
+                row,
+                {**row, "posting_id": pruned_id, "source_url": task.source_url + "-pruned"},
             ]
 
     plan = await activation.build_activation_plan(Pool(), redis, cohort="c1")
     assert plan.tasks[0]["first_time"] is True
-    assert plan.tasks[0]["next_scrape_at"] == "0"
+    assert plan.tasks[0]["next_scrape_at"] == str(source_score).removesuffix(".0")
+    assert plan.document["unqueued_posting_ids"] == [pruned_id]
     summary = await activation.apply_activation_plan(
         Pool(), redis, cohort="c1", expect_digest=plan.digest
     )
@@ -1233,7 +1247,7 @@ async def test_operator_feeder_activates_authoritative_existing_schedule(
         1,
         0,
     )
-    assert [request["next_scrape_at"] for request in producer_requests] == [0.0, 0.0, 0.0]
+    assert [request["next_scrape_at"] for request in producer_requests] == [source_score] * 3
     assert all(request["first_time"] is True for request in producer_requests)
     queue = LightpandaB0Queue(redis, namespace="production-b0")
     stored = await queue.inspect(task.task_id, task.route)
@@ -1924,3 +1938,87 @@ async def test_new_epoch_rejects_restored_old_rdb_and_stale_tombstone(redis: Any
         "ready": await redis.zcard(queue._keys.ready),
         "inflight": await redis.zcard(queue._keys.inflight),
     }
+
+
+async def test_cold_transfer_binds_the_stale_description_cache_hint(redis: Any) -> None:
+    task = _task()
+    await _seed_legacy_ready(redis, task)
+    await redis.hset(f"scrape:{task.task_id}", "description_r2_hash", "")
+    item = {
+        "posting_id": task.task_id,
+        "domain": task.domain,
+        "legacy_config": {
+            "domain": task.domain,
+            **_legacy_config(task),
+            "description_r2_hash": "-456",
+        },
+    }
+    snapshot = await activation._legacy_preflight(redis, [item], {})
+    assert snapshot == {task.task_id: False}
+    assert item["postgres_description_r2_hash"] == "-456"
+    assert item["legacy_config"]["description_r2_hash"] == ""
+    assert item["legacy_schedule_score"] == "123"
+    assert await redis.hget(f"scrape:{task.task_id}", "description_r2_hash") == ""
+
+
+async def test_cold_transfer_does_not_recreate_a_pruned_request(redis: Any) -> None:
+    task = _task()
+    item = {
+        "posting_id": task.task_id,
+        "domain": task.domain,
+        "legacy_config": _legacy_config(task),
+    }
+    assert await activation._legacy_preflight(redis, [item], {}) == {}
+    assert await redis.dbsize() == 0
+
+
+@pytest.mark.parametrize("hint", ["NaN", "-0", "+17", "9223372036854775808", "9" * 100])
+async def test_cold_transfer_rejects_invalid_cache_hints(redis: Any, hint: str) -> None:
+    task = _task()
+    await _seed_legacy_ready(redis, task)
+    await redis.hset(f"scrape:{task.task_id}", "description_r2_hash", hint)
+    item = {
+        "posting_id": task.task_id,
+        "domain": task.domain,
+        "legacy_config": {"domain": task.domain, **_legacy_config(task)},
+    }
+    with pytest.raises(activation.ActivationError, match="cache hint"):
+        await activation._legacy_preflight(redis, [item], {})
+    assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) == 123
+
+
+@pytest.mark.parametrize("changed", [False, True])
+@pytest.mark.parametrize("first_time", [False, True])
+async def test_atomic_transfer_preserves_score_and_rejects_score_race(
+    redis: Any, changed: bool, first_time: bool
+) -> None:
+    task = _task(ready_at_ms=350_001)
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    await _initialize_producer(queue, task.route)
+    await _seed_legacy_ready(redis, task, first_time=first_time)
+    kind = "ft_scrapes" if first_time else "scrapes"
+    key = f"{kind}_browser:{task.domain}"
+    score = 350.0001
+    await redis.zadd(key, {task.task_id: score})
+    if changed:
+        await redis.zadd(key, {task.task_id: 350.002})
+    result = await _activate_legacy(
+        queue,
+        task,
+        legacy_config=_legacy_config(task),
+        operator_transfer=True,
+        first_time=first_time,
+        legacy_schedule_score=str(score),
+    )
+    if changed:
+        assert not result.accepted and result.reason == "legacy_schedule_mismatch"
+        assert await redis.zscore(key, task.task_id) == 350.002
+        assert not await redis.hexists(queue._keys.records, task.task_id)
+    else:
+        assert result.accepted
+        stored = await queue.inspect(task.task_id, task.route)
+        assert stored is not None and stored.task.initial_ready_at_ms == 350_001
+        assert await redis.zscore(key, task.task_id) is None
+        guard = await redis.hget("lightpanda-b0:legacy-guard", task.task_id)
+        assert float(guard.rsplit("|", 1)[1]) == score
+        assert not await redis.hexists(f"scrape:{task.task_id}", "__operator_source_score")

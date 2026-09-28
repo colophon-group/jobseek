@@ -724,3 +724,40 @@ func sha256Bytes(value []byte) string {
 	digest := sha256.Sum256(value)
 	return hex.EncodeToString(digest[:])
 }
+
+func TestOperatorTransferBindsDeferredSourceScore(t *testing.T) {
+	producer := validProducer(t, &fakeProducerQueue{}, "browser-use-careers")
+	request := validProducerRequest()
+	request.FirstTime, request.NextScrapeAtMS = true, 350_001
+	request.LegacyScheduleScore = "350.0001"
+	prepared, err := producer.prepare(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config map[string]string
+	if err := json.Unmarshal([]byte(prepared.legacyConfig), &config); err != nil {
+		t.Fatal(err)
+	}
+	if config["__operator_source_score"] != request.LegacyScheduleScore || prepared.requestedReadyAtMS != 350_001 {
+		t.Fatalf("source schedule was not bound: %#v", prepared)
+	}
+	request.LegacyScheduleScore = "350.0002"
+	changed, err := producer.prepare(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed.digest == prepared.digest || changed.task.PayloadSHA256 != prepared.task.PayloadSHA256 {
+		t.Fatal("source score did not bind the preparation independently of the task payload")
+	}
+	for _, score := range []string{"NaN", "Inf", "-1", "10000000000", ""} {
+		request.LegacyScheduleScore = score
+		if _, err := producer.prepare(context.Background(), request); err == nil {
+			t.Fatalf("invalid deferred source score %q accepted", score)
+		}
+	}
+	request.Operation, request.OperatorTransfer, request.FirstTime = "enqueue", false, false
+	request.LegacyScheduleScore = "350.0001"
+	if _, _, err := producer.enqueue(context.Background(), request); err == nil {
+		t.Fatal("runtime caller supplied operator schedule authority")
+	}
+}

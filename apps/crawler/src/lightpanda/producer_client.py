@@ -11,6 +11,7 @@ import stat
 import struct
 from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import ROUND_CEILING, Decimal
 from pathlib import Path
 from typing import Any, Final
 
@@ -309,6 +310,7 @@ async def request_task(
     first_time: bool = False,
     operator_transfer: bool = False,
     expected_digest: str = "",
+    legacy_schedule_score: str = "",
 ) -> ProducerResult:
     if (
         not _enabled()
@@ -325,10 +327,16 @@ async def request_task(
         "domain": domain,
         "expected_digest": expected_digest,
         "first_time": first_time,
-        "next_scrape_at_ms": int(next_scrape_at * 1000),
+        "next_scrape_at_ms": int(
+            (Decimal(str(next_scrape_at)) * 1000).to_integral_value(rounding=ROUND_CEILING)
+        ),
         "operation": operation,
         "operator_transfer": operator_transfer,
         "posting_id": posting_id,
         "version": PROTOCOL,
     }
+    if legacy_schedule_score:
+        if not operator_transfer:
+            raise ProducerClientError("Legacy schedule binding requires operator transfer")
+        request["legacy_schedule_score"] = legacy_schedule_score
     return await _exchange(request)
