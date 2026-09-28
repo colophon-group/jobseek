@@ -1,0 +1,684 @@
+{
+  "source_sha256": "d1d97b44b09e3ff420fb60bd4d9e893f1861736b2068f45678850566337ea6c4",
+  "patterns": {
+    "_TAG_RE": {
+      "pattern": "<[^>]+>",
+      "ignore_case": false
+    },
+    "_WS_RE": {
+      "pattern": "[ \\t]+",
+      "ignore_case": false
+    },
+    "_LOCATION_SALARY_RE": {
+      "pattern": "[A-Z]{2,3},\\s*[A-Z]{0,2},?\\s*[\\w .'-]*\\s*-\\s*([\\d,]+\\.?\\d*)\\s*-\\s*([\\d,]+\\.?\\d*)\\s+(USD|CAD|EUR|GBP|CHF)\\s+(annually|hourly)",
+      "ignore_case": true
+    },
+    "_DOLLAR_RANGE_RE": {
+      "pattern": "(?:(?<=^)|(?<=[\\s(\\[]))(A[U]?|N[Z]?|S|HK|R|MX|U[S]?|CDN|C[A]?)?\\$([\\d,.]+[Kk]?)\\s*[-–—]\\s*(?:[A-Z]{0,3}\\$)?([\\d,.]+[Kk]?)(\\s*.{0,80})",
+      "ignore_case": false
+    },
+    "_SUFFIX_CURRENCY_RE": {
+      "pattern": "^\\s*[(\\[]?(AUD|NZD|SGD|HKD|BRL|MXN|CAD|USD)[)\\]]?\\b",
+      "ignore_case": true
+    },
+    "_SALARY_CONTEXT_RE": {
+      "pattern": "bonus|equity|benefits|salary|compensation|base pay|annually|annual|per year|hourly|per hour|/year|/yr|/hr|USD|CAD|GBP|total comp|range|pay",
+      "ignore_case": true
+    },
+    "_NOT_SALARY_RE": {
+      "pattern": "revenue|billion|million|funding|raised|ipo|valuation|market cap|investment|assets|turnover",
+      "ignore_case": true
+    },
+    "_BARE_RANGE_CURRENCY_RE": {
+      "pattern": "([\\d,]+\\.?\\d*)\\s*[-–—]\\s*([\\d,]+\\.?\\d*)\\s+\\(?(USD|CAD|EUR|GBP|CHF|AUD|NZD|SGD|HKD|BRL|MXN)\\)?(?:\\s*\\+\\s*(?:bonus|equity|benefits|stock)\\s*)*(?:\\s+(annually|hourly|per year|per hour|per annum|monthly|per month))?|([\\d,]+\\.?\\d*)\\s*[-–—]\\s*([\\d,]+\\.?\\d*)\\s+\\(yr\\)",
+      "ignore_case": true
+    },
+    "_SINGLE_DOLLAR_PERIOD_RE": {
+      "pattern": "(?:(?<=^)|(?<=[\\s(\\[]))(A[U]?|N[Z]?|S|HK|R|MX|U[S]?|CDN|C[A]?)?\\$([\\d,.]+[Kk]?)\\s*((?:[A-Z]{2,3}\\s*)?(?:per year|per annum|annually|annual|/year|/yr|per hour|hourly|/hour|/hr|per month|monthly|/month|/mo))",
+      "ignore_case": true
+    },
+    "_PREFIX_DOLLAR_SINGLE_RE": {
+      "pattern": "(?:(?<=^)|(?<=[\\s(\\[]))(A[U]?|N[Z]?|S|HK|R|MX|U[S]?|CDN|C[A]?)\\$(\\d+(?:[.,]\\d+)*[Kk]|\\d{1,3}(?:,\\d{3})+|\\d{1,3}(?:\\.\\d{3})+|\\d+)",
+      "ignore_case": false
+    },
+    "_EUR_SINGLE_RE": {
+      "pattern": "(?:(?:salary|gehalt|salaire|stipendio|salario|salaris|lön|løn|wynagrodzenie|plat|mzda|vergütung|retribuzione|mindestgehalt|mindestlohn|jahresgehalt|bruttojahresgehalt|einstiegsgehalt|hourly\\s+salary)\\s*:?\\s*(?:from|ab|starting from|à\\s+partir\\s+de|von|mindestens|da|vanaf|de|d['e]?)?\\s*(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)\\s*(?:EUR|€|euros?\\b|Euro\\b)|(?:EUR|€|euros?\\b|Euro\\b)\\s*(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)|(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)\\s*(?:EUR|€|euros?\\b|Euro\\b))",
+      "ignore_case": true
+    },
+    "_EUR_RANGE_RE": {
+      "pattern": "(?:(?:EUR|€|euros?\\b|Euro\\b)\\s*(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)\\s*(?:\\s+(?:to|bis|zu|à|au|und|et|y|en|and|tot)\\s+|\\s*[-–—]\\s*)(?:EUR|€|euros?\\b|Euro\\b)\\s*(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)|(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)\\s*(?:\\s+(?:to|bis|zu|à|au|und|et|y|en|and|tot)\\s+|\\s*[-–—]\\s*)(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)\\s*(?:EUR|€|euros?\\b|Euro\\b)|(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)\\s*(?:EUR|€|euros?\\b|Euro\\b)\\s*(?:\\s*[-–—]\\s*|\\s+(?:to|bis|zu|à|au|und|et|y|en|and|tot)\\s+|.{0,40}?\\s+(?:to|bis|zu|à|au|und|et|y|en|and|tot|ET)\\s+)(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d{1,3}(?:\\.\\d{3})+(?:,\\d{1,2})?|\\d{1,3}(?:[   ]\\d{3})+(?:,\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?[Kk]?)\\s*(?:EUR|€|euros?\\b|Euro\\b))",
+      "ignore_case": true
+    },
+    "_EUR_CONTEXT_RE": {
+      "pattern": "salary|gehalt|salaire|stipendio|salario|salaris|lön|løn|wynagrodzenie|plat|mzda|fizetés|palk|remuneration|rémunération|vergütung|retribuzione|anticipated|base\\s+pay|pay\\s+range|salary\\s+range|compensation\\s+range|hiring\\s+range|posting\\s+range|annual\\s+pay\\s+range|loonpakket|tarifvertrag|kollektivvertrag|mindestgehalt|mindestlohn|bruttojahresgehalt|lehrlingseinkommen|einstiegsgehalt|entgeltgruppe|jahresgehalt|stundenlohn|gross|brutto|brut|lordo|netto|net\\b|bruto\\b|per\\s+month|monatlich|mensuel|mensile|monthly|/month|pro\\s+monat|par\\s+mois|brut/?\\s*mois|bruto\\s+per\\s+maand|per\\s+year|jährlich|annuel|annuale|annually|yearly|/year|pro\\s+jahr|par\\s+an|brut/?\\s*an|bruto\\s+per\\s+jaar|bruts?\\s+annuels?|14\\s*mal\\s+jährlich|per\\s+hour|hourly|/hour|stündlich|/hr|an\\s+hour|per\\s+annum|pro\\s+rata|13[,.]\\d+\\s+maanden|\\bpa\\b|p\\.a\\.",
+      "ignore_case": true
+    },
+    "_EUR_GROSS_RE": {
+      "pattern": "\\b(?:gross|brutto|brut|lordo|bruto)\\b",
+      "ignore_case": true
+    },
+    "_EUR_NET_RE": {
+      "pattern": "\\b(?:netto|nett[oa]|net\\b)\\b",
+      "ignore_case": true
+    },
+    "_EUR_DISQUALIFY_RE": {
+      "pattern": "transport.{0,10}(compensation|allowance|Zuschuss)|referral.{0,10}(bonus|reward|program)|recommend.{0,10}(reward|bonus)|empfehlung|newborn.{0,10}bonus|child.{0,10}(bonus|benefit|allowance)|compensation for .{0,20}(tennis|gym|language|sport)|Zuschuss|commuting.{0,10}allowance",
+      "ignore_case": true
+    },
+    "_GBP_RANGE_RE": {
+      "pattern": "£([\\d,]+(?:\\.\\d+)?[Kk]?)(?:(?:\\s*[-–—]\\s*|\\s+to\\s+)|(?:\\s+(?:an\\s+hour|per\\s+hour|hourly|per\\s+annum|annually|per\\s+year))?\\s*[;,]?\\s*(?:this\\s+increases\\s+to|rising\\s+to|up\\s+to)\\s+)£?([\\d,]+(?:\\.\\d+)?[Kk]?)(\\s*.{0,60})",
+      "ignore_case": false
+    },
+    "_GBP_SINGLE_RE": {
+      "pattern": "£([\\d,]+(?:\\.\\d+)?[Kk]?)\\s*(per\\s+hour|hourly|an\\s+hour|per\\s+year|annually|per\\s+annum|pro\\s+rata|/hr|/hour|/year)",
+      "ignore_case": false
+    },
+    "_GBP_PREFIX_PERIOD_RE": {
+      "pattern": "(hourly\\s+salary|hourly\\s+pay|hourly\\s+rate)\\s*[:.\\-]?\\s*£([\\d,]+(?:\\.\\d+)?[Kk]?)",
+      "ignore_case": true
+    },
+    "_GBP_NOT_SALARY_RE": {
+      "pattern": "\\b(?:revenue|billion|million|funding|raised|ipo|valuation|market\\s+cap|investment|assets|turnover|budget|project|deal|contract|funding)\\b",
+      "ignore_case": true
+    },
+    "_CHF_RE": {
+      "pattern": "CHF\\s*([\\d][\\d'’.,]*\\d|\\d(?:\\.[\\-–—]+)?)(?:\\s*[-–—]\\s*([\\d][\\d'’.,]*\\d|\\d(?:\\.[\\-–—]+)?))?(\\s*.{0,80})",
+      "ignore_case": true
+    },
+    "_CHF_CONTEXT_RE": {
+      "pattern": "salary|gehalt|salaire|stipendio|lohn|salaris|vergütung|gross|brutto|brut|per\\s+month|monatlich|pro\\s+monat|monthly|/month|par\\s+mois|per\\s+year|jährlich|pro\\s+jahr|annually|yearly|/year|par\\s+an|per\\s+hour|pro\\s+stunde|hourly|/hour|stündlich|de\\s+l'?heure|par\\s+heure",
+      "ignore_case": true
+    },
+    "_EU_PERIOD_RE": {
+      "pattern": "per\\s+(?:hour|month|year)|hourly|monthly|yearly|annually|annual|/(?:hour|hr|month|mo|year|yr)|p\\.a\\.|miesięcznie|miesiecznie|miesiąc|miesiac|mies\\.|/mies|rocznie|rok|na\\s+godzinę|měsíčně|mesicne|měs\\.|/měs|ročně|rocne|/hod|na\\s+hodinu|per\\s+(?:år|månad|timme)|kr/(?:år|månad|timme)|årligen|årligt|månedlig|pr\\.\\s*(?:år|måned|time)|havonta|havi|/hó|évente|évi|/év|óránként|/óra|pe\\s+lună|lunar|pe\\s+an|anual|pe\\s+oră|/(?:lună|oră|an)|месечно|годишно|на\\s+(?:час|месец|година)",
+      "ignore_case": true
+    },
+    "_EU_GROSS_RE": {
+      "pattern": "\\b(?:gross|brut|brutto|bruttó|bruttoló|hrubého|bruttoløn|bruttolön|бруто)\\b",
+      "ignore_case": true
+    },
+    "_EU_NET_RE": {
+      "pattern": "\\b(?:net|netto|nettó|čistého|nettoløn|nettolön|нето)\\b",
+      "ignore_case": true
+    },
+    "_EU_PERK_RE": {
+      "pattern": "voucher|vouchere|stravenk|stravné|cafeteria|multisport|edenred|sodexo|allowance|appartement|wellness|wellbeing|l&d\\s+budget|learning\\s+budget|personal\\s+budget|annual\\s+budget|food\\s+ticket|meal\\s+ticket|meal\\s+voucher|meal\\s+allowance|tichete\\s+de\\s+masă|bonuri\\s+de\\s+masa|transport\\s+allowance|decont|étkezési|szép\\s+kártya|příspěvek|příspěvky|dodatek|dodatków|diurnă|deplasare|бонус|ваучер|referral\\s+(?:bonus|reward|fee|program)|sign[-\\s]?on\\s+bonus|gift\\s+card",
+      "ignore_case": true
+    },
+    "_EU_REVENUE_RE": {
+      "pattern": "\\b(?:revenue|turnover|sales\\s+of|billion|bn\\b|million|mn\\b|milliarder|mia\\.?|miljarder|mdr\\.?|miliard|miliardów|miliárd|miliarde|milliárd|милиард)",
+      "ignore_case": true
+    },
+    "_EU_SALARY_CONTEXT_RE": {
+      "pattern": "salary|salaire|salario|salariu|płaca|wynagrodzenie|wynagrodzeni|plat|mzda|mzd[aу]|fizetés|lön|løn|заплата|compensation|base\\s+pay|pay\\s+range|pay:|pay\\b|gehalt|vergütung|gross|net\\b|brut|brutto|bruttó|hrubého|hrub[éy]|nett|netto|nettó|čistého|per\\s+(?:hour|month|year)|hourly|monthly|yearly|annually|annual|miesięcznie|miesiecznie|rocznie|měsíčně|ročně|havi|havonta|évi|évente|lunar|anual|месечно|годишно|per\\s+(?:år|månad)|kr/(?:år|månad)|årligen|årligt|månedlig",
+      "ignore_case": true
+    },
+    "PLN": {
+      "pattern": "(?:(?<![A-Za-z0-9])(?:zł|ZŁ|PLN)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)(?:\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(?:(?:zł|ZŁ|PLN)\\s*)?(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?))?(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:zł|ZŁ|PLN)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:zł|ZŁ|PLN)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:zł|ZŁ|PLN)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:zł|ZŁ|PLN)(?![A-Za-zÀ-ž]))",
+      "ignore_case": true
+    },
+    "CZK": {
+      "pattern": "(?:(?<![A-Za-z0-9])(?:Kč|CZK)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)(?:\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(?:(?:Kč|CZK)\\s*)?(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?))?(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:Kč|CZK)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:Kč|CZK)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:Kč|CZK)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:Kč|CZK)(?![A-Za-zÀ-ž]))",
+      "ignore_case": true
+    },
+    "SEK": {
+      "pattern": "(?:(?<![A-Za-z0-9])(?:SEK|kronor)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)(?:\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(?:(?:SEK|kronor)\\s*)?(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?))?(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:SEK|kronor)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:SEK|kronor)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:SEK|kronor)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:SEK|kronor)(?![A-Za-zÀ-ž]))",
+      "ignore_case": true
+    },
+    "DKK": {
+      "pattern": "(?:(?<![A-Za-z0-9])(?:DKK)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)(?:\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(?:(?:DKK)\\s*)?(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?))?(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:DKK)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:DKK)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:DKK)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:DKK)(?![A-Za-zÀ-ž]))",
+      "ignore_case": true
+    },
+    "HUF": {
+      "pattern": "(?:(?<![A-Za-zÀ-ž])(?:HUF|Ft)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)(?:\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(?:(?:HUF|Ft)\\s*)?(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?))?(?![A-Za-zÀ-ž])|(?<![A-Za-zÀ-ž])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:HUF|Ft)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:HUF|Ft)(?![A-Za-zÀ-ž])|(?<![A-Za-zÀ-ž])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:HUF|Ft)(?![A-Za-zÀ-ž])|(?<![A-Za-zÀ-ž])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:HUF|Ft)(?![A-Za-zÀ-ž]))",
+      "ignore_case": true
+    },
+    "RON": {
+      "pattern": "(?:(?<![A-Za-zÀ-ž])(?:RON|lei)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)(?:\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(?:(?:RON|lei)\\s*)?(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?))?(?![A-Za-zÀ-ž])|(?<![A-Za-zÀ-ž])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:RON|lei)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:RON|lei)(?![A-Za-zÀ-ž])|(?<![A-Za-zÀ-ž])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:RON|lei)(?![A-Za-zÀ-ž])|(?<![A-Za-zÀ-ž])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:RON|lei)(?![A-Za-zÀ-ž]))",
+      "ignore_case": true
+    },
+    "BGN": {
+      "pattern": "(?:(?<![A-Za-z0-9])(?:BGN|лв\\.?)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)(?:\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(?:(?:BGN|лв\\.?)\\s*)?(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?))?(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:BGN|лв\\.?)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:BGN|лв\\.?)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:-|–|—|to|do|til|à|–|—)\\s*(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:BGN|лв\\.?)(?![A-Za-zÀ-ž])|(?<![A-Za-z0-9])(\\d{1,3}(?:[  .,]\\d{3})*(?:[.,]\\d+)?|\\d{2,}(?:[.,]\\d+)?)\\s*(?:BGN|лв\\.?)(?![A-Za-zÀ-ž]))",
+      "ignore_case": true
+    },
+    "_is_european_decimal:fullmatch": {
+      "pattern": "\\A(?:\\d{1,3}(?:\\.\\d{3})+)\\z",
+      "ignore_case": false
+    },
+    "_extract_dollar_range:sub": {
+      "pattern": "[\\+,]?\\s*(bonus|equity|benefits|stock)\\s*",
+      "ignore_case": true
+    },
+    "_extract_single_dollar:sub": {
+      "pattern": "^\\s*(AUD|NZD|SGD|HKD|BRL|MXN|CAD|USD)\\s*",
+      "ignore_case": true
+    },
+    "_eur_period_in_window:search": {
+      "pattern": "per\\s+hour|hourly|/hour|/hr|stündlich|an\\s+hour|de\\s+l'?heure|par\\s+heure|pro\\s+stunde|stundenlohn|brutto/std|brutto/stunde|/std\\.?|per\\s+month|monthly|/month|monatlich|mensuel|mensile|pro\\s+monat|par\\s+mois|brut/?\\s*mois|bruto\\s+per\\s+maand|14\\s*mal\\s+jährlich|per\\s+year|annually|yearly|/year|jährlich|annuel|annuale|pro\\s+jahr|par\\s+an|brut/?\\s*an|bruto\\s+per\\s+jaar|bruts?\\s+annuels?|per\\s+annum|pro\\s+rata|jahresgehalt|bruttojahresgehalt|p\\.a\\.",
+      "ignore_case": true
+    },
+    "_gbp_period_from_window:search": {
+      "pattern": "per\\s+hour|hourly|an\\s+hour|/hr|/hour|per\\s+year|annually|per\\s+annum|pro\\s+rata|/year",
+      "ignore_case": true
+    },
+    "_extract_gbp:search": {
+      "pattern": "salary|pay|compensation|per\\s+year|annually|per\\s+hour|hourly|per\\s+annum|pro\\s+rata|an\\s+hour|dependent\\s+on|rate\\s+of\\s+pay",
+      "ignore_case": true
+    },
+    "_normalize_chf_amount:sub": {
+      "pattern": "\\.(?:[\\-–—]+)(?=\\s|$|[^\\d])",
+      "ignore_case": false
+    },
+    "_extract_chf:search": {
+      "pattern": "pro\\s+stunde|per\\s+hour|hourly|stündlich|/hour|/hr|de\\s+l'?heure|par\\s+heure|pro\\s+monat|per\\s+month|monthly|monatlich|/month|par\\s+mois|pro\\s+jahr|per\\s+year|annually|yearly|jährlich|/year|par\\s+an",
+      "ignore_case": true
+    },
+    "_parse_eu_number:sub": {
+      "pattern": ",\\s*-+$",
+      "ignore_case": false
+    }
+  },
+  "mojibake": [
+    [
+      "Â£",
+      "£"
+    ],
+    [
+      "Â€",
+      "€"
+    ],
+    [
+      "Â¥",
+      "¥"
+    ],
+    [
+      "Â ",
+      " "
+    ],
+    [
+      "Â ",
+      " "
+    ],
+    [
+      "â€¦",
+      "…"
+    ],
+    [
+      "â€“",
+      "–"
+    ],
+    [
+      "â€”",
+      "—"
+    ],
+    [
+      "â€˜",
+      "‘"
+    ],
+    [
+      "â€™",
+      "’"
+    ],
+    [
+      "â€œ",
+      "“"
+    ],
+    [
+      "â€",
+      "”"
+    ],
+    [
+      "Ã©",
+      "é"
+    ],
+    [
+      "Ã¨",
+      "è"
+    ],
+    [
+      "Ã ",
+      "à"
+    ],
+    [
+      "Ã¼",
+      "ü"
+    ],
+    [
+      "Ã¤",
+      "ä"
+    ],
+    [
+      "Ã¶",
+      "ö"
+    ],
+    [
+      "ÃŸ",
+      "ß"
+    ]
+  ],
+  "periods": [
+    [
+      "annually",
+      "yearly"
+    ],
+    [
+      "annual",
+      "yearly"
+    ],
+    [
+      "per year",
+      "yearly"
+    ],
+    [
+      "per annum",
+      "yearly"
+    ],
+    [
+      "/year",
+      "yearly"
+    ],
+    [
+      "/yr",
+      "yearly"
+    ],
+    [
+      "p.a.",
+      "yearly"
+    ],
+    [
+      "yearly",
+      "yearly"
+    ],
+    [
+      "year",
+      "yearly"
+    ],
+    [
+      "(yr)",
+      "yearly"
+    ],
+    [
+      "hourly",
+      "hourly"
+    ],
+    [
+      "per hour",
+      "hourly"
+    ],
+    [
+      "/hour",
+      "hourly"
+    ],
+    [
+      "/hr",
+      "hourly"
+    ],
+    [
+      "hr",
+      "hourly"
+    ],
+    [
+      "monthly",
+      "monthly"
+    ],
+    [
+      "per month",
+      "monthly"
+    ],
+    [
+      "/month",
+      "monthly"
+    ],
+    [
+      "/mo",
+      "monthly"
+    ],
+    [
+      "rocznie",
+      "yearly"
+    ],
+    [
+      "miesięcznie",
+      "monthly"
+    ],
+    [
+      "miesiecznie",
+      "monthly"
+    ],
+    [
+      "mies.",
+      "monthly"
+    ],
+    [
+      "/mies",
+      "monthly"
+    ],
+    [
+      "na godzinę",
+      "hourly"
+    ],
+    [
+      "ročně",
+      "yearly"
+    ],
+    [
+      "rocne",
+      "yearly"
+    ],
+    [
+      "měsíčně",
+      "monthly"
+    ],
+    [
+      "mesicne",
+      "monthly"
+    ],
+    [
+      "měs.",
+      "monthly"
+    ],
+    [
+      "/měs",
+      "monthly"
+    ],
+    [
+      "na hodinu",
+      "hourly"
+    ],
+    [
+      "/hod",
+      "hourly"
+    ],
+    [
+      "årligen",
+      "yearly"
+    ],
+    [
+      "per år",
+      "yearly"
+    ],
+    [
+      "per månad",
+      "monthly"
+    ],
+    [
+      "kr/månad",
+      "monthly"
+    ],
+    [
+      "per timme",
+      "hourly"
+    ],
+    [
+      "årligt",
+      "yearly"
+    ],
+    [
+      "pr. år",
+      "yearly"
+    ],
+    [
+      "månedlig",
+      "monthly"
+    ],
+    [
+      "pr. måned",
+      "monthly"
+    ],
+    [
+      "pr. time",
+      "hourly"
+    ],
+    [
+      "évente",
+      "yearly"
+    ],
+    [
+      "évi",
+      "yearly"
+    ],
+    [
+      "/év",
+      "yearly"
+    ],
+    [
+      "havi",
+      "monthly"
+    ],
+    [
+      "havonta",
+      "monthly"
+    ],
+    [
+      "/hó",
+      "monthly"
+    ],
+    [
+      "óránként",
+      "hourly"
+    ],
+    [
+      "/óra",
+      "hourly"
+    ],
+    [
+      "anual",
+      "yearly"
+    ],
+    [
+      "pe an",
+      "yearly"
+    ],
+    [
+      "/an",
+      "yearly"
+    ],
+    [
+      "lunar",
+      "monthly"
+    ],
+    [
+      "pe lună",
+      "monthly"
+    ],
+    [
+      "pe luna",
+      "monthly"
+    ],
+    [
+      "/lună",
+      "monthly"
+    ],
+    [
+      "pe oră",
+      "hourly"
+    ],
+    [
+      "/oră",
+      "hourly"
+    ],
+    [
+      "годишно",
+      "yearly"
+    ],
+    [
+      "на година",
+      "yearly"
+    ],
+    [
+      "месечно",
+      "monthly"
+    ],
+    [
+      "на месец",
+      "monthly"
+    ],
+    [
+      "на час",
+      "hourly"
+    ]
+  ],
+  "prefixes": {
+    "AU": "AUD",
+    "A": "AUD",
+    "NZ": "NZD",
+    "HK": "HKD",
+    "S": "SGD",
+    "R": "BRL",
+    "MX": "MXN",
+    "U": "USD",
+    "US": "USD",
+    "CDN": "CAD",
+    "C": "CAD",
+    "CA": "CAD"
+  },
+  "currencies": [
+    {
+      "code": "PLN",
+      "iso": "PLN",
+      "symbols": [
+        "zł",
+        "ZŁ",
+        "PLN"
+      ],
+      "range_min": 30000,
+      "range_max": 1500000,
+      "monthly_min": 2000,
+      "monthly_max": 150000,
+      "hourly_min": 15,
+      "hourly_max": 1000
+    },
+    {
+      "code": "CZK",
+      "iso": "CZK",
+      "symbols": [
+        "Kč",
+        "CZK"
+      ],
+      "range_min": 200000,
+      "range_max": 5000000,
+      "monthly_min": 15000,
+      "monthly_max": 500000,
+      "hourly_min": 80,
+      "hourly_max": 3000
+    },
+    {
+      "code": "SEK",
+      "iso": "SEK",
+      "symbols": [
+        "SEK",
+        "kronor"
+      ],
+      "range_min": 200000,
+      "range_max": 5000000,
+      "monthly_min": 15000,
+      "monthly_max": 500000,
+      "hourly_min": 80,
+      "hourly_max": 3000
+    },
+    {
+      "code": "DKK",
+      "iso": "DKK",
+      "symbols": [
+        "DKK"
+      ],
+      "range_min": 200000,
+      "range_max": 5000000,
+      "monthly_min": 15000,
+      "monthly_max": 500000,
+      "hourly_min": 80,
+      "hourly_max": 3000
+    },
+    {
+      "code": "HUF",
+      "iso": "HUF",
+      "symbols": [
+        "HUF",
+        "Ft"
+      ],
+      "word_break": true,
+      "range_min": 1500000,
+      "range_max": 200000000,
+      "monthly_min": 200000,
+      "monthly_max": 20000000,
+      "hourly_min": 1500,
+      "hourly_max": 50000
+    },
+    {
+      "code": "RON",
+      "iso": "RON",
+      "symbols": [
+        "RON",
+        "lei"
+      ],
+      "word_break": true,
+      "range_min": 24000,
+      "range_max": 1000000,
+      "monthly_min": 2000,
+      "monthly_max": 100000,
+      "hourly_min": 10,
+      "hourly_max": 500
+    },
+    {
+      "code": "BGN",
+      "iso": "BGN",
+      "symbols": [
+        "BGN",
+        "лв\\.?"
+      ],
+      "range_min": 12000,
+      "range_max": 400000,
+      "monthly_min": 1000,
+      "monthly_max": 40000,
+      "hourly_min": 5,
+      "hourly_max": 200
+    }
+  ],
+  "tokens": {
+    "hourly_tokens": [
+      "hour",
+      "hr",
+      "hod",
+      "godzin",
+      "óra",
+      "óránk",
+      "oră",
+      "timme",
+      "stunde",
+      "час",
+      "/h"
+    ],
+    "monthly_tokens": [
+      "month",
+      "mo",
+      "mies",
+      "měs",
+      "havi",
+      "havonta",
+      "/hó",
+      "lună",
+      "luna",
+      "lunar",
+      "månad",
+      "måned",
+      "месечно"
+    ],
+    "yearly_tokens": [
+      "year",
+      "yr",
+      "annual",
+      "annually",
+      "p.a.",
+      "rok",
+      "rocz",
+      "ročn",
+      "/év",
+      "évi",
+      "éven",
+      "/an",
+      "anual",
+      "år",
+      "годишно"
+    ]
+  }
+}

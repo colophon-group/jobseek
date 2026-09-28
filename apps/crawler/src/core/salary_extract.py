@@ -1861,7 +1861,7 @@ def _extract_eu_currency(text: str, code: str) -> list[SalaryRange]:
 # ── Public API ───────────────────────────────────────────────────────
 
 
-def extract_salary(html: str) -> list[SalaryRange]:
+def _extract_salary_python(html: str) -> list[SalaryRange]:
     """Extract salary ranges from job description HTML.
 
     Returns all high-confidence salary ranges found.  An empty list means
@@ -1927,13 +1927,13 @@ def extract_salary(html: str) -> list[SalaryRange]:
     return all_results
 
 
-def extract_salary_unified(html: str) -> SalaryRange | None:
+def _extract_salary_unified_python(html: str) -> SalaryRange | None:
     """Extract a single best salary range from HTML.
 
     When multiple ranges exist (e.g. per-location), returns the widest
     range (lowest min, highest max) to represent the overall band.
     """
-    ranges = extract_salary(html)
+    ranges = _extract_salary_python(html)
     if not ranges:
         return None
 
@@ -1961,7 +1961,7 @@ def extract_salary_unified(html: str) -> SalaryRange | None:
 _PERIOD_TO_UNIT = {"yearly": "year", "monthly": "month", "hourly": "hour"}
 
 
-def parse_salary_text(text: str) -> dict | None:
+def _parse_salary_text_python(text: str) -> dict | None:
     """Parse a salary string into a ``base_salary`` dict.
 
     Accepts any text containing salary information (plain text or HTML):
@@ -1976,7 +1976,7 @@ def parse_salary_text(text: str) -> dict | None:
     converts the internal ``SalaryRange`` to the standard ``base_salary``
     dict used by scrapers and monitors.
     """
-    sr = extract_salary_unified(text)
+    sr = _extract_salary_unified_python(text)
     if sr is None:
         return None
     sal_min = sr.min
@@ -1992,3 +1992,32 @@ def parse_salary_text(text: str) -> dict | None:
         "max": sal_max,
         "unit": _PERIOD_TO_UNIT.get(sr.period, sr.period),
     }
+
+
+def extract_salary(html: str) -> list[SalaryRange]:
+    """Extract all salary ranges using the configured enrichment owner."""
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        result = job_enrichment_go.salary_result(html)
+        return [SalaryRange(**item) for item in result["ranges"]]
+    return _extract_salary_python(html)
+
+
+def extract_salary_unified(html: str) -> SalaryRange | None:
+    """Extract the widest band in the first largest currency/period group."""
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        result = job_enrichment_go.salary_result(html)["unified"]
+        return SalaryRange(**result) if result is not None else None
+    return _extract_salary_unified_python(html)
+
+
+def parse_salary_text(text: str) -> dict | None:
+    """Parse plain text or HTML into the monitor/scraper base_salary shape."""
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.salary_result(text)["parsed"]
+    return _parse_salary_text_python(text)
