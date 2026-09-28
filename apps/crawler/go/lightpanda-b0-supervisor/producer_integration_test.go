@@ -108,6 +108,15 @@ func TestProducerSelfUIDCannotMutate(t *testing.T) {
 }
 
 func TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence(t *testing.T) {
+	for _, scraperType := range []string{"json-ld", "dom"} {
+		t.Run(scraperType, func(t *testing.T) {
+			runInstalledProducerLifecycle(t, scraperType)
+		})
+	}
+}
+
+func runInstalledProducerLifecycle(t *testing.T, scraperType string) {
+	t.Helper()
 	binary := os.Getenv("LIGHTPANDA_B0_INTEGRATION_BINARY")
 	redisURL := os.Getenv("LIGHTPANDA_B0_INTEGRATION_REDIS_URL")
 	rawProducerUID := os.Getenv("LIGHTPANDA_B0_INTEGRATION_PRODUCER_UID")
@@ -156,7 +165,12 @@ func TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence(t *test
 		"browser_backend": "lightpanda", "render": true, "routing_revision": "go-b0-1",
 		"timeout": int64(5000), "wait": "load", "wait_fallback": nil,
 	}
-	metadata, err := canonicalJSON(map[string]any{"scraper_config": parserConfig, "scraper_type": "json-ld"}, true)
+	if scraperType == "dom" {
+		parserConfig["wait"] = "networkidle"
+		parserConfig["wait_fallback"] = "domcontentloaded"
+		parserConfig["steps"] = []any{map[string]any{"tag": "h1", "field": "title"}}
+	}
+	metadata, err := canonicalJSON(map[string]any{"scraper_config": parserConfig, "scraper_type": scraperType}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,6 +285,12 @@ func TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence(t *test
 	current, result, err := queue.claim(ctx, time.Minute)
 	if err != nil || current == nil || result.Reason != "claimed" {
 		t.Fatalf("real queue claim failed: %#v %#v %v", current, result, err)
+	}
+	if current.Task.Envelope.ScraperType != scraperType || current.Task.Envelope.Wait != parserConfig["wait"] {
+		t.Fatal("installed Redis lifecycle changed the bound parser identity")
+	}
+	if scraperType == "dom" && (current.Task.Envelope.WaitFallback == nil || *current.Task.Envelope.WaitFallback != "domcontentloaded") {
+		t.Fatal("installed Redis lifecycle lost DOM current-document fallback")
 	}
 	if err := queue.terminal(ctx, current, nil); err != nil {
 		t.Fatal(err)

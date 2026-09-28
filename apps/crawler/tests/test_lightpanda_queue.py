@@ -204,6 +204,77 @@ async def test_initialize_register_claim_and_audit(redis: Any, route: RouteIdent
     assert audit.accepted and (audit.value, audit.secondary_value) == (1, 1)
 
 
+@pytest.mark.parametrize("wait", ["commit", "domcontentloaded", "load", "networkidle"])
+@pytest.mark.parametrize("fallback", [None, "domcontentloaded", "load"])
+async def test_dom_assignment_survives_lua_lifecycle(
+    redis: Any, route: RouteIdentity, wait: str, fallback: str | None
+) -> None:
+    resolved = resolve_render_assignment(
+        "dom",
+        {
+            "browser_backend": "lightpanda",
+            "render": True,
+            "routing_revision": "dom-b0-1",
+            "timeout": 30_000,
+            "wait": wait,
+            "wait_fallback": fallback,
+            "steps": [{"tag": "h1", "field": "title"}],
+        },
+    )
+    assert resolved is not None
+    queued = LightpandaB0Task.create(
+        task_id="dom-posting",
+        board_id="dom-board",
+        source_url="https://jobs.example.com/jobs/dom-posting",
+        policy_key="lightpanda-b0-v1",
+        domain="jobs.example.com",
+        route=route,
+        config_revision=1,
+        initial_ready_at_ms=0,
+        assignment=resolved,
+    )
+    queue = LightpandaB0Queue(redis, namespace="dom-lifecycle")
+    assert (await queue.initialize(route)).accepted
+    assert (await queue.register(queued)).accepted
+    assert (await queue.audit_conservation(route)).accepted
+    claimed = await queue.claim_next(route, lease_ttl_ms=30_000)
+    assert claimed.lease is not None
+    assert claimed.lease.task == queued
+    assert claimed.lease.task.assignment.wait == wait
+    assert claimed.lease.task.assignment.wait_fallback == fallback
+    assert (await queue.complete(claimed.lease)).accepted
+    assert (await queue.audit_conservation(route)).accepted
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("scraper_type", "unsupported"),
+        ("wait", "invalid"),
+        ("wait", "commit"),
+        ("wait_fallback", "load"),
+    ],
+)
+async def test_lua_rejects_unsupported_or_drifted_assignment(
+    redis: Any, route: RouteIdentity, field: str, value: str
+) -> None:
+    queue = LightpandaB0Queue(redis, namespace="assignment-corrupt")
+    queued = task(route)
+    assert (await queue.initialize(route)).accepted
+    assert (await queue.register(queued)).accepted
+    record = json.loads(await redis.hget(queue._keys.records, queued.task_id))
+    envelope = json.loads(record["payload"])
+    envelope[field] = value
+    record["payload"] = json.dumps(envelope)
+    record["payload_sha1"] = queue_module.hashlib.sha1(
+        record["payload"].encode(), usedforsecurity=False
+    ).hexdigest()
+    await redis.hset(queue._keys.records, queued.task_id, json.dumps(record))
+    assert not (await queue.audit_conservation(route)).accepted
+    claimed = await queue.claim_next(route, lease_ttl_ms=30_000)
+    assert claimed.lease is None
+
+
 async def test_register_recomputes_public_task_identity(redis: Any, route: RouteIdentity) -> None:
     queue = LightpandaB0Queue(redis, namespace="forged-register")
     await queue.initialize(route)
