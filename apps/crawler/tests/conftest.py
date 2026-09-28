@@ -11,13 +11,14 @@ os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/tes
 
 
 @pytest.fixture(autouse=True)
-def python_jsonld_adapter_tests(monkeypatch):
+def python_adapter_tests(monkeypatch):
     """Legacy mock HTTP/dispatcher tests explicitly own the Python adapter.
 
-    Native routing tests clear this flag to exercise the production default;
+    Native routing tests clear these flags to exercise the production defaults;
     provided Lightpanda/native runtimes remain authoritative regardless.
     """
     monkeypatch.setenv("JSONLD_GO_DETAIL_PERCENT", "0")
+    monkeypatch.setenv("SMARTRECRUITERS_GO_DETAIL_PERCENT", "0")
 
 
 @pytest.fixture(scope="session")

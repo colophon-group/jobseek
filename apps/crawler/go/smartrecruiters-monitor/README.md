@@ -37,8 +37,24 @@ All modes emit one JSON result and return nonzero on failure.
 configurations, including large ordinary publication inventories up to the
 existing 50,000-publication bound. Set the percentage to zero for route reversal.
 `SMARTRECRUITERS_GO_DETAIL_BOARD_IDS` separately selects scheduled detail boards.
+`SMARTRECRUITERS_GO_DETAIL_PERCENT` defaults to 100 for direct default-config
+detail URLs. Admission preserves Python's ordinary/oneclick company and posting
+identity, including slugs, and rejects unsupported transport/configuration.
+Set it to zero to reverse the broad detail route; remove exact detail selectors
+through the supported cold procedure to reverse those routes too. Provided
+browser runtimes retain precedence. Idle browser handles in a mixed batch do
+not prevent a direct Go detail request.
 Unsupported configurations fail closed in a selected runtime. Exact board
 selectors take precedence over the percentage route.
+
+Exact detail selectors also retain up to four already fetched, policy-checked
+API responses per board/worker at
+`/tmp/jobseek-smartrecruiters-go-detail-<board-id>-<slot>.json`, exclusively
+created mode 0600. Broad percentage selection alone does not enable capture.
+Copy captures securely outside `/tmp`, then use
+`scripts/compare-smartrecruiters-detail-capture.py` with the native binary and
+the natural completion field hash. The comparison uses the canonical Python
+parser and Go's offline `parse-detail` mode; it makes no publisher request.
 
 Use the supported B0 cold rollback and exact selector cleanup before deploying
 or changing selectors. Stage against the exact deployed revision and reactivate

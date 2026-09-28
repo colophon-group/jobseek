@@ -24,12 +24,13 @@ func main() {
 		os.Exit(2)
 	}
 	var input struct {
-		Responses map[string][]smartrecruiters.Object `json:"responses"`
-		Posting   smartrecruiters.Object              `json:"posting"`
-		Mode      string                              `json:"mode"`
-		URL       string                              `json:"url"`
-		BoardURL  string                              `json:"board_url"`
-		Metadata  smartrecruiters.Object              `json:"metadata"`
+		Responses      map[string][]smartrecruiters.Object `json:"responses"`
+		Posting        smartrecruiters.Object              `json:"posting"`
+		Mode           string                              `json:"mode"`
+		URL            string                              `json:"url"`
+		BoardURL       string                              `json:"board_url"`
+		Metadata       smartrecruiters.Object              `json:"metadata"`
+		CaptureBoardID string                              `json:"capture_board_id"`
 	}
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.UseNumber()
@@ -55,7 +56,7 @@ func main() {
 	case "parse-detail":
 		result, err = smartrecruiters.ParseDetail(input.Posting)
 	case "detail":
-		result, err = smartrecruiters.FetchDetail(ctx, input.URL)
+		result, err = smartrecruiters.FetchDetailForBoard(ctx, input.URL, input.CaptureBoardID)
 	default:
 		fmt.Fprintln(os.Stderr, "unknown mode")
 		os.Exit(2)

@@ -71,6 +71,7 @@ x-common-env: &common-env
   # SmartRecruiters monitor defaults to Go; detail remains an exact board cohort.
   SMARTRECRUITERS_GO_BOARD_IDS: ${SMARTRECRUITERS_GO_BOARD_IDS:-}
   SMARTRECRUITERS_GO_DETAIL_BOARD_IDS: ${SMARTRECRUITERS_GO_DETAIL_BOARD_IDS:-}
+  SMARTRECRUITERS_GO_DETAIL_PERCENT: ${SMARTRECRUITERS_GO_DETAIL_PERCENT:-100}
   SMARTRECRUITERS_GO_PERCENT: ${SMARTRECRUITERS_GO_PERCENT:-100}
   # Workable list remains a bounded cohort; the existing detail scraper remains scheduled.
   WORKABLE_GO_BOARD_IDS: ${WORKABLE_GO_BOARD_IDS:-}
