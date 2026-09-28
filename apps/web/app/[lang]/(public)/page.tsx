@@ -7,6 +7,8 @@ import { Pricing } from "@/components/Pricing";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
+import { paddleCheckoutEnabled } from "@/lib/paddle/config";
+import { MarketingLinks } from "@/components/marketing/MarketingPage";
 
 type Props = {
   params: Promise<{ lang: string }>;
@@ -25,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = i18n._({
     id: "home.meta.description",
     comment: "SEO description for the public homepage.",
-    message: "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
+    message: "Follow your chosen companies, find jobs from their career pages, and track jobs saved on Job Seek. Free search and up to 10 watchlists.",
   });
 
   return {
@@ -62,7 +64,7 @@ export default async function HomePage({ params }: Props) {
         description: i18n._({
           id: "home.meta.description",
           comment: "JSON-LD page description for the public homepage.",
-          message: "Build watchlists of the companies you care about, get email alerts when new roles open up, and track applications in one place. Postings come direct from company career pages, within hours of going live — no recruiter spam, no reposted listings.",
+          message: "Follow your chosen companies, find jobs from their career pages, and track jobs saved on Job Seek. Free search and up to 10 watchlists.",
         }),
         url: `${siteConfig.url}/${locale}`,
         inLanguage: locale,
@@ -70,8 +72,9 @@ export default async function HomePage({ params }: Props) {
       }} />
       <main id="main-content" tabIndex={-1} className="scroll-mt-12" suppressHydrationWarning>
         <Hero />
+        <div className="mx-auto max-w-[1200px] px-4 pb-4"><MarketingLinks locale={locale} /></div>
         <Features />
-        <Pricing />
+        <Pricing checkoutEnabled={paddleCheckoutEnabled()} />
         {afterPricingArt && (
           <section className="py-20">
             <div className="mx-auto max-w-[1200px] px-4">

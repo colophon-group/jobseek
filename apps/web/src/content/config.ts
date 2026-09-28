@@ -206,6 +206,9 @@ export const siteConfig = {
       { path: "/", changeFrequency: "weekly", priority: 1, lastModified: "2026-09-28" },
       { path: "/about", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-09-28" },
       { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-09-28" },
+      { path: "/job-alerts", changeFrequency: "monthly", priority: 0.8, lastModified: "2026-09-28" },
+      { path: "/job-application-tracker", changeFrequency: "monthly", priority: 0.8, lastModified: "2026-09-28" },
+      { path: "/narrowed", changeFrequency: "monthly", priority: 0.8, lastModified: "2026-09-28" },
       // Blog index. Per-post URLs are emitted separately by
       // `blogPostEntries` in `apps/web/src/lib/sitemap.ts` (#2828).
       { path: "/blog", changeFrequency: "weekly", priority: 0.7, lastModified: "2026-09-28" },
@@ -227,6 +230,45 @@ export const siteConfig = {
 } as const;
 
 export const publicDomainAssets: Record<string, PublicDomainAsset> = {
+  the_woodcutter: {
+    href: "/publicdomain/master/the_woodcutter.jpg",
+    light: "/publicdomain/the_woodcutter_dark.png",
+    dark: "/publicdomain/the_woodcutter_light.png",
+    width: 1561,
+    height: 2055,
+    crop: { top: 370, right: 45, bottom: 80, left: 45 },
+    alt: "A craftsman carving a woodblock in his workshop",
+    title: "The Woodcutter",
+    author: "Jost Amman",
+    date: "1568",
+    link: "https://wellcomecollection.org/works/sdq6u6kq",
+  },
+  the_ploughman: {
+    href: "/publicdomain/master/the_ploughman.jpg",
+    light: "/publicdomain/the_ploughman_dark.png",
+    dark: "/publicdomain/the_ploughman_light.png",
+    width: 550,
+    height: 720,
+    crop: { top: 15, right: 18, bottom: 22, left: 25 },
+    alt: "The Ploughman by Hans Holbein",
+    title: "The Ploughman",
+    author: "Hans Holbein",
+    date: "1523–5",
+    link: "https://pdimagearchive.org/images/ff74e7ae-cc8f-468c-b77e-43c119df5290/",
+  },
+  the_emperor: {
+    href: "/publicdomain/master/the_emperor.jpg",
+    light: "/publicdomain/the_emperor_dark.png",
+    dark: "/publicdomain/the_emperor_light.png",
+    width: 550,
+    height: 713,
+    crop: { top: 22, right: 28, bottom: 27, left: 28 },
+    alt: "The Emperor by Hans Holbein",
+    title: "The Emperor",
+    author: "Hans Holbein",
+    date: "1523–5",
+    link: "https://pdimagearchive.org/images/ab0eeb6f-a1af-4764-8624-0caf624551e2/",
+  },
   the_king: {
     href: "/publicdomain/master/the_king.jpg",
     light: "/publicdomain/the_king_dark.png",

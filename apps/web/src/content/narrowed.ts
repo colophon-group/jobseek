@@ -1,0 +1,27 @@
+import { msg } from "@lingui/core/macro";
+
+export const narrowedMessages = {
+  link: msg({ id: "marketing.narrowed.link", comment: "Narrowed marketing page: link", message: "Narrowed job search" }),
+  title: msg({ id: "marketing.narrowed.title", comment: "Narrowed marketing page: title", message: "Find the work you want to do." }),
+  metaTitle: msg({ id: "marketing.narrowed.metaTitle", comment: "Narrowed marketing page: metaTitle", message: "Narrowed — job search beyond the job title" }),
+  description: msg({ id: "marketing.narrowed.description", comment: "Narrowed marketing page: description", message: "Tell Narrowed what matters to you. It reads job descriptions in your watchlist and picks out the matches. Included with Job Seek Pro." }),
+  body: msg({ id: "marketing.narrowed.body", comment: "Narrowed marketing page: body", message: "A job title only tells you so much. Tell Narrowed what matters to you. It reads the job descriptions in your watchlist and picks out the matches." }),
+  cta: msg({ id: "marketing.narrowed.cta", comment: "Narrowed marketing page: cta", message: "Build my shortlist" }),
+  pricing: msg({ id: "marketing.narrowed.pricing", comment: "Narrowed marketing page: pricing", message: "See pricing" }),
+  note: msg({ id: "marketing.narrowed.note", comment: "Narrowed marketing page: note", message: "Start with a free watchlist. Narrowed is included with Pro." }),
+  exampleTitle: msg({ id: "marketing.narrowed.exampleTitle", comment: "Narrowed marketing page: exampleTitle", message: "Go beyond the keywords." }),
+  exampleBody: msg({ id: "marketing.narrowed.exampleBody", comment: "Narrowed marketing page: exampleBody", message: "This request looks for direct work with users. A mention of “customer focus” alone doesn’t establish that." }),
+  excludedTitle: msg({ id: "marketing.narrowed.excludedTitle", comment: "Narrowed marketing page: excludedTitle", message: "Left out of this shortlist" }),
+  excludedReason: msg({ id: "marketing.narrowed.excludedReason", comment: "Narrowed marketing page: excludedReason", message: "The posting asks for a customer-focused engineer, but doesn’t describe working directly with users." }),
+  stepsTitle: msg({ id: "marketing.narrowed.stepsTitle", comment: "Narrowed marketing page: stepsTitle", message: "Your search, with the details that matter." }),
+  step1Title: msg({ id: "marketing.narrowed.step1Title", comment: "Narrowed marketing page: step1Title", message: "Choose where to look" }),
+  step1Body: msg({ id: "marketing.narrowed.step1Body", comment: "Narrowed marketing page: step1Body", message: "Pick your companies, role, and location. Save the search as a watchlist." }),
+  step2Title: msg({ id: "marketing.narrowed.step2Title", comment: "Narrowed marketing page: step2Title", message: "Say what matters" }),
+  step2Body: msg({ id: "marketing.narrowed.step2Body", comment: "Narrowed marketing page: step2Body", message: "Add a short request in Narrowed. Include the work you want and what you’d rather avoid." }),
+  step3Title: msg({ id: "marketing.narrowed.step3Title", comment: "Narrowed marketing page: step3Title", message: "Meet your shortlist" }),
+  step3Body: msg({ id: "marketing.narrowed.step3Body", comment: "Narrowed marketing page: step3Body", message: "Open the matches, save the promising ones, and decide where to apply." }),
+  learn: msg({ id: "marketing.narrowed.learn", comment: "Narrowed marketing page: learn", message: "See how Narrowed works" }),
+  proofTitle: msg({ id: "marketing.narrowed.proofTitle", comment: "Narrowed marketing page: proofTitle", message: "Less scrolling. More worth opening." }),
+  proofBody: msg({ id: "marketing.narrowed.proofBody", comment: "Narrowed marketing page: proofBody", message: "Keep the companies you care about together. Narrowed brings the matching roles into one feed." }),
+  proofAlt: msg({ id: "marketing.narrowed.proofAlt", comment: "Narrowed marketing page: proofAlt", message: "A watchlist with Narrowed results across several companies" }),
+};

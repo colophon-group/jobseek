@@ -168,17 +168,17 @@ function FeatureSection1() {
                 <Trans id="home.features.s1.eyebrow" comment="Feature section 1 eyebrow text">Search with precision</Trans>
               </span>
               <h2 className={`mt-2 ${sectionHeadingClass}`}>
-                <Trans id="home.features.s1.title" comment="Feature section 1 heading">Every filter a job seeker actually needs</Trans>
+                <Trans id="home.features.s1.title" comment="Feature section 1 heading">Find roles that fit your search</Trans>
               </h2>
               <p className="mt-4 text-muted">
-                <Trans id="home.features.s1.description" comment="Feature section 1 description">Search across thousands of companies scraped directly from their career pages. Filter by seniority, tech stack, salary range, location, and language — all at once.</Trans>
+                <Trans id="home.features.s1.description" comment="Feature section 1 description">Search jobs sourced from company career pages. Combine role, location, work mode, employment type, salary, and posting language.</Trans>
               </p>
             </div>
             <dl className="mt-8 flex flex-col gap-6">
               <PointBlock
                 icon={cfg.pointIcons[0]}
                 title={<Trans id="home.features.s1.p1.title" comment="Feature: direct from source title">Direct from the source</Trans>}
-                description={<Trans id="home.features.s1.p1.description" comment="Feature: direct from source description — no platform names, leads with the ICP differentiator">We monitor company career pages directly, not third-party feeds — so postings show up here within hours, typically before LinkedIn or Indeed cross-post them.</Trans>}
+                description={<Trans id="home.features.s1.p1.description" comment="Feature: direct from source description — no platform names, leads with the ICP differentiator">We monitor company career pages directly. Open the original posting to check the employer’s latest details before applying.</Trans>}
               />
               <PointBlock
                 icon={cfg.pointIcons[1]}
@@ -188,7 +188,7 @@ function FeatureSection1() {
               <PointBlock
                 icon={cfg.pointIcons[2]}
                 title={<Trans id="home.features.s1.p3.title" comment="Feature: watchlists and alerts title">Watchlists and alerts</Trans>}
-                description={<Trans id="home.features.s1.p3.description" comment="Feature: watchlists and alerts description">Save any search as a watchlist and get email alerts when new roles match your criteria.</Trans>}
+                description={<Trans id="home.features.s1.p3.description" comment="Feature: watchlists and alerts description">Save your search as a watchlist. Email notifications use an opt-in weekly digest of new matches, rather than instant alerts.</Trans>}
               />
             </dl>
           </div>
@@ -232,7 +232,7 @@ function FeatureSection2() {
                 <Trans id="home.features.s2.title" comment="Feature section 2 heading">From saved role to signed offer, all in one place</Trans>
               </h2>
               <p className="mt-4 text-muted">
-                <Trans id="home.features.s2.description" comment="Feature section 2 description">Save any role you find, move it through your pipeline as you apply and interview, and see where every application stands at a glance.</Trans>
+                <Trans id="home.features.s2.description" comment="Feature section 2 description">Track jobs you save on Job Seek, update their status as you apply and interview, and keep your interview notes together.</Trans>
               </p>
             </div>
             <dl className="mt-8 flex flex-col gap-6">
@@ -305,7 +305,7 @@ function FeatureSection3() {
               <PointBlock
                 icon={cfg.pointIcons[1]}
                 title={<Trans id="home.features.s3.p2.title" comment="Feature: request companies title">Request any company</Trans>}
-                description={<Trans id="home.features.s3.p2.description" comment="Feature: request companies description">Missing a company? Paste its careers page URL and we start indexing it for you.</Trans>}
+                description={<Trans id="home.features.s3.p2.description" comment="Feature: request companies description">Missing an employer? Submit its name or careers page URL and follow the progress of your request.</Trans>}
               />
               <PointBlock
                 icon={cfg.pointIcons[2]}

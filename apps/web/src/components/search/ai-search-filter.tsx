@@ -55,6 +55,8 @@ type Props = {
   onDrawerOpenChange?: (open: boolean) => void;
   /** Shared watchlists can expose saved results without owner mutation controls. */
   readOnly?: boolean;
+  /** Start a read-only shared result preview with its drawer expanded. */
+  defaultOpen?: boolean;
 };
 
 const SCROLL_REMINDER_DISTANCE = 560;
@@ -253,6 +255,7 @@ export function AiSearchFilter({
   drawerContent,
   onDrawerOpenChange,
   readOnly = false,
+  defaultOpen = false,
 }: Props) {
   const { t } = useLingui();
   const router = useRouter();
@@ -271,7 +274,7 @@ export function AiSearchFilter({
     candidateCount: isSearchPending ? undefined : candidateCount,
   });
   const resumeCanOpen = resumeRequested && eligibility.status === "eligible";
-  const [open, setOpen] = useState(resumeCanOpen);
+  const [open, setOpen] = useState(resumeCanOpen || (readOnly && defaultOpen));
   const [query, setQuery] = useState(persistedQuery ?? "");
   const [isApplying, setIsApplying] = useState(false);
   const [activeQuery, setActiveQuery] = useState<string | null>(persistedQuery);
@@ -601,7 +604,7 @@ export function AiSearchFilter({
             )}
           </span>
           <div className="flex min-w-0 flex-1 items-baseline gap-2">
-            <span className="shrink-0 text-xs font-semibold text-foreground">
+            <span className="min-w-0 text-xs font-semibold text-foreground">
               {activeQuery || persistedQuery
                 ? t({
                     id: "search.aiFilter.resultsToggle",
@@ -779,7 +782,7 @@ export function AiSearchFilter({
                       message: "Matching request",
                     })}
                   </span>
-                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-foreground/90">
+                  <p className={`mt-0.5 ${readOnly && defaultOpen ? "" : "line-clamp-2"} text-xs leading-relaxed text-foreground/90`}>
                     {activeQuery}
                   </p>
                 </div>

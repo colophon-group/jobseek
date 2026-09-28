@@ -8,7 +8,7 @@ import { getI18n } from "@lingui/react/server";
 import { initI18nForPage, isLocale, defaultLocale, ogLocale } from "@/lib/i18n";
 import { blogPostCacheTag } from "@/lib/cache-tags";
 import { CACHE_TTL_DAY } from "@/lib/cache-ttl";
-import { siteConfig } from "@/content/config";
+import { siteConfig, publicDomainAssets } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
 import {
   getBlogPost,
@@ -18,6 +18,8 @@ import {
   type BlogPost,
 } from "@/lib/blog";
 import { buildMdxComponents } from "@/components/blog/MdxMentions";
+import { ArticleJumpLink } from "@/components/blog/ArticleJumpLink";
+import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { RelatedPosts } from "@/components/blog/RelatedPosts";
 
 // Posts are static content authored at PR-merge cadence — build-time
@@ -159,7 +161,18 @@ export default async function BlogPostPage({ params }: Props) {
       parseFrontmatter: false,
       mdxOptions: { remarkPlugins: [remarkGfm] },
     },
-    components: buildMdxComponents(locale),
+    components: {
+      ...buildMdxComponents(locale),
+      JumpLink: ArticleJumpLink,
+      Artwork: ({ assetKey }: { assetKey: string }) => (
+        <PublicDomainArt
+          asset={publicDomainAssets[assetKey]}
+          themeRendering="css-invert"
+          sizes="(min-width: 768px) 640px, 100vw"
+          className="h-full w-full [&_a]:text-white/90! [&_a]:no-underline!"
+        />
+      ),
+    },
   });
   const minutes = readingTimeMinutes(post.body);
 

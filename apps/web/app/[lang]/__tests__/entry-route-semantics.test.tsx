@@ -66,6 +66,7 @@ vi.mock("@/components/SkipToContentLink", () => ({
 }));
 vi.mock("@/components/Features", () => ({ Features: () => null }));
 vi.mock("@/components/Pricing", () => ({ Pricing: () => null }));
+vi.mock("@/lib/paddle/config", () => ({ paddleCheckoutEnabled: () => false }));
 vi.mock("@/components/PublicDomainArt", () => ({ PublicDomainArt: () => null }));
 vi.mock("@/components/ThemeToggleButton", () => ({ ThemeToggleButton: () => null }));
 vi.mock("@/components/LocaleSwitcher", () => ({ LocaleSwitcher: () => null }));

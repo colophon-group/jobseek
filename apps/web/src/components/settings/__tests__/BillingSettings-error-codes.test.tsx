@@ -33,6 +33,12 @@ vi.mock("@/lib/actions/billing", () => ({
   createCheckoutSession: mocks.createCheckoutSession,
 }));
 
+vi.mock("@/lib/actions/ai-filter", () => ({
+  configureAiFilter: vi.fn(),
+  createAiFilteredWatchlist: vi.fn(),
+  disableAiFilter: vi.fn(),
+}));
+
 vi.mock("@/lib/paddle/browser", () => ({ loadPaddle: async () => ({ Checkout: { open: mocks.open } }) }));
 
 import { BillingSettings } from "../BillingSettings";

@@ -53,6 +53,24 @@ describe("AiSearchFilter", () => {
     window.history.replaceState({}, "", "/en/explore?q=engineer");
   });
 
+  it("shows a read-only preview immediately without exposing mutation controls", () => {
+    mocks.session.isLoggedIn = false;
+    render(<AiSearchFilter isSubscribed={false} hasSearchFilters readOnly defaultOpen
+      presentation="drawer" initialQuery="Work directly with users" narrowedResultCount={4}
+      drawerContent={<p>Recorded matching role</p>} />);
+
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    expect(screen.getByText("Work directly with users")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit matching criteria" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove matching criteria" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "All results" }));
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    expect(mocks.configureAiFilter).not.toHaveBeenCalled();
+    expect(mocks.disableAiFilter).not.toHaveBeenCalled();
+  });
+
   it("keeps the collapsed trigger free of invisible subscription-badge spacing", () => {
     render(
       <AiSearchFilter

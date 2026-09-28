@@ -2,7 +2,7 @@
 title: "Where remote engineering still hires, May 2026"
 description: "JLL says 54% of the Fortune 100 are on full RTO. We monitor 4,400 careers pages directly. Here's where remote engineering still hires in May 2026."
 datePublished: "2026-05-07"
-dateModified: "2026-09-10"
+dateModified: "2026-09-28"
 author: "Viktor Shcherbakov"
 tags: ["data-analysis", "remote-work"]
 relatedCompanies: ["nvidia", "tether", "sezzle", "disney", "clickhouse", "netflix", "grafana-labs", "affirm", "veeva", "samsara", "oliver-wyman", "instacart", "cresta", "gitlab", "kraken", "accenture", "reddit", "clickup", "keeper-security", "twilio"]
@@ -86,9 +86,9 @@ The corollary is that remote-eligible engineering isn't competing with the globa
 
 Of the 4,338 remote-eligible engineering roles, **1,995 (46%) are tagged Senior**, another 11% are Staff, 3% Principal, 2% Lead. About 62% of the sample is gated at senior+ levels. **Entry-level roles are 0.7%: 31 listings out of 4,338.** Internships are 0.5%.
 
-The narrative for years was that remote work would democratize entry-level access to better employers. The data says the opposite is happening. Remote is consolidating around employees a company can already trust to operate without supervision. If you're under 2 years of experience and looking for a remote-first entry-level role in our data, you have approximately 31 listings to apply to, against a backdrop of more than 89,000 engineering openings overall.
+This snapshot contains 31 postings explicitly tagged Entry-Level. It does not establish that only 31 roles are suitable for candidates with under two years of experience: 36% of remote postings have no seniority tag. Nor can one snapshot establish a trend in access to remote work.
 
-31 against more than 89,000. Worth knowing before you build a search strategy.
+Use the tagged roles as a starting point, then read the requirements of untagged roles too.
 
 ## What stack is being asked for
 
@@ -128,8 +128,8 @@ The dataset behind this post is the dataset behind the search. The [explore page
 
 - **Snapshot date.** All counts come from a single Typesense facet query against our `job_posting_v1` collection on May 7 2026 at ~13:00 UTC. The `is_active=true` flag is set by our crawler when a posting was last seen on its source board within delisting tolerances (defined per-ATS in our [indexing policy](/en/how-we-index)).
 - **Engineering definition.** Postings whose normalized occupation lineage includes any of: software-engineer (with children frontend, backend, fullstack, mobile, embedded, game, AI engineer, research engineer), devops-engineer (with SRE, platform, cloud, release variants), qa-engineer, data-engineer, data-scientist, ml-engineer, data-analyst, data-annotator. Electrical, mechanical, and civil engineering are tagged outside the software/data domain and excluded.
-- **"Remote-eligible".** A posting where our normalized `location_types` array contains `remote`. About 28% of those postings also carry an `onsite` tag, which we read as "remote-eligible with optional HQ access" rather than "remote-only." Strict-remote-only would be a smaller number; we use the broader definition because it matches what a job seeker can actually apply to.
-- **Seniority tagging.** About 64% of remote engineering postings (2,767 of 4,338) carry a normalized seniority tag. Percentages in this post are computed as a share of the full 4,338 — so when we say "0.7% entry-level," the absolute count (31) is firm but the percentage assumes that the 36% of untagged postings have a similar level distribution. They probably skew mid-level (which often goes untagged), which would *strengthen* the senior-skew claim, not weaken it.
+- **"Remote-eligible".** A posting where our normalized `location_types` array contains `remote`. About 28% also have an `onsite` tag. That combination does not establish optional office access or permission to work from any location; check each source posting. These counts describe tags, not verified remote-only arrangements.
+- **Seniority tagging.** About 64% of remote engineering postings (2,767 of 4,338) carry a normalized seniority tag. The 31 Entry-Level tags are 0.7% of the full sample. The seniority of the remaining 36% is unknown, so this is a tagged share, not an estimate of all roles accessible to entry-level applicants.
 - **Coverage caveat.** Our index is 4,441 companies. It is not a representative sample of the global labor market: we deliberately track companies in Western Europe, Switzerland, and selected US tech employers, with their global subsidiaries' postings included where the careers page is monitorable. The shape of the data follows that bias.
 - **The "United States" row.** The geography table's US count (2,277) is computed against `location_ids` ancestors in our location hierarchy — every posting tagged with a US city, state, or "United States" itself rolls up. The other rows in the table are facet counts on `location_names` directly. The difference matters here because remote postings often tag a US state or city rather than the country root.
 - **Snapshot, not trend.** Our crawler's earliest `first_seen_at` for a still-active posting is March 9 2026. Postings older than that may exist on source boards but only appear in our index from their first crawl-discovery onwards. We make no trend claims based on this snapshot. During the same 2-month window, 4,233 remote-eligible engineering postings have *closed* — the market is churning, not stagnant.

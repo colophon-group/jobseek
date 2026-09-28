@@ -1,7 +1,10 @@
 "use client";
 
-import { Trans } from "@lingui/react/macro";
-import { ArrowDown, Check, SlidersHorizontal, X } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { ArrowDown, Check, SlidersHorizontal } from "lucide-react";
+import { AiSearchFilter } from "@/components/search/ai-search-filter";
+import { CompanyIcon } from "@/components/CompanyIcon";
+import recordedResults from "@/content/narrowed-results.json";
 import { useLocalePath } from "@/lib/useLocalePath";
 
 export function BillingPolicyLinks() {
@@ -13,11 +16,15 @@ export function BillingPolicyLinks() {
   </p>;
 }
 
-/** A clearly labeled example of the product, shared by discovery and billing. */
-export function ProPitch() {
+/** The same read-only Narrowed drawer used by shared watchlists. */
+export function ProPitch({ previewOnly = false }: { previewOnly?: boolean }) {
+  const { i18n, t } = useLingui();
+  const locale = i18n.locale in recordedResults ? i18n.locale as keyof typeof recordedResults : "en";
+  const postings = recordedResults[locale];
+  const query = t({ id: "pro.example.request", comment: "Live-tested personal criteria for Narrowed", message: "I want to work directly with users and turn their problems into product improvements. No people management." });
   return (
-    <div className="grid items-center gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-12">
-      <div>
+    <div className={previewOnly ? undefined : "grid items-center gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-12"}>
+      {!previewOnly && <div>
         <p className="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted">
           <SlidersHorizontal size={14} aria-hidden="true" /> Job Seek Pro <span className="text-border-soft" aria-hidden="true">/</span> <Trans id="pro.pitch.feature" comment="Name of the Pro feature; keep the product name Narrowed">Narrowed</Trans>
         </p>
@@ -28,41 +35,33 @@ export function ProPitch() {
           <Trans id="pro.pitch.body" comment="Explains the Narrowed benefit">Describe what matters beyond job titles. Narrowed checks the postings in your watchlist against your criteria, so you can focus on the matches.</Trans>
         </p>
         <p className="mt-5 text-xs leading-6 text-muted">
-          <Trans id="pro.pitch.scope" comment="Explains that Narrowed adds to standard search rather than replacing it">Works with your watchlists and usual filters.</Trans>
+          <Trans id="pro.pitch.scope" comment="Explains that Narrowed adds to standard search rather than replacing it">Checks the information in postings. Missing details do not confirm that a role meets your criteria.</Trans>
         </p>
         <a href="#pro-offer" className="mt-5 inline-flex items-center gap-2 text-sm underline underline-offset-4 lg:hidden">
           <Trans id="pro.pitch.pricingLink" comment="Mobile shortcut from product explanation to pricing">See pricing</Trans><ArrowDown size={14} aria-hidden="true" />
         </a>
-      </div>
-      <div className="rounded-2xl border border-border-soft bg-surface p-5 sm:p-6">
-        <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-          <Trans id="pro.example.label" comment="Labels the fictional Narrowed demonstration">An example</Trans>
-        </p>
-        <p className="mb-2 text-xs text-muted"><Trans id="pro.example.requestLabel" comment="Label for the example natural-language filter">Your criteria</Trans></p>
-        <p className="border-l-2 border-foreground pl-3 text-sm leading-6">
-          <Trans id="pro.example.request" comment="Fictional example requirements for Narrowed">Backend roles using Python, without an on-call rotation.</Trans>
-        </p>
-        <div className="my-4 flex items-center gap-2 text-xs text-muted">
-          <ArrowDown size={14} aria-hidden="true" />
-          <Trans id="pro.example.check" comment="Describes the example matching step">Checked against the job description</Trans>
-        </div>
-        <div className="space-y-2">
-          <div className="rounded-lg border border-success-border bg-success-bg p-3">
-            <div className="mb-2 flex items-center justify-between gap-2 text-xs">
-              <span className="font-medium"><Trans id="pro.example.role" comment="Fictional role in the Pro illustration">Backend engineer</Trans></span>
-              <span className="inline-flex items-center gap-1 text-success"><Check size={13} aria-hidden="true" /><Trans id="pro.example.match" comment="Example matching result">Match</Trans></span>
-            </div>
-            <p className="text-xs leading-5 text-muted-strong"><Trans id="pro.example.matchText" comment="Fictional excerpt illustrating a match">“Build Python APIs. No on-call duties.”</Trans></p>
-          </div>
-          <div className="rounded-lg border border-border-soft p-3">
-            <div className="mb-2 flex items-center justify-between gap-2 text-xs">
-              <span className="font-medium"><Trans id="pro.example.role" comment="Fictional role in the Pro illustration">Backend engineer</Trans></span>
-              <span className="inline-flex items-center gap-1 text-muted"><X size={13} aria-hidden="true" /><Trans id="pro.example.excluded" comment="Example excluded result">Filtered out</Trans></span>
-            </div>
-            <p className="text-xs leading-5 text-muted"><Trans id="pro.example.excludedText" comment="Fictional excerpt illustrating an exclusion">“Python services. Join the on-call rotation.”</Trans></p>
-          </div>
-        </div>
-      </div>
+      </div>}
+      <AiSearchFilter
+        isSubscribed={false}
+        hasSearchFilters
+        readOnly
+        defaultOpen
+        presentation="drawer"
+        initialQuery={query}
+        narrowedResultCount={postings.length}
+        drawerContent={<ul className="divide-y divide-divider py-2">
+          {postings.map(posting => <li key={posting.id}>
+            <a href={posting.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-3 rounded-md px-2 py-3 transition-colors hover:bg-border-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <CompanyIcon icon={posting.company.icon} alt={posting.company.name} size={24} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] text-muted">{posting.company.name}</span>
+                <span className="block text-sm leading-5">{posting.title}</span>
+                <span className="mt-0.5 block text-[10px] text-muted">{[...new Set(posting.locationNames)].join(" · ")}</span>
+              </span>
+            </a>
+          </li>)}
+        </ul>}
+      />
     </div>
   );
 }
@@ -71,7 +70,7 @@ export function FreeAccessNote() {
   return (
     <div className="flex items-start gap-3 border-t border-divider pt-5 text-xs leading-6 text-muted">
       <Check size={16} className="mt-1 shrink-0 text-success" aria-hidden="true" />
-      <p><span className="font-semibold text-foreground"><Trans id="pro.free.title" comment="Reassures that core job search features stay free">Your job search stays free.</Trans></span>{" "}<Trans id="pro.free.body" comment="Features everyone has, independent of Pro">Full search, up to 10 watchlists, email alerts, and application tracking. Pro adds Narrowed results.</Trans></p>
+      <p><span className="font-semibold text-foreground"><Trans id="pro.free.title" comment="Reassures that core job search features stay free">Your job search stays free.</Trans></span>{" "}<Trans id="pro.free.body" comment="Features everyone has, independent of Pro">Full search, up to 10 watchlists, weekly email digests, and tracking for jobs saved on Job Seek. Pro adds Narrowed results.</Trans></p>
     </div>
   );
 }

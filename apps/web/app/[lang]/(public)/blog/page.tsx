@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = i18n._({
     id: "blog.meta.description",
     comment: "Meta description (under 160 chars) for the blog index page — covers data analyses + report breakdowns + news commentary",
-    message: "Data analyses, news, and breakdowns of industry reports — drawn from the postings we monitor across thousands of company career pages.",
+    message: "Practical job-search guides and research from the company career pages we monitor.",
   });
 
   return {
@@ -84,7 +84,7 @@ export default async function BlogIndexPage({ params }: Props) {
   const tagline = i18n._({
     id: "blog.index.tagline",
     comment: "One-line tagline under the blog index <h1> — covers data analyses + reports/papers + news",
-    message: "Data analyses, news, and breakdowns of industry reports and papers — drawn from the postings we monitor.",
+    message: "Practical job-search guides and research from the company career pages we monitor.",
   });
   const empty = i18n._({
     id: "blog.index.empty",

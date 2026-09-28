@@ -12,7 +12,7 @@ export function Hero() {
   const lp = useLocalePath();
 
   const primaryHref = lp(siteConfig.nav.app.href);
-  const primaryLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Get started" });
+  const primaryLabel = t({ id: "home.hero.primaryCta", comment: "Hero primary call-to-action", message: "Find companies to follow" });
 
   const heroArt = publicDomainAssets[siteConfig.hero.art.assetKey];
   const heroArtFocus = siteConfig.hero.art.focus;
@@ -20,26 +20,27 @@ export function Hero() {
   return (
     <section className="mx-auto max-w-[1200px] px-4 py-16 md:py-24">
       <div className="flex flex-col items-stretch gap-12 md:flex-row md:gap-20">
-        <div className="flex flex-1 flex-col gap-6">
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-            <Trans id="home.hero.eyebrow" comment="Hero eyebrow above the title — speaks to the targeted job seeker ICP">For job seekers who already know where they want to work.</Trans>
+            <Trans id="home.hero.eyebrow" comment="Hero eyebrow above the title — speaks to the targeted job seeker ICP">A focused job search, built around your preferences.</Trans>
           </span>
           <h1 className="text-3xl font-bold md:text-4xl">
             <Trans id="home.hero.title" comment="Main heading on the landing page — leads with company-watchlist ICP">Track the companies you actually want to work at.</Trans>
           </h1>
           <p className="text-muted">
-            <Trans id="home.hero.description" comment="Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim">
-              Build watchlists of the companies you care about, get email alerts when new roles open up, and track every application in one place. We monitor career pages directly — postings show up within hours, before LinkedIn or Indeed cross-post them.
-            </Trans>
+            <Trans id="home.hero.description" comment="Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim">Find jobs from company career pages, save the employers and filters that matter to you, and track the roles you save on Job Seek.</Trans>
           </p>
-          <div className="flex flex-col gap-4 pt-4 sm:flex-row">
-            <Button href={primaryHref}>
+          <div className="flex flex-col flex-wrap gap-4 pt-4 sm:flex-row">
+            <Button href={primaryHref} className="whitespace-normal! text-center">
               {primaryLabel}
             </Button>
-            <Button href={lp(siteConfig.nav.features.href)} prefetch={false} variant="outline">
-              <Trans id="home.hero.secondaryCta" comment="Hero secondary call-to-action">Learn more</Trans>
+            <Button href={lp(siteConfig.nav.features.href)} prefetch={false} variant="outline" className="whitespace-normal! text-center">
+              <Trans id="home.hero.secondaryCta" comment="Hero secondary call-to-action">See how watchlists work</Trans>
             </Button>
           </div>
+          <p className="text-xs leading-6 text-muted">
+            <Trans id="home.hero.freeNote" comment="Free features beside the homepage primary action">Free search. Up to 10 watchlists. Application tracking.</Trans>
+          </p>
         </div>
 
         {heroArt && (
