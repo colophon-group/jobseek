@@ -1,14 +1,13 @@
 import "server-only";
 import { Resend } from "resend";
 import type { Locale } from "@/lib/i18n";
+import { EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/email-config";
 
 let _resend: Resend | null = null;
 function getResend() {
   if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
   return _resend;
 }
-
-const FROM_ADDRESS = "Job Seek <noreply@updates.colophon-group.org>";
 
 type EmailCopy = Record<string, string>;
 
@@ -114,7 +113,8 @@ export async function sendVerificationEmail(
 ) {
   const t = verifyCopy[locale];
   await getResend().emails.send({
-    from: FROM_ADDRESS,
+    from: EMAIL_FROM,
+    replyTo: EMAIL_REPLY_TO,
     to,
     subject: t.subject,
     html: buildEmail(t, url),
@@ -128,10 +128,10 @@ export async function sendResetPasswordEmail(
 ) {
   const t = resetCopy[locale];
   await getResend().emails.send({
-    from: FROM_ADDRESS,
+    from: EMAIL_FROM,
+    replyTo: EMAIL_REPLY_TO,
     to,
     subject: t.subject,
     html: buildEmail(t, url),
   });
 }
-

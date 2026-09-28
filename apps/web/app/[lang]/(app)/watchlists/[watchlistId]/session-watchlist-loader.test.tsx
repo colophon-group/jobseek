@@ -7,10 +7,12 @@ const mocks = vi.hoisted(() => ({
   load: vi.fn(),
   viewProps: vi.fn(),
   session: { isLoggedIn: false, isPending: false },
+  searchParams: new URLSearchParams(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
+  useSearchParams: () => mocks.searchParams,
 }));
 
 vi.mock("next/link", () => ({
@@ -77,6 +79,7 @@ describe("SessionWatchlistLoader", () => {
     vi.clearAllMocks();
     sessionStorage.clear();
     mocks.session = { isLoggedIn: false, isPending: false };
+    mocks.searchParams = new URLSearchParams();
   });
 
   it("loads browser state into the normal owned watchlist view on the normal route", async () => {
@@ -148,6 +151,28 @@ describe("SessionWatchlistLoader", () => {
     );
 
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/en/watchlists"));
+    expect(mocks.load).not.toHaveBeenCalled();
+  });
+  it.each(["en", "de", "fr", "it"] as const)("preserves an emailed private watchlist and selected job through sign-in in %s", async locale => {
+    mocks.searchParams = new URLSearchParams({ show: "posting-1" });
+    render(<SessionWatchlistLoader locale={locale} watchlistId={sourceId} overviewLabel="Watchlists" />);
+    const next = `/${locale}/watchlists/${sourceId}?show=posting-1`;
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith(
+      `/${locale}/sign-in?next=${encodeURIComponent(next)}`,
+    ));
+    expect(mocks.load).not.toHaveBeenCalled();
+  });
+  it("preserves a private watchlist link without a selected job through sign-in", async () => {
+    render(<SessionWatchlistLoader locale="en" watchlistId={sourceId} overviewLabel="Watchlists" />);
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith(
+      `/en/sign-in?next=${encodeURIComponent(`/en/watchlists/${sourceId}`)}`,
+    ));
+  });
+  it("waits for session resolution before redirecting an emailed link", () => {
+    mocks.session = { isLoggedIn: false, isPending: true };
+    mocks.searchParams = new URLSearchParams({ show: "posting-1" });
+    render(<SessionWatchlistLoader locale="en" watchlistId={sourceId} overviewLabel="Watchlists" />);
+    expect(mocks.replace).not.toHaveBeenCalled();
     expect(mocks.load).not.toHaveBeenCalled();
   });
 });

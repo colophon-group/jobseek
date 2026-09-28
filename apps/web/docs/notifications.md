@@ -1,12 +1,17 @@
 # Weekly watchlist email notifications
 
 The implementation of [#8317](https://github.com/colophon-group/jobseek/issues/8317)
-uses the existing Resend account and sender. Alerts are opt-in and available
+uses the existing Resend account. Alerts are opt-in and available
 without a subscription. Only verified owners receive mail. One weekly digest
 combines enabled watchlists, deduplicates postings and shows at most 20 roles.
 Each role shows its company icon and localized age since first seen by Jobseek
 (“Added … ago”), calculated at render time and included in plain text too.
 Missing/unsafe icon URLs use company initials; invalid dates omit the age.
+Job titles open `https://jseek.co/{locale}/watchlists/{id}?show={postingId}`
+in the first matching watchlist. Each matching-watchlist label opens the same
+job in that list. HTML and plain text use these links; employer application
+URLs are available in the job detail panel. Signed-out private-watchlist
+visitors sign in with the watchlist and selected job preserved.
 Each watchlist contributes either all current structured matches or only its
 narrowed matches, chosen through visible icon-labelled controls in Settings.
 Each row includes a compact filter preview and keeps the full saved narrowing
@@ -34,6 +39,37 @@ watchlist control explains the pause on hover/focus and opens a full-screen
 warning on mobile, with a link to Settings and focus restoration on dismissal.
 
 ## Runtime and activation
+
+### Resend sending domain
+
+Notification and account emails share `src/lib/email-config.ts`:
+`Job Seek <hello@jseek.co>`, with replies directed to the site's existing
+contact inbox, `business@colophon-group.org`. This aligns the From domain
+with the email's Jseek links and replaces the previous no-reply sender.
+
+On 2026-09-28, `jseek.co` was added through the Resend dashboard in
+`eu-west-1` and reached **Verified** (domain ID
+`00348691-c3df-46b4-bf2d-579488d92d3b`). Cloudflare has the following records:
+
+| Type | Name | Content |
+| --- | --- | --- |
+| TXT | `resend._domainkey` | Public DKIM key supplied by Resend |
+| CNAME, DNS only | `rsend` | `rsend-euw1.forge.rmta.net` |
+| CNAME, DNS only | `send` | `send.forge.rmta.net` |
+| TXT | `_dmarc` | `v=DMARC1; p=none;` |
+
+The existing Zoho root MX/SPF and DKIM records remain in place. Resend receiving
+is disabled. Click/open tracking is unconfigured; keep it disabled so delivered
+links stay on `jseek.co`. The existing production sending key was confirmed as
+**Sending access / All domains**, so no runtime credential change was needed.
+
+Future domain management uses the Resend dashboard or a full-access
+administrative key; the application's send-only key cannot manage domains.
+Keep administrative credentials out of the runtime environment. No account
+limits or notification activation settings changed, and no digest was sent
+during configuration.
+
+### Notification runner
 
 Apply `0095_notification_delivery_quota` using the reviewed routine migration
 workflow before enabling the runner. It adds the per-watchlist

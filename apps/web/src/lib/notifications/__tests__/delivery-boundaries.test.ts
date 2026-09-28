@@ -48,6 +48,45 @@ describe("notification delivery boundaries", () => {
     expect(email.html).toContain(`/${locale}/watchlists/list`);
     expect(email.text).toContain("unsubscribe?token=test");
   });
+  it.each(["en", "de", "fr", "it"])("links each job to its matching watchlist on the sending domain in %s", locale => {
+    const item = { ...plan.displayPostings[0]!, id: "posting-1",
+      sourceUrl: "https://careers.example.org/jobs/123",
+      matchedWatchlists: [{ id: "list-1", label: "Product" }, { id: "list-2", label: "Remote" }] };
+    const email = renderNotificationEmail({ plan: { ...plan, displayPostings: [item] }, locale, origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/api/notifications/unsubscribe?token=test" });
+    const document = new DOMParser().parseFromString(email.html, "text/html");
+    const firstUrl = `https://jseek.co/${locale}/watchlists/list-1?show=posting-1`;
+    const secondUrl = `https://jseek.co/${locale}/watchlists/list-2?show=posting-1`;
+    expect(document.querySelector("h2 a")?.getAttribute("href")).toBe(firstUrl);
+    expect(Array.from(document.querySelectorAll("a")).find(a => a.textContent === "Remote")?.getAttribute("href")).toBe(secondUrl);
+    for (const anchor of document.querySelectorAll("a")) {
+      expect(new URL(anchor.getAttribute("href")!).origin).toBe("https://jseek.co");
+    }
+    expect(email.text).toContain(firstUrl);
+    expect(email.text).toContain(secondUrl);
+    expect(email.html).not.toContain(item.sourceUrl);
+    expect(email.text).not.toContain(item.sourceUrl);
+  });
+  it("encodes watchlist and posting IDs without letting them change the URL", () => {
+    const item = { ...plan.displayPostings[0]!, id: 'job&other="value"#fragment',
+      matchedWatchlists: [{ id: "list/?query", label: "List" }] };
+    const email = renderNotificationEmail({ plan: { ...plan, displayPostings: [item] }, locale: "en", origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/unsubscribe" });
+    const document = new DOMParser().parseFromString(email.html, "text/html");
+    const url = new URL(document.querySelector("h2 a")!.getAttribute("href")!);
+    expect(url.pathname).toBe("/en/watchlists/list%2F%3Fquery");
+    expect(url.searchParams.get("show")).toBe(item.id);
+    expect([...url.searchParams.keys()]).toEqual(["show"]);
+    expect(url.hash).toBe("");
+    expect(email.text).toContain(url.href);
+  });
+  it("falls back to the watchlist overview when a posting has no matching watchlist", () => {
+    const item = { ...plan.displayPostings[0]!, sourceUrl: "https://careers.example.org/job", matchedWatchlists: [] };
+    const email = renderNotificationEmail({ plan: { ...plan, displayPostings: [item] }, locale: "unsupported", origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/unsubscribe" });
+    const document = new DOMParser().parseFromString(email.html, "text/html");
+    expect(document.querySelector("h2 a")?.getAttribute("href")).toBe("https://jseek.co/en/watchlists");
+    expect(email.text).toContain("https://jseek.co/en/watchlists");
+    expect(email.html).not.toContain(item.sourceUrl);
+    expect(email.text).not.toContain(item.sourceUrl);
+  });
   it.each([
     ["en", "Added 2 days ago"], ["de", "Hinzugefügt: vor 2 Tagen"],
     ["fr", "Ajoutée il y a 2 jours"], ["it", "Aggiunta 2 giorni fa"],
@@ -88,6 +127,19 @@ describe("notification delivery boundaries", () => {
     const options = fetch.mock.calls[0]![1];
     expect(options.headers["Idempotency-Key"]).toBe("same-period");
     expect(JSON.parse(options.body).headers["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+  });
+  it("sends from jseek.co with a monitored reply address and preserves unsubscribe headers", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response('{"id":"message-1"}', { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const result = await sendNotificationEmail({ to: "a@example.com", deliveryId: id, attempt: 1, idempotencyKey: "same-period", unsubscribeUrl: "https://jseek.co/unsubscribe", email: { subject: "Jobs", html: "<p>Job</p>", text: "Job" } });
+    expect(result).toEqual({ status: "sent", messageId: "message-1" });
+    const payload = JSON.parse(fetch.mock.calls[0]![1].body);
+    expect(payload.from).toBe("Job Seek <hello@jseek.co>");
+    expect(payload.reply_to).toBe("business@colophon-group.org");
+    expect(payload.headers).toEqual({
+      "List-Unsubscribe": "<https://jseek.co/unsubscribe>",
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    });
   });
   it("holds transport failures and malformed success responses as unknown", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));

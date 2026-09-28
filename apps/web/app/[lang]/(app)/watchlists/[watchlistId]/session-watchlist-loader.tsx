@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -26,6 +26,8 @@ export function SessionWatchlistLoader({
 }) {
   const { t } = useLingui();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedPostingId = searchParams.get("show");
   const { isLoggedIn, isPending } = useSession();
   const [data, setData] = useState<WatchlistPageData | null>(null);
   const [failed, setFailed] = useState(false);
@@ -40,7 +42,11 @@ export function SessionWatchlistLoader({
 
     const entry = readPendingWatchlists().find((candidate) => candidate.id === watchlistId);
     if (!entry) {
-      router.replace(overviewHref);
+      // Email links can target private watchlists. Keep the job selected after
+      // sign-in instead of losing the destination at the anonymous overview.
+      const next = `${overviewHref}/${encodeURIComponent(watchlistId)}`
+        + (selectedPostingId ? `?show=${encodeURIComponent(selectedPostingId)}` : "");
+      router.replace(`/${locale}/sign-in?next=${encodeURIComponent(next)}`);
       return;
     }
 
@@ -70,7 +76,7 @@ export function SessionWatchlistLoader({
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, isPending, locale, overviewHref, router, watchlistId]);
+  }, [isLoggedIn, isPending, locale, overviewHref, router, watchlistId, selectedPostingId]);
 
   if (!data) {
     return (

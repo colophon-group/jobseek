@@ -29,8 +29,9 @@ import "@/test-utils/lingui-mock";
 
 // --- Mocks ------------------------------------------------------------------
 
+const navigation = vi.hoisted(() => ({ searchParams: new URLSearchParams() }));
 vi.mock("next/navigation", () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => navigation.searchParams,
 }));
 
 vi.mock("@/components/CompanyIcon", () => ({
@@ -65,7 +66,17 @@ vi.mock("@/components/providers/SavedJobsProvider", () => ({
 }));
 
 vi.mock("@/components/search/job-detail-dialog", () => ({
-  JobDetailPanel: () => <div data-testid="job-detail-panel" />,
+  JobDetailPanel: ({ postingId, onClose }: { postingId: string; onClose: () => void }) => (
+    <div data-testid="job-detail-panel" data-posting-id={postingId}>
+      <button onClick={onClose}>Close job</button>
+    </div>
+  ),
+}));
+
+vi.mock("@/components/search/mobile-job-detail-dialog", () => ({
+  MobileJobDetailDialog: ({ postingId }: { postingId: string }) => (
+    <div data-testid="mobile-job-detail" data-posting-id={postingId} />
+  ),
 }));
 
 vi.mock("@/lib/use-infinite-scroll", () => ({
@@ -113,6 +124,7 @@ vi.mock("@/components/watchlist/format-date-divider", () => ({
 // Stub window.history APIs the row's open handler invokes.
 beforeEach(() => {
   toggleMock.mockClear();
+  navigation.searchParams = new URLSearchParams();
   // happy-dom provides history; nothing more needed.
 });
 
@@ -254,5 +266,18 @@ describe("WatchlistJobList row a11y (issue #3166)", () => {
 
     expect(screen.getByRole("alert").textContent).toMatch(/oops, something went wrong/i);
     expect(screen.queryByText(/no jobs found/i)).toBeNull();
+  });
+  it("opens an emailed job on desktop and mobile even when it is outside the loaded page", () => {
+    navigation.searchParams = new URLSearchParams({ show: "emailed-posting" });
+    window.history.replaceState(null, "", "/en/watchlists/list-1?show=emailed-posting");
+    renderList([entry("different-posting")]);
+
+    expect(screen.getByTestId("job-detail-panel").getAttribute("data-posting-id")).toBe("emailed-posting");
+    expect(screen.getByTestId("mobile-job-detail").getAttribute("data-posting-id")).toBe("emailed-posting");
+    fireEvent.click(screen.getByRole("button", { name: "Close job" }));
+    expect(screen.queryByTestId("job-detail-panel")).toBeNull();
+    expect(screen.queryByTestId("mobile-job-detail")).toBeNull();
+    expect(window.location.pathname).toBe("/en/watchlists/list-1");
+    expect(window.location.search).toBe("");
   });
 });
