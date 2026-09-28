@@ -67,7 +67,7 @@ All three independent reviewers cleared the expanded draft: factual SHIP, editor
 
 ## Narrowed verification
 
-Saved criteria: “Keep work on physical robots or autonomous machines, including their sensors and control software. Include production, quality, procurement, sales and customer support tied to those products. Exclude unrelated product lines, even at robotics companies.”
+Initial criteria (superseded after broader semantic review): “Keep work on physical robots or autonomous machines, including their sensors and control software. Include production, quality, procurement, sales and customer support tied to those products. Exclude unrelated product lines, even at robotics companies.”
 
 The request is short enough to read in the actual interface and intentionally crosses occupational categories. It requires a product connection rather than a robotics keyword or employer label.
 
@@ -80,3 +80,11 @@ Guest cloning was tested after enabling Narrowed: the interface warns that a Fre
 Expanded-draft verification: production build and all 63 focused tests passed. Six light/dark × 320/390/1440 browser checks passed with all 29 employer mentions resolved, both watchlist mentions intact, internal navigation and SEO metadata intact, and no horizontal overflow. The Narrowed passage passed a separate editorial/product review, conditional on live verification.
 
 A second bounded local test used five real lifecycle roles and complete descriptions: Wingtra Production Operator Assembly, ANYbotics Senior Product Quality Engineer, RIVR Procurement Engineer, Distalmotion Clinical Sales Specialist (including clinical training/customer support), and BOTA Robotics Engineer for Sales. The unchanged criteria accepted all five, consistent with manual review of their direct robotics-product responsibilities. This checks that the prompt does not collapse into an engineering-title filter; it remains local evidence until production decisions are persisted.
+
+### Revised criterion after persisted-result review
+
+Manual review of the first 45 persisted production decisions found two false negatives (Dufour UAV software and airworthiness work) and an unrelated ABB traction logistics inclusion. The full input bodies were below the normalizer limit; this was a semantic-selection issue rather than truncation.
+
+Revised request: “Keep work on robots, drones and autonomous machines, including their hardware and software. Include manufacturing, quality, supply chain, sales and customer support tied to those products. Require a clear connection in the role or business unit; exclude unrelated electrical, connector and textile products.”
+
+Two bounded local batches using the production normalizer and Jev client passed 10/10: both Dufour roles accepted, ABB traction logistics and general OT cybersecurity rejected, Wingtra assembly accepted; held-out ABB Smart Power procurement and Stäubli SAP rejected, RIVR operations, ANYbotics commercial operations and Fotokite assembly accepted. The article describes this revised scope. Final saved-request and persisted-result verification belongs to the release check, not this local diagnostic.
