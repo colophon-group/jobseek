@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-import subprocess
 import uuid
 from dataclasses import replace
-from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
@@ -87,17 +85,6 @@ def _result(body: bytes) -> runtime_pb2.BrowserResult:
             html=_manifest(body),
         ),
     )
-
-
-@pytest.fixture(scope="session")
-def jsonld_binary(tmp_path_factory):
-    binary = tmp_path_factory.mktemp("jsonld") / "jsonld-detail-live"
-    subprocess.run(
-        ["go", "build", "-o", str(binary), "./cmd/live"],
-        cwd=Path(__file__).resolve().parents[2] / "go/jsonld-detail",
-        check=True,
-    )
-    return str(binary)
 
 
 @pytest.mark.asyncio
