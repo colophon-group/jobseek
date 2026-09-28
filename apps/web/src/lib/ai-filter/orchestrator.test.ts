@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   normalizeClassifierInputV1,
@@ -71,6 +71,64 @@ function jevResult(jobs: readonly ReturnType<typeof candidate>[]) {
 }
 
 describe("AI filter segment orchestrator", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([
+    {
+      error: new JevClientError("invalid_request", {
+        status: 402,
+        attempts: 1,
+        cause: new Error("private provider response and token"),
+      }),
+      expected: { code: "invalid_request", status: 402, attempts: 1, ambiguousAttempts: 0 },
+    },
+    {
+      error: new JevClientError("provider_unavailable", {
+        status: 503,
+        attempts: 2,
+        ambiguousFailedAttempts: 2,
+        cause: new Error("private provider response and token"),
+      }),
+      expected: { code: "provider_unavailable", status: 503, attempts: 2, ambiguousAttempts: 2 },
+    },
+    {
+      error: Object.assign(new Error("private provider response and token"), {
+        code: "private error code",
+        status: "private status",
+      }),
+      expected: { code: "provider_unavailable", status: null, attempts: 0, ambiguousAttempts: 0 },
+    },
+  ])("logs only allowlisted provider metadata: $expected.code/$expected.status", async ({ error, expected }) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const repo = repository(bindings => ({
+      persistedDecisionCount: 0, cacheHits: [], claims: bindings, waitingCacheKeys: [],
+    }));
+    const result = await executeAiFilterSegment({
+      assertMiningAllowed: async () => undefined,
+      context,
+      candidates: [candidate(1)],
+      hmacSecret,
+      repository: repo,
+      classifier: { classify: vi.fn().mockRejectedValue(error) },
+      executionEnabled: true,
+    });
+
+    expect(result.status).toBe("paused_provider");
+    expect(warn.mock.calls).toEqual([[
+      "[ai-filter] provider batch failed",
+      { segmentId: context.segmentId, ...expected },
+    ]]);
+    expect(repo.failProviderBatch).toHaveBeenCalledWith(expect.objectContaining({
+      code: expected.code,
+      providerAttempts: expected.attempts,
+      ambiguousAttempts: expected.ambiguousAttempts,
+      uncertain: expected.ambiguousAttempts > 0,
+    }));
+    expect(repo.finishSegment).toHaveBeenCalledWith(expect.objectContaining({
+      status: "paused_provider", stopReason: expected.code,
+    }));
+  });
+
   it("never calls Jev on refresh when every decision is already materialized", async () => {
     const candidates = [candidate(1), candidate(2)];
     const repo = repository(() => ({

@@ -1,3 +1,4 @@
+import { safeExternalError } from "../safe-external-error";
 import { buildAiFilterCacheIdentity } from "./cache-key";
 import type { NormalizedClassifierInputV1 } from "./classifier-input";
 import type { AiFilterDecisionValue } from "./contract";
@@ -307,20 +308,37 @@ export async function executeAiFilterSegment(input: {
     } catch (error) {
       const clientError = error instanceof JevClientError ? error : null;
       const uncertain = (clientError?.ambiguousFailedAttempts ?? 0) > 0;
+      const failureCode = error instanceof AiFilterMiningPolicyError
+        ? error.code
+        : clientError?.code ?? "provider_unavailable";
+      const providerAttempts = clientError?.attempts ?? 0;
+      const ambiguousAttempts = clientError?.ambiguousFailedAttempts ?? 0;
+      // Keep provider failures diagnosable without logging job text, credentials,
+      // provider response bodies, or arbitrary error messages/causes.
+      console.warn("[ai-filter] provider batch failed", {
+        segmentId: input.context.segmentId,
+        code: failureCode,
+        status: safeExternalError(clientError, {
+          service: "external_http",
+          operation: "ai_filter_classify",
+        }).status ?? null,
+        attempts: providerAttempts,
+        ambiguousAttempts,
+      });
       await input.repository.failProviderBatch({
         context: input.context,
         bindings: claimedBatch,
         reservation: budget.reservation,
-        code: error instanceof AiFilterMiningPolicyError ? error.code : clientError?.code ?? "provider_unavailable",
+        code: failureCode,
         uncertain,
-        providerAttempts: clientError?.attempts ?? 0,
-        ambiguousAttempts: clientError?.ambiguousFailedAttempts ?? 0,
+        providerAttempts,
+        ambiguousAttempts,
         now,
       });
       await input.repository.finishSegment({
         context: input.context,
         status: "paused_provider",
-        stopReason: error instanceof AiFilterMiningPolicyError ? error.code : clientError?.code ?? "provider_unavailable",
+        stopReason: failureCode,
         completedCount:
           counters.persistedDecisionHits +
           counters.globalCacheHits +
