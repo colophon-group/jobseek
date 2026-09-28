@@ -186,3 +186,32 @@ func TestNavigationTransportRetryIsConditionalSamePageAndBounded(t *testing.T) {
 		})
 	}
 }
+
+func TestNavigationFailureCorrelatesOnlyMainDocumentAndRejectsNativePseudoPage(t *testing.T) {
+	state := newNavigationState("main")
+	now := time.Now()
+	state.observe(&network.EventRequestWillBeSent{RequestID: "document", FrameID: "main", Type: network.ResourceTypeDocument}, now)
+	state.commit("loader", now)
+	state.observe(&page.EventLoadEventFired{}, now)
+	state.observe(&network.EventLoadingFailed{RequestID: "subresource", ErrorText: "RecvError"}, now)
+	if state.documentFailure != nil {
+		t.Fatal("subresource failure became document retry")
+	}
+	if ready, _ := state.readiness(3, now); ready {
+		t.Fatal("status-free pseudo-document became ready")
+	}
+	state.observe(&network.EventResponseReceived{RequestID: "document", FrameID: "main", Type: network.ResourceTypeDocument, Response: &network.Response{Status: 0}}, now)
+	var transport *navigationTransportError
+	if !errors.As(state.documentFailure, &transport) || !transport.retryable {
+		t.Fatal("native pre-header receive failure not classified")
+	}
+	state.observe(&network.EventRequestWillBeSent{RequestID: "second", FrameID: "main", Type: network.ResourceTypeDocument}, now)
+	state.observe(&network.EventResponseReceived{RequestID: "second", FrameID: "main", Type: network.ResourceTypeDocument, Response: &network.Response{Status: 403}}, now)
+	if state.documentFailure != nil || !state.documentStatusValid {
+		t.Fatal("HTTP status became transport retry")
+	}
+	state.observe(&network.EventLoadingFailed{RequestID: "second", Type: network.ResourceTypePing, ErrorText: "RecvError"}, now)
+	if !errors.As(state.documentFailure, &transport) || !transport.retryable {
+		t.Fatal("native Ping type broke document identity correlation")
+	}
+}

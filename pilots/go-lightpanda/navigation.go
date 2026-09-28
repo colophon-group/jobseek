@@ -43,6 +43,9 @@ type navigationState struct {
 	mainFrame                   cdp.FrameID
 	loader                      cdp.LoaderID
 	committed, domReady, loaded bool
+	documentRequest             network.RequestID
+	documentStatusValid         bool
+	documentFailure             error
 	requests                    map[network.RequestID]struct{}
 	idleSince                   time.Time
 	changed                     chan struct{}
@@ -112,6 +115,11 @@ func (state *navigationState) observe(event any, now time.Time) {
 			state.domReady, state.loaded = true, true
 		}
 	case *network.EventRequestWillBeSent:
+		if event.Type == network.ResourceTypeDocument && event.FrameID == state.mainFrame {
+			state.documentRequest = event.RequestID
+			state.documentStatusValid = false
+			state.documentFailure = nil
+		}
 		// WebSocket connections are not pending HTTP resource loads. Redirects
 		// reuse a request ID and must not count twice.
 		if event.Type != network.ResourceTypeWebSocket {
@@ -126,10 +134,29 @@ func (state *navigationState) observe(event any, now time.Time) {
 			}
 		}
 	case *network.EventLoadingFailed:
+		// Lightpanda labels loadingFailed.type Ping even for a document.
+		// Correlate the request ID learned from the main-frame request.
+		if event.RequestID == state.documentRequest && state.documentRequest != "" {
+			state.documentFailure = navigationError(event.ErrorText)
+		}
 		if _, ok := state.requests[event.RequestID]; ok {
 			delete(state.requests, event.RequestID)
 			if len(state.requests) == 0 {
 				state.idleSince = now
+			}
+		}
+	case *network.EventResponseReceived:
+		if event.FrameID == state.mainFrame && event.Type == network.ResourceTypeDocument && event.RequestID == state.documentRequest && event.Response != nil {
+			// The pinned nightly downgrades a pre-header RecvError into a
+			// pseudo-document with status 0, without loadingFailed/errorText.
+			// No HTTP server response can have this status. Preserve its one
+			// conditional receive-failure retry; never accept the pseudo-page.
+			state.documentStatusValid = event.Response.Status >= 100 && event.Response.Status <= 599
+			if event.Response.Status == 0 {
+				state.documentFailure = navigationError("RecvError")
+			}
+			if event.Response.Status < 0 || event.Response.Status > 599 {
+				state.documentFailure = navigationError("InvalidResponseStatus")
 			}
 		}
 	default:
@@ -141,7 +168,7 @@ func (state *navigationState) observe(event any, now time.Time) {
 func (state *navigationState) readiness(wait runtimev1.WaitCondition, now time.Time) (bool, time.Duration) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
-	if !state.committed {
+	if !state.committed || state.documentFailure != nil || (state.documentRequest != "" && !state.documentStatusValid) {
 		return false, 0
 	}
 	switch wait {
@@ -166,6 +193,12 @@ func waitForNavigation(ctx context.Context, state *navigationState, wait runtime
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
+		}
+		state.mu.Lock()
+		failure := state.documentFailure
+		state.mu.Unlock()
+		if failure != nil {
+			return failure
 		}
 		ready, delay := state.readiness(wait, time.Now())
 		if ready {
@@ -213,6 +246,7 @@ func navigateDocument(ctx context.Context, state *navigationState, options navig
 		state.loader = ""
 		state.committed, state.domReady, state.loaded = false, false, false
 		state.requests = make(map[network.RequestID]struct{})
+		state.documentRequest, state.documentStatusValid, state.documentFailure = "", false, nil
 		state.idleSince = time.Time{}
 		state.mu.Unlock()
 	}

@@ -76,7 +76,14 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 			_, _ = io.WriteString(w, `<!doctype html><html><body><h1 id="ready">Engineer</h1></body></html>`)
 		}
 	}))
-	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: Config{Binary: binary, EgressPolicy: defaultEgressPolicy()}, run: testOnlyFixtureRunner(binary, "127.0.0.2")})
+	fixtureRunner := testOnlyFixtureRunner(binary, "127.0.0.2")
+	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: Config{Binary: binary, EgressPolicy: defaultEgressPolicy()}, run: func(ctx context.Context, config Config, task Task) (Result, error) {
+		result, err := fixtureRunner(ctx, config, task)
+		if err != nil {
+			t.Logf("fixture navigation failed after cleanup: %T %v", err, err)
+		}
+		return result, err
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
