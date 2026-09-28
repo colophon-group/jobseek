@@ -490,6 +490,30 @@ jobs:
           go mod tidy -diff
           test -z "$(gofmt -l .)"
 
+  test-go-dom-extractor:
+    name: Test Go DOM extractor
+    needs: changes
+    if: needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/crawler/go/dom-detail
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/dom-detail/go.mod
+          cache-dependency-path: apps/crawler/go/dom-detail/go.sum
+      - name: Verify canonical outputs and native safety
+        run: |
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
   test-go-typesense-exporter:
     name: Test Go Typesense exporter
     needs: changes
@@ -829,6 +853,14 @@ jobs:
             --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/jsonld-detail/testdata,target=/fixtures,readonly" \
             --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
             -I /fixtures/verify_installed.py /usr/local/bin/jsonld-detail-live
+
+      - name: Verify installed DOM extractor parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/dom-detail/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_installed.py /usr/local/bin/dom-detail-parse
 
       - name: Self-test sampler container probe
         run: python3 .github/scripts/crawler-sampler-container-smoke.py --self-test
@@ -1839,6 +1871,7 @@ jobs:
       - test-go-b0-supervisor
       - test-go-r2-drain
       - test-go-typesense-exporter
+      - test-go-dom-extractor
       - crawler-image
       - lint-web
       - i18n-coverage
@@ -1901,6 +1934,7 @@ jobs:
           requireSuccess("test-go-http-pilot", goHttpPilot);
           requireSuccess("test-go-b0-supervisor", crawlerCode);
           requireSuccess("test-go-typesense-exporter", crawlerCode);
+          requireSuccess("test-go-dom-extractor", crawlerCode);
           requireSuccess("dependency-review", eventName === "pull_request" && code);
           requireSuccess("crawler-image", eventName === "pull_request" && isPr && crawlerCode);
 

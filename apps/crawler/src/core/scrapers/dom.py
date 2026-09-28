@@ -1396,6 +1396,10 @@ async def probe_pw(urls: list[str], pw) -> tuple[dict | None, str]:
 
 def parse_html(html: str, config: dict) -> JobContent:
     """Extract job data from pre-fetched HTML using step-based extraction."""
+    from src.runtime import dom_go_parse
+
+    if dom_go_parse.enabled():
+        return dom_go_parse.parse_html(html, config)
     config = _runtime_config(html, config)
     steps = config.get("steps")
     if not steps:
@@ -1913,6 +1917,19 @@ async def _scrape_once(
         _raise_if_bot_challenge(str(resp.url), html)
 
     source_html = html
+    from src.runtime import dom_go_parse
+
+    if dom_go_parse.enabled():
+        content = await dom_go_parse.parse_fetched_html(source_html, config, url)
+        if artifact_dir is not None:
+            with contextlib.suppress(Exception):
+                # Debug artifacts retain the reference flat representation.
+                elements = _flatten_html(source_html, _runtime_config(source_html, config))
+                (artifact_dir / "flat.json").write_text(
+                    json.dumps(elements, indent=2, ensure_ascii=False),
+                )
+        return await _fill_linked_description(content, source_html, url, linked_description, http)
+
     config = _runtime_config(html, config)
     steps = config["steps"]
     html = _scope_html(html, config)
