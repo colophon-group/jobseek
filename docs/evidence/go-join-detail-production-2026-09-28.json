@@ -1,0 +1,119 @@
+{
+  "checkpoint": "Go JOIN Next.js detail v0.13.884",
+  "runtime_pr": "https://github.com/colophon-group/jobseek/pull/10120",
+  "runtime_revision": "cc1e273aa35b3f72b53eb82930fc4e39c9380e51",
+  "deployment": {
+    "run": "https://github.com/colophon-group/jobseek/actions/runs/36365143439",
+    "conclusion": "success"
+  },
+  "gates": {
+    "required_ci": "https://github.com/colophon-group/jobseek/actions/runs/36364231741",
+    "installed_image_parity": "https://github.com/colophon-group/jobseek/actions/runs/36364231703",
+    "crawler_deploy_gate": "https://github.com/colophon-group/jobseek/actions/runs/36364231940",
+    "conclusions": "success"
+  },
+  "offline_evidence": {
+    "frozen_python_monitor_cases": 52,
+    "frozen_python_detail_cases": 40,
+    "frozen_python_policy_cases": 14,
+    "focused_python_tests": 136,
+    "native_race_vet": "pass",
+    "targeted_pyright": "pass",
+    "shared_idle_browser_regression_detail_tests": 15
+  },
+  "baseline": {
+    "enabled_join": 276,
+    "mapped_nextdata_boards": 265,
+    "nextdata_no_fields_no_http": 3,
+    "other_jsonld_obligations": 8,
+    "admitted_active_postings": 4072,
+    "private_path": "/tmp/jobseek-join-detail-predeploy.json",
+    "sha256": "7872c4d494c32d5d04ea0ca504755315053354eb9e83c8f4a20abe3165a2cc97",
+    "existing_scrape_failure_counts": {
+      "0": 3346,
+      "1": 175,
+      "2": 6,
+      "3": 544,
+      "4": 1
+    }
+  },
+  "rollback": {
+    "retired_epoch": 101,
+    "restored_schedules": 5,
+    "terminal_drops": 0,
+    "remaining_write_fences": 0,
+    "cleared_selectors": 24
+  },
+  "selector_helper": {
+    "path": "/tmp/jobseek-post-smart-personio-selectors.py",
+    "sha256": "07f3dca2e8d0c0185b12817f76ab9e1e8e6775d2df128f9f123abdc803cb97a5",
+    "count": 24,
+    "staged_revision": "cc1e273aa35b3f72b53eb82930fc4e39c9380e51",
+    "kandou_url": "https://kandou.bamboohr.com/careers/310"
+  },
+  "scope_limits": [
+    "Python worker/writer and other detail profiles remain",
+    "Chromium browser ownership remains",
+    "Full actual-workload whole-lane resource/cost proof and final cutover remain",
+    "Fixtures alone are not live field parity evidence"
+  ],
+  "next_jsonld_inventory": {
+    "enabled_primary_detail_boards": 802,
+    "unique_configurations": 59,
+    "null_configs": 638,
+    "render_true": 79,
+    "proxy": 33,
+    "private_path": "/tmp/jobseek-jsonld-detail-configs.json"
+  },
+  "route_census": {
+    "enabled": 7879,
+    "primary_detail_boards": 3040,
+    "rich_skip": 4839,
+    "go_details": 274,
+    "python_details": 2766,
+    "go_join_details": 268,
+    "other_join_jsonld": 8,
+    "errors": 0,
+    "scope": "primary resolved configs; B0 provided runtimes excluded",
+    "actual_active_join_nextdata_urls_selected": 4072,
+    "actual_active_join_nextdata_urls_excluded": 0
+  },
+  "activation": {
+    "epoch": 102,
+    "selected": 5,
+    "ready": 5,
+    "inflight": 0,
+    "dead": 0,
+    "audit": "accepted/audit_ok",
+    "services_healthy": true,
+    "c2": "dark",
+    "retained_due_times_unchanged": true
+  },
+  "initial_typesense": {
+    "successful_exports": 182,
+    "export_errors": 0,
+    "lag": 0,
+    "healthy": true
+  },
+  "initial_job_readback": {
+    "active_join_postings": 4169,
+    "scrape_failure_increases": 0,
+    "natural_go_detail_cycles_observed": 0,
+    "same_byte_capture_comparison": "pending"
+  },
+  "pending_queue": {
+    "observed_epoch_seconds": 1790559163.9555087,
+    "simple_detail_domain_rank": 1401,
+    "simple_detail_domain_count": 1601,
+    "domain": "join.com",
+    "selected_lebensmittel_detail_join_local_rank": 4,
+    "due_scores_forced": false,
+    "duplicate_origin_fetches_for_parity": false
+  },
+  "next_actions": [
+    "Observe normal Go detail cycles and copy passive envelopes securely mode0600",
+    "Use /tmp/jobseek-join-captured-parity.py with the native --parse-detail replay; no origin request",
+    "Use /tmp/jobseek-join-detail-db-read.py to compare persisted description/title/failure state",
+    "Continue the generic JSON-LD detail port while the normal queue is pending"
+  ]
+}
