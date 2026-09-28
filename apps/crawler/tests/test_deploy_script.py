@@ -3456,15 +3456,16 @@ def test_release_pointer_never_exposes_a_partially_prepared_generation(tmp_path:
     assert (active / "success.env").read_text(encoding="utf-8").endswith("new\n")
 
 
-def test_operator_worker_restart_uses_compose_credential_allowlist() -> None:
+def test_operator_guidance_preserves_generation_and_credential_boundaries() -> None:
     agents = AGENTS_MD.read_text()
-    container_management = agents[
-        agents.index("### Container Management") : agents.index("### Disk and Docker GC")
-    ]
-
-    assert "docker compose up -d --force-recreate <service>" in container_management
-    assert "--env-file /home/deploy/.env" not in container_management
-    assert "docker run -d --name <name>" not in container_management
+    reference = (REPO_ROOT / "docs/reference/crawler.md").read_text()
+    for source in (agents, reference):
+        assert "006-crawler-deploy-quiescence-and-rollback.md" in source
+        assert "--env-file /home/deploy/.env" not in source
+        assert "docker run -d --name <name>" not in source
+        assert "rsync -az --delete" not in source
+    assert "mutation locks" in agents
+    assert "complete" in agents and "rollback" in agents
 
 
 def test_deploy_copies_postgresql_operational_preflight() -> None:

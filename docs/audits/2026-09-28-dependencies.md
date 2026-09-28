@@ -6,13 +6,13 @@ Audited `origin/main` at `be97fa7a2c5edf5afe7c604b4a5a049cf2d17aca` in an isolat
 
 ## Implementation status
 
-Implemented on `fix-crawler/prune-dependencies`, based on freshly fetched main at `123a3e928`:
+Implemented on `fix-crawler/prune-dependencies`, initially based on freshly fetched main at `123a3e928`, then integrated with `e6594efe6` before release:
 
 - Removed all six unused web declarations plus Stripe after the owner confirmed the Paddle replacement. The pnpm installation removed **14 packages**. Removed the stale npm lockfile.
 - Deleted the Stripe webhook, 13 orphan UI components, unused search helpers, and the obsolete dynamic company OG cache. Removed exclusive tests and stale mocks/references. Moved the still-used S3 client to web development/operator dependencies.
 - Removed crawler Upstash, its settings/helper, and all obsolete platform-stat invalidations, including the phantom sweep deletion. Native Redis queues and web Upstash consumers remain.
 - Replaced the three runtime taxonomy resolver CSV loaders and workspace taxonomy/help readers with the existing standard-library CSV helper. Added UTF-8 BOM support and preserved quoted/newline/empty-field behavior. The slim `ws` manifest no longer requires Polars; full crawler sync, enrichment tooling, and Parquet inventory still retain it.
-- Bumped the crawler release to `0.13.887`. Billing database history, Paddle, and manual entitlements are preserved.
+- Bumped the crawler release to `0.13.888`. Billing database history, Paddle, and manual entitlements are preserved.
 
 Validation: production web build and typecheck passed; ESLint passed with one warning in a generated Workflow route. Crawler checks passed **668 tests**, Ruff, and targeted Pyright. All five resolver loader outputs matched main exactly across **1,454 entries**; taxonomy validation and **122 searches** also matched. The slim wheel passed its shipped-module smoke test and actual help/taxonomy commands in a clean Python 3.13 environment containing only its declared dependency closure (41 packages), without Polars or Upstash. That installation used the main lockfile's cached versions; `uv pip check` passed. Both project lockfiles validate.
 

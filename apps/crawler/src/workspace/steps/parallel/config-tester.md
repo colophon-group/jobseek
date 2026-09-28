@@ -117,7 +117,7 @@ Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
 5. `dom` — last resort, step-based CSS extraction.
 
 ```bash
-ws select scraper {{ slug }} {{ scraper_type }} --config '{{ scraper_config }}'
+ws select scraper {{ slug }} {{ scraper_type }} --board {{ board_alias }} --as {{ config_name }} --config '{{ scraper_config }}'
 ws run scraper {{ slug }} --board {{ board_alias }} --config {{ config_name }}
 ```
 

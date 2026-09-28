@@ -118,7 +118,7 @@ When config alone can't handle a site, the agent can propose source code changes
 | Branch name | `add-company/<slug>` | `fix-crawler/<description>` |
 | Label | `auto-merge` or `review-size`/`review-load` | `review-code` (always) |
 | PR body | Standard format | Must explain what config options were tried first |
-| Review | May auto-merge | Always requires human review |
+| Merge authority | May qualify for company auto-merge | Explicit task/operator authorization plus required checks |
 
 **Before proposing code changes**, the agent must:
 1. Exhaust all config options (different monitor types, different scraper types, different selectors)

@@ -1,15 +1,16 @@
 # Auto-Merge Rules
 
-PRs that add company configs can be auto-merged or require human review, based on estimated crawl cost.
+PRs that add company configs qualify for automatic merge based on estimated crawl cost. Other changes need
+explicit task/operator merge authorization; approving reviews are not required.
 
 ## Policy
 
 | Condition | Label | Policy |
 |-----------|-------|--------|
 | Low volume (<500 jobs), fast crawl, config-only changes | `auto-merge` | Auto-merge after CI passes |
-| Medium volume (500–5000 jobs) | `review-size` | Human review required |
-| High estimated crawl time or resource cost | `review-load` | Human review required |
-| Agent proposes source code changes | `review-code` | Human review required |
+| Medium volume (500–5000 jobs) | `review-size` | Separate merge authorization |
+| High estimated crawl time or resource cost | `review-load` | Separate merge authorization |
+| Agent proposes source code changes | `review-code` | Separate merge authorization |
 
 ## How It Works
 
@@ -28,7 +29,7 @@ PRs that add company configs can be auto-merged or require human review, based o
 - Greenhouse board with 200 jobs → `auto-merge`
 - Lever board with 100 jobs → `auto-merge`
 
-**Human review** (medium/high risk):
+**Separate authorization** (medium/high cost or code changes):
 - Greenhouse board with 3000 jobs → `review-size`
 - DOM-type board requiring Playwright → `review-load`
 - Any PR that modifies `.py` files → `review-code`
@@ -80,19 +81,23 @@ When an agent proposes source code changes (labeled `review-code`):
 - CSV config for the company should be included in the same PR
 - Branch naming: `fix-crawler/<description>` instead of `add-company/<slug>`
 
-Code change PRs never auto-merge — they always require human review, regardless of job count or crawl time.
+Code changes are outside the company auto-merger. An explicitly authorized agent or maintainer may merge them after required checks and fresh commit/state validation. Zero approving reviews are required by repository policy.
 
 ## External Contributors
 
-PRs from external contributors (forks) currently require human review regardless of size, as a security measure. As the project matures and gains anti-fraud policies (contributor reputation, automated config validation, abuse detection), external PRs may qualify for auto-merge under the same thresholds.
+Fork PRs are outside the company auto-merger and need separate merge authorization and verification. As the project matures and gains anti-fraud policies (contributor reputation, automated config validation, abuse detection), external PRs may qualify for auto-merge under the same thresholds.
 
 ## Safety Rails
 
 - Auto-merge only applies to CSV file changes in `apps/crawler/data/`
 - CI must pass (CSV validation, no broken references)
-- CodeQL is enforced by required `Analyze (...)` status checks, not by a
-  non-path-aware GitHub code-scanning ruleset. This lets data-only company
-  requests satisfy CodeQL through the workflow skip path while code changes
-  still run real CodeQL analysis.
+- CodeQL is advisory: its analysis and alerts are available for review but are
+  not required branch checks and do not block merge. Data/docs-only PRs may
+  skip it. Required checks are `Required CI` and `Crawler Deploy Gate`; the
+  checked-in ruleset matches this policy. Making CodeQL blocking would require
+  an explicit alert threshold, an always-reported gate and a ruleset change.
 - The `auto-merge` label can only be applied by the agent or maintainers
-- Any PR touching source code always requires human review
+- No mandatory approving review count is enforced, including for source changes.
+- Auto-merge validates the exact head/base snapshot, all required checks, draft
+  state and hold labels immediately before an atomic expected-head merge.
+  A changed snapshot ends that attempt; `review-load` also prevents auto-merge.

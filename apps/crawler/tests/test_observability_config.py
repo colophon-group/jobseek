@@ -463,14 +463,14 @@ def test_daily_error_review_records_status_across_the_systemd_lifecycle() -> Non
 
     assert "SuccessExitStatus=10" in unit
     assert "SuccessExitStatus=10" in annotations_unit
-    assert "ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-routine-status.py" in unit
+    assert "ConditionPathExists=/usr/local/lib/jobseek-codex/codex-routine-status.py" in unit
     assert (
-        "ExecStartPre=+/usr/bin/python3 "
-        "/srv/jobseek-codex/repo/scripts/codex-routine-status.py begin"
+        "ExecStartPre=+/usr/bin/python3 -I "
+        "/usr/local/lib/jobseek-codex/codex-routine-status.py begin"
     ) in unit
     assert (
-        "ExecStopPost=+/usr/bin/python3 "
-        "/srv/jobseek-codex/repo/scripts/codex-routine-status.py finish "
+        "ExecStopPost=+/usr/bin/python3 -I "
+        "/usr/local/lib/jobseek-codex/codex-routine-status.py finish "
         "--service-result ${SERVICE_RESULT} --exit-code ${EXIT_CODE} "
         "--exit-status ${EXIT_STATUS}"
     ) in unit

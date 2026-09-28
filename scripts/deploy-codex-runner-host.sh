@@ -20,6 +20,9 @@ CODEX_NPM_PREFIX="/home/codex-runner/.local/share/jobseek-codex-cli"
 CODEX_BIN="${CODEX_NPM_PREFIX}/bin/codex"
 
 LOCK_FILE="${ROOT_DIR}/state/codex-runner.lock"
+# CI copies this complete bundle into a root-owned deployment directory.
+TRUSTED_SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PRIVILEGED_DIR=/usr/local/lib/jobseek-codex
 
 UNITS=(
   jobseek-codex-docker-lifecycle.service
@@ -159,18 +162,37 @@ ensure_layout() {
     gpasswd --delete codex-runner docker
   fi
 
-  install -d -o codex-runner -g codex-runner -m 0750 "${ROOT_DIR}"
-  install -d -o codex-runner -g codex-runner -m 0700 \
-    "${ROOT_DIR}/worktrees" \
-    "${ROOT_DIR}/traces" \
-    "${ROOT_DIR}/state" \
-    "${ROOT_DIR}/logs" \
-    "${ROOT_DIR}/data/postings-labelled"
+  [[ ! -L "${ROOT_DIR}" ]] || fail "runner root must not be a symlink"
+  install -d -o root -g codex-runner -m 0750 "${ROOT_DIR}"
+  [[ ! -L "${ROOT_DIR}/inputs" ]] || fail "inputs must not be a symlink"
+  # ROOT_DIR now prevents replacement of these entries. Do not chmod/chown
+  # paths inside runner-writable directories as root.
+  local directory
+  for directory in worktrees traces state logs repo data; do
+    [[ ! -L "${ROOT_DIR}/${directory}" ]] || fail "runner directory is a symlink: ${directory}"
+    if [[ ! -d "${ROOT_DIR}/${directory}" ]]; then
+      install -d -o codex-runner -g codex-runner -m 0700 "${ROOT_DIR}/${directory}"
+    fi
+  done
+  as_runner mkdir -p "${ROOT_DIR}/data/postings-labelled"
   install -d -o root -g codex-runner -m 0750 "${ROOT_DIR}/inputs" /etc/jobseek-codex
+  # Previously the parent was agent-owned. Reject any replaced descendants.
+  python3 -I - "${ROOT_DIR}/inputs" <<'PYTHON'
+import stat, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+for path in [root, *root.rglob("*")]:
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode):
+        # The collector's relative latest link is data, not executable code.
+        if path.name == "latest" and path.parent == root / "error-review":
+            continue
+        raise SystemExit(f"unsafe input symlink: {path}")
+    if info.st_uid != 0 or info.st_mode & 0o022:
+        raise SystemExit(f"unsafe privileged input path: {path}")
+PYTHON
 
-  touch "${LOCK_FILE}"
-  chown codex-runner:codex-runner "${LOCK_FILE}"
-  chmod 0600 "${LOCK_FILE}"
+  as_runner touch "${LOCK_FILE}"
 }
 
 ensure_document_extraction_runtime() {
@@ -192,14 +214,14 @@ ensure_document_extraction_runtime() {
 
 ensure_codex_cli() {
   command -v npm >/dev/null 2>&1 || fail "npm is required to install the Codex CLI"
-  install -d -o codex-runner -g codex-runner -m 0750 \
-    /home/codex-runner/.local \
-    /home/codex-runner/.local/bin \
-    /home/codex-runner/.local/share \
-    "${CODEX_NPM_PREFIX}"
-
-  log "updating the Codex CLI for gpt-6-astra"
-  as_runner timeout 180s npm install --global --prefix "${CODEX_NPM_PREFIX}" @openai/codex@latest
+  local version
+  version="$(cat "${TRUSTED_SOURCE}/deploy/codex-version")"
+  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "invalid Codex version pin"
+  CODEX_NPM_PREFIX="/home/codex-runner/.local/share/jobseek-codex-cli/${version}"
+  CODEX_BIN="${CODEX_NPM_PREFIX}/bin/codex"
+  as_runner mkdir -p /home/codex-runner/.local/bin "${CODEX_NPM_PREFIX}"
+  log "installing Codex CLI ${version}"
+  as_runner timeout 180s npm install --global --prefix "${CODEX_NPM_PREFIX}" "@openai/codex@${version}"
   as_runner "${CODEX_BIN}" --version
 
   # Verify the server accepts the model before a resolver run can claim an
@@ -209,14 +231,17 @@ ensure_codex_cli() {
       --json --ephemeral --ignore-user-config --ignore-rules \
       --skip-git-repo-check -C /tmp \
       -m gpt-6-astra -c model_reasoning_effort=low \
-      'Reply exactly OK.' 2>&1)"; then
+      'Reply exactly OK.' </dev/null 2>&1)"; then
     fail "Codex CLI model smoke failed; check runner authentication and model compatibility"
   fi
   if ! python3 -c \
-    'import json, sys; lines = (json.loads(line) for line in sys.stdin if line.startswith("{")); raise SystemExit(0 if any(line.get("type") == "turn.completed" for line in lines) else 1)' \
+    'import json, sys; lines = (json.loads(line) for line in sys.stdin if line.startswith("{")); raise SystemExit(0 if any(line.get("type") == "item.completed" and line.get("item", {}).get("type") == "agent_message" and line["item"].get("text", "").strip() == "OK" for line in lines) else 1)' \
     <<<"${smoke_output}"; then
-    fail "Codex CLI model smoke did not complete a turn"
+    fail "Codex CLI model smoke did not return exactly OK"
   fi
+
+  as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
+    "${REPO_DIR}/scripts/codex-agent-smoke.py" --codex "${CODEX_BIN}"
 
   as_runner ln -sfnT "${CODEX_BIN}" /home/codex-runner/.local/bin/codex
   as_runner env PATH="/home/codex-runner/.local/bin:/usr/local/bin:/usr/bin:/bin" \
@@ -244,7 +269,7 @@ update_repo() {
     as_runner git -C "${REPO_DIR}" fetch --prune origin "${BRANCH}"
   else
     rm -rf "${REPO_DIR}"
-    install -d -o codex-runner -g codex-runner -m 0750 "$(dirname "${REPO_DIR}")"
+    install -d -o codex-runner -g codex-runner -m 0750 "${REPO_DIR}"
     as_runner git clone --branch "${BRANCH}" "${REPO_URL}" "${REPO_DIR}"
     as_runner git -C "${REPO_DIR}" fetch --prune origin "${BRANCH}"
   fi
@@ -281,13 +306,42 @@ sync_crawler_runtime() {
     bash -c "cd '${REPO_DIR}/apps/crawler' && uv sync --frozen --no-dev"
 }
 
+verify_trusted_bundle() {
+  # Check every ancestor too: a root-owned file under an agent-writable
+  # parent can still be replaced. Never run/import code from REPO_DIR as root.
+  python3 -I - "${TRUSTED_SOURCE}" <<'PYTHON'
+import os, stat, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+paths = [root, *root.parents, *root.rglob("*")]
+for path in paths:
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode) or info.st_uid != 0 or info.st_mode & 0o022:
+        raise SystemExit(f"unsafe trusted deployment path: {path} (uid={info.st_uid}, mode={stat.S_IMODE(info.st_mode):o})")
+PYTHON
+}
+
+install_privileged_runtime() {
+  [[ ! -L "${PRIVILEGED_DIR}" ]] || fail "privileged runtime must not be a symlink"
+  install -d -o root -g root -m 0755 "${PRIVILEGED_DIR}"
+  local script
+  for script in codex-routine-status.py codex-error-review-bundle.py \
+      codex-docker-lifecycle-watch.py jobseek_maintenance_provenance.py; do
+    install -o root -g root -m 0644 "${TRUSTED_SOURCE}/scripts/${script}" \
+      "${PRIVILEGED_DIR}/${script}"
+  done
+  # Record both the deployment and pinned CLI for incident/rollback evidence.
+  printf 'revision=%s\ncodex_version=%s\n' "${EXPECTED_SHA}" \
+    "$(cat "${TRUSTED_SOURCE}/deploy/codex-version")" >"${PRIVILEGED_DIR}/release.txt"
+}
+
 install_maintenance_contract() {
   install -d -o root -g root -m 0755 /usr/local/lib/jobseek-maintenance
   install -o root -g root -m 0644 \
-    "${REPO_DIR}/scripts/jobseek_maintenance_provenance.py" \
+    "${TRUSTED_SOURCE}/scripts/jobseek_maintenance_provenance.py" \
     /usr/local/lib/jobseek-maintenance/jobseek_maintenance_provenance.py
   install -o root -g root -m 0755 \
-    "${REPO_DIR}/scripts/jobseek-maintenance.py" \
+    "${TRUSTED_SOURCE}/scripts/jobseek-maintenance.py" \
     /usr/local/sbin/jobseek-maintenance
 }
 
@@ -295,7 +349,7 @@ install_units() {
   local unit
   for unit in "${UNITS[@]}"; do
     install -o root -g root -m 0644 \
-      "${REPO_DIR}/deploy/systemd/${unit}" \
+      "${TRUSTED_SOURCE}/deploy/systemd/${unit}" \
       "/etc/systemd/system/${unit}"
   done
 
@@ -375,10 +429,13 @@ verify_entrypoints() {
     "${REPO_DIR}/apps/crawler/.venv/bin/python" -c \
     'import sys; from pathlib import Path; from src.workspace.codex_routine_runner import labeller_postgresql_child_env; state=Path(sys.argv[1]); actual=labeller_postgresql_child_env(state); expected={"CRAWLER_DB_ROLE":"labeller","CRAWLER_DB_POOL_MIN":"0","CRAWLER_DB_POOL_MAX":"2","CRAWLER_DB_POOL_IDLE_SECONDS":"60","JOBSEEK_LABELLER_DB_LOCK_FILE":str(state / "labeller-postgresql.lock"),"JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS":"300"}; raise SystemExit(0 if actual == expected else "labeller PostgreSQL pool contract mismatch; keep labeller.env DSN-only, restore the committed runner contract, and redeploy")' \
     "${ROOT_DIR}/state"
+  as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
+    "${REPO_DIR}/apps/crawler/.venv/bin/python" \
+    "${REPO_DIR}/scripts/check-agent-contracts.py" >"${PRIVILEGED_DIR}/agent-contracts.json"
   LABELLER_CONTRACT_VERIFIED=1
   as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" --help >/dev/null
-  python3 "${REPO_DIR}/scripts/codex-error-review-bundle.py" --help >/dev/null
+  python3 -I "${PRIVILEGED_DIR}/codex-error-review-bundle.py" --help >/dev/null
   python3 /usr/local/sbin/jobseek-maintenance --self-test >/dev/null
   as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
     "${REPO_DIR}/scripts/codex-worktree-reconcile.py" --help >/dev/null
@@ -466,12 +523,13 @@ restore_timers_on_exit() {
 
 main() {
   require_root
+  verify_trusted_bundle
   ensure_layout
   pause_timer_activations
   require_runtime_config
 
   log "waiting for Codex runner lock: ${LOCK_FILE}"
-  exec 9>"${LOCK_FILE}"
+  exec 9<"${LOCK_FILE}"
   if ! flock -w "${LOCK_TIMEOUT_S}" 9; then
     fail "could not acquire ${LOCK_FILE} within ${LOCK_TIMEOUT_S}s"
   fi
@@ -480,6 +538,7 @@ main() {
   update_repo
   sync_crawler_runtime
   ensure_codex_cli
+  install_privileged_runtime
   install_maintenance_contract
   install_units
   verify_entrypoints

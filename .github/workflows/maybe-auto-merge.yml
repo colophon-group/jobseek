@@ -16,6 +16,11 @@ on:
         required: false
         type: string
 
+# Serialize all automatic merge leases, including scheduled and event retries.
+concurrency:
+  group: company-auto-merge
+  cancel-in-progress: false
+
 jobs:
   label-and-merge:
     runs-on: ubuntu-latest

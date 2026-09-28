@@ -4,13 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - '.codex/agents/**'
+      - '.codex/**'
       - '.agents/**'
       - 'AGENTS.md'
       - 'apps/crawler/AGENTS.md'
       - 'apps/crawler/src/labeller/**'
       - 'apps/crawler/src/workspace/**'
       - 'deploy/systemd/jobseek-codex-*'
+      - 'deploy/codex-version'
       - 'docs/14-error-review-routine.md'
       - 'docs/15-data-sampling-routine.md'
       - 'docs/16-hetzner-maintenance.md'
@@ -46,15 +47,26 @@ jobs:
       - name: Validate deploy script
         run: bash -n scripts/deploy-codex-runner-host.sh
 
+      - name: Prepare protected deployment bundle directory
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: GITHUB_SHA
+          script: |
+            set -euo pipefail
+            install -d -o root -g root -m 0755 /opt/jobseek-codex-deploy
+            install -d -o root -g root -m 0700 "/opt/jobseek-codex-deploy/${GITHUB_SHA}"
+
       - name: Copy Codex runner deploy script
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/deploy-codex-runner-host.sh
-          target: /tmp/jobseek-codex-runner-deploy/${{ github.sha }}
-          strip_components: 1
+          source: scripts/deploy-codex-runner-host.sh,scripts/codex-routine-status.py,scripts/codex-error-review-bundle.py,scripts/codex-docker-lifecycle-watch.py,scripts/jobseek_maintenance_provenance.py,scripts/jobseek-maintenance.py,deploy/systemd/jobseek-codex-*,deploy/codex-version
+          target: /opt/jobseek-codex-deploy/${{ github.sha }}
 
       - name: Deploy Codex runner host surface
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
@@ -71,7 +83,12 @@ jobs:
             export JOBSEEK_CODEX_BRANCH=main
             export JOBSEEK_CODEX_EXPECTED_SHA="${GITHUB_SHA}"
             export JOBSEEK_CODEX_START_TIMERS=0
-            bash "/tmp/jobseek-codex-runner-deploy/${GITHUB_SHA}/deploy-codex-runner-host.sh"
+            # Archive ownership/modes come from the CI checkout. The enclosing
+            # directory stayed root-only throughout transfer; normalize before
+            # executing any bundle code, then validate every path in the installer.
+            chown -Rh root:root "/opt/jobseek-codex-deploy/${GITHUB_SHA}"
+            chmod -R go-w "/opt/jobseek-codex-deploy/${GITHUB_SHA}"
+            bash "/opt/jobseek-codex-deploy/${GITHUB_SHA}/scripts/deploy-codex-runner-host.sh"
             test "$(stat -c '%U:%G:%a' /usr/local/sbin/jobseek-maintenance)" = "root:root:755"
             ! id -nG codex-runner | tr ' ' '\n' | grep -qx docker
             runuser -u codex-runner -- test ! -w /var/run/docker.sock
