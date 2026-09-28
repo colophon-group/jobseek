@@ -3,6 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import {
   and,
+  desc,
   eq,
   gt,
   inArray,
@@ -242,13 +243,22 @@ export class PostgresAiFilterExecutionRepository
       const leaseExpiresAt = new Date(input.now.getTime() + CACHE_LEASE_MS);
 
       for (const candidate of unresolved) {
-        const existing = existingByKey.get(candidate.cacheKey);
+        let existing = existingByKey.get(candidate.cacheKey);
         if (
           existing?.status === "ready" &&
           existing.decision &&
           existing.expiresAt.getTime() > input.now.getTime()
         ) {
           cacheHits.push({ binding: candidate, decision: existing.decision });
+          continue;
+        }
+
+        if (
+          existing?.status === "pending" &&
+          existing.leaseExpiresAt &&
+          existing.leaseExpiresAt.getTime() >= input.now.getTime()
+        ) {
+          waitingCacheKeys.push(candidate.cacheKey);
           continue;
         }
 
@@ -283,14 +293,46 @@ export class PostgresAiFilterExecutionRepository
             ownerId: aiFilterUsageLedger.ownerId,
             monthStart: aiFilterUsageLedger.monthStart,
             reservedNanodollars: aiFilterUsageLedger.reservedNanodollars,
+            reconciledAt: aiFilterUsageLedger.reconciledAt,
           })
           .from(aiFilterUsageLedger)
           .where(and(
             inArray(aiFilterUsageLedger.status, ["reserved", "uncertain"]),
             sql`${candidate.cacheKey} = ANY(${aiFilterUsageLedger.cacheKeys})`,
           ))
+          // A historical uncertain charge must never hide a live reservation.
+          .orderBy(
+            desc(sql`${aiFilterUsageLedger.status} = 'reserved'`),
+            desc(aiFilterUsageLedger.createdAt),
+          )
           .for("update")
           .limit(1);
+
+        // The initial cache snapshot can predate another worker's claim and
+        // reservation. Lock its current row before deciding that any spend is
+        // orphaned, using the same ledger -> cache order as batch completion.
+        [existing] = await tx
+          .select()
+          .from(aiFilterGlobalCache)
+          .where(eq(aiFilterGlobalCache.cacheKey, candidate.cacheKey))
+          .for("update")
+          .limit(1);
+        if (
+          existing?.status === "pending" &&
+          existing.leaseExpiresAt &&
+          existing.leaseExpiresAt.getTime() >= input.now.getTime()
+        ) {
+          waitingCacheKeys.push(candidate.cacheKey);
+          continue;
+        }
+        if (
+          existing?.status === "ready" &&
+          existing.decision &&
+          existing.expiresAt.getTime() > input.now.getTime()
+        ) {
+          cacheHits.push({ binding: candidate, decision: existing.decision });
+          continue;
+        }
 
         const pendingLeaseExpired = Boolean(
           existing?.status === "pending" &&
@@ -299,8 +341,9 @@ export class PostgresAiFilterExecutionRepository
         );
         const uncertainCooldownElapsed = Boolean(
           existing?.status === "failed" &&
-          existing.failureCode === "uncertain_provider_unavailable" &&
-          existing.updatedAt.getTime() <=
+          unresolvedReservation?.status === "uncertain" &&
+          unresolvedReservation.reconciledAt &&
+          unresolvedReservation.reconciledAt.getTime() <=
             input.now.getTime() - UNCERTAIN_RETRY_COOLDOWN_MS,
         );
         let reservationBlocksClaim = Boolean(unresolvedReservation);
@@ -340,6 +383,10 @@ export class PostgresAiFilterExecutionRepository
           unresolvedReservation?.status === "uncertain" &&
           (pendingLeaseExpired || uncertainCooldownElapsed || !existing)
         ) {
+          // This charge stays in the ledger. A later, non-ambiguous failure can
+          // change the cache failure code without making that old charge live.
+          // The atomic cache update below still enforces its own latest lease
+          // and uncertain-failure cooldown against concurrent workers.
           reservationBlocksClaim = false;
         }
         if (reservationBlocksClaim) {
