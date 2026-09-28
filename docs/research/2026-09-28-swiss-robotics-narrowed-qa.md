@@ -43,11 +43,11 @@ Revision 2 paused twice with safe telemetry `provider_unavailable`, HTTP status 
 
 Ledger `reconciled_at` receives the segment's captured time rather than completion wall time; it cannot establish request latency. Both historical uncertain charges remain intact. Normal owner retries respected the five-minute cooldown. Revision 3 subsequently completed without provider failures. No timeout, retry, budget or cooldown policy was changed.
 
-## Implementation gate and preservation requirements
+## Initial implementation gate and preservation requirements
 
-The frozen 186-job replay is complete and the gate failed. Do not implement: it removed the three known misses but introduced one new definite false negative. A passing replay would justify the tested question-local structure, a prompt-version bump, and version-aware same-query configuration reuse. Normal owner View already calls configuration reconciliation before checking whether demand is covered; it can create a fresh historical revision when the prompt version changes. Old query versions, decisions, caches and budget ledger entries must remain untouched. This is not a production quality claim until the new version itself is evaluated and audited live.
+The frozen 186-job replay failed the initial no-new-error gate: it removed the three known misses but introduced one new definite false negative. A passing replay would justify the tested question-local structure, a prompt-version bump, and version-aware same-query configuration reuse. Normal owner View already calls configuration reconciliation before checking whether demand is covered; it can create a fresh historical revision when the prompt version changes. Old query versions, decisions, caches and budget ledger entries must remain untouched. This is not a production quality claim until the new version itself is evaluated and audited live.
 
-## Full frozen replay outcome — implementation held
+## Full frozen replay outcome — initial hold
 
 The question-local replay used all 186 exact normalized production inputs, the original 38 batch memberships and ordering, unchanged query/model/criteria, concurrency 2 and no retries. All 38 requests succeeded. Configured cost was $0.007895244. No account or production decision was changed.
 
@@ -58,6 +58,14 @@ Agreement is 175/176 definite cases, compared with 173/176 for the production ba
 The evidence supports request-framing sensitivity and a residual model classification error. It does not establish that the remaining miss is unavoidable, nor isolate provider variability from context sensitivity with repeated controls. Neither a new threshold fitted to this result nor more job-specific prompt examples is justified. The current model output must not be described as complete or perfectly accurate. Any further generic classifier change needs a separately specified evaluation criterion and held-out evidence; silently overriding labels or changing independent expectations would invalidate this audit.
 
 Replay artifacts: `/tmp/robotics-revision3-question-local-full-payloads.json`, `/tmp/robotics-revision3-question-local-full-results.json`, `/tmp/robotics-revision3-question-local-full-comparison.json`.
+
+## Accepted release decision
+
+The user subsequently accepted the one remaining miss and explicitly authorized deployment of the question-local evidence format and the remaining article work. The 175/176 agreement is a frozen-sample result, not a guarantee for future jobs. The accepted residual case remains Mimic’s wearable-device mechanical-engineering role above; its independent expected label stays accepted.
+
+Ship the exact evaluated request structure without changing the watchlist request, decision thresholds, retry policy, or budget behavior. Increment the classifier prompt version and ensure normal owner reconciliation creates a fresh revision for changed model, prompt, schema, or normalizer versions. Preserve historical decisions, caches and charges. Verify the deployed version through normal owner View, then check the shared feed and publication links.
+
+This limitation belongs in this internal QA report and release evidence. It must not be added to the article copy. Final production results will be recorded after deployment.
 
 ## Shorter request comparison
 
