@@ -1,0 +1,100 @@
+{
+  "requestedLimit": 100,
+  "returnedRows": 100,
+  "uniqueRequestIds": 50,
+  "earliestTimestamp": 1790586579233,
+  "latestTimestamp": 1790587668985,
+  "companyRequests": [
+    {
+      "timestamp": 1790587668985,
+      "requestMethod": "GET",
+      "requestPath": "/de/company/allegro",
+      "responseStatusCode": 200,
+      "source": "serverless",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming"
+    },
+    {
+      "timestamp": 1790587484740,
+      "requestMethod": "GET",
+      "requestPath": "/en/company/jpmorgan",
+      "responseStatusCode": 200,
+      "source": "static",
+      "cache": "MISS",
+      "cacheReason": "collapsed",
+      "pprState": "static"
+    },
+    {
+      "timestamp": 1790587484660,
+      "requestMethod": "GET",
+      "requestPath": "/en/company/jpmorgan",
+      "responseStatusCode": 200,
+      "source": "serverless",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": ""
+    },
+    {
+      "timestamp": 1790587181956,
+      "requestMethod": "POST",
+      "requestPath": "/en/company/revisa-gmbh-co-kg-steuerberatungsgesellschaft",
+      "responseStatusCode": 200,
+      "source": "serverless",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming"
+    },
+    {
+      "timestamp": 1790587129725,
+      "requestMethod": "GET",
+      "requestPath": "/en/company/anthropic",
+      "responseStatusCode": 200,
+      "source": "static",
+      "cache": "MISS",
+      "cacheReason": "collapsed",
+      "pprState": "static"
+    },
+    {
+      "timestamp": 1790587129529,
+      "requestMethod": "GET",
+      "requestPath": "/en/company/anthropic",
+      "responseStatusCode": 200,
+      "source": "serverless",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": ""
+    },
+    {
+      "timestamp": 1790586985697,
+      "requestMethod": "GET",
+      "requestPath": "/en/company/exl",
+      "responseStatusCode": 200,
+      "source": "serverless",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming"
+    },
+    {
+      "timestamp": 1790586788046,
+      "requestMethod": "GET",
+      "requestPath": "/fr/company/arnold-kl-mpen-gmbh-co-kg",
+      "responseStatusCode": 200,
+      "source": "static",
+      "cache": "HIT",
+      "cacheReason": "",
+      "pprState": "static"
+    },
+    {
+      "timestamp": 1790586765840,
+      "requestMethod": "GET",
+      "requestPath": "/fr/company/arnold-kl-mpen-gmbh-co-kg",
+      "responseStatusCode": 200,
+      "source": "serverless",
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming"
+    }
+  ],
+  "limitations": "Partial retained sample. No CPU durations, client identifiers, query strings, credentials or raw messages retained. POST is not proof of a Server Action or abuse."
+}
