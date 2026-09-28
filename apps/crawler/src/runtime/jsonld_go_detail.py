@@ -17,7 +17,6 @@ import httpx
 import structlog
 
 from src.core.job_content import JobContent
-from src.core.scrapers import all_scraper_types
 from src.metrics import (
     runtime_execution_duration_seconds,
     runtime_executions_total,
@@ -218,6 +217,8 @@ class GoJsonLdDetailRuntime:
         pw=None,
         artifact_dir: Path | None = None,
     ) -> JobContent:
+        from src.core.scrapers import all_scraper_types
+
         del http, artifact_dir
         eligible(url, scraper_type, scraper_config, pw)
         started, outcome = monotonic(), "error"
