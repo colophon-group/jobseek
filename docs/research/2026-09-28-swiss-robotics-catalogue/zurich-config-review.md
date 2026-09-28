@@ -8,7 +8,7 @@ Verified on 28 September 2026. Changes are configuration and catalogue data only
 - **Board:** [Official vacancies](https://www.swisslog.com/en-us/careers/openings), canonical company slug `swisslog` and board slug `swisslog-careers`.
 - **Discovery:** `api_sniffer` replays the public API referenced by the page's `div#mod-joblist` `data-url`: `https://www.swisslog.com/en-us/api/job/getjobs?searchrootpath=24F53394AB4E44F1A28C930664FDC228`. The `items` array supplies `href`, `headline` and `facetsTop`.
 - **Completeness:** the API and configured monitor returned **53 jobs**, matching the rendered page's **53 Results**. Five had Swiss locations. The page initially renders ten rows; the API response contains the whole inventory. An initial probe used an estimate of 98; the subsequent rendered/API count supersedes that estimate.
-- **Detail extraction:** retain the explicit `json-ld` scraper. The monitor supplies titles and locations but no descriptions; `skip` would be incorrect. Verified samples:
+- **Detail extraction:** retain the explicit `json-ld` scraper. The monitor supplies titles and locations but no descriptions. The scraper explicitly sets `enrich: ["description", "employment_type"]`: rich-monitor scheduling otherwise suppresses detail fetches even with a scraper type. `skip` would be incorrect. Verified samples:
   - [Software Project Manager (m/w/d)](https://www.swisslog.com/de-de/karriere/offene-stellen/software-project-manager-mwd-4385): Buchs, Schweiz; complete responsibilities and requirements.
   - [Cyber Security Incident Responder](https://www.swisslog.com/en-us/careers/openings/cyber-security-incident-responder-4307): Petaling Jaya, Malaysia; complete responsibilities and requirements.
 - Both samples also yielded employment type, publication date and expiry from source JSON-LD. The source includes the employer suffix in its job title; it is preserved.
@@ -56,3 +56,45 @@ locations, descriptions and on-site work modes. No browser or proxy mode was
 enabled, and the CI static board probe remains active. The upstream sitemap was
 also inspected but contained different, stale career links, so it was not used
 as a replacement for the current careers listing.
+
+
+## Final transport and scheduling verification
+
+The User-Agent adjustment above did **not** fix GitHub's Cloudflare challenge.
+Diagnostic [job 108961257466](https://github.com/colophon-group/jobseek/actions/runs/36432294533/job/108961257466)
+returned HTTP 403 with `cf-mitigated: challenge` for the listing and detail page
+using HTTPX, curl HTTP/1.1 and HTTP/2, and actual Chrome. The normal failing CI
+probe was retained; no warning downgrade or exception was introduced.
+
+The canonical site's CSS asset identifies `roboa-lp`, and its public Webflow
+host is [roboa-lp.webflow.io](https://roboa-lp.webflow.io/career). Both hosts carry
+the exact Webflow site ID `698eec1569c170b390c0c0fa` and matching page IDs.
+[Diagnostic job 108965282725](https://github.com/colophon-group/jobseek/actions/runs/36433330663/job/108965282725)
+then returned **HTTP 200 for the alternate listing and all three job pages**,
+with default HTTPX and browser headers, as well as curl. Read-only requests
+from the production crawler host also returned 200 for all four pages.
+
+The final static DOM monitor and scraper use the supported `fetch_url_transform`
+to read that official host. The monitor's `url_transform` restores
+`https://www.roboa.ch/` identities, so public job links remain canonical.
+No browser, proxy, custom headers, runtime changes or CI changes are needed.
+The temporary diagnostic workflow and script were removed.
+
+All three jobs were re-extracted from both hosts. Titles, locations, on-site
+mode and complete description HTML match **exactly**. Description lengths were
+2,305 (software intern), 3,929 (field/hardware engineer), and 7,478 (service and
+production technician) characters. The final monitor again discovers exactly
+three canonical vacancies and excludes the speculative application.
+
+The official [RSS feed](https://www.roboa.ch/career/jobs/rss.xml) has the same
+four entries, but only 192–318-character summaries and still returns 403 from
+GitHub; it cannot replace full-body extraction. The sitemap has stale inventory
+and was likewise rejected.
+
+Swisslog's configured enrichment was checked against `_effective_board_enrich`
+and `_is_skip_no_scrape`, and the rich-board scheduling code. The 46 relevant
+existing rich-monitor scheduling tests passed. The separate build-info test
+requires an editable installation matching this worktree and is not a scheduling
+test. Other new boards were reviewed: CASCINATION and Flybotix use Personio's
+full-description XML monitor; RigiTech's sitemap and Embotech's DOM monitor
+are URL-only and schedule their configured detail scrapers normally.
