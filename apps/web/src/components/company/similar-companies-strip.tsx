@@ -35,7 +35,7 @@ export function SimilarCompaniesStrip({
   locale,
 }: Props) {
   const { t } = useLingui();
-  const { isLoggedIn } = useSession();
+  const { isLoggedIn, isPending } = useSession();
   const [companies, setCompanies] = useState<SimilarCompany[]>(initialCompanies);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [truncated, setTruncated] = useState(initialTruncated);
@@ -88,7 +88,8 @@ export function SimilarCompaniesStrip({
   }, [companyId, industryId, companies.length, isLoggedIn]);
 
   const { sentinelRef, isLoading } = useInfiniteScroll({
-    hasMore,
+    // Resolve bootstrap before choosing the anonymous pagination cap.
+    hasMore: hasMore && !isPending,
     load: loadMore,
     root: scrollRef,
     rootMargin: "0px 200px 0px 0px",
