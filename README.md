@@ -10,8 +10,6 @@ Job Seek brings jobs from thousands of company career pages into one search. Bui
 
 [![MIT License](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE) [![Job data CC BY-NC 4.0](https://img.shields.io/badge/data-CC%20BY--NC%204.0-lightgrey.svg)](LICENSE-JOB-DATA) [![CI](https://github.com/colophon-group/jobseek/actions/workflows/ci.yml/badge.svg)](https://github.com/colophon-group/jobseek/actions/workflows/ci.yml) [![CodeQL](https://github.com/colophon-group/jobseek/actions/workflows/codeql.yml/badge.svg)](https://github.com/colophon-group/jobseek/actions/workflows/codeql.yml) [![PyPI](https://img.shields.io/pypi/v/jobseek-crawler-setup.svg)](https://pypi.org/project/jobseek-crawler-setup/) [![GitHub stars](https://img.shields.io/github/stars/colophon-group/jobseek?style=social)](https://github.com/colophon-group/jobseek)
 
-[![Job Seek — track the companies you actually want to work at](.github/assets/readme/hero.png)](https://jseek.co)
-
 <sub>Tracking <strong>Stripe · Anthropic · OpenAI · Figma · Vercel · Datadog · Mistral · Hugging Face · Linear · Notion · Roche · Nestlé · UBS · Swisscom · ABB · SAP · Siemens · Klarna · N26 · Wise · Monzo</strong> — and thousands more. Browse the source-of-truth registry in [`companies.csv`](apps/crawler/data/companies.csv).</sub>
 
 </div>
@@ -55,8 +53,6 @@ Two roles can have the same title and very different responsibilities. Describe 
 > I want to work directly with users and turn their problems into product improvements. No people management.
 
 Narrowed checks the descriptions in your watchlist and picks out the matches. It is included with **Job Seek Pro**; regular search, watchlists, weekly email digests, and application tracking remain free. [See Pro details and current availability.](https://jseek.co/en/#pricing)
-
-[![Narrowed matching request and matching roles from Microsoft, NVIDIA, and Swisscom](.github/assets/readme/narrowed.png)](.github/assets/readme/narrowed.png)
 
 ### Get to know an employer’s hiring
 

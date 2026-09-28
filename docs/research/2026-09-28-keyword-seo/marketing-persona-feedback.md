@@ -155,3 +155,15 @@ The README now leads with job search, company watchlists, weekly email alerts,
 application tracking, and Narrowed. Full-width watchlist and tracker screenshots
 join search and company screenshots. Obsolete one-watchlist and coming-soon
 email claims have been removed. User UI review remains required before merge.
+
+### Align the claim with the shown results
+
+“Same title. Different working day” suggested a comparison absent from the
+shortlist. The page now says “Go beyond the keywords” and names an actual
+excluded Datadog role, with the missing direct-user-work evidence explained
+beneath the result drawer. This explanation is editorial context, outside the
+product interface. All four page translations were updated.
+
+The README uses only full product captures: search, watchlists, the application
+tracker, and a company page. The marketing homepage and local Narrowed component
+captures were removed at the user's request.

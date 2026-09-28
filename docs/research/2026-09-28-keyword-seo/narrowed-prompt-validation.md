@@ -3,6 +3,7 @@
 Date: 28 September 2026. These are live product checks and manual description
 reviews, not a statistical accuracy benchmark. Counts are a dated snapshot.
 No model decisions were overridden for the screenshots.
+
 ## Current marketing request
 
 > I want to work directly with users and turn their problems into product improvements. No people management.
@@ -36,6 +37,18 @@ The marketing preview reuses the actual read-only `AiSearchFilter` drawer and
 `apps/web/src/content/narrowed-results.json`. It does not make live requests,
 show fictional matched/excluded quotations, or present these checks as a
 benchmark. Translated previews use the corresponding tested result sets.
+
+### Visible excluded-role explanation
+
+The page now pairs the shortlist with Datadog's Staff Software Engineer –
+Security Agent, which was present in the broader engineering result set and
+absent from the completed short-request result sets. Its reviewed description
+calls for a “product-minded and customer-focused” engineer, while the listed
+collaboration is with internal product, security, infrastructure, and engineering
+teams. It does not describe direct work with users. This concise explanation
+sits outside the product drawer as editorial context; it is not a model-provided
+explanation or a new product control. The heading “Go beyond the keywords”
+now describes the concrete distinction shown.
 
 ## Historical prompt experiments
 

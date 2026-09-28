@@ -67,7 +67,14 @@ export default async function Page({ params }: MarketingPageProps) {
           <h2 className="max-w-sm text-2xl font-semibold tracking-tight sm:text-3xl">{i18n._(copy.exampleTitle)}</h2>
           <p className="mt-4 max-w-md text-sm leading-7 text-muted">{i18n._(copy.exampleBody)}</p>
         </div>
-        <div className="min-w-0 lg:col-start-2 lg:row-span-2"><ProPitch previewOnly /></div>
+        <div className="min-w-0 lg:col-start-2 lg:row-span-2">
+          <ProPitch previewOnly />
+          <aside className="mt-5 border-l-2 border-border-soft pl-4">
+            <h3 className="text-xs font-semibold text-muted">{i18n._(copy.excludedTitle)}</h3>
+            <a href="https://careers.datadoghq.com/detail/8007606/?gh_jid=8007606" target="_blank" rel="noopener noreferrer" className="mt-2 block text-sm font-medium underline underline-offset-4">Datadog · Staff Software Engineer – Security Agent</a>
+            <p className="mt-2 text-sm leading-6 text-muted">{i18n._(copy.excludedReason)}</p>
+          </aside>
+        </div>
         <div className="border-t border-divider pt-5 lg:col-start-1">
           <h2 className="text-lg font-semibold tracking-tight">{i18n._(copy.stepsTitle)}</h2>
           <ol className="mt-4 grid gap-4">

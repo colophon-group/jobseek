@@ -2848,6 +2848,12 @@ msgstr "Inizia con Job Seek"
 msgid "common.footer.github"
 msgstr "GitHub"
 
+#. Narrowed marketing page: exampleTitle
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.exampleTitle"
+msgstr "Vai oltre le parole chiave."
+
 #. Link to return to the homepage from a 404 page
 #. js-lingui-explicit-id
 #: app/[lang]/not-found-content.tsx
@@ -3398,6 +3404,12 @@ msgstr "Ultima settimana"
 #: src/components/Pricing.tsx
 msgid "pro.discovery.cta"
 msgstr "Scopri Pro"
+
+#. Narrowed marketing page: excludedTitle
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.excludedTitle"
+msgstr "Escluso da questa selezione"
 
 #. Narrowed marketing page: proofTitle
 #. js-lingui-explicit-id
@@ -5206,12 +5218,6 @@ msgstr "Visualizzazione stipendio"
 msgid "search.salaryModal.title"
 msgstr "Fascia salariale"
 
-#. Narrowed marketing page: exampleTitle
-#. js-lingui-explicit-id
-#: src/content/narrowed.ts
-msgid "marketing.narrowed.exampleTitle"
-msgstr "Stesso titolo. Giornate diverse."
-
 #. Public marketing page: tracker_step1Title
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
@@ -6028,6 +6034,12 @@ msgstr "L'interfaccia è disponibile in inglese, tedesco, francese e italiano. P
 msgid "notFound.body"
 msgstr "La pagina che stai cercando non esiste o è stata spostata."
 
+#. Narrowed marketing page: excludedReason
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.excludedReason"
+msgstr "L’annuncio cerca un ingegnere attento al cliente, ma non descrive un lavoro a contatto diretto con gli utenti."
+
 #. Assurance 3 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -6039,12 +6051,6 @@ msgstr "La coda distanzia le richieste allo stesso dominio di rate limit di 2 se
 #: src/content/marketing.ts
 msgid "marketing.tracker.proofTitle"
 msgstr "La posizione e la sua storia, insieme"
-
-#. Narrowed marketing page: exampleBody
-#. js-lingui-explicit-id
-#: src/content/narrowed.ts
-msgid "marketing.narrowed.exampleBody"
-msgstr "Lo stesso titolo può indicare responsabilità molto diverse. Spiega a Narrowed cosa cerchi, con parole tue."
 
 #. Provided as-is
 #. js-lingui-explicit-id
@@ -6117,6 +6123,12 @@ msgstr "Questo link per reimpostare la password non è valido o è scaduto. Rich
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteDescription"
 msgstr "Questo colloquio verrà eliminato definitivamente. Se è l’ultimo, la candidatura tornerà allo stato « Candidato »."
+
+#. Narrowed marketing page: exampleBody
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.exampleBody"
+msgstr "Questa richiesta cerca un lavoro a contatto diretto con gli utenti. Parlare di «attenzione al cliente» non basta a confermarlo."
 
 #. Cookie banner message
 #. js-lingui-explicit-id
