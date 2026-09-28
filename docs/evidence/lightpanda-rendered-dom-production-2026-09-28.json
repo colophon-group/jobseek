@@ -1,0 +1,130 @@
+{
+  "schema": "jobseek.go-lightpanda-rendered-dom-production/v1",
+  "date": "2026-09-28",
+  "status": "deployed implementation; cdom admission refused; proven c1 restored and healthy",
+  "pull_request": 10157,
+  "tested_head": "a57ba27cfe3dcb5219576726c5f8bea90b7e1810",
+  "crawler_revision": "fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0",
+  "crawler_version": "0.13.891",
+  "checks": {
+    "required_ci": 36429730569,
+    "deploy_gate": 36429726989,
+    "native_both_architectures": 36429730366,
+    "installed_runtime_contracts": 36429730469,
+    "arm64_renderer_deployment_contract": 36429730644
+  },
+  "deployment_runs": {
+    "crawler": 36431451418,
+    "renderer": 36431710458
+  },
+  "lightpanda_release": "nightly-2026-09-28",
+  "lightpanda_arm64_sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f",
+  "contract_proof": {
+    "frozen_extractor_cases": 500,
+    "frozen_render_policy_cases": 83,
+    "waits": [
+      "commit",
+      "domcontentloaded",
+      "load",
+      "networkidle"
+    ],
+    "readiness_fallback": "same current document; no second navigation",
+    "transport_retry": "one conditional same-page retry after 500ms; explicit operation reference",
+    "challenge_retry": "one fresh context after validated HTML and lease renewal; same task and write fence",
+    "native_tcp_reset_cases": "recovered and exhausted, exactly two requests"
+  },
+  "baseline": {
+    "scope": "PostgreSQL active rows with next_scrape_at; not an exact Redis schedule census",
+    "board_rows": {
+      "browser-use-careers": 5,
+      "bunq-careers": 15,
+      "algorized-careers": 19
+    },
+    "total_rows": 39
+  },
+  "cold_rollback": {
+    "cohort": "c1",
+    "retired_epoch": 117,
+    "ready_restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "exact_selectors_cleared": 25
+  },
+  "production_origin_requests_forced": 0,
+  "limitations": [
+    "cdom has no Go production admission or rendered DOM output proof.",
+    "The 39-row PostgreSQL census does not establish 39 transferable Redis schedules.",
+    "Synthetic native resource results do not prove whole-lane production savings.",
+    "Python and Chromium still own remaining production work.",
+    "Full migration and final cutover/reversal remain unfinished."
+  ],
+  "renderer": {
+    "deployment_result": "success",
+    "source_revision": "fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0",
+    "image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:72b73991cc4a6820263970ccf07367b5d9193eb37cb9d742701fb78ea0104a21",
+    "architecture": "arm64",
+    "installed_binary_sha256_matches": true
+  },
+  "crawler_deployment_result": "success including promote",
+  "verified_at": "2026-09-28T14:16:22.404237+00:00",
+  "cdom_admission": {
+    "result": "refused before task transfer",
+    "planned_epoch": 118,
+    "reason": "legacy scrape hash disagrees with authoritative PostgreSQL",
+    "containment": "crawler lane stopped by supported wrapper",
+    "current_state": "inactive",
+    "diagnostic_scope": "warm read-only snapshot after restoring c1; repeat exact cold census before repair",
+    "dom_rows": 34,
+    "observed_ready_hashes_with_empty_description_hash": 17,
+    "observed_rows_without_matching_hash_or_membership": 17,
+    "publisher_requests_forced": 0
+  },
+  "active_cohort": {
+    "cohort": "c1",
+    "epoch": 119,
+    "selected": 5,
+    "activated": 5,
+    "audit": {
+      "decision": "accepted",
+      "reason": "audit_ok",
+      "server_time_ms": 1790604891451,
+      "value": 5,
+      "secondary_value": 0
+    },
+    "services": "all configured worker/browser/drain/producer/executor/claimant/Redis healthy",
+    "natural_commits": [
+      {
+        "posting_id_sha256": "a4478d1aa363aeebef9b38d2a63d9b6abd1e27173ac559e5496e965a75d984f1",
+        "canonical_fields_sha256": "3d411abe67c79ec6f55125e7bfcced8e881bfe118529189bd879002d4766a475",
+        "canonical_fields_unchanged": true,
+        "fresh_scrape_timestamp": true,
+        "scrape_failures": 0
+      },
+      {
+        "posting_id_sha256": "28d88d808f89c23e031ed657568b0995fa4c545627e70bc8875f20343f83cb27",
+        "canonical_fields_sha256": "4e6d5791ab28c0acecb8dc9227dd9dfe52695a29a503bbcac4e3251a70d69bff",
+        "canonical_fields_unchanged": true,
+        "fresh_scrape_timestamp": true,
+        "scrape_failures": 0
+      }
+    ],
+    "natural_commit_scope": "correlated Go renderer and executor logs with advanced PostgreSQL scrape timestamps; identity, active flag, titles, description hash and failure count unchanged"
+  },
+  "whole_lane_fixture": {
+    "run_id": 36429730454,
+    "source_sha": "712edd4d87e82d42180774e027aec713df12134d",
+    "mode": "synthetic",
+    "arms": 16,
+    "admitted": true,
+    "density_ratio_min": 5.468624170659934,
+    "density_ratio_max": 14.580188886787399,
+    "scope": "synthetic fixture; not same actual-workload whole-lane production efficiency proof"
+  },
+  "staged_selectors": {
+    "count": 25,
+    "revision": "fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0",
+    "helper": "scripts/migration-jsonld-selectors.py",
+    "helper_sha256": "8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743",
+    "kandou_detail_url": "https://kandou.bamboohr.com/careers/310"
+  }
+}
