@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-09-28T00:34:44.686345+00:00",
+  "scope": "JOIN monitor fetch/parser ownership; full migration remains active",
+  "release": {
+    "version": "0.13.883",
+    "runtime_pr": 10118,
+    "revision": "9436ff0d9267c8e3657f1977ab35ced6195176c0",
+    "deployment_run": 36360980005,
+    "deployment_conclusion": "success",
+    "required_ci_run": 36360209091,
+    "required_ci": "success",
+    "installed_image_parity_run": 36360209098,
+    "installed_image_parity": "success",
+    "native_parser_image_fixture_run": 36360209091,
+    "native_parser_image_fixture": "success",
+    "crawler_deploy_gate": "success"
+  },
+  "baseline": {
+    "boards": 276,
+    "active_postings": 4169,
+    "failed_boards": 0,
+    "private_json_sha256": "dcdfea6fd389fa03253bb701a3079977f4fd656f2bb8e069e2f14adf02808a9b",
+    "private_capture_mode": "0600"
+  },
+  "routing": {
+    "enabled_monitors": 7879,
+    "go": 4725,
+    "python": 3154,
+    "go_join": 276,
+    "join_percent": "100",
+    "errors": []
+  },
+  "rollback": {
+    "from_epoch": 98,
+    "retired_epoch": 99,
+    "ready_restored": 5,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0,
+    "selectors_cleared": 24,
+    "plan_digest": "61b1767c47f1f6976ad03f8da61db216b4a75affb57b957ca278a395ba5258f1"
+  },
+  "reactivation": {
+    "epoch": 100,
+    "cohort": "c1",
+    "audit_decision": "accepted",
+    "audit_reason": "audit_ok",
+    "ready": 5,
+    "inflight": 0,
+    "dead": 0,
+    "configured_service_health": "healthy",
+    "staged_selectors": 24,
+    "helper_path": "/tmp/jobseek-post-smart-personio-selectors.py",
+    "helper_sha256": "07f3dca2e8d0c0185b12817f76ab9e1e8e6775d2df128f9f123abdc803cb97a5",
+    "kandou_url": "https://kandou.bamboohr.com/careers/310",
+    "retained_due_times": [
+      {
+        "task_id": "12413a9e-3bcc-48a9-9839-fb0fe5d4c100",
+        "state": "ready",
+        "ready_at": "2026-09-28T00:26:36.120000+00:00"
+      },
+      {
+        "task_id": "f83163f4-cb95-481c-af15-81c9033184f4",
+        "state": "ready",
+        "ready_at": "2026-09-28T02:41:28.311000+00:00"
+      },
+      {
+        "task_id": "4487536f-1253-479d-89be-0b6410fbc3ae",
+        "state": "ready",
+        "ready_at": "2026-09-28T13:56:47.323000+00:00"
+      },
+      {
+        "task_id": "0fb7abdd-a574-4bb8-aec8-46c0a8e396df",
+        "state": "ready",
+        "ready_at": "2026-09-28T13:54:37.806000+00:00"
+      },
+      {
+        "task_id": "1a8b328e-bac0-4362-8d2a-7445679a8d23",
+        "state": "ready",
+        "ready_at": "2026-09-28T12:45:12.200000+00:00"
+      }
+    ]
+  },
+  "go_configuration_sync": {
+    "completed_at_utc": "2026-09-28T00:17:50.581882983Z",
+    "companies": 6013,
+    "boards": 7879
+  },
+  "typesense_snapshot": {
+    "successful_exports": 388,
+    "errors": 0,
+    "lag": 0,
+    "healthy": 1,
+    "scope": "Initial snapshot after this release; counters continue to advance"
+  },
+  "natural_output": {
+    "cycles": 5,
+    "exact_db_readbacks": 5,
+    "proof": [
+      {
+        "board_id": "3f96dd9a-4473-49e6-b8a1-c55a1d5cc7ad",
+        "urls": 4,
+        "url_sha256": "75d936cb5887f40a1497a6bc43fffee5307178f8a544e6c080aceb658794d0cc",
+        "requests": 1,
+        "responses": 1,
+        "response_bytes": 117690,
+        "event": "go_join.monitor_complete",
+        "timestamp": "2026-09-28T00:21:50.122416Z",
+        "board_url": "https://join.com/companies/covepartners",
+        "db_active": 4,
+        "db_url_sha256": "75d936cb5887f40a1497a6bc43fffee5307178f8a544e6c080aceb658794d0cc",
+        "baseline_posting_ids_description_hashes_sha256": "1256050898c5df10665b78798959fd20e8e4762c63f06c963481bbd519c31a31",
+        "readback_posting_ids_description_hashes_sha256": "1256050898c5df10665b78798959fd20e8e4762c63f06c963481bbd519c31a31",
+        "consecutive_failures": 0,
+        "db_last_success_at": "2026-09-28 00:21:50.230928+00:00"
+      },
+      {
+        "board_id": "52114193-47f5-42bd-b3dd-700c924a0656",
+        "urls": 0,
+        "url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests": 1,
+        "responses": 1,
+        "response_bytes": 90586,
+        "event": "go_join.monitor_complete",
+        "timestamp": "2026-09-28T00:22:24.739469Z",
+        "board_url": "https://join.com/companies/simplypaymentsde",
+        "db_active": 0,
+        "db_url_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "baseline_posting_ids_description_hashes_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "readback_posting_ids_description_hashes_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "consecutive_failures": 0,
+        "db_last_success_at": "2026-09-28 00:22:24.758225+00:00"
+      },
+      {
+        "board_id": "508abbed-fca2-40fe-b8d4-3431158e2b73",
+        "urls": 5,
+        "url_sha256": "43769e3815abda6071fb5ad407221d554d7ca6f05827f5777c9750186458003f",
+        "requests": 2,
+        "responses": 2,
+        "response_bytes": 264976,
+        "event": "go_join.monitor_complete",
+        "timestamp": "2026-09-28T00:30:54.122379Z",
+        "board_url": "https://join.com/companies/visusone",
+        "db_active": 5,
+        "db_url_sha256": "43769e3815abda6071fb5ad407221d554d7ca6f05827f5777c9750186458003f",
+        "baseline_posting_ids_description_hashes_sha256": "e6a56afaf85597a3ed65854488aa677531f4c150e4fc026650cdb4a8c10452a0",
+        "readback_posting_ids_description_hashes_sha256": "e6a56afaf85597a3ed65854488aa677531f4c150e4fc026650cdb4a8c10452a0",
+        "consecutive_failures": 0,
+        "db_last_success_at": "2026-09-28 00:30:54.521675+00:00"
+      },
+      {
+        "board_id": "62f28c97-5cc4-4efc-bbbb-08e2848c7706",
+        "urls": 15,
+        "url_sha256": "8de7a5cd37473962fe164ca99a328b0c70d2de6dec8106425f2d48da123f55de",
+        "requests": 4,
+        "responses": 4,
+        "response_bytes": 576147,
+        "event": "go_join.monitor_complete",
+        "timestamp": "2026-09-28T00:31:00.301754Z",
+        "board_url": "https://join.com/companies/trigon-gruppede",
+        "db_active": 15,
+        "db_url_sha256": "8de7a5cd37473962fe164ca99a328b0c70d2de6dec8106425f2d48da123f55de",
+        "baseline_posting_ids_description_hashes_sha256": "d93bfac9d605e9d343c96e9f4cf83920b2b9a015cf7085b090a695f4db5e6bed",
+        "readback_posting_ids_description_hashes_sha256": "d93bfac9d605e9d343c96e9f4cf83920b2b9a015cf7085b090a695f4db5e6bed",
+        "consecutive_failures": 0,
+        "db_last_success_at": "2026-09-28 00:31:00.427529+00:00"
+      },
+      {
+        "board_id": "4898eef1-8049-465e-8c42-12e106a244c9",
+        "urls": 6,
+        "url_sha256": "7f80c1a67d2f4ad24c505ef4214a7844c9b8ed2da67dff51f8f7cb853095a793",
+        "requests": 2,
+        "responses": 2,
+        "response_bytes": 243857,
+        "event": "go_join.monitor_complete",
+        "timestamp": "2026-09-28T00:24:10.301804Z",
+        "board_url": "https://join.com/companies/pflegeheldende",
+        "db_active": 6,
+        "db_url_sha256": "7f80c1a67d2f4ad24c505ef4214a7844c9b8ed2da67dff51f8f7cb853095a793",
+        "baseline_posting_ids_description_hashes_sha256": "0dcf72daece26d156040e0d9761ebbef1f916bc61f8f0c948dcb0249db6a2280",
+        "readback_posting_ids_description_hashes_sha256": "0dcf72daece26d156040e0d9761ebbef1f916bc61f8f0c948dcb0249db6a2280",
+        "consecutive_failures": 0,
+        "db_last_success_at": "2026-09-28 00:24:10.347145+00:00"
+      }
+    ],
+    "scope": "Initial naturally scheduled cycles after reactivation; no replay or forced due score",
+    "cycles_observed_in_retained_logs": 16
+  },
+  "failure_readback": {
+    "boards_checked": 276,
+    "increases": []
+  },
+  "next_slice": {
+    "configured_join_nextdata_details": 265,
+    "exact_configuration_forms": 4,
+    "join_nextdata_no_fields": 3,
+    "join_jsonld_details": 8
+  },
+  "limitations": [
+    "JOIN scheduling, writer and detail extraction remain Python owned except separately tracked B0 provided runtimes.",
+    "Other JOIN monitors, including the largest inventories, need natural output observation; three paginated boards are now proven.",
+    "JOIN_CAPTURE_SLUGS currently captures Python monitor responses and is inactive after the Go route; native passive capture is follow-up work.",
+    "Complete JOIN TDM metadata precedence, source and companion policy parity with the shared Python checker during detail transport migration.",
+    "Same-actual-workload whole-lane CPU/RAM/density/cost and final zero-Python/Chromium retirement remain outstanding."
+  ],
+  "natural_b0_cycle": {
+    "task_id": "12413a9e-3bcc-48a9-9839-fb0fe5d4c100",
+    "routing_epoch": 100,
+    "claimant_events": [
+      {
+        "container": "deploy-lightpanda-claimant-1",
+        "msg": "lightpanda_b0_task",
+        "time": "2026-09-28T00:26:40.108972844Z",
+        "task_id": "12413a9e-3bcc-48a9-9839-fb0fe5d4c100",
+        "outcome": "success"
+      },
+      {
+        "container": "deploy-lightpanda-claimant-1",
+        "msg": "lightpanda_b0_task",
+        "time": "2026-09-28T00:26:42.968466588Z",
+        "task_id": "12413a9e-3bcc-48a9-9839-fb0fe5d4c100",
+        "outcome": "committed"
+      }
+    ],
+    "next_ready_at_utc": "2026-09-29T00:26:42.835000+00:00",
+    "post_cycle_records": 5,
+    "post_cycle_ready": 5,
+    "post_cycle_inflight": 0,
+    "audit": "accepted/audit_ok",
+    "scope": "Natural due task success/commit and schedule readback; no paired resource claim"
+  }
+}
