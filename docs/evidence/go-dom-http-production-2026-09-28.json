@@ -1,0 +1,367 @@
+{
+  "checkpoint": "Go DOM direct HTTP transport v0.13.890",
+  "runtime_pr": "https://github.com/colophon-group/jobseek/pull/10154",
+  "runtime_exact_head": "e2b2d7f607051b29db8e1430d21443b2f3ce4d95",
+  "runtime_revision": "e62cec0d4349b72c39071bf3d0834456cdfab728",
+  "deployment": {
+    "run": "https://github.com/colophon-group/jobseek/actions/runs/36416267049",
+    "conclusion": "success",
+    "version": "0.13.890"
+  },
+  "gates": {
+    "required_ci": "https://github.com/colophon-group/jobseek/actions/runs/36414423685",
+    "installed_image_contracts": "https://github.com/colophon-group/jobseek/actions/runs/36414423774",
+    "crawler_deploy_gate": "https://github.com/colophon-group/jobseek/actions/runs/36414423459",
+    "conclusions": "success"
+  },
+  "offline_evidence": {
+    "focused_python_tests": 263,
+    "native_race_vet_tidy": "pass",
+    "frozen_parser_cases": 500,
+    "installed_http_private_target_rejection_cases": 4,
+    "publisher_requests": 0
+  },
+  "predeploy_inventory": {
+    "utc": "2026-09-28T11:08:14.943123+00:00",
+    "primary_dom_boards": 758,
+    "admitted_board_urls_configs": 549,
+    "retained_other_transports": 209,
+    "admission_errors": 0,
+    "sha256": "fa0e92cc60c79be2ddec2c8e42367fda47c53c52903de2bee374a755fec96c31",
+    "scope": "Historical resolved primary DOM inventory. Actual posting URL and verified direct caller also checked at runtime; not fleet-wide output proof."
+  },
+  "ownership": {
+    "migrated": "Direct DOM HTTP reads: verified public DNS/IP dial, native retries/redirects/cookies/public headers/TDM checks/raw bytes/accounting; existing Go DOM parser owns extraction.",
+    "remaining": "Python configured decoding, gone/challenge classification, document conversion, linked fetches, worker/persistence glue and remaining runtime/profile stages. Rendered DOM uses Python/Playwright/Chromium; B0 admission remains JSON-LD-only.",
+    "reversal": "Restore preceding v0.13.889 runtime with supported cold deployment/selector procedure; DOM_GO_HTTP_ENABLED=0 is the configuration contract. Never manually edit host .env."
+  },
+  "natural_output": {
+    "before_activation_utc": "2026-09-28T11:46:32.631919+00:00",
+    "retained_exact_inputs": 8,
+    "ten_field_matches": 8,
+    "natural_completion_hash_matches": 8,
+    "native_http_raw_byte_bound_populated_cases": 1,
+    "canonical_normalized_db_descriptions": 2,
+    "native_http_populated_db_cases": 1,
+    "database_timestamp_matches": 8,
+    "native_http_case_zero_scrape_failures": true,
+    "native_http_case_r2_uploaded": true,
+    "rendered_empty_cases": 6,
+    "rendered_empty_failure_counts": [
+      3,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "rendered_empty_policy": "Canonical Python returns the same empty output on all six retained rendered inputs. These calls did not use Go HTTP; one has failure count three and next_scrape_at null under existing retry exhaustion policy. Not populated-output proof.",
+    "origin_refetches": 0,
+    "forced_schedules": 0,
+    "scope": "Eight retained exact parse inputs; one native HTTP raw-byte binding. Seven rendered inputs retain browser transport. No fleet-wide parity or full scrape ownership claim."
+  },
+  "after_activation": {
+    "utc": "2026-09-28T11:50:37.365127+00:00",
+    "natural_native_fetch_completions": 9,
+    "native_success_counter_total": 9,
+    "native_error_outcome_counter_observed": false,
+    "collector_errors": [],
+    "scope": "Bounded startup observation; additional fetch logs were not independently joined to DB readback."
+  },
+  "rollback": {
+    "retired_epoch": 113,
+    "restored_schedules": 5,
+    "terminal_drops": 0,
+    "remaining_write_fences": 0,
+    "previous_revision": "abb96a57dd3da5eed42a31d52c97ffdf7770ba6c"
+  },
+  "activation": {
+    "epoch": 114,
+    "ready": 5,
+    "inflight": 0,
+    "audit": "accepted/audit_ok",
+    "configured_services_healthy": true,
+    "cohort": "c1",
+    "c2": "not activated",
+    "observed_utc": "2026-09-28T11:50:37.365127+00:00"
+  },
+  "selector_helper": {
+    "path": "scripts/migration-jsonld-selectors.py",
+    "sha256": "8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743",
+    "count": 25,
+    "staged_revision": "e62cec0d4349b72c39071bf3d0834456cdfab728",
+    "kandou_url": "https://kandou.bamboohr.com/careers/310"
+  },
+  "typesense_snapshot": {
+    "utc": "2026-09-28T11:50:37.365127+00:00",
+    "successful_documents": 273,
+    "document_error_counter": 0,
+    "cdc_flush_error_counter": 0,
+    "export_lag": 0,
+    "healthy": true,
+    "scope": "Bounded startup exporter snapshot; not fleet-wide zero-error proof."
+  },
+  "same_byte_cases": [
+    {
+      "url": "https://emploi.ehc-vd.ch/fr/nos-offres/infirmier-specialise-soins-intensifs-fh-3767",
+      "request_sha256": "61b88700ea23837bbf72c88be12bcba13aee65b3f9de3b5a2cf4dfa5b1ed31a6",
+      "html_sha256": "fc92046ea8382478cdf2cf1f13494f9ce8bf1f212f35bdfb1713a80e74b51dda",
+      "fields_sha256": "ef5804730822018f112c2c52b6e3798c2a3388bdcc8f228e2173a418b848a203",
+      "full_field_match": true,
+      "populated_fields": [
+        "description",
+        "locations",
+        "metadata",
+        "title"
+      ],
+      "description_bytes": 5364,
+      "natural_log_matches": 1,
+      "natural_completion_hash_match": true,
+      "native_http_raw_byte_binding": true,
+      "native_fetch": {
+        "url": "https://emploi.ehc-vd.ch/fr/nos-offres/infirmier-specialise-soins-intensifs-fh-3767",
+        "final_url": "https://emploi.ehc-vd.ch/fr/nos-offres/infirmier-specialise-soins-intensifs-fh-3767",
+        "status": 200,
+        "raw_body_sha256": "fc92046ea8382478cdf2cf1f13494f9ce8bf1f212f35bdfb1713a80e74b51dda",
+        "requests": 1,
+        "responses": 1,
+        "response_bytes": 345696,
+        "timestamp": "2026-09-28T11:45:18.424886Z"
+      },
+      "database": [
+        {
+          "id": "abef7eb9-7c64-4d39-ac0c-19315e8a75a4",
+          "board_id": "d3ebef4d-7f6d-479d-ae1d-61eb21832338",
+          "source_url": "https://emploi.ehc-vd.ch/fr/nos-offres/infirmier-specialise-soins-intensifs-fh-3767",
+          "is_active": true,
+          "scrape_failures": 0,
+          "last_scraped_at": "2026-09-28 11:45:21.891692+00:00",
+          "next_scrape_at": "2026-09-29 11:45:21.891692+00:00",
+          "title_equal": true,
+          "title_write_expected": true,
+          "employment_equal": true,
+          "description_equal": true,
+          "description_bytes": 5173,
+          "description_sha256": "648e0db11ff34108945a0a624327ab2a7664f64d3a0c1ea44af5fa4d5836cf1d",
+          "posting_description_hash_matches": true,
+          "description_hash_matches": true,
+          "r2_uploaded": true,
+          "last_scrape_at_or_after_completion": true,
+          "native_http_raw_byte_binding": true,
+          "stored_hash_pair_equal": true
+        }
+      ]
+    },
+    {
+      "url": "https://bflcareers.peoplestrong.com/job/detail/JR00234959",
+      "request_sha256": "c2ef773558a24f89bb42e2278116036dc9fb80e617d733c202dbe46c1aa53b83",
+      "html_sha256": "5c2cc3ddd2510145255d7018d074f13fffcc3594c2b5d59f0e20c4868761f594",
+      "fields_sha256": "778b56f88547fa63a7f70a84fbd2a82b9bf56e5ada0969c25dfbd5d4de74442b",
+      "full_field_match": true,
+      "populated_fields": [],
+      "description_bytes": 0,
+      "natural_log_matches": 1,
+      "natural_completion_hash_match": true,
+      "native_http_raw_byte_binding": false,
+      "database": [
+        {
+          "id": "0846205a-c736-4d14-9c87-f5454f59566b",
+          "board_id": "30a5163d-77a8-4a37-bc04-b199b5bd65ca",
+          "source_url": "https://bflcareers.peoplestrong.com/job/detail/JR00234959",
+          "is_active": true,
+          "scrape_failures": 3,
+          "last_scraped_at": "2026-09-28 11:46:04.745990+00:00",
+          "next_scrape_at": null,
+          "case": "not a populated independent DOM description proof",
+          "last_scrape_at_or_after_completion": true,
+          "native_http_raw_byte_binding": false,
+          "stored_hash_pair_equal": false
+        }
+      ]
+    },
+    {
+      "url": "https://bflcareers.peoplestrong.com/job/detail/JR00234967",
+      "request_sha256": "3cb5f036eea961382b2422e84d0ecc95f4842d999d558744f6bc4fae08db44a8",
+      "html_sha256": "dd2e86b5c6ca4804934c34062a4539ccbaa7df2d12e9d2d1b5708d0c2fbfc0c3",
+      "fields_sha256": "778b56f88547fa63a7f70a84fbd2a82b9bf56e5ada0969c25dfbd5d4de74442b",
+      "full_field_match": true,
+      "populated_fields": [],
+      "description_bytes": 0,
+      "natural_log_matches": 1,
+      "natural_completion_hash_match": true,
+      "native_http_raw_byte_binding": false,
+      "database": [
+        {
+          "id": "17fa154a-4383-41c8-a4d2-79485a8eb481",
+          "board_id": "30a5163d-77a8-4a37-bc04-b199b5bd65ca",
+          "source_url": "https://bflcareers.peoplestrong.com/job/detail/JR00234967",
+          "is_active": true,
+          "scrape_failures": 2,
+          "last_scraped_at": "2026-09-28 11:46:06.234587+00:00",
+          "next_scrape_at": "2026-09-28 12:46:06.234587+00:00",
+          "case": "not a populated independent DOM description proof",
+          "last_scrape_at_or_after_completion": true,
+          "native_http_raw_byte_binding": false,
+          "stored_hash_pair_equal": false
+        }
+      ]
+    },
+    {
+      "url": "https://bflcareers.peoplestrong.com/job/detail/JR00234913",
+      "request_sha256": "05d3dd79530805e4f36ae1cf6529b78728cc4de20427a316ab9175da4a96fd5b",
+      "html_sha256": "8c26daffa811daefd0985c7c5ef4f504ce8d0adc3bb23b4e0c6eae9d89fbc5e1",
+      "fields_sha256": "778b56f88547fa63a7f70a84fbd2a82b9bf56e5ada0969c25dfbd5d4de74442b",
+      "full_field_match": true,
+      "populated_fields": [],
+      "description_bytes": 0,
+      "natural_log_matches": 1,
+      "natural_completion_hash_match": true,
+      "native_http_raw_byte_binding": false,
+      "database": [
+        {
+          "id": "1a7cd3e8-ab91-4951-8a57-43d3f3e298c0",
+          "board_id": "30a5163d-77a8-4a37-bc04-b199b5bd65ca",
+          "source_url": "https://bflcareers.peoplestrong.com/job/detail/JR00234913",
+          "is_active": true,
+          "scrape_failures": 2,
+          "last_scraped_at": "2026-09-28 11:45:50.214616+00:00",
+          "next_scrape_at": "2026-09-28 12:45:50.214616+00:00",
+          "case": "not a populated independent DOM description proof",
+          "last_scrape_at_or_after_completion": true,
+          "native_http_raw_byte_binding": false,
+          "stored_hash_pair_equal": false
+        }
+      ]
+    },
+    {
+      "url": "https://bflcareers.peoplestrong.com/job/detail/JR00234940",
+      "request_sha256": "ff142d84f8aa6b223a2673ebe6f797ea88e5f70b56f2b0735acebd4a177bc1d9",
+      "html_sha256": "5508b83bb082e23bc86cb45fe4c1ba2921b15cb0ddceaeca904e3ec49284ff6c",
+      "fields_sha256": "778b56f88547fa63a7f70a84fbd2a82b9bf56e5ada0969c25dfbd5d4de74442b",
+      "full_field_match": true,
+      "populated_fields": [],
+      "description_bytes": 0,
+      "natural_log_matches": 1,
+      "natural_completion_hash_match": true,
+      "native_http_raw_byte_binding": false,
+      "database": [
+        {
+          "id": "142483b2-9516-455e-985f-71bbaabfd65a",
+          "board_id": "30a5163d-77a8-4a37-bc04-b199b5bd65ca",
+          "source_url": "https://bflcareers.peoplestrong.com/job/detail/JR00234940",
+          "is_active": true,
+          "scrape_failures": 2,
+          "last_scraped_at": "2026-09-28 11:46:03.044127+00:00",
+          "next_scrape_at": "2026-09-28 12:46:03.044127+00:00",
+          "case": "not a populated independent DOM description proof",
+          "last_scrape_at_or_after_completion": true,
+          "native_http_raw_byte_binding": false,
+          "stored_hash_pair_equal": false
+        }
+      ]
+    },
+    {
+      "url": "https://mutb.jposting.net/u/job.phtml?job_code=281",
+      "request_sha256": "810bd84c2f2927679a389eac6f97a12b675acfee4ee74d478e21910bbed79ac6",
+      "html_sha256": "b91d6171837c6a5660caa10173e7913b4571d41f274ca0598434aeb9687ec55e",
+      "fields_sha256": "12eaf25152d3efada85843fa79a79adda68030bfbb1b80c053a50dcbe5ffb709",
+      "full_field_match": true,
+      "populated_fields": [
+        "description",
+        "extras",
+        "locations",
+        "title"
+      ],
+      "description_bytes": 1903,
+      "natural_log_matches": 1,
+      "natural_completion_hash_match": true,
+      "native_http_raw_byte_binding": false,
+      "database": [
+        {
+          "id": "428d42d6-cbfc-4e83-924e-d8fa3b5f3b8d",
+          "board_id": "cc20f09f-aa8a-47b2-a5ed-f49cf6308876",
+          "source_url": "https://mutb.jposting.net/u/job.phtml?job_code=281",
+          "is_active": true,
+          "scrape_failures": 0,
+          "last_scraped_at": "2026-09-28 11:45:19.787307+00:00",
+          "next_scrape_at": "2026-09-29 11:45:19.787307+00:00",
+          "title_equal": true,
+          "title_write_expected": true,
+          "employment_equal": true,
+          "description_equal": true,
+          "description_bytes": 1831,
+          "description_sha256": "36af90af57ffefe5cb085f38d837ebb4045b40783b7373154e487ac5cddd41f9",
+          "posting_description_hash_matches": true,
+          "description_hash_matches": true,
+          "r2_uploaded": true,
+          "last_scrape_at_or_after_completion": true,
+          "native_http_raw_byte_binding": false,
+          "stored_hash_pair_equal": true
+        }
+      ]
+    },
+    {
+      "url": "https://bflcareers.peoplestrong.com/job/detail/JR00235046",
+      "request_sha256": "f82870f4d6881a3d28d5b83dd0b4593a313e5f2452e6b2ee702c73a7cf5553b7",
+      "html_sha256": "f6003bf7cf56d11d43f199b12b9fb1d1a42ae205cdb7a695971858c9390387fb",
+      "fields_sha256": "778b56f88547fa63a7f70a84fbd2a82b9bf56e5ada0969c25dfbd5d4de74442b",
+      "full_field_match": true,
+      "populated_fields": [],
+      "description_bytes": 0,
+      "natural_log_matches": 1,
+      "natural_completion_hash_match": true,
+      "native_http_raw_byte_binding": false,
+      "database": [
+        {
+          "id": "08a19f2d-8b41-45c8-bea1-a78701c00187",
+          "board_id": "30a5163d-77a8-4a37-bc04-b199b5bd65ca",
+          "source_url": "https://bflcareers.peoplestrong.com/job/detail/JR00235046",
+          "is_active": true,
+          "scrape_failures": 2,
+          "last_scraped_at": "2026-09-28 11:45:52.810585+00:00",
+          "next_scrape_at": "2026-09-28 12:45:52.810585+00:00",
+          "case": "not a populated independent DOM description proof",
+          "last_scrape_at_or_after_completion": true,
+          "native_http_raw_byte_binding": false,
+          "stored_hash_pair_equal": false
+        }
+      ]
+    },
+    {
+      "url": "https://bflcareers.peoplestrong.com/job/detail/JR00234966",
+      "request_sha256": "a33df8a3e38e552d4e79e5c30bd4b97cb2abbeb4841f8923a679476442e1d93c",
+      "html_sha256": "8a1a580d71b8760dde0bfc3249a6d9a08d1125b89476b10d37b472e0fd3dfc34",
+      "fields_sha256": "778b56f88547fa63a7f70a84fbd2a82b9bf56e5ada0969c25dfbd5d4de74442b",
+      "full_field_match": true,
+      "populated_fields": [],
+      "description_bytes": 0,
+      "natural_log_matches": 1,
+      "natural_completion_hash_match": true,
+      "native_http_raw_byte_binding": false,
+      "database": [
+        {
+          "id": "0d7831fe-6df4-40be-829d-758c6796e807",
+          "board_id": "30a5163d-77a8-4a37-bc04-b199b5bd65ca",
+          "source_url": "https://bflcareers.peoplestrong.com/job/detail/JR00234966",
+          "is_active": true,
+          "scrape_failures": 2,
+          "last_scraped_at": "2026-09-28 11:45:55.959924+00:00",
+          "next_scrape_at": "2026-09-28 12:45:55.959924+00:00",
+          "case": "not a populated independent DOM description proof",
+          "last_scrape_at_or_after_completion": true,
+          "native_http_raw_byte_binding": false,
+          "stored_hash_pair_equal": false
+        }
+      ]
+    }
+  ],
+  "resource_proof": "Paired same-actual-workload whole-lane CPU/RAM/density/cost proof remains unfinished. No savings claimed from these contract or startup observations.",
+  "private_evidence": {
+    "directory": "/Users/Viktor/.codex/migration-evidence/go-dom-http/2026-09-28",
+    "directory_mode": "0700",
+    "file_mode": "0600",
+    "retained": "Exact natural stdin bytes, SHA bindings, protected DB readback, comparators, release/lease/rollback/activation/audit logs. No HTML or board config committed."
+  },
+  "overall_migration_complete": false,
+  "next_checkpoint": "Implement rendered-DOM Lightpanda admission, then remaining Go profile/runtime ownership; preserve enabled inventory and actual output. Full #7966 criteria remain active."
+}

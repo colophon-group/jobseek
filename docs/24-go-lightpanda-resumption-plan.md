@@ -6,45 +6,92 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
-## Implementation checkpoint: Go DOM direct HTTP transport v0.13.890
+## Production checkpoint: 2026-09-28 — Go DOM direct HTTP v0.13.890
 
-The installed `dom-detail-fetch` candidate moves direct DOM origin reads to
-native Go. The 11:08 UTC protected inventory admits **549 of 758 primary DOM
-board URLs/configurations**, with zero admission errors; 209 rendered/proxied/
-insecure configurations retain their existing transport. Admission also checks
-each actual posting fetch URL and the effective caller client, so metadata-based
-insecure TLS, proxy routing and custom/logging clients keep their configured
-behavior. Every enabled board remains configured and available.
+[PR #10154](https://github.com/colophon-group/jobseek/pull/10154) merged as
+**`e62cec0d4349b72c39071bf3d0834456cdfab728`** after Required CI, installed-image
+contracts and Crawler Deploy Gate passed at exact head
+`e2b2d7f607051b29db8e1430d21443b2f3ce4d95`.
+[Deployment 36416267049](https://github.com/colophon-group/jobseek/actions/runs/36416267049)
+reached terminal overall success, including promotion. The host's active-release
+snapshot confirms that full revision.
 
-The native transport preserves raw response bytes, content type and final URL;
-configured status retries, default Avature 406 retries, cookie-aware same-origin
-redirects and public request headers retain their existing contracts. Configured
-public headers use five redirects, no forwarded cookies and no status retry;
-other routes keep the 20-redirect bound. DNS/IP validation and TDM header/meta
-checks apply before extraction. Response bodies are bounded at 16 MiB and the
-native task at 10 minutes. Normal callers still own configured decoding, gone/
-challenge classification, PDF/DOCX conversion and linked-description fetches;
-the existing installed Go parser then owns DOM extraction. Fetch metrics/logs
-identify `go-dom-http` at stage `fetch` and do not label the whole scrape Go.
+**Go now owns admitted direct DOM origin reads by default**, through the
+installed `dom-detail-fetch` binary. The 11:08 UTC protected inventory admits
+**549 of 758 primary DOM board URLs/configurations**, with zero admission
+errors; 209 rendered/proxied/insecure configurations retain their existing
+transport. Actual posting fetch URLs and effective verified-direct caller
+clients are checked at runtime. Metadata-based insecure TLS, proxy routing and
+custom/logging clients retain their configured behavior. Every enabled board
+remains configured and available.
 
-Focused validation passed 263 Python tests, native race/vet/tidy for both modules,
-500 frozen parser cases and four installed HTTP private-target rejection cases.
-Native tests cover status retry/exhaustion, TDM denial before retry, redirect
-bounds/cross-origin refusal, cookie handshakes/stripping, malformed config and
-raw document bytes. **Deployment and natural output/database evidence for this
-transport slice are pending**; the promoted production revision and current
-25-selector cold procedure remain those in the production checkpoint below.
-Restore the preceding v0.13.889 runtime through that supported procedure for
-complete transport reversal. `DOM_GO_HTTP_ENABLED=0` is the configuration
-reversal contract; do not edit the host environment by hand.
+The native transport preserves raw bytes, content type and final URL;
+configured status retries, Avature 406 retries, cookie-aware same-origin
+redirects and public request headers preserve their contracts. Public headers
+use five redirects, no forwarded cookies and no status retry; other routes
+retain the 20-redirect bound. Public DNS/IP validation and TDM header/meta checks
+precede extraction. Bodies are bounded at 16 MiB and native tasks at ten minutes.
+Python still owns configured decoding, gone/challenge classification, PDF/DOCX
+conversion, linked fetches and worker/persistence glue. The installed Go parser
+owns extraction. Metrics identify `go-dom-http` at stage `fetch`; they do not
+label the whole scrape Go. Rendered DOM still uses Playwright/Chromium and B0
+admission remains JSON-LD-only.
 
-The protected inventory is retained at
+Focused checks passed **263 Python tests**, native race/vet/tidy for both modules,
+**500 frozen parser cases** and **four installed HTTP private-target rejection
+cases**. These establish contract admission, not production resource savings.
+
+At **11:46 UTC**, eight exact natural parse inputs were retained securely before
+worker recreation. All ten fields match canonical Python and each natural Go
+completion hash. One populated **EHC** case also binds its exact UTF-8 HTML hash
+to the native HTTP raw-body hash: status 200, one request/response, 345,696 raw
+bytes. Its canonical enriched/normalized 5,173-byte description, title policy,
+employment type, posting/description hashes and fresh scrape timestamp match
+PostgreSQL; R2 upload is complete, the row is active and scrape failures are zero.
+A populated rendered **MUTB** case has the same parser/DB proof while retaining
+browser transport. Six rendered Bajaj inputs are empty in both parsers and have
+existing failure counts of two or three; one has exhausted its normal retry
+schedule. They did not use Go HTTP and are not populated-output proof.
+No publisher request, schedule or queue priority was forced.
+See the [sanitized release evidence](evidence/go-dom-http-production-2026-09-28.json).
+
+Supported rollback retired c1 at **epoch 113**, restored all five schedules and
+left zero drops or write fences. All 25 selectors cleared at the preceding
+promoted runtime. After overall deployment success they were staged at
+`e62cec0d4349b72c39071bf3d0834456cdfab728`; supported activation completed at
+**epoch 114**. Conservation is accepted/audit_ok, with five ready and zero
+inflight. Configured worker/browser/drain/producer/executor/claimant/Redis health
+checks pass; c2 was not activated. At **11:50 UTC**, nine additional natural Go
+HTTP fetches had completed successfully with no error outcome counter observed.
+Those additional logs are not independent DB parity proof. The Typesense startup
+snapshot shows 273 successful documents, zero document/CDC flush errors, zero
+lag and healthy status; it is not fleet-wide zero-error proof.
+
+Before any further crawler deploy or selector mutation, finish supported
+`rollback c1`, then clear all **25** selectors under
+`/run/lock/jobseek-crawler-mutation.lock` using
+[`scripts/migration-jsonld-selectors.py`](../scripts/migration-jsonld-selectors.py)
+in `clear` mode at full promoted revision
+**`e62cec0d4349b72c39071bf3d0834456cdfab728`**, with exact Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Helper SHA-256 remains
+`8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743`.
+After terminal overall next-deployment success, stage only at its promoted full
+revision and reactivate c1. **This procedure supersedes every older revision
+below.** Restore v0.13.889 through the same supported cold procedure to reverse
+this transport slice. `DOM_GO_HTTP_ENABLED=0` is the configuration reversal
+contract; never edit the host environment by hand.
+
+Protected exact inputs, comparators, DB readback and operational logs remain at
 `/Users/Viktor/.codex/migration-evidence/go-dom-http/2026-09-28/`
-(directory 0700; snapshots 0600), SHA-256
+(directory 0700; files 0600). Inventory SHA-256 is
 `fa0e92cc60c79be2ddec2c8e42367fda47c53c52903de2bee374a755fec96c31`.
-No same-workload whole-lane resource improvement or full migration completion
-is established by these tests. Continue natural proof and rendered-DOM
-Lightpanda admission alongside the remaining runtime migration.
+Keep those bytes private and durable; do not reconstruct inputs or refetch
+origins. **This deployed checkpoint is complete; the full migration goal remains
+active.** Next implement rendered-DOM Lightpanda admission and remaining Go
+profiles/runtime stages. Paired actual-workload whole-lane CPU/RAM/density/cost
+proof and final cutover/reversal remain unfinished. Issue #7966 stays owner-closed
+and its full gate remains the completion criteria. Do not claim full transition
+while Python, Playwright or Chromium own production work.
 
 ## Production checkpoint: 2026-09-28 — shared DOM extraction v0.13.889
 
@@ -123,9 +170,10 @@ both parsers offline and `compare-database.py` applies canonical enrichment,
 normalization and title policy to the protected readback. Keep the original
 bytes private and durable; do not reconstruct inputs or refetch origins.
 
-This is a deployed, proven checkpoint. **The full migration goal remains
-active.** Next implement Go DOM HTTP transport and rendered-DOM Lightpanda
-admission, then remaining profiles and Python-owned runtime stages. Paired
+This is a historical deployed extraction checkpoint. **The full migration goal
+remains active.** Go DOM HTTP transport is now deployed in the checkpoint above;
+next implement rendered-DOM Lightpanda admission, remaining profiles and
+Python-owned runtime stages. Paired
 same-actual-workload whole-lane CPU/RAM/density/cost proof and final
 cutover/reversal remain unfinished. Do not claim completion while Python,
 Playwright or Chromium still own production work; issue #7966 remains
