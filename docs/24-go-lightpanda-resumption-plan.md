@@ -6,6 +6,87 @@ implementation merged as `dcdc407ba836d75ec93e7416faa5f9fdabd41001`.
 The fixture admission gate has passed; [#8648](https://github.com/colophon-group/jobseek/issues/8648)
 tracks current production c1 admission evidence.
 
+## Production checkpoint: 2026-09-28 — Go rendered DOM implementation, cdom not admitted
+
+[PR #10157](https://github.com/colophon-group/jobseek/pull/10157) merged as
+**`fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0`**, crawler **v0.13.891**.
+Required CI, Crawler Deploy Gate, installed runtime contracts, native Lightpanda
+on amd64/arm64 and the ARM64 service deployment contract passed at ready head
+`a57ba27cfe3dcb5219576726c5f8bea90b7e1810`. The crawler
+[deployment 36431451418](https://github.com/colophon-group/jobseek/actions/runs/36431451418)
+reached terminal overall success, including promotion. The host active release
+confirms that full crawler revision.
+
+Go now implements all four navigation waits, bounded current-document readiness
+fallback without another navigation, one conditional same-page transport retry
+after 500 ms, and one fresh-context challenge retry under the renewed original
+queue lease and write fence. The challenge classifier uses the installed Go
+parser and validates canonical protobuf, HTML manifests, chunks, hashes and
+UTF-8 before classifying. Typed errors, HTTP failures, gone pages, cancellation
+and lost authority cannot trigger a fresh retry. Native tests cover recovered
+and exhausted TCP resets with exactly two requests. The installed extractor
+preserves 500 frozen field cases and 83 Python-derived gone/challenge cases;
+the immutable runtime-v1 baseline remains unchanged.
+
+[Renderer deployment 36431710458](https://github.com/colophon-group/jobseek/actions/runs/36431710458)
+reached terminal overall success at the same source revision. Its immutable image
+is `ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:72b73991cc4a6820263970ccf07367b5d9193eb37cb9d742701fb78ea0104a21`.
+The installed ARM64 Lightpanda still matches the official **September 28 nightly**
+checksum `e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f`.
+Upstream asset IDs/digests were rechecked; source, architecture and release labels
+match the deployed tuple.
+
+**cdom admission was refused.** The DB baseline contains 39 active rows with
+`next_scrape_at`: Browser Use 5, Bunq 15, Algorized 19. This was not proof of 39
+transferable Redis schedules. Supported c1 rollback retired epoch **117**,
+restored all five schedules with zero drops/fences, and cleared the exact 25
+selectors. After both deployments succeeded, selectors were staged at the new
+crawler revision. The supported cdom plan at epoch **118** then rejected
+`legacy scrape hash disagrees with authoritative PostgreSQL` before task transfer.
+Its containment stopped the crawler lane. Supported `activate c1` restored
+service at epoch **119**, selected/activated five schedules, and returned
+accepted/audit_ok conservation with five ready and zero inflight. All configured
+worker/browser/drain/producer/executor/claimant/Redis services are healthy.
+
+Two subsequent **natural c1 Go render/commit cycles** correlate with advanced
+PostgreSQL scrape timestamps. Their identities, active flags, titles, description
+hashes and zero failure counts match the pre-rollout readback. All five c1 jobs
+retain zero failures. These establish natural operation of the new renderer;
+**they do not establish rendered DOM admission**. No publisher request, due time
+or queue priority was forced. C2 Kandou remains dark.
+
+A warm read-only diagnostic after c1 restoration found 17 DOM ready hashes with
+empty description hashes despite populated PostgreSQL hashes, and another 17
+DB-schedulable DOM rows without matching hashes/memberships in that snapshot.
+Repeat an exact cold census before a repair. Reconcile the existing queue
+publisher/retention semantics while preserving hash/score authority, exhausted
+and dead work, and request policy. Do not manufacture schedules, reset failures,
+relax the transfer proof, or omit enabled boards to make cdom activatable.
+
+The independent ARM64 [whole-lane run 36429730454](https://github.com/colophon-group/jobseek/actions/runs/36429730454)
+passed 16 arms, with 5.47–14.58x density ratios. It is a **synthetic fixture**;
+actual-workload whole-lane production CPU/RAM/density/cost remains unfinished.
+Python and Chromium still own production work. The full migration remains active;
+[#7966](https://github.com/colophon-group/jobseek/issues/7966) is owner-closed and
+was not reopened. Remaining native profiles, Go runtime ownership and final
+cutover/reversal remain required.
+
+Before any further crawler deploy or selector mutation, use supported
+`rollback c1`, then clear all **25** selectors under
+`/run/lock/jobseek-crawler-mutation.lock` with the unchanged
+`scripts/migration-jsonld-selectors.py`, full promoted crawler revision
+**`fb2b1c865e90ccf67379aa1f303e2b5f5e8f95c0`**, and exact Kandou URL
+`https://kandou.bamboohr.com/careers/310`. Helper SHA-256 is
+`8232a219cc9bc4236a9aab6d77ee85321f257afd7d577c365c7b3ba636ac9743`.
+Stage only after terminal overall next-deployment success at its promoted full
+revision. Reactivate c1 through the supported wrapper; cdom requires the schedule
+repair and renewed admission proof. **This supersedes every older revision below.**
+
+See [sanitized production evidence](evidence/lightpanda-rendered-dom-production-2026-09-28.json).
+Protected logs, natural result/readbacks and fixture artifacts remain in
+`/Users/Viktor/.codex/migration-evidence/lightpanda-dom/2026-09-28/`
+(directory 0700, files 0600).
+
 ## Production checkpoint: 2026-09-28 — current Lightpanda nightly
 
 [PR #10156](https://github.com/colophon-group/jobseek/pull/10156) replaced
@@ -50,16 +131,10 @@ Private rollback, activation and conservation records are retained at
 `/Users/Viktor/.codex/migration-evidence/lightpanda-latest/2026-09-28/`
 (directory 0700; files 0600).
 
-Rendered DOM implementation is saved in draft
-[PR #10157](https://github.com/colophon-group/jobseek/pull/10157), based on this
-nightly. It adds typed DOM assignments, all four navigation waits, a bounded
-current-document timeout fallback with one navigation, native parsing, and a
-fixed Browser Use/Bunq/Algorized cohort. Local Go race, 143 focused Python tests,
-Pyright and Ruff checks passed. **Before admission, preserve the existing inline
-fresh-context challenge/transport retry policy and pass the changed native
-integration/installed-image contracts.** cdom has not been activated. Further
-native profiles, Go runtime ownership, actual-workload resource evidence and
-final cutover/reversal remain unfinished. The full migration goal stays active.
+The rendered DOM implementation subsequently merged and deployed in
+[PR #10157](https://github.com/colophon-group/jobseek/pull/10157). Its current
+production tuple, retry proof, refused cdom admission and restored c1 state are
+recorded in the newer checkpoint above. The full migration remains active.
 
 ## Production checkpoint: 2026-09-28 — Go DOM direct HTTP v0.13.890
 
