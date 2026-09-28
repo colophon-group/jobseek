@@ -651,7 +651,7 @@ msgstr "A focused job search, built around your preferences."
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.description"
-msgstr "A free application tracker for jobs saved on Job Seek. Organize roles, update application stages, and keep interview notes together."
+msgstr "A free application tracker for jobs saved on Job Seek. Organize roles, update application stages, and keep interview dates together."
 
 #. Narrowed marketing page: body
 #. js-lingui-explicit-id
@@ -2895,7 +2895,7 @@ msgstr "Interview log"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.common.exampleNote"
-msgstr "Interview notes stay with the role."
+msgstr "Interview rounds stay with the role."
 
 #. Screen-reader confirmation after updating an interview round
 #. js-lingui-explicit-id
@@ -3915,7 +3915,7 @@ msgstr "Oops, something went wrong."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.apply"
-msgstr "Open a job and follow the link to apply on the employer’s website. Save it on Job Seek, update its status as you apply or interview, and add interview dates and notes. You control the tracker; Job Seek does not send applications or update their status automatically."
+msgstr "Open a job and follow the link to apply on the employer’s website. Save it on Job Seek, update its status as you apply or interview, and add interview dates and types. You control the tracker; Job Seek does not send applications or update their status automatically."
 
 #. Explains where subscribed users can use Pro
 #. js-lingui-explicit-id
@@ -4498,13 +4498,13 @@ msgstr "Recently updated"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s2.p2.description"
-msgstr "Record each interview round with date, type, and notes so nothing slips through the cracks."
+msgstr "Record each interview round with its date and type so you can see what comes next."
 
 #. Public marketing page: tracker_step3Body
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.step3Body"
-msgstr "Record each interview round with its date, type, and notes. See how your applications progress from saved roles to interviews and offers."
+msgstr "Record each interview round with its date and type. See how your applications progress from saved roles to interviews and offers."
 
 #. MIT right 2
 #. js-lingui-explicit-id
@@ -4749,7 +4749,7 @@ msgstr "Resume email notifications above to change your watchlist choices."
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.proofBody"
-msgstr "Return to the job details while you prepare for an interview. Your status and notes stay attached to the role you saved."
+msgstr "Return to the job details while you prepare for an interview. Your status and interview rounds stay attached to the role you saved."
 
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
@@ -4827,7 +4827,7 @@ msgstr "Save job"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.body"
-msgstr "Save jobs you find on Job Seek, update their status as you apply, and keep interview notes together."
+msgstr "Save jobs you find on Job Seek, update their status as you apply, and keep interview dates together."
 
 #. Empty state for stats
 #. js-lingui-explicit-id
@@ -5711,13 +5711,13 @@ msgstr "Today"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.step3Title"
-msgstr "Keep interview notes"
+msgstr "Track interview rounds"
 
 #. Feature section 2 description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s2.description"
-msgstr "Track jobs you save on Job Seek, update their status as you apply and interview, and keep your interview notes together."
+msgstr "Track jobs you save on Job Seek, update their status as you apply and interview, and keep your interview dates together."
 
 #. Main heading on the landing page — leads with company-watchlist ICP
 #. js-lingui-explicit-id

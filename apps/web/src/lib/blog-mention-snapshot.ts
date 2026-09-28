@@ -1,4 +1,5 @@
 import snapshot from "@/content/blog/mention-snapshot.json";
+import watchlistSnapshot from "@/content/blog/watchlist-mention-snapshot.json";
 import { defaultLocale, isLocale, type Locale } from "@/lib/i18n";
 
 /**
@@ -12,6 +13,18 @@ import { defaultLocale, isLocale, type Locale } from "@/lib/i18n";
  */
 
 type CompanySnapshotEntry = (typeof snapshot.companies)[number];
+
+export type BlogWatchlistMention = {
+  slug: string;
+  name: string;
+  /** Locale-prefixed canonical shared watchlist route. */
+  href: string;
+};
+
+const watchlistsBySlug = new Map<string, { slug: string; name: string; path: string }>(
+  (watchlistSnapshot.watchlists as { slug: string; name: string; path: string }[])
+    .map((watchlist) => [watchlist.slug, watchlist] as const),
+);
 
 export type BlogCompanyMention = {
   slug: string;
@@ -56,6 +69,19 @@ export function resolveBlogCompanyMention(
     employeeCountRange: company.employeeCountRange,
     foundedYear: company.foundedYear,
     activeJobCount: null,
+  };
+}
+
+export function resolveBlogWatchlistMention(
+  slug: string,
+  locale: string,
+): BlogWatchlistMention | null {
+  const watchlist = watchlistsBySlug.get(slug);
+  if (!watchlist) return null;
+  return {
+    slug: watchlist.slug,
+    name: watchlist.name,
+    href: `/${normalizedLocale(locale)}${watchlist.path}`,
   };
 }
 

@@ -98,17 +98,19 @@ relatedPosts: ["other-slug"]        # optional, override "you may also be intere
 
 ## MDX components catalogue
 
-Components are server-rendered from `mention-snapshot.json` and fall back to `<code>{Type slug}</code>` if the entity is missing — so a broken reference is visible during draft review. They never fetch an entity while `next build` prerenders the four locale variants.
+Components are server-rendered from reviewed repository snapshots and fall back to `<code>{Type slug}</code>` if the entity is missing — so a broken reference is visible during draft review. They never fetch an entity while `next build` prerenders the four locale variants.
 
 ### Build-time data and call budget
 
 The complete `en` / `de` / `fr` / `it` blog build has an external-call budget of **zero** for MDX mentions. Production Typesense, Postgres, Redis, and their credentials are not inputs to this path. A 503 or 429 from the search plane therefore cannot trigger per-component retry amplification or change the rendered post.
 
-`mention-snapshot.json` is the only approved build input:
+The approved build inputs are `mention-snapshot.json` and `watchlist-mention-snapshot.json`:
 
 - Company rows are generated from the versioned `apps/crawler/data/companies.csv`, `company_descriptions.csv`, and `industries.csv` sources. The snapshot contains one row per unique company slug used across all locale MDX files; localized descriptions are selected from that single row with English fallback.
 
-Every production build runs `pnpm blog-mentions:check`. The gate scans every MDX file, requires exactly one snapshot row for each unique company reference, verifies generated company fields against the repository CSVs, and walks the mention component's local import graph. Imports of database/search service layers, Typesense/Postgres/network clients, or a direct `fetch()` fail the build. This both asserts the zero-call budget in CI and prevents a production-host fallback from being introduced behind the snapshot.
+- Watchlist rows are manually reviewed `{slug, name, path}` records in `watchlist-mention-snapshot.json`. Use a verified, shared, locale-neutral `/watchlists/<lowercase UUID>` path. Confirm the intended companies and filters persist, and check the link while signed out. Never store credentials or volatile job counts. The update command validates these rows but does not create or fetch watchlists.
+
+Every production build runs `pnpm blog-mentions:check`. The gate scans every MDX file, requires exactly one snapshot row for each unique company and watchlist reference, verifies generated company fields against the repository CSVs, and walks the mention component's local import graph. Imports of database/search service layers, Typesense/Postgres/network clients, or a direct `fetch()` fail the build. This both asserts the zero-call budget in CI and prevents a production-host fallback from being introduced behind the snapshot.
 
 After adding or changing a mention:
 
@@ -129,6 +131,16 @@ The shift was led by <Company slug="stripe" /> and <Company slug="openai" />.
 ```
 
 Source: `MdxMentions.tsx::CompanyMention`. Resolves synchronously from the approved snapshot; no search-plane client is in its import graph.
+
+### `<Watchlist slug="..." />`
+
+Inline pill using the existing watchlist Eye icon and reviewed title. Links to the shared watchlist in the reader’s locale. Use it to give readers a combined feed they can clone and customize:
+
+```mdx
+Follow these employers in <Watchlist slug="swiss-robotics" />.
+```
+
+Add the verified destination to `watchlist-mention-snapshot.json` before using the tag. Recheck guest access before publishing; a valid UUID alone does not establish that sharing is enabled.
 
 ### Adding a new mention type
 

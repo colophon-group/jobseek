@@ -1,13 +1,13 @@
 /**
  * MDX entity-mention components (#2828).
  *
- * Blog posts reference internal entities (companies,
+ * Blog posts reference internal entities (companies and shared watchlists,
  * future: postings, taxonomies, authors) by id rather than hand-
  * authored markdown links. Two visual treatments per type:
  *
  *  - **Inline pill** (`<Company slug="..." />`) — flows inside paragraph text, just the entity
  *    icon + name. Use when the mention is one reference among many in
- *    a sentence.
+ *    a sentence. `<Watchlist slug="..." />` uses the same pill with an Eye icon.
  *  - **Block card** (`<CompanyCard slug="..." />`) — multi-line embed with logo / icon,
  *    name, derived stats, description excerpt, and a "view" CTA. Use
  *    when the mention IS the content — a featured spotlight, a "see
@@ -22,17 +22,20 @@
  * Iconography follows `apps/web/docs/icons.md`. Don't introduce new icons
  * without adding rows to `icons.md` first.
  *
- * To add a new mention type: write the inline + card pair, add the
- * entity to the checked-in snapshot, then register both variants in
+ * To add a new mention type: write its presentation, add the
+ * entity to a checked-in snapshot, then register the component in
  * `buildMdxComponents()`. Do not add request-time or build-time data clients
  * here; `pnpm blog-mentions:check` enforces that boundary.
  */
 
-import { Briefcase } from "lucide-react";
+import { Briefcase, Eye } from "lucide-react";
 import { CompanyIcon } from "@/components/CompanyIcon";
 import { NavLink } from "@/components/NavLink";
 import { loadCatalog, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
-import { resolveBlogCompanyMention } from "@/lib/blog-mention-snapshot";
+import {
+  resolveBlogCompanyMention,
+  resolveBlogWatchlistMention,
+} from "@/lib/blog-mention-snapshot";
 
 /**
  * Helper: load the Lingui catalog for a string locale, normalizing
@@ -188,6 +191,24 @@ export function CompanyMention({
   );
 }
 
+export function WatchlistMention({
+  slug,
+  locale,
+}: {
+  slug: string;
+  locale: string;
+}) {
+  const watchlist = resolveBlogWatchlistMention(slug, locale);
+  if (!watchlist) return <MissingMention raw={`{Watchlist ${slug}}`} />;
+  return (
+    <MentionPill
+      href={watchlist.href}
+      icon={<Eye size={14} aria-hidden="true" />}
+      label={watchlist.name}
+    />
+  );
+}
+
 // ── Block-card mentions ────────────────────────────────────────────
 
 function formatEmployeeRange(range: number | null | undefined): string | null {
@@ -288,8 +309,8 @@ export const __FUTURE_JOB_ICON_HINT = Briefcase;
  *
  * To register a new mention type:
  *
- *   1. Implement the inline + card pair following the patterns above.
- *   2. Add both variants to the returned object below with TitleCase
+ *   1. Implement the inline mention and, if needed, a card following the patterns above.
+ *   2. Add the variants to the returned object below with TitleCase
  *      MDX tags (`<Type ... />` for inline, `<TypeCard ... />` for the
  *      card).
  *   3. Document the new type in `apps/web/src/content/blog/README.md`
@@ -304,5 +325,6 @@ export function buildMdxComponents(locale: string): Record<string, React.Compone
   return {
     Company: (props) => <CompanyMention slug={props.slug} locale={locale} />,
     CompanyCard: (props) => <CompanyCard slug={props.slug} locale={locale} />,
+    Watchlist: (props) => <WatchlistMention slug={props.slug} locale={locale} />,
   };
 }

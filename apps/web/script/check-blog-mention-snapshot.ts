@@ -14,6 +14,7 @@ import ts from "typescript";
 const WEB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const BLOG_DIR = resolve(WEB_ROOT, "src/content/blog");
 const SNAPSHOT_PATH = resolve(BLOG_DIR, "mention-snapshot.json");
+const WATCHLIST_SNAPSHOT_PATH = resolve(BLOG_DIR, "watchlist-mention-snapshot.json");
 const COMPANY_DATA_DIR = resolve(WEB_ROOT, "../crawler/data");
 const MENTION_COMPONENT_PATH = resolve(
   WEB_ROOT,
@@ -21,6 +22,7 @@ const MENTION_COMPONENT_PATH = resolve(
 );
 const LOCALES = ["en", "de", "fr", "it"] as const;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const SHARED_WATCHLIST_PATH = /^\/watchlists\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const EXTERNAL_CALL_BUDGET = 0;
 
 type CsvRow = Record<string, string>;
@@ -39,6 +41,7 @@ type MentionSnapshot = {
 };
 type MentionRefs = {
   companies: Set<string>;
+  watchlists: Set<string>;
 };
 
 function csv(source: string, label: string): CsvRow[] {
@@ -87,20 +90,62 @@ function attributes(source: string): Map<string, string> {
 }
 
 export function collectMentionRefs(sources: readonly string[]): MentionRefs {
-  const refs: MentionRefs = { companies: new Set() };
-  const tag = /<(Company|CompanyCard)\b([^>]*)\/?\s*>/gu;
+  const refs: MentionRefs = { companies: new Set(), watchlists: new Set() };
+  const tag = /<(Company|CompanyCard|Watchlist)\b([^>]*)\/?\s*>/gu;
   for (const source of sources) {
     for (const match of source.matchAll(tag)) {
       const name = match[1];
+      if (name === "Watchlist" && !/^\s+slug\s*=\s*(["'])[a-z0-9]+(?:-[a-z0-9]+)*\1\s*\/?\s*$/u.test(match[2])) {
+        throw new Error("<Watchlist> must have one canonical literal slug and no other attributes");
+      }
       const attrs = attributes(match[2]);
       const slug = attrs.get("slug");
       if (!slug || !SLUG.test(slug)) {
         throw new Error(`<${name}> must have a canonical literal slug`);
       }
-      refs.companies.add(slug);
+      if (name === "Watchlist") refs.watchlists.add(slug);
+      else refs.companies.add(slug);
     }
   }
   return refs;
+}
+
+/** Shared URLs are reviewed manually; the gate never contacts the live service. */
+export function validateWatchlistSnapshot(snapshot: unknown, refs: Set<string>): void {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    throw new Error("Invalid watchlist mention snapshot");
+  }
+  const data = snapshot as Record<string, unknown>;
+  if (
+    data.schemaVersion !== 1 || !Array.isArray(data.watchlists) ||
+    Object.keys(data).some((key) => key !== "schemaVersion" && key !== "watchlists")
+  ) {
+    throw new Error("Unsupported watchlist mention snapshot schema");
+  }
+  const slugs: string[] = [];
+  const paths = new Set<string>();
+  for (const candidate of data.watchlists) {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+      throw new Error("Invalid watchlist mention record");
+    }
+    const record = candidate as Record<string, unknown>;
+    if (Object.keys(record).some((key) => !["slug", "name", "path"].includes(key))) {
+      throw new Error("Watchlist mention record contains unapproved fields");
+    }
+    if (typeof record.slug !== "string" || !SLUG.test(record.slug)) {
+      throw new Error("Watchlist mention must have a canonical slug");
+    }
+    if (typeof record.name !== "string" || !record.name.trim() || record.name !== record.name.trim()) {
+      throw new Error("Watchlist mention must have a reviewed display name");
+    }
+    if (typeof record.path !== "string" || !SHARED_WATCHLIST_PATH.test(record.path)) {
+      throw new Error("Watchlist mention must use a canonical internal shared watchlist path");
+    }
+    if (paths.has(record.path)) throw new Error("Watchlist snapshot contains duplicate paths");
+    paths.add(record.path);
+    slugs.push(record.slug);
+  }
+  compareKeys(slugs, refs, "watchlist");
 }
 
 function compareKeys(actual: readonly string[], expected: Set<string>, label: string): void {
@@ -254,6 +299,10 @@ async function main(): Promise<void> {
     filenames.map((name) => readFile(resolve(BLOG_DIR, name), "utf8")),
   );
   const refs = collectMentionRefs(sources);
+  validateWatchlistSnapshot(
+    JSON.parse(await readFile(WATCHLIST_SNAPSHOT_PATH, "utf8")),
+    refs.watchlists,
+  );
   const current = JSON.parse(await readFile(SNAPSHOT_PATH, "utf8")) as MentionSnapshot;
   if (current.schemaVersion !== 1) throw new Error("Unsupported blog mention snapshot schema");
 
@@ -282,7 +331,7 @@ async function main(): Promise<void> {
 
   await assertOfflineImportGraph(MENTION_COMPONENT_PATH);
   console.log(
-    `[blog-mentions] ${refs.companies.size} unique entities across ${LOCALES.length} locales; external-call budget=${EXTERNAL_CALL_BUDGET}`,
+    `[blog-mentions] ${refs.companies.size} companies and ${refs.watchlists.size} watchlists across ${LOCALES.length} locales; external-call budget=${EXTERNAL_CALL_BUDGET}`,
   );
 }
 
