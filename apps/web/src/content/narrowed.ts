@@ -1,0 +1,26 @@
+import { msg } from "@lingui/core/macro";
+
+export const narrowedMessages = {
+  link: msg({ id: "marketing.narrowed.link", comment: "Narrowed marketing page: link", message: "Narrowed job search" }),
+  title: msg({ id: "marketing.narrowed.title", comment: "Narrowed marketing page: title", message: "Find jobs that fit your specific criteria" }),
+  metaTitle: msg({ id: "marketing.narrowed.metaTitle", comment: "Narrowed marketing page: metaTitle", message: "AI job search filters with Narrowed" }),
+  description: msg({ id: "marketing.narrowed.description", comment: "Narrowed marketing page: description", message: "Go beyond job titles. Narrowed checks job descriptions against your own criteria and creates a more focused watchlist feed. Included with Job Seek Pro." }),
+  body: msg({ id: "marketing.narrowed.body", comment: "Narrowed marketing page: body", message: "Describe the responsibilities you want, and the kinds of work you want to avoid. Narrowed uses AI to check the postings in your saved search against that request—including distinctions that job titles and standard filters miss." }),
+  cta: msg({ id: "marketing.narrowed.cta", comment: "Narrowed marketing page: cta", message: "Build a focused search" }),
+  pricing: msg({ id: "marketing.narrowed.pricing", comment: "Narrowed marketing page: pricing", message: "See Pro pricing" }),
+  note: msg({ id: "marketing.narrowed.note", comment: "Narrowed marketing page: note", message: "First save a free search as a watchlist, then add your criteria with Pro." }),
+  stepsTitle: msg({ id: "marketing.narrowed.stepsTitle", comment: "Narrowed marketing page: stepsTitle", message: "From a broad search to your shortlist" }),
+  step1Title: msg({ id: "marketing.narrowed.step1Title", comment: "Narrowed marketing page: step1Title", message: "Start with the basics" }),
+  step1Body: msg({ id: "marketing.narrowed.step1Body", comment: "Narrowed marketing page: step1Body", message: "Choose a role, location, or companies in Explore. Save the search as a watchlist. Narrowed becomes available once your filters produce a focused set of results." }),
+  step2Title: msg({ id: "marketing.narrowed.step2Title", comment: "Narrowed marketing page: step2Title", message: "Describe what matters" }),
+  step2Body: msg({ id: "marketing.narrowed.step2Body", comment: "Narrowed marketing page: step2Body", message: "Open Narrowed in your watchlist and enter your criteria. Pro checks the job descriptions, including details that standard filters cannot express." }),
+  step3Title: msg({ id: "marketing.narrowed.step3Title", comment: "Narrowed marketing page: step3Title", message: "Review the matches" }),
+  step3Body: msg({ id: "marketing.narrowed.step3Body", comment: "Narrowed marketing page: step3Body", message: "Read your narrowed results, save promising roles, and return to the full feed anytime. You can edit your request as your priorities change. Always confirm important requirements in the original posting." }),
+  examplesTitle: msg({ id: "marketing.narrowed.examplesTitle", comment: "Narrowed marketing page: examplesTitle", message: "The exact request we tested" }),
+  example1: msg({ id: "marketing.narrowed.example1", comment: "Narrowed marketing page: example1", message: "Find hands-on engineering roles that close the loop from a real user problem to a reusable product improvement. The posting must explicitly mention BOTH working with users, customers, community reports or customer-facing teams to understand problems AND building or changing the product in response. Generic 'customer-focused' language is not enough. Exclude ticket handling or bespoke client delivery without changes to the shared product; exclude people-management roles." }),
+  learn: msg({ id: "marketing.narrowed.learn", comment: "Narrowed marketing page: learn", message: "See how Narrowed works" }),
+  proofTitle: msg({ id: "marketing.narrowed.proofTitle", comment: "Narrowed marketing page: proofTitle", message: "A real shortlist, checked against a specific request" }),
+  proofBody: msg({ id: "marketing.narrowed.proofBody", comment: "Narrowed marketing page: proofBody", message: "This saved search follows 20 employers in Switzerland. The tested request looks for engineering work that connects investigating real user problems with improving a shared product. A generic claim to be customer-focused is not enough." }),
+  proofCaption: msg({ id: "marketing.narrowed.proofCaption", comment: "Narrowed marketing page: proofCaption", message: "Live check on 28 September 2026: 7 matches from 67 evaluated roles. Results change as postings change." }),
+  proofAlt: msg({ id: "marketing.narrowed.proofAlt", comment: "Narrowed marketing page: proofAlt", message: "Narrowed watchlist following 20 employers, with a user-feedback-to-product request and 7 matching engineering roles" }),
+};

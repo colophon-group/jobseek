@@ -40,7 +40,7 @@ export function ProPitch() {
         </p>
         <p className="mb-2 text-xs text-muted"><Trans id="pro.example.requestLabel" comment="Label for the example natural-language filter">Your criteria</Trans></p>
         <p className="border-l-2 border-foreground pl-3 text-sm leading-6">
-          <Trans id="pro.example.request" comment="Fictional example requirements for Narrowed">Backend roles using Python, without an on-call rotation.</Trans>
+          <Trans id="pro.example.request" comment="Fictional semantic criteria for Narrowed, beyond titles and keywords">Hands-on ownership from design to production, without people management—even if the title says senior or staff.</Trans>
         </p>
         <div className="my-4 flex items-center gap-2 text-xs text-muted">
           <ArrowDown size={14} aria-hidden="true" />
@@ -49,17 +49,17 @@ export function ProPitch() {
         <div className="space-y-2">
           <div className="rounded-lg border border-success-border bg-success-bg p-3">
             <div className="mb-2 flex items-center justify-between gap-2 text-xs">
-              <span className="font-medium"><Trans id="pro.example.role" comment="Fictional role in the Pro illustration">Backend engineer</Trans></span>
+              <span className="font-medium"><Trans id="pro.example.role" comment="Fictional role in the Pro illustration">Senior software engineer</Trans></span>
               <span className="inline-flex items-center gap-1 text-success"><Check size={13} aria-hidden="true" /><Trans id="pro.example.match" comment="Example matching result">Match</Trans></span>
             </div>
-            <p className="text-xs leading-5 text-muted-strong"><Trans id="pro.example.matchText" comment="Fictional excerpt illustrating a match">“Build Python APIs. No on-call duties.”</Trans></p>
+            <p className="text-xs leading-5 text-muted-strong"><Trans id="pro.example.matchText" comment="Fictional excerpt illustrating a match">“Own features from discovery to launch. Senior individual contributor.”</Trans></p>
           </div>
           <div className="rounded-lg border border-border-soft p-3">
             <div className="mb-2 flex items-center justify-between gap-2 text-xs">
-              <span className="font-medium"><Trans id="pro.example.role" comment="Fictional role in the Pro illustration">Backend engineer</Trans></span>
+              <span className="font-medium"><Trans id="pro.example.role" comment="Fictional role in the Pro illustration">Senior software engineer</Trans></span>
               <span className="inline-flex items-center gap-1 text-muted"><X size={13} aria-hidden="true" /><Trans id="pro.example.excluded" comment="Example excluded result">Filtered out</Trans></span>
             </div>
-            <p className="text-xs leading-5 text-muted"><Trans id="pro.example.excludedText" comment="Fictional excerpt illustrating an exclusion">“Python services. Join the on-call rotation.”</Trans></p>
+            <p className="text-xs leading-5 text-muted"><Trans id="pro.example.excludedText" comment="Fictional excerpt illustrating an exclusion">“Lead eight engineers. Own hiring and performance reviews.”</Trans></p>
           </div>
         </div>
       </div>

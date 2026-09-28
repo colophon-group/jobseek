@@ -208,6 +208,7 @@ export const siteConfig = {
       { path: "/faq", changeFrequency: "monthly", priority: 0.7, lastModified: "2026-09-28" },
       { path: "/job-alerts", changeFrequency: "monthly", priority: 0.8, lastModified: "2026-09-28" },
       { path: "/job-application-tracker", changeFrequency: "monthly", priority: 0.8, lastModified: "2026-09-28" },
+      { path: "/narrowed", changeFrequency: "monthly", priority: 0.8, lastModified: "2026-09-28" },
       // Blog index. Per-post URLs are emitted separately by
       // `blogPostEntries` in `apps/web/src/lib/sitemap.ts` (#2828).
       { path: "/blog", changeFrequency: "weekly", priority: 0.7, lastModified: "2026-09-28" },

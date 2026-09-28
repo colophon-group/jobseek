@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getI18n } from "@lingui/react/server";
 import { ArrowRight, Bell, Bookmark, Check, Mail } from "lucide-react";
 import { marketingMessages as copy } from "@/content/marketing";
+import { narrowedMessages } from "@/content/narrowed";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { Button } from "@/components/ui/Button";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
@@ -37,6 +38,7 @@ export function MarketingLinks({ locale }: { locale: Locale }) {
       {([
         ["/job-alerts", copy.alerts_link],
         ["/job-application-tracker", copy.tracker_link],
+        ["/narrowed", narrowedMessages.link],
         ["/blog/job-alerts-from-company-career-pages", copy.guide_link],
       ] as const).map(([path, label]) => <Link key={path} href={`/${locale}${path}`} prefetch={false} className="underline underline-offset-4 hover:text-muted">{i18n._(label)}</Link>)}
     </nav>

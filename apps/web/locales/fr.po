@@ -525,17 +525,35 @@ msgstr ""
 #~ msgid "home.pricing.pro.description"
 #~ msgstr "Watchlists illimitées avec alertes par e-mail pour ne jamais rater une ouverture."
 
-#. Fictional excerpt illustrating a match
+#. Narrowed marketing page: example3
 #. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-msgid "pro.example.matchText"
-msgstr "« Développez des API Python. Aucune astreinte. »"
+#: src/content/narrowed.ts
+#~ msgid "marketing.narrowed.example3"
+#~ msgstr "Support client où j’analyse et résous des problèmes techniques, plutôt que de vendre des options ou suivre un script d’appel."
+
+#. Narrowed marketing page: examplesNote
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+#~ msgid "marketing.narrowed.examplesNote"
+#~ msgstr "Exemples de demandes, sans garantie d’offres correspondantes disponibles."
+
+#. Narrowed marketing page: example2
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+#~ msgid "marketing.narrowed.example2"
+#~ msgstr "Postes qualité axés sur l’amélioration de la fabrication plutôt que sur le contrôle des produits finis."
 
 #. Fictional excerpt illustrating an exclusion
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
 msgid "pro.example.excludedText"
-msgstr "« Services Python. Participation aux astreintes. »"
+msgstr "« Dirigez huit ingénieurs. Gérez le recrutement et les évaluations. »"
+
+#. Fictional excerpt illustrating a match
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.matchText"
+msgstr "« Pilotez des fonctionnalités de l’exploration au lancement. Contributeur individuel senior. »"
 
 #. CC right 1
 #. js-lingui-explicit-id
@@ -702,6 +720,12 @@ msgstr "Un suivi gratuit des candidatures pour les offres sauvegardées sur Job 
 msgid "marketing.tracker.stepsTitle"
 msgstr "Un espace pour chaque étape"
 
+#. Narrowed marketing page: proofTitle
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.proofTitle"
+msgstr "Une vraie sélection, vérifiée selon une demande précise"
+
 #. Public marketing page: alerts_proofBody
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
@@ -836,6 +860,12 @@ msgstr "Ajustez les filtres actuels jusqu’à ce qu’au moins une offre corres
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.promptRegionLabel"
 msgstr "Prompt de l'agent"
+
+#. Narrowed marketing page: metaTitle
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.metaTitle"
+msgstr "Filtres de recherche d’emploi par IA avec Narrowed"
 
 #. Footer shown after all paged countries have been loaded into the location modal
 #. js-lingui-explicit-id
@@ -1108,19 +1138,6 @@ msgstr "Retour à la connexion"
 msgid "common.backToTop"
 msgstr "Retour en haut"
 
-#. Fictional role in the Pro illustration
-#. Fictional role in the Pro illustration
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-msgid "pro.example.role"
-msgstr "Développeur backend"
-
-#. Fictional example requirements for Narrowed
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-msgid "pro.example.request"
-msgstr "Des postes backend en Python, sans astreintes."
-
 #. Interview type label: behavioral interview
 #. js-lingui-explicit-id
 #: src/components/my-jobs/interview-list.tsx
@@ -1182,6 +1199,12 @@ msgstr "Parcourir le dépôt sur"
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/not-found.tsx
 msgid "watchlist.notFound.browse"
 msgstr "Parcourir les watchlists"
+
+#. Narrowed marketing page: cta
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.cta"
+msgstr "Créer une recherche ciblée"
 
 #. Public marketing page: common_continue
 #. js-lingui-explicit-id
@@ -1368,6 +1391,12 @@ msgstr "Analyse les informations des annonces. Une information absente ne confir
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.addFilters.body"
 msgstr "Choisissez un métier, un lieu, un niveau ou un autre filtre. Cette option apparaît lorsqu’il reste {0} offres ou moins."
+
+#. Narrowed marketing page: step1Body
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.step1Body"
+msgstr "Choisissez un métier, un lieu ou des entreprises dans Explorer. Enregistrez la recherche dans une liste de suivi. Narrowed devient disponible lorsque les filtres donnent un ensemble ciblé de résultats."
 
 #. Theme settings description
 #. js-lingui-explicit-id
@@ -2121,11 +2150,23 @@ msgstr "Décrivez précisément ce que vous recherchez. Nous créerons une liste
 msgid "search.aiFilter.description"
 msgstr "Décrivez précisément ce que vous recherchez. Votre demande sera évaluée par rapport à chaque offre de ce flux afin d’affiner précisément les résultats."
 
+#. Narrowed marketing page: body
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.body"
+msgstr "Décrivez les responsabilités souhaitées et les types de travail à éviter. Narrowed utilise l’IA pour vérifier les offres de votre recherche enregistrée (watchlist) selon cette demande, y compris les distinctions que les intitulés et filtres classiques ne reflètent pas."
+
 #. Placeholder for watchlist description textarea
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-view-page.tsx
 msgid "watchlists.view.descriptionPlaceholder"
 msgstr "Décrire cette watchlist …"
+
+#. Narrowed marketing page: step2Title
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.step2Title"
+msgstr "Décrivez vos critères"
 
 #. Compact reminder that a focused watchlist can be narrowed precisely
 #. js-lingui-explicit-id
@@ -2577,11 +2618,23 @@ msgstr "Trouver des entreprises à suivre"
 msgid "home.hero.primaryCta"
 msgstr "Trouver des entreprises à suivre"
 
+#. Narrowed marketing page: example1
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.example1"
+msgstr "Trouvez des rôles techniques concrets reliant un problème réel d’utilisateur à une amélioration réutilisable du produit. L’annonce doit mentionner explicitement LES DEUX : travailler avec des utilisateurs, clients, retours de la communauté ou équipes en contact client pour comprendre les problèmes ET développer ou modifier le produit en réponse. Une simple orientation client ne suffit pas. Excluez le traitement de tickets ou les projets clients sur mesure sans modification du produit commun, ainsi que la gestion d’équipe."
+
 #. Hero description paragraph — watchlist + alerts pitch with direct sourcing as supporting claim
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx
 msgid "home.hero.description"
 msgstr "Trouve des offres sur les pages carrières, enregistre les entreprises et les filtres qui comptent pour toi, puis suis les postes que tu sauvegardes sur Job Seek."
+
+#. Narrowed marketing page: title
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.title"
+msgstr "Trouvez des offres qui répondent à vos critères"
 
 #. Button to open modal with all languages
 #. js-lingui-explicit-id
@@ -2606,6 +2659,12 @@ msgstr "Trouvez ce qui compte avec Narrowed"
 #: src/content/marketing.ts
 msgid "marketing.common.related"
 msgstr "Trouve ta prochaine étape"
+
+#. Narrowed marketing page: note
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.note"
+msgstr "Enregistrez d’abord une recherche gratuite dans une liste de suivi, puis ajoutez vos critères avec Pro."
 
 #. Feature: focused search title
 #. js-lingui-explicit-id
@@ -2710,6 +2769,12 @@ msgstr "Questions fréquentes"
 msgid "myJobs.stats.fromDate"
 msgstr "Du"
 
+#. Narrowed marketing page: stepsTitle
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.stepsTitle"
+msgstr "De la recherche à votre sélection"
+
 #. Public marketing page: alerts_stepsTitle
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
@@ -2770,6 +2835,12 @@ msgstr "Commence avec Job Seek"
 msgid "common.footer.github"
 msgstr "GitHub"
 
+#. Narrowed marketing page: description
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.description"
+msgstr "Au-delà des intitulés : Narrowed vérifie les descriptions selon vos critères et affine les résultats de votre liste de suivi. Inclus dans Job Seek Pro."
+
 #. Link to return to the homepage from a 404 page
 #. js-lingui-explicit-id
 #: app/[lang]/not-found-content.tsx
@@ -2793,6 +2864,12 @@ msgstr "Compris"
 #: src/components/HowWeIndexContent.tsx
 msgid "indexing.ingestion.s3.title"
 msgstr "Analyse de pages respectueuse."
+
+#. Fictional semantic criteria for Narrowed, beyond titles and keywords
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.request"
+msgstr "Responsabilité directe de la conception à la production, sans gestion d’équipe, même avec un titre senior ou staff."
 
 #. Aria label to hide password
 #. js-lingui-explicit-id
@@ -3381,6 +3458,12 @@ msgstr "Clair"
 msgid "watchlists.actions.copied"
 msgstr "Lien copié"
 
+#. Narrowed marketing page: proofCaption
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.proofCaption"
+msgstr "Test en conditions réelles le 28 septembre 2026 : 6 résultats sur 67 offres évaluées. Les résultats évoluent avec les annonces."
+
 #. Accessible heading shown when live Explore job results are unavailable and repository-owned company profile links are shown instead
 #. js-lingui-explicit-id
 #: src/components/search/explore-repository-fallback.tsx
@@ -3750,6 +3833,12 @@ msgstr "Affinés"
 msgid "pro.pitch.feature"
 msgstr "Narrowed"
 
+#. Narrowed marketing page: link
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.link"
+msgstr "Recherche avec Narrowed"
+
 #. State-neutral title of the scroll reminder for an already-narrowed watchlist
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -3779,6 +3868,12 @@ msgstr "Résultats Narrowed pour les watchlists"
 #: src/components/settings/NotificationSettings.tsx
 msgid "settings.notifications.narrowedHelp"
 msgstr "Les résultats affinés suivent ta consigne enregistrée. L’e-mail attend la fin de l’évaluation. Si l’affinage est indisponible, cette liste reste silencieuse."
+
+#. Narrowed marketing page: proofAlt
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.proofAlt"
+msgstr "Liste Narrowed suivant 20 employeurs, avec une demande reliant retours utilisateurs et amélioration produit, et 7 offres techniques correspondantes"
 
 #. Heading asking the viewer to sign in before creating a precisely matched watchlist
 #. js-lingui-explicit-id
@@ -4147,6 +4242,12 @@ msgstr "Ouvrir l'offre d'emploi"
 #: src/components/Header.tsx
 msgid "common.header.openMenu"
 msgstr "Ouvrir le menu principal"
+
+#. Narrowed marketing page: step2Body
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.step2Body"
+msgstr "Ouvrez Narrowed dans votre liste et saisissez vos critères. Pro vérifie les descriptions, y compris les détails que les filtres classiques ne permettent pas d’exprimer."
 
 #. Navigate from paused notification warning to settings
 #. js-lingui-explicit-id
@@ -4675,6 +4776,12 @@ msgstr "Lire la licence CC BY-NC 4.0"
 msgid "license.code.linkLabel"
 msgstr "Lire la licence MIT complète"
 
+#. Narrowed marketing page: step3Body
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.step3Body"
+msgstr "Consultez les résultats affinés, enregistrez les offres intéressantes et revenez au flux complet à tout moment. Adaptez votre demande à vos priorités. Vérifiez toujours les exigences importantes dans l’offre originale."
+
 #. WebApplication JSON-LD feature list item about job alert notifications.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx
@@ -5026,6 +5133,12 @@ msgstr "Réactive les notifications par e-mail ci-dessus pour modifier tes choix
 msgid "marketing.tracker.proofBody"
 msgstr "Retrouve les détails du poste pour préparer un entretien. Ton statut et tes notes restent associés à l’offre sauvegardée."
 
+#. Narrowed marketing page: step3Title
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.step3Title"
+msgstr "Examinez les résultats"
+
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
 #: src/components/search/search-bar.tsx
@@ -5315,6 +5428,12 @@ msgstr "Paiement sécurisé"
 msgid "pro.offer.paddle"
 msgstr "Paiement sécurisé avec Paddle. Le total final, taxes applicables comprises, est affiché avant votre confirmation."
 
+#. Narrowed marketing page: learn
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.learn"
+msgstr "Découvrir le fonctionnement de Narrowed"
+
 #. Hero secondary call-to-action
 #. js-lingui-explicit-id
 #: src/components/Hero.tsx
@@ -5326,6 +5445,12 @@ msgstr "Découvrir les watchlists"
 #: src/components/pro/ProPitch.tsx
 msgid "pro.pitch.pricingLink"
 msgstr "Voir les tarifs"
+
+#. Narrowed marketing page: pricing
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.pricing"
+msgstr "Voir les tarifs Pro"
 
 #. Feature: application stats description
 #. js-lingui-explicit-id
@@ -5398,6 +5523,13 @@ msgstr "Envoi en cours..."
 #: app/[lang]/(auth)/check-email/page.tsx
 msgid "auth.verify.resending"
 msgstr "Envoi en cours..."
+
+#. Fictional role in the Pro illustration
+#. Fictional role in the Pro illustration
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.role"
+msgstr "Ingénieur logiciel senior"
 
 #. Add seniority filter
 #. js-lingui-explicit-id
@@ -5650,6 +5782,12 @@ msgstr "Suivi"
 msgid "settings.billing.startTrial"
 msgstr "Essayer gratuitement pendant 7 jours"
 
+#. Narrowed marketing page: step1Title
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.step1Title"
+msgstr "Définissez les bases"
+
 #. Heading prompting the user to use normal filters before AI
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -5860,6 +5998,12 @@ msgstr "L'entreprise que vous recherchez n'existe pas ou a été supprimée."
 msgid "about.transparency.p1"
 msgstr "Le code du crawler est open source pour que tout le monde puisse vérifier comment nous collectons les données. Nous espaçons les requêtes par domaine de limitation. Notre page d’indexation décrit la gestion actuelle des restrictions sur les contenus et les moyens de nous contacter. Chaque lien sortant inclut utm_source=jobseek pour que les employeurs sachent d’où vient leur trafic."
 
+#. Narrowed marketing page: examplesTitle
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.examplesTitle"
+msgstr "La demande exacte que nous avons testée"
+
 #. FAQ answer listing interface languages and posting-language filtering.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -5955,6 +6099,12 @@ msgstr "Ce lien de réinitialisation est invalide ou a expiré. Demandes-en un n
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteDescription"
 msgstr "Cet entretien sera supprimé définitivement. S’il s’agit du dernier, la candidature repassera à l’état « Postulé »."
+
+#. Narrowed marketing page: proofBody
+#. js-lingui-explicit-id
+#: src/content/narrowed.ts
+msgid "marketing.narrowed.proofBody"
+msgstr "Cette recherche enregistrée suit 20 employeurs en Suisse. La demande testée recherche des rôles techniques reliant l’analyse de problèmes réels des utilisateurs à l’amélioration d’un produit commun. Une simple affirmation d’orientation client ne suffit pas."
 
 #. Cookie banner message
 #. js-lingui-explicit-id

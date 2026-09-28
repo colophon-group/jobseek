@@ -101,8 +101,38 @@ matches the site's existing illustrations. The lighter writing illustration was
 removed. The existing artwork component and overlay credits are unchanged.
 The production build and desktop/mobile captures in both themes pass.
 
-Open before publication: refresh the watchlist product screenshots. The globe
-in the old capture is stale; the current application's sharing controls already
-use `Share2`. The original public watchlist URL is no longer available, and the
-configured capture-account login is rejected. Fresh authenticated captures are
-pending working capture access; do not alter the screenshot to fake a current UI.
+The watchlist screenshot refresh is in progress. New captures use the actual
+`Share2` control and a populated Software engineering in Switzerland watchlist.
+The old robotics watchlist has no matching jobs. Final assets are not wired in
+yet: some locales still show an earlier Narrowed configuration, and a dark-mode
+capture has an incorrect logo theme. Production's HTTP 429 cooldown blocks the
+remaining capture work. No product UI has been painted or patched into images.
+
+## Narrowed funnel review
+
+The same three personas reviewed the new Narrowed page. The selective engineer
+wanted evidence of a useful semantic distinction across many employers. The
+active nontechnical job seeker wanted the examples and setup before pricing,
+with the saved-search prerequisite beside the CTA. The multilingual reviewer
+wanted Watchlist defined and the hero focused on responsibilities.
+
+The revised page explains the saved-search prerequisite beside the CTA, presents
+a live-tested request and dated results before pricing, and uses responsibility
+relationships rather than a list of technologies. The showcase follows 20
+employers and evaluates 67 software-engineering roles. The exact refined request
+keeps 7; all 7 descriptions were manually reviewed, as were selected exclusions.
+See [the prompt validation report](narrowed-prompt-validation.md) for iterations,
+evidence, the separately tested pricing prompt, and limitations.
+
+The nontechnical prompt proposals were removed until they complete live tests.
+The 7-result product screenshot also remains pending; the existing 23-result
+captures do not illustrate the refined request. The page currently presents
+verified text, not a mismatched screenshot. All new pages remain unpublished
+and require the user's UI review.
+
+The current text-only Narrowed draft passes the production build and TypeScript,
+ESLint, 21 SEO/sitemap tests, and 16 browser checks (four locales × two themes ×
+320px/1440px). Canonical/hreflang checks pass with no runtime errors or horizontal
+overflow. Four additional 320px homepage checks confirmed the new Narrowed
+links and pricing layout. Translated requests were subsequently tested
+independently; the validation report records varying results and known misses.
