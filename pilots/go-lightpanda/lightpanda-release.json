@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/lightpanda-io/browser",
+  "tag": "nightly",
+  "verified_at": "2026-09-28",
+  "release_url": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
+  "note": "Nightly tag is mutable. Asset IDs and SHA-256 bind this snapshot; builds fail closed if upstream removes or replaces these bytes. Tag creation time/commit does not identify the binary build.",
+  "assets": {
+    "amd64": {
+      "id": 594332787,
+      "name": "lightpanda-x86_64-linux",
+      "updated_at": "2026-09-28T02:56:04Z",
+      "sha256": "e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f"
+    },
+    "arm64": {
+      "id": 594332898,
+      "name": "lightpanda-aarch64-linux",
+      "updated_at": "2026-09-28T02:56:09Z",
+      "sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f"
+    }
+  }
+}

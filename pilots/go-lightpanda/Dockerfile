@@ -33,16 +33,21 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go build \
 
 FROM debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
 
+LABEL org.jobseek.lightpanda.release="nightly-2026-09-28"
+COPY lightpanda-release.json /usr/local/share/jobseek/lightpanda-release.json
+
 ARG TARGETARCH
 RUN case "${TARGETARCH}" in \
-        amd64) lightpanda_arch=x86_64; lightpanda_sha=bfcf9bd7e80939b87232aa114a49d8f397f51af0c2632d9fc58d4a6d4386624f ;; \
-        arm64) lightpanda_arch=aarch64; lightpanda_sha=5e3b54deed642ffeb2b8f24a1931e54c51161f44d9d728135da3d4863cb722fb ;; \
+        amd64) lightpanda_asset=594332787; lightpanda_sha=e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f ;; \
+        arm64) lightpanda_asset=594332898; lightpanda_sha=e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f ;; \
         *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
     && apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl \
     && curl --fail --location --retry 3 --output /usr/local/bin/lightpanda \
-        "https://github.com/lightpanda-io/browser/releases/download/0.4.0/lightpanda-${lightpanda_arch}-linux" \
+        --header "Accept: application/octet-stream" \
+        --header "X-GitHub-Api-Version: 2022-11-28" \
+        "https://api.github.com/repos/lightpanda-io/browser/releases/assets/${lightpanda_asset}" \
     && echo "${lightpanda_sha}  /usr/local/bin/lightpanda" \
         | sha256sum --check --strict \
     && chmod 0755 /usr/local/bin/lightpanda \
