@@ -12,7 +12,8 @@ The user changed this session's goal to a **durable checkpoint another session
 can resume**. The complete Go salary candidate is saved on
 `fix-crawler/go-salary-extraction` (implementation
 `92dddb8ed65ef505626e98ddf7ede0e4a50e138d`, candidate v0.13.899).
-It is **not deployed**. Production remains v0.13.898 / cdom epoch 133 below.
+Draft [PR #10177](https://github.com/colophon-group/jobseek/pull/10177) preserves
+the candidate. It is **not deployed**. Production remains v0.13.898 / cdom epoch 133 below.
 See the [self-contained resumption handoff](24-go-lightpanda-salary-checkpoint-2026-09-28.md)
 for verified results, exact production/Lightpanda identities, protected evidence
 locations, draft PR discovery and supported next deployment steps. This saves

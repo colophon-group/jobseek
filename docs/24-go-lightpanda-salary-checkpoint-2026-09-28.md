@@ -12,6 +12,9 @@ production work. Continue implementation from here when the migration resumes.
   **`ff249fa0b6b24273c2d8a2c89520ee2e9055d5e9`**.
 - Implementation commit:
   **`92dddb8ed65ef505626e98ddf7ede0e4a50e138d`**.
+- Draft [PR #10177](https://github.com/colophon-group/jobseek/pull/10177) preserves
+  the candidate and this handoff. Required CI/image gates must be read from
+  the current PR head; no CI completion or deployment is assumed here.
 - Candidate crawler version: **0.13.899**; **not deployed**.
 - This document/evidence are a second commit on the same branch. Resolve the
   full draft PR head and required checks from GitHub before continuing:
@@ -69,6 +72,8 @@ Verified locally:
   existing taxonomy, technology, experience, HTML and language fixtures.
   The required CI image step verifies the actual shipped binary offline;
   resolve its current PR result instead of assuming the local check proves it.
+  The first Workflow Security run found a missing docs README index entry;
+  that entry is now present and the focused docs-index check passed.
 - **512 actual stored production descriptions / 265 boards / 14 locales**
   matched the Python salary output exactly, including all ranges, unification,
   public parsed fields and EUR results for the supplied input rates (these

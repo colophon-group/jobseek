@@ -33,7 +33,8 @@
     "go_race_vet_tidy": "passed",
     "ruff_pyright": "passed",
     "local_installed_protocol": "passed; shipped-image required CI must be read from PR",
-    "initial_fixture_failure": "nested full Go race suite exceeded pytest 30-second fixture deadline; race gate now separate; final focused suite passed"
+    "initial_fixture_failure": "nested full Go race suite exceeded pytest 30-second fixture deadline; race gate now separate; final focused suite passed",
+    "initial_ci_docs_index_failure": "Workflow Security docs index entry missing; corrected, focused docs-index tests passed"
   },
   "stored_parity": {
     "scope": "salary",
@@ -106,5 +107,7 @@
     }
   },
   "private_evidence_dir": "/Users/Viktor/.codex/migration-evidence/go-salary/2026-09-28",
-  "resumption_document": "docs/24-go-lightpanda-salary-checkpoint-2026-09-28.md"
+  "resumption_document": "docs/24-go-lightpanda-salary-checkpoint-2026-09-28.md",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10177",
+  "pr_state": "draft; current-head CI gates must be read at resumption"
 }

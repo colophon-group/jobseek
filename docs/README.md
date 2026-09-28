@@ -49,6 +49,10 @@ Status tags:
   `[proposal]` - current bounded migration sequence, parity and resource gates,
   cohort admission, and final legacy retirement criteria.
 
+- [Go Salary Resumable Checkpoint (2026-09-28)](24-go-lightpanda-salary-checkpoint-2026-09-28.md)
+  `[runbook]` - locally verified salary candidate, exact production and Lightpanda
+  identities, protected evidence and supported resumption steps.
+
 - [25 - Workable Go Production Evidence](25-go-workable-production-evidence.md)
   `[runbook]` - captured-response parity, exact board selectors, and activation evidence.
 - [26 - Go Typesense Backfill Production Evidence](26-go-typesense-backfill-production-evidence.md)
