@@ -5257,89 +5257,86 @@ infor — Infor Global HR / Lawson CandidateSelfService detail scraper
 
 def _show_occupations() -> None:
     """Display occupation taxonomy from data/occupations.csv."""
-    import polars as pl
-
     from src.shared.constants import get_data_dir
+    from src.shared.csv_io import read_csv
 
     path = get_data_dir() / "occupations.csv"
     if not path.exists():
         print("No occupations found in data/occupations.csv")
         return
 
-    df = pl.read_csv(path, infer_schema_length=0)
+    _, rows = read_csv(path)
     print("Occupation Taxonomy")
     print("Managed in data/occupations.csv — enricher outputs free-text, resolver maps to slug\n")
     print(f"  {'Slug':<35} {'EN':<25} {'Aliases':>7}")
     print(f"  {'─' * 35} {'─' * 25} {'─' * 7}")
 
-    for row in df.iter_rows(named=True):
+    for row in rows:
         slug = row["slug"]
         en = row.get("en", "")
         aliases_raw = row.get("aliases", "")
         alias_count = len([a for a in aliases_raw.split("|") if a.strip()]) if aliases_raw else 0
         print(f"  {slug:<35} {en:<25} {alias_count:>7}")
 
-    print(f"\n  {len(df)} occupations total")
+    print(f"\n  {len(rows)} occupations total")
     print("\n  CLI: ws taxonomy search occupations <query>")
     print("       ws taxonomy validate occupations")
 
 
 def _show_seniority() -> None:
     """Display seniority taxonomy from data/seniority.csv."""
-    import polars as pl
-
     from src.shared.constants import get_data_dir
+    from src.shared.csv_io import read_csv
 
     path = get_data_dir() / "seniority.csv"
     if not path.exists():
         print("No seniority levels found in data/seniority.csv")
         return
 
-    df = pl.read_csv(path, infer_schema_length=0)
+    _, rows = read_csv(path)
     print("Seniority Taxonomy")
     print("Managed in data/seniority.csv — detected from title patterns\n")
     print(f"  {'Slug':<15} {'EN':<20} {'Aliases':>7}")
     print(f"  {'─' * 15} {'─' * 20} {'─' * 7}")
 
-    for row in df.iter_rows(named=True):
+    for row in rows:
         slug = row["slug"]
         en = row.get("en", "")
         aliases_raw = row.get("aliases", "")
         alias_count = len([a for a in aliases_raw.split("|") if a.strip()]) if aliases_raw else 0
         print(f"  {slug:<15} {en:<20} {alias_count:>7}")
 
-    print(f"\n  {len(df)} seniority levels total")
+    print(f"\n  {len(rows)} seniority levels total")
     print("\n  CLI: ws taxonomy search seniority <query>")
     print("       ws taxonomy validate seniority")
 
 
 def _show_industries() -> None:
     """Display industry taxonomy from data/industries.csv."""
-    import polars as pl
-
     from src.shared.constants import get_data_dir
+    from src.shared.csv_io import read_csv
 
     path = get_data_dir() / "industries.csv"
     if not path.exists():
         print("No industries found in data/industries.csv")
         return
 
-    df = pl.read_csv(path, infer_schema_length=0)
-    name_header = "EN" if "en" in df.columns else "Name"
-    name_col = "en" if "en" in df.columns else "name"
-    de_col = "de" if "de" in df.columns else None
+    headers, rows = read_csv(path)
+    name_header = "EN" if "en" in headers else "Name"
+    name_col = "en" if "en" in headers else "name"
+    de_col = "de" if "de" in headers else None
     print("Industry Taxonomy")
     print("Managed in data/industries.csv — set per company with: ws set --industry <id>\n")
     print(f"  {'ID':>3}  {name_header:<30}" + (f" {'DE':<30}" if de_col else ""))
     print(f"  {'──':>3}  {'─' * 30}" + (f" {'─' * 30}" if de_col else ""))
 
-    for row in df.iter_rows(named=True):
+    for row in rows:
         ind_id = row["id"]
         name = row.get(name_col, "")
         de = row.get(de_col, "") if de_col else ""
         print(f"  {ind_id:>3}  {name:<30}" + (f" {de:<30}" if de_col else ""))
 
-    print(f"\n  {len(df)} industries total")
+    print(f"\n  {len(rows)} industries total")
     print("\n  CLI: ws taxonomy search industries <query>")
     print("       ws taxonomy validate industries")
 

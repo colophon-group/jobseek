@@ -26,6 +26,15 @@ HTTPS; local HTTP testing opens the same path and `_ptxn` parameter directly.
 For deployed environments use an HTTPS URL. The payment page initializes
 Paddle.js, which handles `_ptxn` automatically.
 
+## Stripe retirement (28 September 2026)
+
+Paddle replaces Stripe. The Stripe webhook route and SDK have been removed;
+`/api/paddle/webhook` is the billing notification endpoint. The application no
+longer reads Stripe API keys or webhook secrets. Historical Stripe columns and
+migrations remain for data compatibility, and manual grants in `subscription`
+continue to participate in paid-entitlement checks. This source change does
+not alter provider dashboard settings or deployed secrets.
+
 ## Runtime configuration
 
 Set these on the web application, separately for each environment:

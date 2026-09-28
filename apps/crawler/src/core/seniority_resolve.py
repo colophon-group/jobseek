@@ -17,9 +17,8 @@ import re
 import unicodedata
 from typing import TYPE_CHECKING
 
-import polars as pl
-
 from src.shared.constants import get_data_dir
+from src.shared.csv_io import read_csv
 
 if TYPE_CHECKING:
     import asyncpg
@@ -167,8 +166,8 @@ def match_seniority(raw: str) -> str | None:
 def _load_seniority_slugs() -> list[str]:
     """Load seniority slugs from CSV."""
     path = get_data_dir() / "seniority.csv"
-    df = pl.read_csv(path, infer_schema_length=0)
-    return df["slug"].to_list()
+    _, rows = read_csv(path)
+    return [row["slug"] for row in rows]
 
 
 async def load_seniority_ids(pool: asyncpg.Pool) -> dict[str, int]:

@@ -3,57 +3,40 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
 
 import click
 
 from src.shared.constants import get_data_dir
-
-if TYPE_CHECKING:
-    import polars as pl
+from src.shared.csv_io import read_csv
 
 
-def _require_polars() -> None:
-    """Import polars or raise a clear ClickException.
-
-    polars is a heavy native dependency and is not part of the slim
-    ``jobseek-crawler-setup`` (ws CLI) wheel by default. Anyone running
-    ``ws taxonomy`` from the slim install gets a clean install hint
-    instead of a raw ImportError stack at module-load time.
-    """
-    try:
-        import polars  # noqa: F401
-    except ImportError as exc:
-        raise click.ClickException(
-            "ws taxonomy requires polars. Install it with "
-            "`pip install polars` (it is intentionally excluded from "
-            "the slim jobseek-crawler-setup wheel)."
-        ) from exc
+@dataclass
+class TaxonomyTable:
+    columns: list[str]
+    rows: list[dict[str, str]]
 
 
-def _detect_format(df: pl.DataFrame) -> str:
+def _detect_format(table: TaxonomyTable) -> str:
     """Detect CSV format: 'slug', 'id', or 'legacy'."""
-    cols = set(df.columns)
+    cols = set(table.columns)
     if "slug" in cols and "en" in cols:
         return "slug"
     if "id" in cols and "en" in cols:
         return "id"
     if "id" in cols and "name" in cols:
         return "legacy"
-    raise click.ClickException(f"Unrecognized CSV format. Columns: {', '.join(df.columns)}")
+    raise click.ClickException(f"Unrecognized CSV format. Columns: {', '.join(table.columns)}")
 
 
-def _load_taxonomy(name: str) -> tuple[pl.DataFrame, str]:
+def _load_taxonomy(name: str) -> tuple[TaxonomyTable, str]:
     """Load a taxonomy CSV by name and detect its format."""
-    _require_polars()
-    import polars as pl
-
     path = get_data_dir() / f"{name}.csv"
     if not path.exists():
         raise click.ClickException(f"Taxonomy file not found: {path}")
-    df = pl.read_csv(path, infer_schema_length=0)
-    fmt = _detect_format(df)
-    return df, fmt
+    table = TaxonomyTable(*read_csv(path))
+    fmt = _detect_format(table)
+    return table, fmt
 
 
 def _score_match(query: str, text: str, base_score: int) -> int:
@@ -67,12 +50,12 @@ def _score_match(query: str, text: str, base_score: int) -> int:
     return 0
 
 
-def _search_localized(df: pl.DataFrame, query: str, key_col: str) -> list[tuple[int, str, str]]:
+def _search_localized(table: TaxonomyTable, query: str, key_col: str) -> list[tuple[int, str, str]]:
     """Search a localized taxonomy (with en, de, fr, it columns and optional aliases)."""
     results: list[tuple[int, str, str]] = []
-    locales = [c for c in ["en", "de", "fr", "it"] if c in df.columns]
+    locales = [c for c in ["en", "de", "fr", "it"] if c in table.columns]
 
-    for row in df.iter_rows(named=True):
+    for row in table.rows:
         key = str(row[key_col])
         best_score = 0
         match_source = ""
@@ -112,11 +95,11 @@ def _search_localized(df: pl.DataFrame, query: str, key_col: str) -> list[tuple[
     return results
 
 
-def _search_legacy(df: pl.DataFrame, query: str) -> list[tuple[int, str, str]]:
+def _search_legacy(table: TaxonomyTable, query: str) -> list[tuple[int, str, str]]:
     """Search legacy taxonomy (id, name, keywords)."""
     results: list[tuple[int, str, str]] = []
 
-    for row in df.iter_rows(named=True):
+    for row in table.rows:
         row_id = row["id"]
         name = row["name"]
         best_score = 0
@@ -144,13 +127,13 @@ def _search_legacy(df: pl.DataFrame, query: str) -> list[tuple[int, str, str]]:
     return results
 
 
-def _validate_localized(df: pl.DataFrame, key_col: str) -> list[str]:
+def _validate_localized(table: TaxonomyTable, key_col: str) -> list[str]:
     """Validate a localized taxonomy CSV (slug or id keyed)."""
     errors: list[str] = []
-    locales = [c for c in ["en", "de", "fr", "it"] if c in df.columns]
+    locales = [c for c in ["en", "de", "fr", "it"] if c in table.columns]
 
     # Check for duplicate keys
-    keys = df[key_col].to_list()
+    keys = [row[key_col] for row in table.rows]
     seen: dict[str, int] = {}
     for i, key in enumerate(keys, 1):
         if key in seen:
@@ -166,7 +149,7 @@ def _validate_localized(df: pl.DataFrame, key_col: str) -> list[str]:
                 errors.append(f"Row {i}: invalid slug format '{slug}' (must be kebab-case)")
 
     # Check for missing translations
-    for row in df.iter_rows(named=True):
+    for row in table.rows:
         key = row[key_col]
         for locale in locales:
             val = row.get(locale, "")
@@ -174,9 +157,9 @@ def _validate_localized(df: pl.DataFrame, key_col: str) -> list[str]:
                 errors.append(f"'{key}': missing {locale} translation")
 
     # Check for ambiguous aliases (only if aliases column exists)
-    if "aliases" in df.columns:
+    if "aliases" in table.columns:
         alias_map: dict[str, list[str]] = {}
-        for row in df.iter_rows(named=True):
+        for row in table.rows:
             key = str(row[key_col])
             aliases_raw = row.get("aliases", "")
             if aliases_raw:
@@ -192,11 +175,11 @@ def _validate_localized(df: pl.DataFrame, key_col: str) -> list[str]:
     return errors
 
 
-def _validate_legacy(df: pl.DataFrame) -> list[str]:
+def _validate_legacy(table: TaxonomyTable) -> list[str]:
     """Validate legacy taxonomy CSV."""
     errors: list[str] = []
 
-    ids = df["id"].to_list()
+    ids = [row["id"] for row in table.rows]
     seen_ids: dict[str, int] = {}
     for i, row_id in enumerate(ids, 1):
         if row_id in seen_ids:
@@ -204,7 +187,7 @@ def _validate_legacy(df: pl.DataFrame) -> list[str]:
         else:
             seen_ids[row_id] = i
 
-    names = df["name"].to_list()
+    names = [row["name"] for row in table.rows]
     for i, name in enumerate(names, 1):
         if not name or not name.strip():
             errors.append(f"Row {i}: empty name")
@@ -226,14 +209,14 @@ def taxonomy_search(name: str, query: str):
     NAME is the taxonomy file name (without .csv), e.g. 'occupations' or 'industries'.
     QUERY is the search term.
     """
-    df, fmt = _load_taxonomy(name)
+    table, fmt = _load_taxonomy(name)
 
     if fmt == "slug":
-        results = _search_localized(df, query, "slug")
+        results = _search_localized(table, query, "slug")
     elif fmt == "id":
-        results = _search_localized(df, query, "id")
+        results = _search_localized(table, query, "id")
     else:
-        results = _search_legacy(df, query)
+        results = _search_legacy(table, query)
 
     if not results:
         print(f"No matches for '{query}' in {name}")
@@ -251,17 +234,17 @@ def taxonomy_validate(name: str):
 
     NAME is the taxonomy file name (without .csv), e.g. 'occupations' or 'industries'.
     """
-    df, fmt = _load_taxonomy(name)
+    table, fmt = _load_taxonomy(name)
 
     if fmt == "slug":
-        errors = _validate_localized(df, "slug")
+        errors = _validate_localized(table, "slug")
     elif fmt == "id":
-        errors = _validate_localized(df, "id")
+        errors = _validate_localized(table, "id")
     else:
-        errors = _validate_legacy(df)
+        errors = _validate_legacy(table)
 
     if not errors:
-        print(f"{name}: OK ({len(df)} entries, format={fmt})")
+        print(f"{name}: OK ({len(table.rows)} entries, format={fmt})")
         return
 
     print(f"{name}: {len(errors)} error(s) found\n")

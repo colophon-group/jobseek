@@ -12,9 +12,9 @@ from pathlib import Path
 
 def read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     """Read a CSV file and return (headers, rows_as_dicts)."""
-    with open(path, newline="") as f:
+    with open(path, encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
-        headers = reader.fieldnames or []
+        headers = list(reader.fieldnames or [])
         rows = list(reader)
     return headers, rows
 

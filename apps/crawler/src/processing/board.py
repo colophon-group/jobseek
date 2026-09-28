@@ -2856,8 +2856,6 @@ async def _process_one_board_streaming(
                         "batch.monitor.empty_confirmed",
                         delisted=empty_delisted_count,
                     )
-                    with contextlib.suppress(Exception):
-                        await _batch.get_redis().delete("cache:platform-stats")
                 _emit_board_recovery(recovered_from, board_log, discovered=0)
             capture_succeeded = True
             return BoardMonitorResult(True, elapsed, "succeeded")
@@ -3007,10 +3005,6 @@ async def _process_one_board_streaming(
         if elapsed >= _SLOW_MONITOR_SECONDS:
             board_log.warning("batch.monitor.slow", duration_s=round(elapsed, 2))
 
-        if total_new or gone_count:
-            with contextlib.suppress(Exception):
-                await _batch.get_redis().delete("cache:platform-stats")
-
         capture_succeeded = True
         return BoardMonitorResult(True, elapsed, "succeeded")
 
@@ -3109,8 +3103,6 @@ async def _process_one_board_streaming(
                 )
             if board_gone_count:
                 _emit_gone_counter(board_gone_count)
-                with contextlib.suppress(Exception):
-                    await _batch.get_redis().delete("cache:platform-stats")
         # Re-raise so the Redis worker uses the durable confirmation/recovery
         # timestamp written above rather than its ordinary success cadence.
         raise

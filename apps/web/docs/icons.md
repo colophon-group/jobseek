@@ -13,17 +13,15 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 | Icon | Role | Used in (representative) |
 |---|---|---|
 | `Building2` | Company / employer (avatar, fallback when no logo) | `c/my-jobs/my-job-row.tsx`, `c/search/company-card.tsx`, `c/blog/MdxMentions.tsx` |
-| `Briefcase` | Job posting / occupation filter / "My Jobs" nav slot | `c/AppHeader.tsx`, `c/search/search-bar.tsx`, `c/watchlist/watchlist-filter-editor.tsx` |
+| `Briefcase` | Job posting / occupation filter / "My Jobs" nav slot | `c/AppHeader.tsx`, `c/search/search-bar.tsx` |
 | `Eye` | Watchlists nav slot / public-watchlist visibility cue | `c/AppHeader.tsx`, `c/blog/MdxMentions.tsx` |
-| `MapPin` | Location (filter, display, posting metadata) | `c/search/search-toolbar.tsx`, `c/search/location-pills.tsx` |
+| `MapPin` | Location (filter, display, posting metadata) | `c/search/search-toolbar.tsx` |
 | `Code2` | Technology filter (modal, search bar, advanced panel) | `c/search/technology-modal.tsx`, `c/search/search-bar.tsx` |
-| `Cpu` | Technology filter (alternate — used inside the watchlist filter editor specifically) | `c/watchlist/watchlist-filter-editor.tsx` |
-| `Award` | Seniority filter | `c/watchlist/watchlist-filter-editor.tsx` |
 | `DollarSign` | Salary filter / display | `c/search/advanced-search-panel.tsx`, `c/search/job-detail-dialog.tsx` |
 | `Clock` | Experience / time-of-posting | `c/search/search-toolbar.tsx`, `c/search/job-detail-dialog.tsx` |
 | `CalendarDays` | Date / posted-within filter | `c/search/advanced-search-panel.tsx`, `c/search/job-detail-dialog.tsx` |
 | `Globe` | Locale / language switcher / `anyCompany` watchlists | `c/LocaleSwitcher.tsx`, `c/watchlist/watchlist-action-bar.tsx` |
-| `Star` | Starred / favorite company | `c/StarredCompaniesProvider.tsx`, `c/my-jobs/quick-actions.tsx` |
+| `Star` | Starred / favorite company | `c/StarredCompaniesProvider.tsx` |
 | `Lock` | Private watchlist marker | `c/watchlist/watchlist-card.tsx` |
 | `Crown` | Pro plan badge | `c/settings/BillingSettings.tsx` |
 
@@ -36,7 +34,7 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 | `Briefcase` | "My Jobs" nav slot | `c/AppHeader.tsx` |
 | `Settings` | Settings nav slot / icon | `c/AppHeader.tsx`, `a/(app)/settings/...` |
 | `Menu` | Mobile menu open | `c/Header.tsx` |
-| `X` | Close / dismiss (mobile menu, modals, chips) | `c/MobileMenu.tsx`, `c/ui/upgrade-modal.tsx` |
+| `X` | Close / dismiss (mobile menu, modals, chips) | `c/MobileMenu.tsx` |
 | `BackLink` (uses `ArrowLeft`) | Back navigation | `c/BackLink.tsx` |
 | `ArrowRight` | Forward / submit affordance in inline buttons | `c/search/search-bar.tsx` |
 | `ChevronDown` | Disclosure / expand-down (filter panels, dropdowns) | `c/search/advanced-search-panel.tsx` |
@@ -60,7 +58,7 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 
 | Icon | Role | Used in |
 |---|---|---|
-| `Plus` | Add (job, keyword, watchlist) | `c/my-jobs/quick-actions.tsx`, `c/watchlist/watchlist-card.tsx` |
+| `Plus` | Add (job, keyword, watchlist) | `c/watchlist/watchlist-card.tsx` |
 | `Pencil` | Edit | `c/watchlist/watchlist-action-bar.tsx`, `c/watchlist/watchlist-view-page.tsx` |
 | `Trash2` | Delete | `c/my-jobs/interview-list.tsx`, `c/watchlist/watchlist-action-bar.tsx` |
 | `Copy` | Clone a shared watchlist / copy text | `c/watchlist/watchlist-view-page.tsx`, agent-prompt controls |
@@ -69,7 +67,7 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 | `BookmarkCheck` | Saved (filled) — paired with `Bookmark` via `Icon = saved ? BookmarkCheck : Bookmark` | `c/search/save-button.tsx` |
 | `Bell` | Alerts on | `c/watchlist/watchlist-action-bar.tsx` |
 | `BellOff` | Alerts off | `c/watchlist/watchlist-action-bar.tsx` |
-| `Check` | Confirm / done state | `c/settings/BillingSettings.tsx`, `c/my-jobs/quick-actions.tsx` |
+| `Check` | Confirm / done state | `c/settings/BillingSettings.tsx` |
 | `Search` | Search input / CTA | `c/AppHeader.tsx`, `c/settings/JobLanguageModal.tsx` |
 | `SlidersHorizontal` | Filter controls toggle / "filters" feature | `c/search/advanced-search-panel.tsx`, `c/Features.tsx` |
 | `Funnel` | Narrow-results control and request drawer | `c/search/ai-search-filter.tsx` |
@@ -78,7 +76,7 @@ Grouped by domain. The "Used in" column lists representative consumers — not e
 
 | Icon | Role | Used in |
 |---|---|---|
-| `AlertTriangle` | Warning / dangerous-action confirmation | `c/ui/upgrade-modal.tsx`, `c/PendingJobWarning.tsx` |
+| `AlertTriangle` | Warning / dangerous-action confirmation | `c/PendingJobWarning.tsx` |
 | `Info` | Inline info / disclosure | `c/CookieBanner.tsx`, `c/HowWeIndexContent.tsx` |
 | `CircleCheck` | Success state (post-action confirmation) | `c/Pricing.tsx`, `a/verify-email/page.tsx` |
 | `Loader2` | Loading spinner (`animate-spin`) | `c/InfiniteScrollSentinel.tsx`, `c/search/technology-modal.tsx` |

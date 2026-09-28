@@ -164,9 +164,7 @@ export default tseslint.config(
       "**/*.test.{ts,tsx}",
       "app/api/admin/murmur-demo/**",
       "app/api/web/companies/request/**",
-      "app/api/stripe/**",
       "src/lib/actions/request-company.ts",
-      "src/lib/stripe.ts",
     ],
     plugins: {
       "safe-client-logging": safeClientLoggingPlugin,

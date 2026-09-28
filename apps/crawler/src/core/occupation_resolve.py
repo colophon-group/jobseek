@@ -19,9 +19,8 @@ import unicodedata
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-import polars as pl
-
 from src.shared.constants import get_data_dir
+from src.shared.csv_io import read_csv
 
 if TYPE_CHECKING:
     import asyncpg
@@ -52,12 +51,12 @@ def _normalize(text: str) -> str:
 def _load_aliases() -> dict[str, str]:
     """Read occupations.csv and build normalized_alias -> slug dict."""
     path = get_data_dir() / "occupations.csv"
-    df = pl.read_csv(path, infer_schema_length=0)
+    headers, rows = read_csv(path)
 
     mapping: dict[str, str] = {}
-    locales = occupation_locale_columns(df.columns)
+    locales = occupation_locale_columns(headers)
 
-    for row in df.iter_rows(named=True):
+    for row in rows:
         slug = row["slug"]
 
         # Map slug itself

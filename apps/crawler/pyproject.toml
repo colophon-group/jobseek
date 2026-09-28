@@ -14,7 +14,6 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "polars>=1.43.2",
     "jmespath>=1.0",
-    "upstash-redis>=1.7.0",
     "Pillow>=12.3.0",
     "cairosvg>=2.9.0",
     "defusedxml>=0.7.1",

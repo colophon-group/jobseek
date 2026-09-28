@@ -49,12 +49,6 @@ describe("SelectedLocation search type boundary (#3227)", () => {
     expect(source).toMatch(/\bexport type LocationType\b/);
   });
 
-  it("does not re-export SelectedLocation from the client location-pills component", () => {
-    const source = readSource("src/components/search/location-pills.tsx");
-
-    expect(source).not.toMatch(/\bexport\s+type\s*{\s*SelectedLocation\s*}/);
-  });
-
   it("does not import SelectedLocation from the client location-pills component", () => {
     const restrictedImport =
       /import\s+(?:type\s+)?{[\s\S]*?\bSelectedLocation\b[\s\S]*?}\s+from\s+["']@\/components\/search\/location-pills["']/;

@@ -53,9 +53,6 @@ SKIP_MODULES: frozenset[str] = frozenset(
         "src.shared.langdetect",
         # asyncpg-backed taxonomy resolvers
         "src.core.location_resolve",
-        "src.core.occupation_resolve",
-        "src.core.seniority_resolve",
-        "src.core.technology_resolve",
         "src.core.experience_extract",
         # PDF / pypdf
         "src.core.scrapers.pdf",
