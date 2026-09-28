@@ -238,7 +238,6 @@ export const siteConfig = {
       license: { href: "/license", external: false },
       privacy: { href: "/privacy-policy", external: false },
       terms: { href: "/terms", external: false },
-      refunds: { href: "/terms#refund-policy", external: false },
     },
   },
 

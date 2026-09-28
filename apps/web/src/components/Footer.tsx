@@ -67,11 +67,6 @@ export function Footer({ lang }: FooterProps) {
                 <Trans id="common.footer.termsLink" comment="Footer link to terms of service page">Terms</Trans>
               </NavLink>
             </li>
-            <li>
-              <NavLink className={linkClass} prefetch={false} href={`${prefix}${links.refunds.href}`}>
-                <Trans id="common.footer.refundsLink" comment="Footer link to refund policy">Refunds</Trans>
-              </NavLink>
-            </li>
           </ul>
         </nav>
       </div>
