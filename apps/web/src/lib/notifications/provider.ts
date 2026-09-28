@@ -1,4 +1,5 @@
 import "server-only";
+import { EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/email-config";
 import type { renderNotificationEmail } from "./render-email";
 
 export type NotificationProviderResult =
@@ -16,7 +17,7 @@ export async function sendNotificationEmail(input: {
       signal: AbortSignal.timeout(10_000),
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": input.idempotencyKey },
       body: JSON.stringify({
-        from: "Job Seek <noreply@updates.colophon-group.org>", to: [input.to], ...input.email,
+        from: EMAIL_FROM, reply_to: EMAIL_REPLY_TO, to: [input.to], ...input.email,
         headers: { "List-Unsubscribe": `<${input.unsubscribeUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
         tags: [{ name: "notification_delivery", value: input.deliveryId }, { name: "notification_attempt", value: String(input.attempt) }],
       }),
