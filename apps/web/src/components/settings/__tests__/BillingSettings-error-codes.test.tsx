@@ -33,6 +33,8 @@ vi.mock("@/lib/actions/billing", () => ({
   createCheckoutSession: mocks.createCheckoutSession,
 }));
 
+vi.mock("@/lib/actions/pro-waitlist", () => ({ joinProWaitlist: vi.fn() }));
+
 vi.mock("@/lib/actions/ai-filter", () => ({
   configureAiFilter: vi.fn(),
   createAiFilteredWatchlist: vi.fn(),
@@ -96,6 +98,8 @@ describe("BillingSettings action errors", () => {
 
     expect(screen.getByRole("heading", { name: /Your criteria.*A shorter list/ })).toBeTruthy();
     expect(screen.getByText("Trial signup isn’t open yet.")).toBeTruthy();
+    expect(screen.getByRole("form", { name: "Pro waiting list" })).toBeTruthy();
+    expect(screen.queryByText(/Payment method required/)).toBeNull();
     expect(screen.queryByRole("button", { name: "Upgrade to Pro" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
   });
@@ -106,6 +110,7 @@ describe("BillingSettings action errors", () => {
     render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true }} />);
     expect(screen.getByRole("heading", { name: /Your criteria.*A shorter list/ })).toBeTruthy();
     const link = screen.getByRole("link", { name: "Start 7-day free trial" });
+    expect(screen.queryByRole("form", { name: "Pro waiting list" })).toBeNull();
     const login = new URL(link.getAttribute("href")!, "https://jseek.co");
     expect(login.pathname).toBe("/en/sign-in");
     const billing = new URL(login.searchParams.get("next")!, "https://jseek.co");
@@ -116,6 +121,7 @@ describe("BillingSettings action errors", () => {
   it("gives subscribers a usable next step and an unambiguous end date instead of another pitch", () => {
     render(<BillingSettings planInfo={{ plan: "unlimited", status: "trialing", periodEnd: "2026-10-04T12:00:00Z", hasBillingAccount: true }} />);
     expect(screen.getByText("Free trial")).toBeTruthy();
+    expect(screen.queryByRole("form", { name: "Pro waiting list" })).toBeNull();
     expect(screen.getByText("October 4, 2026")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Go to your watchlists" }).getAttribute("href")).toBe("/en/watchlists");
     expect(screen.queryByText("An example")).toBeNull();

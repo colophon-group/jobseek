@@ -44,6 +44,16 @@ export const user = pgTable("user", {
     .notNull(),
 });
 
+// Anonymous, explicit opt-ins for the Pro launch. Accessible only by the server.
+export const proWaitlist = pgTable("pro_waitlist", {
+  email: text("email").primaryKey(),
+  locale: text("locale").notNull().default("en"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  check("pro_waitlist_email_normalized", sql`${table.email} = lower(btrim(${table.email})) AND char_length(${table.email}) BETWEEN 3 AND 254`),
+  check("pro_waitlist_locale_valid", sql`${table.locale} IN ('en', 'de', 'fr', 'it')`),
+]).enableRLS();
+
 export const session = pgTable(
   "session",
   {

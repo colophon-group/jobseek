@@ -6,6 +6,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import { ArrowRight, Check, SlidersHorizontal } from "lucide-react";
 import { BillingPolicyLinks, FreeAccessNote, ProPitch } from "@/components/pro/ProPitch";
+import { ProWaitlistForm } from "@/components/pro/ProWaitlistForm";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
@@ -206,13 +207,14 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
               )}
               {!planInfo.checkoutEnabled && <span className="text-sm text-muted"><Trans id="pro.offer.unavailable" comment="Honest availability notice when checkout is disabled">Trial signup isn’t open yet.</Trans></span>}
             </div>
-            <div className="mt-5 space-y-2 border-t border-divider pt-4 text-xs leading-5 text-muted">
+            {!planInfo.checkoutEnabled && <div className="mt-5 border-t border-divider pt-4"><ProWaitlistForm /></div>}
+            {planInfo.checkoutEnabled && <div className="mt-5 space-y-2 border-t border-divider pt-4 text-xs leading-5 text-muted">
               {trialEligible ? <p><Trans id="pro.offer.paymentTerms" comment="Payment method and cancellation disclosure next to trial CTA">Payment method required. Cancel before your trial ends to avoid being charged.</Trans></p>
                 : <p><Trans id="pro.offer.repeatTerms" comment="Renewal disclosure for returning customers">Renews monthly until canceled. A new free trial is not included.</Trans></p>}
               <p><Trans id="pro.offer.paddle" comment="Merchant of record and final price disclosure">Secure checkout with Paddle. Your final total, including applicable taxes, is shown before you confirm.</Trans></p>
               {!isLoggedIn && planInfo.checkoutEnabled && <p><Trans id="pro.offer.signIn" comment="Explains that anonymous visitors sign in before checkout">You’ll sign in first, then continue to checkout.</Trans></p>}
               <BillingPolicyLinks />
-            </div>
+            </div>}
           </section>
         </>
       )}

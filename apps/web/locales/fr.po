@@ -1109,6 +1109,12 @@ msgstr "Créé par des chercheurs d'emploi, pour des chercheurs d'emploi"
 msgid "marketing.tracker.scopeTitle"
 msgstr "Pour les offres sauvegardées sur Job Seek"
 
+#. Consent notice beneath the waiting list form, limited to Pro launch news
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.consent"
+msgstr "En vous inscrivant, vous acceptez de recevoir un e-mail concernant le lancement de Pro."
+
 #. Terms page description
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
@@ -2149,6 +2155,12 @@ msgstr "Modifier la demande"
 msgid "auth.field.email"
 msgstr "E-mail"
 
+#. Email field in the Pro waiting list form
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.email"
+msgstr "Adresse e-mail"
+
 #. Explains supported behavior for emailTiming
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -2214,6 +2226,12 @@ msgstr "Activer les notifications hebdomadaires par e-mail"
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.status.ending"
 msgstr "Se termine bientôt"
+
+#. Waiting list email validation error
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.invalidEmail"
+msgstr "Saisissez une adresse e-mail valide."
 
 #. Forgot password page subtitle
 #. js-lingui-explicit-id
@@ -2620,6 +2638,12 @@ msgstr "Temps plein"
 #: src/components/settings/SettingsNav.tsx
 msgid "settings.nav.general"
 msgstr "Général"
+
+#. Explains what joining the Pro waiting list does
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.description"
+msgstr "Recevez un e-mail à l’ouverture des inscriptions à Pro. Aucun compte ni paiement nécessaire."
 
 #. Link to contact email
 #. js-lingui-explicit-id
@@ -3093,6 +3117,18 @@ msgstr "offres"
 #: app/[lang]/(app)/company/[slug]/page.tsx
 msgid "company.meta.title"
 msgstr "Emplois chez {name}"
+
+#. Submit button for the Pro waiting list
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.join"
+msgstr "Rejoindre la liste d’attente"
+
+#. Waiting list submit button while saving
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.joining"
+msgstr "Inscription en cours…"
 
 #. js-lingui-explicit-id
 #. placeholder {0}: term.span.text
@@ -4359,9 +4395,11 @@ msgstr "Tarifs"
 
 #. Footer link to privacy policy page
 #. Footer link to privacy policy page
+#. Footer link to privacy policy page
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 #: src/components/pro/ProPitch.tsx
+#: src/components/pro/ProWaitlistForm.tsx
 msgid "common.footer.privacyLink"
 msgstr "Confidentialité"
 
@@ -4427,6 +4465,12 @@ msgstr "Paiements Pro"
 #: src/components/TermsContent.tsx
 msgid "terms.billing.title"
 msgstr "Abonnements Pro et paiements"
+
+#. Accessible name of the Pro waiting list form
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.label"
+msgstr "Liste d’attente Pro"
 
 #. Third parties
 #. js-lingui-explicit-id
@@ -5707,6 +5751,12 @@ msgstr "Au"
 msgid "watchlists.jobList.today"
 msgstr "Aujourd'hui"
 
+#. Too many waiting list signup attempts
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.rateLimited"
+msgstr "Trop de tentatives. Veuillez réessayer dans une heure."
+
 #. Public marketing page: tracker_step3Title
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
@@ -6031,6 +6081,12 @@ msgstr "Impossible de charger votre liste de suivi."
 msgid "watchlists.load.error"
 msgstr "Impossible de charger vos listes de suivi."
 
+#. Waiting list signup could not be saved
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.unavailable"
+msgstr "Nous n’avons pas pu enregistrer votre inscription. Veuillez réessayer."
+
 #. No selling
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
@@ -6314,6 +6370,12 @@ msgstr "Vous aurez besoin d'un token de l'équipe Jobseek — remplacez <token-f
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.offer.signIn"
 msgstr "Vous vous connecterez d’abord, puis passerez au paiement."
+
+#. Confirmation after a saved or duplicate Pro waiting list signup
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.success"
+msgstr "Vous êtes sur la liste. Nous vous enverrons un e-mail à l’ouverture des inscriptions à Pro."
 
 #. Message shown when the user has hit the per-hour limit on triggering Murmur company-add runs
 #. js-lingui-explicit-id
