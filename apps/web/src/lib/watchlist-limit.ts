@@ -6,6 +6,15 @@ import { watchlist } from "@/db/schema";
 
 export const MAX_WATCHLISTS_PER_ACCOUNT = 10;
 
+/** Server-managed exceptions use stable account IDs, never client input or plan. */
+function watchlistLimitForAccount(userId: string): number | null {
+  const exemptIds = (process.env.WATCHLIST_LIMIT_EXEMPT_USER_IDS ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  return userId && exemptIds.includes(userId) ? null : MAX_WATCHLISTS_PER_ACCOUNT;
+}
+
 type WatchlistTransaction = Parameters<
   Parameters<typeof db.transaction>[0]
 >[0];
@@ -43,7 +52,8 @@ export async function createWithinWatchlistLimit<T>(
     .from(watchlist)
     .where(eq(watchlist.userId, userId));
 
-  if (current >= MAX_WATCHLISTS_PER_ACCOUNT) {
+  const max = watchlistLimitForAccount(userId);
+  if (max !== null && current >= max) {
     throw new WatchlistLimitReachedError();
   }
 
@@ -52,15 +62,16 @@ export async function createWithinWatchlistLimit<T>(
 
 export async function canCreateWatchlist(
   userId: string,
-): Promise<{ allowed: boolean; current: number; max: number }> {
+): Promise<{ allowed: boolean; current: number; max: number | null }> {
   const [{ value: current }] = await db
     .select({ value: count() })
     .from(watchlist)
     .where(eq(watchlist.userId, userId));
 
+  const max = watchlistLimitForAccount(userId);
   return {
-    allowed: current < MAX_WATCHLISTS_PER_ACCOUNT,
+    allowed: max === null || current < max,
     current,
-    max: MAX_WATCHLISTS_PER_ACCOUNT,
+    max,
   };
 }
