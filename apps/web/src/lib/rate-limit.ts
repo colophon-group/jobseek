@@ -55,6 +55,13 @@ export const companyRequestLimiter = new Ratelimit({
   prefix: "rl:company-req",
 });
 
+/** Public Pro waiting list signups: 5 attempts per hour per IP. */
+export const proWaitlistLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, "3600 s"),
+  prefix: "rl:pro-waitlist",
+});
+
 /** Public API (AI agents): 30 requests per 60 seconds per IP. */
 export const apiLimiter = new Ratelimit({
   redis,
