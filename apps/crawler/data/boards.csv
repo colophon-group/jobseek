@@ -3394,6 +3394,7 @@ hiive,hiive-ashby,https://jobs.ashbyhq.com/hiive,ashby,"{""token"": ""hiive""}",
 hike-medical,hike-medical-ashby,https://jobs.ashbyhq.com/hike-medical,ashby,"{""token"": ""hike-medical""}",skip,
 hill-house-home,hill-house-home-greenhouse,https://job-boards.greenhouse.io/hillhousehome,greenhouse,"{""token"": ""hillhousehome""}",skip,
 hillel-international,hillel-international-greenhouse,https://job-boards.greenhouse.io/hillel,greenhouse,"{""token"": ""hillel""}",skip,
+hilti,hilti-careers,https://careers.hilti.group/en/jobs/,sitemap,"{""sitemap_url"": ""https://careers.hilti.group/sitemap.xml"", ""url_filter"": ""^https://careers\\.hilti\\.group/en/jobs/[0-9]+[^/]*/[^/]+/?$""}",json-ld,
 hilton,hilton-careers-global,https://efet.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1009/jobs,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 hilton-grand-vacations,hilton-grand-vacations-careers,https://efuq.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/HiltonGrandVacations,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 hippo-insurance,hippo-insurance-greenhouse,https://job-boards.greenhouse.io/hippo70,greenhouse,"{""token"": ""hippo70""}",skip,
