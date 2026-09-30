@@ -512,6 +512,12 @@ msgstr ""
 #~ msgid "checkout.description"
 #~ msgstr "Use your payment link to open Paddle’s secure checkout or update your payment method."
 
+#. Labels fictional roles and description excerpts in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+#~ msgid "pro.example.illustrative"
+#~ msgstr "Illustrative examples"
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -2878,12 +2884,6 @@ msgstr "If you notice unusual crawler behaviour, prefer that we do not index you
 #: src/content/marketing.ts
 msgid "marketing.common.example"
 msgstr "Illustrative example"
-
-#. Labels fictional roles and description excerpts in the Narrowed preview
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-msgid "pro.example.illustrative"
-msgstr "Illustrative examples"
 
 #. Tooltip on a disabled filter pill explaining the row is implied by an already-selected ancestor (e.g. 'Included in European Union' when EU is selected).
 #. js-lingui-explicit-id

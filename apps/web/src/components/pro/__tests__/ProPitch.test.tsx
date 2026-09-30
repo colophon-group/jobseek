@@ -17,7 +17,7 @@ describe("ProPitch Narrowed preview", () => {
   it("explains both accepted roles and excluded roles with description excerpts", () => {
     render(<ProPitch previewOnly />);
     const preview = within(screen.getByRole("region", { name: "Narrowed results" }));
-    expect(preview.getByText("Illustrative examples")).toBeTruthy();
+    expect(preview.queryByText("Illustrative examples")).toBeNull();
     const rows = preview.getAllByRole("listitem");
     expect(rows).toHaveLength(4);
     expect(rows.filter(row => within(row).queryByText("Match"))).toHaveLength(2);

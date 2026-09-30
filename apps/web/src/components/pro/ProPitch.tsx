@@ -48,21 +48,20 @@ export function ProPitch({ previewOnly = false }: { previewOnly?: boolean }) {
         presentation="drawer"
         initialQuery={query}
         narrowedResultCount={matchCount}
-        drawerContent={<div className="py-2">
-          <p className="px-2 pb-1 text-[10px] text-muted"><Trans id="pro.example.illustrative" comment="Labels fictional roles and description excerpts in the Narrowed preview">Illustrative examples</Trans></p>
-          <ul className="divide-y divide-divider">
-            {narrowedPreviewExamples.map(example => <li key={example.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 px-2 py-3">
-              <span className="min-w-0 break-words text-sm leading-5">{t(example.title)}</span>
-              <span className={`inline-flex items-center gap-1 whitespace-nowrap text-[10px] leading-5 ${example.matches ? "text-success" : "text-muted"}`}>
-                {example.matches ? <Check size={12} aria-hidden="true" /> : <X size={12} aria-hidden="true" />}
-                {example.matches
-                  ? <Trans id="pro.example.match" comment="Filtering result for an example that meets the Narrowed criteria">Match</Trans>
-                  : <Trans id="pro.example.excluded" comment="Filtering result for an example that does not meet the Narrowed criteria">Filtered out</Trans>}
-              </span>
-              <p className="col-span-2 text-xs leading-5 text-muted">{t(example.excerpt)}</p>
-            </li>)}
-          </ul>
-        </div>}
+        drawerContent={<ul className="divide-y divide-divider py-2">
+          {narrowedPreviewExamples.map(example => <li key={example.id} className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 px-2 py-3">
+            {example.matches
+              ? <Check size={32} className="row-span-2 text-success" aria-hidden="true" />
+              : <X size={32} className="row-span-2 text-muted" aria-hidden="true" />}
+            <span className="min-w-0 break-words text-sm leading-5">{t(example.title)}</span>
+            <span className={`whitespace-nowrap text-[10px] leading-5 ${example.matches ? "text-success" : "text-muted"}`}>
+              {example.matches
+                ? <Trans id="pro.example.match" comment="Filtering result for an example that meets the Narrowed criteria">Match</Trans>
+                : <Trans id="pro.example.excluded" comment="Filtering result for an example that does not meet the Narrowed criteria">Filtered out</Trans>}
+            </span>
+            <p className="col-span-2 col-start-2 text-xs leading-5 text-muted">{t(example.excerpt)}</p>
+          </li>)}
+        </ul>}
       />
     </div>
   );
