@@ -157,7 +157,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
                       ? t({ id: "pro.billing.trialUntil", comment: "Label for the trial end date", message: "Your free trial ends" })
                       : t({ id: "pro.billing.renews", comment: "Label for the next billing period", message: "Next renewal" })}</p>
                   <p className="font-medium">{periodEnd}</p>
-                  {planInfo.status === "trialing" && !planInfo.cancellationScheduled && <p className="mt-1 text-xs text-muted"><Trans id="pro.billing.trialRenewal" comment="Renewal disclosure during an active trial">Then US$10/month, with applicable taxes shown in your billing portal.</Trans></p>}
+                  {planInfo.status === "trialing" && !planInfo.cancellationScheduled && <p className="mt-1 text-xs text-muted"><Trans id="pro.billing.trialRenewal" comment="Renewal disclosure during an active trial">Your monthly price and applicable taxes are shown in your billing portal.</Trans></p>}
                 </>
               ) : <p className="text-muted"><Trans id="pro.billing.manageHelp" comment="What users can do in the portal">Payment details, invoices, and cancellation</Trans></p>}
             </div>
@@ -183,6 +183,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
                 <p className="mt-2 text-sm text-muted">{trialEligible
                   ? t({ id: "pro.offer.afterTrial", comment: "Price immediately below trial offer", message: "Then US$10 per month. Cancel anytime." })
                   : t({ id: "pro.offer.returning", comment: "Returning customers do not receive another trial", message: "Pick up where you left off. Billed monthly." })}</p>
+                <p className="mt-2 text-xs text-muted"><Trans id="pro.offer.localCurrency" comment="Explains localized subscription pricing and payment method eligibility">Local-currency prices and available payment methods are shown at checkout.</Trans></p>
               </div>
               {canPurchase && planInfo.checkoutEnabled && !checkoutComplete && (
                 isLoggedIn ? <Button onClick={handleCheckout} disabled={loading !== null} className="gap-2 self-start sm:self-auto">
