@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import ipaddress
 import json
+import math
 import os
 import re
 import secrets
@@ -24,6 +25,8 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
+
+from src.lightpanda.admission import STARTUP_TAXONOMY
 
 HERE = Path(__file__).resolve().parent
 COMPOSE = HERE / "compose.yml"
@@ -578,6 +581,69 @@ def _sample(rows: list[dict[str, Any]], stop: threading.Event, output: dict[str,
     )
 
 
+def lifetime_resource(services: list[dict[str, Any]]) -> dict[str, Any]:
+    """Keep lifetime accounting separate from synchronized post-startup density.
+
+    Cgroup counters cover each container from creation. Sum-of-peaks is a
+    conservative aggregate upper bound, never a simultaneous peak measurement.
+    Fresh arm containers and zero restarts are separately required by admission.
+    """
+    return {
+        "cpu_window": "post_startup_to_retention",
+        "lifetime_cpu_window": "container_creation_to_final_read",
+        "lifetime_cpu_seconds": sum(row["lifetime_cpu_seconds"] for row in services),
+        "startup_cpu_seconds": sum(row["startup_cpu_seconds"] for row in services),
+        "lifetime_peak_upper_bound_bytes": sum(row["memory_peak_bytes"] for row in services),
+        "lifetime_peak_policy": "sum_service_lifetime_peaks_upper_bound_not_density",
+    }
+
+
+def valid_lifetime_resource(resource: dict[str, Any], services: list[dict[str, Any]]) -> bool:
+    if not services or resource.get("cpu_window") != "post_startup_to_retention":
+        return False
+    if resource.get("lifetime_cpu_window") != "container_creation_to_final_read":
+        return False
+    if resource.get("lifetime_peak_policy") != "sum_service_lifetime_peaks_upper_bound_not_density":
+        return False
+    for row in services:
+        values: list[Any] = [
+            row.get(key) for key in ("cpu_seconds", "startup_cpu_seconds", "lifetime_cpu_seconds")
+        ]
+        if not all(
+            type(value) in (int, float) and math.isfinite(value) and value >= 0 for value in values
+        ):
+            return False
+        if not math.isclose(values[0] + values[1], values[2], rel_tol=1e-9, abs_tol=1e-6):
+            return False
+        peak = row.get("memory_peak_bytes")
+        if type(peak) is not int or peak <= 0:
+            return False
+        events = row.get("memory_events_lifetime")
+        if (
+            not isinstance(events, dict)
+            or any(
+                type(events.get(key)) is not int or events[key] != 0 for key in ("oom", "oom_kill")
+            )
+            or any(value != 0 for key, value in events.items() if key.startswith("swap_"))
+        ):
+            return False
+    expected = lifetime_resource(services)
+    for key in ("startup_cpu_seconds", "lifetime_cpu_seconds"):
+        value: Any = resource.get(key)
+        if (
+            type(value) not in (int, float)
+            or not math.isfinite(value)
+            or not math.isclose(value, expected[key], rel_tol=1e-9, abs_tol=1e-6)
+        ):
+            return False
+    upper: Any = resource.get("lifetime_peak_upper_bound_bytes")
+    sampled: Any = resource.get("sampled_peak_bytes")
+    limit: Any = resource.get("limit_bytes")
+    return all(type(value) is int for value in (upper, sampled, limit)) and (
+        upper == expected["lifetime_peak_upper_bound_bytes"] and 0 < sampled <= upper < limit
+    )
+
+
 def _number(metrics: str, name: str, labels: dict[str, str] | None = None) -> float:
     labels = labels or {}
     total = 0.0
@@ -766,8 +832,10 @@ def run_arm(
             seed.get("phase") != "seed"
             or seed.get("feed") != expected
             or not isinstance(seed.get("due"), float)
+            or seed.get("startup_taxonomy") != STARTUP_TAXONOMY
         ):
             raise AdmissionError("candidate/control fixture seed is incomplete")
+        result["startup_taxonomy"] = seed["startup_taxonomy"]
         env["ADMISSION_DUE"] = str(seed["due"])
         if lane == "candidate":
             _compose(env, "up", "-d", "--wait", "executor", "renderer", "producer", timeout=120)
@@ -855,6 +923,9 @@ def run_arm(
                 key: events.get(key, 0) - row["events_before"].get(key, 0)
                 for key in set(events) | set(row["events_before"])
             }
+            cpu_total_usec = _cpu_usage(row["path"])
+            if cpu_total_usec < row["cpu_before_usec"]:
+                raise AdmissionError("service lifetime CPU counter decreased")
             after.append(
                 {
                     "service": row["service"],
@@ -864,7 +935,10 @@ def run_arm(
                     "memory_peak_bytes": memory_peak,
                     "memory_peak_before": row["memory_peak_before"],
                     "memory_max": row["memory_max"],
-                    "cpu_seconds": (_cpu_usage(row["path"]) - row["cpu_before_usec"]) / 1_000_000,
+                    "cpu_seconds": (cpu_total_usec - row["cpu_before_usec"]) / 1_000_000,
+                    "startup_cpu_seconds": row["cpu_before_usec"] / 1_000_000,
+                    "lifetime_cpu_seconds": cpu_total_usec / 1_000_000,
+                    "memory_events_lifetime": events,
                     "image_id": row["image_id"],
                     "networks": attached_networks,
                     "running": state["Running"],
@@ -878,6 +952,7 @@ def run_arm(
             )
         result["resource"] = {
             **sampled,
+            **lifetime_resource(after),
             # Density compares only synchronized sums of memory.current. Per-service
             # memory.peak values below are safety gates for sub-sample excursions.
             "peak_bytes": sampled["sampled_peak_bytes"],
@@ -1014,6 +1089,8 @@ def evaluate(document: dict[str, Any]) -> dict[str, Any]:
             reasons.append(f"{arm.get('pair')}/{arm.get('lane')}:counts")
         if not payload.get("redis", {}).get("exact") or not arm.get("metrics", {}).get("exact"):
             reasons.append(f"{arm.get('pair')}/{arm.get('lane')}:queue_or_metrics")
+        if arm.get("startup_taxonomy") != STARTUP_TAXONOMY:
+            reasons.append(f"{arm.get('pair')}/{arm.get('lane')}:startup_taxonomy")
         aggregate_limit = 1536 * 1024**2
         if (
             resource.get("samples", 0) < 50
@@ -1114,6 +1191,8 @@ def evaluate(document: dict[str, Any]) -> dict[str, Any]:
                 or any(value for key, value in delta.items() if key.startswith("swap_"))
             ):
                 reasons.append(f"{arm.get('pair')}/{arm.get('lane')}:restart_oom_swap")
+        if not valid_lifetime_resource(resource, service_rows):
+            reasons.append(f"{arm.get('pair')}/{arm.get('lane')}:lifetime_resources")
         fixture = arm.get("fixture")
         if (
             not isinstance(fixture, dict)
@@ -1169,6 +1248,12 @@ def evaluate(document: dict[str, Any]) -> dict[str, Any]:
                 "peak_rss_ratio": values[4] / values[5],
                 "cpu_seconds_candidate": candidate_cpu,
                 "cpu_seconds_control": control_cpu,
+                "lifetime_cpu_seconds_candidate": candidate.get("resource", {}).get(
+                    "lifetime_cpu_seconds"
+                ),
+                "lifetime_cpu_seconds_control": control.get("resource", {}).get(
+                    "lifetime_cpu_seconds"
+                ),
             }
         )
         if throughput <= 0 or p99 <= 0:
@@ -1225,6 +1310,7 @@ def main() -> int:
         "renderer_source_sha": args.renderer_source_sha,
         "images": images,
         "config_sha256": hashlib.sha256(COMPOSE.read_bytes()).hexdigest(),
+        "startup_taxonomy": STARTUP_TAXONOMY,
         "workload_sha256": None,
         "ca_der_sha256": CA_DER_SHA256,
         "run_order": [

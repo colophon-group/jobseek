@@ -106,3 +106,12 @@ Remaining work: reserved-content/publisher policy audit;
 complete crash/lease-loss/reversal and installed-image tests. A required Linux
 PostgreSQL 17 job and an inactive image build are registered in the candidate;
 their remote checks must pass before merge. Follow the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md).
+
+An optional `TestPostgresNativePrivateTaxonomySnapshot` accepts a private 0600
+read-only startup-taxonomy JSON export through
+`JOBSEEK_B0_EXECUTOR_TAXONOMY_SNAPSHOT`, alongside the existing isolated
+`*_b0_executor_test` database guard. It restores only geographic/lookup/rate
+rows into an owned schema, exercises the native loader and private index,
+checks its connection/file budget and cleanup, and emits numeric counts only.
+It has no production connection. Local snapshot timing/index fit does not
+replace Linux container startup CPU/RAM or aggregate resource proof.

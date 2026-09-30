@@ -182,6 +182,42 @@ claim complete origin-file/protocol coverage: the broader existing work remains
 in issue #10090 and its documented scope. This audit authorizes no blanket
 source exclusions or new origin traffic.
 
+## Startup resource proof in progress
+
+The corrected renderer image and pinned integration suites passed on ARM64 and
+AMD64 at PR head `a990177d2363dae33c10e9553bcbcce683dfc36b`: renderer run
+36740886647, pilot run 36740886649. Required CI run 36740886650 and installed
+runtime contracts run 36740886648 also passed. Native whole-lane run
+36740886561 is still measuring; retain its terminal artifact before replacing
+that exact candidate.
+
+A read-only production startup-taxonomy snapshot at 16:08:46 UTC contains
+37,526 locations, 143,004 names in the six startup locales, 186 technologies,
+91 occupations, nine seniorities and 31 currency rates. The complete raw
+snapshot stays private. The optional isolated native test restored those rows
+to local PostgreSQL 18.6 and loaded the real native lookups/index in 1,347 ms.
+Its private index held 118,206 deduplicated name pairs and 37,526 English display
+names in 7,806,976 bytes (7.45 MiB), kept one PostgreSQL connection, resolved
+the fixed geographic case and cleaned up its owned files.
+[Portable numeric evidence](evidence/go-native-b0-startup-taxonomy-2026-09-30.json)
+binds the snapshot hash and scope. This local loader result excludes Linux
+installed-image CPU/RAM, decoding/import overhead and transient tmpfs peaks.
+
+The next admission change records cgroup CPU from container creation through
+its final read and the prefix before post-startup sampling. It preserves
+synchronized post-startup memory sampling for density and separately records
+the sum of service lifetime peaks as a conservative aggregate upper bound.
+It rejects missing/inconsistent lifetime counters, startup OOM/swap evidence
+or an upper bound reaching the lane envelope. This sum is never represented
+as a simultaneous peak or used as a density denominator.
+
+Both disposable lanes also receive a generated startup taxonomy with the
+observed production row counts before their due time is set. The fixture
+census must match in every arm. Generated names/slugs are synthetic and do not
+establish production-taxonomy semantic parity or production cost. Local real
+PostgreSQL census, adversarial numeric admission checks and native snapshot
+loading pass; exact Linux admission of these new checks remains pending.
+
 ## Next delivery gates
 
 1. Complete installed-binary/image tests with real Linux UID isolation, private

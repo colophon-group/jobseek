@@ -63,6 +63,59 @@ _LOOKUP_TABLES = (
 )
 
 
+# A synthetic startup profile at the observed production row cardinalities.
+# The values are generated, not a copied publisher or job-content dataset.
+STARTUP_TAXONOMY = {
+    "profile": "synthetic-production-cardinality-v1",
+    "location": 37526,
+    "location_name": 143004,
+    "technology": 186,
+    "occupation": 91,
+    "seniority": 9,
+    "currency_rate": 31,
+}
+
+
+async def _seed_startup_taxonomy(pool: asyncpg.Pool) -> dict[str, Any]:
+    # All callers are the existing disposable admission driver. This bounded
+    # data never enters production sync or opens another network connection.
+    await pool.execute(
+        "TRUNCATE location_name, location, technology, occupation, seniority, currency_rate"
+    )
+    await pool.execute("""
+        INSERT INTO location(id,parent_id,type,population,languages)
+        SELECT n, CASE WHEN n=1 THEN NULL ELSE 1 END,
+               CASE WHEN n=1 THEN 'country' ELSE 'city' END, 1000, ARRAY['en']
+        FROM generate_series(1,37526) AS n;
+        INSERT INTO location_name(location_id,locale,name,is_display)
+        SELECT ((n-1)%37526)+1,
+               CASE WHEN n<=37526 THEN 'en' ELSE (ARRAY['de','fr','it','alt',''])[(n%5)+1] END,
+               'startup-native-' || lpad(n::text,8,'0'), n<=37526
+        FROM generate_series(1,143004) AS n;
+        INSERT INTO technology(id,slug)
+        SELECT n,'fixture-technology-'||n FROM generate_series(1,186) AS n;
+        INSERT INTO occupation(id,slug)
+        SELECT n,'fixture-occupation-'||n FROM generate_series(1,91) AS n;
+        INSERT INTO seniority(id,slug)
+        SELECT n,'fixture-seniority-'||n FROM generate_series(1,9) AS n;
+        INSERT INTO currency_rate(currency,to_eur)
+        SELECT 'X'||lpad(n::text,2,'0'),1 FROM generate_series(1,31) AS n;
+    """)
+    observed: dict[str, Any] = {"profile": STARTUP_TAXONOMY["profile"]}
+    for table in (
+        "location",
+        "location_name",
+        "technology",
+        "occupation",
+        "seniority",
+        "currency_rate",
+    ):
+        observed[table] = await pool.fetchval("SELECT count(*) FROM " + table)
+    if observed != STARTUP_TAXONOMY:
+        raise AdmissionDriverError("synthetic startup taxonomy census differs")
+    return observed
+
+
 def _canonical(value: Any) -> bytes:
     return json.dumps(
         value, default=str, ensure_ascii=True, sort_keys=True, separators=(",", ":")
@@ -292,6 +345,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
             return {"phase": "reserve", "routing_epoch": value}
         if args.phase == "seed":
             await _seed(pool, redis, tasks, args.lane == "candidate")
+            taxonomy = await _seed_startup_taxonomy(pool)
             redis_time = await redis.time()
             redis_now = float(redis_time[0]) + float(redis_time[1]) / 1_000_000
             pg_now = await pool.fetchval("SELECT extract(epoch FROM clock_timestamp())")
@@ -299,7 +353,7 @@ async def run(args: argparse.Namespace) -> dict[str, Any]:
                 raise AdmissionDriverError("Redis/Postgres clocks differ by more than one second")
             due = max(redis_now, float(pg_now)) + 45.0
             ids = await _feed(redis, tasks, False, due)
-            return {"phase": "seed", "due": due, "feed": len(ids)}
+            return {"phase": "seed", "due": due, "feed": len(ids), "startup_taxonomy": taxonomy}
         if args.phase == "transfer":
             if args.lane != "candidate" or args.due <= time.time():
                 raise AdmissionDriverError("Go transfer requires a future candidate due time")

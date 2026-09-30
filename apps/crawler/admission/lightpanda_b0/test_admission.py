@@ -218,7 +218,7 @@ def _numeric_evidence() -> dict[str, Any]:
             {
                 "service": service,
                 "memory_max": cap,
-                "memory_peak_bytes": cap // 4,
+                "memory_peak_bytes": cap // (4 if lane == "candidate" else 2),
                 "memory_peak_before": cap // 8,
                 "networks": [f"{project}_claim", f"{project}_origin"]
                 if service in {"renderer", "control"}
@@ -244,6 +244,10 @@ def _numeric_evidence() -> dict[str, Any]:
                 "restart_count": 0,
                 "oom_killed": False,
                 "memory_events_delta": {"oom": 0, "oom_kill": 0},
+                "memory_events_lifetime": {"oom": 0, "oom_kill": 0},
+                "cpu_seconds": (1.0 if lane == "candidate" else 2.0) / len(caps),
+                "startup_cpu_seconds": 0.5 / len(caps),
+                "lifetime_cpu_seconds": (1.5 if lane == "candidate" else 2.5) / len(caps),
             }
             for service, cap in caps.items()
         ]
@@ -254,6 +258,7 @@ def _numeric_evidence() -> dict[str, Any]:
                 "concurrency": concurrency,
                 "lane": lane,
                 "project": project,
+                "startup_taxonomy": dict(admission.STARTUP_TAXONOMY),
                 "arm": {
                     "feed": 4 * concurrency,
                     "persisted": 4 * concurrency,
@@ -272,6 +277,7 @@ def _numeric_evidence() -> dict[str, Any]:
                     "fixture_aliases": [f"origin-{index}.lane.bench.test" for index in range(4)],
                 },
                 "resource": {
+                    **controller.lifetime_resource(services),
                     "samples": 60,
                     "retention_seconds": 5,
                     "peak_bytes": peak,
@@ -352,3 +358,62 @@ def test_live_proc_limits_accept_linux_padding_and_reject_changed_owner() -> Non
     assert not controller.native_process_limits_match(status.replace("10001", "0", 1), limits)
     assert not controller.native_process_limits_match(status, limits.replace("64", "1024", 1))
     assert not controller.native_process_limits_match(status, "")
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "missing",
+        "startup_omitted",
+        "nan",
+        "counter_reset",
+        "aggregate_mismatch",
+        "unbounded_peak",
+        "startup_oom",
+        "startup_swap",
+    ],
+)
+def test_lifetime_gate_rejects_incomplete_or_invalid_startup_evidence(damage: str) -> None:
+    evidence = _numeric_evidence()
+    resource = evidence["arms"][0]["resource"]
+    service = resource["services"][0]
+    if damage == "missing":
+        resource.pop("lifetime_cpu_window")
+    elif damage == "startup_omitted":
+        service["lifetime_cpu_seconds"] = service["cpu_seconds"]
+    elif damage == "nan":
+        service["startup_cpu_seconds"] = float("nan")
+    elif damage == "counter_reset":
+        service["cpu_seconds"] = -1
+    elif damage == "aggregate_mismatch":
+        resource["lifetime_cpu_seconds"] += 1
+    elif damage == "unbounded_peak":
+        service["memory_peak_bytes"] = resource["limit_bytes"]
+        resource.update(controller.lifetime_resource(resource["services"]))
+    elif damage == "startup_oom":
+        service["memory_events_lifetime"]["oom_kill"] = 1
+    elif damage == "startup_swap":
+        service["memory_events_lifetime"]["swap_fail"] = 1
+    assert "c1-p1/candidate:lifetime_resources" in controller.evaluate(evidence)["reasons"]
+
+
+def test_lifetime_bound_is_separate_from_synchronized_density() -> None:
+    evidence = _numeric_evidence()
+    verdict = controller.evaluate(evidence)
+    assert verdict["admitted"]
+    resource = evidence["arms"][0]["resource"]
+    assert resource["lifetime_cpu_seconds"] > resource["cpu_seconds"]
+    assert resource["lifetime_peak_upper_bound_bytes"] > resource["sampled_peak_bytes"]
+    assert verdict["pair_metrics"][0]["lifetime_cpu_seconds_candidate"] == 1.5
+    assert verdict["pair_metrics"][0]["peak_rss_ratio"] == 0.5
+
+
+def test_startup_census_cannot_accept_empty_or_changed_taxonomies() -> None:
+    for changed in (
+        {},
+        {**admission.STARTUP_TAXONOMY, "location_name": 0},
+        {**admission.STARTUP_TAXONOMY, "profile": "empty"},
+    ):
+        evidence = _numeric_evidence()
+        evidence["arms"][0]["startup_taxonomy"] = changed
+        assert "c1-p1/candidate:startup_taxonomy" in controller.evaluate(evidence)["reasons"]
