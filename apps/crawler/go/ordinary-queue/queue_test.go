@@ -56,6 +56,9 @@ func privateRedis(t *testing.T) *Client {
 	t.Helper()
 	binary, err := exec.LookPath("redis-server")
 	if err != nil {
+		if os.Getenv("JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS") == "1" {
+			t.Fatal("required private real Redis fixture unavailable")
+		}
 		t.Skip("private real Redis fixture unavailable")
 	}
 	// Unix socket paths are bounded on macOS/Linux; test-name temp paths can

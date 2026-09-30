@@ -1,0 +1,62 @@
+name: Go ordinary queue contracts
+
+on:
+  pull_request:
+    paths:
+      - "apps/crawler/go/ordinary-queue/**"
+      - "apps/crawler/src/lua/claim_work.lua"
+      - "apps/crawler/src/lua/heartbeat_task.lua"
+      - "apps/crawler/src/lua/complete_task.lua"
+      - "apps/crawler/src/lua/reschedule_task.lua"
+      - ".github/workflows/go-ordinary-queue.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-ordinary-queue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Ordinary queue private Redis (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/crawler/go/ordinary-queue
+    env:
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/ordinary-queue/go.mod
+          cache-dependency-path: apps/crawler/go/ordinary-queue/go.sum
+
+      - name: Install fixture Redis on the disposable runner
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends redis-server
+          redis-server --version
+
+      - name: Verify real private queue transitions and Lua authority
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout=90s ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
