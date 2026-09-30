@@ -61,6 +61,38 @@ times, publisher refetches or duplicate origin probes were used.
 
 See [sanitized salary production evidence](evidence/go-salary-production-2026-09-30.json).
 
+## Durable renderer rollout
+
+[Repair #10192](https://github.com/colophon-group/jobseek/pull/10192) merged as
+`b83bf7c9e9fb88f16e90fefb7a9f4234071ef8db`. The official September 30
+multiarch source is pinned by immutable OCI index and checked binary digests,
+so daily upstream asset rotation no longer breaks candidate builds. Both Linux
+architectures passed integration, egress/identity isolation and density smoke;
+[admission 36707930551](https://github.com/colophon-group/jobseek/actions/runs/36707930551)
+passed all 16 fixture arms. This is synthetic admission, not production resource
+proof or native executor completion.
+
+The supported wrapper retired cdom at epoch **138**, restoring 21 schedules,
+dropping no terminal tasks and leaving no write fences. Renderer deployment
+36713362647 stopped before host mutation when main advanced. The intervening
+change was web-only. After transient GitHub dispatch errors,
+[deployment 36714124285](https://github.com/colophon-group/jobseek/actions/runs/36714124285)
+completed promotion at exact source
+`d04bb56b9938268e83b5b7452e04fec6a9edef2c`, renderer image
+`ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:65fff3f9b08cc4db7010e8fe7ed4cd2fcc8bac6e7320f47dae8ed3ded7aa2b34`.
+The host's public release identity matched its deployment artifact. The image
+build checks ARM64 binary SHA-256
+`112d39b5020a80e2de6b828485880eb7b8271e42c5598b825a760a8688fe0b21`.
+
+The unchanged 25 selectors and promoted salary crawler revision were retained.
+Supported reactivation completed at cdom epoch **139**, selecting 21 schedules,
+15 without queued tasks. At 12:27:37 UTC all ordinary and B0 workers were healthy
+and all seven metric collectors responded. This initial snapshot had no newly
+claimed B0 task yet; health and fixture evidence must not be presented as fresh
+natural cohort output. The location candidate is rebased on this repaired main
+and awaits fresh checks. See
+[sanitized renderer production evidence](evidence/go-lightpanda-renderer-production-2026-09-30.json).
+
 ## Location matching candidate v0.13.901
 
 `apps/crawler/go/job-enrichment` now has a reusable SQLite-backed Go location
@@ -112,15 +144,9 @@ so its shared enrichment remains Python by default. Do not describe Go counters
 from ordinary workers as evidence of an entirely native B0 lane. Its replacement
 is the next major delivery boundary.
 
-1. Repair the renderer build pin before location rollout. Candidate whole-lane
-   admission run [36702659579](https://github.com/colophon-group/jobseek/actions/runs/36702659579)
-   failed when upstream removed the September 28 nightly asset IDs (HTTP 404).
-   Compatibility and installed-location tests passed; this is a build input
-   failure. The separate [renderer repair #10192](https://github.com/colophon-group/jobseek/pull/10192)
-   pins the official September 30 OCI
-   index and verifies matching amd64/arm64 release checksums. Require Linux
-   integration, identity/egress isolation, admission and supported cold renderer
-   rollout before rebasing the location candidate onto the repaired main.
+1. Renderer build pin repair and supported cold rollout are complete as recorded
+   above. The original location admission failed because September 28 asset IDs
+   returned HTTP 404; fresh location admission must run against the repaired pin.
 2. Review and deploy the location candidate through Required CI and Crawler
    Deploy Gate, after the renderer repair and salary promotion. Re-read live ownership first; perform
    the same supported cold transition when B0 is active. Verify natural Go
@@ -140,6 +166,31 @@ is the next major delivery boundary.
    after replacement authority and the rollback window are established. Retain
    useful isolated offline tooling. Refresh and validate the official Lightpanda
    nightly separately through its supported pinned renderer deployment.
+
+## Native executor foundation saved locally
+
+The inactive module `apps/crawler/go/lightpanda-b0-executor` is being implemented
+on isolated branch `fix-crawler/go-b0-native-executor`. Local commits
+`747ce5ac763e899ae548f74bbe3f7cf173d5e24a` and
+`2ebae3f52e0e60020537d006a66b45b951268097` preserve the database and protocol
+foundations; they are not pushed, installed or production owners.
+
+A one-connection pgx store preserves frozen Python SQL, fenced activation and
+require/write/revoke transactions, nullable COALESCE fields, exact-description
+hash/deduplication, schedule truth and failure budgets. Real transaction tests
+passed with every repository migration on isolated PostgreSQL 18.6, including
+cancellation/crash rollback, stale epochs, duplicate claims, native field codecs
+and never-rescrape scheduling. PostgreSQL 17 CI remains required.
+
+Transport helpers reuse runtime-v1 framing and types. Frozen Python messages
+match byte for byte; authorization identity, frame/result bounds, canonical
+base64 and recursively unknown protobuf fields are checked. Rendered-output
+fixtures cover chunk integrity/partitioning, strict UTF-8, empty HTML and HTTP
+classification. Race, vet, module and format checks passed. A complete private
+socket server, canonical task identity, direct parsing/enrichment, native
+location loading, Docker integration and operational fault tests remain before
+an inactive candidate can be reviewed. This implementation is separate from the
+currently selected Python executor and is not evidence of native B0 ownership.
 
 ## Native executor implementation contract
 
