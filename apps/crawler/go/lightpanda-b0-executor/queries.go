@@ -1,5 +1,11 @@
 package executor
 
+const fetchPostingForEnrichSQL = `
+SELECT titles, locales, location_ids, location_types, employment_type
+FROM job_posting
+WHERE id = $1
+`
+
 // Frozen existing Python SQL. Query parity and real PostgreSQL effects must
 // remain verified before the native executor becomes a production owner.
 

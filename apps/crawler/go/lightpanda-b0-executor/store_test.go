@@ -21,7 +21,7 @@ func TestSQLMatchesFrozenPythonAuthoritativeQueries(t *testing.T) {
 	if err := json.Unmarshal(data, &expected); err != nil {
 		t.Fatal(err)
 	}
-	queries := map[string]string{"updateContentSQL": updateContentSQL, "recordSuccessSQL": recordSuccessSQL, "recordFailureSQL": recordFailureSQL, "recordTransientSQL": recordTransientSQL, "upsertDescriptionSQL": upsertDescriptionSQL, "currentDetailSQL": currentDetailSQL}
+	queries := map[string]string{"updateContentSQL": updateContentSQL, "recordSuccessSQL": recordSuccessSQL, "recordFailureSQL": recordFailureSQL, "recordTransientSQL": recordTransientSQL, "upsertDescriptionSQL": upsertDescriptionSQL, "currentDetailSQL": currentDetailSQL, "fetchPostingForEnrichSQL": fetchPostingForEnrichSQL}
 	if len(queries) != len(expected) {
 		t.Fatal("query coverage changed")
 	}

@@ -1,0 +1,658 @@
+{
+  "schema_version": 1,
+  "oracle": "Python 3.13 src.processing.scrape ordinary/enrich fenced pipeline",
+  "occupations": {
+    "software-engineer": 41,
+    "data-engineer": 52
+  },
+  "seniorities": {
+    "senior": 7,
+    "junior": 3,
+    "intern": 9
+  },
+  "technologies": {
+    "python": 4,
+    "go": 2,
+    "postgresql": 4
+  },
+  "rates": {
+    "CHF": 1.05,
+    "USD": 0.9
+  },
+  "cases": [
+    {
+      "name": "ordinary",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": "en"
+      },
+      "config": {},
+      "existing": null,
+      "expected": {
+        "success": true,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          "hybrid",
+          "en"
+        ],
+        "fields": [
+          "full_time",
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "ordinary_intern",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "internship",
+        "language": "en"
+      },
+      "config": {},
+      "existing": null,
+      "expected": {
+        "success": true,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          "hybrid",
+          "en"
+        ],
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          9
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "ordinary_no_description",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": null,
+        "locations": null,
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": null
+      },
+      "config": {},
+      "existing": null,
+      "expected": {
+        "success": true,
+        "location_inputs": [
+          null,
+          "hybrid",
+          null
+        ],
+        "fields": [
+          "full_time",
+          [
+            "Senior Software Engineer"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "ordinary_empty_language",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": false
+      },
+      "config": {},
+      "existing": null,
+      "expected": {
+        "success": true,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          "hybrid",
+          "en"
+        ],
+        "fields": [
+          "full_time",
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "ordinary_blank_title",
+      "content": {
+        "title": "   ",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": null
+      },
+      "config": {},
+      "existing": null,
+      "expected": {
+        "success": true,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          "hybrid",
+          null
+        ],
+        "fields": [
+          "full_time",
+          null,
+          null,
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "ordinary_garbage",
+      "content": {
+        "title": "Access Denied",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": "en"
+      },
+      "config": {},
+      "existing": null,
+      "expected": {
+        "success": false,
+        "disposition": "transient"
+      }
+    },
+    {
+      "name": "ordinary_title_list",
+      "content": {
+        "title": [
+          "Engineer"
+        ],
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": "en"
+      },
+      "config": {},
+      "existing": null,
+      "expected": {
+        "success": false,
+        "disposition": "transient"
+      }
+    },
+    {
+      "name": "description_preserves_monitor_fields",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": "en"
+      },
+      "config": {
+        "enrich": [
+          "description"
+        ]
+      },
+      "existing": {
+        "titles": [
+          "Existing monitor title"
+        ],
+        "location_ids": [
+          7
+        ],
+        "employment_type": "part-time"
+      },
+      "expected": {
+        "success": true,
+        "fields": [
+          null,
+          null,
+          [
+            "en"
+          ],
+          null,
+          null,
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          null,
+          null
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "description_backfills_empty_fields",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": "en"
+      },
+      "config": {
+        "enrich": [
+          "description"
+        ]
+      },
+      "existing": {
+        "titles": [],
+        "location_ids": [],
+        "employment_type": null
+      },
+      "expected": {
+        "success": true,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          "hybrid",
+          "en"
+        ],
+        "fields": [
+          "full_time",
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "description_no_existing_row",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": "en"
+      },
+      "config": {
+        "enrich": [
+          "description"
+        ]
+      },
+      "existing": null,
+      "expected": {
+        "success": true,
+        "fields": [
+          null,
+          null,
+          [
+            "en"
+          ],
+          null,
+          null,
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          null,
+          null
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "title_no_language_preserves_locales",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": null
+      },
+      "config": {
+        "enrich": [
+          "title"
+        ]
+      },
+      "existing": {
+        "titles": [
+          "Existing monitor title"
+        ],
+        "location_ids": [
+          7
+        ],
+        "employment_type": "part-time"
+      },
+      "expected": {
+        "success": true,
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "employment_intern_without_title",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "internship",
+        "language": "en"
+      },
+      "config": {
+        "enrich": [
+          "employment_type"
+        ]
+      },
+      "existing": {
+        "titles": [
+          "Existing monitor title"
+        ],
+        "location_ids": [
+          7
+        ],
+        "employment_type": "part-time"
+      },
+      "expected": {
+        "success": true,
+        "fields": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          9
+        ],
+        "disposition": "success"
+      }
+    },
+    {
+      "name": "missing_description",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": "en"
+      },
+      "config": {
+        "enrich": [
+          "description"
+        ]
+      },
+      "existing": {
+        "titles": [
+          "Existing monitor title"
+        ],
+        "location_ids": [
+          7
+        ],
+        "employment_type": "part-time"
+      },
+      "expected": {
+        "success": false,
+        "disposition": "transient"
+      }
+    },
+    {
+      "name": "degenerate_description",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<script>removed</script>",
+        "locations": [
+          "Zurich"
+        ],
+        "job_location_type": "hybrid",
+        "employment_type": "Full Time",
+        "language": "en"
+      },
+      "config": {
+        "enrich": [
+          "description"
+        ]
+      },
+      "existing": {
+        "titles": [
+          "Existing monitor title"
+        ],
+        "location_ids": [
+          7
+        ],
+        "employment_type": "part-time"
+      },
+      "expected": {
+        "success": false,
+        "disposition": "transient"
+      }
+    }
+  ]
+}

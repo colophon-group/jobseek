@@ -28,5 +28,10 @@
     "source": "apps/crawler/src/lightpanda/executor.py",
     "constant": "_CURRENT_DETAIL_SQL",
     "sha256": "504ea4be3a7458f3efec75b0c4fa64eddd91508569290cb962fb32ccb5772236"
+  },
+  "fetchPostingForEnrichSQL": {
+    "sha256": "3f01afcecadb332ecf1bb0dd869db3ea20db2dd3b23155e0b57871dce4a818bf",
+    "source": "apps/crawler/src/queries/scrape.py",
+    "constant": "_FETCH_POSTING_FOR_ENRICH"
   }
 }

@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	SocketPath           = "/run/jobseek-lightpanda-executor/executor.sock"
-	TaskCapacity         = 4
-	AttestationCapacity  = 1
-	FirstFrameTimeout    = time.Second
-	AuthorizationTimeout = 5 * time.Second
-	CommitTimeout        = 15 * time.Second
+	SocketPath             = "/run/jobseek-lightpanda-executor/executor.sock"
+	TaskCapacity           = 4
+	AttestationCapacity    = 1
+	ClassificationCapacity = 16
+	FirstFrameTimeout      = time.Second
+	AuthorizationTimeout   = 5 * time.Second
+	CommitTimeout          = 15 * time.Second
 )
 
 type EpochAttestor interface {
@@ -112,7 +113,7 @@ func (s Server) serve(ctx context.Context, path string, peerUID func(*net.UnixCo
 	attestations := make(chan struct{}, AttestationCapacity)
 	// Pending first frames have their own short admission budget. They do not
 	// consume task or health slots; every accepted socket is bounded to one second.
-	classifying := make(chan struct{}, 64)
+	classifying := make(chan struct{}, ClassificationCapacity)
 	conversations, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var handlers sync.WaitGroup

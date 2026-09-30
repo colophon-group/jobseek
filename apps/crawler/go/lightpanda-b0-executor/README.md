@@ -83,9 +83,24 @@ matches, internship overrides, sorted unique technology IDs and nullable salary/
 experience fields. Direct DOM and JSON-LD parsing consumes verified rendered
 HTML without a subprocess or origin request and passes both frozen Python
 corpora. Gone redirects precede challenges; Avature JobDetail 406 remains
-transient. These helpers still do not own a complete task conversation.
+transient. Production still uses the Python executor.
 
-Remaining work: the complete task authorization/commit handler and startup
-environment guards; enrichment assembly; reserved-content policy and classification;
+The complete native handler now validates the task, requests advancing write
+lease authorization, activates the fence, rechecks mutable database identity,
+parses and assembles content, commits one fenced transaction and acknowledges
+only the database-owned schedule. Fourteen frozen Python processing cases
+cover ordinary/selected enrichment, backfill, internship, language/NULL gates
+and transient empty results. Real PostgreSQL socket conversations pass for
+canonical content/description/schedule effects, revoked duplicates, invalid
+write authorization and HTTP gone/budget/transient behavior. The shared retry
+counter increments on transient responses too; visibility and terminal behavior
+remain distinct. Exact environment bounds and credential separation are tested. The executable
+startup loads native taxonomies before binding, and its health command uses
+the reserved route conversation without another database connection. Slow
+first-frame admission is capped at 16 sockets within the existing descriptor
+and memory budget. Linux ARM64 executable compilation passed locally; installed
+execution still requires Linux CI.
+
+Remaining work: reserved-content/publisher policy audit;
 complete crash/lease-loss/reversal tests; Docker/CI integration and an inactive
 candidate checkpoint. Follow the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md).
