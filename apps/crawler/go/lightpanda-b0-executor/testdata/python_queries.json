@@ -1,0 +1,32 @@
+{
+  "updateContentSQL": {
+    "source": "apps/crawler/src/queries/scrape.py",
+    "constant": "_UPDATE_ENRICH_CONTENT",
+    "sha256": "87c192cca66ec1090e7545fecf8f450e5cecbf6f58eaeff0fbf03b4a4e18bca8"
+  },
+  "recordSuccessSQL": {
+    "source": "apps/crawler/src/queries/scrape.py",
+    "constant": "_RECORD_SCRAPE_SUCCESS",
+    "sha256": "c793b8680527db8628321020e041cb29ec955a594daf557b90f272ae885c45ba"
+  },
+  "recordFailureSQL": {
+    "source": "apps/crawler/src/queries/scrape.py",
+    "constant": "_RECORD_SCRAPE_FAILURE",
+    "sha256": "b09be2508890f8894d286b4a78a9226c7ae61d2f3478a0150342b7d71ec76548"
+  },
+  "recordTransientSQL": {
+    "source": "apps/crawler/src/queries/scrape.py",
+    "constant": "_RECORD_SCRAPE_TRANSIENT",
+    "sha256": "de9ffae9dfc0edb28b579a605dccba47feddf6e9b6d2c519b5ab2dcb549aafe8"
+  },
+  "upsertDescriptionSQL": {
+    "source": "apps/crawler/src/processing/scrape.py",
+    "constant": "_UPSERT_DESCRIPTION",
+    "sha256": "0d4b1f3823f535b83bf615e9f86d393a14ec09ef857e9b9969900f4d133710de"
+  },
+  "currentDetailSQL": {
+    "source": "apps/crawler/src/lightpanda/executor.py",
+    "constant": "_CURRENT_DETAIL_SQL",
+    "sha256": "504ea4be3a7458f3efec75b0c4fa64eddd91508569290cb962fb32ccb5772236"
+  }
+}

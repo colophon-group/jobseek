@@ -1,0 +1,128 @@
+[
+  {
+    "html": "",
+    "language": "",
+    "present": false,
+    "locale": "en",
+    "hash": -2039914840885289964
+  },
+  {
+    "html": "",
+    "language": "fr",
+    "present": false,
+    "locale": "fr",
+    "hash": -2039914840885289964
+  },
+  {
+    "html": "",
+    "language": "zh",
+    "present": false,
+    "locale": "zh",
+    "hash": -2039914840885289964
+  },
+  {
+    "html": "<p>Hello</p>",
+    "language": "",
+    "present": true,
+    "locale": "en",
+    "hash": -3413045566578827181
+  },
+  {
+    "html": "<p>Hello</p>",
+    "language": "fr",
+    "present": true,
+    "locale": "fr",
+    "hash": -3413045566578827181
+  },
+  {
+    "html": "<p>Hello</p>",
+    "language": "zh",
+    "present": true,
+    "locale": "zh",
+    "hash": -3413045566578827181
+  },
+  {
+    "html": "<p>Café 東京</p>",
+    "language": "",
+    "present": true,
+    "locale": "en",
+    "hash": -8474406105025787698
+  },
+  {
+    "html": "<p>Café 東京</p>",
+    "language": "fr",
+    "present": true,
+    "locale": "fr",
+    "hash": -8474406105025787698
+  },
+  {
+    "html": "<p>Café 東京</p>",
+    "language": "zh",
+    "present": true,
+    "locale": "zh",
+    "hash": -8474406105025787698
+  },
+  {
+    "html": "<p>Français\r\nDeutsch\n中文 😀</p>",
+    "language": "",
+    "present": true,
+    "locale": "en",
+    "hash": -6838589271308151540
+  },
+  {
+    "html": "<p>Français\r\nDeutsch\n中文 😀</p>",
+    "language": "fr",
+    "present": true,
+    "locale": "fr",
+    "hash": -6838589271308151540
+  },
+  {
+    "html": "<p>Français\r\nDeutsch\n中文 😀</p>",
+    "language": "zh",
+    "present": true,
+    "locale": "zh",
+    "hash": -6838589271308151540
+  },
+  {
+    "html": "  ",
+    "language": "",
+    "present": true,
+    "locale": "en",
+    "hash": 7788869048518191970
+  },
+  {
+    "html": "  ",
+    "language": "fr",
+    "present": true,
+    "locale": "fr",
+    "hash": 7788869048518191970
+  },
+  {
+    "html": "  ",
+    "language": "zh",
+    "present": true,
+    "locale": "zh",
+    "hash": 7788869048518191970
+  },
+  {
+    "html": "<p>A&amp;B</p>",
+    "language": "",
+    "present": true,
+    "locale": "en",
+    "hash": -239642378295187598
+  },
+  {
+    "html": "<p>A&amp;B</p>",
+    "language": "fr",
+    "present": true,
+    "locale": "fr",
+    "hash": -239642378295187598
+  },
+  {
+    "html": "<p>A&amp;B</p>",
+    "language": "zh",
+    "present": true,
+    "locale": "zh",
+    "hash": -239642378295187598
+  }
+]
