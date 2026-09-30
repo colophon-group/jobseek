@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -68,9 +69,12 @@ func WithOrdinaryLeaseRetirement(ctx context.Context, pool *pgxpool.Pool, fn fun
 }
 
 type Authority struct {
-	queue *Client
-	pool  *pgxpool.Pool
-	epoch int64
+	queue           *Client
+	pool            *pgxpool.Pool
+	epoch           int64
+	ownership       *OwnershipPlan
+	ownershipCursor int
+	ownershipMu     sync.Mutex
 }
 
 // Claim is an immutable identity captured from a tokenized queue claim. A
@@ -207,6 +211,11 @@ func (a *Authority) current(ctx context.Context, claim *Claim) error {
 	if !a.valid(claim) {
 		return ErrConfiguration
 	}
+	if a.ownership != nil {
+		if err := a.queue.verifyOwnershipProjection(ctx, a.ownership); err != nil {
+			return err
+		}
+	}
 	prefix := "scrape:"
 	if claim.task.Kind == Monitor {
 		prefix = "board:"
@@ -250,10 +259,16 @@ func canonicalDue(ctx context.Context, tx pgx.Tx, claim *Claim) (*time.Time, err
 func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error) {
 	var claim *Claim
 	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
-		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+		if err := a.requireOwnership(ctx, tx, nil); err != nil {
 			return err
 		}
-		task, err := a.queue.ClaimFenced(ctx, worker)
+		var task *Task
+		var err error
+		if a.ownership == nil {
+			task, err = a.queue.ClaimFenced(ctx, worker)
+		} else {
+			task, err = a.claimOwned(ctx, tx, worker)
+		}
 		if task != nil {
 			claim = &Claim{owner: a, task: *task}
 			claim.task.Config = cloneConfig(task.Config)
@@ -360,7 +375,7 @@ func (a *Authority) Write(ctx context.Context, claim *Claim, terminal bool, fn f
 	}
 	var receipt *Receipt
 	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
-		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+		if err := a.requireOwnership(ctx, tx, claim); err != nil {
 			return err
 		}
 		if err := a.current(ctx, claim); err != nil {
@@ -399,7 +414,7 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 		return ErrConfiguration
 	}
 	return a.transaction(ctx, true, func(ctx context.Context, tx pgx.Tx) error {
-		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+		if err := a.requireOwnership(ctx, tx, claim); err != nil {
 			return err
 		}
 		if err := a.current(ctx, claim); err != nil {
@@ -438,7 +453,7 @@ func (a *Authority) Heartbeat(ctx context.Context, claim *Claim) error {
 		return ErrConfiguration
 	}
 	return a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
-		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+		if err := a.requireOwnership(ctx, tx, claim); err != nil {
 			return err
 		}
 		return a.current(ctx, claim)

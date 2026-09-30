@@ -153,6 +153,10 @@ func (c *Client) ClaimFenced(ctx context.Context, worker WorkerType) (*Task, err
 }
 
 func (c *Client) claimTask(ctx context.Context, worker WorkerType, token string) (*Task, error) {
+	return c.claimTaskBound(ctx, worker, token, nil)
+}
+
+func (c *Client) claimTaskBound(ctx context.Context, worker WorkerType, token string, binding []any) (*Task, error) {
 	if !validWorker(worker) {
 		return nil, ErrConfiguration
 	}
@@ -162,7 +166,9 @@ func (c *Client) claimTask(ctx context.Context, worker WorkerType, token string)
 	if err != nil {
 		return nil, err
 	}
-	raw, err := c.claim.Run(ctx, c.redis, nil, string(worker), number(now), number(c.settings.DefaultDelaySeconds), c.settings.MaxDomains, number(c.settings.LeaseTTL.Seconds()), token).Result()
+	args := []any{string(worker), number(now), number(c.settings.DefaultDelaySeconds), c.settings.MaxDomains, number(c.settings.LeaseTTL.Seconds()), token}
+	args = append(args, binding...)
+	raw, err := c.claim.Run(ctx, c.redis, nil, args...).Result()
 	if errors.Is(err, redis.Nil) || (err == nil && raw == nil) {
 		return nil, nil
 	}

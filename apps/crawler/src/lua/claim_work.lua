@@ -33,13 +33,73 @@ local max_recurring_monitor_streak = 8
 local claim_token = ARGV[6] or ""
 local token_key = "inflight_tokens:" .. wtype
 
+-- Planned owners carry immutable DB/installed identities. Compatibility callers
+-- cannot bypass an installed projection; planned callers never fall back when
+-- the entire Redis database or this projection is lost.
+local owner_role = ARGV[7] or ""
+local owner_key = "ordinary:ownership:active"
+local owner_type = redis.call("TYPE", owner_key)["ok"]
+local owner_members = nil
+local native_member = nil
+local native_snapshot = nil
+local owner_cursor_prefix = nil
+local function owner_failure()
+    return redis.error_reply("ordinary ownership rejected")
+end
+if owner_role == "" then
+    if owner_type ~= "none" then return owner_failure() end
+else
+    if (owner_role ~= "native" and owner_role ~= "legacy") or
+        owner_type ~= "string" or (wtype ~= "simple" and wtype ~= "browser") or
+        #(ARGV[8] or "") ~= 64 or string.find(ARGV[8] or "", "[^0-9a-f]") or
+        #(ARGV[9] or "") ~= 40 or string.find(ARGV[9] or "", "[^0-9a-f]") or
+        #(ARGV[11] or "") ~= 40 or string.find(ARGV[11] or "", "[^0-9a-f]") or
+        not string.match(ARGV[10] or "", "^[1-9][0-9]*$") or #(ARGV[10] or "") > 13 or
+        max_check < 1 or max_check > 1000 or max_check % 1 ~= 0
+    then return owner_failure() end
+    local body = redis.call("GET", owner_key)
+    if #body > 16777216 or redis.sha1hex(body) ~= ARGV[9] then
+        return owner_failure()
+    end
+    local decoded, plan = pcall(cjson.decode, body)
+    if not decoded or type(plan) ~= "table" or
+        plan.version ~= "jobseek.ordinary.ownership/v1" or
+        plan.routing_epoch ~= tonumber(ARGV[10]) or
+        plan.source_revision ~= ARGV[11] or type(plan.members) ~= "table" or
+        #plan.members < 1 or #plan.members > 20000
+    then return owner_failure() end
+    owner_members = {}
+    for _, member in ipairs(plan.members) do
+        if type(member) ~= "table" or member.kind ~= "monitor" or
+            member.worker ~= "simple" or member.profile ~= "greenhouse.token-skip/v1" or
+            type(member.board_id) ~= "string" or type(member.domain) ~= "string" or
+            owner_members[member.board_id] ~= nil
+        then return owner_failure() end
+        owner_members[member.board_id] = member
+    end
+    if owner_role == "native" then
+        native_member = owner_members[ARGV[12] or ""]
+        if claim_token == "" or not native_member or wtype ~= native_member.worker then
+            return owner_failure()
+        end
+        local ok, snapshot = pcall(cjson.decode, ARGV[13] or "")
+        if not ok or type(snapshot) ~= "table" or snapshot.domain ~= native_member.domain then
+            return owner_failure()
+        end
+        native_snapshot = snapshot
+    elseif claim_token ~= "" or (ARGV[12] or "") ~= "" or (ARGV[13] or "") ~= "" then
+        return owner_failure()
+    end
+    owner_cursor_prefix = "ordinary:claim-cursor:" .. ARGV[8] .. ":" .. wtype .. ":"
+end
+
 -- The optional token extends this queue's lease ABI. Validate all new state
 -- before popping work: Redis script errors cannot roll back earlier writes.
 if claim_token ~= "" and (#claim_token ~= 32 or
     string.find(claim_token, "[^0-9a-f]") ~= nil) then
     return redis.error_reply("ordinary claim token is invalid")
 end
-if claim_token ~= "" then
+if claim_token ~= "" or owner_role ~= "" then
     local clock = redis.call("TIME")
     now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
 end
@@ -152,6 +212,172 @@ local function refresh_ready(domain, not_before, rotate_scrapes)
     else
         redis.call("ZREM", scrape_rotation_key, domain)
     end
+end
+
+-- The installed path filters before removal. Native has a canonical-row-locked
+-- candidate from the durable cohort; legacy excludes every retained member even
+-- if its current config/domain changed. Cursor state advances bounded scans past
+-- foreign heads/domains without popping, repairing or throttling their tasks.
+if owner_role ~= "" then
+    local pending_cursors = {}
+    local duplicate_removals = {}
+    local function finite(value)
+        local number = tonumber(value)
+        return number and number == number and number ~= math.huge and
+            number ~= -math.huge and number >= 0
+    end
+    local function typed(key, expected)
+        local value = redis.call("TYPE", key)["ok"]
+        return value == "none" or value == expected
+    end
+    local function cursor(key, count)
+        if not typed(key, "string") then return nil end
+        local raw = redis.call("GET", key)
+        local offset = tonumber(raw or "0")
+        if not finite(offset) or offset % 1 ~= 0 or offset > 9007199254740991 then return nil end
+        if offset >= count then offset = 0 end
+        return offset
+    end
+    local function commit_cursors()
+        for key, offset in pairs(pending_cursors) do
+            redis.call("SET", key, tostring(offset))
+        end
+    end
+    if not finite(now) or not finite(default_delay) or default_delay > 2147483647 or not finite(lease_ttl) or lease_ttl <= 0 then
+        return owner_failure()
+    end
+    for tier = 0, 2 do
+        if not typed("ready:" .. wtype .. ":" .. tier, "zset") then return owner_failure() end
+    end
+    -- Reject changed/missing native configuration before even cursor mutations.
+    if native_member then
+        local key = "board:" .. native_member.board_id
+        if redis.call("TYPE", key)["ok"] ~= "hash" then return owner_failure() end
+        local fields = 0
+        for name, value in pairs(native_snapshot) do
+            if type(name) ~= "string" or type(value) ~= "string" or
+                redis.call("HGET", key, name) ~= value then return owner_failure() end
+            fields = fields + 1
+        end
+        if fields ~= redis.call("HLEN", key) then return owner_failure() end
+    end
+    for _, tier in ipairs(tier_order) do
+        local ready_key = "ready:" .. wtype .. ":" .. tier
+        local due_domains = redis.call("ZCOUNT", ready_key, "-inf", tostring(now))
+        if due_domains > 0 then
+            local candidates = {}
+            if native_member then
+                local score = redis.call("ZSCORE", ready_key, native_member.domain)
+                if score and tonumber(score) <= now then candidates = {native_member.domain} end
+            else
+                local key = owner_cursor_prefix .. "domains:" .. tier
+                local offset = cursor(key, due_domains)
+                if not offset then return owner_failure() end
+                candidates = redis.call("ZRANGEBYSCORE", ready_key, "-inf", tostring(now), "LIMIT", offset, max_check)
+                pending_cursors[key] = (offset + #candidates) % due_domains
+            end
+            -- Preflight all bounded candidate state before any pop or cursor write.
+            for _, domain in ipairs(candidates) do
+                for _, prefix in ipairs({"ft_monitors_", "ft_scrapes_", "monitors_", "scrapes_"}) do
+                    if not typed(prefix .. wtype .. ":" .. domain, "zset") then return owner_failure() end
+                end
+                for _, prefix in ipairs({"ratelimit:", "delay:"}) do
+                    local key = prefix .. domain
+                    if not typed(key, "string") then return owner_failure() end
+                    local value = redis.call("GET", key)
+                    if value and (not finite(value) or (prefix == "delay:" and tonumber(value) > 2147483647)) then return owner_failure() end
+                end
+                local rotation = redis.call("ZSCORE", scrape_rotation_key, domain)
+                if rotation and not finite(rotation) then return owner_failure() end
+            end
+            local selected = nil
+            local blocked = false
+            local function find_task(prefix, domain, kind, priority)
+                local queue_key = prefix .. wtype .. ":" .. domain
+                if native_member then
+                    if kind ~= "monitor" then return nil end
+                    local score = redis.call("ZSCORE", queue_key, native_member.board_id)
+                    if score and tonumber(score) <= now then
+                        if redis.call("ZSCORE", "inflight:" .. wtype, "monitor|" .. domain .. "|" .. native_member.board_id) then
+                            duplicate_removals[#duplicate_removals+1] = {queue_key, native_member.board_id, domain}
+                        else
+                            return {native_member.board_id, kind, domain, priority, queue_key}
+                        end
+                    end
+                    return nil
+                end
+                local count = redis.call("ZCOUNT", queue_key, "-inf", tostring(now))
+                local key = owner_cursor_prefix .. "tasks:" .. queue_key
+                local offset = cursor(key, count)
+                if not offset then blocked = true; return nil end
+                local items = redis.call("ZRANGEBYSCORE", queue_key, "-inf", tostring(now), "LIMIT", offset, 64)
+                pending_cursors[key] = count > 0 and (offset + #items) % count or 0
+                for _, id in ipairs(items) do
+                    local member = kind .. "|" .. domain .. "|" .. id
+                    if (kind == "scrape" and redis.call("HEXISTS", b0_guard_key, id) == 1) or
+                        (redis.call("HEXISTS", token_key, member) == 1 and redis.call("ZSCORE", "inflight:" .. wtype, member)) then
+                        -- Preserve existing B0/native duplicate quarantine. Only
+                        -- the extra ready representation is removed, never the
+                        -- live lease/token/config or a foreign logical task.
+                        duplicate_removals[#duplicate_removals+1] = {queue_key, id, domain}
+                    elseif not (kind == "monitor" and owner_members[id]) then
+                        return {id, kind, domain, priority, queue_key}
+                    end
+                end
+                return nil
+            end
+            for _, domain in ipairs(candidates) do
+                local rate = redis.call("GET", "ratelimit:" .. domain)
+                if not rate or tonumber(rate) <= now then
+                    -- First-time work dominates both recurring classes, including
+                    -- when an unselected first-time head hides a recurring marker.
+                    local first_time = redis.call("ZCARD", "ft_monitors_" .. wtype .. ":" .. domain) +
+                        redis.call("ZCARD", "ft_scrapes_" .. wtype .. ":" .. domain) > 0
+                    if first_time then
+                        selected = find_task("ft_monitors_", domain, "monitor", 0) or
+                            find_task("ft_scrapes_", domain, "scrape", 0)
+                    elseif tier == 2 and recurring_monitor_streak >= max_recurring_monitor_streak then
+                        selected = find_task("scrapes_", domain, "scrape", 2)
+                    elseif tier ~= 0 then
+                        selected = find_task("monitors_", domain, "monitor", 1)
+                        if not selected and tier == 2 then selected = find_task("scrapes_", domain, "scrape", 2) end
+                    end
+                    if selected then break end
+                end
+            end
+            if blocked then return owner_failure() end
+            commit_cursors()
+            local repaired_domains = {}
+            for _, duplicate in ipairs(duplicate_removals) do
+                redis.call("ZREM", duplicate[1], duplicate[2])
+                repaired_domains[duplicate[3]] = true
+            end
+            for domain, _ in pairs(repaired_domains) do refresh_ready(domain, 0, false) end
+            if selected then
+                local id, kind, domain, priority, queue_key = unpack(selected)
+                local rate_delay = tonumber(redis.call("GET", "delay:" .. domain) or default_delay)
+                -- All selected state and configuration checks precede this removal.
+                redis.call("ZREM", queue_key, id)
+                redis.call("SET", "ratelimit:" .. domain, tostring(now + rate_delay), "EX", math.ceil(rate_delay) + 1)
+                local member = kind .. "|" .. domain .. "|" .. id
+                redis.call("ZADD", "inflight:" .. wtype, now + lease_ttl, member)
+                if claim_token ~= "" then redis.call("HSET", token_key, member, claim_token)
+                else redis.call("HDEL", token_key, member) end
+                if priority == 1 then
+                    redis.call("SET", recurring_monitor_streak_key, tostring(math.min(recurring_monitor_streak + 1, max_recurring_monitor_streak)))
+                elseif priority == 2 then redis.call("SET", recurring_monitor_streak_key, "0") end
+                refresh_ready(domain, now + rate_delay, priority == 2)
+                if claim_token ~= "" then
+                    return {id, kind, domain, claim_token, redis.call("ZSCORE", "inflight:" .. wtype, member)}
+                end
+                return {id, kind, domain}
+            end
+            -- Foreign work at this global priority is processed by its owner;
+            -- neither side bypasses first-time or the recurring fairness turn.
+            return nil
+        end
+    end
+    return nil
 end
 
 -- Try strict first-time priority, then the bounded recurring order selected

@@ -3,6 +3,7 @@ package queue
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
@@ -45,9 +46,10 @@ type ownershipDocument struct {
 // Staging cannot activate it. A supported quiesced transaction must coordinate
 // this global epoch with B0, exact revisions and both owners' Redis projection.
 type OwnershipPlan struct {
-	document ownershipDocument
-	body     string
-	digest   string
+	document       ownershipDocument
+	body           string
+	digest         string
+	projectionHash string
 }
 
 func (p *OwnershipPlan) SHA256() string {
@@ -73,6 +75,15 @@ func (p *OwnershipPlan) MemberCount() int {
 		return 0
 	}
 	return len(p.document.Members)
+}
+
+// ProjectionSHA1 binds Redis's available byte-integrity check to the exact
+// SHA256-attested durable payload. It is not a credential or write capability.
+func (p *OwnershipPlan) ProjectionSHA1() string {
+	if p == nil {
+		return ""
+	}
+	return p.projectionHash
 }
 
 func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
@@ -107,7 +118,8 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 	if err != nil || !bytes.Equal(canonical, []byte(body)) {
 		return nil, ErrAuthorityLost
 	}
-	return &OwnershipPlan{document: doc, body: body, digest: digest}, nil
+	projectionHash := sha1.Sum([]byte(body))
+	return &OwnershipPlan{document: doc, body: body, digest: digest, projectionHash: hex.EncodeToString(projectionHash[:])}, nil
 }
 
 // StageGreenhouseOwnership captures canonical enabled profiles under the lease,

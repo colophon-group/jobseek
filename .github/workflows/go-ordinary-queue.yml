@@ -11,6 +11,13 @@ on:
       - "apps/crawler/src/lua/reap_expired.lua"
       - "apps/crawler/go/typesense-exporter/**"
       - "apps/crawler/src/migrations/**"
+      - "apps/crawler/src/ordinary_ownership.py"
+      - "apps/crawler/src/redis_queue.py"
+      - "apps/crawler/src/config.py"
+      - "apps/crawler/src/workers/pipeline.py"
+      - "apps/crawler/tests/test_ordinary_ownership.py"
+      - "apps/crawler/tests/test_redis_queue.py"
+      - "apps/crawler/tests/test_pipeline.py"
       - "apps/crawler/Dockerfile"
       - "apps/crawler/uv.lock"
       - ".github/workflows/go-ordinary-queue.yml"
@@ -109,3 +116,9 @@ jobs:
           go test -race -count=1 -timeout=90s -run '^TestLeaseReaper' ./...
           go vet ./...
           go mod tidy -diff
+
+      - name: Verify legacy ownership attestation and private queue exclusion
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen pytest tests/test_ordinary_ownership.py tests/test_redis_queue.py tests/test_pipeline.py -q

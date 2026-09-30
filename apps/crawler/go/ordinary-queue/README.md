@@ -86,13 +86,38 @@ staging allocates no epoch, changes no queue and grants no authority.
 `LoadActiveOwnership` requires an exact caller-attested plan/revision and the
 already verified epoch. It never adopts the allocator's latest value.
 Generic unbound Go claims, writes, heartbeat and settlement reject an active
-plan before queue mutations or callbacks. These guards do not implement the
-future bound native claimant or modify legacy Python claims.
+plan before queue mutations or callbacks.
+
+`OpenOwnedAuthority` binds a native claimant to the exact active document and
+Redis byte projection. Claims inspect 64 cohort members per batch, verify the
+canonical enabled profile under a row lock, and atomically compare the complete
+current board hash before removal. Missing first-time scores remain distinct
+from a due recurring score or a score of zero. Writes/heartbeat/settlement
+reattest ownership, canonical eligibility and projection before their effects.
+
+Legacy pipeline startup rejects active ownership unless all four installed
+identity fields match: `ORDINARY_OWNERSHIP_PLAN_SHA256`,
+`ORDINARY_OWNERSHIP_PROJECTION_SHA1`, `ORDINARY_OWNERSHIP_SOURCE_REVISION` and
+`ORDINARY_OWNERSHIP_ROUTING_EPOCH`. Each planned legacy claim holds the shared
+DB lease/epoch barriers through its Lua pop. SHA1 is Redis's available byte
+integrity check bound to the SHA256-attested durable payload, not a credential.
+Neither owner reconstructs missing routing state or adopts a new allocator.
+
+The existing Lua ABI now filters installed owners before removing tasks. Legacy
+membership exclusion survives effective config/domain/browser-route drift.
+Native candidates bypass foreign domain/task heads without touching their source
+scores/configurations; legacy cursors advance bounded domain and 64-task windows.
+Global first-time priority, the eight-monitor fairness counter, shared throttle,
+scrape rotation and protected B0/inflight duplicate repair remain shared. Foreign
+work at a higher global priority waits for its owner rather than being popped.
+Unaware callers reject an installed projection; both planned callers reject
+missing/corrupt routing, including complete Redis loss. Supported activation
+must stop and replace every old writer before installing these expectations.
 
 There is no production activation endpoint in this library. Before activation,
-the supported all-writer release must install atomic native/legacy selection,
-exact startup identities, Redis projection integrity/loss protection and full
-native processing. Direct SQL activation appears only in owned private tests.
+the supported all-writer release must install the exact startup/projection
+identities and full native processing, prove installed ownership and coordinate
+B0's shared epoch. Direct SQL activation appears only in owned private tests.
 
 Private Redis race tests cover both worker queues, attempt expiry/reclaim,
 stale heartbeat/completion/reschedule, exact scheduling, deferred monitor
@@ -110,6 +135,10 @@ Migration upgrade/downgrade/re-upgrade is checked against the actual schema.
 Ownership tests additionally verify immutable transitions, single active
 membership, stale epoch/source rejection, malformed SQL envelopes, rollback of
 partial staging, unbound operation exclusion and transition/readback ordering.
+Selection tests additionally cover mixed owners beyond domain/task windows,
+native/legacy claim races, exact owned write/settlement, delayed disable before
+pop, source/plan/epoch/projection revocation before effects and real Python
+legacy attestation/loss handling. Both Linux jobs require those Python fixtures.
 These are authority fixtures, not extraction/enrichment parity or an actual
 native ordinary process SIGKILL/cold-reversal proof.
 
@@ -141,19 +170,15 @@ their current owner until native lifecycle processing is proven. Actual ready
 route membership, active-plan ownership and fresh canonical state still must be
 checked at selection; this observation grants no later authority.
 
-The durable document and exact active readback are prepared. Bind them to
-exclusive native and legacy selection before claiming.
-Eligibility must be checked atomically before a pop, with bounded progress past
-unselected heads on mixed domains. Legacy claimants must exclude selected
-profiles and both sides must fail closed when expected routing state is missing
-or corrupt, including complete Redis loss. Neither a validated profile nor the
-current generic `Authority.Claim` meets those ownership requirements. An active
-document alone is insufficient to select a production owner.
+The durable document and native/legacy selection library are prepared. An
+active document or a passing source fixture is insufficient to select a
+production owner. Install and prove the exact processing executable, both
+owners' startup identities and supported quiesced activation/reversal first.
 
-1. Bind effective profile/domain eligibility to exclusive native ownership in
-   existing claims. Preserve every unselected task, domain fairness, rate limits,
-   deferred monitors, never-successful work and repair. Coordinate the current
-   epoch with the supported all-writer cutover and reversal plan.
+1. Integrate this selection into the native processing executable and supported
+   all-writer activation/reversal. Prove installed exclusivity and preserve
+   producer/sync/repair/deferred/never-successful behavior. Coordinate the shared
+   B0 epoch and exact startup/projection identities for every writer.
 2. Connect the first proven native HTTP/API family to monitor and detail
    processing. Greenhouse is the leading census candidate, pending effective
    configuration validation. Preserve inventory completeness/truncation,
