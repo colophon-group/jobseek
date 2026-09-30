@@ -450,6 +450,64 @@ jobs:
           LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
             "$integration_binary" -test.run '^TestRealRedisPersistenceVerify$' -test.count=1
 
+  test-go-b0-executor:
+    name: Test Go Lightpanda B0 Executor
+    needs: changes
+    if: needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_b0_executor_test
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_b0_executor_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_b0_executor_test
+      JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_b0_executor_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/lightpanda-b0-executor/go.mod
+          cache-dependency-path: apps/crawler/go/lightpanda-b0-executor/go.sum
+
+      - name: Migrate isolated PostgreSQL 17 executor fixture
+        working-directory: apps/crawler
+        run: |
+          uv sync --frozen --group dev
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
+
+      - name: Test native transactions, conversations, Linux peers and health
+        working-directory: apps/crawler/go/lightpanda-b0-executor
+        run: |
+          go test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -o "$RUNNER_TEMP/go-lightpanda-b0-executor-arm64" ./cmd/live
+
   test-go-r2-drain:
     name: Test Go R2 drain
     needs: changes
@@ -1909,6 +1967,7 @@ jobs:
       - changes
       - test-go-http-pilot
       - test-go-b0-supervisor
+      - test-go-b0-executor
       - test-go-r2-drain
       - test-go-typesense-exporter
       - test-go-dom-extractor
@@ -1973,6 +2032,7 @@ jobs:
           requireSuccess("data-validation");
           requireSuccess("test-go-http-pilot", goHttpPilot);
           requireSuccess("test-go-b0-supervisor", crawlerCode);
+          requireSuccess("test-go-b0-executor", crawlerCode);
           requireSuccess("test-go-typesense-exporter", crawlerCode);
           requireSuccess("test-go-dom-extractor", crawlerCode);
           requireSuccess("dependency-review", eventName === "pull_request" && code);

@@ -2,7 +2,8 @@
 
 This module contains the database and conversation foundations for the next
 full migration boundary.
-It is not installed in the crawler image or selected by the production overlay.
+The candidate Docker build installs its binary, but the production overlay still
+selects Python. No native production owner has been activated.
 The production executor remains `src.lightpanda.executor` until the complete
 conversation, parsing/enrichment, whole-lane admission and cold reversal pass.
 
@@ -43,7 +44,7 @@ Python messages match byte for byte; request bounds, advancing authorization,
 route identity, canonical base64 and recursively unknown protobuf fields are
 checked. Frozen rendered-result cases preserve complete inline chunk integrity,
 strict UTF-8, empty HTML, chunk boundaries and HTTP status classification. These
-helpers and the private socket server are not installed or production owners.
+helpers and the private socket server are still inactive production candidates.
 
 The server preserves four task conversations plus a reserved route attestation.
 It checks private directory/socket ownership and Linux same-UID peer credentials,
@@ -102,5 +103,6 @@ and memory budget. Linux ARM64 executable compilation passed locally; installed
 execution still requires Linux CI.
 
 Remaining work: reserved-content/publisher policy audit;
-complete crash/lease-loss/reversal tests; Docker/CI integration and an inactive
-candidate checkpoint. Follow the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md).
+complete crash/lease-loss/reversal and installed-image tests. A required Linux
+PostgreSQL 17 job and an inactive image build are registered in the candidate;
+their remote checks must pass before merge. Follow the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md).

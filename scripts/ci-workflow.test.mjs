@@ -1063,6 +1063,18 @@ test("Python fleet comparator stays locked to its production authorities", () =>
   }
 });
 
+test("Native B0 executor requires real PostgreSQL and Linux contracts", () => {
+  const executorJob = jobBlock("test-go-b0-executor");
+  const requiredCiJob = jobBlock("required-ci");
+  assert.match(executorJob, /postgres:17-alpine@sha256:[0-9a-f]{64}/);
+  assert.match(executorJob, /JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL:.*jobseek_b0_executor_test/);
+  assert.match(executorJob, /alembic -c src\/migrations\/alembic\.ini upgrade head/);
+  assert.match(executorJob, /go test -race \.\/\.\.\./);
+  assert.match(requiredCiJob, /needs:[\s\S]*- test-go-b0-executor/);
+  assert.match(requiredCiJob, /requireSuccess\("test-go-b0-executor", crawlerCode\)/);
+  assert.match(crawlerDockerfile, /COPY --from=go-b0-executor-build .*\/usr\/local\/bin\/go-lightpanda-b0-executor/);
+});
+
 test("fleet benchmark manifest remains an exact literal-only production projection", () => {
   const boards = new Map(
     parseCsvRecords(crawlerBoards).map((board) => [board.board_slug, board]),

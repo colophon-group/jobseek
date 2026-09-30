@@ -7,7 +7,9 @@ with the saved salary candidate, then remove the Python orchestration and
 persistence boundaries while completing coverage of enabled boards. Preserve
 Python where it remains useful outside the production crawler runtime.
 
-Current execution is recorded in the [September 30 continuation checkpoint](28-go-location-resolver-checkpoint-2026-09-30.md).
+Current production is recorded in the [September 30 location checkpoint](28-go-location-resolver-checkpoint-2026-09-30.md).
+Native executor implementation and remaining ownership gates are recorded in the
+[September 30 native B0 candidate checkpoint](29-native-go-b0-executor-checkpoint-2026-09-30.md).
 The initial review below is historical; use newer verified operational evidence first.
 
 This initial review made no production changes and did not reread the live hosts.

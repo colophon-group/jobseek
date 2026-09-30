@@ -10,6 +10,20 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/lightpanda-b0-supervisor .
 
+# ── Inactive native Go Lightpanda B0 database executor ──────────────
+FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-b0-executor-build
+WORKDIR /workspace/apps/crawler
+COPY contracts/ contracts/
+COPY data/ data/
+COPY go/job-enrichment/ go/job-enrichment/
+COPY go/jsonld-detail/ go/jsonld-detail/
+COPY go/dom-detail/ go/dom-detail/
+COPY go/lightpanda-b0-executor/ go/lightpanda-b0-executor/
+WORKDIR /workspace/apps/crawler/go/lightpanda-b0-executor
+RUN go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+       -o /out/go-lightpanda-b0-executor ./cmd/live
+
 # ── Independent Go R2 description drain ─────────────────────────────
 FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-r2-drain-build
 WORKDIR /workspace/apps/crawler/go/r2-drain
@@ -205,6 +219,7 @@ RUN uv build --wheel --out-dir /tmp/jobseek-wheel \
 
 COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor /usr/local/bin/lightpanda-b0-supervisor
 COPY --from=go-r2-drain-build /out/go-r2-drain /usr/local/bin/go-r2-drain
+COPY --from=go-b0-executor-build /out/go-lightpanda-b0-executor /usr/local/bin/go-lightpanda-b0-executor
 COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bin/go-typesense-exporter
 COPY --from=go-sitemap-build /out/sitemap-monitor-live /usr/local/bin/sitemap-monitor-live
 COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint

@@ -62,6 +62,7 @@ Status tags:
   worker migration, enabled-fleet coverage, and production Python retirement.
 
 - [28 - Go Location Resolver Checkpoint (2026-09-30)](28-go-location-resolver-checkpoint-2026-09-30.md)
+- [29 - Native Go B0 Executor Candidate (2026-09-30)](29-native-go-b0-executor-checkpoint-2026-09-30.md)
   `[runbook]` - salary rollout, native location candidate, actual taxonomy replay,
   and the remaining native executor/worker delivery boundaries.
 

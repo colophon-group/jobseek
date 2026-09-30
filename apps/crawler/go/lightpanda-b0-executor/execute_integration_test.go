@@ -198,3 +198,35 @@ func TestPostgresNativeConversationRequiresAuthorizationAndPreservesFailurePolic
 		})
 	}
 }
+
+func TestPostgresNativeConversationSkipsReservedAndUnscheduledContent(t *testing.T) {
+	for _, mode := range []string{"reserved", "unscheduled"} {
+		t.Run(mode, func(t *testing.T) {
+			e, request := executorFixture(t)
+			query := "UPDATE job_posting SET tdm_reserved=true WHERE id=$1"
+			if mode == "unscheduled" {
+				query = "UPDATE job_posting SET next_scrape_at=NULL WHERE id=$1"
+			}
+			if _, err := e.Store.pool.Exec(context.Background(), query, request.Task.Envelope.TaskID); err != nil {
+				t.Fatal(err)
+			}
+			request.Result = renderedFixture("", request.Task.Envelope.SourceURL, 404)
+			response := runExecutorConversation(t, executorSocket(t, e), request, true)
+			if string(response["type"]) != `"committed"` {
+				t.Fatal("existing skip behavior changed")
+			}
+			var titles []string
+			var failures, descriptions int
+			var active bool
+			if err := e.Store.pool.QueryRow(context.Background(), "SELECT titles,scrape_failures,is_active,(SELECT count(*) FROM descriptions WHERE posting_id=jp.id) FROM job_posting jp WHERE id=$1", request.Task.Envelope.TaskID).Scan(&titles, &failures, &active, &descriptions); err != nil {
+				t.Fatal(err)
+			}
+			if !active || failures != 0 || descriptions != 0 || len(titles) != 1 || titles[0] != "Original title" {
+				t.Fatal("reserved or unscheduled task changed content or visibility")
+			}
+			if mode == "unscheduled" && response["next_ready_at_ms"] != nil {
+				t.Fatal("unscheduled task reacquired a schedule")
+			}
+		})
+	}
+}
