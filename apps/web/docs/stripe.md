@@ -36,7 +36,7 @@ live credentials/resources. No publishable key, Stripe.js or browser SDK is
 needed for hosted Checkout. Keep environment/credentials configured while
 subscriptions exist; close sales using `STRIPE_CHECKOUT_ENABLED=false`.
 
-Only sandbox was provisioned and inspected. It is `Job Seek sandbox`, account
+The initial sandbox validation used `Job Seek sandbox`, account
 `acct_1Tvn7nAXSxyCkkob`, product `prod_VM1le5FzmYVHuL`, price
 `price_1ULJiKAXSxyCkkobd2A4rk5y`, portal `bpc_1ULJkJAXSxyCkkob4wV4FBQy`.
 The sandbox product uses the verified Tax Codes API category
@@ -122,8 +122,23 @@ New purchases stay disabled. Before any live launch:
 4. Enable checkout only with explicit launch authorization after verification.
    Update public offer availability as part of launch.
 
-No live keys were installed, and no production deployment, migration or
-checkout activation was performed by this implementation. Sandbox account readiness is not evidence of live approval.
+The operator subsequently authorized live setup and merging PR #10188. The
+live account `acct_1ULJMYPL7AMlx8Ld` has charges and payouts enabled, active card
+payments, submitted onboarding details and no currently due requirements.
+Stripe Tax is active; no tax registrations are recorded. The live resources
+are product `prod_VM2tiM4gAwfTaM`, price `price_1ULKofPL7AMlx8Ldeq2HJWd4`,
+portal `bpc_1ULKozPL7AMlx8LdyOcK6pyu`, and webhook
+`we_1ULKq8PL7AMlx8LdPeUdRxrH` at `https://jseek.co/api/stripe/webhook`.
+The reviewed migration and a production deployment with checkout disabled
+completed successfully. Live secrets are server-only Vercel production
+variables and are never committed.
+
+Live validation found that the account enables Managed Payments by default.
+Every Checkout request explicitly sets `managed_payments.enabled=false` so
+our ordinary Payments/Billing model and required policy consent remain valid.
+Subscriptions marked as Managed Payments cannot grant Pro access. Do not rely
+on account defaults for this product. Dashboard trial reminders, recovery
+settings and required tax registrations remain operator settings.
 
 ## Verification
 
@@ -153,7 +168,19 @@ fixture subscription. Trial access, scheduled cancellation retention, a real
 portal session, final cancellation revocation and deletion cleanup all passed.
 The fixture subscription is canceled. This proves real payload/current-state
 compatibility, not Stripe-origin webhook delivery or first Checkout binding.
-Those remain launch verification requirements.
+The live setup checks below add provider-origin delivery evidence; completed
+Checkout initial binding still requires an actual authenticated purchase.
+
+The live deployment rejected an invalid signature and accepted a locally signed
+fixture. A real live fixture subscription generated event
+`evt_1ULL9xPL7AMlx8LdbRRLcBVk`, which Stripe delivered and acknowledged at the
+configured production endpoint (`pending_webhooks=0`). The fixture customer was
+unbound to any Job Seek account, so this checked delivery/signature handling,
+not access granting. The subscription was immediately canceled without payment.
+A separate live hosted Session explicitly opted out of Managed Payments and
+showed the seven-day trial, monthly price and required policy consent. It was
+expired without completing a purchase. All eight live terms/privacy pages
+passed browser checks in en/de/fr/it.
 
 References: [Checkout subscriptions](https://docs.stripe.com/billing/subscriptions/build-subscriptions?payment-ui=checkout&ui=stripe-hosted),
 [Customer Portal](https://docs.stripe.com/customer-management/integrate-customer-portal),

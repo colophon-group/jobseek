@@ -112,7 +112,7 @@ describe.skipIf(!databaseUrl)("Stripe billing operational contract in disposable
     expect(await getUserPlan(mocks.userId)).toBe("free");
   });
   it("rejects wrong quantities/prices, collection pauses and mixed modes", async () => {
-    for (const overrides of [{ items: { data: [{ quantity: 2, price }], has_more: false } }, { items: { data: [{ quantity: 1, price: { ...price, id: "price_foreign" } }], has_more: false } }, { pause_collection: { behavior: "void" } }, { livemode: true }]) {
+    for (const overrides of [{ items: { data: [{ quantity: 2, price }], has_more: false } }, { items: { data: [{ quantity: 1, price: { ...price, id: "price_foreign" } }], has_more: false } }, { pause_collection: { behavior: "void" } }, { managed_payments: { enabled: true } }, { livemode: true }]) {
       mocks.retrieve.mockResolvedValue(current("active", overrides));
       if (overrides.livemode) await expect(applyStripeEvent(event())).rejects.toThrow("environment");
       else { await applyStripeEvent(event()); expect(await getUserPlan(mocks.userId)).toBe("free"); }
@@ -132,7 +132,7 @@ describe.skipIf(!databaseUrl)("Stripe billing operational contract in disposable
     const results = await Promise.all([createCheckoutSession("fr", "/fr/explore?q=python"), createCheckoutSession("fr", "/fr/explore?q=python")]);
     expect(results[0].url).toBe(results[1].url); expect(mocks.create).toHaveBeenCalledTimes(1);
     const params = mocks.create.mock.calls[0][0];
-    expect(params).toMatchObject({ mode: "subscription", payment_method_collection: "always", line_items: [{ price: price.id, quantity: 1 }], subscription_data: { trial_period_days: 7, billing_mode: { type: "flexible" } }, automatic_tax: { enabled: true } });
+    expect(params).toMatchObject({ mode: "subscription", managed_payments: { enabled: false }, payment_method_collection: "always", line_items: [{ price: price.id, quantity: 1 }], subscription_data: { trial_period_days: 7, billing_mode: { type: "flexible" } }, automatic_tax: { enabled: true } });
     expect(new URL(params.success_url).searchParams.get("next")).toBe("/fr/explore?q=python");
     expect(new URL(params.success_url).pathname).toBe("/fr/settings/billing");
   });

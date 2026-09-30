@@ -9,7 +9,7 @@ export function subscriptionState(data: Stripe.Subscription, expectedPriceId: st
   const price = item?.price;
   const eligible = data.livemode === livemode && price?.id === expectedPriceId && price.livemode === livemode &&
     price.currency === "usd" && price.unit_amount === 1000 && price.recurring?.interval === "month" &&
-    price.recurring.interval_count === 1 && item?.quantity === 1 && !data.pause_collection;
+    price.recurring.interval_count === 1 && item?.quantity === 1 && !data.pause_collection && !data.managed_payments?.enabled;
   const periodEnd = item?.current_period_end;
   const end = periodEnd ? Math.min(periodEnd, data.cancel_at ?? Infinity) : null;
   return {
