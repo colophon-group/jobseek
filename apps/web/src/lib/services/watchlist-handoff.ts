@@ -12,14 +12,12 @@ const MAX_HANDOFF_COMPANIES = 25;
  */
 export async function createWatchlistFromHandoffWithDeps(params: {
   title: string;
-  description?: string;
   companySlugs: string[];
   filters?: WatchlistFilters;
 }, deps: {
   getCompanyIdsBySlugs: (slugs: readonly string[]) => Promise<Map<string, string>>;
   createWatchlist: (params: {
     title: string;
-    description?: string;
     companyIds: string[];
     filters?: WatchlistFilters;
   }) => Promise<{ id: string; slug: string } | { error: string }>;
@@ -52,7 +50,6 @@ export async function createWatchlistFromHandoffWithDeps(params: {
 
   return deps.createWatchlist({
     title: params.title,
-    description: params.description,
     companyIds,
     filters,
   });

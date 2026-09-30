@@ -48,7 +48,6 @@ describe("WatchlistCard overview link", () => {
           id: "watchlist-1",
           slug: "maangplus",
           title: "MAANG+",
-          description: null,
           isShared: false,
           alertsEnabled: false,
           companyCount: 12,
@@ -69,7 +68,6 @@ describe("WatchlistCard overview link", () => {
           id: "watchlist-1",
           slug: "maangplus",
           title: "MAANG+",
-          description: null,
           isShared: false,
           alertsEnabled: false,
           companyCount: 12,
@@ -86,7 +84,7 @@ describe("WatchlistCard overview link", () => {
     expect(link.className).toContain("w-full");
   });
 
-  it("shows a two-line description and exact active company and job counts", () => {
+  it("shows only the title and counts even when legacy descriptions exist", () => {
     render(
       <WatchlistCard
         href="/en/watchlists/watchlist-1"
@@ -95,7 +93,7 @@ describe("WatchlistCard overview link", () => {
           id: "watchlist-1",
           slug: "maangplus",
           title: "MAANG+",
-          description: "Engineering roles at a focused group of companies.",
+          ...{ description: "Legacy watchlist description" },
           isShared: false,
           alertsEnabled: false,
           companyCount: 12,
@@ -106,10 +104,8 @@ describe("WatchlistCard overview link", () => {
       />,
     );
 
-    const description = screen.getByText(
-      "Engineering roles at a focused group of companies.",
-    );
-    expect(description.className).toContain("line-clamp-2");
+    expect(screen.getByText("MAANG+")).toBeTruthy();
+    expect(screen.queryByText("Legacy watchlist description")).toBeNull();
     expect(screen.getByText("4 companies")).toBeTruthy();
     expect(screen.getByText("34 jobs")).toBeTruthy();
     expect(screen.queryByText("12 companies")).toBeNull();
@@ -125,7 +121,6 @@ describe("WatchlistCard overview link", () => {
           id: "watchlist-1",
           slug: "maangplus",
           title: "MAANG+",
-          description: null,
           isShared: false,
           alertsEnabled: false,
           companyCount: 12,
@@ -151,7 +146,6 @@ describe("WatchlistCard overview link", () => {
           id: "watchlist-1",
           slug: "maangplus",
           title: "MAANG+",
-          description: null,
           isShared: false,
           alertsEnabled: false,
           companyCount: 12,
@@ -184,7 +178,6 @@ describe("WatchlistCard overview link", () => {
           id: "watchlist-1",
           slug: "all-engineering",
           title: "All engineering",
-          description: null,
           isShared: false,
           alertsEnabled: false,
           companyCount: 0,

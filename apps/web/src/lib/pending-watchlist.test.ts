@@ -28,6 +28,17 @@ describe("pending watchlist session handoff", () => {
     expect(takePendingWatchlist()).toBeNull();
   });
 
+  it.each([1, 2])("keeps version %s browser drafts while discarding legacy descriptions", (version) => {
+    const intent = { kind: "create", draft: { ...draft, description: "Legacy" } };
+    const storedAt = Date.now();
+    sessionStorage.setItem("jobseek:pending-watchlist:v1", JSON.stringify(version === 1
+      ? { ...intent, storedAt, version }
+      : { entries: [{ id: "legacy", intent, storedAt }], version }));
+
+    expect(readPendingWatchlists()[0].intent).toEqual({ kind: "create", draft });
+    expect(sessionStorage.getItem("jobseek:pending-watchlist:v1")).not.toContain("description");
+  });
+
   it("stages a shared-watchlist clone", () => {
     const watchlistId = "11111111-1111-4111-8111-111111111111";
     stagePendingWatchlist({ kind: "clone", watchlistId, title: "Finance" });

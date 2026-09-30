@@ -118,7 +118,6 @@ const detail = {
   id: WATCHLIST_ID,
   slug: "engineering",
   title: "Engineering",
-  description: "Platform roles",
   alertsEnabled: true,
   filters: {},
   companies: [],
@@ -127,7 +126,6 @@ const detail = {
 const ownerViewDetail = {
   id: WATCHLIST_ID,
   title: "Engineering",
-  description: "Platform roles",
   alertsEnabled: true,
   filters: {},
   companies: [],
@@ -136,7 +134,6 @@ const ownerViewDetail = {
 const sharedViewDetail = {
   id: WATCHLIST_ID,
   title: "Engineering",
-  description: "Platform roles",
   filters: {},
   companies: [],
 };
@@ -273,7 +270,7 @@ describe("OwnedWatchlistLoader direct private detail", () => {
     expect(screen.getByTestId("watchlist-detail").getAttribute("data-is-owner"))
       .toBe("false");
     expect(screen.getByTestId("watchlist-detail").getAttribute("data-detail-keys"))
-      .toBe("companies,description,filters,id,title");
+      .toBe("companies,filters,id,title");
   });
 
   it("checks the authenticated non-owner's clone limit", async () => {

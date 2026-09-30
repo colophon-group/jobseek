@@ -68,7 +68,6 @@ function overview(id: string, title = id) {
     id,
     slug: title.toLowerCase(),
     title,
-    description: null,
     isShared: false,
     alertsEnabled: false,
     companyCount: 0,

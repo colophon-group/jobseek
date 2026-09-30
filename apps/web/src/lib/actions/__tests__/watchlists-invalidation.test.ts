@@ -173,7 +173,6 @@ vi.mock("@/db/schema", () => ({
     userId: { _col: "userId" },
     slug: { _col: "slug" },
     title: { _col: "title" },
-    description: { _col: "description" },
     isPublic: { _col: "isPublic" },
     alertsEnabled: { _col: "alertsEnabled" },
     alertsEnabledAt: { _col: "alertsEnabledAt" },
@@ -383,7 +382,6 @@ describe("watchlist mutator cache invalidation", () => {
       userId: USER_ID,
       slug: SLUG,
       title: "Existing",
-      description: null,
       isPublic: false,
       filters: {},
     }]);
@@ -410,7 +408,6 @@ describe("watchlist mutator cache invalidation", () => {
         userId: USER_ID,
         slug: SLUG,
         title: "Existing",
-        description: null,
         isPublic: true,
         filters: {},
       },
@@ -422,7 +419,6 @@ describe("watchlist mutator cache invalidation", () => {
 
     await updateWatchlist({
       watchlistId: WATCHLIST_ID,
-      description: "New description",
     });
     await flushAfterQueue();
 
@@ -458,7 +454,6 @@ describe("watchlist mutator cache invalidation", () => {
     // source snapshot inside the transaction; third: copied companies.
     const source = {
       title: "Source",
-      description: null,
       filters: {},
       isPublic: true,
       userId: USER_ID,
@@ -620,7 +615,6 @@ describe("updateWatchlist title rename", () => {
         userId: USER_ID,
         slug: SLUG, // old slug
         title: "Old title",
-        description: null,
         isPublic: true,
         filters: {},
       },
