@@ -495,11 +495,21 @@ func CanonicalNumber(raw string) (string, error) {
 	if err != nil || math.IsInf(value, 0) || math.IsNaN(value) {
 		return "", errors.New("invalid JSON number")
 	}
-	result := strconv.FormatFloat(value, 'g', -1, 64)
-	if !strings.ContainsAny(result, ".eE") {
-		result += ".0"
+	// Python repr/json.dumps use fixed notation for exponents -4 through 15.
+	// Go's general format switches to exponent notation much earlier.
+	exponential := strconv.FormatFloat(value, 'e', -1, 64)
+	exponent, err := strconv.Atoi(exponential[strings.LastIndexByte(exponential, 'e')+1:])
+	if err != nil {
+		return "", err
 	}
-	return result, nil
+	if exponent >= -4 && exponent < 16 {
+		result := strconv.FormatFloat(value, 'f', -1, 64)
+		if !strings.ContainsRune(result, '.') {
+			result += ".0"
+		}
+		return result, nil
+	}
+	return exponential, nil
 }
 
 func AppendCanonicalString(output []byte, value string, ensureASCII bool) ([]byte, error) {
@@ -523,7 +533,7 @@ func AppendCanonicalString(output []byte, value string, ensureASCII bool) ([]byt
 		case '\t':
 			output = append(output, '\\', 't')
 		default:
-			if current < 0x20 || (ensureASCII && current > 0x7f) {
+			if current < 0x20 || (ensureASCII && current >= 0x7f) {
 				values := []rune{current}
 				if current > 0xffff {
 					adjusted := current - 0x10000

@@ -59,7 +59,9 @@ without queue, database or parser dependencies. The existing supervisor regressi
 suite still passes. Native executor admission additionally reconstructs the
 complete canonical task, including required zero/null fields, and rejects changed
 route/owner, whitespace in source URLs and invalid claims before authorization.
-Frozen Python JSON-LD/DOM/Unicode task identities match.
+Frozen Python JSON-LD/DOM/Unicode task identities match. Expanded JSON number
+and string oracles correct Python float exponent thresholds and DEL escaping.
+The shared codec changes therefore require fresh runtime admission before use.
 
 Native location loading now streams the same PostgreSQL core rows through
 this pool into a private 0700-directory/0600-file SQLite index. It preserves
@@ -69,7 +71,14 @@ Real isolated PostgreSQL tests pass for core matching, Japanese backfill,
 549 negative keys, the single-connection budget and owned index cleanup.
 B0 still discards taxonomy-miss telemetry. No production loader is replaced yet.
 
+Current PostgreSQL posting/board/parser reads are implemented and tested for
+source, board/browser enablement, parser revision, missing type and interval
+drift. Deleted/unscheduled postings preserve the existing skip behavior. Scalar,
+location-array, HTML title, locale, garbage-title and employment-type helpers
+match frozen Python cases; they are not yet a complete persistence pipeline.
+
 Remaining work: the complete task authorization/commit handler and startup
-environment guards; current board/parser identity checks; direct reusable Go parsing/enrichment; remaining taxonomy ID/rate loading and enrichment assembly; reserved-content policy and classification;
+environment guards; direct reusable Go parsing/enrichment; remaining taxonomy
+ID/rate loading and enrichment assembly; reserved-content policy and classification;
 complete crash/lease-loss/reversal tests; Docker/CI integration and an inactive
 candidate checkpoint. Follow the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md).

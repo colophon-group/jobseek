@@ -43,3 +43,31 @@ func TestCanonicalTasksMatchPython(t *testing.T) {
 		})
 	}
 }
+
+func TestCanonicalJSONNumbersAndStringsMatchPython(t *testing.T) {
+	data, err := os.ReadFile("testdata/python_json.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		Numbers []struct{ Raw, Expected string }
+		Strings []struct{ Value, ASCII, UTF8 string }
+	}
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	for _, number := range fixture.Numbers {
+		actual, err := CanonicalNumber(number.Raw)
+		if err != nil || actual != number.Expected {
+			t.Fatalf("Python number mismatch for %s: %s %v", number.Raw, actual, err)
+		}
+	}
+	for _, value := range fixture.Strings {
+		for ascii, expected := range map[bool]string{true: value.ASCII, false: value.UTF8} {
+			actual, err := CanonicalJSON(value.Value, ascii)
+			if err != nil || string(actual) != expected {
+				t.Fatalf("Python string mismatch: %q %v", actual, err)
+			}
+		}
+	}
+}
