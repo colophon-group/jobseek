@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import httpx
 import pytest
@@ -116,7 +116,13 @@ async def test_central_unions_locales_by_provider_id_and_preserves_localizations
 
 
 @pytest.mark.asyncio
-async def test_discover_accepts_runtime_metadata_alongside_named_source():
+async def test_discover_accepts_runtime_metadata_alongside_named_source(monkeypatch):
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 8, 26, tzinfo=tz)
+
+    monkeypatch.setattr("src.core.monitors.unifr.datetime", FixedDateTime)
     transport = _central_transport([("1911", "Titre")], [("1911", "Titel")])
     board = {
         "board_url": FR,
