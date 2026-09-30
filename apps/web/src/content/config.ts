@@ -155,7 +155,7 @@ export const siteConfig = {
   },
 
   privacy: {
-    lastUpdated: "2026-09-27",
+    lastUpdated: "2026-09-30",
     hero: {
       art: {
         assetKey: "the_advocate" as const,
@@ -165,7 +165,7 @@ export const siteConfig = {
   },
 
   terms: {
-    lastUpdated: "2026-09-27",
+    lastUpdated: "2026-09-30",
     hero: {
       art: {
         assetKey: "the_king" as const,
@@ -191,7 +191,7 @@ export const siteConfig = {
   seo: {
     // Public HTML shells stay crawlable so search engines can read noindex.
     // Authentication/authorization, not robots.txt, protects account data.
-    disallow: ["/api/auth/", "/api/admin/", "/api/paddle/"],
+    disallow: ["/api/auth/", "/api/admin/", "/api/paddle/", "/api/stripe/"],
     // Only pages users actually search for. Legal/policy pages
     // (license, privacy-policy, terms, how-we-index) are reached from
     // the footer of every page and are noindex per #2822 — adding

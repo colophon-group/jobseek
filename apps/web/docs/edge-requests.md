@@ -44,7 +44,8 @@ Dynamic work now lives at narrower boundaries:
 server actions    — UI data fetches, mutations, session-aware reads
 /api/auth/*       — Better Auth handler
 /api/v1/*         — external API routes
-/api/paddle/*     — Paddle webhook
+/api/stripe/*     — Stripe webhook
+/api/paddle/*     — Historical Paddle webhook
 dynamic subtrees   — e.g. settings page data under Suspense
 generated assets   — OG images, sitemap, robots
 ```
@@ -428,7 +429,7 @@ invocations.
 |---------|---------|-------|
 | Dynamic server subtree | Node.js | Page-specific Suspense islands such as settings data |
 | Server action call | Node.js | Each client-triggered `.bind()` or `useActionState` |
-| API route request | Node.js | `/api/v1/*`, `/api/auth/*`, `/api/paddle/*` |
+| API route request | Node.js | `/api/v1/*`, `/api/auth/*`, `/api/stripe/*`, `/api/paddle/*` |
 | Dynamic OG image generation | Node.js | Isolated `/og/*` blog, methodology, and public-watchlist routes |
 | `sitemap.xml` / `robots.txt` | Node.js | Generated dynamically per request |
 | Proxy (formerly Middleware) | Edge | Lightweight locale redirect only |
@@ -560,7 +561,8 @@ inside the pre-cache Vercel WAF budget:
 | `GET /api/v1/watchlists` | Uniform retired-contract `410` + bounded aggregate telemetry | None | `no-store` | <10ms handler |
 | `GET /api/v1/watchlist/create` | Upstash + Typesense | 5min | revalidate | 40-180ms |
 | `POST /api/auth/*` | 1-5 | Session: 5min | None | 20-150ms |
-| `POST /api/paddle/webhook` | Event-dependent DB writes | None | None | Not measured |
+| `POST /api/stripe/webhook` | Event-dependent DB writes and provider read | None | None | Not measured |
+| `POST /api/paddle/webhook` | Historical event-dependent DB writes | None | None | Not measured |
 
 The listed routes typically complete in under 500ms. Successful public GETs
 do not expose `X-RateLimit-*`, because those values are caller-specific and

@@ -1276,6 +1276,14 @@ jobs:
           pnpm --filter @jobseek/web exec vitest run
           src/lib/services/__tests__/notification-delivery-pg.test.ts
 
+      - name: Verify Stripe billing transactions against PostgreSQL
+        env:
+          PGPASSWORD: postgres
+          STRIPE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_stripe_fixture
+        run: |
+          createdb -h 127.0.0.1 -U postgres jobseek_stripe_fixture
+          pnpm --filter @jobseek/web exec vitest run src/lib/stripe
+
       - run: pnpm --filter @jobseek/trace-viewer test
 
       - run: pnpm --filter @jobseek/trace-viewer build
@@ -1729,6 +1737,12 @@ jobs:
         run: >-
           pnpm --filter @jobseek/web exec tsx
           scripts/test-paddle-billing-pg.ts
+          --database-url postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
+
+      - name: Execute Stripe billing isolation migration against PostgreSQL 17
+        run: >-
+          pnpm --filter @jobseek/web exec tsx
+          scripts/test-stripe-billing-pg.ts
           --database-url postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
 
   web-smoke:

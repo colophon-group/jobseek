@@ -1,4 +1,9 @@
-# Paddle billing
+# Paddle billing (historical)
+
+Stripe replaces Paddle for new purchases after the operator reported the Paddle
+application rejected. See [current Stripe integration](stripe.md). This document
+preserves the earlier sandbox evidence and retired launch plan; do not enable
+Paddle checkout or follow its launch steps.
 
 ## Product and account configuration (27 September 2026)
 

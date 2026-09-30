@@ -41,7 +41,6 @@ vi.mock("@/lib/actions/ai-filter", () => ({
   disableAiFilter: vi.fn(),
 }));
 
-vi.mock("@/lib/paddle/browser", () => ({ loadPaddle: async () => ({ Checkout: { open: mocks.open } }) }));
 
 import { BillingSettings } from "../BillingSettings";
 
@@ -60,7 +59,7 @@ describe("BillingSettings action errors", () => {
 
     render(
       <BillingSettings
-        planInfo={{ plan: "unlimited" }}
+        planInfo={{ plan: "unlimited", hasBillingAccount: true }}
       />,
     );
 
@@ -71,14 +70,13 @@ describe("BillingSettings action errors", () => {
     });
   });
 
-  it("opens the server transaction and preserves the return destination", async () => {
+  it("redirects to the server Checkout URL and sends the return destination", async () => {
     mocks.searchParams = new URLSearchParams({ next: "/en/explore?q=engineer" });
-    mocks.createCheckoutSession.mockResolvedValue({ transactionId: "txn_verified", email: "test@example.com" });
+    mocks.createCheckoutSession.mockResolvedValue({ url: "https://checkout.stripe.com/c/pay/cs_test_verified" });
     render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true }} />);
     await userEvent.click(screen.getByRole("button", { name: "Start 7-day free trial" }));
-    await waitFor(() => expect(mocks.open).toHaveBeenCalledWith(expect.objectContaining({ transactionId: "txn_verified" })));
-    const url = new URL(mocks.open.mock.calls[0][0].settings.successUrl);
-    expect(url.searchParams.get("next")).toBe("/en/explore?q=engineer");
+    await waitFor(() => expect(mocks.createCheckoutSession).toHaveBeenCalledWith("en", "/en/explore?q=engineer"));
+    expect(window.location.href).toBe("https://checkout.stripe.com/c/pay/cs_test_verified");
     expect(mocks.replace).not.toHaveBeenCalled();
   });
 
@@ -143,7 +141,7 @@ describe("BillingSettings action errors", () => {
 
     render(
       <BillingSettings
-        planInfo={{ plan: "unlimited" }}
+        planInfo={{ plan: "unlimited", hasBillingAccount: true }}
       />,
     );
 

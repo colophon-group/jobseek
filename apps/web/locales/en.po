@@ -494,6 +494,36 @@ msgstr ""
 #~ msgid "pro.example.requestLabel"
 #~ msgstr "Your criteria"
 
+#. Paddle script failed to load
+#. js-lingui-explicit-id
+#: src/components/PaddlePaymentLink.tsx
+#~ msgid "checkout.loadError"
+#~ msgstr "Checkout could not load. Please refresh and try again."
+
+#. Link to Paddle buyer terms
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+#~ msgid "terms.billing.buyerTerms"
+#~ msgstr "Paddle Buyer Terms"
+
+#. Link to Paddle refund policy
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+#~ msgid "terms.refunds.policy"
+#~ msgstr "Paddle Refund Policy"
+
+#. Paddle payment link page title
+#. js-lingui-explicit-id
+#: src/components/PaddlePaymentLink.tsx
+#~ msgid "checkout.title"
+#~ msgstr "Secure checkout"
+
+#. Paddle payment link page instructions
+#. js-lingui-explicit-id
+#: src/components/PaddlePaymentLink.tsx
+#~ msgid "checkout.description"
+#~ msgstr "Use your payment link to open Paddle’s secure checkout or update your payment method."
+
 #. CC right 1
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -968,12 +998,6 @@ msgstr "Applying…"
 msgid "indexing.ingestion.s3.body"
 msgstr "As a last resort we parse the careers pages themselves, preferring newest-first sorts and stopping once previously indexed roles reappear instead of crawling every page."
 
-#. Paddle independently handles buyer data
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.payments.controller"
-msgstr "As merchant of record, Paddle processes buyer data for payments, taxes, fraud prevention, billing support, and refunds under its own privacy notice. Deleting your Job Seek account does not erase records Paddle must retain."
-
 #. Username too short hint
 #. js-lingui-explicit-id
 #: src/components/settings/account/UsernameSection.tsx
@@ -1171,7 +1195,7 @@ msgstr "Cancel"
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.billing.cancel"
-msgstr "Cancel before the trial ends to avoid the first charge. Use Settings → Subscription → Manage subscription, the link in your receipt, or Paddle support. Normal cancellation preserves access until the end shown in your subscription settings. Deleting your account cancels billing and ends access immediately."
+msgstr "Cancel before the trial ends to avoid the first charge. Use Settings → Subscription → Manage subscription. Normal cancellation preserves access until the end shown in your subscription settings. Deleting your account cancels billing and ends access immediately."
 
 #. Explains cancellation is separate from requesting a refund
 #. js-lingui-explicit-id
@@ -1250,12 +1274,6 @@ msgstr "Checking availability..."
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.accessChecking.short"
 msgstr "Checking…"
-
-#. Paddle script failed to load
-#. js-lingui-explicit-id
-#: src/components/PaddlePaymentLink.tsx
-msgid "checkout.loadError"
-msgstr "Checkout could not load. Please refresh and try again."
 
 #. Explains that Narrowed adds to standard search rather than replacing it
 #. js-lingui-explicit-id
@@ -1631,6 +1649,12 @@ msgstr "Contact"
 #: src/components/LicenseContent.tsx
 msgid "license.contact.title"
 msgstr "Contact"
+
+#. Link to Job Seek refund support
+#. js-lingui-explicit-id
+#: src/components/TermsContent.tsx
+msgid "terms.refunds.support"
+msgstr "Contact us about a refund"
 
 #. Table of contents heading
 #. js-lingui-explicit-id
@@ -2813,6 +2837,12 @@ msgstr "How weekly emails work"
 msgid "search.workMode.hybrid"
 msgstr "Hybrid"
 
+#. Stripe hosted Checkout required consent; preserve Markdown links and URL placeholders
+#. js-lingui-explicit-id
+#: src/lib/stripe/checkout-policy.ts
+msgid "checkout.policies.acceptance"
+msgstr "I agree to the [Terms]({termsUrl}) and acknowledge the [Privacy Policy]({privacyUrl}). [Refund policy]({refundUrl})."
+
 #. Live-tested personal criteria for Narrowed
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
@@ -3062,11 +3092,11 @@ msgstr "Job Seek is being actively built. Stay tuned for updates!"
 msgid "about.p1"
 msgstr "Job Seek is built by Colophon Group, a small team of developers based in Switzerland. We started it because we were tired of the same problem every job seeker faces: juggling dozens of browser tabs, missing new postings because an aggregator was slow to pick them up, and drowning in algorithmic noise that optimizes for clicks rather than relevance."
 
-#. Identifies the service operator and merchant of record
+#. Identifies the service operator and seller
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.billing.seller"
-msgstr "Job Seek is operated by Viktor Shcherbakov in Switzerland. For purchases through Paddle, Paddle acts as reseller and merchant of record, handling payments, applicable taxes, billing support, and refunds."
+msgstr "Job Seek is operated and sold by Viktor Shcherbakov in Switzerland. Stripe processes payments and provides subscription billing. Viktor Shcherbakov is responsible for the service, applicable taxes, billing support, and refunds."
 
 #. JSON-LD page description for the public Privacy Policy page.
 #. SEO description for the public Privacy Policy page.
@@ -4093,30 +4123,6 @@ msgstr "Overview"
 msgid "license.toc.overview"
 msgstr "Overview"
 
-#. Link to Paddle buyer terms
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.billing.buyerTerms"
-msgstr "Paddle Buyer Terms"
-
-#. Link to Paddle privacy notice
-#. js-lingui-explicit-id
-#: src/components/PrivacyPolicyContent.tsx
-msgid "privacy.payments.notice"
-msgstr "Paddle Privacy Notice"
-
-#. Link to Paddle refund policy
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.refunds.policy"
-msgstr "Paddle Refund Policy"
-
-#. Link to Paddle buyer support and refunds
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-msgid "terms.refunds.support"
-msgstr "Paddle support and refunds"
-
 #. Table of contents aria label
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -4697,7 +4703,7 @@ msgstr "Request a company"
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.refunds.request"
-msgstr "Request a refund or exercise an applicable withdrawal right through Paddle support or the support link in your receipt. Paddle assesses and processes requests under its Refund Policy. Your mandatory consumer rights are unaffected."
+msgstr "Request a refund or exercise an applicable withdrawal right by emailing business@colophon-group.org. We assess and process requests. Your mandatory consumer rights are unaffected."
 
 #. Feature: request companies title
 #. js-lingui-explicit-id
@@ -5048,17 +5054,11 @@ msgstr "Search with suggested filters"
 msgid "search.bar.placeholder"
 msgstr "Search..."
 
-#. Paddle payment link page title
-#. js-lingui-explicit-id
-#: src/components/PaddlePaymentLink.tsx
-msgid "checkout.title"
-msgstr "Secure checkout"
-
-#. Merchant of record and final price disclosure
+#. Payment processor and final price disclosure
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
-msgid "pro.offer.paddle"
-msgstr "Secure checkout with Paddle. Your final total, including applicable taxes, is shown before you confirm."
+msgid "pro.offer.checkout"
+msgstr "Secure checkout with Stripe. Your final total, including applicable taxes, is shown before you confirm."
 
 #. Narrowed marketing page: learn
 #. js-lingui-explicit-id
@@ -5382,8 +5382,8 @@ msgstr "Star"
 msgid "search.card.starred"
 msgstr "Starred"
 
-#. Button opening Paddle checkout for a seven-day trial
-#. Button opening Paddle checkout for a seven-day trial
+#. Button opening Stripe checkout for a seven-day trial
+#. Button opening Stripe checkout for a seven-day trial
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
 msgid "settings.billing.startTrial"
@@ -5424,6 +5424,18 @@ msgstr "Status tracking"
 #: src/components/search/request-company-success.tsx
 msgid "app.home.request.agent.givenUpLabel"
 msgstr "Still running… refresh later to check progress."
+
+#. Link to Stripe privacy notice
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.payments.notice"
+msgstr "Stripe Privacy Policy"
+
+#. Stripe payment data processing
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.payments.controller"
+msgstr "Stripe processes payment and billing data under its privacy policy, including processing for fraud prevention and legal obligations. Deleting your Job Seek account does not erase payment records that we or Stripe must retain."
 
 #. Submit button for the company request form
 #. Submit button for the company request form
@@ -5891,12 +5903,6 @@ msgstr "US$10 / month"
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.requestCompany"
 msgstr "Use the request form on Explore to submit a company name or careers page URL. A request starts a review; it does not guarantee indexing. When an issue number is available, use it to follow progress."
-
-#. Paddle payment link page instructions
-#. js-lingui-explicit-id
-#: src/components/PaddlePaymentLink.tsx
-msgid "checkout.description"
-msgstr "Use your payment link to open Paddle’s secure checkout or update your payment method."
 
 #. Generic account error when the current user row is missing
 #. js-lingui-explicit-id
@@ -6449,11 +6455,11 @@ msgstr "Your criteria.<0/>A shorter list."
 msgid "auth.verify.success.description"
 msgstr "Your email has been verified."
 
-#. Data exchanged with Paddle and stored by Job Seek
+#. Data exchanged with Stripe and stored by Job Seek
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
 msgid "privacy.payments.data"
-msgstr "Your email is provided to Paddle at checkout. Paddle collects payment details, billing address, and tax information directly. We store customer and subscription references, trial usage, status, and billing dates to manage your Pro access. We do not store full card numbers or security codes."
+msgstr "Your email is provided to Stripe at checkout. Stripe collects payment details, billing address, and tax information directly. We store customer and subscription references, trial usage, status, and billing dates to manage your Pro access. We do not store full card numbers or security codes."
 
 #. Label for the trial end date
 #. js-lingui-explicit-id

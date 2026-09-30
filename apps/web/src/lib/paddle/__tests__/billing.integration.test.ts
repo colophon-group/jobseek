@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { EventEntity } from "@paddle/paddle-node-sdk";
 
 vi.mock("server-only", () => ({}));
@@ -19,7 +19,6 @@ vi.mock("@/lib/paddle/client", () => ({
 import { db } from "@/db";
 import { paddleAccount, paddleSubscription, subscription, user } from "@/db/schema";
 import { applyPaddleEvent } from "../webhooks";
-import { createCheckoutSession, createPortalSession, getPlanInfo } from "@/lib/actions/billing";
 import { preparePaddleAccountDeletion } from "../account-deletion";
 import { getUserPlan } from "@/lib/plans";
 import { hasPaidEntitlement } from "@/lib/paid-entitlement";
@@ -81,10 +80,6 @@ describe.skipIf(!databaseUrl)("Paddle billing with disposable PostgreSQL", () =>
     expect(await getUserPlan(mocks.userId)).toBe("unlimited");
     expect(await hasPaidEntitlement(db, mocks.userId)).toBe(true);
     expect(await getUserPlan("paddle-fixture-other")).toBe("free");
-    const info = await getPlanInfo();
-    expect(info).toMatchObject({ hasBillingAccount: true, trialEligible: false, status: "trialing" });
-    expect(await createPortalSession()).toEqual({ url: "https://sandbox-customer-portal.paddle.com/test" });
-    expect(mocks.portal).toHaveBeenCalledWith(customer, []);
   });
 
   it("does not trust copied account metadata on a foreign transaction", async () => {
@@ -102,15 +97,12 @@ describe.skipIf(!databaseUrl)("Paddle billing with disposable PostgreSQL", () =>
     await Promise.all([applyPaddleEvent(created), applyPaddleEvent(canceled), applyPaddleEvent(created)]);
     expect(await getUserPlan(mocks.userId)).toBe("free");
     expect(await db.select().from(paddleSubscription)).toHaveLength(1);
-    expect((await getPlanInfo()).status).toBe("canceled");
-    expect((await createPortalSession()).url).toBeTruthy();
   });
 
   it("compares provider microseconds, not rounded JavaScript milliseconds", async () => {
     const created = event(); created.occurredAt = "2026-09-27T10:00:00.123100Z";
     const canceled = event("subscription.canceled", "canceled"); canceled.occurredAt = "2026-09-27T10:00:00.123900Z";
     await applyPaddleEvent(created); await applyPaddleEvent(canceled); await applyPaddleEvent(created);
-    expect((await getPlanInfo()).status).toBe("canceled");
   });
 
   it("keeps scheduled-cancellation access until the period expires", async () => {
@@ -118,23 +110,19 @@ describe.skipIf(!databaseUrl)("Paddle billing with disposable PostgreSQL", () =>
       scheduledChange: { action: "cancel", effectiveAt: new Date(Date.now() + 86400000).toISOString() },
     }));
     expect(await getUserPlan(mocks.userId)).toBe("unlimited");
-    expect((await getPlanInfo()).cancellationScheduled).toBe(true);
     expect(await hasPaidEntitlement(db, mocks.userId, new Date(Date.now() + 8 * 86400000))).toBe(false);
   });
 
-  it.each(["past_due", "paused", "canceled"])("revokes %s while retaining portal access", async status => {
+  it.each(["past_due", "paused", "canceled"])("revokes %s for historical Paddle subscriptions", async status => {
     await applyPaddleEvent(event());
     await applyPaddleEvent(event("subscription.updated", status, 1000));
     expect(await getUserPlan(mocks.userId)).toBe("free");
-    expect((await createPortalSession()).url).toBeTruthy();
   });
 
-  it("rejects a changed price or quantity and does not permit another trial", async () => {
+  it("rejects a changed price or quantity", async () => {
     await applyPaddleEvent(event("subscription.created", "trialing", 0, { items: [{ quantity: 2, price: { id: trial } }] }));
     expect(await getUserPlan(mocks.userId)).toBe("free");
     await applyPaddleEvent(event("subscription.canceled", "canceled", 1000));
-    await createCheckoutSession();
-    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ items: [{ priceId: returning, quantity: 1 }], customerId: customer }));
   });
 
   it("preserves a manually granted subscription when Paddle cancels", async () => {
@@ -150,19 +138,7 @@ describe.skipIf(!databaseUrl)("Paddle billing with disposable PostgreSQL", () =>
     vi.stubEnv("PADDLE_ENVIRONMENT", "sandbox");
   });
 
-  it("serializes concurrent checkouts and reuses one transaction", async () => {
-    await db.update(paddleAccount).set({ pendingTransactionId: null, pendingPriceId: null }).where(eq(paddleAccount.id, accountId));
-    mocks.get.mockResolvedValue({ id: `txn_${"f".repeat(26)}`, status: "draft" });
-    const results = await Promise.all([createCheckoutSession(), createCheckoutSession()]);
-    expect(results[0].transactionId).toBe(results[1].transactionId);
-    expect(mocks.create).toHaveBeenCalledTimes(1);
-  });
 
-  it("blocks new purchases while the completed transaction awaits its webhook", async () => {
-    mocks.get.mockResolvedValue({ id: txnId, status: "completed" });
-    expect(await createCheckoutSession()).toMatchObject({ error: "billing_processing" });
-    expect(mocks.create).not.toHaveBeenCalled();
-  });
 
   it("cancels billing before deletion and blocks concurrent new checkout", async () => {
     await applyPaddleEvent(event());
@@ -170,14 +146,12 @@ describe.skipIf(!databaseUrl)("Paddle billing with disposable PostgreSQL", () =>
     await preparePaddleAccountDeletion(mocks.userId);
     expect(mocks.cancel).toHaveBeenCalledWith(subId, { effectiveFrom: "immediately" });
     await applyPaddleEvent(event("subscription.canceled", "canceled", 1000));
-    expect(await createCheckoutSession()).toMatchObject({ error: "payments_unavailable" });
   });
 
   it("preserves the account when billing cancellation fails and allows retry", async () => {
     mocks.update.mockRejectedValueOnce(new Error("Paddle unavailable"));
     await expect(preparePaddleAccountDeletion(mocks.userId)).rejects.toThrow();
     expect(await db.select().from(paddleAccount)).toHaveLength(1);
-    expect(await createCheckoutSession()).toMatchObject({ error: "payments_unavailable" });
     mocks.update.mockResolvedValue({ status: "canceled" });
     await expect(preparePaddleAccountDeletion(mocks.userId)).resolves.toBeUndefined();
   });
@@ -189,14 +163,4 @@ describe.skipIf(!databaseUrl)("Paddle billing with disposable PostgreSQL", () =>
     expect(mocks.cancel).toHaveBeenCalledWith(subId, { effectiveFrom: "immediately" });
   });
 
-  it("requires authentication and keeps an existing subscriber out of checkout", async () => {
-    mocks.userId = "";
-    expect(await createCheckoutSession()).toMatchObject({ error: "not_authenticated" });
-    expect(await createPortalSession()).toMatchObject({ error: "not_authenticated" });
-    mocks.userId = "paddle-fixture-user";
-    await applyPaddleEvent(event());
-    expect(await createCheckoutSession()).toMatchObject({ error: "billing_already_subscribed" });
-    mocks.userId = "paddle-fixture-other";
-    expect(await createPortalSession()).toMatchObject({ error: "billing_account_not_found" });
-  });
 });
