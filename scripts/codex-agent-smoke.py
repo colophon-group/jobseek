@@ -83,7 +83,7 @@ Wait for it to finish. Do not write its result for it. Reply exactly SMOKE_OK.
             "-C",
             str(fixture),
             "-m",
-            "gpt-6-astra",
+            "gpt-6.1-sol",
             "-c",
             "model_reasoning_effort=low",
             "Use $jobseek-smoke to verify the named project agent on the fixture. "

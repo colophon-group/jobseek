@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -126,8 +127,11 @@ async def test_discover_accepts_runtime_metadata_alongside_named_source():
             "scraper_type": "skip",
         },
     }
-    async with httpx.AsyncClient(transport=transport) as client:
-        jobs = await discover(board, client)
+    # Keep the mocked vacancy valid independently of the date CI runs.
+    with patch("src.core.monitors.unifr.datetime", wraps=datetime) as clock:
+        clock.now.return_value = datetime(2026, 8, 26, tzinfo=UTC)
+        async with httpx.AsyncClient(transport=transport) as client:
+            jobs = await discover(board, client)
 
     assert [job.url for job in jobs] == [f"{FR}?_jid=1911"]
 

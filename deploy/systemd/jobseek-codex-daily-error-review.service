@@ -16,7 +16,7 @@ User=codex-runner
 Group=codex-runner
 EnvironmentFile=/etc/jobseek-codex/governor.env
 WorkingDirectory=/srv/jobseek-codex/repo
-Environment=JOBSEEK_CODEX_MODEL=gpt-6-astra
+Environment=JOBSEEK_CODEX_MODEL=gpt-6.1-sol
 Environment=JOBSEEK_CODEX_REASONING_EFFORT=high
 Environment=JOBSEEK_CODEX_MAX_RUNTIME_S=7200
 Environment=JOBSEEK_ERROR_REVIEW_BUNDLE=/srv/jobseek-codex/inputs/error-review/latest
@@ -27,7 +27,8 @@ ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n"
 
 ExecStartPre=+/usr/bin/python3 -I /usr/local/lib/jobseek-codex/codex-routine-status.py begin
 ExecStartPre=+/usr/bin/python3 -I /usr/local/lib/jobseek-codex/codex-error-review-bundle.py --out-root /srv/jobseek-codex/inputs/error-review --group codex-runner
-ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine error-review
+# Pin the model at launch because EnvironmentFile overrides Environment.
+ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /usr/bin/env JOBSEEK_CODEX_MODEL=gpt-6.1-sol JOBSEEK_CODEX_REASONING_EFFORT=high /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine error-review
 ExecStopPost=+/usr/bin/python3 -I /usr/local/lib/jobseek-codex/codex-routine-status.py finish --service-result ${SERVICE_RESULT} --exit-code ${EXIT_CODE} --exit-status ${EXIT_STATUS}
 
 TimeoutStartSec=8h
