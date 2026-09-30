@@ -158,7 +158,9 @@ browser/device and an eligible saved wallet card. Live subscription Checkout
 probes offered card, Link, Amazon Pay and PayPal in USD; CHF additionally
 offered TWINT and Klarna. A browser verified TWINT beside CHF 8.33/month, the
 seven-day trial and required policy consent. All probe Sessions were expired
-without completing a purchase. Sandbox CHF/INR subscriptions retain the
+without completing a purchase. A session created without an explicit currency,
+matching the app's selection behavior, switched from USD to CHF and displayed
+TWINT after the browser opened it from Switzerland. Sandbox CHF/INR subscriptions retain the
 approved Price ID and its USD 10 base Price object, so entitlement validation
 continues to work without broadening the allowed products or prices.
 
