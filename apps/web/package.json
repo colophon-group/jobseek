@@ -85,7 +85,7 @@
     "workflow": "^4.8.9"
   },
   "devDependencies": {
-    "@aws-sdk/client-s3": "^3.1130.0",
+    "@aws-sdk/client-s3": "^3.1141.0",
     "@lingui/babel-plugin-lingui-macro": "^6.6.0",
     "@lingui/cli": "^6.6.0",
     "@lingui/conf": "^6.6.0",
