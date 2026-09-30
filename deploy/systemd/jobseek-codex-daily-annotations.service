@@ -15,7 +15,7 @@ User=codex-runner
 Group=codex-runner
 EnvironmentFile=/etc/jobseek-codex/governor.env
 WorkingDirectory=/srv/jobseek-codex/repo
-Environment=JOBSEEK_CODEX_MODEL=gpt-6-astra
+Environment=JOBSEEK_CODEX_MODEL=gpt-6.1-sol
 Environment=JOBSEEK_CODEX_REASONING_EFFORT=high
 Environment=JOBSEEK_CODEX_MAX_RUNTIME_S=21600
 Environment=JOBSEEK_CODEX_DAILY_COUNT=10
@@ -27,7 +27,8 @@ Environment=LABELLER_DATA_ROOT=/srv/jobseek-codex/data/postings-labelled
 ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n" | /usr/bin/grep -qx docker'
 
 ExecStartPre=+/usr/bin/install -d -m 0700 -o codex-runner -g codex-runner /srv/jobseek-codex/data/postings-labelled /srv/jobseek-codex/worktrees /srv/jobseek-codex/traces /srv/jobseek-codex/state /srv/jobseek-codex/logs
-ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine annotations
+# Pin the model at launch because EnvironmentFile overrides Environment.
+ExecStart=/usr/bin/flock -w 21600 /srv/jobseek-codex/state/codex-runner.lock /usr/bin/env JOBSEEK_CODEX_MODEL=gpt-6.1-sol JOBSEEK_CODEX_REASONING_EFFORT=high /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-daily-routine-runner.py --routine annotations
 
 TimeoutStartSec=8h
 Nice=10

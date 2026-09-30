@@ -9,9 +9,9 @@ deployment artifacts; do not treat them as source of truth.
 
 | systemd unit | cadence | execution | source of truth | model policy |
 |---|---:|---|---|---|
-| `jobseek-codex-daily-annotations.timer` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Astra/high orchestrator; Sol and Luna labeller subagents |
-| `jobseek-codex-daily-error-review.timer` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Astra/high orchestrator; no default subagents |
-| `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Astra/high orchestrator; Sol and Luna `ws` subagents |
+| `jobseek-codex-daily-annotations.timer` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol 6.1/high orchestrator; Sol 6.1 and Luna labeller subagents |
+| `jobseek-codex-daily-error-review.timer` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol 6.1/high orchestrator; no default subagents |
+| `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol 6.1/high orchestrator; Sol 6.1 and Luna `ws` subagents |
 | `jobseek-codex-docker-lifecycle.service` | continuous | root read-only event watcher producing allowlisted evidence for the isolated runner | this runbook and the committed unit/script | no model invocation |
 
 The recurring company resolver and daily routines run on the Hetzner crawler
@@ -24,29 +24,34 @@ and leaves actual Codex execution to the Hetzner timers.
 
 ## GPT-6 Model Policy
 
-The current policy follows the [official OpenAI model
-guide](https://developers.openai.com/api/docs/models): Astra handles complex,
-open-ended orchestration, Sol handles parallel research and semantic work,
-and Luna handles clear, repeatable classification or transformation. Keep
+The current policy uses [GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
+for production orchestration, parallel research, and semantic work. Luna
+handles clear, repeatable classification or transformation. Keep
 each role's existing reasoning effort unless validation shows it needs a change.
 
 | role | project agent/config | model | reasoning |
 |---|---|---|---|
-| Every production main agent | runner `JOBSEEK_CODEX_MODEL` / `JOBSEEK_CODEX_REASONING_EFFORT` | `gpt-6-astra` | `high` |
-| Company metadata | `jobseek-company-enricher` | `gpt-6-sol` | `medium` |
+| Every production main agent | runner `JOBSEEK_CODEX_MODEL` / `JOBSEEK_CODEX_REASONING_EFFORT` | `gpt-6.1-sol` | `high` |
+| Company metadata | `jobseek-company-enricher` | `gpt-6.1-sol` | `medium` |
 | Logo selection | `jobseek-logo-selector` | `gpt-6-luna` | `medium` |
-| Board discovery | `jobseek-board-researcher` | `gpt-6-sol` | `high` |
-| Monitor/scraper config testing | `jobseek-config-tester` | `gpt-6-sol` | `high` |
+| Board discovery | `jobseek-board-researcher` | `gpt-6.1-sol` | `high` |
+| Monitor/scraper config testing | `jobseek-config-tester` | `gpt-6.1-sol` | `high` |
 | Labeller HTML normalization | `jobseek-labeller-normalizer` | `gpt-6-luna` | `low` |
 | Labeller section splitting | `jobseek-labeller-splitter` | `gpt-6-luna` | `medium` |
-| Labeller combined extraction | `jobseek-labeller-extractor` | `gpt-6-sol` | `high` |
-| Optional error-evidence analysis | `jobseek-error-review-researcher` | `gpt-6-sol` | `high` |
+| Labeller combined extraction | `jobseek-labeller-extractor` | `gpt-6.1-sol` | `high` |
+| Optional error-evidence analysis | `jobseek-error-review-researcher` | `gpt-6.1-sol` | `high` |
 
 Do not use Max or Ultra for these scheduled runs. The workflows already own
 their delegation strategy, and high reasoning gives the main agent enough
-depth without enabling redundant automatic delegation. Escalate an isolated
-subagent to Astra/high only after repeated validation failure or genuinely
-ambiguous evidence.
+depth without enabling redundant automatic delegation. Retry an isolated
+failing or ambiguous role under its pinned model and reasoning settings;
+escalate unresolved failures to the operator.
+
+Each systemd `ExecStart` pins the model and reasoning through `/usr/bin/env`
+after acquiring the routine lock. `EnvironmentFile` overrides `Environment`,
+so the launch pin ensures older `governor.env` settings cannot retain the
+previous model after deployment. Manual runner invocations still accept
+environment overrides.
 
 ## Harness Invariants
 
@@ -68,10 +73,10 @@ governor and timers.
   ownership to `codex-runner`.
 - Treat `~/.codex/auth.json`, GitHub auth, and HuggingFace auth as password
   material. Do not print, upload, commit, or include them in traces.
-- Pin production orchestration to GPT-6 Astra with high reasoning.
+- Pin production orchestration to GPT-6.1 Sol with high reasoning.
 - Use the role-specific Sol and Luna project agents in the model-policy
-  table for bounded subagent tasks. Escalate an individual subagent attempt to
-  Astra/high only when validation fails repeatedly or evidence is ambiguous.
+  table for bounded subagent tasks. Retry the individual failing or ambiguous
+  role and escalate unresolved failures to the operator.
 - Subagent contracts are harness-invariant: task name, rendered input path,
   output path, schema, and validator define the boundary. Harness-specific
   agent files may vary, but they must not fork prompts or schemas.
@@ -101,7 +106,7 @@ prompt, or routine source:
 3. Set the working directory to the Jobseek repo root. For Git-repo
    background worktrees, verify required untracked files and local secrets are
    visible to that execution environment before enabling the schedule.
-4. Confirm the runner command pins `gpt-6-astra` with high reasoning.
+4. Confirm the runner command pins `gpt-6.1-sol` with high reasoning.
 5. Confirm every spawned role uses the project custom agent and exact setting
    in the GPT-6 model-policy table. Escalate only the failing or ambiguous
    role, not the whole routine.

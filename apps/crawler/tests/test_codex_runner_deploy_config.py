@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import shlex
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -195,12 +197,48 @@ def test_governor_example_bounds_all_retained_codex_sessions() -> None:
 def test_all_runner_units_pin_the_current_orchestrator_model() -> None:
     for service_path in (GOVERNOR_SERVICE, ANNOTATIONS_SERVICE, ERROR_REVIEW_SERVICE):
         service = service_path.read_text()
-        assert "Environment=JOBSEEK_CODEX_MODEL=gpt-6-astra" in service, service_path
+        assert "Environment=JOBSEEK_CODEX_MODEL=gpt-6.1-sol" in service, service_path
         assert "Environment=JOBSEEK_CODEX_REASONING_EFFORT=high" in service, service_path
 
     example = GOVERNOR_ENV_EXAMPLE.read_text()
-    assert "JOBSEEK_CODEX_MODEL=gpt-6-astra" in example
+    assert "JOBSEEK_CODEX_MODEL=gpt-6.1-sol" in example
     assert "JOBSEEK_CODEX_REASONING_EFFORT=high" in example
+
+
+@pytest.mark.parametrize(
+    "service_path", [GOVERNOR_SERVICE, ANNOTATIONS_SERVICE, ERROR_REVIEW_SERVICE]
+)
+@pytest.mark.parametrize("previous_model", ["gpt-6-astra", "gpt-6-sol"])
+def test_runner_launch_overrides_previous_host_model_policy(
+    service_path: Path, previous_model: str
+) -> None:
+    exec_start = next(
+        line.removeprefix("ExecStart=")
+        for line in service_path.read_text().splitlines()
+        if line.startswith("ExecStart=")
+    )
+    command = shlex.split(exec_start)
+    env_index = command.index("/usr/bin/env")
+    python_index = command.index("/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python")
+    # Exercise the real launch assignments with the inherited environment that
+    # systemd would supply from an older governor.env, without starting a routine.
+    result = subprocess.run(
+        [
+            *command[env_index:python_index],
+            sys.executable,
+            "-c",
+            "import os; print(os.environ['JOBSEEK_CODEX_MODEL'], "
+            "os.environ['JOBSEEK_CODEX_REASONING_EFFORT'])",
+        ],
+        env={
+            "JOBSEEK_CODEX_MODEL": previous_model,
+            "JOBSEEK_CODEX_REASONING_EFFORT": "medium",
+        },
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == "gpt-6.1-sol high"
 
 
 def _validate(tmp_path: Path, content: str) -> subprocess.CompletedProcess[str]:
