@@ -269,3 +269,21 @@ Honor deployment holds, mutation locks and exact head/base merge authority.
 Keep owner-closed #7966 closed; its retirement criteria still apply. The merged
 [continuation plan](27-go-lightpanda-continuation-plan.md) remains the full goal's
 sequence and completion contract.
+
+## Natural B0 readback after location rollout
+
+The 16:32:27 UTC read-only runtime snapshot retained the exact v0.13.901
+release and active epoch 141, with healthy workers and three successful
+B0 renders/commits, no render/executor failures, 21 ready and zero inflight.
+At 16:34:10 UTC, canonical database readback found three naturally fresh
+postings since activation (two Browser Use, one Bunq), active with zero
+failures and parallel location ID/type arrays. Their location arrays, titles
+and description hashes matched the 13:43 database snapshot; description
+deduplication retained older equal-body rows. Three epoch-141 fence rows
+were observed. No forced due times or publisher refetch were used.
+
+[Portable natural evidence](evidence/go-location-natural-b0-2026-09-30.json)
+binds the release, receipt, observation times and numeric comparison. Raw
+current rendered location inputs were not retained for an independent replay.
+The Go location path is deployed behind the Python loader/executor; this
+readback does not establish native B0 or ordinary worker ownership.

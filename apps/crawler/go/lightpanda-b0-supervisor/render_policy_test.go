@@ -171,3 +171,43 @@ func TestPolicyManifestRejectsUnexpectedUnknownAndCorruptOutput(t *testing.T) {
 		}
 	}
 }
+
+func TestObservedReservationDoesNotCauseChallengeRetry(t *testing.T) {
+	for _, mode := range []string{"header", "meta"} {
+		t.Run(mode, func(t *testing.T) {
+			task := validQueueTask(t)
+			task.Envelope.ScraperType = "dom"
+			html := "challenge"
+			if mode == "meta" {
+				html = `<meta name="tdm-reservation" content="1">` + html
+			}
+			result := &runtimev1.BrowserResult{}
+			if err := proto.Unmarshal(policyResult(t, html, 200), result); err != nil {
+				t.Fatal(err)
+			}
+			result.GetSuccess().ResourcePolicy = &runtimev1.ResourcePolicySignals{}
+			if mode == "header" {
+				value := "1"
+				result.GetSuccess().ResourcePolicy.TdmReservationHeader = &value
+			}
+			payload, err := proto.MarshalOptions{Deterministic: true}.Marshal(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			initial := &retryHeld{result: payload}
+			fresh := &retryHeld{result: policyResult(t, "other", 200)}
+			source := &retrySource{initial: initial, fresh: fresh}
+			queue := &recordingLeaseQueue{}
+			s := &supervisor{renderer: source, classifier: func(context.Context, string, string, json.RawMessage) (string, error) {
+				t.Fatal("reserved page entered challenge classification")
+				return "challenge", nil
+			}}
+			current := &lease{Task: task, ClaimToken: "7:21", LeaseUntilMS: 20000}
+			authority := &leaseAuthority{lease: current, queue: queue, config: config{LeaseTTL: time.Minute}}
+			held, err := s.renderLease(context.Background(), initial, current, authority)
+			if err != nil || string(held) != string(payload) || source.calls != 0 || queue.heartbeatCalls != 0 {
+				t.Fatal("reservation triggered another origin or lost held evidence")
+			}
+		})
+	}
+}

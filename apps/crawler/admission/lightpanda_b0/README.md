@@ -12,8 +12,9 @@ schedules with producer routing off, starts the merged Go producer, then
 transfers them through the producer's `prepare`/`activate` Unix-socket protocol.
 Only then does it start the
 Go supervisor. The comparator uses the current Python browser worker and
-Playwright Chromium shell. Both persist through the crawler's ordinary parser
-path to disposable PostgreSQL. The fixture CA is mounted into the renderer's
+Playwright Chromium shell. The candidate uses the native Go database executor and direct Go JSON-LD
+parser; the comparator uses the ordinary Python processing path. Both persist
+to disposable PostgreSQL. The fixture CA is mounted into the renderer's
 system trust bundle so its isolated browser child can verify these test origins.
 
 The candidate's 1536 MiB limit includes producer (32 MiB), supervisor
@@ -25,8 +26,21 @@ Go queue's 30-second conservation audit can refresh its gauges. The evaluator
 requires exact canonical persisted output, request and
 terminal counts, queue conservation, isolated network/cleanup, and a median
 correct-URL density ratio above one in both c1 and c4. Every pair's raw
-numbers stay in the uploaded report. A close or noisy result calls for another
-immutable run; this is no fixed-percentage hurdle or reviewer gate.
+numbers stay in the uploaded report. Separate lifetime CPU counters include
+container startup, transfer, task processing and the final retained read.
+The sum of service lifetime memory peaks provides a conservative aggregate
+upper bound covering startup; it is explicitly not a simultaneous peak or a
+density denominator. Admission rejects missing or inconsistent lifetime
+accounting, startup OOM/swap evidence, and a lifetime upper bound reaching the
+shared envelope. Both lanes now seed a generated production-cardinality
+taxonomy (37,526 locations and 143,004 core names, plus the observed lookup/rate
+counts). The controller requires its exact census in every arm. Worker health
+intervals match production: producer/executor 5s, supervisor 10s, comparator
+30s. Actual installed intervals are attested. Earlier fixtures used one-second
+comparator probes; their CPU figures are not production cost proof. Generated
+values do not replace production taxonomy fit or attributable cost evidence. A
+close or noisy result calls for another immutable run; this is no
+fixed-percentage hurdle or reviewer gate.
 
 The workflow's result is fixture evidence only. Production c1 admission also
 needs a read-only receipt/Redis authority preflight, bounded live output and

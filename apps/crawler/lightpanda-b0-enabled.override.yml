@@ -179,7 +179,7 @@ services:
     restart: "no"
     network_mode: host
     stop_grace_period: 30s
-    command: ["/app/.venv/bin/python", "-m", "src.lightpanda.executor"]
+    command: ["/usr/local/bin/go-lightpanda-b0-executor"]
     user: "10001:10001"
     read_only: true
     cgroup: private
@@ -190,6 +190,7 @@ services:
     environment:
       LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL:?required}
       CRAWLER_DB_ROLE: lightpanda-b0-executor
+      GOMEMLIMIT: 288MiB
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "1"
       LIGHTPANDA_B0_EXECUTOR_MODE: enabled
@@ -204,11 +205,10 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
     healthcheck:
-      test: ["CMD", "/usr/local/bin/lightpanda-b0-supervisor", "executor-health"]
+      test: ["CMD", "/usr/local/bin/go-lightpanda-b0-executor", "--health"]
       interval: 5s
-      # Attest the live socket with the same Go client as real claims; avoid a
-      # fresh Python interpreter/asyncio startup on every health interval.
-      timeout: 15s
+      # The reserved socket conversation opens no extra database connection.
+      timeout: 3s
       retries: 3
       start_period: 10s
     mem_limit: 384m

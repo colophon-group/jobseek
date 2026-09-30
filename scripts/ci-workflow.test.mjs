@@ -1063,6 +1063,26 @@ test("Python fleet comparator stays locked to its production authorities", () =>
   }
 });
 
+test("Native B0 executor requires real PostgreSQL and Linux contracts", () => {
+  const executorJob = jobBlock("test-go-b0-executor");
+  const requiredCiJob = jobBlock("required-ci");
+  assert.match(executorJob, /postgres:17-alpine@sha256:[0-9a-f]{64}/);
+  assert.match(executorJob, /JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL:.*jobseek_b0_executor_test/);
+  assert.match(executorJob, /redis:8-alpine@sha256:[0-9a-f]{64}/);
+  assert.match(executorJob, /6384:6379/);
+  assert.match(executorJob, /JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL: redis:\/\/127\.0\.0\.1:6384\/15/);
+  assert.match(executorJob, /go test -race -tags integration -run '\^TestPrivateRedisAuthorityExpiryAndConservation\$'/);
+  assert.match(executorJob, /JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL="\$JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL"/);
+  assert.match(executorJob, /alembic -c src\/migrations\/alembic\.ini upgrade head/);
+  assert.match(executorJob, /go test -race \.\/\.\.\./);
+  assert.match(executorJob, /go test -c -tags integration/);
+  assert.match(executorJob, /TestInstalledNativeExecutorStartupBudgetHealthAndRecovery/);
+  assert.match(executorJob, /install -d -m 0700 -o 10001 -g 10001 \/run\/jobseek-lightpanda-executor/);
+  assert.match(requiredCiJob, /needs:[\s\S]*- test-go-b0-executor/);
+  assert.match(requiredCiJob, /requireSuccess\("test-go-b0-executor", crawlerCode\)/);
+  assert.match(crawlerDockerfile, /COPY --from=go-b0-executor-build .*\/usr\/local\/bin\/go-lightpanda-b0-executor/);
+});
+
 test("fleet benchmark manifest remains an exact literal-only production projection", () => {
   const boards = new Map(
     parseCsvRecords(crawlerBoards).map((board) => [board.board_slug, board]),
@@ -1335,6 +1355,9 @@ test("Go sitemap shadow accepts exactly one report document", () => {
 });
 
 test("crawler image job proves live sampler and shutdown lifecycle", () => {
+  const imageJob = jobBlock("crawler-image");
+  assert.match(imageJob, /psql -U crawler -d crawler -v ON_ERROR_STOP=1/);
+  assert.match(imageJob, /lightpanda-b0-executor\/testdata\/startup-fixture\.sql/);
   const crawlerImageJob = jobBlock("crawler-image");
 
   assert.match(

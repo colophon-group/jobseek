@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "oracle": "Python 3.13 src.processing.cpu",
+  "coercion": [
+    {
+      "input": null,
+      "text": null,
+      "locations": null
+    },
+    {
+      "input": "",
+      "text": null,
+      "locations": null
+    },
+    {
+      "input": "  Engineer  ",
+      "text": "Engineer",
+      "locations": [
+        "Engineer"
+      ]
+    },
+    {
+      "input": [
+        " Zurich ",
+        "Zurich",
+        null,
+        "\u6771\u4eac"
+      ],
+      "text": "Zurich, \u6771\u4eac",
+      "locations": [
+        "Zurich",
+        "\u6771\u4eac"
+      ]
+    },
+    {
+      "input": [
+        "a",
+        [
+          "b",
+          "c"
+        ],
+        "a"
+      ],
+      "text": "a, b, c",
+      "locations": [
+        "a",
+        "b, c"
+      ]
+    },
+    {
+      "input": {
+        "z": 1,
+        "a": "Z\u00fcrich \ud83d\udc3c"
+      },
+      "text": "{\"a\": \"Z\\u00fcrich \\ud83d\\udc3c\", \"z\": 1}",
+      "locations": [
+        "{\"a\": \"Z\\u00fcrich \\ud83d\\udc3c\", \"z\": 1}"
+      ]
+    },
+    {
+      "input": true,
+      "text": "True",
+      "locations": [
+        "True"
+      ]
+    },
+    {
+      "input": false,
+      "text": "False",
+      "locations": [
+        "False"
+      ]
+    },
+    {
+      "input": 123,
+      "text": "123",
+      "locations": [
+        "123"
+      ]
+    },
+    {
+      "input": 1.0,
+      "text": "1.0",
+      "locations": [
+        "1.0"
+      ]
+    },
+    {
+      "input": 1000000.0,
+      "text": "1000000.0",
+      "locations": [
+        "1000000.0"
+      ]
+    },
+    {
+      "input": -0.0,
+      "text": "-0.0",
+      "locations": [
+        "-0.0"
+      ]
+    },
+    {
+      "input": [
+        "a",
+        {
+          "b": [
+            1,
+            true
+          ]
+        }
+      ],
+      "text": "a, {\"b\": [1, true]}",
+      "locations": [
+        "a",
+        "{\"b\": [1, true]}"
+      ]
+    }
+  ],
+  "titles": [
+    {
+      "input": null,
+      "output": []
+    },
+    {
+      "input": "Engineer &amp; Scientist",
+      "output": [
+        "Engineer & Scientist"
+      ]
+    },
+    {
+      "input": "&#x80; &#x0; &notit;",
+      "output": [
+        "\u20ac \ufffd \u00acit;"
+      ]
+    }
+  ],
+  "locales": [
+    {
+      "language": null,
+      "detected": [
+        "fr",
+        "en",
+        "fr"
+      ],
+      "output": [
+        "en",
+        "fr"
+      ]
+    },
+    {
+      "language": "",
+      "detected": [
+        "fr",
+        "en",
+        "fr"
+      ],
+      "output": [
+        "en",
+        "fr"
+      ]
+    },
+    {
+      "language": "de",
+      "detected": [
+        "fr",
+        "en",
+        "fr"
+      ],
+      "output": [
+        "de",
+        "fr",
+        "en"
+      ]
+    }
+  ]
+}

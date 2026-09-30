@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "oracle": "Python 3.13 src.lightpanda.executor",
+  "request": {
+    "version": "jobseek.lightpanda.executor/v1",
+    "task_payload": "{\"assignment_digest_sha256\":\"1e5f59e593fc540bb3f81bf64462929dab3e2c8ca198cc43276a3ead44f82349\",\"board_id\":\"board-1\",\"browser_backend\":\"lightpanda\",\"config_revision\":3,\"domain\":\"jobs.example.test\",\"engine_owner\":\"go\",\"initial_ready_at_ms\":1,\"parser_config\":{\"browser_backend\":\"lightpanda\",\"render\":true,\"routing_revision\":\"go-b0-1\",\"timeout\":5000,\"wait\":\"load\",\"wait_fallback\":null},\"policy_key\":\"lightpanda-b0-v1\",\"render\":true,\"routing_epoch\":7,\"routing_revision\":\"go-b0-1\",\"schema_version\":\"lightpanda-b0-task-v1\",\"scraper_step\":0,\"scraper_type\":\"json-ld\",\"shard_id\":\"lightpanda-b0\",\"source_url\":\"https://jobs.example.test/posting\",\"task_id\":\"11111111-1111-1111-1111-111111111111\",\"task_kind\":\"scrape\",\"timeout_ms\":5000,\"wait\":\"load\",\"wait_fallback\":null}",
+    "payload_sha256": "a486f72df1dccdf1e0494c55ec86b5a06264bae73613be02204e295e6824fdaf",
+    "claim_token": "7:11",
+    "lease_until_ms": 10000,
+    "browser_result": "ChJjcmF3bGVyLnJ1bnRpbWUvdjEQAlLGAQohaHR0cHM6Ly9qb2JzLmV4YW1wbGUudGVzdC9wb3N0aW5nEMgBGp0BClUQDxpAYjc1ZjBhYWFlN2QyMGRkNDUzMjU1MDhjZjJkZDRhYTFhODU0NDVlYTliMjVjMmRjNzg4MDM4ZGZmNzBiZjM4YVIPPHA+RW5naW5lZXI8L3A+EA8aQGI3NWYwYWFhZTdkMjBkZDQ1MzI1NTA4Y2YyZGQ0YWExYTg1NDQ1ZWE5YjI1YzJkYzc4ODAzOGRmZjcwYmYzOGEgAQ=="
+  },
+  "html": "<p>Engineer</p>",
+  "messages": [
+    {
+      "message": {
+        "type": "authorize",
+        "claim_token": "7:11",
+        "lease_until_ms": 10000
+      },
+      "frame_base64": "QHsiY2xhaW1fdG9rZW4iOiI3OjExIiwibGVhc2VfdW50aWxfbXMiOjEwMDAwLCJ0eXBlIjoiYXV0aG9yaXplIn0="
+    },
+    {
+      "message": {
+        "type": "committed",
+        "claim_token": "7:11",
+        "lease_until_ms": 11000,
+        "next_ready_at_ms": 12000
+      },
+      "frame_base64": "WXsiY2xhaW1fdG9rZW4iOiI3OjExIiwibGVhc2VfdW50aWxfbXMiOjExMDAwLCJuZXh0X3JlYWR5X2F0X21zIjoxMjAwMCwidHlwZSI6ImNvbW1pdHRlZCJ9"
+    },
+    {
+      "message": {
+        "type": "authority_lost",
+        "error": "postgres_write_fence_rejected"
+      },
+      "frame_base64": "QXsiZXJyb3IiOiJwb3N0Z3Jlc193cml0ZV9mZW5jZV9yZWplY3RlZCIsInR5cGUiOiJhdXRob3JpdHlfbG9zdCJ9"
+    },
+    {
+      "message": {
+        "type": "route_attested",
+        "shard_id": "lightpanda-b0",
+        "routing_epoch": 7
+      },
+      "frame_base64": "Rnsicm91dGluZ19lcG9jaCI6Nywic2hhcmRfaWQiOiJsaWdodHBhbmRhLWIwIiwidHlwZSI6InJvdXRlX2F0dGVzdGVkIn0="
+    }
+  ]
+}

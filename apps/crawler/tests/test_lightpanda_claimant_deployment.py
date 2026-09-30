@@ -816,25 +816,24 @@ def test_enabled_overlay_is_explicit_exclusive_and_exactly_bounded() -> None:
     assert int(executor["mem_limit"]) == 384 * 1024 * 1024  # type: ignore[index]
     assert int(executor["memswap_limit"]) == 384 * 1024 * 1024  # type: ignore[index]
     assert executor["command"] == [  # type: ignore[index]
-        "/app/.venv/bin/python",
-        "-m",
-        "src.lightpanda.executor",
+        "/usr/local/bin/go-lightpanda-b0-executor",
     ]
     assert executor["healthcheck"]["test"] == [  # type: ignore[index]
         "CMD",
-        "/usr/local/bin/lightpanda-b0-supervisor",
-        "executor-health",
+        "/usr/local/bin/go-lightpanda-b0-executor",
+        "--health",
     ]
-    assert executor["healthcheck"]["timeout"] == "15s"  # type: ignore[index]
+    assert executor["healthcheck"]["timeout"] == "3s"  # type: ignore[index]
     assert executor["healthcheck"]["interval"] == "5s"  # type: ignore[index]
     assert executor["healthcheck"]["retries"] == 3  # type: ignore[index]
     # Three attempts can span beyond the executor's 15-second commit bound
     # while keeping its DB pool at one.
-    assert 2 * 5 + 3 * 15 > 15
+    assert 2 * 5 + 3 * 3 > 15
     assert executor["environment"] == {  # type: ignore[index]
         "CRAWLER_DB_POOL_MAX": "1",
         "CRAWLER_DB_POOL_MIN": "1",
         "CRAWLER_DB_ROLE": "lightpanda-b0-executor",
+        "GOMEMLIMIT": "288MiB",
         "LIGHTPANDA_B0_EXECUTOR_MODE": "enabled",
         "LIGHTPANDA_B0_EXECUTOR_SOCKET": "/run/jobseek-lightpanda-executor/executor.sock",
         "LIGHTPANDA_B0_ROUTING_EPOCH": "7",

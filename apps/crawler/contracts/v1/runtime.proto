@@ -690,6 +690,15 @@ message EvaluationValue {
   ExtensionEnvelope value = 2;
 }
 
+// Only resource-level policy headers from the correlated top-level document.
+// Presence with no values attests that the producer inspected that response;
+// absence means the producer did not supply policy evidence. Neither arbitrary
+// headers nor credentials are carried. Values are strict UTF-8, <=8192 bytes.
+message ResourcePolicySignals {
+  optional string tdm_reservation_header = 1;
+  optional string tdm_policy_header = 2;
+}
+
 message BrowserSuccess {
   string final_url = 1;
   optional uint32 status = 2;
@@ -698,6 +707,7 @@ message BrowserSuccess {
   repeated CapturedValue captures = 5;
   repeated EvaluationValue evaluations = 6;
   repeated ArtifactHandle artifacts = 7;
+  optional ResourcePolicySignals resource_policy = 8;
 }
 
 message BrowserFailure {

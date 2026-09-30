@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "oracle": "Python 3.13 src.processing.cpu",
+  "occupations": {
+    "software-engineer": 41,
+    "data-engineer": 52
+  },
+  "seniorities": {
+    "senior": 7,
+    "junior": 3,
+    "intern": 9
+  },
+  "technologies": {
+    "python": 4,
+    "go": 2,
+    "postgresql": 4
+  },
+  "rates": {
+    "CHF": 1.05,
+    "USD": 0.9
+  },
+  "titles": [
+    {
+      "titles": [
+        "Senior Software Engineer"
+      ],
+      "employment_type": null,
+      "ids": [
+        41,
+        7
+      ]
+    },
+    {
+      "titles": [
+        "Senior Software Engineer"
+      ],
+      "employment_type": "INTERNSHIP",
+      "ids": [
+        41,
+        9
+      ]
+    },
+    {
+      "titles": [
+        "Junior Data Engineer",
+        "Senior Software Engineer"
+      ],
+      "employment_type": null,
+      "ids": [
+        52,
+        7
+      ]
+    },
+    {
+      "titles": [],
+      "employment_type": "intern",
+      "ids": [
+        null,
+        9
+      ]
+    },
+    {
+      "titles": [
+        "Unmatched Title"
+      ],
+      "employment_type": null,
+      "ids": [
+        null,
+        null
+      ]
+    }
+  ],
+  "descriptions": [
+    {
+      "description": "",
+      "technology_ids": null,
+      "salary": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "experience": [
+        null,
+        null
+      ]
+    },
+    {
+      "description": "<p>Python, Go and PostgreSQL. Salary CHF 100000-120000 yearly; 5+ years of experience.</p>",
+      "technology_ids": [
+        4
+      ],
+      "salary": [
+        100000,
+        120000,
+        "CHF",
+        "yearly",
+        105000
+      ],
+      "experience": [
+        5.0,
+        null
+      ]
+    },
+    {
+      "description": "<p>Salary $25.51/hr. 2 to 4 years of experience.</p>",
+      "technology_ids": null,
+      "salary": [
+        2551,
+        null,
+        "USD",
+        "hourly",
+        47755
+      ],
+      "experience": [
+        4.0,
+        null
+      ]
+    }
+  ]
+}

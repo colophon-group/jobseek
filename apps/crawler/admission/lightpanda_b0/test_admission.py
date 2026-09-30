@@ -140,11 +140,13 @@ def test_compose_counts_real_producer_inside_equal_lane() -> None:
     services = yaml.safe_load(compose)["services"]
     assert services["executor"]["healthcheck"]["test"] == [
         "CMD",
-        "/usr/local/bin/lightpanda-b0-supervisor",
-        "executor-health",
+        "/usr/local/bin/go-lightpanda-b0-executor",
+        "--health",
     ]
     assert services["executor"]["healthcheck"]["timeout"] == "3s"
     assert services["executor"]["healthcheck"]["interval"] == "5s"
+    assert services["executor"]["command"] == ["/usr/local/bin/go-lightpanda-b0-executor"]
+    assert services["executor"]["ulimits"] == {"nofile": {"soft": 64, "hard": 64}}
     assert services["executor"]["cpus"] == 1.0
     assert services["control"]["cpus"] == sum(
         services[name]["cpus"] for name in ("producer", "supervisor", "executor", "renderer")
@@ -216,7 +218,7 @@ def _numeric_evidence() -> dict[str, Any]:
             {
                 "service": service,
                 "memory_max": cap,
-                "memory_peak_bytes": cap // 4,
+                "memory_peak_bytes": cap // (4 if lane == "candidate" else 2),
                 "memory_peak_before": cap // 8,
                 "networks": [f"{project}_claim", f"{project}_origin"]
                 if service in {"renderer", "control"}
@@ -225,9 +227,33 @@ def _numeric_evidence() -> dict[str, Any]:
                 "state_status": "running",
                 "healthcheck_present": service != "renderer",
                 "health_status": None if service == "renderer" else "healthy",
+                "health_interval_ns": {
+                    "producer": 5_000_000_000,
+                    "executor": 5_000_000_000,
+                    "supervisor": 10_000_000_000,
+                    "control": 30_000_000_000,
+                }.get(service),
+                "native_ownership": {
+                    "runtime": "go",
+                    "processes": [
+                        {
+                            "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                            "uid": 10001,
+                            "nofile": 64,
+                        }
+                    ],
+                    "read_only": True,
+                    "tmpfs_bytes": 32 * 1024**2,
+                }
+                if service == "executor"
+                else None,
                 "restart_count": 0,
                 "oom_killed": False,
                 "memory_events_delta": {"oom": 0, "oom_kill": 0},
+                "memory_events_lifetime": {"oom": 0, "oom_kill": 0},
+                "cpu_seconds": (1.0 if lane == "candidate" else 2.0) / len(caps),
+                "startup_cpu_seconds": 0.5 / len(caps),
+                "lifetime_cpu_seconds": (1.5 if lane == "candidate" else 2.5) / len(caps),
             }
             for service, cap in caps.items()
         ]
@@ -238,6 +264,7 @@ def _numeric_evidence() -> dict[str, Any]:
                 "concurrency": concurrency,
                 "lane": lane,
                 "project": project,
+                "startup_taxonomy": dict(admission.STARTUP_TAXONOMY),
                 "arm": {
                     "feed": 4 * concurrency,
                     "persisted": 4 * concurrency,
@@ -256,6 +283,7 @@ def _numeric_evidence() -> dict[str, Any]:
                     "fixture_aliases": [f"origin-{index}.lane.bench.test" for index in range(4)],
                 },
                 "resource": {
+                    **controller.lifetime_resource(services),
                     "samples": 60,
                     "retention_seconds": 5,
                     "peak_bytes": peak,
@@ -312,3 +340,123 @@ def test_numeric_gate_requires_parity_and_repeatable_efficiency() -> None:
             arm["resource"]["peak_bytes"] = 1_400_000_000
             arm["resource"]["sampled_peak_bytes"] = 1_400_000_000
     assert "density" in controller.evaluate(evidence)["reasons"]
+
+
+def test_numeric_gate_rejects_python_or_missing_native_owner() -> None:
+    for ownership in (None, {}, {"runtime": "python"}, {"runtime": "go", "processes": []}):
+        evidence = _numeric_evidence()
+        executor = next(
+            row
+            for row in evidence["arms"][0]["resource"]["services"]
+            if row["service"] == "executor"
+        )
+        executor["native_ownership"] = ownership
+        assert "c1-p1/candidate:native_ownership" in controller.evaluate(evidence)["reasons"]
+
+
+def test_live_proc_limits_accept_linux_padding_and_reject_changed_owner() -> None:
+    status = "Name:\tnative-executor\nUid:\t10001\t10001\t10001\t10001\n"
+    limits = (
+        "Limit                     Soft Limit           Hard Limit           Units\n"
+        "Max open files            64                   64                   files     \n"
+    )
+    assert controller.native_process_limits_match(status, limits)
+    assert not controller.native_process_limits_match(status.replace("10001", "0", 1), limits)
+    assert not controller.native_process_limits_match(status, limits.replace("64", "1024", 1))
+    assert not controller.native_process_limits_match(status, "")
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "missing",
+        "startup_omitted",
+        "nan",
+        "counter_reset",
+        "aggregate_mismatch",
+        "unbounded_peak",
+        "startup_oom",
+        "startup_swap",
+    ],
+)
+def test_lifetime_gate_rejects_incomplete_or_invalid_startup_evidence(damage: str) -> None:
+    evidence = _numeric_evidence()
+    resource = evidence["arms"][0]["resource"]
+    service = resource["services"][0]
+    if damage == "missing":
+        resource.pop("lifetime_cpu_window")
+    elif damage == "startup_omitted":
+        service["lifetime_cpu_seconds"] = service["cpu_seconds"]
+    elif damage == "nan":
+        service["startup_cpu_seconds"] = float("nan")
+    elif damage == "counter_reset":
+        service["cpu_seconds"] = -1
+    elif damage == "aggregate_mismatch":
+        resource["lifetime_cpu_seconds"] += 1
+    elif damage == "unbounded_peak":
+        service["memory_peak_bytes"] = resource["limit_bytes"]
+        resource.update(controller.lifetime_resource(resource["services"]))
+    elif damage == "startup_oom":
+        service["memory_events_lifetime"]["oom_kill"] = 1
+    elif damage == "startup_swap":
+        service["memory_events_lifetime"]["swap_fail"] = 1
+    assert "c1-p1/candidate:lifetime_resources" in controller.evaluate(evidence)["reasons"]
+
+
+def test_lifetime_bound_is_separate_from_synchronized_density() -> None:
+    evidence = _numeric_evidence()
+    verdict = controller.evaluate(evidence)
+    assert verdict["admitted"]
+    resource = evidence["arms"][0]["resource"]
+    assert resource["lifetime_cpu_seconds"] > resource["cpu_seconds"]
+    assert resource["lifetime_peak_upper_bound_bytes"] > resource["sampled_peak_bytes"]
+    assert verdict["pair_metrics"][0]["lifetime_cpu_seconds_candidate"] == 1.5
+    assert verdict["pair_metrics"][0]["peak_rss_ratio"] == 0.5
+
+
+def test_startup_census_cannot_accept_empty_or_changed_taxonomies() -> None:
+    for changed in (
+        {},
+        {**admission.STARTUP_TAXONOMY, "location_name": 0},
+        {**admission.STARTUP_TAXONOMY, "profile": "empty"},
+    ):
+        evidence = _numeric_evidence()
+        evidence["arms"][0]["startup_taxonomy"] = changed
+        assert "c1-p1/candidate:startup_taxonomy" in controller.evaluate(evidence)["reasons"]
+
+
+def test_worker_health_cadence_matches_production_runtime() -> None:
+    services = yaml.safe_load((HERE / "compose.yml").read_text())["services"]
+    production = yaml.safe_load((HERE.parents[1] / "docker-compose.yml").read_text())["services"]
+    overlay = yaml.safe_load((HERE.parents[1] / "lightpanda-b0-enabled.override.yml").read_text())[
+        "services"
+    ]
+    assert (
+        services["producer"]["healthcheck"]["interval"]
+        == overlay["lightpanda-producer"]["healthcheck"]["interval"]
+    )
+    assert (
+        services["executor"]["healthcheck"]["interval"]
+        == overlay["lightpanda-executor"]["healthcheck"]["interval"]
+    )
+    assert services["executor"]["command"] == overlay["lightpanda-executor"]["command"]
+    assert services["executor"]["healthcheck"] == overlay["lightpanda-executor"]["healthcheck"]
+    assert (
+        services["executor"]["environment"]["GOMEMLIMIT"]
+        == overlay["lightpanda-executor"]["environment"]["GOMEMLIMIT"]
+    )
+    assert (
+        services["supervisor"]["healthcheck"]["interval"]
+        == production["lightpanda-claimant"]["healthcheck"]["interval"]
+    )
+    assert (
+        services["control"]["healthcheck"]["interval"]
+        == production["browser-1"]["healthcheck"]["interval"]
+    )
+
+
+def test_admission_rejects_accelerated_control_health_cost() -> None:
+    evidence = _numeric_evidence()
+    control = next(arm for arm in evidence["arms"] if arm["lane"] == "control")
+    control["resource"]["services"][0]["health_interval_ns"] = 1_000_000_000
+    assert "c1-p1/control:liveness_or_network" in controller.evaluate(evidence)["reasons"]

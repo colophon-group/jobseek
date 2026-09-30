@@ -11,13 +11,13 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/url"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -58,119 +58,17 @@ func (r routeIdentity) validate() error {
 	return nil
 }
 
-type taskEnvelope struct {
-	SchemaVersion          string          `json:"schema_version"`
-	TaskKind               string          `json:"task_kind"`
-	TaskID                 string          `json:"task_id"`
-	BoardID                string          `json:"board_id"`
-	SourceURL              string          `json:"source_url"`
-	PolicyKey              string          `json:"policy_key"`
-	Domain                 string          `json:"domain"`
-	ShardID                string          `json:"shard_id"`
-	RoutingEpoch           int64           `json:"routing_epoch"`
-	EngineOwner            string          `json:"engine_owner"`
-	ConfigRevision         int64           `json:"config_revision"`
-	InitialReadyAtMS       int64           `json:"initial_ready_at_ms"`
-	BrowserBackend         string          `json:"browser_backend"`
-	RoutingRevision        string          `json:"routing_revision"`
-	ScraperType            string          `json:"scraper_type"`
-	ScraperStep            int64           `json:"scraper_step"`
-	Render                 bool            `json:"render"`
-	Wait                   string          `json:"wait"`
-	WaitFallback           *string         `json:"wait_fallback"`
-	TimeoutMS              int64           `json:"timeout_ms"`
-	ParserConfig           json.RawMessage `json:"parser_config"`
-	AssignmentDigestSHA256 string          `json:"assignment_digest_sha256"`
-}
-
-type queueTask struct {
-	Envelope      taskEnvelope
-	Payload       string
-	PayloadSHA256 string
-	PayloadSHA1   string
-	// Local fresh-context ordinal; never part of the queue identity or payload.
-	RenderAttempt int
-}
+type taskEnvelope = b0task.Envelope
+type queueTask b0task.Task
 
 func decodeQueueTask(payload, expectedDigest string, route routeIdentity) (queueTask, error) {
-	if len(payload) == 0 || len(payload) > maxPayload || !hex256.MatchString(expectedDigest) {
-		return queueTask{}, errors.New("invalid task payload bounds")
-	}
-	digest := sha256.Sum256([]byte(payload))
-	if hex.EncodeToString(digest[:]) != expectedDigest {
-		return queueTask{}, errors.New("task payload digest mismatch")
-	}
-	decoder := json.NewDecoder(strings.NewReader(payload))
-	decoder.DisallowUnknownFields()
-	var envelope taskEnvelope
-	if err := decoder.Decode(&envelope); err != nil {
-		return queueTask{}, fmt.Errorf("decode task envelope: %w", err)
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return queueTask{}, errors.New("task payload has trailing JSON")
-	}
-	parsed, err := url.Parse(envelope.SourceURL)
-	if err != nil || parsed.Scheme != "https" || parsed.Hostname() != envelope.Domain || parsed.User != nil || parsed.Fragment != "" || (parsed.Port() != "" && parsed.Port() != "443") {
-		return queueTask{}, errors.New("invalid task source URL")
-	}
-	if envelope.SchemaVersion != "lightpanda-b0-task-v1" || envelope.TaskKind != "scrape" ||
-		!safeID.MatchString(envelope.TaskID) || !safeID.MatchString(envelope.BoardID) ||
-		envelope.PolicyKey != queuePolicyKey || !safeDomain.MatchString(envelope.Domain) ||
-		envelope.ShardID != route.ShardID || envelope.RoutingEpoch != route.RoutingEpoch || envelope.EngineOwner != route.EngineOwner ||
-		envelope.ConfigRevision < 1 || envelope.ConfigRevision > maxInteger || envelope.InitialReadyAtMS < 0 || envelope.InitialReadyAtMS > maxInteger ||
-		envelope.BrowserBackend != "lightpanda" || !safeRevision.MatchString(envelope.RoutingRevision) ||
-		(envelope.ScraperType != "json-ld" && envelope.ScraperType != "dom") || envelope.ScraperStep != 0 || !envelope.Render || !validNavigationWait(envelope.Wait) ||
-		envelope.TimeoutMS < 1 || envelope.TimeoutMS > 120_000 || !hex256.MatchString(envelope.AssignmentDigestSHA256) ||
-		len(envelope.ParserConfig) < 2 || envelope.ParserConfig[0] != '{' {
-		return queueTask{}, errors.New("task envelope violates B0 identity")
-	}
-	canonicalAssignment, err := canonicalAssignmentJSON(envelope.ParserConfig)
-	if err != nil {
-		return queueTask{}, err
-	}
-	assignmentDigest := sha256.Sum256(canonicalAssignment)
-	if hex.EncodeToString(assignmentDigest[:]) != envelope.AssignmentDigestSHA256 {
-		return queueTask{}, errors.New("task assignment digest mismatch")
-	}
-	if err := validateParserConfig(envelope); err != nil {
-		return queueTask{}, err
-	}
-	legacy := sha1.Sum([]byte(payload)) //nolint:gosec
-	return queueTask{Envelope: envelope, Payload: payload, PayloadSHA256: expectedDigest, PayloadSHA1: hex.EncodeToString(legacy[:])}, nil
+	task, err := b0task.Decode(payload, expectedDigest, b0task.Route{ShardID: route.ShardID, RoutingEpoch: route.RoutingEpoch, EngineOwner: route.EngineOwner})
+	return queueTask(task), err
 }
-
 func canonicalAssignmentJSON(raw json.RawMessage) ([]byte, error) {
-	value, err := parseCanonicalValue(raw)
-	if err != nil {
-		return nil, errors.New("task parser config is invalid")
-	}
-	encoded, err := canonicalJSON(value, true)
-	if err != nil {
-		return nil, errors.New("task parser config cannot be canonicalized")
-	}
-	return encoded, nil
+	return b0task.CanonicalAssignmentJSON(raw)
 }
-
-func validateParserConfig(envelope taskEnvelope) error {
-	metadata := struct {
-		ScraperType  string          `json:"scraper_type"`
-		ParserConfig json.RawMessage `json:"scraper_config"`
-	}{envelope.ScraperType, envelope.ParserConfig}
-	raw, err := json.Marshal(metadata)
-	if err != nil {
-		return errors.New("task parser config is invalid")
-	}
-	_, assignment, err := producerAssignment(string(raw))
-	if err != nil {
-		return err
-	}
-	if assignment.routingRevision != envelope.RoutingRevision || assignment.timeoutMS != envelope.TimeoutMS ||
-		assignment.digest != envelope.AssignmentDigestSHA256 || assignment.scraperType != envelope.ScraperType ||
-		assignment.wait != envelope.Wait || !sameOptionalString(assignment.waitFallback, envelope.WaitFallback) {
-		return errors.New("task parser config disagrees with assignment")
-	}
-	return nil
-}
+func validateParserConfig(envelope taskEnvelope) error { return b0task.ValidateParserConfig(envelope) }
 
 type transition struct {
 	Decision       string

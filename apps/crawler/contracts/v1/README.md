@@ -51,3 +51,11 @@ Compatibility rules:
    before comparison, and absence is distinct from an explicit empty value.
 5. No runtime may write final crawl state without the queue lease and database
    guards documented in `queue.md`.
+
+The additive `BrowserSuccess.resource_policy` field carries only bounded
+resource-level TDM response signals from the correlated main document. An empty
+present message attests header inspection; absence is legacy/unknown coverage,
+not a header-free response. The native B0 executor requires presence before
+parsing. Existing optional-field compatibility remains; strict deployed
+consumers must be upgraded during a supported cold release before the new
+renderer emits it. `resourcepolicy/` validates the shape without fetching URLs.

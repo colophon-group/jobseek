@@ -22,6 +22,8 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+	resourcepolicy "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/resourcepolicy"
 )
 
 const (
@@ -84,11 +86,12 @@ type TaskEvaluation struct {
 
 // Result contains only data from the top-level document.
 type Result struct {
-	Status      int             `json:"status"`
-	FinalURL    string          `json:"final_url"`
-	HTML        string          `json:"html"`
-	HTMLPresent bool            `json:"-"`
-	Expression  json.RawMessage `json:"expression"`
+	ResourcePolicy *runtimev1.ResourcePolicySignals `json:"-"`
+	Status         int                              `json:"status"`
+	FinalURL       string                           `json:"final_url"`
+	HTML           string                           `json:"html"`
+	HTMLPresent    bool                             `json:"-"`
+	Expression     json.RawMessage                  `json:"expression"`
 }
 
 type managedProcess interface {
@@ -742,9 +745,11 @@ func fetchVersion(ctx context.Context, client *http.Client, endpoint string) (st
 type chromedpExecutor struct{}
 
 type mainDocumentResponse struct {
-	status   int64
-	url      string
-	loaderID cdp.LoaderID
+	resourcePolicy *runtimev1.ResourcePolicySignals
+	policyInvalid  bool
+	status         int64
+	url            string
+	loaderID       cdp.LoaderID
 }
 
 type mainDocumentFrame struct {
@@ -816,7 +821,9 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 			return
 		}
 		responseMu.Lock()
+		signals, invalid := mainDocumentPolicySignals(eventResponse.Response.Headers)
 		latestResponse = mainDocumentResponse{
+			resourcePolicy: signals, policyInvalid: invalid,
 			status:   eventResponse.Response.Status,
 			url:      eventResponse.Response.URL,
 			loaderID: eventResponse.LoaderID,
@@ -877,6 +884,9 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	capturedResponse := latestResponse
 	responseMu.Unlock()
 	mainStatus, err := correlateMainDocumentSnapshot(capturedResponse, capturedFrame, finalURL)
+	if capturedResponse.policyInvalid {
+		return Result{}, errors.New("invalid main-document policy signals")
+	}
 	if err != nil {
 		return Result{}, err
 	}
@@ -904,11 +914,12 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	}
 
 	return Result{
-		Status:      int(mainStatus),
-		FinalURL:    finalURL,
-		HTML:        html,
-		HTMLPresent: true,
-		Expression:  expression,
+		Status:         int(mainStatus),
+		ResourcePolicy: capturedResponse.resourcePolicy,
+		FinalURL:       finalURL,
+		HTML:           html,
+		HTMLPresent:    true,
+		Expression:     expression,
 	}, nil
 }
 
@@ -946,4 +957,30 @@ func serializeExpressionResult(remoteObject *runtime.RemoteObject) (json.RawMess
 		return nil, errors.New("expression returned invalid JSON")
 	}
 	return value, nil
+}
+
+// CDP signals belong to the same main-frame/loader/URL snapshot as the status.
+// Ambiguous duplicate names are rejected rather than selecting by map order.
+func mainDocumentPolicySignals(headers network.Headers) (*runtimev1.ResourcePolicySignals, bool) {
+	signals := &runtimev1.ResourcePolicySignals{}
+	for name, raw := range headers {
+		var target **string
+		switch strings.ToLower(name) {
+		case "tdm-reservation":
+			target = &signals.TdmReservationHeader
+		case "tdm-policy":
+			target = &signals.TdmPolicyHeader
+		default:
+			continue
+		}
+		value, ok := raw.(string)
+		if !ok || *target != nil {
+			return nil, true
+		}
+		*target = &value
+	}
+	if !resourcepolicy.Valid(signals) {
+		return nil, true
+	}
+	return signals, false
 }

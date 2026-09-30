@@ -1,23 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"io"
 	"math"
-	"math/big"
 	"os"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
+	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -649,174 +644,12 @@ type producerAssignmentIdentity struct {
 }
 
 func producerAssignment(rawMetadata string) (map[string]any, producerAssignmentIdentity, error) {
-	metadataValue, err := parseCanonicalValue([]byte(rawMetadata))
-	if err != nil {
-		return nil, producerAssignmentIdentity{}, errors.New("B0 board metadata is invalid")
-	}
-	metadata, ok := metadataValue.(map[string]any)
-	if !ok {
-		return nil, producerAssignmentIdentity{}, errors.New("B0 board metadata is not an object")
-	}
-	scraperType := "json-ld"
-	if rawType, present := metadata["scraper_type"]; present {
-		var valid bool
-		scraperType, valid = rawType.(string)
-		if !valid || scraperType == "" {
-			return nil, producerAssignmentIdentity{}, errors.New("B0 board scraper type is invalid")
-		}
-	}
-	configValue := metadata["scraper_config"]
-	if encoded, ok := configValue.(string); ok {
-		configValue, err = parseCanonicalValue([]byte(encoded))
-		if err != nil {
-			return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment is invalid")
-		}
-	}
-	config, ok := configValue.(map[string]any)
-	if !ok || (scraperType != "json-ld" && scraperType != "dom") {
-		return nil, producerAssignmentIdentity{}, errors.New("allowlisted board has no supported parser assignment")
-	}
-	allowed := set(
-		"browser_backend", "routing_revision", "render", "timeout", "wait", "wait_fallback",
-		"defaults", "defaults_by_url", "enrich", "ignore_address_region", "ignore_date_posted",
-		"ignore_locations", "ignore_valid_through",
-	)
-	booleanKeys := []string{"ignore_address_region", "ignore_date_posted", "ignore_locations", "ignore_valid_through"}
-	if scraperType == "dom" {
-		booleanKeys = []string{"include_header_content", "include_document_title", "include_document_description"}
-		allowed = set("browser_backend", "routing_revision", "render", "timeout", "wait", "wait_fallback", "defaults", "defaults_by_url", "enrich", "steps", "scope", "preset", "defaults_by_regex", "gone_url_pattern", "include_header_content", "include_document_title", "include_document_description")
-		if err := validateProducerDOMConfig(config); err != nil {
-			return nil, producerAssignmentIdentity{}, err
-		}
-	}
-	if !keysWithin(config, allowed) {
-		return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment has unknown fields")
-	}
-	for _, key := range []string{"browser_backend", "routing_revision", "render", "timeout", "wait", "wait_fallback"} {
-		if _, ok := config[key]; !ok {
-			return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment is incomplete")
-		}
-	}
-	revision, revisionOK := config["routing_revision"].(string)
-	timeoutMS, timeoutOK := canonicalInt(config["timeout"])
-	wait, waitOK := config["wait"].(string)
-	var fallback *string
-	if config["wait_fallback"] != nil {
-		value, valid := config["wait_fallback"].(string)
-		if !valid || !validNavigationWait(value) {
-			return nil, producerAssignmentIdentity{}, errors.New("B0 parser fallback is invalid")
-		}
-		fallback = &value
-	}
-	if backend, ok := config["browser_backend"].(string); !ok || backend != "lightpanda" || !revisionOK ||
-		!safeRevision.MatchString(revision) || config["render"] != true || !waitOK || !validNavigationWait(wait) ||
-		(scraperType == "json-ld" && (wait != "load" || fallback != nil)) || !timeoutOK || timeoutMS < 1 || timeoutMS > 120_000 {
-		return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment identity is invalid")
-	}
-	for _, key := range booleanKeys {
-		if value, ok := config[key]; ok {
-			if _, valid := value.(bool); !valid {
-				return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment boolean is invalid")
-			}
-		}
-	}
-	jobFields := set("title", "description", "locations", "employment_type", "job_location_type", "date_posted", "base_salary", "language", "extras", "metadata")
-	if defaults, ok := config["defaults"]; ok && defaults != nil {
-		values, valid := defaults.(map[string]any)
-		if !valid || (scraperType == "json-ld" && !keysWithin(values, jobFields)) {
-			return nil, producerAssignmentIdentity{}, errors.New("B0 parser defaults are invalid")
-		}
-	}
-	if defaultsByURL, ok := config["defaults_by_url"]; ok && defaultsByURL != nil {
-		values, valid := defaultsByURL.(map[string]any)
-		if !valid {
-			return nil, producerAssignmentIdentity{}, errors.New("B0 parser URL defaults are invalid")
-		}
-		for _, raw := range values {
-			nested, valid := raw.(map[string]any)
-			if !valid || (scraperType == "json-ld" && !keysWithin(nested, jobFields)) {
-				return nil, producerAssignmentIdentity{}, errors.New("B0 parser URL defaults are invalid")
-			}
-		}
-	}
-	if enrich, ok := config["enrich"]; ok && enrich != nil {
-		values, valid := enrich.([]any)
-		if !valid {
-			return nil, producerAssignmentIdentity{}, errors.New("B0 parser enrich fields are invalid")
-		}
-		for _, raw := range values {
-			field, valid := raw.(string)
-			if !valid || !contains(jobFields, field) {
-				return nil, producerAssignmentIdentity{}, errors.New("B0 parser enrich fields are invalid")
-			}
-		}
-	}
-	canonical, err := canonicalJSON(config, true)
-	if err != nil || len(canonical) > 256*1024 {
-		return nil, producerAssignmentIdentity{}, errors.New("B0 parser assignment exceeds its bound")
-	}
-	digest := sha256.Sum256(canonical)
-	return config, producerAssignmentIdentity{
-		routingRevision: revision, timeoutMS: timeoutMS, scraperType: scraperType, wait: wait, waitFallback: fallback, digest: hex.EncodeToString(digest[:]),
-	}, nil
+	config, a, err := b0task.ResolveAssignment(rawMetadata)
+	return config, producerAssignmentIdentity{routingRevision: a.RoutingRevision, timeoutMS: a.TimeoutMS, scraperType: a.ScraperType, wait: a.Wait, waitFallback: a.WaitFallback, digest: a.Digest}, err
 }
-
-func validNavigationWait(value string) bool {
-	return value == "commit" || value == "domcontentloaded" || value == "load" || value == "networkidle"
-}
-
-func sameOptionalString(left, right *string) bool {
-	return (left == nil && right == nil) || (left != nil && right != nil && *left == *right)
-}
-
-func validateProducerDOMConfig(config map[string]any) error {
-	invalid := errors.New("B0 DOM parser configuration is invalid")
-	steps, ok := config["steps"].([]any)
-	if !ok || len(steps) == 0 {
-		return invalid
-	}
-	for _, raw := range steps {
-		if _, ok := raw.(map[string]any); !ok {
-			return invalid
-		}
-	}
-	if preset := config["preset"]; preset != nil && preset != "elementor-careers" {
-		return invalid
-	}
-	if raw, present := config["scope"]; present {
-		scope, ok := raw.(string)
-		if !ok || len([]rune(scope)) > 256 || strings.TrimSpace(scope) == "" || strings.ContainsRune(scope, 0) {
-			return invalid
-		}
-	}
-	if raw, present := config["gone_url_pattern"]; present {
-		if _, ok := raw.(string); !ok {
-			return invalid
-		}
-	}
-	if raw, present := config["defaults_by_regex"]; present {
-		rules, ok := raw.([]any)
-		if !ok || len(rules) < 1 || len(rules) > 20 {
-			return invalid
-		}
-		for _, rawRule := range rules {
-			rule, ok := rawRule.(map[string]any)
-			if !ok || len(rule) != 3 || !keysWithin(rule, set("field", "pattern", "defaults")) {
-				return invalid
-			}
-			if _, ok := rule["field"].(string); !ok {
-				return invalid
-			}
-			if _, ok := rule["pattern"].(string); !ok {
-				return invalid
-			}
-			if _, ok := rule["defaults"].(map[string]any); !ok {
-				return invalid
-			}
-		}
-	}
-	return nil
-}
+func validNavigationWait(value string) bool                 { return b0task.ValidNavigationWait(value) }
+func sameOptionalString(left, right *string) bool           { return b0task.SameOptionalString(left, right) }
+func validateProducerDOMConfig(config map[string]any) error { return b0task.ValidateDOMConfig(config) }
 
 func buildProducerTask(request producerRequest, route routeIdentity, parserConfig map[string]any, assignment producerAssignmentIdentity, revision int64) (queueTask, error) {
 	envelope := map[string]any{
@@ -875,167 +708,18 @@ func producerLegacyConfig(config map[string]string, task queueTask, scheduleScor
 	return string(encoded), nil
 }
 
-func canonicalInt(value any) (int64, bool) {
-	number, ok := value.(json.Number)
-	if !ok || strings.ContainsAny(string(number), ".eE") {
-		return 0, false
-	}
-	parsed, err := strconv.ParseInt(string(number), 10, 64)
-	return parsed, err == nil && strconv.FormatInt(parsed, 10) == string(number)
-}
-
+func canonicalInt(value any) (int64, bool) { return b0task.CanonicalInt(value) }
 func keysWithin(values map[string]any, allowed map[string]struct{}) bool {
-	for key := range values {
-		if !contains(allowed, key) {
-			return false
-		}
-	}
-	return true
+	return b0task.KeysWithin(values, allowed)
 }
-
-func parseCanonicalValue(raw []byte) (any, error) {
-	if !utf8.Valid(raw) {
-		return nil, errors.New("invalid UTF-8 JSON")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
-		return nil, err
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return nil, errors.New("trailing JSON")
-	}
-	return value, nil
-}
-
+func parseCanonicalValue(raw []byte) (any, error) { return b0task.ParseCanonicalValue(raw) }
 func canonicalJSON(value any, ensureASCII bool) ([]byte, error) {
-	return appendCanonicalJSON(nil, value, ensureASCII)
+	return b0task.CanonicalJSON(value, ensureASCII)
 }
-
-func appendCanonicalJSON(output []byte, value any, ensureASCII bool) ([]byte, error) {
-	switch typed := value.(type) {
-	case nil:
-		return append(output, "null"...), nil
-	case bool:
-		return strconv.AppendBool(output, typed), nil
-	case string:
-		return appendCanonicalString(output, typed, ensureASCII)
-	case json.Number:
-		number, err := canonicalNumber(string(typed))
-		return append(output, number...), err
-	case int:
-		return strconv.AppendInt(output, int64(typed), 10), nil
-	case int64:
-		return strconv.AppendInt(output, typed, 10), nil
-	case map[string]string:
-		converted := make(map[string]any, len(typed))
-		for key, item := range typed {
-			converted[key] = item
-		}
-		return appendCanonicalJSON(output, converted, ensureASCII)
-	case map[string]any:
-		keys := make([]string, 0, len(typed))
-		for key := range typed {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		output = append(output, '{')
-		for index, key := range keys {
-			if index != 0 {
-				output = append(output, ',')
-			}
-			var err error
-			output, err = appendCanonicalString(output, key, ensureASCII)
-			if err != nil {
-				return nil, err
-			}
-			output = append(output, ':')
-			output, err = appendCanonicalJSON(output, typed[key], ensureASCII)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return append(output, '}'), nil
-	case []any:
-		output = append(output, '[')
-		for index, item := range typed {
-			if index != 0 {
-				output = append(output, ',')
-			}
-			var err error
-			output, err = appendCanonicalJSON(output, item, ensureASCII)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return append(output, ']'), nil
-	default:
-		encoded, err := json.Marshal(value)
-		if err != nil {
-			return nil, err
-		}
-		parsed, err := parseCanonicalValue(encoded)
-		if err != nil {
-			return nil, err
-		}
-		return appendCanonicalJSON(output, parsed, ensureASCII)
-	}
-}
-
-func canonicalNumber(raw string) (string, error) {
-	if !strings.ContainsAny(raw, ".eE") {
-		integer := new(big.Int)
-		if _, ok := integer.SetString(raw, 10); !ok {
-			return "", errors.New("invalid JSON integer")
-		}
-		return integer.String(), nil
-	}
-	value, err := strconv.ParseFloat(raw, 64)
-	if err != nil || math.IsInf(value, 0) || math.IsNaN(value) {
-		return "", errors.New("invalid JSON number")
-	}
-	result := strconv.FormatFloat(value, 'g', -1, 64)
-	if !strings.ContainsAny(result, ".eE") {
-		result += ".0"
-	}
-	return result, nil
-}
-
+func canonicalNumber(raw string) (string, error) { return b0task.CanonicalNumber(raw) }
 func appendCanonicalString(output []byte, value string, ensureASCII bool) ([]byte, error) {
-	if !utf8.ValidString(value) {
-		return nil, errors.New("invalid UTF-8 string")
-	}
-	const hexDigits = "0123456789abcdef"
-	output = append(output, '"')
-	for _, current := range value {
-		switch current {
-		case '"', '\\':
-			output = append(output, '\\', byte(current))
-		case '\b':
-			output = append(output, '\\', 'b')
-		case '\f':
-			output = append(output, '\\', 'f')
-		case '\n':
-			output = append(output, '\\', 'n')
-		case '\r':
-			output = append(output, '\\', 'r')
-		case '\t':
-			output = append(output, '\\', 't')
-		default:
-			if current < 0x20 || (ensureASCII && current > 0x7f) {
-				values := []rune{current}
-				if current > 0xffff {
-					adjusted := current - 0x10000
-					values = []rune{0xd800 + adjusted>>10, 0xdc00 + adjusted&0x3ff}
-				}
-				for _, unit := range values {
-					output = append(output, '\\', 'u', hexDigits[unit>>12&0xf], hexDigits[unit>>8&0xf], hexDigits[unit>>4&0xf], hexDigits[unit&0xf])
-				}
-			} else {
-				output = utf8.AppendRune(output, current)
-			}
-		}
-	}
-	return append(output, '"'), nil
+	return b0task.AppendCanonicalString(output, value, ensureASCII)
+}
+func appendCanonicalJSON(output []byte, value any, ensureASCII bool) ([]byte, error) {
+	return b0task.AppendCanonicalJSON(output, value, ensureASCII)
 }

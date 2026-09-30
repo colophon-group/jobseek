@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "scope": "local macOS ARM64 native startup loader against a read-only production core-taxonomy snapshot restored to isolated PostgreSQL 18.6; no production process resource or write-ownership claim",
+  "snapshot": {
+    "observed_at": "2026-09-30T16:08:46.248861+00:00",
+    "sha256": "5f1a58aca45ddb700159795dccf783d3a0e10cf1270c77e17712c0040c234d29",
+    "bytes": 17212591,
+    "location_rows": 37526,
+    "core_location_name_rows": 143004,
+    "all_locale_location_name_rows": 572486,
+    "technology_rows": 186,
+    "occupation_rows": 91,
+    "seniority_rows": 9,
+    "currency_rate_rows": 31,
+    "name_locales": [
+      "en",
+      "de",
+      "fr",
+      "it",
+      "alt",
+      ""
+    ],
+    "raw_snapshot_committed": false
+  },
+  "test": {
+    "name": "TestPostgresNativePrivateTaxonomySnapshot",
+    "passed": true,
+    "loaded_location_rows": 37526,
+    "indexed_name_pairs": 118206,
+    "english_display_names": 37526,
+    "index_bytes": 7806976,
+    "loader_elapsed_ms": 1347,
+    "postgres_connections": 1,
+    "index_permission": "0600",
+    "index_directory_permission": "0700",
+    "private_tmpfs_limit_bytes": 33554432,
+    "fixed_geographic_case_passed": true,
+    "index_cleanup_passed": true
+  },
+  "limits": [
+    "Elapsed time is local macOS loader time, excluding snapshot decoding and fixture import.",
+    "No Linux installed-image CPU, aggregate RAM, tmpfs transient peak or attributable-cost claim.",
+    "Core startup name coverage is complete; non-core locale names remain available through the existing bounded backfill path and its separate tests.",
+    "The synthetic Linux profile uses these row cardinalities with generated values; it does not prove equality to the actual production taxonomy or publisher data."
+  ]
+}

@@ -450,6 +450,109 @@ jobs:
           LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
             "$integration_binary" -test.run '^TestRealRedisPersistenceVerify$' -test.count=1
 
+  test-go-b0-executor:
+    name: Test Go Lightpanda B0 Executor
+    needs: changes
+    if: needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_b0_executor_test
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_b0_executor_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        ports:
+          - 6384:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL: redis://127.0.0.1:6384/15
+      LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_b0_executor_test
+      JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_b0_executor_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/lightpanda-b0-executor/go.mod
+          cache-dependency-path: apps/crawler/go/lightpanda-b0-executor/go.sum
+
+      - name: Migrate isolated PostgreSQL 17 executor fixture
+        working-directory: apps/crawler
+        run: |
+          uv sync --frozen --group dev
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
+
+      - name: Test native transactions, conversations, Linux peers and health
+        working-directory: apps/crawler/go/lightpanda-b0-executor
+        run: |
+          go test -race ./...
+          go -C ../publisher-policy test -race ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -o "$RUNNER_TEMP/go-lightpanda-b0-executor-arm64" ./cmd/live
+
+      - name: Verify real Redis expiry, stale settlement and conservation
+        working-directory: apps/crawler/go/lightpanda-b0-executor
+        run: go test -race -tags integration -run '^TestPrivateRedisAuthorityExpiryAndConservation$' -count=1 .
+
+      - name: Verify installed native executor UID, capacity and recovery
+        working-directory: apps/crawler/go/lightpanda-b0-executor
+        run: |
+          set -euo pipefail
+          executor_binary="/tmp/jobseek-native-b0-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          integration_binary="/tmp/jobseek-native-b0-integration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
+          test ! -e /app/data
+          test ! -e /run/jobseek-lightpanda-executor
+          go build -trimpath -o "$executor_binary" ./cmd/live
+          go test -c -tags integration -o "$integration_binary" .
+          chmod 0755 "$executor_binary" "$integration_binary"
+          sudo install -d -m 0755 /app/data
+          sudo install -m 0444 ../../data/occupations.csv ../../data/technologies.csv /app/data/
+          sudo install -d -m 0700 -o 10001 -g 10001 /run/jobseek-lightpanda-executor
+          cleanup() {
+            sudo rm -f /run/jobseek-lightpanda-executor/executor.sock
+            sudo rmdir /run/jobseek-lightpanda-executor
+            sudo rm -f /app/data/occupations.csv /app/data/technologies.csv
+            sudo rmdir /app/data
+            rm -f "$executor_binary" "$integration_binary"
+          }
+          trap cleanup EXIT
+          sudo env \
+            JOBSEEK_B0_EXECUTOR_INTEGRATION_BINARY="$executor_binary" \
+            JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL="$JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL" \
+            JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL="$JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL" \
+            "$integration_binary" \
+            -test.run '^TestInstalledNativeExecutorStartupBudgetHealthAndRecovery$' \
+            -test.count=1
+
   test-go-r2-drain:
     name: Test Go R2 drain
     needs: changes
@@ -682,6 +785,11 @@ jobs:
             -e LOCAL_DATABASE_URL -e CRAWLER_DB_ROLE=lightpanda-b0-ci-migration \
             jobseek-crawler-slim-ci:pr \
             uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
+          # Reference tables are imported separately in production. This
+          # disposable service DB needs their native startup columns/data too.
+          docker exec -i "${{ job.services.postgres.id }}" \
+            psql -U crawler -d crawler -v ON_ERROR_STOP=1 \
+            < apps/crawler/go/lightpanda-b0-executor/testdata/startup-fixture.sql
           epoch_json="$(docker run --rm --network host \
             -e LOCAL_DATABASE_URL -e CRAWLER_DB_ROLE=lightpanda-b0-ci-allocator \
             jobseek-crawler-slim-ci:pr \
@@ -1909,6 +2017,7 @@ jobs:
       - changes
       - test-go-http-pilot
       - test-go-b0-supervisor
+      - test-go-b0-executor
       - test-go-r2-drain
       - test-go-typesense-exporter
       - test-go-dom-extractor
@@ -1973,6 +2082,7 @@ jobs:
           requireSuccess("data-validation");
           requireSuccess("test-go-http-pilot", goHttpPilot);
           requireSuccess("test-go-b0-supervisor", crawlerCode);
+          requireSuccess("test-go-b0-executor", crawlerCode);
           requireSuccess("test-go-typesense-exporter", crawlerCode);
           requireSuccess("test-go-dom-extractor", crawlerCode);
           requireSuccess("dependency-review", eventName === "pull_request" && code);

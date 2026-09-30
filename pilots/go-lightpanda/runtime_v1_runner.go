@@ -116,9 +116,10 @@ func (runner runtimeV1Runner) Run(
 		html = []byte{}
 	}
 	raw := &lightpandaadapter.RawSuccess{
-		FinalURL: result.FinalURL,
-		Status:   &status,
-		HTML:     html,
+		FinalURL:       result.FinalURL,
+		ResourcePolicy: result.ResourcePolicy,
+		Status:         &status,
+		HTML:           html,
 	}
 	if len(input.Plan.Evaluations) == 1 {
 		raw.Evaluations = []lightpandaadapter.RawEvaluation{{
