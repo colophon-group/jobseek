@@ -61,8 +61,15 @@ complete canonical task, including required zero/null fields, and rejects change
 route/owner, whitespace in source URLs and invalid claims before authorization.
 Frozen Python JSON-LD/DOM/Unicode task identities match.
 
+Native location loading now streams the same PostgreSQL core rows through
+this pool into a private 0700-directory/0600-file SQLite index. It preserves
+name variants/deduplication, English display preference, mutable lookup
+serialization, 500-key non-core backfill and the monotone negative cache.
+Real isolated PostgreSQL tests pass for core matching, Japanese backfill,
+549 negative keys, the single-connection budget and owned index cleanup.
+B0 still discards taxonomy-miss telemetry. No production loader is replaced yet.
+
 Remaining work: the complete task authorization/commit handler and startup
-environment guards; current board/parser identity checks; direct reusable Go parsing/enrichment; native taxonomy/index
-loading/backfill within this pool; reserved-content policy and classification;
+environment guards; current board/parser identity checks; direct reusable Go parsing/enrichment; remaining taxonomy ID/rate loading and enrichment assembly; reserved-content policy and classification;
 complete crash/lease-loss/reversal tests; Docker/CI integration and an inactive
 candidate checkpoint. Follow the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md).
