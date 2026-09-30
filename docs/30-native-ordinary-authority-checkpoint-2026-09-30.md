@@ -100,7 +100,7 @@ a canonical update then rejects a newly disabled board. Observations change
 no queue state and activate no write fence. Candidate VERSION is v0.13.904.
 
 An eligibility observation grants no later authority. The next implementation
-must persist verified active membership and bind both native and legacy claims
+must bind the durable membership below to both native and legacy claims
 atomically before any pop, with bounded progress past unselected heads/domains,
 preserved global priority/fairness/rate/repair behavior and fail-closed handling
 of missing/corrupt projection or complete Redis loss. Canonical status and ready
@@ -110,6 +110,36 @@ policy is proven. Native processing and installed crash/cold reversal follow.
 The stacked PR automatically runs ordinary contracts/deploy-gate only; its final
 retargeted runtime needs fresh Required CI, installed/admission and actual gate
 proof. The parent B0 admission does not prove native ordinary execution.
+
+## Durable ownership continuation
+
+Implementation `6a71c4c9961ec8a4c0680b7906c985e92f8c0677` in draft
+[PR #10210](https://github.com/colophon-group/jobseek/pull/10210) adds migration
+0036 and an immutable staged/active/retired cohort document. Its exact payload
+SHA256 binds the global epoch, source revision, supported member identities and
+stable configuration hashes. Canonical staging rolls back a partial inventory
+and changes no Redis state; exact active readback rejects stale source or epoch.
+PostgreSQL retains retired identities and permits one active plan. Transitions
+wait for ordinary lease transactions; readback avoids a row/barrier lock inversion.
+Generic unbound Go claim/write/heartbeat/settlement operations reject an active
+plan before queue mutations or callbacks.
+
+The actual PostgreSQL 18.6 migration passed upgrade/down0034/re-upgrade, followed
+by full PostgreSQL/private Redis races (15.575 seconds), production Go reaper
+races (2.225 seconds), Go vet/module/format and migration Ruff checks. The 78
+runtime/migration contract tests passed. Exact-source Linux PostgreSQL 17/private
+Redis jobs passed on AMD64 and ARM64 in
+[run 36790040524](https://github.com/colophon-group/jobseek/actions/runs/36790040524).
+The [portable ownership evidence](evidence/go-ordinary-ownership-2026-10-01.json)
+records identities, proof scope and remaining gates. Local fixture processes
+and owned socket directories were cleaned up.
+
+This document is not a queue or write grant. There is no production activation
+endpoint, bound native claimant or processing executable yet. Legacy Python
+claims are not changed by this slice. Before activation, install atomic selection
+for both owners with exact startup/projection identities, missing/corrupt/full
+Redis loss protection and full native processing through supported all-writer
+cutover and cold reversal. Production remains unchanged and the full goal active.
 
 ## Next delivery and completion gates
 

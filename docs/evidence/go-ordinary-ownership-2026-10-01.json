@@ -1,0 +1,64 @@
+{
+  "schema": "jobseek.migration.ordinary-ownership-evidence/v1",
+  "implementation_head": "6a71c4c9961ec8a4c0680b7906c985e92f8c0677",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "draft": true,
+  "selected_in_production": false,
+  "linux": {
+    "source_head": "6a71c4c9961ec8a4c0680b7906c985e92f8c0677",
+    "run": 36790040524,
+    "url": "https://github.com/colophon-group/jobseek/actions/runs/36790040524",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "databaseId": 110140533495,
+        "name": "Ordinary queue private PostgreSQL/Redis (amd64)",
+        "conclusion": "success",
+        "status": "completed",
+        "completedAt": "2026-09-30T23:15:41Z",
+        "url": "https://github.com/colophon-group/jobseek/actions/runs/36790040524/job/110140533495"
+      },
+      {
+        "databaseId": 110140533870,
+        "name": "Ordinary queue private PostgreSQL/Redis (arm64)",
+        "conclusion": "success",
+        "status": "completed",
+        "completedAt": "2026-09-30T23:15:58Z",
+        "url": "https://github.com/colophon-group/jobseek/actions/runs/36790040524/job/110140533870"
+      }
+    ],
+    "scope": "actual PostgreSQL17 migrationhead/down0034/uphead and private Redis/full race/reaper/vet/module/format on LinuxAMD64+ARM64; no installed ordinary processing or production activation"
+  },
+  "local": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "full_race_seconds": 15.575,
+    "production_reaper_race_seconds": 2.225,
+    "migration": "head/down0034/head passed",
+    "runtime_migration_contract_tests": 78,
+    "vet_module_format_ruff": "passed",
+    "cleanup": true
+  },
+  "verified": [
+    "canonical staging is all-or-nothing with no queue effects",
+    "payload hash, required envelope and canonical supported members bound",
+    "one active plan; identity immutable; retired history cannot reactivate/delete",
+    "exact active source/epoch readback; stale source/epoch fails",
+    "activation waits for ordinary lease barrier; readback avoids row/barrier inversion",
+    "unbound Go claims/writes/heartbeat/settlement reject active membership before effects"
+  ],
+  "not_verified": [
+    "atomic BEFORE-pop native/legacy eligibility",
+    "projection integrity/missing/full Redis loss fail closed for both owners",
+    "bound native claimant and rich inventory processing",
+    "installed ordinary executable actual cancellation/crash before acknowledgement",
+    "supported all-writer ownership activation and cold reversal",
+    "new-head Required CI/full installed/admission and actual green Crawler Deploy Gate",
+    "all enabled profile/runtime coverage and whole-service cost",
+    "production rollback window and Python/Playwright/Chromium retirement"
+  ],
+  "production": "unchanged; v0.13.902, revision b75ccb9456bf29c9477f9747c0c2cc3908ad79bb, native B0 epoch145; no fresh health attestation",
+  "full_goal": "active; incomplete"
+}
