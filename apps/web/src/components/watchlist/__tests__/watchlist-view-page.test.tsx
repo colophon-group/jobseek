@@ -238,8 +238,27 @@ describe("WatchlistViewPage private detail", () => {
     const filterGrid = filterControl.parentElement;
     expect(filterGrid?.className).toContain("space-y-3");
 
-    const narrowButton = screen.getByRole("button", { name: "View" });
+    const narrowButton = screen.getByRole("button", { name: "All results" });
     expect(screen.getAllByTestId("job-list")[0]?.contains(narrowButton)).toBe(true);
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    expect(mocks.jobListProps.mock.calls.find(
+      ([props]) => props.resultMode === "broad",
+    )?.[0].drawerOpen).toBe(true);
+    expect(mocks.jobListProps.mock.calls.find(
+      ([props]) => props.resultMode === "narrowed",
+    )?.[0].aiFilterScopeReady).toBe(true);
+
+    fireEvent.click(narrowButton);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(mocks.jobListProps.mock.calls.filter(
+      ([props]) => props.resultMode === "broad",
+    ).at(-1)?.[0].drawerOpen).toBe(false);
+
+    fireEvent.click(filterControl);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
   });
 
   it("keeps owner mutations hidden until the hydrated client confirms the session", async () => {
@@ -287,6 +306,8 @@ describe("WatchlistViewPage private detail", () => {
   });
 
   it("shows a saved narrowed feed on a shared watchlist even when the rollout flag is off", () => {
+    mocks.isLoggedIn = false;
+    mocks.plan = "free";
     renderPage(false, {}, false, 24, {
       watchlistId: detail.id,
       enabled: true,
@@ -306,7 +327,11 @@ describe("WatchlistViewPage private detail", () => {
       latestEventSequence: 1,
     });
 
-    expect(screen.getByRole("button", { name: "View" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All results" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    expect(mocks.jobListProps.mock.calls.find(
+      ([props]) => props.resultMode === "broad",
+    )?.[0].drawerOpen).toBe(true);
     expect(mocks.jobListProps.mock.calls.some(
       ([props]) => (props as { sharedSnapshot?: boolean }).sharedSnapshot === true,
     )).toBe(true);

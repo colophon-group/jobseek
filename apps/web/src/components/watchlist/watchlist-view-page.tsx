@@ -447,7 +447,12 @@ export function WatchlistViewPage({
   const [aiMatchCount, setAiMatchCount] = useState<number>(
     initialAiAcceptedPage?.total ?? initialAiFilterState?.counts.accepted ?? 0,
   );
-  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const initiallyNarrowed = Boolean(
+    initialAiFilterState?.enabled && initialAiFilterState.query.trim(),
+  );
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(
+    initiallyNarrowed && (!isOwner || (canManage && plan === "unlimited")),
+  );
   const scopeRevisionRef = useRef(0);
   const [scopeRevision, setScopeRevision] = useState(0);
   const [persistedScopeRevision, setPersistedScopeRevision] = useState(0);
@@ -953,6 +958,7 @@ export function WatchlistViewPage({
         : undefined}
       presentation="drawer"
       readOnly={!canManage}
+      defaultOpen={initiallyNarrowed}
       onDrawerOpenChange={setAiDrawerOpen}
       drawerContent={(isOpen) => aiFilterState?.enabled ? (
         <WatchlistJobList

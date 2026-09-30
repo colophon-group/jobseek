@@ -55,7 +55,7 @@ type Props = {
   onDrawerOpenChange?: (open: boolean) => void;
   /** Shared watchlists can expose saved results without owner mutation controls. */
   readOnly?: boolean;
-  /** Start a read-only shared result preview with its drawer expanded. */
+  /** Start with the narrowed results expanded when the viewer has access. */
   defaultOpen?: boolean;
 };
 
@@ -274,7 +274,9 @@ export function AiSearchFilter({
     candidateCount: isSearchPending ? undefined : candidateCount,
   });
   const resumeCanOpen = resumeRequested && eligibility.status === "eligible";
-  const [open, setOpen] = useState(resumeCanOpen || (readOnly && defaultOpen));
+  const [open, setOpen] = useState(resumeCanOpen || (
+    defaultOpen && eligibility.status !== "subscription_required"
+  ));
   const [query, setQuery] = useState(persistedQuery ?? "");
   const [isApplying, setIsApplying] = useState(false);
   const [activeQuery, setActiveQuery] = useState<string | null>(persistedQuery);
@@ -302,6 +304,14 @@ export function AiSearchFilter({
       );
     }
   }, [eligibility.status, isDrawer, onDrawerOpenChange]);
+
+  useEffect(() => {
+    if (isDrawer) {
+      onDrawerOpenChange?.(
+        open && activeQuery !== null && eligibility.status !== "subscription_required",
+      );
+    }
+  }, [activeQuery, eligibility.status, isDrawer, onDrawerOpenChange, open]);
 
   const clearResumeRequest = useCallback(() => {
     if (!resumeRequested) return;
