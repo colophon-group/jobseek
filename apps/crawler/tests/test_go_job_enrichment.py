@@ -25,7 +25,7 @@ DATA = Path(__file__).resolve().parents[1] / "data"
 @pytest.fixture(scope="module")
 def binary(tmp_path_factory):
     path = tmp_path_factory.mktemp("go-enrichment") / "enrichment"
-    subprocess.run(["go", "test", "-race", "./..."], cwd=MODULE, capture_output=True, check=True)
+    # CI verifies Go race/vet independently; this fixture builds the bridge target.
     subprocess.run(
         ["go", "build", "-o", str(path), "./cmd/live"], cwd=MODULE, capture_output=True, check=True
     )
@@ -302,3 +302,61 @@ bridge.close_client()
         capture_output=True,
         timeout=15,
     )
+
+
+def test_shared_salary_owns_every_family_and_eur_without_python_fallback(native, monkeypatch):
+    from dataclasses import asdict
+
+    from src.core import salary_extract
+    from src.processing import cpu
+
+    cases = json.loads((MODULE / "testdata/python_salary.json").read_text())
+
+    def reject_python(*_):
+        raise AssertionError("Go salary called the Python extractor")
+
+    monkeypatch.setattr(salary_extract, "_extract_salary_python", reject_python)
+    monkeypatch.setattr(salary_extract, "_extract_salary_unified_python", reject_python)
+    monkeypatch.setattr(salary_extract, "_parse_salary_text_python", reject_python)
+    monkeypatch.setattr(cpu, "_extract_salary_fields_python", reject_python)
+    for case in cases:
+        text = case["text"]
+        assert [asdict(r) for r in salary_extract.extract_salary(text)] == case["ranges"]
+        result = salary_extract.extract_salary_unified(text)
+        assert (asdict(result) if result else None) == case["unified"]
+        assert salary_extract.parse_salary_text(text) == case["parsed"]
+        expected = case["unified"]
+        assert cpu._extract_salary_fields(text, case["rates"]) == (
+            (
+                expected["min"],
+                expected["max"],
+                expected["currency"],
+                expected["period"],
+                case["eur"],
+            )
+            if expected
+            else (None, None, None, None, None)
+        )
+    assert cpu._extract_salary_fields(None, {}) == (None,) * 5
+    child = native.proc
+    assert child is not None and child.poll() is None
+    assert _resolve_technology_ids("Python", {"python": 1}) == [1]
+    assert native.proc is child
+
+
+def test_salary_failure_reaps_without_python_fallback(native, monkeypatch):
+    from src.core.salary_extract import extract_salary
+
+    with pytest.raises(RuntimeError, match="rejected"):
+        extract_salary("USA, NV, Sparks - " + "9" * 400 + " - 30 USD hourly")
+    assert native.proc is None
+    assert extract_salary("Salary $120000/year")[0].min == 120000
+
+
+@pytest.mark.parametrize(
+    "value", [None, {}, {"ranges": [], "unified": {}, "parsed": None, "eur": None}]
+)
+def test_invalid_salary_response_fails_explicitly(native, monkeypatch, value):
+    monkeypatch.setattr(native, "request", lambda *_args, **_kw: {"salary": value})
+    with pytest.raises(ValueError, match="Go salary"):
+        bridge.salary_result("Salary $120000/year")

@@ -8,13 +8,20 @@ import json
 import resource
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 from src.core.enum_normalize import employment_type_implies_intern_level
 from src.core.experience_extract import extract_experience
 from src.core.occupation_resolve import match_occupation
+from src.core.salary_extract import (
+    _extract_salary_python,
+    _extract_salary_unified_python,
+    _parse_salary_text_python,
+)
 from src.core.seniority_resolve import match_seniority
 from src.core.technology_resolve import match_technologies
+from src.processing.cpu import _extract_salary_fields_python
 from src.runtime.job_enrichment_go import GoJobEnrichment
 from src.shared.html_normalize import _normalize_description_html_python
 from src.shared.langdetect import _detect_all_languages_python, _detect_language_python
@@ -27,7 +34,7 @@ parser.add_argument("--data-dir", type=Path, required=True)
 parser.add_argument("--rounds", type=int, default=1)
 parser.add_argument(
     "--scope",
-    choices=("classification", "experience", "normalize_html", "language"),
+    choices=("classification", "experience", "normalize_html", "language", "salary"),
     default="classification",
 )
 args = parser.parse_args()
@@ -38,6 +45,14 @@ client = GoJobEnrichment(args.binary, args.data_dir) if args.engine in {"compare
 
 
 def legacy(row):
+    if args.scope == "salary":
+        unified = _extract_salary_unified_python(row["html"])
+        return {
+            "ranges": [asdict(r) for r in _extract_salary_python(row["html"])],
+            "unified": asdict(unified) if unified else None,
+            "parsed": _parse_salary_text_python(row["html"]),
+            "eur": _extract_salary_fields_python(row["html"], row.get("rates", {}))[4],
+        }
     if args.scope == "language":
         return {
             "language": _detect_language_python(row["html"]),
@@ -63,6 +78,10 @@ def legacy(row):
 
 def native(row):
     assert client is not None
+    if args.scope == "salary":
+        return client.request("salary", description=row["html"], salary_rates=row.get("rates", {}))[
+            "salary"
+        ]
     if args.scope == "language":
         primary = client.request("language", description=row["html"])
         multi = client.request("all_languages", description=row["html"])

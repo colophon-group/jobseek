@@ -157,6 +157,7 @@ class GoJobEnrichment:
                             "occupation_seniority",
                             "technology",
                             "experience",
+                            "salary",
                             "normalize_html",
                             "language",
                             "all_languages",
@@ -297,3 +298,85 @@ def detect_all_languages(description: str) -> list[str]:
     ):
         raise ValueError("invalid Go languages")
     return values
+
+
+_SALARY_CURRENCIES = frozenset(
+    {
+        "USD",
+        "CAD",
+        "EUR",
+        "GBP",
+        "CHF",
+        "PLN",
+        "CZK",
+        "SEK",
+        "DKK",
+        "HUF",
+        "RON",
+        "BGN",
+        "AUD",
+        "NZD",
+        "SGD",
+        "HKD",
+        "BRL",
+        "MXN",
+    }
+)
+_SALARY_PERIODS = {"yearly": "year", "monthly": "month", "hourly": "hour"}
+
+
+def _salary_range_valid(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"min", "max", "currency", "period"}
+        and type(value["min"]) is int
+        and 0 <= value["min"] < 2**63
+        and (value["max"] is None or (type(value["max"]) is int and 0 <= value["max"] < 2**63))
+        and isinstance(value["currency"], str)
+        and value["currency"] in _SALARY_CURRENCIES
+        and isinstance(value["period"], str)
+        and value["period"] in _SALARY_PERIODS
+    )
+
+
+def salary_result(description: str, rates: dict[str, float] | None = None) -> dict:
+    result = client().request("salary", description=description, salary_rates=rates or {})
+    value = result.get("salary")
+    if not isinstance(value, dict) or set(value) != {"ranges", "unified", "parsed", "eur"}:
+        raise ValueError("invalid Go salary result")
+    ranges, unified, parsed, eur = (value[k] for k in ("ranges", "unified", "parsed", "eur"))
+    if (
+        not isinstance(ranges, list)
+        or not all(_salary_range_valid(r) for r in ranges)
+        or (unified is not None and not _salary_range_valid(unified))
+        or bool(ranges) != (unified is not None)
+        or (eur is not None and (type(eur) is not int or not 0 <= eur < 2**63))
+    ):
+        raise ValueError("invalid Go salary ranges")
+    if unified is None:
+        if parsed is not None or eur is not None:
+            raise ValueError("unexpected Go salary fields")
+    elif (
+        not isinstance(parsed, dict)
+        or set(parsed) != {"min", "max", "currency", "unit"}
+        or parsed["currency"] != unified["currency"]
+        or parsed["unit"] != _SALARY_PERIODS[unified["period"]]
+        or any(
+            v is not None and (type(v) not in {int, float} or not math.isfinite(v) or v < 0)
+            for v in (parsed["min"], parsed["max"])
+        )
+        or parsed["min"] is None
+        or (parsed["max"] is None) != (unified["max"] is None)
+    ):
+        raise ValueError("invalid Go parsed salary")
+    return value
+
+
+def salary_fields(description: str | None, rates: dict[str, float]):
+    if not description:
+        return None, None, None, None, None
+    result = salary_result(description, rates)
+    sr = result["unified"]
+    if sr is None:
+        return None, None, None, None, None
+    return sr["min"], sr["max"], sr["currency"], sr["period"], result["eur"]

@@ -17,7 +17,6 @@ from src.core.experience_extract import extract_experience
 from src.core.job_content import enrich_description
 from src.core.location_resolve import LocationResolver
 from src.core.occupation_resolve import match_occupation
-from src.core.salary_extract import extract_salary_unified
 from src.core.seniority_resolve import match_seniority
 from src.core.technology_resolve import match_technologies
 from src.shared.html_normalize import normalize_description_html
@@ -143,9 +142,21 @@ def _extract_salary_fields(
     salary_eur is the annualized EUR equivalent for index-based filtering;
     refreshed daily by refresh_currency_rates.py when exchange rates change.
     """
+    from src.runtime import job_enrichment_go
+
+    if job_enrichment_go.enabled():
+        return job_enrichment_go.salary_fields(html, rates)
+    return _extract_salary_fields_python(html, rates)
+
+
+def _extract_salary_fields_python(
+    html: str | None, rates: dict[str, float]
+) -> tuple[int | None, int | None, str | None, str | None, int | None]:
+    from src.core.salary_extract import _extract_salary_unified_python
+
     if not html:
         return None, None, None, None, None
-    sr = extract_salary_unified(html)
+    sr = _extract_salary_unified_python(html)
     if sr is None:
         return None, None, None, None, None
 

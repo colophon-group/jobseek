@@ -61,6 +61,12 @@ try:
         assert (
             request("all_languages", description=case["text"])["languages"] == case["languages"]
         ), "language order/coverage drift"
+    salary_cases = json.loads(Path(__file__).with_name("python_salary.json").read_text())
+    for case in salary_cases:
+        result = request("salary", description=case["text"], salary_rates=case["rates"])
+        assert result["salary"] == {k: case[k] for k in ("ranges", "unified", "parsed", "eur")}, (
+            "salary output drift"
+        )
 finally:
     proc.stdin.close()
     try:
@@ -74,5 +80,5 @@ print(
     f"Resident Go enrichment matches {len(titles)} title "
     f"and {len(cases['technologies'])} technology cases; "
     f"{len(experience_cases)} experience, {len(html_cases)} HTML "
-    f"and {len(language_cases)} language cases"
+    f"{len(language_cases)} language and {len(salary_cases)} salary cases"
 )

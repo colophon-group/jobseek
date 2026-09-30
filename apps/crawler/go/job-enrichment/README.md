@@ -1,7 +1,7 @@
 # Shared Go job enrichment
 
 The resident `job-enrichment` binary owns occupation, seniority, technology,
-experience matching, language detection and description HTML normalization for monitor and detail
+experience matching, salary extraction, language detection and description HTML normalization for monitor and detail
 processing. It loads the same read-only
 CSV taxonomy once, returns taxonomy slugs and experience bounds, and leaves
 database ID resolution to the caller. `Matcher` is directly reusable by the future native worker.
@@ -9,7 +9,7 @@ database ID resolution to the caller. `Matcher` is directly reusable by the futu
 Compose selects `JOB_ENRICHMENT_ENGINE=go`. Outside Compose the default is
 `python`; explicitly selecting `python` is the cold rollback path. There is
 no same-task Python fallback. Unknown engine names fail. The worker and
-remaining CPU stages (location, salary), scheduling
+remaining CPU stage (location), scheduling
 and persistence still run in Python. This is not the full #7966 completion.
 
 Each Python worker process creates one child on first use. A lock serializes
@@ -49,7 +49,7 @@ not whole-lane RAM, density or cost.
 Production instrumentation uses `stage="enrichment"`,
 `implementation="go-job-enrichment"`, and the bounded capabilities
 `occupation_seniority` / `technology` / `experience` / `normalize_html` /
-`language` / `all_languages`.
+`language` / `all_languages` / `salary`.
 These executions add no origin traffic.
 
 ## Description HTML normalization
@@ -127,3 +127,40 @@ check predicted labels/scores (2e-6 tolerance), public results, and corrupted
 model rejection. Shared bridge tests and installed-image offline CI check
 public output and resident reuse. `testdata/replay_stored.py --scope language`
 compares private actual descriptions and measures this stage alone.
+
+
+## Salary extraction (candidate v0.13.899)
+
+Go owns all shared salary APIs (`extract_salary`, `extract_salary_unified`,
+`parse_salary_text`) and the CPU five-field result, including annual EUR
+conversion with caller-supplied exchange rates. USD/CAD/AUD/NZD/SGD/HKD/BRL/MXN,
+EUR, GBP, CHF and PLN/CZK/SEK/DKK/HUF/RON/BGN preserve existing ordered
+patterns, number and period rules, context windows, gross/net and perk policies,
+mojibake repair, hourly cents, range/single deduplication and group tie order.
+Existing quirks (including reversed CHF ranges and whole-unit dollar ranges
+with hourly labels) are preserved. EUR annualization retains 2080 hours/year,
+12 months/year, float64 operations and ties-to-even rounding.
+
+The pinned pure-Go regexp2 v2.8.0 engine implements existing lookarounds, with
+explicit Python Unicode word/digit/space classes and ignore-case preparation.
+Patterns have a 500 ms match timeout, bounded backtracking stack and cache;
+a scan also has a five-second deadline beneath the ten-second IPC deadline.
+An overflow beyond signed 64-bit transport, regex limit or IPC error fails
+explicitly and reaps the child. No partial or empty success/Python fallback is
+returned. Existing database integer constraints remain enforced by persistence.
+The Python implementation is retained only for explicit engine reversal and
+protected offline comparisons.
+
+`testdata/generate_salary.py` freezes all existing regression strings, currency
+and period thresholds, context/magnitude failures, Unicode/mojibake inputs,
+aggregation and EUR rate behavior. Its 2,664 cases include 902 positive cases
+and all 18 supported currencies. Go race tests, all four public bridge APIs
+(with the Python oracles replaced by rejecting stubs), and installed-image
+verification consume the same frozen results. CI runs Go race/vet/mod/format
+checks separately from the Python binary-build fixture, avoiding nested Go
+suite work under pytest's per-test deadline.
+
+`testdata/replay_stored.py --scope salary` compares all salary ranges,
+unification, public parsed fields and EUR results on protected stored bytes.
+The candidate is **not deployed** at this checkpoint; see
+[`docs/24-go-lightpanda-resumption-plan.md`](../../../../docs/24-go-lightpanda-resumption-plan.md).

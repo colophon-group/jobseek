@@ -22,11 +22,12 @@ func init() {
 }
 
 type Request struct {
-	ID             uint64   `json:"id"`
-	Operation      string   `json:"operation"`
-	Titles         []string `json:"titles,omitempty"`
-	EmploymentType string   `json:"employment_type,omitempty"`
-	Description    string   `json:"description,omitempty"`
+	ID             uint64             `json:"id"`
+	Operation      string             `json:"operation"`
+	Titles         []string           `json:"titles,omitempty"`
+	EmploymentType string             `json:"employment_type,omitempty"`
+	Description    string             `json:"description,omitempty"`
+	SalaryRates    map[string]float64 `json:"salary_rates,omitempty"`
 }
 type TitleResult struct {
 	Occupation *string `json:"occupation"`
@@ -34,6 +35,7 @@ type TitleResult struct {
 }
 type Response struct {
 	ID             uint64        `json:"id"`
+	Salary         *SalaryResult `json:"salary,omitempty"`
 	Titles         []TitleResult `json:"titles,omitempty"`
 	Intern         bool          `json:"intern"`
 	Technologies   []string      `json:"technologies"`
@@ -59,6 +61,12 @@ func (m *Matcher) Process(r Request) (Response, error) {
 		out.Intern = interns[lower(strings.TrimFunc(r.EmploymentType, space))]
 	case "technology":
 		out.Technologies = m.Technologies(r.Description)
+	case "salary":
+		var err error
+		out.Salary, err = Salary(r.Description, r.SalaryRates)
+		if err != nil {
+			return out, err
+		}
 	case "experience":
 		out.ExperienceMin, out.ExperienceMax = Experience(r.Description)
 	case "language", "all_languages":
