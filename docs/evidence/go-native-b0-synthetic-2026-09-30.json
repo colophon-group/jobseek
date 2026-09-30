@@ -1,0 +1,876 @@
+{
+  "format": "jobseek.native-b0-synthetic-checkpoint/v1",
+  "workflow_run": 36735074058,
+  "workflow_url": "https://github.com/colophon-group/jobseek/actions/runs/36735074058",
+  "pr_head": "1bae9e79528aaab97c1540bb536798f740d9549d",
+  "tested_merge_checkout": "b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca",
+  "renderer_source": "b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca",
+  "report_sha256": "6a86097492095ca9ffa77c52f01ce4976272db6bf79b383077b64837a785efdb",
+  "workload_sha256": "4be1503fef65b7ac74f1085f168cd7d2e9db19060fdd8271abb7b9ca42ef5390",
+  "config_sha256": "2c7e69de8c1d334161821224756e2072d0db57ec9e803771d9cc136cf4cbf98a",
+  "image_provenance": {
+    "browser": {
+      "deploy_provenance_sha256": null,
+      "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+      "method": "image_label",
+      "observed_source_label": "b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca",
+      "reference": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+      "repo_digests": [],
+      "source_label": "org.opencontainers.image.revision",
+      "source_sha": "b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca"
+    },
+    "candidate": {
+      "deploy_provenance_sha256": null,
+      "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+      "method": "image_label",
+      "observed_source_label": "b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca",
+      "reference": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+      "repo_digests": [],
+      "source_label": "org.opencontainers.image.revision",
+      "source_sha": "b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca"
+    },
+    "renderer": {
+      "deploy_provenance_sha256": null,
+      "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+      "method": "image_label",
+      "observed_source_label": "b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca",
+      "reference": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+      "repo_digests": [],
+      "source_label": "org.jobseek.lightpanda.source-commit",
+      "source_sha": "b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca"
+    }
+  },
+  "verdict": {
+    "admitted": true,
+    "density_ratios": [
+      8.903669601145333,
+      12.561867514864993,
+      11.895770752370831,
+      21.21068761050671,
+      21.880079318500936,
+      20.792736593335047,
+      21.48741742566719,
+      21.321725954452038
+    ],
+    "pair_metrics": [
+      {
+        "cpu_seconds_candidate": 3.8125340000000003,
+        "cpu_seconds_control": 12.960291,
+        "density_ratio": 8.903669601145333,
+        "elapsed_ratio": 1.834027933738825,
+        "p99_ratio": 0.5454017557825487,
+        "pair": "c1-p1",
+        "peak_rss_ratio": 0.20598562344484378
+      },
+      {
+        "cpu_seconds_candidate": 3.930413,
+        "cpu_seconds_control": 13.35032,
+        "density_ratio": 12.561867514864993,
+        "elapsed_ratio": 2.3699766631297456,
+        "p99_ratio": 0.42341127192561034,
+        "pair": "c1-p2",
+        "peak_rss_ratio": 0.18866435745523116
+      },
+      {
+        "cpu_seconds_candidate": 3.9024870000000003,
+        "cpu_seconds_control": 13.052445,
+        "density_ratio": 11.895770752370831,
+        "elapsed_ratio": 2.3102900521277774,
+        "p99_ratio": 0.42911825827216893,
+        "pair": "c1-p3",
+        "peak_rss_ratio": 0.194211043590205
+      },
+      {
+        "cpu_seconds_candidate": 4.53778,
+        "cpu_seconds_control": 17.450279,
+        "density_ratio": 21.21068761050671,
+        "elapsed_ratio": 1.9360966567225304,
+        "p99_ratio": 0.5158712525788834,
+        "pair": "c4-p1",
+        "peak_rss_ratio": 0.09127929712959824
+      },
+      {
+        "cpu_seconds_candidate": 4.553323,
+        "cpu_seconds_control": 17.493774,
+        "density_ratio": 21.880079318500936,
+        "elapsed_ratio": 1.8985691965011444,
+        "p99_ratio": 0.5201007753064141,
+        "pair": "c4-p2",
+        "peak_rss_ratio": 0.0867715865589111
+      },
+      {
+        "cpu_seconds_candidate": 4.480483,
+        "cpu_seconds_control": 17.227121,
+        "density_ratio": 20.792736593335047,
+        "elapsed_ratio": 1.9081476736087968,
+        "p99_ratio": 0.5243134624962792,
+        "pair": "c4-p3",
+        "peak_rss_ratio": 0.09176991518376851
+      },
+      {
+        "cpu_seconds_candidate": 4.486643,
+        "cpu_seconds_control": 17.501417,
+        "density_ratio": 21.48741742566719,
+        "elapsed_ratio": 1.9198372180471273,
+        "p99_ratio": 0.5135491772965504,
+        "pair": "c4-p4",
+        "peak_rss_ratio": 0.08934704343546841
+      },
+      {
+        "cpu_seconds_candidate": 4.489429,
+        "cpu_seconds_control": 17.789262,
+        "density_ratio": 21.321725954452038,
+        "elapsed_ratio": 1.907667829514771,
+        "p99_ratio": 0.5198790239202703,
+        "pair": "c4-p5",
+        "peak_rss_ratio": 0.08947061009929379
+      }
+    ],
+    "reasons": []
+  },
+  "arms": [
+    {
+      "pair": "c1-p1",
+      "lane": "candidate",
+      "concurrency": 1,
+      "canonical_sha256": "4f5a36daf1f8fe9f57543814e7c643148d0fa9575316508a9d663e3b68386ded",
+      "feed": 4,
+      "persisted": 4,
+      "terminal": 4,
+      "writes": 4,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 3.8125340000000003,
+      "peak_bytes": 61034496,
+      "retained_bytes": 53579776,
+      "services": [
+        {
+          "service": "producer",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 33554432,
+          "memory_peak_bytes": 12656640,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "renderer",
+          "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+          "memory_max": 1073741824,
+          "memory_peak_bytes": 17166336,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "supervisor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 100663296,
+          "memory_peak_bytes": 24539136,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "executor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 402653184,
+          "memory_peak_bytes": 36749312,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": {
+            "processes": [
+              {
+                "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                "nofile": 64,
+                "uid": 10001
+              }
+            ],
+            "read_only": true,
+            "runtime": "go",
+            "tmpfs_bytes": 33554432
+          }
+        }
+      ]
+    },
+    {
+      "pair": "c1-p1",
+      "lane": "control",
+      "concurrency": 1,
+      "canonical_sha256": "4f5a36daf1f8fe9f57543814e7c643148d0fa9575316508a9d663e3b68386ded",
+      "feed": 4,
+      "persisted": 4,
+      "terminal": 4,
+      "writes": 4,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 12.960291,
+      "peak_bytes": 296304640,
+      "retained_bytes": 240001024,
+      "services": [
+        {
+          "service": "control",
+          "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+          "memory_max": 1610612736,
+          "memory_peak_bytes": 313454592,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        }
+      ]
+    },
+    {
+      "pair": "c1-p2",
+      "lane": "control",
+      "concurrency": 1,
+      "canonical_sha256": "4f5a36daf1f8fe9f57543814e7c643148d0fa9575316508a9d663e3b68386ded",
+      "feed": 4,
+      "persisted": 4,
+      "terminal": 4,
+      "writes": 4,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 13.35032,
+      "peak_bytes": 306270208,
+      "retained_bytes": 238989312,
+      "services": [
+        {
+          "service": "control",
+          "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+          "memory_max": 1610612736,
+          "memory_peak_bytes": 308396032,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        }
+      ]
+    },
+    {
+      "pair": "c1-p2",
+      "lane": "candidate",
+      "concurrency": 1,
+      "canonical_sha256": "4f5a36daf1f8fe9f57543814e7c643148d0fa9575316508a9d663e3b68386ded",
+      "feed": 4,
+      "persisted": 4,
+      "terminal": 4,
+      "writes": 4,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 3.930413,
+      "peak_bytes": 57782272,
+      "retained_bytes": 52269056,
+      "services": [
+        {
+          "service": "producer",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 33554432,
+          "memory_peak_bytes": 12611584,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "renderer",
+          "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+          "memory_max": 1073741824,
+          "memory_peak_bytes": 18194432,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "supervisor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 100663296,
+          "memory_peak_bytes": 24580096,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "executor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 402653184,
+          "memory_peak_bytes": 33619968,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": {
+            "processes": [
+              {
+                "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                "nofile": 64,
+                "uid": 10001
+              }
+            ],
+            "read_only": true,
+            "runtime": "go",
+            "tmpfs_bytes": 33554432
+          }
+        }
+      ]
+    },
+    {
+      "pair": "c1-p3",
+      "lane": "candidate",
+      "concurrency": 1,
+      "canonical_sha256": "4f5a36daf1f8fe9f57543814e7c643148d0fa9575316508a9d663e3b68386ded",
+      "feed": 4,
+      "persisted": 4,
+      "terminal": 4,
+      "writes": 4,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 3.9024870000000003,
+      "peak_bytes": 57466880,
+      "retained_bytes": 51752960,
+      "services": [
+        {
+          "service": "producer",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 33554432,
+          "memory_peak_bytes": 12582912,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "renderer",
+          "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+          "memory_max": 1073741824,
+          "memory_peak_bytes": 18489344,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "supervisor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 100663296,
+          "memory_peak_bytes": 24584192,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "executor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 402653184,
+          "memory_peak_bytes": 34275328,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": {
+            "processes": [
+              {
+                "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                "nofile": 64,
+                "uid": 10001
+              }
+            ],
+            "read_only": true,
+            "runtime": "go",
+            "tmpfs_bytes": 33554432
+          }
+        }
+      ]
+    },
+    {
+      "pair": "c1-p3",
+      "lane": "control",
+      "concurrency": 1,
+      "canonical_sha256": "4f5a36daf1f8fe9f57543814e7c643148d0fa9575316508a9d663e3b68386ded",
+      "feed": 4,
+      "persisted": 4,
+      "terminal": 4,
+      "writes": 4,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 13.052445,
+      "peak_bytes": 295899136,
+      "retained_bytes": 240488448,
+      "services": [
+        {
+          "service": "control",
+          "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+          "memory_max": 1610612736,
+          "memory_peak_bytes": 314208256,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        }
+      ]
+    },
+    {
+      "pair": "c4-p1",
+      "lane": "candidate",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 4.53778,
+      "peak_bytes": 71704576,
+      "retained_bytes": 56696832,
+      "services": [
+        {
+          "service": "producer",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 33554432,
+          "memory_peak_bytes": 12550144,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "renderer",
+          "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+          "memory_max": 1073741824,
+          "memory_peak_bytes": 33611776,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "supervisor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 100663296,
+          "memory_peak_bytes": 22536192,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "executor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 402653184,
+          "memory_peak_bytes": 38350848,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": {
+            "processes": [
+              {
+                "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                "nofile": 64,
+                "uid": 10001
+              }
+            ],
+            "read_only": true,
+            "runtime": "go",
+            "tmpfs_bytes": 33554432
+          }
+        }
+      ]
+    },
+    {
+      "pair": "c4-p1",
+      "lane": "control",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 17.450279,
+      "peak_bytes": 785551360,
+      "retained_bytes": 555753472,
+      "services": [
+        {
+          "service": "control",
+          "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+          "memory_max": 1610612736,
+          "memory_peak_bytes": 792481792,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        }
+      ]
+    },
+    {
+      "pair": "c4-p2",
+      "lane": "control",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 17.493774,
+      "peak_bytes": 789635072,
+      "retained_bytes": 546357248,
+      "services": [
+        {
+          "service": "control",
+          "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+          "memory_max": 1610612736,
+          "memory_peak_bytes": 795705344,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        }
+      ]
+    },
+    {
+      "pair": "c4-p2",
+      "lane": "candidate",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 4.553323,
+      "peak_bytes": 68517888,
+      "retained_bytes": 53342208,
+      "services": [
+        {
+          "service": "producer",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 33554432,
+          "memory_peak_bytes": 12783616,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "renderer",
+          "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+          "memory_max": 1073741824,
+          "memory_peak_bytes": 33300480,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "supervisor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 100663296,
+          "memory_peak_bytes": 22704128,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "executor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 402653184,
+          "memory_peak_bytes": 34496512,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": {
+            "processes": [
+              {
+                "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                "nofile": 64,
+                "uid": 10001
+              }
+            ],
+            "read_only": true,
+            "runtime": "go",
+            "tmpfs_bytes": 33554432
+          }
+        }
+      ]
+    },
+    {
+      "pair": "c4-p3",
+      "lane": "candidate",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 4.480483,
+      "peak_bytes": 72327168,
+      "retained_bytes": 52465664,
+      "services": [
+        {
+          "service": "producer",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 33554432,
+          "memory_peak_bytes": 12726272,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "renderer",
+          "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+          "memory_max": 1073741824,
+          "memory_peak_bytes": 34140160,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "supervisor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 100663296,
+          "memory_peak_bytes": 22237184,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "executor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 402653184,
+          "memory_peak_bytes": 35098624,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": {
+            "processes": [
+              {
+                "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                "nofile": 64,
+                "uid": 10001
+              }
+            ],
+            "read_only": true,
+            "runtime": "go",
+            "tmpfs_bytes": 33554432
+          }
+        }
+      ]
+    },
+    {
+      "pair": "c4-p3",
+      "lane": "control",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 17.227121,
+      "peak_bytes": 788135936,
+      "retained_bytes": 556695552,
+      "services": [
+        {
+          "service": "control",
+          "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+          "memory_max": 1610612736,
+          "memory_peak_bytes": 790622208,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        }
+      ]
+    },
+    {
+      "pair": "c4-p4",
+      "lane": "control",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 17.501417,
+      "peak_bytes": 790712320,
+      "retained_bytes": 545095680,
+      "services": [
+        {
+          "service": "control",
+          "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+          "memory_max": 1610612736,
+          "memory_peak_bytes": 792715264,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        }
+      ]
+    },
+    {
+      "pair": "c4-p4",
+      "lane": "candidate",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 4.486643,
+      "peak_bytes": 70647808,
+      "retained_bytes": 57110528,
+      "services": [
+        {
+          "service": "producer",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 33554432,
+          "memory_peak_bytes": 12529664,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "renderer",
+          "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+          "memory_max": 1073741824,
+          "memory_peak_bytes": 33284096,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "supervisor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 100663296,
+          "memory_peak_bytes": 22491136,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "executor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 402653184,
+          "memory_peak_bytes": 38580224,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": {
+            "processes": [
+              {
+                "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                "nofile": 64,
+                "uid": 10001
+              }
+            ],
+            "read_only": true,
+            "runtime": "go",
+            "tmpfs_bytes": 33554432
+          }
+        }
+      ]
+    },
+    {
+      "pair": "c4-p5",
+      "lane": "candidate",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 4.489429,
+      "peak_bytes": 69017600,
+      "retained_bytes": 56741888,
+      "services": [
+        {
+          "service": "producer",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 33554432,
+          "memory_peak_bytes": 12529664,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "renderer",
+          "image_id": "sha256:ad62f76bd4a4e39096911d8e9a4ee69b17c5f768f9dd48512237734b48454bcc",
+          "memory_max": 1073741824,
+          "memory_peak_bytes": 33976320,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "supervisor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 100663296,
+          "memory_peak_bytes": 22081536,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        },
+        {
+          "service": "executor",
+          "image_id": "sha256:e6c391671906771e6d9c27389cdf2bd2455e3a98e02996b9c7e7b1d9715bbdea",
+          "memory_max": 402653184,
+          "memory_peak_bytes": 38223872,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": {
+            "processes": [
+              {
+                "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                "nofile": 64,
+                "uid": 10001
+              }
+            ],
+            "read_only": true,
+            "runtime": "go",
+            "tmpfs_bytes": 33554432
+          }
+        }
+      ]
+    },
+    {
+      "pair": "c4-p5",
+      "lane": "control",
+      "concurrency": 4,
+      "canonical_sha256": "578888fd8988162705a1207af24564bb0318ae065798b877a0ea1b154501a91b",
+      "feed": 16,
+      "persisted": 16,
+      "terminal": 16,
+      "writes": 16,
+      "redis_exact": true,
+      "metrics_exact": true,
+      "cleanup_exact": true,
+      "cpu_seconds": 17.789262,
+      "peak_bytes": 771399680,
+      "retained_bytes": 555057152,
+      "services": [
+        {
+          "service": "control",
+          "image_id": "sha256:1b30738c19b6c11f748e9614ba70e8d369f50b80e42a2ea5f992352b56caf9f0",
+          "memory_max": 1610612736,
+          "memory_peak_bytes": 787275776,
+          "restart_count": 0,
+          "oom_killed": false,
+          "native_ownership": null
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Synthetic reserved fixture origins and empty/small fixture taxonomies; no publisher traffic.",
+    "Resource sampling and CPU baseline begin after startup; this report does not measure startup CPU/aggregate peaks or production attributable cost.",
+    "All candidate arms execute the native Go DB owner inside the image with UID10001, nofile64, read-only root and 32MiB private tmpfs.",
+    "This predates new resource-policy implementation head3ba0da038 and the corrected commit-before-ack crash fixture. New exact-candidate checks remain required.",
+    "No native production ownership, supported native cutover/reversal, ordinary-worker migration or final Python retirement is claimed."
+  ]
+}

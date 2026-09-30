@@ -22,7 +22,9 @@ release and epoch 141, and no fresh B0 render/commit was observed. Ordinary Go
 location calls are observed; canonical fresh B0 output remains pending natural
 processing. Do not force due times or refetch publisher pages to manufacture
 that evidence. Re-read current receipts, release identities and holds before
-any subsequent mutation.
+any subsequent mutation. A fresh read-only runtime collector at 15:41:59 UTC
+confirmed the same immutable v0.13.901 release, epoch 141 and healthy ordinary
+and B0 services; the native candidate remains unselected.
 
 ## Implemented candidate
 
@@ -104,7 +106,16 @@ The next candidate changes the synthetic ARM64 admission executor command and
 health check to Go, retaining the same 384 MiB/one-CPU/read-only/private-tmpfs
 container contract. Admission checks live executable identities, UID 10001 and
 the 64-descriptor limit before and after collection, and rejects missing or
-Python owner evidence. That complete native image/lane result is pending.
+Python owner evidence. Native whole-lane run 36735074058 subsequently passed all 16 arms and eight
+paired comparisons at PR head `1bae9e79528aaab97c1540bb536798f740d9549d`,
+tested merge checkout `b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca`.
+[Portable synthetic evidence](evidence/go-native-b0-synthetic-2026-09-30.json)
+records canonical hashes, exact queues/metrics/cleanup, live Go ownership,
+container envelopes and numeric resources. The candidate had roughly
+57–72 MiB sampled aggregate peaks; CPU and latency comparisons passed. These
+are synthetic fixture results after startup, not production-taxonomy, startup
+resource or attributable-cost proof. The subsequent policy/crash changes need
+fresh admission.
 These fixture results do not establish production write ownership.
 
 ## Pending fault and publisher-policy evidence
