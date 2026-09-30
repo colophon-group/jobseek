@@ -112,13 +112,13 @@ tested merge checkout `b0d5e99cdac7db30653aa4c1dc4e305e13dd44ca`.
 [Portable synthetic evidence](evidence/go-native-b0-synthetic-2026-09-30.json)
 records canonical hashes, exact queues/metrics/cleanup, live Go ownership,
 container envelopes and numeric resources. The candidate had roughly
-57–72 MiB sampled aggregate peaks; CPU and latency comparisons passed. These
+55–69 MiB sampled aggregate peaks; CPU and latency comparisons passed. These
 are synthetic fixture results after startup, not production-taxonomy, startup
 resource or attributable-cost proof. The subsequent policy/crash changes need
 fresh admission.
 These fixture results do not establish production write ownership.
 
-## Pending fault and publisher-policy evidence
+## Fault and publisher-policy evidence
 
 A stronger installed fixture is prepared after the passing lost-ack test. It
 holds description persistence, queues an exclusive posting-table lock, then
@@ -129,19 +129,23 @@ it can generate an acknowledgement. Its first Linux execution at head
 `1bae9e79528aaab97c1540bb536798f740d9549d` failed at the description barrier:
 the driver polls activity inside a transaction, which can retain a statistics
 snapshot. The fixture now clears that snapshot before polling; its corrected
-Linux execution remains pending. Restart must reject the same claim and
-retain the committed schedule. This uses only isolated migrated fixture tables,
-with no production fault hook or publisher request; Linux execution is pending.
+Linux execution passed in native job 109970327719 of Required CI run
+36739532630 at PR head `3ba0da038cba239250052b7830b45ed6aee39f2a`.
+The installed executable was killed after durable commit while its schedule
+read was blocked, before acknowledgement generation. Restart rejected the same
+claim and retained the committed schedule. This uses only isolated migrated
+fixture tables, with no production fault hook or publisher request. It does
+not replace Redis-linked fault or production recovery proof.
 
 The held-result policy audit identified an existing B0 boundary gap in both
 executors: `src/lightpanda/runtime.py` validates the HTML manifest and invokes
 raw Go parsers without the shared header/meta reservation check.
-`BrowserSuccess` currently carries no main-document response headers, and the
-renderer result discards CDP response headers. The native direct parser follows
-that same path. Both executors already skip stored `tdm_reserved` postings, but
-that does not prove detection or persistence of a fresh resource signal.
+Before this candidate, `BrowserSuccess` carried no main-document response
+headers and the renderer discarded CDP response headers. The native direct
+parser originally followed that path. Stored `tdm_reserved` skips alone did
+not prove detection or persistence of a fresh resource signal.
 
-The next local candidate implements that boundary with additive optional
+The candidate implements that boundary with additive optional
 `BrowserSuccess.resource_policy` signals. The renderer captures only bounded
 TDM header values from its correlated main-frame/loader/URL snapshot. The native
 executor requires signal-message presence before parsing; the fallback Python
@@ -160,7 +164,11 @@ content persistence when a reservation wins during processing.
 
 Local validation passed real isolated PostgreSQL race tests, 75 Python B0
 tests, generated-binding stability, contract/supervisor/renderer unit suites,
-and cross-compiled Linux integration/vet. Actual renderer header correlation
+and cross-compiled Linux integration/vet. The native policy and corrected
+installed crash tests also passed on Linux PostgreSQL 17 in job 109970327719.
+The renderer image build initially omitted the new shared policy package from
+its selective contract copy; the build context is corrected and compiles for
+Linux ARM64. Actual renderer header correlation
 and the complete new installed image/lane remain pending remote Linux evidence.
 Strict deployed consumers reject unknown protobuf fields, so release the new
 crawler and renderer through supported cold transitions before restoring B0;

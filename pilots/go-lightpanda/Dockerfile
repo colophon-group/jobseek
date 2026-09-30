@@ -10,6 +10,7 @@ COPY --from=contracts go.mod go.sum /workspace/apps/crawler/contracts/
 COPY --from=contracts v1/gen/go/ /workspace/apps/crawler/contracts/v1/gen/go/
 COPY --from=contracts v1/framing/ /workspace/apps/crawler/contracts/v1/framing/
 COPY --from=contracts v1/lightpandaadapter/ /workspace/apps/crawler/contracts/v1/lightpandaadapter/
+COPY --from=contracts v1/resourcepolicy/ /workspace/apps/crawler/contracts/v1/resourcepolicy/
 COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./
