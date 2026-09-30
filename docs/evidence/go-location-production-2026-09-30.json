@@ -1,0 +1,71 @@
+{
+  "schema": "jobseek.go-location-production/v1",
+  "observed_at": "2026-09-30T13:39:03.286762+00:00",
+  "migration_complete": false,
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10189",
+  "merge_commit": "ec906f05cb5c481ea988c9d8dd5ffdac29ee1454",
+  "version": "0.13.901",
+  "checked_head": "089dc82b27a11856ca7c6bc22ec0c7b5b2eb706b",
+  "checked_base": "d04bb56b9938268e83b5b7452e04fec6a9edef2c",
+  "reviewed_target_base": "fb1cf6fb2f13e7e15837e242c4e9255e71011dfa",
+  "required_ci_run": 36715107576,
+  "installed_runtime_contract_run": 36715107562,
+  "whole_lane_fixture_run": 36715107504,
+  "crawler_deploy_gate_run": 36718992804,
+  "deployment": {
+    "run_id": 36719644632,
+    "conclusion": "success",
+    "promotion": "success",
+    "release": {
+      "CRAWLER_IMAGE_TAG": "v0.13.901",
+      "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:943c0a36353da52e83908299aa61ccbf6a425f8f58048ee1720bc46f3ec1fc4d",
+      "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:b9560dd608efcf673430e2b6a8138e33dd6a31d1e544f4732392ba3458338924",
+      "JOBSEEK_DEPLOY_REVISION": "ec906f05cb5c481ea988c9d8dd5ffdac29ee1454"
+    }
+  },
+  "cold_reversal": {
+    "retired_epoch": 140,
+    "ready_restored": 21,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0
+  },
+  "reactivation": {
+    "receipt": {
+      "schema": "jobseek.lightpanda-b0-active/v1",
+      "state": "active",
+      "cohort": "cdom",
+      "namespace": "production-b0",
+      "shard_id": "lightpanda-b0",
+      "routing_epoch": "141",
+      "plan_digest": "1d07252aade2ed6f94fd807a517010481f7a98573446d642ce806757aa1514d7",
+      "compose_digest": "5270b210b5e3364b2391fd712ff3ff4ead9b88e190de550c01bb0f4e202c47c4",
+      "crawler_image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:943c0a36353da52e83908299aa61ccbf6a425f8f58048ee1720bc46f3ec1fc4d",
+      "deploy_revision": "ec906f05cb5c481ea988c9d8dd5ffdac29ee1454",
+      "activated_at_epoch": "1790775133"
+    },
+    "selected_schedules": 21,
+    "unqueued": 15,
+    "selectors_staged": 25,
+    "healthy": true,
+    "collector_errors": []
+  },
+  "natural_operations": {
+    "successful_go_location_resolutions": 80641,
+    "capability_errors": 0,
+    "fresh_b0_render_or_commit_observed": false,
+    "production_b0_database_executor": "Python"
+  },
+  "read_only_database": {
+    "observed_at": "2026-09-30T13:43:16.400984+00:00",
+    "cohort_postings": 140,
+    "active_cohort_postings": 39,
+    "fresh_cohort_scrapes_since_activation": 0,
+    "residual_write_fences": 0
+  },
+  "limits": [
+    "No fresh B0 canonical location output observed at this checkpoint.",
+    "Ordinary Go capability counters do not prove native worker or native B0 ownership.",
+    "Production location loading and backfill still run in Python.",
+    "Synthetic admission is not a production whole-lane efficiency comparison."
+  ]
+}
