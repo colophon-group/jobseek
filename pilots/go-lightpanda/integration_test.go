@@ -18,14 +18,14 @@ import (
 )
 
 var lightpandaPinnedSHA256 = map[string]string{
-	"amd64": "e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f",
-	"arm64": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f",
+	"amd64": "16ee4443e34d09c522d8c416c6096bcd5a3dffd56706b7a8e2d7d0b1172ecc62",
+	"arm64": "112d39b5020a80e2de6b828485880eb7b8271e42c5598b825a760a8688fe0b21",
 }
 
 func TestLightpandaIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda nightly 2026-09-28 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda nightly 2026-09-30 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
@@ -116,7 +116,7 @@ func TestLightpandaIntegration(t *testing.T) {
 func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda nightly 2026-09-28 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda nightly 2026-09-30 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
@@ -181,7 +181,7 @@ func TestLightpandaRuntimeV1BridgeIntegration(t *testing.T) {
 func TestLightpandaRuntimeV1StdioIntegration(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda nightly 2026-09-28 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda nightly 2026-09-30 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {
