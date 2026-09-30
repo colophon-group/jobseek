@@ -13,6 +13,11 @@
       "env": [
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
+        "VERCEL_ENV",
+        "STRIPE_ENVIRONMENT",
+        "STRIPE_CHECKOUT_ENABLED",
+        "STRIPE_PRO_PRICE_ID",
+        "STRIPE_PORTAL_CONFIGURATION_ID",
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GOOGLE_CLIENT_ID",
@@ -67,6 +72,11 @@
       "env": [
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
+        "VERCEL_ENV",
+        "STRIPE_ENVIRONMENT",
+        "STRIPE_CHECKOUT_ENABLED",
+        "STRIPE_PRO_PRICE_ID",
+        "STRIPE_PORTAL_CONFIGURATION_ID",
         "GITHUB_CLIENT_ID",
         "GITHUB_CLIENT_SECRET",
         "GOOGLE_CLIENT_ID",

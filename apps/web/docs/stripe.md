@@ -43,6 +43,14 @@ prerendering must not depend on them. Billing actions still use
 `stripeCheckoutEnabled()` and require matching server and webhook credentials.
 Verify homepage and Narrowed pricing as well as billing after launch changes.
 
+Both build tasks in `turbo.json` include the public Stripe configuration and
+`VERCEL_ENV` in `env`. Turborepo's strict environment mode otherwise removes
+those settings before Next.js prerenders, even when Vercel has supplied them.
+These inputs also invalidate the build cache when signup availability or
+billing mode changes. Verify through the deployment command,
+`pnpm turbo run build --filter=@jobseek/web`, rather than only running the
+web package's build directly. Payment secrets remain runtime requirements.
+
 The initial sandbox validation used `Job Seek sandbox`, account
 `acct_1Tvn7nAXSxyCkkob`, product `prod_VM1le5FzmYVHuL`, price
 `price_1ULJiKAXSxyCkkobd2A4rk5y`, portal `bpc_1ULJkJAXSxyCkkob4wV4FBQy`.
