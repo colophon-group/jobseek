@@ -168,7 +168,19 @@ fixture subscription. Trial access, scheduled cancellation retention, a real
 portal session, final cancellation revocation and deletion cleanup all passed.
 The fixture subscription is canceled. This proves real payload/current-state
 compatibility, not Stripe-origin webhook delivery or first Checkout binding.
-Those remain launch verification requirements.
+The live setup checks below add provider-origin delivery evidence; completed
+Checkout initial binding still requires an actual authenticated purchase.
+
+The live deployment rejected an invalid signature and accepted a locally signed
+fixture. A real live fixture subscription generated event
+`evt_1ULL9xPL7AMlx8LdbRRLcBVk`, which Stripe delivered and acknowledged at the
+configured production endpoint (`pending_webhooks=0`). The fixture customer was
+unbound to any Job Seek account, so this checked delivery/signature handling,
+not access granting. The subscription was immediately canceled without payment.
+A separate live hosted Session explicitly opted out of Managed Payments and
+showed the seven-day trial, monthly price and required policy consent. It was
+expired without completing a purchase. All eight live terms/privacy pages
+passed browser checks in en/de/fr/it.
 
 References: [Checkout subscriptions](https://docs.stripe.com/billing/subscriptions/build-subscriptions?payment-ui=checkout&ui=stripe-hosted),
 [Customer Portal](https://docs.stripe.com/customer-management/integrate-customer-portal),
