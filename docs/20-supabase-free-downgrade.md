@@ -27,21 +27,23 @@ Apply only after the PR is merged to `main`:
 
 1. Open **Actions → Web Database Migrations → Run workflow** on `main`.
 2. Select `apply` and enter `APPLY-0083`.
-3. Approve the reviewer-gated `production-migrations` environment.
-4. Retain the preflight/postflight JSON from the job summary with the downgrade
+3. Retain the preflight/postflight JSON from the job summary with the downgrade
    evidence.
 
 The workflow uses only `DATABASE_URL_UNPOOLED`, serializes runs, reserves one
 physical database session for its advisory lock, and refuses the Supabase
-transaction-pooler port. The separate, non-approving
+transaction-pooler port. The separate
 `production-migration-drift` environment exposes only a read-only role; its
 daily run verifies that the exact reconciliation hash and schema postconditions
-remain present. Do not reuse the general `production` environment: it has no
-review gate and is also needed by unattended crawler maintenance.
+remain present. The `production-migrations` environment is reserved for
+database operations; the general `production` environment is also needed by
+unattended crawler maintenance.
 
 The GitHub environments were provisioned on 2026-08-03 with protected-branch
-deployment policies. `production-migrations` requires an owner review and holds
-only `DATABASE_URL_UNPOOLED`. `production-migration-drift` holds only
+deployment policies. The manual reviewer gate on `production-migrations` was
+removed on 2026-09-30. Migration workflows validate the owner's dispatch,
+revision, confirmation, and release evidence automatically. The environment
+holds only `DATABASE_URL_UNPOOLED`. `production-migration-drift` holds only
 `DATABASE_URL_READONLY`. The latter authenticates as
 `jobseek_migration_auditor`, whose role defaults every transaction to read-only,
 has no superuser/database/role/replication/RLS-bypass attributes, cannot create
@@ -234,11 +236,10 @@ Run only after the repair release has deployed successfully from `main`:
    workflow** on `main`.
 3. Enter that SHA as `expected_crawler_revision` and enter the exact token
    `REPAIR-LOCAL-LOCATION-TAXONOMY-37526`.
-4. Approve the reviewer-gated `production-migrations` environment. The
-   preauthorization job deliberately rejects non-owner,
+4. The workflow automatically validates the owner dispatch through
+   `production-migrations`. The preauthorization job rejects non-owner,
    rerun-as-other-actor, non-main, wrong-revision, and wrong-token dispatches
-   before requesting this approval. Do not use the non-review-gated
-   `production` environment for this mutation.
+   before proceeding. No manual environment approval is required.
 5. Retain the bounded JSON evidence showing 37,526 source and local rows,
    `source_local_equal=true`, and `constraint_validated=true`.
 
@@ -313,14 +314,15 @@ downgrade issue:
 
 Then run **Actions → Web Database Migrations** from `main`, choose `apply`,
 enter `DROP-ONLY-JOB-POSTING-0086`, and provide the successful protected
-restore-drill, crawler deploy, and Typesense backfill run IDs. Before an
-environment approval is requested, the workflow checks all three successful
+restore-drill, crawler deploy, and Typesense backfill run IDs. Before validating
+the owner dispatch, the workflow checks all three successful
 main-branch runs, requires them to be the latest matching successes and no more
 than 6h/24h/4h old (restore/crawler/backfill), checks commit ancestry and exact
 reviewed bytes, and requires the current SHA's successful Vercel production
-deployment. The protected `production-migrations` job records owner approval;
-the subsequent apply job shares the crawler deploy concurrency group. After
-approval it runs the posting-floor and all-saved-posting Typesense checks, then
+deployment. The `production-migrations` job validates the owner dispatch
+without a manual review gate; the subsequent apply job shares the crawler
+deploy concurrency group. It runs the posting-floor and all-saved-posting
+Typesense checks, then
 repeats the immutable/latest/freshness/Vercel proof immediately before DDL and
 SSH-attests the exact live exporter revision, image tag, and absence of mirror
 credentials. Taxonomy readiness is not read from stale Supabase tables: the
