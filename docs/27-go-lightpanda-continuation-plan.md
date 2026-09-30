@@ -22,8 +22,12 @@ The [native checkpoint](29-native-go-b0-executor-checkpoint-2026-09-30.md) binds
 immutable images, observations and limits. Whole-service cost and fleet output
 are still incomplete. The independent ordinary queue foundation is saved in
 draft [PR #10207](https://github.com/colophon-group/jobseek/pull/10207), with real
-Linux AMD64/ARM64 Redis contracts passed. It selects no ordinary worker. Next,
-complete claim/write/settlement fencing and native ordinary processing, then
+Linux AMD64/ARM64 Redis contracts passed. It now also prepares native
+PostgreSQL attempt authority, guarded reaping and canonical deadline recovery;
+new exact-head Linux PostgreSQL/Redis proof remains a candidate gate. See the
+[ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
+It selects no ordinary worker. Next, complete exclusive effective profile
+ownership and native ordinary processing with installed fault/cold-reversal proof, then
 every enabled profile and runtime consumer before final Python/Chromium
 retirement. The full migration goal remains active.
 

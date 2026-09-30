@@ -65,6 +65,9 @@ Status tags:
 - [29 - Native Go B0 Executor Candidate (2026-09-30)](29-native-go-b0-executor-checkpoint-2026-09-30.md)
   `[runbook]` - salary rollout, native location candidate, actual taxonomy replay,
   and the remaining native executor/worker delivery boundaries.
+- [30 - Native Ordinary Worker Authority Checkpoint (2026-09-30)](30-native-ordinary-authority-checkpoint-2026-09-30.md)
+  `[runbook]` - prepared queue/database authority, guarded reaping, recovery,
+  and the next exclusive native profile/processing gates.
 
 ## Search, SEO, And Web Read Paths
 
