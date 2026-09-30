@@ -439,6 +439,12 @@ def test_worker_health_cadence_matches_production_runtime() -> None:
         services["executor"]["healthcheck"]["interval"]
         == overlay["lightpanda-executor"]["healthcheck"]["interval"]
     )
+    assert services["executor"]["command"] == overlay["lightpanda-executor"]["command"]
+    assert services["executor"]["healthcheck"] == overlay["lightpanda-executor"]["healthcheck"]
+    assert (
+        services["executor"]["environment"]["GOMEMLIMIT"]
+        == overlay["lightpanda-executor"]["environment"]["GOMEMLIMIT"]
+    )
     assert (
         services["supervisor"]["healthcheck"]["interval"]
         == production["lightpanda-claimant"]["healthcheck"]["interval"]

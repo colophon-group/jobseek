@@ -4,7 +4,9 @@ Continuation of the [full migration plan](27-go-lightpanda-continuation-plan.md)
 and [promoted location checkpoint](28-go-location-resolver-checkpoint-2026-09-30.md).
 The full migration goal remains active. This candidate is implemented on
 `fix-crawler/go-b0-native-executor`, version 0.13.902. Its Docker build installs
-`go-lightpanda-b0-executor`; the production overlay still selects Python.
+`go-lightpanda-b0-executor`; the candidate activation overlay now selects Go.
+The deployed v0.13.901 overlay still selects Python; this is a prepared cold
+release change, not a live owner change.
 No native production ownership or full production resource, fault/reversal
 or retirement proof is claimed by this checkpoint.
 
@@ -240,7 +242,8 @@ At exact head `e79622cf01e0da3d3a736617b5c71c4667872f1e`, Required CI run
 36745802510 and both architecture pilot jobs in 36745802469 passed. Native
 Linux PostgreSQL 17 job 109991854551 also passed the actual pre-acknowledgement
 crash case. That verified case has no Redis-linked recovery assertion.
-Startup-aware admission run 36745802814 remains in progress at this checkpoint.
+Startup-aware admission run 36745802814 passed at 17:12:59 UTC; its retained
+artifact and portable result are recorded below.
 
 The next test-only change links the installed crash to real dedicated Redis 8
 through the existing reviewed Lua ABI, whose source SHA-256 is
@@ -259,10 +262,46 @@ A separate real Redis expiry case passed locally under the race detector with
 isolated PostgreSQL 18.6: expired heartbeat rejected, reaping conserves the
 record, a new claim gets a new token, stale completion is rejected, and exact
 rescheduling restores one ready record with no origin holder or inflight work.
-Both cases are wired into Required CI using a dedicated loopback database 15.
-The updated Linux integration binary cross-compiles; actual installed Linux
-Redis-linked crash/recovery remains pending fresh-head CI. These are operational
-fixtures, not supported cold reversal or native production ownership.
+Both cases passed in Linux native job 110006072585 of Required CI run
+36749958480 at PR head `66bda1eff35c590eae5161b0ae146db11f27b82a`, using
+PostgreSQL 17 and the pinned Redis 8 service's dedicated loopback database 15.
+That job verifies actual installed UID10001 commit, death before acknowledgement,
+restart, real Lua lease/failure/recovery conservation, exact DB/Redis schedules,
+stale completion rejection and retained canonical/description upload effects.
+These are operational fixtures, not supported cold reversal or native production
+ownership. The subsequent overlay selection still requires fresh exact-head CI.
+
+## Startup-aware admission passed; native selection prepared
+
+[Whole-lane run 36745802814](https://github.com/colophon-group/jobseek/actions/runs/36745802814)
+passed all 16 arms/eight pairs on ARM64 at PR head
+`e79622cf01e0da3d3a736617b5c71c4667872f1e`, tested merge checkout
+`dd648a01124b2ceef62cebaa9d076b5a32ba8d5e`. The retained complete artifact is
+bound by hash in [portable startup evidence](evidence/go-native-b0-startup-synthetic-2026-09-30.json).
+Every arm matched the generated 37,526-location/143,004-name census, canonical
+output, queue/metrics and cleanup checks. No startup or sampled OOM/swap event
+or service restart occurred. Native executable/UID, read-only root, private
+32 MiB tmpfs and descriptor limits were attested.
+
+The native lane used 3.918–4.619 CPU seconds over its measured container
+lifetime versus 5.730–10.195 for the control; its startup prefix was included.
+Synchronized post-startup memory and latency yielded density ratios of
+5.55–11.70. Service lifetime peak sums are recorded only as conservative upper
+bounds, not simultaneous memory peaks. All bounds fit the lane envelope. This
+uses generated production cardinalities and actual production health cadence;
+it does not establish production-taxonomy semantics, support-service costs,
+attributable operating cost or the final whole-service resource gate.
+
+The candidate production activation overlay now selects the native binary and
+its reserved-socket health command, keeping the one-connection/384 MiB/one-CPU
+contract. Its 288 MiB Go memory limit and complete health configuration match
+the measured lane. The base ordinary workers still select Python. This pending
+configuration is not installed on the host and needs fresh exact-head CI and
+installed Redis-linked recovery. Native selection will follow the supported
+coordinated cold crawler/renderer release and current deployment authority;
+legacy release generations remain the supported complete reversal artifacts.
+Observe natural canonical output, schedules, freshness and resources after
+restoration, then continue ordinary worker ownership and enabled profiles.
 
 ## Next delivery gates
 

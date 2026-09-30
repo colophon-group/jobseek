@@ -12,6 +12,17 @@ Native executor implementation and remaining ownership gates are recorded in the
 [September 30 native B0 candidate checkpoint](29-native-go-b0-executor-checkpoint-2026-09-30.md).
 The initial review below is historical; use newer verified operational evidence first.
 
+Current delivery: shared salary and location processing are promoted at crawler
+v0.13.901. Native B0 [PR #10204](https://github.com/colophon-group/jobseek/pull/10204)
+now prepares the production Go executor selection. Its startup-aware synthetic
+ARM64 lane passed output/queue/resource admission, and its real installed Linux
+PostgreSQL/Redis commit-crash recovery passed. The updated overlay needs fresh
+exact-head CI, deployment gate authority and the supported coordinated cold
+crawler/renderer release before native production ownership. Natural output,
+resources and supported reversal follow; ordinary workers and final service
+Python/Chromium retirement remain outstanding. See the native checkpoint for
+exact tested identities and explicit limits.
+
 This initial review made no production changes and did not reread the live hosts.
 Production details below are the latest recorded checkpoint, corroborated by
 the latest successful crawler deployment, rather than a new health attestation.
