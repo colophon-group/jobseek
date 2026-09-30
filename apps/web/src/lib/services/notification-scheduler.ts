@@ -105,6 +105,8 @@ async function listEligibleUserCandidatesPage(input: {
         userId: notificationDelivery.userId,
         cadence: notificationDelivery.cadence,
         windowEnd: sql<Date>`max(${notificationDelivery.windowEnd})`.mapWith(notificationDelivery.windowEnd),
+        lastSentAt: sql<Date | null>`max(${notificationDelivery.completedAt})
+          FILTER (WHERE ${notificationDelivery.status} = 'sent')`.mapWith(notificationDelivery.completedAt),
       })
       .from(notificationDelivery)
       .where(and(
@@ -132,6 +134,12 @@ async function listEligibleUserCandidatesPage(input: {
   const completed = new Map(
     completedRows.map((row) => [identityKey(row.userId, row.cadence), row.windowEnd]),
   );
+  const lastSent = new Map<string, Date>();
+  for (const row of completedRows) {
+    if (row.lastSentAt && (!lastSent.has(row.userId) || row.lastSentAt > lastSent.get(row.userId)!)) {
+      lastSent.set(row.userId, row.lastSentAt);
+    }
+  }
   const open = new Map<string, (typeof openRows)[number]>();
   for (const row of openRows) {
     const key = identityKey(row.userId, row.cadence);
@@ -150,6 +158,7 @@ async function listEligibleUserCandidatesPage(input: {
     cadence: owner.cadence,
     notificationsStateChangedAt: owner.notificationsStateChangedAt,
     lastProcessedWindowEnd: completed.get(key) ?? null,
+    lastSentAt: lastSent.get(owner.userId) ?? null,
     openDelivery: open.has(key)
       ? {
           scheduledFor: open.get(key)!.scheduledFor,

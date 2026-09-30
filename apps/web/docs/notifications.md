@@ -117,6 +117,23 @@ weekday/hour slots are evaluated across the preceding seven days, covering a
 missed daily invocation. Both `sent` and zero-match `skipped` windows advance the
 floor. Pauses and fresh opt-ins impose later floors, preventing catch-up mail.
 
+Accepted job emails for an owner are also separated by at least 168 elapsed
+hours, measured from the last sent delivery’s `completed_at`, independently of
+its scheduled slot. Delayed launch/catch-up mail therefore cannot be followed
+by another period’s email a day or two later. Empty/skipped windows do not start
+or reset this cooldown; pause/resume and notification-choice changes do not
+reset it either. During cooldown the scheduler reports a deferral before
+hydration, matching or claims, leaving the matching floor unchanged. If the
+blocked slot leaves the seven-day sweep, the next eligible slot includes the
+retained unsent interval under the current opt-in/resume floors and filters.
+
+The delivery boundary rechecks send history under the owner policy lock before
+reserving quota or attempting the provider call. A competing period’s unknown
+acceptance also blocks submission. Boundary deferrals leave the pending claim
+recoverable without spending quota or provider attempts. Webhook reconciliation
+starts a conservative cooldown at acceptance reconciliation when the original
+response was lost. Account verification and password-reset mail are unaffected.
+
 A Redis owner-token lock excludes overlapping runners; database claims and
 uniqueness remain the correctness boundary. Sweeps process ten owners per page,
 with matching concurrency two and provider requests serialized at a bounded

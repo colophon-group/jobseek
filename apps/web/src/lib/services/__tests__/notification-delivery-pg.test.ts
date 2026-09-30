@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import type { Sql } from "postgres";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NotificationDeliveryPlan } from "@/lib/notifications/scheduler-core";
 import type { WebhookEventPayload } from "resend";
 
@@ -64,6 +64,31 @@ async function row(plan: NotificationDeliveryPlan) {
   return (await getSql()`SELECT * FROM notification_delivery WHERE id=${plan.deliveryId}`)[0]!;
 }
 
+async function completedHistory(plan: NotificationDeliveryPlan, completedAt: Date, status: "sent" | "skipped" = "sent") {
+  const id = randomUUID();
+  const end = new Date(plan.scheduledFor.getTime() - 7 * 86400000);
+  const start = new Date(end.getTime() - 7 * 86400000);
+  await getSql()`INSERT INTO notification_delivery (id, user_id, cadence, scheduled_for, window_start, window_end,
+    status, match_count, idempotency_key, completed_at, provider_attempt_count, last_provider_attempt_at, provider_message_id)
+    VALUES (${id}, ${plan.userId}, 'weekly', ${end.toISOString()}, ${start.toISOString()}, ${end.toISOString()},
+      ${status}, ${status === "sent" ? 1 : 0}, ${`history-${id}`}, ${completedAt.toISOString()}, ${status === "sent" ? 1 : 0},
+      ${status === "sent" ? completedAt.toISOString() : null}, ${status === "sent" ? `message-${id}` : null})`;
+  return id;
+}
+
+async function competingPlan(plan: NotificationDeliveryPlan): Promise<NotificationDeliveryPlan> {
+  const id = randomUUID();
+  const end = new Date(plan.scheduledFor.getTime() - 1000);
+  const key = `fixture-${id}`;
+  await getSql()`INSERT INTO notification_delivery (id, user_id, cadence, scheduled_for, window_start, window_end,
+    status, match_count, idempotency_key, updated_at)
+    VALUES (${id}, ${plan.userId}, 'weekly', ${end.toISOString()}, ${plan.windowStart.toISOString()}, ${end.toISOString()},
+      'pending', 1, ${key}, ${plan.plannedAt.toISOString()})`;
+  return { ...plan, deliveryId: id, idempotencyKey: key, scheduledFor: end, windowEnd: end };
+}
+
+afterEach(() => vi.useRealTimers());
+
 beforeAll(async () => {
     if (!process.env.NOTIFICATION_TEST_DATABASE_URL) return;
     vi.stubEnv("JOB_ALERTS_UNSUBSCRIBE_SECRET", secret);
@@ -98,6 +123,100 @@ describe.skipIf(!process.env.NOTIFICATION_TEST_DATABASE_URL)("notification deliv
     const page = await notificationSchedulerRepository.listEligibleUserCandidatesPage({ afterUserId: null, limit: 10 });
     expect(page.candidates[0]!.lastProcessedWindowEnd).toEqual(plan.windowEnd);
     expect(page.candidates[0]!.lastProcessedWindowEnd).toBeInstanceOf(Date);
+    expect(page.candidates[0]!.lastSentAt).toEqual(new Date((await row(plan)).completed_at));
+    expect(page.candidates[0]!.lastSentAt).toBeInstanceOf(Date);
+  });
+
+  it("separates accepted-send history from newer empty matching windows", async () => {
+    const plan = await fixture();
+    const acceptedAt = new Date(Date.now() - 86400000);
+    await completedHistory(plan, acceptedAt);
+    await getSql()`UPDATE notification_delivery SET status='skipped', match_count=0, completed_at=now() WHERE id=${plan.deliveryId}`;
+    const page = await notificationSchedulerRepository.listEligibleUserCandidatesPage({ afterUserId: null, limit: 10 });
+    expect(page.candidates[0]!.lastSentAt).toEqual(acceptedAt);
+    expect(page.candidates[0]!.lastProcessedWindowEnd).toEqual(plan.windowEnd);
+  });
+
+  it("blocks the observed 37-hour launch gap before matching, quota or provider work", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-29T03:19:26.572Z"));
+    const plan = await fixture();
+    await completedHistory(plan, new Date("2026-09-27T14:18:39.153Z"));
+    const original = await row(plan);
+    const result = await runNotificationScheduler({ mode: "shadow",
+      sweep: { windowStart: plan.windowStart, windowEnd: new Date(plan.windowEnd.getTime() + 1) },
+      quota: { dailyCap: 75, monthlyCap: 2400, dailyUsed: 0, monthlyUsed: 0 }, concurrency: 1,
+    });
+    expect(result.plans).toHaveLength(0);
+    expect(result.telemetry).toMatchObject({ deferred: 1, empty: 0, claimed: 0 });
+    expect(mocks.match).not.toHaveBeenCalled();
+    expect(await deliverNotificationPlan(plan, config)).toBe("deferred");
+    expect(await row(plan)).toEqual(original);
+    expect(await getSql()`SELECT * FROM notification_quota`).toHaveLength(0);
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it.each([-1, 0])("checks the exact seven-day acceptance boundary (%i ms)", async offset => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    const acceptedAt = new Date("2026-10-24T10:00:00.123Z");
+    vi.setSystemTime(new Date(acceptedAt.getTime() + 7 * 86400000 + offset));
+    const plan = await fixture();
+    await completedHistory(plan, acceptedAt);
+    expect(await deliverNotificationPlan(plan, config)).toBe(offset < 0 ? "deferred" : "sent");
+    expect(mocks.send).toHaveBeenCalledTimes(offset < 0 ? 0 : 1);
+    expect((await row(plan)).provider_attempt_count).toBe(offset < 0 ? 0 : 1);
+  });
+
+  it("does not start a cooldown for empty windows", async () => {
+    const plan = await fixture();
+    await completedHistory(plan, new Date(), "skipped");
+    const page = await notificationSchedulerRepository.listEligibleUserCandidatesPage({ afterUserId: null, limit: 10 });
+    expect(page.candidates[0]!.lastSentAt).toBeNull();
+    expect(await deliverNotificationPlan(plan, config)).toBe("sent");
+  });
+
+  it("preserves the send cooldown across pause/resume and notification-choice changes", async () => {
+    const plan = await fixture();
+    await completedHistory(plan, new Date());
+    const beforePlan = new Date(plan.plannedAt.getTime() - 1);
+    await setNotificationsPausedForUser(plan.userId, true, beforePlan);
+    await setNotificationsPausedForUser(plan.userId, false, beforePlan);
+    await getSql()`UPDATE watchlist SET alerts_enabled_at=${beforePlan.toISOString()} WHERE user_id=${plan.userId}`;
+    const plannedAt = new Date();
+    await getSql()`UPDATE notification_delivery SET updated_at=${plannedAt.toISOString()} WHERE id=${plan.deliveryId}`;
+    expect(await deliverNotificationPlan({ ...plan, plannedAt }, config)).toBe("deferred");
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("allows only one send for concurrent distinct periods of the same owner", async () => {
+    const first = await fixture();
+    const second = await competingPlan(first);
+    const outcomes = await Promise.all([deliverNotificationPlan(first, config), deliverNotificationPlan(second, config)]);
+    expect([...outcomes].sort()).toEqual(["deferred", "sent"]);
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect((await getSql()`SELECT sum(provider_attempt_count)::int AS attempts FROM notification_delivery`)[0]!.attempts).toBe(1);
+    expect((await getSql()`SELECT used FROM notification_quota`).map(r => r.used)).toEqual([1, 1]);
+    const blocked = outcomes[0] === "deferred" ? first : second;
+    // The blocked period remains recoverable without an empty window or quota reset.
+    expect((await getSql()`SELECT count(*)::int AS count FROM notification_delivery WHERE status='pending'`)[0]!.count).toBe(1);
+    expect((await row(blocked)).status).toBe("pending");
+    expect((await row(blocked)).provider_attempt_count).toBe(0);
+  });
+
+  it("blocks a different period while acceptance is unknown, then starts cooldown on reconciliation", async () => {
+    const first = await fixture();
+    const second = await competingPlan(first);
+    mocks.send.mockResolvedValueOnce({ status: "unknown", errorCode: "timeout" });
+    expect(await deliverNotificationPlan(first, config)).toBe("unknown");
+    expect(await deliverNotificationPlan(second, config)).toBe("deferred");
+    await reconcileNotificationWebhook({ type: "email.sent", data: {
+      email_id: "reconciled-cooldown", to: [`${first.userId}@example.com`],
+      tags: { notification_delivery: first.deliveryId, notification_attempt: "1" },
+    } } as unknown as WebhookEventPayload);
+    expect(await deliverNotificationPlan(second, config)).toBe("deferred");
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect((await row(second)).provider_attempt_count).toBe(0);
+    expect((await getSql()`SELECT used FROM notification_quota`).map(r => r.used)).toEqual([1, 1]);
   });
   it("can advance a now-empty period after a definitive rejected send without losing attempts", async () => {
     const plan = await fixture();
