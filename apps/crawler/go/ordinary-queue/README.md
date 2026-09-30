@@ -104,6 +104,16 @@ authority. Its effective digest excludes runtime lifecycle/learned-egress
 observations; its exact snapshot digest still binds all of them. Native
 processing must freshly validate and preserve their policy before effects.
 
+`Authority.ObserveGreenhouseMonitor` joins that observation to the actual
+enabled, active PostgreSQL board while holding the existing routing epoch
+barrier and a shared canonical row lock. It compares company/source/interval/
+throttle/browser/effective metadata settings to the current Redis hash and
+returns no profile on a stale projection, unsupported state or retired epoch.
+It neither claims work nor installs a fence. Suspect/gone/quarantined rows keep
+their current owner until native lifecycle processing is proven. Actual ready
+route membership, active-plan ownership and fresh canonical state still must be
+checked at selection; this observation grants no later authority.
+
 Bind this observation to a verified durable active plan before claiming.
 Eligibility must be checked atomically before a pop, with bounded progress past
 unselected heads on mixed domains. Legacy claimants must exclude selected

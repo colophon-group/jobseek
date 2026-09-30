@@ -41,7 +41,7 @@ func authorityError(err error) error {
 	if errors.As(err, &callback) {
 		return callback
 	}
-	for _, known := range []error{ErrAuthorityLost, ErrConfiguration, ErrObservation, context.Canceled, context.DeadlineExceeded} {
+	for _, known := range []error{ErrAuthorityLost, ErrConfiguration, ErrObservation, ErrUnsupportedProfile, context.Canceled, context.DeadlineExceeded} {
 		if errors.Is(err, known) {
 			return known
 		}
