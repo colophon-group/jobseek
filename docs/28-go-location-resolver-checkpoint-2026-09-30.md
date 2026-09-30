@@ -59,6 +59,8 @@ Follow [the salary handoff](24-go-lightpanda-salary-checkpoint-2026-09-28.md)
 for guarded commands with current authoritative identities. No forced due
 times, publisher refetches or duplicate origin probes were used.
 
+See [sanitized salary production evidence](evidence/go-salary-production-2026-09-30.json).
+
 ## Location matching candidate v0.13.901
 
 `apps/crawler/go/job-enrichment` now has a reusable SQLite-backed Go location
@@ -114,7 +116,8 @@ is the next major delivery boundary.
    admission run [36702659579](https://github.com/colophon-group/jobseek/actions/runs/36702659579)
    failed when upstream removed the September 28 nightly asset IDs (HTTP 404).
    Compatibility and installed-location tests passed; this is a build input
-   failure. The separate renderer repair pins the official September 30 OCI
+   failure. The separate [renderer repair #10192](https://github.com/colophon-group/jobseek/pull/10192)
+   pins the official September 30 OCI
    index and verifies matching amd64/arm64 release checksums. Require Linux
    integration, identity/egress isolation, admission and supported cold renderer
    rollout before rebasing the location candidate onto the repaired main.
