@@ -86,9 +86,20 @@ indefinitely for resource cleanup. Installed fault proof remains required.
   Python oracle lint/format checks pass. CI workflow contract tests pass (91).
 
 Required CI now includes a Linux PostgreSQL 17 native-executor job. The candidate
-Docker build runs native unit contracts and installs the binary. Remote outcomes
-are pending; cross-compilation alone does not establish Linux execution,
-installed health, resource fit or production write ownership.
+Docker build runs native unit contracts and installs the binary. At candidate
+head `44660f03c5dd8af6132bcdfc4466ea4af3cf36e3`, Required CI run
+36729181871 and installed runtime contracts run 36729181987 passed, including
+real Linux PostgreSQL 17 native tests. Those installed contracts do not yet
+exercise native process ownership. The new installed-executable test is pending
+CI: it uses UID 10001, a 64-descriptor limit, real peer credentials, native
+taxonomy startup, one PostgreSQL connection, four held tasks plus health, lost
+acknowledgement followed by a hard kill/restart, duplicate rejection, stale
+epoch rejection and bounded cleanup. It models a fresh private tmpfs on restart;
+container cgroup and read-only filesystem proof remains separate. Its lost-ack
+case withholds an already-generated acknowledgement from the supervisor; it
+does not prove death before acknowledgement generation or Redis conservation.
+Cross-compilation alone does not establish those installed behaviors, resource
+fit or production write ownership.
 
 ## Next delivery gates
 

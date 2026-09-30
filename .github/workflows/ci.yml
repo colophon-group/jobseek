@@ -508,6 +508,35 @@ jobs:
           test -z "$(gofmt -l .)"
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -o "$RUNNER_TEMP/go-lightpanda-b0-executor-arm64" ./cmd/live
 
+      - name: Verify installed native executor UID, capacity and recovery
+        working-directory: apps/crawler/go/lightpanda-b0-executor
+        run: |
+          set -euo pipefail
+          executor_binary="/tmp/jobseek-native-b0-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          integration_binary="/tmp/jobseek-native-b0-integration-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
+          test ! -e /app/data
+          test ! -e /run/jobseek-lightpanda-executor
+          go build -trimpath -o "$executor_binary" ./cmd/live
+          go test -c -tags integration -o "$integration_binary" .
+          chmod 0755 "$executor_binary" "$integration_binary"
+          sudo install -d -m 0755 /app/data
+          sudo install -m 0444 ../../data/occupations.csv ../../data/technologies.csv /app/data/
+          sudo install -d -m 0700 -o 10001 -g 10001 /run/jobseek-lightpanda-executor
+          cleanup() {
+            sudo rm -f /run/jobseek-lightpanda-executor/executor.sock
+            sudo rmdir /run/jobseek-lightpanda-executor
+            sudo rm -f /app/data/occupations.csv /app/data/technologies.csv
+            sudo rmdir /app/data
+            rm -f "$executor_binary" "$integration_binary"
+          }
+          trap cleanup EXIT
+          sudo env \
+            JOBSEEK_B0_EXECUTOR_INTEGRATION_BINARY="$executor_binary" \
+            JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL="$JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL" \
+            "$integration_binary" \
+            -test.run '^TestInstalledNativeExecutorStartupBudgetHealthAndRecovery$' \
+            -test.count=1
+
   test-go-r2-drain:
     name: Test Go R2 drain
     needs: changes

@@ -1070,6 +1070,9 @@ test("Native B0 executor requires real PostgreSQL and Linux contracts", () => {
   assert.match(executorJob, /JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL:.*jobseek_b0_executor_test/);
   assert.match(executorJob, /alembic -c src\/migrations\/alembic\.ini upgrade head/);
   assert.match(executorJob, /go test -race \.\/\.\.\./);
+  assert.match(executorJob, /go test -c -tags integration/);
+  assert.match(executorJob, /TestInstalledNativeExecutorStartupBudgetHealthAndRecovery/);
+  assert.match(executorJob, /install -d -m 0700 -o 10001 -g 10001 \/run\/jobseek-lightpanda-executor/);
   assert.match(requiredCiJob, /needs:[\s\S]*- test-go-b0-executor/);
   assert.match(requiredCiJob, /requireSuccess\("test-go-b0-executor", crawlerCode\)/);
   assert.match(crawlerDockerfile, /COPY --from=go-b0-executor-build .*\/usr\/local\/bin\/go-lightpanda-b0-executor/);

@@ -1,0 +1,360 @@
+//go:build integration && linux
+
+package executor
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"io"
+	"net"
+	"net/url"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+	"sync"
+	"syscall"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
+)
+
+const installedUID = uint32(10001)
+
+type installedLog struct {
+	mu   sync.Mutex
+	data bytes.Buffer
+}
+
+func (l *installedLog) Write(body []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.data.Write(body)
+}
+func (l *installedLog) String() string { l.mu.Lock(); defer l.mu.Unlock(); return l.data.String() }
+
+func installedCommand(binary string, environment []string, uid uint32, args ...string) *exec.Cmd {
+	shellArgs := append([]string{"-c", `ulimit -n 64; exec "$@"`, "native-executor-fixture", binary}, args...)
+	command := exec.Command("/bin/sh", shellArgs...)
+	command.Env = environment
+	command.Dir = "/tmp"
+	command.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: uid, NoSetGroups: true}}
+	return command
+}
+
+// The helper is a Go socket client with no database or renderer credentials.
+// It runs at the actual peer UID instead of replacing the server's peer check.
+func TestInstalledNativeClientHelper(t *testing.T) {
+	mode := os.Getenv("JOBSEEK_NATIVE_CLIENT_MODE")
+	if mode == "" {
+		t.Skip("installed client subprocess only")
+	}
+	raw, err := base64.StdEncoding.DecodeString(os.Getenv("JOBSEEK_NATIVE_CLIENT_REQUEST"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: SocketPath, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(20 * time.Second))
+	var request map[string]any
+	if json.Unmarshal(raw, &request) != nil {
+		t.Fatal("invalid client fixture")
+	}
+	failure := WriteMessage(conn, request)
+	var frame []byte
+	if failure == nil {
+		frame, failure = ReadFrame(conn)
+	}
+	if mode == "wrong_peer" || mode == "capacity" {
+		if failure == nil {
+			t.Fatal("rejected client received a task response")
+		}
+		_, _ = os.Stdout.Write([]byte(`{"type":"rejected"}`))
+		os.Exit(0)
+	}
+	if failure != nil {
+		t.Fatal(failure)
+	}
+	var authorize map[string]json.RawMessage
+	if json.Unmarshal(frame, &authorize) != nil || string(authorize["type"]) != `"authorize"` {
+		t.Fatal("authorization not requested")
+	}
+	if mode == "hold" {
+		_, _ = os.Stdout.Write(append(frame, '\n'))
+		if _, err := bufio.NewReader(os.Stdin).ReadBytes('\n'); err != nil {
+			os.Exit(0)
+		}
+	}
+	var claim string
+	var lease int64
+	if json.Unmarshal(authorize["claim_token"], &claim) != nil || json.Unmarshal(authorize["lease_until_ms"], &lease) != nil {
+		t.Fatal("invalid authorization")
+	}
+	if err := WriteMessage(conn, map[string]any{"type": "authorized", "claim_token": claim, "lease_until_ms": lease + 1}); err != nil {
+		t.Fatal(err)
+	}
+	frame, err = ReadFrame(conn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if mode == "discard_ack" {
+		var response map[string]json.RawMessage
+		if json.Unmarshal(frame, &response) != nil || string(response["type"]) != `"committed"` {
+			t.Fatal("discarded response was not committed")
+		}
+		// Deliberately withhold this acknowledgement from the modeled supervisor.
+		// The parent now kills the real owner and verifies restart/duplicate truth.
+		_, _ = os.Stdout.Write([]byte(`{"type":"ack_discarded"}`))
+		os.Exit(0)
+	}
+	_, _ = os.Stdout.Write(frame)
+	os.Exit(0)
+}
+
+func installedClient(t *testing.T, request Request, mode string, uid uint32) *exec.Cmd {
+	t.Helper()
+	result, err := (proto.MarshalOptions{Deterministic: true}).Marshal(request.Result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(map[string]any{"version": Protocol, "task_payload": request.TaskPayload, "payload_sha256": request.PayloadSHA256, "claim_token": request.ClaimToken, "lease_until_ms": request.LeaseUntilMS, "browser_result": base64.StdEncoding.EncodeToString(result)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	self, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return installedCommand(self, []string{"PATH=/usr/bin:/bin", "JOBSEEK_NATIVE_CLIENT_MODE=" + mode, "JOBSEEK_NATIVE_CLIENT_REQUEST=" + base64.StdEncoding.EncodeToString(payload)}, uid, "-test.run=^TestInstalledNativeClientHelper$")
+}
+
+func installedResponse(t *testing.T, request Request, mode string, uid uint32) map[string]json.RawMessage {
+	t.Helper()
+	output, err := installedClient(t, request, mode, uid).CombinedOutput()
+	if err != nil {
+		t.Fatalf("installed client failed: %v %s", err, output)
+	}
+	var response map[string]json.RawMessage
+	if json.Unmarshal(output, &response) != nil {
+		t.Fatalf("invalid client response: %s", output)
+	}
+	return response
+}
+
+func TestInstalledNativeExecutorStartupBudgetHealthAndRecovery(t *testing.T) {
+	binary := os.Getenv("JOBSEEK_B0_EXECUTOR_INTEGRATION_BINARY")
+	if binary == "" {
+		t.Skip("installed native integration binary not configured")
+	}
+	if os.Geteuid() != 0 {
+		t.Fatal("installed fixture requires root to drop to UID 10001")
+	}
+	owner, request := executorFixture(t)
+	ctx := context.Background()
+	// Distinguish the driver from the actual native owner's process sessions.
+	if _, err := owner.Store.pool.Exec(ctx, "SET application_name='jobseek:native-executor-fixture-driver'"); err != nil {
+		t.Fatal(err)
+	}
+	schema := "installed_" + strings.ReplaceAll(fixtureID(t), "-", "")
+	quoted := pgx.Identifier{schema}.Sanitize()
+	if _, err := owner.Store.pool.Exec(ctx, "CREATE SCHEMA "+quoted); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = owner.Store.pool.Exec(context.Background(), "DROP SCHEMA "+quoted+" CASCADE") })
+	if _, err := owner.Store.pool.Exec(ctx, `CREATE TABLE `+quoted+`.technology(id bigint,slug text);
+CREATE TABLE `+quoted+`.occupation(id bigint,slug text);
+CREATE TABLE `+quoted+`.seniority(id bigint,slug text);
+CREATE TABLE `+quoted+`.currency_rate(currency text,to_eur numeric);
+CREATE TABLE `+quoted+`.location(id bigint,parent_id bigint,type text,population bigint,languages text[]);
+CREATE TABLE `+quoted+`.location_name(location_id bigint,locale text,name text,is_display boolean);
+INSERT INTO `+quoted+`.technology VALUES(4,'python');
+INSERT INTO `+quoted+`.occupation VALUES(41,'software-engineer');
+INSERT INTO `+quoted+`.seniority VALUES(7,'senior'),(9,'intern');
+INSERT INTO `+quoted+`.currency_rate VALUES('CHF',1.05);
+INSERT INTO `+quoted+`.location VALUES(1,NULL,'country',NULL,ARRAY['de']),(2,1,'city',400000,ARRAY['de']);
+INSERT INTO `+quoted+`.location_name VALUES(1,'en','Switzerland',true),(2,'en','Zurich',true),(2,'de','Zürich',true);`); err != nil {
+		t.Fatal(err)
+	}
+	request.Result = renderedFixture(`<script type="application/ld+json">{"@type":"JobPosting","title":"Senior Software Engineer","description":"<p>Python engineering. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>","jobLocation":{"@type":"Place","address":{"addressLocality":"Zurich","addressCountry":"Switzerland"}}}</script>`, request.Task.Envelope.SourceURL, 200)
+	dsn, err := url.Parse(os.Getenv("JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := dsn.Query()
+	query.Set("search_path", schema+",public")
+	dsn.RawQuery = query.Encode()
+	temp, err := os.MkdirTemp("/tmp", "jobseek-installed-index-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(temp, int(installedUID), int(installedUID)); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(temp) })
+	environment := []string{"PATH=/usr/bin:/bin", "GOMAXPROCS=2", "TMPDIR=" + temp, "LOCAL_DATABASE_URL=" + dsn.String(), "LIGHTPANDA_B0_EXECUTOR_MODE=enabled", "CRAWLER_DB_POOL_MIN=1", "CRAWLER_DB_POOL_MAX=1", "LIGHTPANDA_B0_SHARD_ID=lightpanda-b0", "LIGHTPANDA_B0_ROUTING_EPOCH=" + strconv.FormatInt(owner.Epoch, 10)}
+	var process *exec.Cmd
+	var done chan error
+	var log installedLog
+	stop := func(signal syscall.Signal) error {
+		if process == nil {
+			return nil
+		}
+		_ = process.Process.Signal(signal)
+		select {
+		case err := <-done:
+			process = nil
+			return err
+		case <-time.After(18 * time.Second):
+			_ = process.Process.Kill()
+			<-done
+			process = nil
+			return errors.New("native owner exceeded shutdown bound")
+		}
+	}
+	t.Cleanup(func() { _ = stop(syscall.SIGKILL) })
+	start := func() {
+		t.Helper()
+		process = installedCommand(binary, environment, installedUID)
+		process.Stdout, process.Stderr = &log, &log
+		if err := process.Start(); err != nil {
+			t.Fatal(err)
+		}
+		done = make(chan error, 1)
+		go func(command *exec.Cmd, completion chan error) { completion <- command.Wait() }(process, done)
+		deadline := time.Now().Add(10 * time.Second)
+		for {
+			if err := installedCommand(binary, environment, installedUID, "--health").Run(); err == nil {
+				break
+			}
+			select {
+			case err := <-done:
+				process = nil
+				t.Fatalf("installed startup failed: %v %s", err, log.String())
+			default:
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("installed readiness expired: %s", log.String())
+			}
+			time.Sleep(25 * time.Millisecond)
+		}
+	}
+	start()
+	info, err := os.Stat(SocketPath)
+	if err != nil || info.Mode().Perm() != 0o600 || info.Sys().(*syscall.Stat_t).Uid != installedUID {
+		t.Fatal("installed socket metadata differs")
+	}
+	var sessions int
+	if err := owner.Store.pool.QueryRow(ctx, "SELECT count(*) FROM pg_stat_activity WHERE application_name='jobseek:crawler:lightpanda-b0-executor:local'").Scan(&sessions); err != nil || sessions != 1 {
+		t.Fatalf("installed owner connection budget: %d %v", sessions, err)
+	}
+	if response := installedResponse(t, request, "wrong_peer", 0); string(response["type"]) != `"rejected"` {
+		t.Fatal("root peer bypassed same-UID check")
+	}
+	// Hold all four tasks before authorization. Health stays available and the
+	// fifth task cannot occupy the health conversation or create a write fence.
+	var clients []*exec.Cmd
+	var admissions []io.Reader
+	for range TaskCapacity {
+		client := installedClient(t, request, "hold", installedUID)
+		output, err := client.StdoutPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		input, err := client.StdinPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := client.Start(); err != nil {
+			t.Fatal(err)
+		}
+		clients = append(clients, client)
+		admissions = append(admissions, output)
+		t.Cleanup(func() { _ = input.Close(); _ = client.Process.Kill() })
+	}
+	for _, output := range admissions {
+		line, err := bufio.NewReader(output).ReadBytes('\n')
+		if err != nil || !bytes.Contains(line, []byte(`"authorize"`)) {
+			t.Fatal("installed task not admitted")
+		}
+	}
+	if response := installedResponse(t, request, "capacity", installedUID); string(response["type"]) != `"rejected"` {
+		t.Fatal("fifth task admitted")
+	}
+	if err := installedCommand(binary, environment, installedUID, "--health").Run(); err != nil {
+		t.Fatal("installed health lost reserved slot")
+	}
+	for _, client := range clients {
+		_ = client.Process.Kill()
+		_ = client.Wait()
+	}
+	time.Sleep(30 * time.Millisecond)
+	response := installedResponse(t, request, "discard_ack", installedUID)
+	if string(response["type"]) != `"ack_discarded"` {
+		t.Fatal("commit acknowledgement not withheld")
+	}
+	var titles []string
+	var ids, technologies []int64
+	var occupation, seniority, salary int64
+	var next time.Time
+	if err := owner.Store.pool.QueryRow(ctx, "SELECT titles,location_ids,technology_ids,occupation_id,seniority_id,salary_min,next_scrape_at FROM job_posting WHERE id=$1", request.Task.Envelope.TaskID).Scan(&titles, &ids, &technologies, &occupation, &seniority, &salary, &next); err != nil {
+		t.Fatal(err)
+	}
+	if len(titles) != 1 || titles[0] != "Senior Software Engineer" || len(ids) != 1 || ids[0] != 2 || len(technologies) != 1 || technologies[0] != 4 || occupation != 41 || seniority != 7 || salary != 100000 {
+		t.Fatal("installed native taxonomy/persistence differs")
+	}
+	_ = stop(syscall.SIGKILL)
+	// Container restart remounts the owner's private tmpfs. Model that exact
+	// ephemeral-state boundary here after the old process is confirmed dead.
+	if err := os.RemoveAll(temp); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(temp, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(temp, int(installedUID), int(installedUID)); err != nil {
+		t.Fatal(err)
+	}
+	start()
+	response = installedResponse(t, request, "commit", installedUID)
+	if string(response["type"]) != `"authority_lost"` {
+		t.Fatal("restart allowed committed duplicate")
+	}
+	var after time.Time
+	if err := owner.Store.pool.QueryRow(ctx, "SELECT next_scrape_at FROM job_posting WHERE id=$1", request.Task.Envelope.TaskID).Scan(&after); err != nil || !after.Equal(next) {
+		t.Fatal("restart/duplicate changed committed schedule")
+	}
+	// Current routing epoch is database-owned. A changed epoch must fail health
+	// and reject an old-route task before any new authoritative content effects.
+	if _, err := owner.Store.pool.Exec(ctx, "SELECT nextval('public.lightpanda_b0_routing_epoch_seq')"); err != nil {
+		t.Fatal(err)
+	}
+	if err := installedCommand(binary, environment, installedUID, "--health").Run(); err == nil {
+		t.Fatal("stale installed route reported healthy")
+	}
+	response = installedResponse(t, request, "commit", installedUID)
+	if string(response["type"]) != `"authority_lost"` {
+		t.Fatal("stale installed route retained task authority")
+	}
+	if err := owner.Store.pool.QueryRow(ctx, "SELECT next_scrape_at FROM job_posting WHERE id=$1", request.Task.Envelope.TaskID).Scan(&after); err != nil || !after.Equal(next) {
+		t.Fatal("stale route changed committed schedule")
+	}
+	if err := stop(syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(SocketPath); !os.IsNotExist(err) {
+		t.Fatal("normal shutdown retained owned socket")
+	}
+	entries, err := os.ReadDir(temp)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("normal shutdown retained private index")
+	}
+}
