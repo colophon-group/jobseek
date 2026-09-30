@@ -44,6 +44,7 @@ export function ProPitch({ previewOnly = false }: { previewOnly?: boolean }) {
       <AiSearchFilter
         isSubscribed={false}
         hasSearchFilters
+        candidateCount={postings.length}
         readOnly
         defaultOpen
         presentation="drawer"

@@ -474,6 +474,7 @@ export function WatchlistViewPage({
   }, [isLoggedIn, isOwner, isSessionPending, isSessionWatchlist, refresh]);
 
   function beginScopeMutation(): number {
+    setAiCandidateCount(undefined);
     const revision = scopeRevisionRef.current + 1;
     scopeRevisionRef.current = revision;
     setScopeRevision(revision);

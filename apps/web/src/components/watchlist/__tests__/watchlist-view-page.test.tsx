@@ -91,7 +91,9 @@ vi.mock("@/components/watchlist/watchlist-job-list", () => ({
 }));
 
 vi.mock("@/components/search/filter-pills-readonly", () => ({
-  FilterPillsReadOnly: () => null,
+  FilterPillsReadOnly: ({ onClearAll }: { onClearAll?: () => void }) => onClearAll
+    ? <button type="button" onClick={onClearAll}>Clear all</button>
+    : null,
 }));
 
 vi.mock("@/components/search/advanced-search-panel", () => ({
@@ -125,6 +127,7 @@ vi.mock("@/components/search/advanced-search-panel", () => ({
   ),
 }));
 
+import type { WatchlistFilters } from "@/lib/actions/watchlists";
 import { WatchlistViewPage } from "../watchlist-view-page";
 import {
   readPendingWatchlists,
@@ -161,7 +164,7 @@ const detail = {
 
 function renderPage(
   isOwner = true,
-  detailOverride: Partial<typeof detail> = {},
+  detailOverride: Partial<Omit<typeof detail, "filters">> & { filters?: WatchlistFilters } = {},
   limitReached = false,
   initialTotal = 0,
   initialAiFilterState: React.ComponentProps<typeof WatchlistViewPage>["initialAiFilterState"] = null,
@@ -240,6 +243,59 @@ describe("WatchlistViewPage private detail", () => {
 
     const narrowButton = screen.getByRole("button", { name: "View" });
     expect(screen.getAllByTestId("job-list")[0]?.contains(narrowButton)).toBe(true);
+  });
+
+  const savedAiState = {
+    watchlistId: detail.id,
+    enabled: true,
+    entitled: true,
+    query: "Backend roles",
+    queryRevision: 1,
+    queryVersionId: "33333333-3333-4333-8333-333333333333",
+    status: "caught_up" as const,
+    counts: { accepted: 4, rejected: 20, total: 24 },
+    progress: { selectionOffset: 0, scannedCount: 24, completedCount: 24, stopReason: "caught_up" },
+    lastCaughtUpAt: "2026-09-22T00:00:00.000Z",
+    latestEventSequence: 1,
+  };
+
+  it.each(["Clear salary", "Clear all"])("disables a configured narrowed feed when the last filters are removed via %s", (action) => {
+    renderPage(true, {}, false, 24, savedAiState);
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: action }));
+
+    expect(screen.getByText("Start with the job filters")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "View" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
+    expect(screen.getAllByTestId("job-list")).toHaveLength(1);
+  });
+
+  it.each(["Remove Acme", "Any company"])("requires filters after the last company restriction is removed via %s", (action) => {
+    renderPage(true, {
+      filters: {},
+      companies: [{ id: "acme", name: "Acme", slug: "acme", icon: null }],
+    }, false, 24, savedAiState);
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByRole("button", { name: action }));
+
+    expect(screen.getByText("Start with the job filters")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "View" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
+  });
+
+  it("waits for a fresh count after changing an otherwise eligible filter", () => {
+    renderPage(true, {}, false, 24, savedAiState);
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply salary" }));
+
+    expect(screen.getByText("Precise matching is temporarily unavailable")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "View" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
   });
 
   it("keeps owner mutations hidden until the hydrated client confirms the session", async () => {
