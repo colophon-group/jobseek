@@ -15,7 +15,7 @@
     "grep:validateurl-boundary": "bash scripts/grep-validateurl-boundary.sh"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.2",
+    "drizzle-orm": "^0.45.3",
     "next": "^16.3.4",
     "postgres": "^3.4.9",
     "react": "^19.3.0",
@@ -27,11 +27,11 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitest/ui": "^5.0.0",
-    "eslint": "^10.10.0",
-    "happy-dom": "^20.14.3",
+    "eslint": "^10.11.0",
+    "happy-dom": "^20.14.5",
     "typescript": "^5",
-    "typescript-eslint": "^8.70.0",
+    "typescript-eslint": "^8.70.1",
     "vitest": "^5.0.0",
-    "yaml": "^2.9.0"
+    "yaml": "^2.9.1"
   }
 }
