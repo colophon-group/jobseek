@@ -38,7 +38,7 @@ jobs:
       EXPECTED_CRAWLER_REVISION: ${{ inputs.expected_crawler_revision }}
       DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
     steps:
-      - name: Reject unauthorized dispatches before requesting production approval
+      - name: Reject unauthorized dispatches before repair validation
         run: |
           set -euo pipefail
           test "$DISPATCH_ACTOR" = viktor-shcherb
@@ -67,7 +67,7 @@ jobs:
       EXPECTED_CRAWLER_REVISION: ${{ inputs.expected_crawler_revision }}
       DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
     steps:
-      - name: Revalidate the owner, main revision, and confirmation after approval
+      - name: Revalidate the owner, main revision, and confirmation
         run: |
           set -euo pipefail
           test "$DISPATCH_ACTOR" = viktor-shcherb
