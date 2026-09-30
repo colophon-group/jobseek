@@ -133,24 +133,11 @@ func InspectGreenhouseMonitor(boardID string, config map[string]string) (Greenho
 	// Runtime observation changes must not retire the profile itself. The full
 	// snapshot still binds each claim; native persistence must preserve and
 	// freshly validate these lifecycle fields before disappearance effects.
-	stableMetadata := map[string]json.RawMessage{}
-	for key, value := range metadata {
-		if !monitorRuntimeFields[key] {
-			stableMetadata[key] = value
-		}
-	}
-	stable := cloneConfig(config)
-	// These cached egress observations are learned at execution time. The
-	// native endpoint remains fixed by the explicit token; publisher/circuit
-	// attribution must derive its actual request host rather than trust caches.
-	delete(stable, "egress_host")
-	delete(stable, "scrape_egress_host")
-	body, err := json.Marshal(stableMetadata)
+	stable, err := stableGreenhouseConfig(config, metadata)
 	if err != nil {
 		return fail()
 	}
-	stable["metadata"] = string(body)
-	body, err = json.Marshal(struct {
+	body, err := json.Marshal(struct {
 		BoardID string            `json:"board_id"`
 		Config  map[string]string `json:"config"`
 	}{boardID, stable})
@@ -165,4 +152,25 @@ func InspectGreenhouseMonitor(boardID string, config map[string]string) (Greenho
 		EffectiveConfigSHA256: hex.EncodeToString(digest[:]), SnapshotSHA256: configDigest(config),
 	}
 	return result, nil
+}
+
+func stableGreenhouseConfig(config map[string]string, metadata map[string]json.RawMessage) (map[string]string, error) {
+	stableMetadata := map[string]json.RawMessage{}
+	for key, value := range metadata {
+		if !monitorRuntimeFields[key] {
+			stableMetadata[key] = value
+		}
+	}
+	stable := cloneConfig(config)
+	// These cached egress observations are learned at execution time. The
+	// native endpoint remains fixed by the explicit token; publisher/circuit
+	// attribution must derive its actual request host rather than trust caches.
+	delete(stable, "egress_host")
+	delete(stable, "scrape_egress_host")
+	body, err := json.Marshal(stableMetadata)
+	if err != nil {
+		return nil, ErrUnsupportedProfile
+	}
+	stable["metadata"] = string(body)
+	return stable, nil
 }

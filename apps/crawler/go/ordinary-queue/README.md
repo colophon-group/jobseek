@@ -70,6 +70,30 @@ coexist with native selection.
 
 ## Verification and its limits
 
+Migration `0036` retains immutable staged/active/retired ownership documents in
+`ordinary_worker_ownership_plan`. The document binds the global epoch, exact
+source revision, supported member identities and stable configuration hashes.
+PostgreSQL checks the exact payload SHA256 and required envelope fields; Go
+rejects duplicate keys, unknown fields, unsupported members and noncanonical
+serialization. Only one plan may be active. Retired identities cannot be
+reactivated or deleted. State transitions take the existing lease and epoch
+barriers; activation requires the current allocated epoch. Ordinary readback
+uses those barriers without a conflicting ownership row lock.
+
+`StageGreenhouseOwnership` captures enabled active canonical boards and their
+matching Redis settings as one staged document. Partial inventories roll back;
+staging allocates no epoch, changes no queue and grants no authority.
+`LoadActiveOwnership` requires an exact caller-attested plan/revision and the
+already verified epoch. It never adopts the allocator's latest value.
+Generic unbound Go claims, writes, heartbeat and settlement reject an active
+plan before queue mutations or callbacks. These guards do not implement the
+future bound native claimant or modify legacy Python claims.
+
+There is no production activation endpoint in this library. Before activation,
+the supported all-writer release must install atomic native/legacy selection,
+exact startup identities, Redis projection integrity/loss protection and full
+native processing. Direct SQL activation appears only in owned private tests.
+
 Private Redis race tests cover both worker queues, attempt expiry/reclaim,
 stale heartbeat/completion/reschedule, exact scheduling, deferred monitor
 repair, duplicate representations, deadletters/orphans/guard cleanup, corrupt
@@ -83,6 +107,9 @@ activation after expiry, retirement ordered after commit, stale epochs rejected
 by the schema, guarded reaper exclusion and commit-before-ack recovery across
 retirement. The production Go `Sweep` wrapper has its own barrier regression.
 Migration upgrade/downgrade/re-upgrade is checked against the actual schema.
+Ownership tests additionally verify immutable transitions, single active
+membership, stale epoch/source rejection, malformed SQL envelopes, rollback of
+partial staging, unbound operation exclusion and transition/readback ordering.
 These are authority fixtures, not extraction/enrichment parity or an actual
 native ordinary process SIGKILL/cold-reversal proof.
 
@@ -114,12 +141,14 @@ their current owner until native lifecycle processing is proven. Actual ready
 route membership, active-plan ownership and fresh canonical state still must be
 checked at selection; this observation grants no later authority.
 
-Bind this observation to a verified durable active plan before claiming.
+The durable document and exact active readback are prepared. Bind them to
+exclusive native and legacy selection before claiming.
 Eligibility must be checked atomically before a pop, with bounded progress past
 unselected heads on mixed domains. Legacy claimants must exclude selected
 profiles and both sides must fail closed when expected routing state is missing
 or corrupt, including complete Redis loss. Neither a validated profile nor the
-current generic `Authority.Claim` meets those ownership requirements.
+current generic `Authority.Claim` meets those ownership requirements. An active
+document alone is insufficient to select a production owner.
 
 1. Bind effective profile/domain eligibility to exclusive native ownership in
    existing claims. Preserve every unselected task, domain fairness, rate limits,

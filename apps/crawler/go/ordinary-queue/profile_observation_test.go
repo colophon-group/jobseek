@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func greenhouseAuthorityFixture(t *testing.T) authorityFixture {
@@ -28,6 +30,21 @@ func greenhouseAuthorityFixture(t *testing.T) authorityFixture {
 	if err := f.client.redis.HSet(ctx, "board:"+f.task.ID, config).Err(); err != nil {
 		t.Fatal(err)
 	}
+	// Match the fixture's ready queue to the effective provider throttle route.
+	if err := f.client.redis.Rename(ctx, "monitors_simple:"+f.task.Domain, "monitors_simple:greenhouse").Err(); err != nil {
+		t.Fatal(err)
+	}
+	readyScore, err := f.client.redis.ZScore(ctx, "ready:simple:1", f.task.Domain).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.ZRem(ctx, "ready:simple:1", f.task.Domain).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.ZAdd(ctx, "ready:simple:1", redis.Z{Score: readyScore, Member: "greenhouse"}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	f.task.Domain = "greenhouse"
 	return f
 }
 

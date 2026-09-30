@@ -154,6 +154,14 @@ func OpenAuthority(ctx context.Context, dsn string, client *Client, epoch int64)
 			return err
 		}
 		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		rows, err = tx.Query(ctx, "SELECT plan_sha256,routing_epoch,source_revision,payload,state,created_at FROM public.ordinary_worker_ownership_plan WHERE false")
+		if err != nil {
+			return err
+		}
+		rows.Close()
 		return rows.Err()
 	}); err != nil {
 		pool.Close()
@@ -242,6 +250,9 @@ func canonicalDue(ctx context.Context, tx pgx.Tx, claim *Claim) (*time.Time, err
 func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error) {
 	var claim *Claim
 	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
+		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+			return err
+		}
 		task, err := a.queue.ClaimFenced(ctx, worker)
 		if task != nil {
 			claim = &Claim{owner: a, task: *task}
@@ -349,6 +360,9 @@ func (a *Authority) Write(ctx context.Context, claim *Claim, terminal bool, fn f
 	}
 	var receipt *Receipt
 	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
+		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+			return err
+		}
 		if err := a.current(ctx, claim); err != nil {
 			return err
 		}
@@ -385,6 +399,9 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 		return ErrConfiguration
 	}
 	return a.transaction(ctx, true, func(ctx context.Context, tx pgx.Tx) error {
+		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+			return err
+		}
 		if err := a.current(ctx, claim); err != nil {
 			return err
 		}
@@ -420,5 +437,10 @@ func (a *Authority) Heartbeat(ctx context.Context, claim *Claim) error {
 	if !a.valid(claim) {
 		return ErrConfiguration
 	}
-	return a.transaction(ctx, false, func(ctx context.Context, _ pgx.Tx) error { return a.current(ctx, claim) })
+	return a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
+		if err := requireUnselectedAuthority(ctx, tx); err != nil {
+			return err
+		}
+		return a.current(ctx, claim)
+	})
 }
