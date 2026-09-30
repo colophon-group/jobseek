@@ -94,6 +94,23 @@ exact-head CI results in the PR before considering selection.
 
 ## Continuation gates
 
+The offline `InspectGreenhouseMonitor` boundary observes the standard explicit
+token/skip profile on the existing board hash. It validates canonical board and
+company IDs, provider URL, both browser flags, intervals and unchanged shared
+throttle identity, rejecting unknown/filter/proxy/enrich/alternate-token settings.
+Empty or null skip options have no extraction effect. It makes no request or
+queue mutation and cannot establish enabled status, profile ownership or write
+authority. Its effective digest excludes runtime lifecycle/learned-egress
+observations; its exact snapshot digest still binds all of them. Native
+processing must freshly validate and preserve their policy before effects.
+
+Bind this observation to a verified durable active plan before claiming.
+Eligibility must be checked atomically before a pop, with bounded progress past
+unselected heads on mixed domains. Legacy claimants must exclude selected
+profiles and both sides must fail closed when expected routing state is missing
+or corrupt, including complete Redis loss. Neither a validated profile nor the
+current generic `Authority.Claim` meets those ownership requirements.
+
 1. Bind effective profile/domain eligibility to exclusive native ownership in
    existing claims. Preserve every unselected task, domain fairness, rate limits,
    deferred monitors, never-successful work and repair. Coordinate the current
