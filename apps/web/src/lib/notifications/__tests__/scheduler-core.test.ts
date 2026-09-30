@@ -25,6 +25,7 @@ function makeUser(overrides: Partial<EligibleNotificationUser> = {}): EligibleNo
     cadence: "weekly",
     notificationsStateChangedAt: new Date("2026-08-01T00:00:00.000Z"),
     lastProcessedWindowEnd: null,
+    lastSentAt: null,
     openDelivery: null,
     watchlists: [{
       alertsEnabledAt: new Date("2026-08-15T00:00:00.000Z"),
@@ -151,6 +152,69 @@ function fakeRepository(users: EligibleNotificationUser[]) {
 beforeEach(() => vi.clearAllMocks());
 
 describe("providerless notification scheduler core", () => {
+  it("defers launch catch-up without claiming or advancing the retained matching window", async () => {
+    const lastSentAt = new Date("2026-09-27T14:18:39.153Z");
+    const lastProcessedWindowEnd = new Date("2026-09-21T20:00:00Z");
+    const { repository } = fakeRepository([makeUser({ lastSentAt, lastProcessedWindowEnd })]);
+    const match = vi.fn().mockResolvedValue({
+      postings: [{ ...posting("retained"), firstSeenAt: "2026-09-22T12:00:00Z" }], uniqueMatchCount: 1, watchlistMatchCount: 1, truncated: false,
+    });
+    const input = {
+      mode: "shadow" as const,
+      sweep: { windowStart: new Date("2026-09-22T03:19:26Z"), windowEnd: new Date("2026-09-29T03:19:26Z") },
+      quota, concurrency: 1,
+    };
+    const blocked = await runNotificationSchedulerCore(input, { repository, match, now: () => input.sweep.windowEnd });
+    expect(blocked.plans).toEqual([]);
+    expect(blocked.telemetry).toMatchObject({ deferred: 1, claimed: 0, empty: 0, quotaDailyRemaining: 10 });
+    expect(repository.claim).not.toHaveBeenCalled();
+    expect(repository.loadEligibleWatchlistSegment).not.toHaveBeenCalled();
+    expect(repository.markSkipped).not.toHaveBeenCalled();
+    expect(match).not.toHaveBeenCalled();
+
+    const boundary = new Date(lastSentAt.getTime() + 7 * 86400000);
+    const resumed = await runNotificationSchedulerCore({
+      ...input,
+      sweep: { windowStart: new Date(boundary.getTime() - 7 * 86400000), windowEnd: boundary },
+    }, { repository, match, now: () => boundary });
+    expect(resumed.plans).toHaveLength(1);
+    expect(resumed.plans[0]!.windowStart).toEqual(lastProcessedWindowEnd);
+    expect(resumed.plans[0]!.scheduledFor.getTime()).toBeGreaterThan(
+      getNotificationScheduleSlots({ userId: "user-1", cadence: "weekly", sweep: input.sweep })[0]!.getTime(),
+    );
+    expect(resumed.plans[0]!.displayPostings[0]!.id).toBe("retained");
+    expect(repository.markSkipped).not.toHaveBeenCalled();
+    expect(match).toHaveBeenCalledWith(expect.objectContaining({
+      watchlists: [expect.objectContaining({ windowStart: lastProcessedWindowEnd })],
+    }));
+  });
+
+  it.each(["pending", "failed", "quota_deferred"] as const)("holds an existing %s period during cooldown", async status => {
+    const slot = getNotificationScheduleSlots({ userId: "user-1", cadence: "weekly", sweep })[0]!;
+    const { repository } = fakeRepository([makeUser({
+      lastSentAt: new Date(now.getTime() - 86400000),
+      openDelivery: { status, scheduledFor: slot, windowStart: new Date("2026-08-20T00:00:00Z"), windowEnd: slot },
+    })]);
+    const match = vi.fn();
+    const result = await runNotificationSchedulerCore({ mode: "shadow", sweep, quota, concurrency: 1 }, { repository, match, now: () => now });
+    expect(result.telemetry.deferred).toBe(1);
+    expect(repository.claim).not.toHaveBeenCalled();
+    expect(match).not.toHaveBeenCalled();
+  });
+
+  it("keeps unknown outcomes blocked even after the send cooldown expires", async () => {
+    const slot = getNotificationScheduleSlots({ userId: "user-1", cadence: "weekly", sweep })[0]!;
+    const { repository } = fakeRepository([makeUser({
+      lastSentAt: new Date(now.getTime() - 8 * 86400000),
+      openDelivery: { status: "unknown", scheduledFor: slot, windowStart: new Date("2026-08-20T00:00:00Z"), windowEnd: slot },
+    })]);
+    const match = vi.fn();
+    const result = await runNotificationSchedulerCore({ mode: "shadow", sweep, quota, concurrency: 1 }, { repository, match, now: () => now });
+    expect(result.telemetry.unknown).toBe(1);
+    expect(repository.claim).not.toHaveBeenCalled();
+    expect(match).not.toHaveBeenCalled();
+  });
+
   it("is purely off by default and performs no reads or matching", async () => {
     const { repository } = fakeRepository([makeUser()]);
     const match = vi.fn();

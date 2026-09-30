@@ -19,6 +19,7 @@ import {
   getNotificationMinimumIntervalMs,
   getNotificationWindowFloor,
   isNotificationDeliveryRetentionEligible,
+  isNotificationSendCooldownActive,
   isWatchlistNotificationEligible,
   resolveNotificationCadence,
   shouldAutomaticallyRetryNotificationDelivery,
@@ -42,6 +43,14 @@ describe("notification cadence policy", () => {
     expect(resolveNotificationCadence(null)).toBe("weekly");
     expect(resolveNotificationCadence("daily")).toBe("weekly");
     expect(resolveNotificationCadence("weekly")).toBe("weekly");
+  });
+
+  it("requires 168 elapsed hours after acceptance, including across a DST change", () => {
+    const lastSentAt = new Date("2026-10-24T12:00:00+02:00");
+    const boundary = new Date(lastSentAt.getTime() + 7 * dayMs);
+    expect(isNotificationSendCooldownActive({ cadence: "weekly", lastSentAt: null, now: lastSentAt })).toBe(false);
+    expect(isNotificationSendCooldownActive({ cadence: "weekly", lastSentAt, now: new Date(boundary.getTime() - 1) })).toBe(true);
+    expect(isNotificationSendCooldownActive({ cadence: "weekly", lastSentAt, now: boundary })).toBe(false);
   });
 });
 
