@@ -46,6 +46,37 @@ ordinary process crash, installed ownership, full cold reversal or fleet cost.
 Raw queue primitives are not database write authority. The `guarded` Lua argument
 is a trusted wrapper convention, not a security capability.
 
+## Admission interruption and prepared fix
+
+At authority head `8b4db1eb69dd3418de512d14d58a533878cd8d2b`,
+Required CI, installed runtime contracts and the real PostgreSQL/Redis jobs on
+both Linux architectures passed. Whole-lane admission
+[run 36778583149](https://github.com/colophon-group/jobseek/actions/runs/36778583149)
+failed during the c1-p3 candidate's legacy schedule transfer, before its
+supervisor started: the producer reported `corruption/activate`. Partial pairs
+do not establish resource admission. The failed report is retained privately.
+
+A private real Redis reproduction exposed a matching activation rejection:
+`ZSCORE` returned `1.7908049340051439e+9`, which the fixed-decimal validator
+rejected as corrupt legacy state. The failed CI artifact does not retain its raw
+score, so this establishes a reproduced defect rather than the exact failed
+arm's input. The prepared fix accepts bounded finite scientific notation and
+retains the original score text for exact rollback. Malformed, negative,
+overflowing and underflowing values still fail before mutation. Activation
+diagnostics emit only reviewed enums, excluding raw configuration/reply/error
+text. The new candidate Lua SHA256 is
+`7c3b67b6b9eefdcf0dc9ae01f62a4d45f6ce0f67f8fa551dfd484dd4ce6fb59b`;
+the production script identity in the preceding checkpoint remains historical.
+
+Local race regressions transfer, audit and roll back 512 fractional schedules
+using actual Redis, preserving their original scores, and reject malformed
+guards without changing ready records. The 163 focused Python activation,
+queue and producer-client tests pass. These regressions are included in the
+required Linux CI installed producer test filter. Fresh exact-head Required CI,
+installed runtime/authority tests and all 16 whole-lane arms must pass before
+the new candidate can claim admission. PR #10207 remains a draft and unselected;
+the draft's actual Crawler Deploy Gate is not merge or deployment authority.
+
 ## Next delivery and completion gates
 
 At 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885

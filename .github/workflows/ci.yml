@@ -406,7 +406,7 @@ jobs:
             LIGHTPANDA_B0_INTEGRATION_LUA_PATH="$lua_fixture" \
             LIGHTPANDA_B0_INTEGRATION_PRODUCER_UID=10001 \
             "$integration_binary" \
-            -test.run '^(TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence|TestRealRedisFullAuditAndCapacityBounds)$' \
+            -test.run '^(TestInstalledProducerOwnsRealRedisLifecycleAndFailsReadinessOnFence|TestRealRedisFullAuditAndCapacityBounds|TestRealRedisOperatorTransferPreservesFractionalFutureScores|TestRealRedisScientificGuardRejectsMalformedBeforeMutation)$' \
             -test.count=1
 
       - name: Prove activated Redis authority survives a hard restart

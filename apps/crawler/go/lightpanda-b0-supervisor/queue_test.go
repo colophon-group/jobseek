@@ -139,3 +139,34 @@ func TestReviewedLuaDigestIsPinned(t *testing.T) {
 		t.Fatalf("changed Lua was not rejected: %v", err)
 	}
 }
+
+func TestActivationDiagnosticsRejectExternalReplyAndErrorText(t *testing.T) {
+	secret := "https://private.example/job?credential=never-log\nforged"
+	if got := activationQueueDiagnostic("transition_rejected", transition{Decision: "not_current", Reason: "legacy_schedule_mismatch"}, nil); got != "stage=transition_rejected decision=not_current reason=legacy_schedule_mismatch" {
+		t.Fatal("validated rejection reason missing")
+	}
+	for _, result := range []transition{{Decision: secret, Reason: secret}, {Decision: "not_current", Reason: secret}} {
+		got := activationQueueDiagnostic("transition_rejected", result, errors.New(secret))
+		if strings.Contains(got, "private") || strings.Contains(got, "credential") || strings.Contains(got, "forged") {
+			t.Fatal("external queue content escaped")
+		}
+	}
+	if got := activationQueueDiagnostic(secret, transition{}, errors.New(secret)); got != "stage=invalid_reply" {
+		t.Fatal("unknown stage escaped")
+	}
+	if got := activationQueueDiagnostic("reply_contract", transition{}, errors.New(secret)); got != "stage=reply_contract rule=invalid_reply" {
+		t.Fatal("backend error escaped")
+	}
+	if got := activationQueueDiagnostic("reply_contract", transition{}, errors.New("invalid producer activation counts")); got != "stage=reply_contract rule=activation_counts" {
+		t.Fatal("contract discriminator missing")
+	}
+	if got := producerActivationDiagnostic("prepare", authorityLost("corruption")); got != "stage=prepare authority=corruption" {
+		t.Fatal("authority stage missing")
+	}
+	if got := producerActivationDiagnostic("transition", context.Canceled); got != "" {
+		t.Fatal("cancellation became authority loss")
+	}
+	if got := producerActivationDiagnostic("transition", errors.New(secret)); got != "" {
+		t.Fatal("unknown backend error escaped")
+	}
+}
