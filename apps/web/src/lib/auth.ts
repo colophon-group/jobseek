@@ -12,6 +12,7 @@ import { invalidateSessionCache } from "@/lib/sessionCache";
 import { LOGGED_IN_COOKIE } from "@/lib/client-cookies";
 import { sql } from "drizzle-orm";
 import { usernameFromEmail, withRandomSuffix, isReservedUsername } from "@/lib/username";
+import { productNewsSignupChoice } from "@/lib/product-news/policy";
 
 // Max age for the `logged_in` hint cookie. Tracks Better Auth's default
 // session TTL (30 days). A slight mismatch here is self-healing:
@@ -164,6 +165,20 @@ export const auth = betterAuth({
           }
 
           return { data: { ...user, username: candidate, displayUsername: candidate } };
+        },
+        after: async (user, ctx) => {
+          // Only an explicit choice on a newly created email account counts.
+          // Social sign-in, account linking and subsequent logins never opt in.
+          if (!productNewsSignupChoice(ctx?.path, ctx?.body)) return;
+          const locale = isLocale(ctx?.body?.productNewsLocale) ? ctx.body.productNewsLocale : defaultLocale;
+          try {
+            const { setProductNewsPreference } = await import("@/lib/services/product-news");
+            await setProductNewsPreference(user.id, true, locale, "signup");
+          } catch {
+            // Auth has already committed the account. Keep registration usable,
+            // remain opted out on failure, and emit no addresses/request bodies.
+            console.warn("product_news_signup_consent_not_saved");
+          }
         },
       },
     },

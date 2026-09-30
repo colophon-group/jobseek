@@ -610,6 +610,13 @@
       "when": 1790726400000,
       "tag": "0098_stripe_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1790812800000,
+      "tag": "0099_product_news_consent",
+      "breakpoints": true
     }
   ]
 }

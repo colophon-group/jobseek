@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { OAuthButtons } from "@/components/ui/OAuthButtons";
+import { ProductNewsCheckbox } from "@/components/product-news/ProductNewsCheckbox";
+import { PRODUCT_NEWS_CONSENT_VERSION } from "@/lib/product-news/policy";
 import {
   localizeAuthReturnPath,
   normalizeAuthReturnPath,
@@ -27,7 +29,7 @@ type AuthFormProps = {
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { t } = useLingui();
+  const { t, i18n } = useLingui();
   const lp = useLocalePath();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -35,6 +37,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ name?: string; email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
+  const [productNews, setProductNews] = useState(false);
 
   const isSignUp = mode === "sign-up";
   const requestedReturnPath = normalizeAuthReturnPath(searchParams.get("next"));
@@ -71,13 +74,17 @@ export function AuthForm({ mode }: AuthFormProps) {
     setLoading(true);
 
     if (isSignUp) {
-      const { error } = await authClient.signUp.email({
+      const signup = {
         name,
         email,
         password,
         username: usernameFromEmail(email),
         callbackURL: dashboardUrl,
-      });
+        productNews,
+        productNewsLocale: i18n.locale,
+        productNewsConsentVersion: PRODUCT_NEWS_CONSENT_VERSION,
+      };
+      const { error } = await authClient.signUp.email(signup);
       if (error) {
         setFieldErrors({});
         setError(error.message ?? t({
@@ -230,6 +237,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </Link>
           </div>
         )}
+        {isSignUp && <div className="mb-6"><ProductNewsCheckbox checked={productNews} disabled={loading} onChange={setProductNews} /></div>}
         <Button type="submit" disabled={loading} className="w-full">
           {isSignUp
             ? (loading
@@ -242,6 +250,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       </form>
 
       <OAuthButtons onOAuth={handleOAuth} />
+      {isSignUp && <p className="mt-3 text-center text-xs text-muted"><Trans id="auth.signUp.socialProductNews" comment="Social signup does not inherit the email form's marketing checkbox">Signing up with a social account? You can enable product news in Settings after signing in.</Trans></p>}
 
       <p className="mt-6 text-center text-sm">
         {isSignUp ? (

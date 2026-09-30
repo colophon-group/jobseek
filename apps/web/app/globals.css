@@ -51,6 +51,9 @@ html[data-explore-pending] [data-explore-pending-skeleton] { display: block; }
   --color-warning: var(--warning-color);
   --color-warning-bg: var(--warning-bg);
   --color-warning-border: var(--warning-border);
+  --color-pro-gold: var(--pro-gold-color);
+  --color-pro-gold-bg: var(--pro-gold-bg);
+  --color-pro-gold-border: var(--pro-gold-border);
   --color-error: var(--error-color);
   --color-error-bg: var(--error-bg);
   --color-error-border: var(--error-border);
@@ -97,6 +100,9 @@ html[data-explore-pending] [data-explore-pending-skeleton] { display: block; }
   --warning-color: #b45309;
   --warning-bg: rgba(180, 83, 9, 0.06);
   --warning-border: rgba(180, 83, 9, 0.25);
+  --pro-gold-color: #78570d;
+  --pro-gold-bg: rgba(212, 167, 44, 0.12);
+  --pro-gold-border: rgba(160, 116, 18, 0.24);
   --error-color: #b91c1c;
   --error-bg: rgba(185, 28, 28, 0.06);
   --error-border: rgba(185, 28, 28, 0.25);
@@ -139,6 +145,9 @@ html[data-explore-pending] [data-explore-pending-skeleton] { display: block; }
   --warning-color: #fb923c;
   --warning-bg: rgba(251, 146, 60, 0.08);
   --warning-border: rgba(251, 146, 60, 0.2);
+  --pro-gold-color: #e9c86e;
+  --pro-gold-bg: rgba(212, 167, 44, 0.13);
+  --pro-gold-border: rgba(233, 200, 110, 0.24);
   --error-color: #f87171;
   --error-bg: rgba(248, 113, 113, 0.08);
   --error-border: rgba(248, 113, 113, 0.2);
