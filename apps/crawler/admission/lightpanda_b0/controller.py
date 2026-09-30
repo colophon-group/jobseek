@@ -945,6 +945,9 @@ def run_arm(
                     "state_status": state["Status"],
                     "healthcheck_present": healthcheck_present,
                     "health_status": health_status,
+                    "health_interval_ns": healthcheck.get("Interval")
+                    if isinstance(healthcheck, dict)
+                    else None,
                     "native_ownership": attest_native_executor(item, row["path"])
                     if row["service"] == "executor"
                     else None,
@@ -1169,8 +1172,18 @@ def evaluate(document: dict[str, Any]) -> dict[str, Any]:
                 or memory_peak >= memory_max
             ):
                 reasons.append(f"{arm.get('pair')}/{arm.get('lane')}:memory")
+            expected_health_interval = {
+                "producer": 5_000_000_000,
+                "executor": 5_000_000_000,
+                "supervisor": 10_000_000_000,
+                "control": 30_000_000_000,
+            }.get(service.get("service"))
             if (
-                service.get("networks") != expected_networks
+                (
+                    expected_health_interval is not None
+                    and service.get("health_interval_ns") != expected_health_interval
+                )
+                or service.get("networks") != expected_networks
                 or service.get("running") is not True
                 or service.get("state_status") != "running"
                 or (

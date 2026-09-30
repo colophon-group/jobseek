@@ -227,6 +227,12 @@ def _numeric_evidence() -> dict[str, Any]:
                 "state_status": "running",
                 "healthcheck_present": service != "renderer",
                 "health_status": None if service == "renderer" else "healthy",
+                "health_interval_ns": {
+                    "producer": 5_000_000_000,
+                    "executor": 5_000_000_000,
+                    "supervisor": 10_000_000_000,
+                    "control": 30_000_000_000,
+                }.get(service),
                 "native_ownership": {
                     "runtime": "go",
                     "processes": [
@@ -417,3 +423,34 @@ def test_startup_census_cannot_accept_empty_or_changed_taxonomies() -> None:
         evidence = _numeric_evidence()
         evidence["arms"][0]["startup_taxonomy"] = changed
         assert "c1-p1/candidate:startup_taxonomy" in controller.evaluate(evidence)["reasons"]
+
+
+def test_worker_health_cadence_matches_production_runtime() -> None:
+    services = yaml.safe_load((HERE / "compose.yml").read_text())["services"]
+    production = yaml.safe_load((HERE.parents[1] / "docker-compose.yml").read_text())["services"]
+    overlay = yaml.safe_load((HERE.parents[1] / "lightpanda-b0-enabled.override.yml").read_text())[
+        "services"
+    ]
+    assert (
+        services["producer"]["healthcheck"]["interval"]
+        == overlay["lightpanda-producer"]["healthcheck"]["interval"]
+    )
+    assert (
+        services["executor"]["healthcheck"]["interval"]
+        == overlay["lightpanda-executor"]["healthcheck"]["interval"]
+    )
+    assert (
+        services["supervisor"]["healthcheck"]["interval"]
+        == production["lightpanda-claimant"]["healthcheck"]["interval"]
+    )
+    assert (
+        services["control"]["healthcheck"]["interval"]
+        == production["browser-1"]["healthcheck"]["interval"]
+    )
+
+
+def test_admission_rejects_accelerated_control_health_cost() -> None:
+    evidence = _numeric_evidence()
+    control = next(arm for arm in evidence["arms"] if arm["lane"] == "control")
+    control["resource"]["services"][0]["health_interval_ns"] = 1_000_000_000
+    assert "c1-p1/control:liveness_or_network" in controller.evaluate(evidence)["reasons"]

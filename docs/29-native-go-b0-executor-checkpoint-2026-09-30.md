@@ -5,8 +5,8 @@ and [promoted location checkpoint](28-go-location-resolver-checkpoint-2026-09-30
 The full migration goal remains active. This candidate is implemented on
 `fix-crawler/go-b0-native-executor`, version 0.13.902. Its Docker build installs
 `go-lightpanda-b0-executor`; the production overlay still selects Python.
-No native production ownership, installed-image proof or final migration
-completion is claimed by this checkpoint.
+No native production ownership or full production resource, fault/reversal
+or retirement proof is claimed by this checkpoint.
 
 ## Current production boundary
 
@@ -210,6 +210,10 @@ the sum of service lifetime peaks as a conservative aggregate upper bound.
 It rejects missing/inconsistent lifetime counters, startup OOM/swap evidence
 or an upper bound reaching the lane envelope. This sum is never represented
 as a simultaneous peak or used as a density denominator.
+
+The next fixture also matches actual production worker health cadence instead
+of the historical one-second comparator probes. Actual installed intervals
+are attested, so earlier synthetic CPU results are not production cost proof.
 
 Both disposable lanes also receive a generated startup taxonomy with the
 observed production row counts before their due time is set. The fixture
