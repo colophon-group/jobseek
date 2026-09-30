@@ -8,7 +8,7 @@ import { AppContentFrame } from "@/components/AppContentFrame";
 import { CookieBanner } from "@/components/CookieBanner";
 import { SearchStateProvider } from "@/components/providers/SearchStateProvider";
 import { ViewerTimezoneCookie } from "@/components/ViewerTimezoneCookie";
-import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { ProAnnouncementBanner } from "@/components/ProAnnouncementBanner";
 import { BackToTop } from "@/components/ui/back-to-top";
 import { SkipToContentLink } from "@/components/SkipToContentLink";
 import { getCurrencyRates } from "@/lib/services/search";
@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: Props) {
         <SkipToContentLink />
         <div className="flex min-h-dvh flex-col">
           <AppHeader />
-          <AppContentFrame alerts={<><CookieBanner aboveBottomBar /><UpgradeBanner aboveBottomBar /></>}>
+          <AppContentFrame alerts={<><CookieBanner aboveBottomBar /><ProAnnouncementBanner aboveBottomBar /></>}>
             <main
               id="main-content"
               tabIndex={-1}

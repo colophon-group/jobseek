@@ -44,6 +44,27 @@ export const user = pgTable("user", {
     .notNull(),
 });
 
+// Consent is an event history. No row means opted out; never infer consent from
+// account creation, billing, cookies or requested watchlist notifications.
+export const productNewsConsent = pgTable("product_news_consent", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sequence: bigserial("sequence", { mode: "number" }).notNull().unique("product_news_consent_sequence_key"),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  enabled: boolean("enabled").notNull(),
+  locale: text("locale").notNull(),
+  source: text("source").$type<"signup" | "settings" | "unsubscribe">().notNull(),
+  consentVersion: text("consent_version").notNull(),
+  consentText: text("consent_text").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("product_news_consent_user_sequence_idx").on(table.userId, table.sequence.desc()),
+  check("product_news_consent_email_normalized", sql`${table.email} = lower(btrim(${table.email}))`),
+  check("product_news_consent_locale_valid", sql`${table.locale} IN ('en', 'de', 'fr', 'it')`),
+  check("product_news_consent_source_valid", sql`${table.source} IN ('signup', 'settings', 'unsubscribe')`),
+  check("product_news_consent_source_choice", sql`(${table.source} <> 'signup' OR ${table.enabled} = true) AND (${table.source} <> 'unsubscribe' OR ${table.enabled} = false)`),
+]).enableRLS();
+
 // Anonymous, explicit opt-ins for the Pro launch. Accessible only by the server.
 export const proWaitlist = pgTable("pro_waitlist", {
   email: text("email").primaryKey(),

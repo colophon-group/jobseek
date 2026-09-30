@@ -68,6 +68,11 @@ export function PrivacyPolicyContent() {
             <a href="https://stripe.com/privacy" className="inline-block text-primary underline"><Trans id="privacy.payments.notice" comment="Link to Stripe privacy notice">Stripe Privacy Policy</Trans></a>
           </section>
 
+          <section className={`w-full max-w-[840px] space-y-4 ${sectionScroll}`}>
+            <h2 className="text-lg font-bold"><Trans id="privacy.productNews.title" comment="Privacy policy heading for optional marketing emails">Product news</Trans></h2>
+            <p><Trans id="privacy.productNews.description" comment="Explains explicit marketing opt-in, consent evidence, withdrawal and separate job alerts">Product updates and offers are optional. We record your choice, email address, language, consent wording and date. You can unsubscribe in Settings or through a link in each product-news email. This does not change your job alerts or account emails.</Trans></p>
+          </section>
+
           {/* Contact + full policy link */}
           <div className={`w-full max-w-[840px] ${sectionScroll}`}>
             <p className="text-muted">

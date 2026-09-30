@@ -1784,6 +1784,12 @@ msgstr "Could not save your changes."
 msgid "settings.notifications.error"
 msgstr "Could not save your preference. Please try again."
 
+#. Marketing preference failed; checkbox retains the saved value
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.error"
+msgstr "Could not save your preference. Please try again."
+
 #. Error after a watchlist alert preference cannot be updated
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-action-bar.tsx
@@ -2074,6 +2080,12 @@ msgstr "Disconnect"
 msgid "search.aiFilter.reminder.dismiss"
 msgstr "Dismiss narrow results reminder"
 
+#. Dismiss the Pro launch banner without changing marketing consent
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.dismiss"
+msgstr "Dismiss Pro announcement"
+
 #. FAQ question about whether the product suits company-targeted job seekers.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -2160,6 +2172,12 @@ msgstr "Email"
 #: src/components/pro/ProWaitlistForm.tsx
 msgid "pro.waitlist.email"
 msgstr "Email address"
+
+#. Optional unchecked marketing opt-in, separate from job alerts; keep wording synchronized with product-news/policy.ts and version changes
+#. js-lingui-explicit-id
+#: src/components/product-news/ProductNewsCheckbox.tsx
+msgid "productNews.consent.label"
+msgstr "Email me occasional Job Seek product updates and offers. Unsubscribe anytime."
 
 #. Explains supported behavior for emailTiming
 #. js-lingui-explicit-id
@@ -2313,6 +2331,12 @@ msgstr "Explore Jobs"
 #: app/[lang]/(app)/explore/page.tsx
 msgid "explore.meta.title"
 msgstr "Explore Jobs"
+
+#. Pro announcement link to explanation, pricing and trial terms
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.cta"
+msgstr "Explore Pro"
 
 #. Short link to the Pro subscription from the compact watchlist control
 #. Short link to the Pro subscription from the compact watchlist control
@@ -3104,6 +3128,12 @@ msgstr "Job Seek keeps growing"
 #: app/[lang]/(public)/privacy-policy/page.tsx
 msgid "privacy.meta.description"
 msgstr "Job Seek privacy policy — what personal data we collect, how we use it, your privacy rights, cookie policy, and how to request deletion of your account and data."
+
+#. Accessible label for the dismissible gold Pro launch banner
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.label"
+msgstr "Job Seek Pro announcement"
 
 #. Public marketing page: tracker_imageAlt
 #. js-lingui-explicit-id
@@ -4089,6 +4119,12 @@ msgstr "Opt-out or questions"
 msgid "indexing.optOut.title"
 msgstr "Opt-out or questions"
 
+#. Marketing consent is independent of requested job alerts and account emails
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.description"
+msgstr "Optional emails about new features and Pro offers. This preference is separate from your weekly job emails and account emails."
+
 #. Divider between form and OAuth buttons
 #. js-lingui-explicit-id
 #: src/components/ui/OAuthButtons.tsx
@@ -4480,6 +4516,12 @@ msgstr "Pro access until"
 msgid "terms.billing.offer"
 msgstr "Pro adds Narrowed results for watchlists. Eligible accounts receive seven days free, then pay US$10 per month or the local-currency price shown at checkout, plus applicable taxes. A payment method is required. Subscriptions renew automatically until canceled; returning subscribers do not receive another trial."
 
+#. Pro announcement; eligibility and billing terms appear on the linked offer page
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.message"
+msgstr "Pro is here. Use your own criteria to narrow your watchlists. A 7-day free trial is available for first-time subscribers."
+
 #. Payment data privacy heading
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
@@ -4503,6 +4545,36 @@ msgstr "Pro waiting list"
 #: src/content/narrowed-preview-examples.ts
 msgid "pro.example.productTitle"
 msgstr "Product Engineer"
+
+#. Privacy policy heading for optional marketing emails
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.productNews.title"
+msgstr "Product news"
+
+#. Opens the optional marketing checkbox; clicking this link does not opt in
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.updates"
+msgstr "Product news"
+
+#. Marketing email settings heading
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.title"
+msgstr "Product news"
+
+#. Confirmation after marketing preference is persisted
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.saved"
+msgstr "Product news preference saved."
+
+#. Explains explicit marketing opt-in, consent evidence, withdrawal and separate job alerts
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.productNews.description"
+msgstr "Product updates and offers are optional. We record your choice, email address, language, consent wording and date. You can unsubscribe in Settings or through a link in each product-news email. This does not change your job alerts or account emails."
 
 #. Third parties
 #. js-lingui-explicit-id
@@ -5348,6 +5420,12 @@ msgstr "Sign-up failed"
 msgid "auth.signIn.button.loading"
 msgstr "Signing in..."
 
+#. Social signup does not inherit the email form's marketing checkbox
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx
+msgid "auth.signUp.socialProductNews"
+msgstr "Signing up with a social account? You can enable product news in Settings after signing in."
+
 #. Heading above the strip of same-industry companies on the company page
 #. js-lingui-explicit-id
 #: src/components/company/similar-companies-strip.tsx
@@ -5989,6 +6067,12 @@ msgstr "Verification failed"
 #: app/[lang]/verify-email/page.tsx
 msgid "auth.verify.error.title"
 msgstr "Verification failed"
+
+#. Unverified accounts can choose consent but cannot receive marketing
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.verify"
+msgstr "Verify your email address before product news can be delivered."
 
 #. Notification eligibility explanation
 #. js-lingui-explicit-id

@@ -8,6 +8,8 @@ import {
 } from "@/lib/actions/preferences";
 import { getCurrencyRates } from "@/lib/actions/search";
 import { getSession } from "@/lib/sessionCache";
+import { ProductNewsSettings } from "@/components/settings/ProductNewsSettings";
+import { getProductNewsSettings } from "@/lib/actions/product-news";
 
 /**
  * Server-side data fetcher for the /settings (general) page.
@@ -52,17 +54,19 @@ export async function SettingsLoader({ locale }: { locale: string }) {
   // `getPreferences` and `getViewerJobLanguages` below.
   const session = await getSession();
 
-  const [prefs, jobLanguages, availableLanguages, currencyRates, notifications] = await Promise.all([
+  const [prefs, jobLanguages, availableLanguages, currencyRates, notifications, productNews] = await Promise.all([
     getPreferences(),
     getViewerJobLanguages(),
     getAvailableJobLanguages(),
     getCurrencyRates(),
     session ? getNotificationPreferences(locale) : Promise.resolve(null),
+    session ? getProductNewsSettings() : Promise.resolve(null),
   ]);
 
   return (
     <div className="space-y-8">
     {notifications && session && <NotificationSettings paused={notifications.notificationsPaused} verified={session.user.emailVerified} watchlists={notifications.watchlists} />}
+    {productNews && session && <ProductNewsSettings enabled={productNews.enabled} verified={session.user.emailVerified} />}
     <GeneralSettings
       savedJobLanguages={jobLanguages}
       savedDisplayCurrency={prefs?.displayCurrency ?? "EUR"}
