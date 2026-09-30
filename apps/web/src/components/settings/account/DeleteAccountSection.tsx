@@ -27,10 +27,25 @@ export function DeleteAccountSection() {
 
     if (error) {
       if (error.code === "BILLING_DELETION_UNAVAILABLE") {
-        setError(t({ id: "settings.account.delete.billingError", comment: "Account deletion cannot proceed until recurring payments are canceled", message: "We could not stop your billing. Please retry account deletion shortly or contact support." }));
+        setError(
+          t({
+            id: "settings.account.delete.billingError",
+            comment:
+              "Account deletion cannot proceed until recurring payments are canceled",
+            message:
+              "We could not stop your billing. Please retry account deletion shortly or contact support.",
+          }),
+        );
         return;
       }
-      setError(error.message ?? t({ id: "settings.account.delete.error", comment: "Generic account deletion error", message: "Failed to delete account" }));
+      setError(
+        error.message ??
+          t({
+            id: "settings.account.delete.error",
+            comment: "Generic account deletion error",
+            message: "Failed to delete account",
+          }),
+      );
       return;
     }
 
@@ -38,13 +53,22 @@ export function DeleteAccountSection() {
   }
 
   return (
-    <section className="rounded-md border border-error-border bg-error-bg p-4">
-      <h2 className="mb-1 text-base font-semibold text-error">
-        <Trans id="settings.account.delete.title" comment="Delete account section heading">Delete account</Trans>
+    <section className="mt-9 border-t border-divider pt-5">
+      <h2 className="mb-1 text-sm font-semibold">
+        <Trans
+          id="settings.account.delete.title"
+          comment="Delete account section heading"
+        >
+          Delete account
+        </Trans>
       </h2>
-      <p className="mb-4 text-sm text-error">
-        <Trans id="settings.account.delete.description" comment="Delete account section description">
-          Permanently delete your account and all associated data, and cancel any subscription immediately. This action cannot be undone.
+      <p className="mb-4 text-xs leading-relaxed text-muted">
+        <Trans
+          id="settings.account.delete.description"
+          comment="Delete account section description"
+        >
+          Permanently delete your account and all associated data, and cancel
+          any subscription immediately. This action cannot be undone.
         </Trans>
       </p>
       <AlertDialog.Root open={confirmOpen} onOpenChange={handleOpenChange}>
@@ -54,7 +78,11 @@ export function DeleteAccountSection() {
           variant="danger"
           size="sm"
         >
-          {t({ id: "settings.account.delete.button", comment: "Delete account button", message: "Delete my account" })}
+          {t({
+            id: "settings.account.delete.button",
+            comment: "Delete account button",
+            message: "Delete my account",
+          })}
         </Button>
         <AlertDialog.Portal>
           <AlertDialog.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
@@ -66,11 +94,21 @@ export function DeleteAccountSection() {
             }}
           >
             <AlertDialog.Title className="text-base font-semibold">
-              <Trans id="settings.account.delete.title" comment="Delete account section heading">Delete account</Trans>
+              <Trans
+                id="settings.account.delete.title"
+                comment="Delete account section heading"
+              >
+                Delete account
+              </Trans>
             </AlertDialog.Title>
             <AlertDialog.Description className="mt-2 text-sm text-muted">
-              <Trans id="settings.account.delete.description" comment="Delete account section description">
-                Permanently delete your account and all associated data, and cancel any subscription immediately. This action cannot be undone.
+              <Trans
+                id="settings.account.delete.description"
+                comment="Delete account section description"
+              >
+                Permanently delete your account and all associated data, and
+                cancel any subscription immediately. This action cannot be
+                undone.
               </Trans>
             </AlertDialog.Description>
             <div className="mt-4">
@@ -79,13 +117,30 @@ export function DeleteAccountSection() {
             <div className="mt-5 flex justify-end gap-2">
               <AlertDialog.Cancel asChild>
                 <Button variant="danger-outline" size="sm" disabled={loading}>
-                  {t({ id: "settings.account.delete.cancel", comment: "Cancel delete button", message: "Cancel" })}
+                  {t({
+                    id: "settings.account.delete.cancel",
+                    comment: "Cancel delete button",
+                    message: "Cancel",
+                  })}
                 </Button>
               </AlertDialog.Cancel>
-              <Button onClick={handleDelete} disabled={loading} variant="danger" size="sm">
+              <Button
+                onClick={handleDelete}
+                disabled={loading}
+                variant="danger"
+                size="sm"
+              >
                 {loading
-                  ? t({ id: "settings.account.delete.deleting", comment: "Delete button while loading", message: "Deleting..." })
-                  : t({ id: "settings.account.delete.confirm", comment: "Confirm delete button", message: "Confirm deletion" })}
+                  ? t({
+                      id: "settings.account.delete.deleting",
+                      comment: "Delete button while loading",
+                      message: "Deleting...",
+                    })
+                  : t({
+                      id: "settings.account.delete.confirm",
+                      comment: "Confirm delete button",
+                      message: "Confirm deletion",
+                    })}
               </Button>
             </div>
           </AlertDialog.Content>

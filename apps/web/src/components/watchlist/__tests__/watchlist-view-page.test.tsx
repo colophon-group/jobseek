@@ -238,7 +238,7 @@ describe("WatchlistViewPage private detail", () => {
     const filterGrid = filterControl.parentElement;
     expect(filterGrid?.className).toContain("space-y-3");
 
-    const narrowButton = screen.getByRole("button", { name: "View" });
+    const narrowButton = screen.getByRole("button", { name: "Narrowed" });
     expect(screen.getAllByTestId("job-list")[0]?.contains(narrowButton)).toBe(true);
   });
 
@@ -306,7 +306,7 @@ describe("WatchlistViewPage private detail", () => {
       latestEventSequence: 1,
     });
 
-    expect(screen.getByRole("button", { name: "View" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Narrowed" })).toBeTruthy();
     expect(mocks.jobListProps.mock.calls.some(
       ([props]) => (props as { sharedSnapshot?: boolean }).sharedSnapshot === true,
     )).toBe(true);

@@ -1,25 +1,29 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
-import { useParams, usePathname, useSearchParams, useRouter } from "next/navigation";
-import { Trans } from "@lingui/react/macro";
-import { useLingui } from "@lingui/react/macro";
-import { Search } from "lucide-react";
+import {
+  useParams,
+  usePathname,
+  useSearchParams,
+  useRouter,
+} from "next/navigation";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { Moon, Sun } from "lucide-react";
 import { locales, type Locale } from "@/lib/i18n";
-import { updatePreferences } from "@/lib/actions/preferences";
-import type { AvailableLanguage } from "@/lib/actions/preferences";
+import {
+  updatePreferences,
+  type AvailableLanguage,
+} from "@/lib/actions/preferences";
 import { LocaleFlag, localeLabels } from "@/components/flags";
 import { CountryFlag } from "@/components/country-flag";
 import { localPrefs } from "@/lib/preference-timestamps";
 import { getLanguage } from "@/lib/job-languages";
-import { JobLanguageModal } from "@/components/settings/JobLanguageModal";
+import { JobLanguageModal } from "./JobLanguageModal";
+import { CurrencyModal } from "./CurrencyModal";
+import { SettingsChoice } from "./SettingsChoice";
 import { useSalaryDisplay } from "@/components/providers/SalaryDisplayProvider";
-
-/** How many languages to show inline before the "Find more" button. */
-const INLINE_LIMIT = 12;
-
-/* ── Component ── */
+import { useSession } from "@/components/providers/SessionProvider";
 
 interface GeneralSettingsProps {
   savedJobLanguages: string[];
@@ -30,357 +34,471 @@ interface GeneralSettingsProps {
   locale: string;
 }
 
-export function GeneralSettings({ savedJobLanguages, savedDisplayCurrency, savedSalaryPeriod, availableCurrencies, availableLanguages, locale: serverLocale }: GeneralSettingsProps) {
+export function GeneralSettings({
+  savedJobLanguages,
+  savedDisplayCurrency,
+  savedSalaryPeriod,
+  availableCurrencies,
+  availableLanguages,
+  locale: serverLocale,
+}: GeneralSettingsProps) {
   const { theme, setTheme } = useTheme();
   const { t } = useLingui();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const params = useParams();
+  const { isLoggedIn } = useSession();
   const currentLocale = (params.lang as string) ?? serverLocale;
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  // Job languages state
-  // [] = default (show UI locale selected), ["*"] = all languages, ["en","de"] = specific
-  const [jobLanguages, setJobLanguages] = useState<string[]>(savedJobLanguages);
+  const [jobLanguages, setJobLanguages] = useState(savedJobLanguages);
   const [langModalOpen, setLangModalOpen] = useState(false);
-
-  // Display currency + salary period state
   const [displayCurrency, setDisplayCurrency] = useState(savedDisplayCurrency);
   const [salaryPeriod, setSalaryPeriod] = useState(savedSalaryPeriod ?? "");
+  const [saveState, setSaveState] = useState<
+    "saving" | "saved" | "error" | "locale-error" | null
+  >(null);
+  const pending = useRef(false);
+  const retry = useRef<(() => void) | null>(null);
   const salaryDisplay = useSalaryDisplay();
+  useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (salaryDisplay.displayCurrency === null) return;
     setDisplayCurrency(salaryDisplay.displayCurrency);
     setSalaryPeriod(salaryDisplay.displayPeriod ?? "");
   }, [salaryDisplay.displayCurrency, salaryDisplay.displayPeriod]);
+  const allLanguages = !jobLanguages.length || jobLanguages.includes("*");
+  const busy = saveState === "saving";
 
-  const isAllLanguages = jobLanguages.includes("*");
-  const isDefault = jobLanguages.length === 0;
-  // Effective selection: default → current locale, all → nothing, specific → as-is
-  const effectiveCodes = isAllLanguages ? [] : isDefault ? [currentLocale] : jobLanguages;
-  const selectedLangSet = useMemo(() => new Set(effectiveCodes), [effectiveCodes]);
-
-  // Resolve available language codes (sorted by count desc from server)
-  const availableSet = useMemo(
-    () => new Set(availableLanguages.map((l) => l.code)),
-    [availableLanguages],
-  );
-  const resolvedLanguages = useMemo(
-    () =>
-      availableLanguages
-        .map((al) => {
-          const lang = getLanguage(al.code);
-          return lang ? { ...lang, count: al.count } : undefined;
-        })
-        .filter((l): l is NonNullable<typeof l> => l !== undefined),
-    [availableLanguages],
-  );
-  const inlineLanguages = resolvedLanguages.slice(0, INLINE_LIMIT);
-  const hasOverflow = resolvedLanguages.length > INLINE_LIMIT;
-
-  // Also include any selected language not in inline (e.g. picked from modal)
-  const extraSelected = useMemo(
-    () =>
-      effectiveCodes
-        .filter(
-          (code) =>
-            !inlineLanguages.some((l) => l.code === code),
-        )
-        .map((code) => getLanguage(code))
-        .filter((l): l is NonNullable<typeof l> => l !== undefined),
-    [effectiveCodes, inlineLanguages],
-  );
-
-  const themeOptions = [
-    { value: "light", label: t({ id: "settings.theme.light", comment: "Light theme option", message: "Light" }) },
-    { value: "dark", label: t({ id: "settings.theme.dark", comment: "Dark theme option", message: "Dark" }) },
-  ];
+  async function save(
+    data: Parameters<typeof updatePreferences>[0],
+    apply: () => void,
+    rollback: () => void,
+    confirmed?: () => void,
+    failure: "error" | "locale-error" = "error",
+  ) {
+    if (pending.current) return;
+    pending.current = true;
+    setSaveState("saving");
+    apply();
+    try {
+      await updatePreferences(data);
+      confirmed?.();
+      retry.current = null;
+      setSaveState("saved");
+      router.refresh();
+    } catch {
+      rollback();
+      retry.current = () => {
+        void save(data, apply, rollback, confirmed, failure);
+      };
+      setSaveState(failure);
+    } finally {
+      pending.current = false;
+    }
+  }
 
   function handleLocaleSwitch(locale: Locale) {
-    if (locale === currentLocale) return;
+    if (locale === currentLocale || pending.current) return;
     const now = new Date().toISOString();
-    // Mirror `LocaleSwitcher.handleSelect` — write the same `NEXT_LOCALE`
-    // cookie that the proxy reads on root-path requests AND that
-    // `LocaleGuard` reads on every client-side navigation. Without the
-    // cookie write, browser-back from /settings to /explore would land
-    // on the previous-locale URL and `LocaleGuard` would have no signal
-    // to redirect — the in-app product surface (search results, OG meta,
-    // visible UI strings) would render in the user's *previous* locale
-    // until a hard reload (#2988).
     document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
     localPrefs.localeTimestamp.set(now);
     localPrefs.locale.set(locale);
     const newPath = pathname.replace(`/${currentLocale}`, `/${locale}`);
     const qs = searchParams.toString();
     router.push(qs ? `${newPath}?${qs}` : newPath);
-    void updatePreferences({ locale, localeUpdatedAt: now });
+    // URL/cookie switching is immediate; account sync retains the existing timestamp contract.
+    void save(
+      { locale, localeUpdatedAt: now },
+      () => {},
+      () => {},
+      undefined,
+      "locale-error",
+    );
   }
 
-  const handleSelectAllLanguages = useCallback(() => {
-    setJobLanguages((prev) => (prev.includes("*") ? [] : ["*"]));
-  }, []);
-
-  const handleToggleLanguage = useCallback(
-    (code: string) => {
-      setJobLanguages((prev) => {
-        const wasAll = prev.includes("*");
-        const wasDef = prev.length === 0;
-
-        if (wasAll) {
-          // Switching from "all" to a specific language
-          return [code];
-        }
-
-        if (wasDef) {
-          // Switching from default (= current locale). If clicking the
-          // locale itself, just persist it explicitly; otherwise add both.
-          if (code === currentLocale) return [code];
-          return [currentLocale, code];
-        }
-
-        if (prev.includes(code)) {
-          const next = prev.filter((c) => c !== code);
-          // If removing the last one, revert to default (UI locale)
-          if (next.length === 0) return [];
-          return next;
-        }
-
-        return [...prev, code];
-      });
-    },
-    [currentLocale],
-  );
-
-  // Persist language preference changes (outside updater to avoid setState-during-render).
-  // After the server-action resolves, `router.refresh()` flushes Next.js's
-  // client-side router cache so the next navigation back to /explore
-  // (or any other page that reads `jobLanguages`) refetches the RSC
-  // payload — without this, the user lands on a stale prerender that
-  // predates the toggle and only sees the new filter after a hard
-  // reload (#2916). The server-action already invalidates the
-  // per-region `'use cache'` layer via `revalidatePath`; both layers
-  // need clearing.
-  const initialLangsRef = useRef(true);
-  useEffect(() => {
-    if (initialLangsRef.current) {
-      initialLangsRef.current = false;
-      return;
-    }
-    void updatePreferences({ jobLanguages }).then(() => {
-      router.refresh();
-    });
-  }, [jobLanguages, router]);
-
+  const row =
+    "flex items-start justify-between gap-5 border-b border-border-soft py-5 sm:items-center";
+  const muted = "mt-1 text-xs leading-relaxed text-muted";
   return (
-    <div className="space-y-10">
-      {/* Theme */}
-      <section>
-        <h2 className="mb-1 text-lg font-semibold">
-          <Trans id="settings.general.theme.title" comment="Theme settings section heading">Theme</Trans>
-        </h2>
-        <p className="mb-4 text-sm text-muted">
-          <Trans id="settings.general.theme.description" comment="Theme settings description">Choose how Job Seek looks to you.</Trans>
-        </p>
-        <div className="flex gap-2">
-          {themeOptions.map((opt) => (
-            <button
-              key={opt.value}
-              aria-pressed={mounted && theme === opt.value}
-              onClick={() => {
-                const now = new Date().toISOString();
-                setTheme(opt.value);
-                localPrefs.themeTimestamp.set(now);
-                void updatePreferences({ theme: opt.value as "light" | "dark", themeUpdatedAt: now });
-              }}
-              className={`rounded-md border px-4 py-2 text-sm transition-colors cursor-pointer ${
-                mounted && theme === opt.value
-                  ? "border-primary bg-primary text-primary-contrast font-semibold"
-                  : "border-divider bg-surface hover:bg-border-soft"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Language */}
-      <section>
-        <h2 className="mb-1 text-lg font-semibold">
-          <Trans id="settings.general.language.title" comment="Language settings section heading">Language</Trans>
-        </h2>
-        <p className="mb-4 text-sm text-muted">
-          <Trans id="settings.general.language.description" comment="Language settings description">Select your preferred language.</Trans>
-        </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {locales.map((locale) => {
-            const isActive = locale === currentLocale;
-            return (
-              <button
-                key={locale}
-                aria-pressed={isActive}
-                onClick={() => handleLocaleSwitch(locale)}
-                className={`flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm transition-colors cursor-pointer ${
-                  isActive
-                    ? "border-primary bg-primary text-primary-contrast font-semibold"
-                    : "border-divider bg-surface hover:bg-border-soft"
-                }`}
-              >
-                <LocaleFlag locale={locale} size={20} className="shrink-0" />
-                <span>{localeLabels[locale]}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Job Languages */}
-      <section>
-        <h2 className="mb-1 text-lg font-semibold">
-          <Trans id="settings.general.jobLanguages.title" comment="Job languages settings section heading">Job languages</Trans>
-        </h2>
-        <p className="mb-4 text-sm text-muted">
-          <Trans id="settings.general.jobLanguages.description" comment="Job languages settings description">
-            Choose which languages you want to see job postings in.
-          </Trans>
-        </p>
-
-        <div className="flex flex-wrap gap-2">
-          {/* All languages toggle */}
-          <button
-            aria-pressed={isAllLanguages}
-            onClick={handleSelectAllLanguages}
-            className={`rounded-full border px-4 py-1 text-sm transition-colors cursor-pointer ${
-              isAllLanguages
-                ? "border-primary bg-primary text-primary-contrast font-semibold"
-                : "border-divider bg-surface hover:bg-border-soft"
-            }`}
+    <div>
+      <h2 className="mb-7 text-xl font-semibold">
+        <Trans
+          id="settings.nav.preferences"
+          comment="Desktop preferences heading and navigation label"
+        >
+          Preferences
+        </Trans>
+      </h2>
+      <section aria-labelledby="appearance-heading">
+        <h3
+          id="appearance-heading"
+          className="border-b border-divider pb-3 text-sm font-semibold"
+        >
+          <Trans
+            id="settings.general.appearance"
+            comment="Group containing theme and app language"
           >
-            <Trans id="settings.general.jobLanguages.all" comment="All languages option">All languages</Trans>
-          </button>
-
-          {/* Inline languages (sorted by job count from server) */}
-          {inlineLanguages.map((lang) => {
-            const active = !isAllLanguages && selectedLangSet.has(lang.code);
-            return (
+            Appearance
+          </Trans>
+        </h3>
+        <div className={row}>
+          <span className="text-sm">
+            <Trans
+              id="settings.general.theme.title"
+              comment="Theme settings section heading"
+            >
+              Theme
+            </Trans>
+          </span>
+          <div className="inline-flex shrink-0 gap-1 rounded-lg bg-border-soft p-1">
+            {(
+              [
+                [
+                  "light",
+                  Sun,
+                  t({
+                    id: "settings.theme.light",
+                    comment: "Light theme option",
+                    message: "Light",
+                  }),
+                ],
+                [
+                  "dark",
+                  Moon,
+                  t({
+                    id: "settings.theme.dark",
+                    comment: "Dark theme option",
+                    message: "Dark",
+                  }),
+                ],
+              ] as const
+            ).map(([value, Icon, label]) => (
               <button
-                key={lang.code}
-                aria-pressed={active}
-                onClick={() => handleToggleLanguage(lang.code)}
-                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors ${
-                  active
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "border border-border-soft text-muted hover:border-primary/30 hover:text-foreground"
-                }`}
+                key={value}
+                disabled={busy}
+                aria-pressed={mounted && theme === value}
+                onClick={() => {
+                  const previous = theme;
+                  const now = new Date().toISOString();
+                  void save(
+                    { theme: value, themeUpdatedAt: now },
+                    () => setTheme(value),
+                    () => setTheme(previous ?? "light"),
+                    () => localPrefs.themeTimestamp.set(now),
+                  );
+                }}
+                className={`inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 ${mounted && theme === value ? "bg-surface shadow-sm" : "text-muted"}`}
               >
-                {lang.flag && <CountryFlag iso={lang.flag} size={16} className="shrink-0 rounded-[2px]" />}
-                {lang.label}
-              </button>
-            );
-          })}
-
-          {/* Extra selected languages (picked from modal, not in inline list) */}
-          {!isAllLanguages &&
-            extraSelected.map((lang) => (
-              <button
-                key={lang.code}
-                aria-pressed={true}
-                onClick={() => handleToggleLanguage(lang.code)}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary transition-colors"
-              >
-                {lang.flag && <CountryFlag iso={lang.flag} size={16} className="shrink-0 rounded-[2px]" />}
-                {lang.label}
+                <Icon size={14} aria-hidden="true" />
+                {label}
               </button>
             ))}
-
-          {/* Find more button */}
-          {hasOverflow && (
-            <button
-              onClick={() => setLangModalOpen(true)}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-dashed border-divider bg-surface px-4 py-1 text-sm text-muted transition-colors hover:bg-border-soft hover:text-foreground"
-            >
-              <Search size={13} className="shrink-0" />
-              <Trans id="settings.general.jobLanguages.findMore" comment="Button to open modal with all languages">
-                Find more
-              </Trans>
-            </button>
-          )}
+          </div>
         </div>
-
-        <JobLanguageModal
-          open={langModalOpen}
-          onOpenChange={setLangModalOpen}
-          selected={selectedLangSet}
-          onToggle={handleToggleLanguage}
-          availableCodes={availableSet}
-        />
+        <div className={`${row} flex-col sm:flex-row`}>
+          <div>
+            <span className="text-sm">
+              <Trans
+                id="settings.general.appLanguage"
+                comment="Language of app menus and buttons, separate from job languages"
+              >
+                App language
+              </Trans>
+            </span>
+            <p className={muted}>
+              <Trans
+                id="settings.general.appLanguageHelp"
+                comment="Brief app-language description"
+              >
+                Menus and buttons.
+              </Trans>
+            </p>
+          </div>
+          <div className="grid w-full grid-cols-2 gap-1 sm:w-72">
+            {locales.map((locale) => (
+              <button
+                key={locale}
+                aria-pressed={locale === currentLocale}
+                disabled={busy}
+                onClick={() => handleLocaleSwitch(locale)}
+                className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 ${locale === currentLocale ? "border-divider bg-surface font-semibold" : "border-transparent text-muted hover:bg-border-soft"}`}
+              >
+                <LocaleFlag locale={locale} size={18} />
+                {localeLabels[locale]}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
-
-      {/* Salary display */}
-      <section>
-        <h2 className="mb-1 text-lg font-semibold">
-          <Trans id="settings.general.salary.title" comment="Salary display settings section heading">Salary display</Trans>
-        </h2>
-        <p className="mb-4 text-sm text-muted">
-          <Trans id="settings.general.salary.description" comment="Salary display settings description">
-            Choose how salaries are shown across the site.
+      <section className="mt-7" aria-labelledby="job-results-heading">
+        <h3
+          id="job-results-heading"
+          className="border-b border-divider pb-3 text-sm font-semibold"
+        >
+          <Trans
+            id="settings.general.results"
+            comment="Group containing job-language and salary-display preferences"
+          >
+            Job results
+          </Trans>
+        </h3>
+        <div className={row}>
+          <div className="min-w-0">
+            <span className="text-sm">
+              <Trans
+                id="settings.jobLanguages.title"
+                comment="Job posting language preferences heading"
+              >
+                Job languages
+              </Trans>
+            </span>
+            <p className={muted}>
+              <Trans
+                id="settings.general.jobLanguageHelp"
+                comment="Brief explanation of the job-language filter"
+              >
+                Which postings appear in your results.
+              </Trans>
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {allLanguages ? (
+                <span className="rounded-full bg-border-soft px-2.5 py-1 text-[11px]">
+                  <Trans
+                    id="settings.jobLanguages.all"
+                    comment="All job languages option"
+                  >
+                    All languages
+                  </Trans>
+                </span>
+              ) : (
+                jobLanguages.map((code) => {
+                  const lang = getLanguage(code);
+                  return (
+                    <span
+                      key={code}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-border-soft px-2.5 py-1 text-[11px]"
+                    >
+                      {lang?.flag && <CountryFlag iso={lang.flag} size={14} />}
+                      {lang?.label ?? code}
+                    </span>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setLangModalOpen(true)}
+            className="min-h-11 shrink-0 rounded-full border border-divider px-4 text-xs font-semibold hover:bg-border-soft disabled:opacity-50"
+          >
+            <Trans
+              id="settings.general.choose"
+              comment="Open a preference picker"
+            >
+              Choose
+            </Trans>
+          </button>
+        </div>
+        <div className={`${row} flex-col sm:flex-row`}>
+          <div>
+            <span className="text-sm">
+              <Trans
+                id="settings.general.salary.title"
+                comment="Salary display settings section heading"
+              >
+                Salary display
+              </Trans>
+            </span>
+            <p className={muted}>
+              <Trans
+                id="settings.general.salaryHelp"
+                comment="Brief salary-display description"
+              >
+                Currency and pay period.
+              </Trans>
+            </p>
+          </div>
+          <div className="flex w-full gap-3 sm:w-auto">
+            <div className="min-w-0 flex-1 sm:w-24">
+              <label className="mb-2 block text-[11px] text-muted">
+                <Trans
+                  id="settings.general.salary.currencyLabel"
+                  comment="Label for currency selector"
+                >
+                  Currency
+                </Trans>
+              </label>
+              <CurrencyModal
+                value={displayCurrency}
+                currencies={availableCurrencies}
+                disabled={busy}
+                onSelect={(code) => {
+                  const previous = displayCurrency;
+                  void save(
+                    { displayCurrency: code },
+                    () => setDisplayCurrency(code),
+                    () => setDisplayCurrency(previous),
+                    () => salaryDisplay.update({ displayCurrency: code }),
+                  );
+                }}
+              />
+            </div>
+            <div className="min-w-0 flex-1 sm:w-36">
+              <span className="mb-2 block text-[11px] text-muted">
+                <Trans
+                  id="settings.general.salary.periodLabel"
+                  comment="Label for pay period selector"
+                >
+                  Pay period
+                </Trans>
+              </span>
+              <SettingsChoice
+                label={t({
+                  id: "settings.general.salary.periodLabel",
+                  comment: "Label for pay period selector",
+                  message: "Pay period",
+                })}
+                value={salaryPeriod}
+                disabled={busy}
+                options={[
+                  {
+                    value: "",
+                    label: t({
+                      id: "settings.general.salary.original",
+                      comment: "Keep the job posting's original pay period",
+                      message: "Original",
+                    }),
+                  },
+                  {
+                    value: "yearly",
+                    label: t({
+                      id: "settings.general.salary.yearly",
+                      comment: "Yearly salary period",
+                      message: "Yearly",
+                    }),
+                  },
+                  {
+                    value: "monthly",
+                    label: t({
+                      id: "settings.general.salary.monthly",
+                      comment: "Monthly salary period",
+                      message: "Monthly",
+                    }),
+                  },
+                  {
+                    value: "daily",
+                    label: t({
+                      id: "settings.general.salary.daily",
+                      comment: "Daily salary period",
+                      message: "Daily",
+                    }),
+                  },
+                  {
+                    value: "hourly",
+                    label: t({
+                      id: "settings.general.salary.hourly",
+                      comment: "Hourly salary period",
+                      message: "Hourly",
+                    }),
+                  },
+                ]}
+                onChange={(value) => {
+                  const previous = salaryPeriod;
+                  void save(
+                    { salaryPeriod: value || null },
+                    () => setSalaryPeriod(value),
+                    () => setSalaryPeriod(previous),
+                    () => salaryDisplay.update({ salaryPeriod: value || null }),
+                  );
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+      <p
+        role="status"
+        aria-live="polite"
+        className="mt-4 min-h-5 text-xs text-muted"
+      >
+        {saveState === "saving" && (
+          <Trans
+            id="settings.preferences.saving"
+            comment="Preference persistence status"
+          >
+            Saving…
+          </Trans>
+        )}
+        {saveState === "saved" && (
+          <Trans
+            id="settings.preferences.saved"
+            comment="Preference persistence status"
+          >
+            Saved
+          </Trans>
+        )}
+        {(saveState === "error" || saveState === "locale-error") && (
+          <>
+            {saveState === "locale-error" ? (
+              <Trans
+                id="settings.preferences.localeError"
+                comment="The app language changed locally but account synchronization failed"
+              >
+                Language changed on this device. Could not sync your account.
+              </Trans>
+            ) : (
+              <Trans
+                id="settings.preferences.error"
+                comment="Preference persistence failed and optimistic value was restored"
+              >
+                Could not save. Your previous choice is still active.
+              </Trans>
+            )}
+            {retry.current && (
+              <button
+                onClick={() => retry.current?.()}
+                className="ml-2 underline underline-offset-4"
+              >
+                <Trans
+                  id="common.actions.retry"
+                  comment="Retry a failed preference save"
+                >
+                  Retry
+                </Trans>
+              </button>
+            )}
+          </>
+        )}
+      </p>
+      {!isLoggedIn && (
+        <p className="mt-2 text-xs text-muted">
+          <Trans
+            id="settings.preferences.local"
+            comment="Anonymous preference persistence notice"
+          >
+            Saved on this device. Sign in to sync.
           </Trans>
         </p>
-        <div className="flex flex-wrap gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t({ id: "settings.general.salary.currencyLabel", comment: "Label for currency selector", message: "Currency" })}
-            </span>
-            <select
-              value={displayCurrency}
-              onChange={(e) => {
-                const val = e.target.value;
-                setDisplayCurrency(val);
-                salaryDisplay.update({ displayCurrency: val });
-                void updatePreferences({ displayCurrency: val });
-              }}
-              className="rounded-md border border-divider bg-surface px-4 py-2 text-sm cursor-pointer"
-            >
-              {availableCurrencies.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-muted">
-              {t({ id: "settings.general.salary.periodLabel", comment: "Label for pay period selector", message: "Pay period" })}
-            </span>
-            <select
-              value={salaryPeriod}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSalaryPeriod(val);
-                salaryDisplay.update({ salaryPeriod: val || null });
-                void updatePreferences({ salaryPeriod: val || null });
-              }}
-              className="rounded-md border border-divider bg-surface px-4 py-2 text-sm cursor-pointer"
-            >
-              <option value="">
-                {t({ id: "settings.general.salary.period.original", comment: "Original pay period option", message: "Original" })}
-              </option>
-              <option value="yearly">
-                {t({ id: "settings.general.salary.period.yearly", comment: "Yearly pay period option", message: "Yearly" })}
-              </option>
-              <option value="monthly">
-                {t({ id: "settings.general.salary.period.monthly", comment: "Monthly pay period option", message: "Monthly" })}
-              </option>
-              <option value="daily">
-                {t({ id: "settings.general.salary.period.daily", comment: "Daily pay period option", message: "Daily" })}
-              </option>
-              <option value="hourly">
-                {t({ id: "settings.general.salary.period.hourly", comment: "Hourly pay period option", message: "Hourly" })}
-              </option>
-            </select>
-          </label>
-        </div>
-      </section>
+      )}
+      <JobLanguageModal
+        open={langModalOpen}
+        onOpenChange={setLangModalOpen}
+        selected={new Set(allLanguages ? ["*"] : jobLanguages)}
+        availableCodes={
+          new Set(availableLanguages.map((language) => language.code))
+        }
+        locale={currentLocale}
+        onApply={(next) => {
+          const previous = jobLanguages;
+          void save(
+            { jobLanguages: next },
+            () => setJobLanguages(next),
+            () => setJobLanguages(previous),
+          );
+        }}
+      />
     </div>
   );
 }

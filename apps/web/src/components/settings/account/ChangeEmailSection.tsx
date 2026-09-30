@@ -1,5 +1,7 @@
 "use client";
 
+import { AccountEdit } from "./AccountEdit";
+import { useSession } from "@/components/providers/SessionProvider";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -13,6 +15,7 @@ import { useLocalePath } from "@/lib/useLocalePath";
 export function ChangeEmailSection() {
   const { t } = useLingui();
   const lp = useLocalePath();
+  const { user } = useSession();
   const [newEmail, setNewEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +29,11 @@ export function ChangeEmailSection() {
     setSuccess("");
 
     if (!newEmail) {
-      const message = t({ id: "settings.account.email.required", comment: "Error when email field is empty", message: "Please enter a new email address" });
+      const message = t({
+        id: "settings.account.email.required",
+        comment: "Error when email field is empty",
+        message: "Please enter a new email address",
+      });
       setEmailError(message);
       setError(message);
       return;
@@ -41,30 +48,86 @@ export function ChangeEmailSection() {
 
     if (error) {
       setEmailError("");
-      setError(error.message ?? t({ id: "settings.account.email.error", comment: "Generic email change error", message: "Failed to change email" }));
+      setError(
+        error.message ??
+          t({
+            id: "settings.account.email.error",
+            comment: "Generic email change error",
+            message: "Failed to change email",
+          }),
+      );
       return;
     }
 
-    setSuccess(t({ id: "settings.account.email.success", comment: "Success message after email change request", message: "Verification email sent. Please check your inbox. It may take a few minutes to arrive." }));
+    setSuccess(
+      t({
+        id: "settings.account.email.success",
+        comment: "Success message after email change request",
+        message:
+          "Verification email sent. Please check your inbox. It may take a few minutes to arrive.",
+      }),
+    );
     setNewEmail("");
   }
 
   return (
-    <section>
-      <h2 className="mb-1 text-base font-semibold">
-        <Trans id="settings.account.email.title" comment="Change email section heading">Change email</Trans>
-      </h2>
-      <p className="mb-4 text-sm text-muted">
-        <Trans id="settings.account.email.description" comment="Change email section description">
-          Update the email address associated with your account.
+    <AccountEdit
+      title={t({
+        id: "settings.account.email.address",
+        comment: "Current account email row heading",
+        message: "Email address",
+      })}
+      value={
+        <>
+          <span className="block">{user?.email}</span>
+          <span
+            className={`mt-2 inline-flex items-center gap-[9px] text-[11px] ${user?.emailVerified ? "text-green-600 dark:text-green-400" : "text-muted"}`}
+          >
+            <span
+              className="h-1 w-1 rounded-full bg-current"
+              aria-hidden="true"
+            />
+            {user?.emailVerified
+              ? t({
+                  id: "settings.account.email.verified",
+                  comment: "Current account email has been verified",
+                  message: "Verified",
+                })
+              : t({
+                  id: "settings.account.email.unverified",
+                  comment: "Current account email is awaiting verification",
+                  message: "Not verified",
+                })}
+          </span>
+        </>
+      }
+      description={t({
+        id: "settings.account.email.description",
+        comment: "Change email section description",
+        message: "Update the email address associated with your account.",
+      })}
+      action={
+        <Trans
+          id="settings.account.email.change"
+          comment="Open email change dialog"
+        >
+          Change
         </Trans>
-      </p>
+      }
+    >
       <ErrorAlert message={error} focusOnRender />
       <SuccessAlert message={success} />
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end"
+      >
         <div className="flex-1">
           <FormField
-            label={t({ id: "settings.account.email.label", comment: "New email input label", message: "New email" })}
+            label={t({
+              id: "settings.account.email.label",
+              comment: "New email input label",
+              message: "New email",
+            })}
             type="email"
             required
             autoComplete="email"
@@ -78,10 +141,18 @@ export function ChangeEmailSection() {
         </div>
         <Button type="submit" disabled={loading} size="sm">
           {loading
-            ? t({ id: "settings.account.email.saving", comment: "Email save button while loading", message: "Saving..." })
-            : t({ id: "settings.account.email.save", comment: "Email save button", message: "Update email" })}
+            ? t({
+                id: "settings.account.email.saving",
+                comment: "Email save button while loading",
+                message: "Saving...",
+              })
+            : t({
+                id: "settings.account.email.save",
+                comment: "Email save button",
+                message: "Update email",
+              })}
         </Button>
       </form>
-    </section>
+    </AccountEdit>
   );
 }

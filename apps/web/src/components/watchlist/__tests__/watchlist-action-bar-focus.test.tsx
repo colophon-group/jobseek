@@ -210,7 +210,7 @@ describe("WatchlistActionBar delete focus", () => {
     renderActionBar();
     await user.click(screen.getByRole("button", { name: "Enable weekly email notifications" }));
     const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByRole("link", { name: "Open notification settings" }).getAttribute("href")).toBe("/en/settings#notifications");
+    expect(within(dialog).getByRole("link", { name: "Open notification settings" }).getAttribute("href")).toBe("/en/settings/email#notifications");
     await user.click(within(dialog).getByRole("button", { name: "Keep paused" }));
     expect(mocks.refresh).not.toHaveBeenCalled();
   });

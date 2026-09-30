@@ -1,5 +1,3 @@
-import { NotificationSettings } from "@/components/settings/NotificationSettings";
-import { getNotificationPreferences } from "@/lib/actions/notifications";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
 import {
   getPreferences,
@@ -50,27 +48,26 @@ export async function SettingsLoader({ locale }: { locale: string }) {
   // Dynamic gate — see comment above. Discarded result; the same
   // session is re-resolved (per-request memoised) inside
   // `getPreferences` and `getViewerJobLanguages` below.
-  const session = await getSession();
+  await getSession();
 
-  const [prefs, jobLanguages, availableLanguages, currencyRates, notifications] = await Promise.all([
-    getPreferences(),
-    getViewerJobLanguages(),
-    getAvailableJobLanguages(),
-    getCurrencyRates(),
-    session ? getNotificationPreferences(locale) : Promise.resolve(null),
-  ]);
+  const [prefs, jobLanguages, availableLanguages, currencyRates] =
+    await Promise.all([
+      getPreferences(),
+      getViewerJobLanguages(),
+      getAvailableJobLanguages(),
+      getCurrencyRates(),
+    ]);
 
   return (
     <div className="space-y-8">
-    {notifications && session && <NotificationSettings paused={notifications.notificationsPaused} verified={session.user.emailVerified} watchlists={notifications.watchlists} />}
-    <GeneralSettings
-      savedJobLanguages={jobLanguages}
-      savedDisplayCurrency={prefs?.displayCurrency ?? "EUR"}
-      savedSalaryPeriod={prefs?.salaryPeriod ?? null}
-      availableCurrencies={currencyRates.map((r) => r.currency)}
-      availableLanguages={availableLanguages}
-      locale={locale}
-    />
+      <GeneralSettings
+        savedJobLanguages={jobLanguages}
+        savedDisplayCurrency={prefs?.displayCurrency ?? "EUR"}
+        savedSalaryPeriod={prefs?.salaryPeriod ?? null}
+        availableCurrencies={currencyRates.map((r) => r.currency)}
+        availableLanguages={availableLanguages}
+        locale={locale}
+      />
     </div>
   );
 }

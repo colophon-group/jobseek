@@ -188,7 +188,7 @@ describe("compileWatchlistMatcherSources", () => {
       employmentType: ["full_time"],
       salaryMin: 90_000,
       experienceMin: 3,
-      languages: ["de"],
+      languages: [],
     });
     expect(compiled[1]?.candidateFilters).toMatchObject({
       companyIds: [],

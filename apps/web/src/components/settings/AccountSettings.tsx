@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import { useSession } from "@/components/providers/SessionProvider";
 import { getAccountPageData } from "@/lib/actions/preferences";
@@ -11,9 +12,15 @@ import { PasswordSection } from "./account/PasswordSection";
 import { UsernameSection } from "./account/UsernameSection";
 import type { AccountPageData, ConnectedAccount } from "./account/types";
 
-export function AccountSettings({ initialData }: { initialData?: AccountPageData }) {
+export function AccountSettings({
+  initialData,
+}: {
+  initialData?: AccountPageData;
+}) {
   const { isLoggedIn } = useSession();
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>(initialData?.accounts ?? []);
+  const [accounts, setAccounts] = useState<ConnectedAccount[]>(
+    initialData?.accounts ?? [],
+  );
 
   const refreshAccounts = useCallback(() => {
     getAccountPageData().then((data) => {
@@ -31,11 +38,23 @@ export function AccountSettings({ initialData }: { initialData?: AccountPageData
   const hasPassword = accounts.some((a) => a.providerId === "credential");
 
   return (
-    <div className="space-y-10">
+    <div>
+      <h2 className="mb-4 text-xl font-semibold">
+        <Trans id="settings.nav.account" comment="Account settings nav link">
+          Account
+        </Trans>
+      </h2>
       <UsernameSection currentUsername={initialData.username} />
-      <PasswordSection hasPassword={hasPassword} initialCooldown={0} onPasswordSet={refreshAccounts} />
       <ChangeEmailSection />
-      <ConnectedAccountsSection accounts={accounts} onDisconnect={handleDisconnect} />
+      <PasswordSection
+        hasPassword={hasPassword}
+        initialCooldown={0}
+        onPasswordSet={refreshAccounts}
+      />
+      <ConnectedAccountsSection
+        accounts={accounts}
+        onDisconnect={handleDisconnect}
+      />
       <DeleteAccountSection />
     </div>
   );

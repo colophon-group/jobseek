@@ -191,7 +191,7 @@ describe("watchlist browser refresh input (#8258)", () => {
       salaryMax: undefined,
       experienceMin: undefined,
       experienceMax: undefined,
-      languages: ["en"],
+      languages: [],
     });
     expect(result.browserPostingFilters).not.toHaveProperty("abortSignal");
     expect(result.searchUnavailable).toBe(false);

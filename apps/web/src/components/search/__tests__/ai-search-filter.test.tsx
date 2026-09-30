@@ -65,7 +65,7 @@ describe("AiSearchFilter", () => {
     expect(screen.queryByRole("button", { name: "Remove matching criteria" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "All results" }));
     expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
     expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
     expect(mocks.configureAiFilter).not.toHaveBeenCalled();
     expect(mocks.disableAiFilter).not.toHaveBeenCalled();
@@ -154,7 +154,7 @@ describe("AiSearchFilter", () => {
     expect(control.textContent).toContain("Narrowed results");
     expect(control.textContent).toContain("12 matches");
     expect(control.textContent).not.toContain("Backend roles");
-    const trigger = screen.getByRole("button", { name: "View" });
+    const trigger = screen.getByRole("button", { name: "Narrowed" });
     expect(trigger.className).not.toContain("fixed");
     fireEvent.click(trigger);
 
@@ -172,16 +172,16 @@ describe("AiSearchFilter", () => {
     expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
     expect(screen.getByText("Paused narrowed result")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit matching criteria" }));
     expect((screen.getByLabelText(
       "What should make a job a match?",
     ) as HTMLTextAreaElement).value).toBe("Backend roles");
     expect(screen.getByText("Visible narrowed result")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All results" })).toBeTruthy();
     expect(onDrawerOpenChange).toHaveBeenLastCalledWith(true);
 
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "All results" }));
     expect(screen.queryByLabelText("What should make a job a match?")).toBeNull();
     expect(screen.getByRole("button", { name: "All results" })).toBeTruthy();
   });
@@ -206,7 +206,7 @@ describe("AiSearchFilter", () => {
     expect(control.textContent).toContain("12 matches");
     expect(control.textContent).not.toContain("Pro");
 
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
     expect(screen.getByText("Shared narrowed match")).toBeTruthy();
     expect(screen.getByText("Backend roles")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit matching criteria" })).toBeNull();
@@ -258,13 +258,13 @@ describe("AiSearchFilter", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Set up" }));
+    fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
 
     expect(onDrawerOpenChange).toHaveBeenLastCalledWith(false);
     expect(screen.getByRole("region", { name: "Narrow results precisely" })).toBeTruthy();
     expect(screen.getByLabelText("What should make a job a match?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Apply" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All results" })).toBeTruthy();
     expect(screen.queryByText("Narrow down this search")).toBeNull();
     expect(screen.queryByText("Pro")).toBeNull();
     expect(screen.queryByRole("button", { name: "Close precise matching" })).toBeNull();

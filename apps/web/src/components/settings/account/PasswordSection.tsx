@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountEdit } from "./AccountEdit";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -24,7 +25,8 @@ export function PasswordSection({
   initialCooldown: number;
   onPasswordSet: () => void;
 }) {
-  if (hasPassword) return <ResetPasswordFlow initialCooldown={initialCooldown} />;
+  if (hasPassword)
+    return <ResetPasswordFlow initialCooldown={initialCooldown} />;
   return <SetPasswordFlow onSuccess={onPasswordSet} />;
 }
 
@@ -44,7 +46,11 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
     setSuccess("");
 
     if (!newPassword) {
-      const message = t({ id: "settings.account.password.newRequired", comment: "Error when new password is empty", message: "Please enter a password" });
+      const message = t({
+        id: "settings.account.password.newRequired",
+        comment: "Error when new password is empty",
+        message: "Please enter a password",
+      });
       setNewPasswordError(message);
       setError(message);
       return;
@@ -60,28 +66,61 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
       return;
     }
 
-    setSuccess(t({ id: "settings.account.password.setSuccess", comment: "Success message after setting password", message: "Password set successfully." }));
+    setSuccess(
+      t({
+        id: "settings.account.password.setSuccess",
+        comment: "Success message after setting password",
+        message: "Password set successfully.",
+      }),
+    );
     setNewPassword("");
     setTimeout(onSuccess, 2000);
   }
 
   return (
-    <section>
-      <h2 className="mb-1 text-base font-semibold">
-        <Trans id="settings.account.password.title" comment="Password section heading">Password</Trans>
-      </h2>
-      <p className="mb-4 text-sm text-muted">
-        <Trans id="settings.account.password.setDescription" comment="Set password description for OAuth users">
-          You signed in with a social account. Set a password to enable email changes and additional security.
-        </Trans>
-      </p>
+    <AccountEdit
+      title={t({
+        id: "settings.account.password.title",
+        comment: "Password section heading",
+        message: "Password",
+      })}
+      value={t({
+        id: "settings.account.password.social",
+        comment:
+          "Password summary for users signing in through a social provider",
+        message: "Signed in with a social account",
+      })}
+      action={t({
+        id: "settings.account.password.setButton",
+        comment: "Open the set password form",
+        message: "Set password",
+      })}
+      description={t({
+        id: "settings.account.password.setDescription",
+        comment: "Set password description for OAuth users",
+        message:
+          "You signed in with a social account. Set a password to enable email changes and additional security.",
+      })}
+    >
       <ErrorAlert message={error} focusOnRender />
       <SuccessAlert message={success} />
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
-        <input type="hidden" name="username" autoComplete="username" value={user?.email ?? ""} />
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end"
+      >
+        <input
+          type="hidden"
+          name="username"
+          autoComplete="username"
+          value={user?.email ?? ""}
+        />
         <div className="flex-1">
           <FormField
-            label={t({ id: "settings.account.password.newLabel", comment: "New password input label", message: "New password" })}
+            label={t({
+              id: "settings.account.password.newLabel",
+              comment: "New password input label",
+              message: "New password",
+            })}
             type="password"
             required
             autoComplete="new-password"
@@ -95,11 +134,19 @@ function SetPasswordFlow({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <Button type="submit" disabled={loading} size="sm">
           {loading
-            ? t({ id: "settings.account.password.setting", comment: "Set password button while loading", message: "Setting..." })
-            : t({ id: "settings.account.password.set", comment: "Set password button", message: "Set password" })}
+            ? t({
+                id: "settings.account.password.setting",
+                comment: "Set password button while loading",
+                message: "Setting...",
+              })
+            : t({
+                id: "settings.account.password.set",
+                comment: "Set password button",
+                message: "Set password",
+              })}
         </Button>
       </form>
-    </section>
+    </AccountEdit>
   );
 }
 
@@ -152,33 +199,78 @@ function ResetPasswordFlow({ initialCooldown }: { initialCooldown: number }) {
     setLoading(false);
 
     if (error) {
-      setError(error.message ?? t({ id: "settings.account.password.error", comment: "Generic password reset error", message: "Failed to send reset email" }));
+      setError(
+        error.message ??
+          t({
+            id: "settings.account.password.error",
+            comment: "Generic password reset error",
+            message: "Failed to send reset email",
+          }),
+      );
       return;
     }
 
-    setSuccess(t({ id: "settings.account.password.success", comment: "Success message after password reset request", message: "Password reset link sent. Please check your inbox. It may take a few minutes to arrive." }));
+    setSuccess(
+      t({
+        id: "settings.account.password.success",
+        comment: "Success message after password reset request",
+        message:
+          "Password reset link sent. Please check your inbox. It may take a few minutes to arrive.",
+      }),
+    );
     setCooldown(60);
   }
 
   return (
-    <section>
-      <h2 className="mb-1 text-base font-semibold">
-        <Trans id="settings.account.password.title" comment="Password section heading">Password</Trans>
-      </h2>
-      <p className="mb-4 text-sm text-muted">
-        <Trans id="settings.account.password.description" comment="Password section description">
-          Change your password via a secure email link.
-        </Trans>
-      </p>
+    <section className="border-b border-border-soft py-5">
+      <div className="flex items-center justify-between gap-5">
+        <div>
+          <h2 className="mb-1 text-sm font-medium">
+            <Trans
+              id="settings.account.password.title"
+              comment="Password section heading"
+            >
+              Password
+            </Trans>
+          </h2>
+          <p className="mt-2 text-xs text-muted">
+            <Trans
+              id="settings.account.password.description"
+              comment="Password section description"
+            >
+              Change your password via a secure email link.
+            </Trans>
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="min-h-11 shrink-0 !border-divider !text-xs"
+          onClick={handleReset}
+          disabled={loading || cooldown > 0}
+          size="sm"
+        >
+          {loading
+            ? t({
+                id: "settings.account.password.sending",
+                comment: "Reset password button while loading",
+                message: "Sending...",
+              })
+            : cooldown > 0
+              ? t({
+                  id: "settings.account.password.cooldown",
+                  comment:
+                    "Reset password button during cooldown with seconds remaining",
+                  message: `Resend in ${cooldown}s`,
+                })
+              : t({
+                  id: "settings.account.password.send",
+                  comment: "Reset password button",
+                  message: "Send reset link",
+                })}
+        </Button>
+      </div>
       <ErrorAlert message={error} focusOnRender />
       <SuccessAlert message={success} />
-      <Button onClick={handleReset} disabled={loading || cooldown > 0} size="sm">
-        {loading
-          ? t({ id: "settings.account.password.sending", comment: "Reset password button while loading", message: "Sending..." })
-          : cooldown > 0
-            ? t({ id: "settings.account.password.cooldown", comment: "Reset password button during cooldown with seconds remaining", message: `Resend in ${cooldown}s` })
-            : t({ id: "settings.account.password.send", comment: "Reset password button", message: "Send reset link" })}
-      </Button>
     </section>
   );
 }

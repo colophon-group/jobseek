@@ -347,7 +347,7 @@ describe("fetchExplorePageData — public language override (#6132)", () => {
       locale: "it",
     });
 
-    expect(mocks.listTopCompanies.mock.calls[0][0].languages).toEqual(["it"]);
+    expect(mocks.listTopCompanies.mock.calls[0][0].languages).toEqual([]);
     expect(data.languageOverride).toBeNull();
   });
 });

@@ -94,7 +94,7 @@ describe("BillingSettings action errors", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: /Your criteria.*A shorter list/ })).toBeTruthy();
+    expect(screen.getByText("Pro adds Narrowed results to your watchlists.")).toBeTruthy();
     expect(screen.getByText("Trial signup isn’t open yet.")).toBeTruthy();
     expect(screen.getByRole("form", { name: "Pro waiting list" })).toBeTruthy();
     expect(screen.queryByText(/Payment method required/)).toBeNull();
@@ -106,7 +106,7 @@ describe("BillingSettings action errors", () => {
     mocks.isLoggedIn = false;
     mocks.searchParams = new URLSearchParams({ next: "/en/explore?q=python&narrow=1" });
     render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true }} />);
-    expect(screen.getByRole("heading", { name: /Your criteria.*A shorter list/ })).toBeTruthy();
+    expect(screen.getByText("Pro adds Narrowed results to your watchlists.")).toBeTruthy();
     const link = screen.getByRole("link", { name: "Start 7-day free trial" });
     expect(screen.queryByRole("form", { name: "Pro waiting list" })).toBeNull();
     const login = new URL(link.getAttribute("href")!, "https://jseek.co");
