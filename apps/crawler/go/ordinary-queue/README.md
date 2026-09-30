@@ -16,7 +16,7 @@ queues, exact claimed/rescheduled deadlines, heartbeat, completed scrape config
 cleanup, earliest deferred monitor repair and the persistent B0 guard. Fixtures
 own private directories/processes and never clear a shared Redis database.
 `go test -race -count=1 ./...`, `go vet ./...` and `go mod tidy -diff` pass on
-local macOS/Redis 8.10.1. A skipped Redis test establishes no integration proof;
+local macOS/Redis 8.10.1. A skipped Redis test establishes no integration proof.
 The prepared `Go ordinary queue contracts` workflow tests both Linux
 architectures with required real Redis fixtures; missing Redis fails instead
 of skipping. No completed Linux result is claimed until that workflow runs.
