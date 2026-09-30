@@ -1,6 +1,6 @@
 # Pro waiting list
 
-When `paddleCheckoutEnabled()` is false, the homepage pricing section, Narrowed
+When `stripeCheckoutEnabled()` is false, the homepage pricing section, Narrowed
 page, and billing settings show the same email signup form. Visitors do not need
 an account. Signed-in visitors can use their account email or enter another one.
 When checkout opens, the existing trial and subscription flow takes its place.

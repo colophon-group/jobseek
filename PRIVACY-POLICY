@@ -1,6 +1,6 @@
 PRIVACY POLICY
 
-Last updated: 27 September 2026
+Last updated: 30 September 2026
 
 This notice explains how personal data is handled when you use Job Seek at
 https://jseek.co. It describes our processing; it does not ask you to waive
@@ -16,7 +16,7 @@ Switzerland
 Email: business@colophon-group.org
 
 Viktor Shcherbakov is the individual operator and controller of Job Seek.
-Job Seek is the product brand. Paddle has a separate role for purchases
+Job Seek is the product brand. Stripe has a separate role for purchases
 made through its checkout, described below.
 
 
@@ -39,9 +39,9 @@ to deliver and troubleshoot the feature. Free text may contain personal
 data you include. Please keep it about the work you are seeking and avoid
 sensitive personal information or confidential information about others.
 
-Billing, when you purchase Pro: email, internal account reference, Paddle
+Billing, when you purchase Pro: email, internal account reference, Stripe
 customer, transaction, subscription and price identifiers, subscription
-status, billing dates, and trial usage. Paddle collects payment and billing details through its own
+status, billing dates, and trial usage. Stripe collects payment and billing details through its own
 checkout. We do not store full payment-card details.
 
 Technical and support information: network and device information needed
@@ -98,7 +98,7 @@ employer's website is subject to that employer's own privacy practices.
 
 Providers process service data on our behalf where they act as processors.
 Some also act as independent controllers for their own account, security,
-legal or billing purposes. Sign-in providers and Paddle have their own
+legal or billing purposes. Sign-in providers and Stripe have their own
 relationships with you; not every recipient is our processor.
 
 - Vercel hosts the website and provides delivery, analytics and performance
@@ -138,13 +138,13 @@ relationships with you; not every recipient is our processor.
   https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement
   https://www.linkedin.com/legal/privacy-policy
 
-For purchases through Paddle, Paddle is the reseller and merchant of
-record and processes checkout, payment, tax, fraud-prevention, billing and
-refund information under its own privacy notice. We provide your email
-and an account reference to connect the purchase with your Job Seek
-account, and receive subscription updates. Paddle may retain records
-independently of your Job Seek account.
-https://www.paddle.com/legal/privacy
+For Pro purchases, Stripe processes payment and billing information for us,
+including checkout, tax calculation and subscription management. Stripe also
+processes data under its privacy policy for purposes including fraud prevention
+and legal obligations. We provide your email and an account reference to bind
+the purchase to your account and receive subscription updates. We and Stripe
+may retain payment records separately from your active Job Seek account.
+https://stripe.com/privacy
 
 We may also disclose information where required by law or necessary to
 establish, exercise or defend legal claims. Contact us about the handling
@@ -165,7 +165,7 @@ We use authentication/session cookies and browser storage for functions
 such as sign-in and saved preferences. Some persist beyond a browser
 session. We do not use advertising cookies. Vercel Web Analytics uses
 cookie-free aggregate measurements; operational request logs are separate
-and can contain technical identifiers. Paddle's checkout uses its own
+and can contain technical identifiers. Stripe’s checkout uses its own
 technologies and notices for payment processing and fraud prevention.
 
 
@@ -201,7 +201,7 @@ account deletion does not individually rewrite historical snapshots.
 Provider retention is separate. Resend publishes standard email/log
 retention of 30 days with additional backup and account-termination windows.
 TypeSafe retains data as needed for the purposes described in its policy;
-we have not promised a fixed API retention period. Paddle retains purchase
+we have not promised a fixed API retention period. Stripe retains purchase
 records under its own legal and accounting obligations. Security, support
 or dispute records may be retained as needed for those purposes or law.
 Contact us if you need a deletion request coordinated with a provider.

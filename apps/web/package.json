@@ -50,7 +50,6 @@
     "@nivo/sankey": "^0.99.0",
     "@octokit/auth-app": "^8.3.1",
     "@octokit/rest": "^22.0.1",
-    "@paddle/paddle-js": "^1.6.5",
     "@paddle/paddle-node-sdk": "^3.10.0",
     "@radix-ui/react-alert-dialog": "^1.1.23",
     "@radix-ui/react-dialog": "^1.1.23",
@@ -80,6 +79,7 @@
     "resend": "^6.27.0",
     "server-only": "^0.0.1",
     "sharp": "^0.35.4",
+    "stripe": "22.6.2",
     "tailwindcss": "^4.3.3",
     "typesense": "^3.0.6",
     "workflow": "^4.8.9"

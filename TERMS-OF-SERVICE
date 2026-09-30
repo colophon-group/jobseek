@@ -1,6 +1,6 @@
 TERMS OF SERVICE
 
-Last updated: 27 September 2026
+Last updated: 30 September 2026
 
 These Terms of Service ("Terms") govern your access to and use of the
 Job Seek web application ("Service") operated by Viktor Shcherbakov,
@@ -138,11 +138,9 @@ intentional misconduct or gross negligence.
      free. Narrowed checks job descriptions against your criteria; it
      does not guarantee that a posting meets every requirement.
 
-  b. For Pro purchases offered through Paddle, Paddle acts as reseller
-     and merchant of record. You buy the subscription from Paddle; we provide Job
-     Seek. Paddle handles checkout, payments, applicable taxes, billing
-     support, and refunds. Purchases are also subject to Paddle's Buyer
-     Terms: https://www.paddle.com/legal/buyer-terms
+  b. Viktor Shcherbakov is the seller of Job Seek Pro. Stripe processes
+     payments and provides subscription billing. We are responsible for
+     the service, applicable taxes, billing support, and refunds.
 
   c. Eligible accounts receive a seven-day free trial requiring a payment
      method. Unless canceled before the trial ends, Pro renews at US$10
@@ -151,16 +149,14 @@ intentional misconduct or gross negligence.
      billing interval, and trial terms are shown before confirmation.
 
   d. Subscriptions renew automatically until canceled. Cancel through
-     Settings > Subscription > Manage subscription, the link in your
-     Paddle receipt, or https://paddle.net. Cancellation stops future
+     Settings > Subscription > Manage subscription. Cancellation stops future
      renewals; access continues until the end shown in your subscription
      settings. Deleting your Job Seek account cancels billing immediately
      and ends access. Cancellation alone does not request a refund.
 
   e. Refund policy: request a refund or exercise an applicable withdrawal
-     right through https://paddle.net or the support link in your receipt.
-     Paddle assesses and processes requests under its Refund Policy:
-     https://www.paddle.com/legal/refund-policy
+     right by emailing business@colophon-group.org. We assess and process
+     requests.
      Mandatory consumer rights are unaffected. For a product problem,
      contact business@colophon-group.org so we can help. Cancel future
      renewals separately if you no longer want the subscription.
@@ -199,8 +195,7 @@ law. If you are a consumer, this choice does not remove mandatory
 protections afforded by the law of your habitual residence. Courts with
 jurisdiction are determined by applicable law; nothing in these Terms
 requires a consumer to waive a mandatory right to bring proceedings in
-their home courts. Paddle purchases are separately governed by Paddle's
-Buyer Terms; this section does not replace those terms.
+their home courts.
 
 
 12. CHANGES TO THESE TERMS

@@ -98,7 +98,8 @@ Upstash limiter but still passes through the pre-cache WAF rate-limit rule.
 | `/api/v1/taxonomies` | GET | External API consumers |
 | `/api/v1/watchlists` | GET | Legacy external API consumers (`410` compatibility response through 2026-10-31) |
 | `/api/v1/watchlist/create` | GET | External API consumers |
-| `/api/paddle/webhook` | POST | Paddle (subscription events) |
+| `/api/stripe/webhook` | POST | Stripe (Checkout, subscription and invoice events) |
+| `/api/paddle/webhook` | POST | Historical Paddle subscription events |
 
 ## Redirects
 
@@ -131,7 +132,8 @@ response (308, no serverless function):
 | `/api/v1/taxonomies` | 1 | Rate limit (Redis) + response serialization | 15-50ms |
 | `/api/v1/watchlists` | 0 | Uniform non-cacheable `410`; no watchlist/provider read | <10ms handler |
 | `/api/auth/*` | 1-5 | Session management, password hashing (bcrypt) | 20-150ms |
-| `/api/paddle/webhook` | Event-dependent | Signature verification + billing event processing | Not measured |
+| `/api/stripe/webhook` | Event-dependent | Signature verification + current subscription reconciliation | Not measured |
+| `/api/paddle/webhook` | Event-dependent | Historical billing processing | Not measured |
 | Redirects | 0 | None | 0ms (edge-level, no function) |
 | Well-known endpoints | 0 | None | 0ms (static CDN) |
 

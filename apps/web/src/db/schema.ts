@@ -429,6 +429,40 @@ export const paddleSubscription = pgTable("paddle_subscription", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("idx_paddle_subscription_account").on(table.accountId)]).enableRLS();
 
+// Stripe owns these records; manual grants remain independent.
+export const stripeAccount = pgTable("stripe_account", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  environment: text("environment", { enum: ["sandbox", "production"] }).notNull(),
+  customerId: text("customer_id"),
+  pendingCheckoutId: text("pending_checkout_id"),
+  pendingPriceId: text("pending_price_id"),
+  checkoutAttemptId: uuid("checkout_attempt_id").defaultRandom().notNull(),
+  checkoutParameters: jsonb("checkout_parameters").$type<import("stripe").default.Checkout.SessionCreateParams>(),
+  trialUsedAt: timestamp("trial_used_at", { withTimezone: true }),
+  deletionRequested: boolean("deletion_requested").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  check("stripe_account_environment_check", sql`${table.environment} IN ('sandbox', 'production')`),
+  uniqueIndex("idx_stripe_account_user_environment").on(table.userId, table.environment),
+  uniqueIndex("idx_stripe_account_customer_environment").on(table.customerId, table.environment),
+  uniqueIndex("idx_stripe_account_checkout").on(table.pendingCheckoutId),
+]).enableRLS();
+
+export const stripeSubscription = pgTable("stripe_subscription", {
+  id: text("id").primaryKey(),
+  accountId: uuid("account_id").notNull().references(() => stripeAccount.id, { onDelete: "cascade" }),
+  status: text("status").notNull(),
+  priceId: text("price_id"),
+  expectedPriceId: text("expected_price_id").notNull(),
+  entitled: boolean("entitled").default(false).notNull(),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  scheduledCancelAt: timestamp("scheduled_cancel_at", { withTimezone: true }),
+  // Timestamp of the authoritative reconciliation, not the event snapshot.
+  eventOccurredAt: timestamp("event_occurred_at", { withTimezone: true, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("idx_stripe_subscription_account").on(table.accountId)]).enableRLS();
+
 export const industry = pgTable("industry", {
   id: smallint("id").primaryKey(),
   name: text("name").notNull().unique(),

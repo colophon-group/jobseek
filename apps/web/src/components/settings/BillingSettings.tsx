@@ -10,7 +10,6 @@ import { ProWaitlistForm } from "@/components/pro/ProWaitlistForm";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { createCheckoutSession, createPortalSession } from "@/lib/actions/billing";
-import { loadPaddle } from "@/lib/paddle/browser";
 import { translateActionError } from "@/lib/action-error-messages";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -60,11 +59,11 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const isFree = planInfo.plan === "free";
 
   const hasAccess = !isFree;
-  const canPurchase = isFree && (!planInfo.status || planInfo.status === "canceled");
+  const canPurchase = isFree && (!planInfo.status || ["canceled", "incomplete_expired"].includes(planInfo.status ?? ""));
   const trialEligible = planInfo.trialEligible !== false;
-  const needsPayment = planInfo.status === "past_due";
+  const needsPayment = ["past_due", "unpaid", "incomplete"].includes(planInfo.status ?? "");
   const isPaused = planInfo.status === "paused";
-  const ended = planInfo.status === "canceled";
+  const ended = ["canceled", "incomplete_expired"].includes(planInfo.status ?? "");
   const periodEnd = planInfo.periodEnd
     ? new Intl.DateTimeFormat(i18n.locale, { dateStyle: "long" }).format(new Date(planInfo.periodEnd))
     : null;
@@ -75,21 +74,13 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
     setError("");
     setLoading("checkout");
     try {
-      const result = await createCheckoutSession();
+      const result = await createCheckoutSession(i18n.locale, returnPath);
       if (result.error) {
         setError(translateActionError(t, result.error));
         return;
       }
-      if (!result.transactionId) throw new Error("Missing checkout transaction");
-      const paddle = await loadPaddle(i18n.locale);
-      const destination = new URL(lp("/settings/billing"), window.location.origin);
-      destination.searchParams.set("checkout", "complete");
-      if (returnPath) destination.searchParams.set("next", returnPath);
-      paddle.Checkout.open({
-        transactionId: result.transactionId,
-        ...(result.email ? { customer: { email: result.email } } : {}),
-        settings: { locale: i18n.locale, successUrl: destination.href },
-      });
+      if (!result.url) throw new Error("Missing checkout URL");
+      window.location.href = result.url;
     } catch {
       setError(translateActionError(t, "payments_unavailable"));
     } finally {
@@ -101,7 +92,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
     setError("");
     setLoading("portal");
     try {
-      const result = await createPortalSession();
+      const result = await createPortalSession(i18n.locale);
       if (result.error) setError(translateActionError(t, result.error));
       else if (result.url) window.location.href = result.url;
     } catch {
@@ -170,7 +161,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
                 </>
               ) : <p className="text-muted"><Trans id="pro.billing.manageHelp" comment="What users can do in the portal">Payment details, invoices, and cancellation</Trans></p>}
             </div>
-            {(planInfo.hasBillingAccount || hasAccess) && manageButton}
+            {planInfo.hasBillingAccount && manageButton}
           </div>
         </section>
       ) : checkoutComplete ? null : (
@@ -198,11 +189,11 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
                   {loading === "checkout"
                     ? t({ id: "pro.offer.opening", comment: "Loading state while preparing secure checkout", message: "Opening checkout…" })
                     : trialEligible
-                      ? t({ id: "settings.billing.startTrial", comment: "Button opening Paddle checkout for a seven-day trial", message: "Start 7-day free trial" })
+                      ? t({ id: "settings.billing.startTrial", comment: "Button opening Stripe checkout for a seven-day trial", message: "Start 7-day free trial" })
                       : t({ id: "settings.billing.subscribe", comment: "Subscribe again without another trial", message: "Subscribe to Pro" })}
                   <ArrowRight size={16} aria-hidden="true" />
                 </Button> : <Button href={loginPath} className="gap-2 self-start sm:self-auto">
-                  {t({ id: "settings.billing.startTrial", comment: "Button opening Paddle checkout for a seven-day trial", message: "Start 7-day free trial" })}<ArrowRight size={16} aria-hidden="true" />
+                  {t({ id: "settings.billing.startTrial", comment: "Button opening Stripe checkout for a seven-day trial", message: "Start 7-day free trial" })}<ArrowRight size={16} aria-hidden="true" />
                 </Button>
               )}
               {!planInfo.checkoutEnabled && <span className="text-sm text-muted"><Trans id="pro.offer.unavailable" comment="Honest availability notice when checkout is disabled">Trial signup isn’t open yet.</Trans></span>}
@@ -211,13 +202,14 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
             {planInfo.checkoutEnabled && <div className="mt-5 space-y-2 border-t border-divider pt-4 text-xs leading-5 text-muted">
               {trialEligible ? <p><Trans id="pro.offer.paymentTerms" comment="Payment method and cancellation disclosure next to trial CTA">Payment method required. Cancel before your trial ends to avoid being charged.</Trans></p>
                 : <p><Trans id="pro.offer.repeatTerms" comment="Renewal disclosure for returning customers">Renews monthly until canceled. A new free trial is not included.</Trans></p>}
-              <p><Trans id="pro.offer.paddle" comment="Merchant of record and final price disclosure">Secure checkout with Paddle. Your final total, including applicable taxes, is shown before you confirm.</Trans></p>
+              <p><Trans id="pro.offer.checkout" comment="Payment processor and final price disclosure">Secure checkout with Stripe. Your final total, including applicable taxes, is shown before you confirm.</Trans></p>
               {!isLoggedIn && planInfo.checkoutEnabled && <p><Trans id="pro.offer.signIn" comment="Explains that anonymous visitors sign in before checkout">You’ll sign in first, then continue to checkout.</Trans></p>}
               <BillingPolicyLinks />
             </div>}
           </section>
         </>
       )}
+      {planInfo.hasBillingAccount && !hasAccess && !needsPayment && !isPaused && !ended && manageButton}
       <FreeAccessNote />
       {canPurchase && <a className="inline-flex items-center gap-2 text-xs text-muted underline underline-offset-4 hover:text-foreground" href={returnPath ?? lp("/explore")}>
         <Check size={13} aria-hidden="true" /><Trans id="pro.offer.stayFree" comment="Low-pressure alternative to purchasing Pro">Keep searching for free</Trans>

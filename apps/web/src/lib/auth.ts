@@ -57,6 +57,8 @@ export const auth = betterAuth({
         try {
           const { preparePaddleAccountDeletion } = await import("@/lib/paddle/account-deletion");
           await preparePaddleAccountDeletion(user.id);
+          const { prepareStripeAccountDeletion } = await import("@/lib/stripe/account-deletion");
+          await prepareStripeAccountDeletion(user.id);
         } catch {
           throw new APIError("SERVICE_UNAVAILABLE", {
             code: "BILLING_DELETION_UNAVAILABLE",
