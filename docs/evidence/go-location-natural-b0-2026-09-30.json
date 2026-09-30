@@ -1,0 +1,68 @@
+{
+  "schema": "jobseek.go-location-natural-b0/v1",
+  "runtime_observed_at": "2026-09-30T16:32:27.285381+00:00",
+  "database_observed_at": "2026-09-30T16:34:10.426653+00:00",
+  "release": {
+    "CRAWLER_IMAGE_TAG": "v0.13.901",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:943c0a36353da52e83908299aa61ccbf6a425f8f58048ee1720bc46f3ec1fc4d",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:b9560dd608efcf673430e2b6a8138e33dd6a31d1e544f4732392ba3458338924",
+    "JOBSEEK_DEPLOY_REVISION": "ec906f05cb5c481ea988c9d8dd5ffdac29ee1454"
+  },
+  "receipt": {
+    "schema": "jobseek.lightpanda-b0-active/v1",
+    "state": "active",
+    "cohort": "cdom",
+    "namespace": "production-b0",
+    "shard_id": "lightpanda-b0",
+    "routing_epoch": "141",
+    "plan_digest": "1d07252aade2ed6f94fd807a517010481f7a98573446d642ce806757aa1514d7",
+    "compose_digest": "5270b210b5e3364b2391fd712ff3ff4ead9b88e190de550c01bb0f4e202c47c4",
+    "crawler_image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:943c0a36353da52e83908299aa61ccbf6a425f8f58048ee1720bc46f3ec1fc4d",
+    "deploy_revision": "ec906f05cb5c481ea988c9d8dd5ffdac29ee1454",
+    "activated_at_epoch": "1790775133"
+  },
+  "collector_errors": [],
+  "production_database_executor": "Python",
+  "native_candidate_selected": false,
+  "natural_b0_metrics": {
+    "render_success": 3,
+    "render_failure": 0,
+    "executor_committed": 3,
+    "executor_failure": 0,
+    "ready": 21,
+    "inflight": 0
+  },
+  "database": {
+    "cohort_rows": 140,
+    "fresh_after_epoch141": 3,
+    "fresh_by_board": {
+      "browser-use-careers": 2,
+      "bunq-careers": 1
+    },
+    "scraped_at": [
+      "2026-09-30T14:09:19.014322+00:00",
+      "2026-09-30T14:09:22.936137+00:00",
+      "2026-09-30T14:36:04.979713+00:00"
+    ],
+    "all_fresh_active": true,
+    "all_fresh_failure_counts_zero": true,
+    "all_fresh_location_arrays_parallel": true,
+    "comparison_baseline_observed_at": "2026-09-30T13:43:16.400984+00:00",
+    "location_ids_and_types_unchanged": 3,
+    "titles_unchanged": 3,
+    "description_hash_unchanged": 3,
+    "fence_census": [
+      {
+        "engine_owner": "go",
+        "shard_id": "lightpanda-b0",
+        "routing_epoch": 141,
+        "rows": 3
+      }
+    ]
+  },
+  "limits": [
+    "Natural processing and canonical database readback; no forced due times or publisher refetch.",
+    "Existing resolved arrays/title/description hashes were conserved against the prior database snapshot; raw current rendered location inputs were not independently retained or replayed.",
+    "This observes the deployed Go location path behind the Python loader/executor; native Go worker ownership and production whole-lane efficiency remain incomplete."
+  ]
+}

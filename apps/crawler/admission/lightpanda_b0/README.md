@@ -32,11 +32,15 @@ The sum of service lifetime memory peaks provides a conservative aggregate
 upper bound covering startup; it is explicitly not a simultaneous peak or a
 density denominator. Admission rejects missing or inconsistent lifetime
 accounting, startup OOM/swap evidence, and a lifetime upper bound reaching the
-shared envelope. Both lanes now seed a generated production-cardinality taxonomy (37,526
-locations and 143,004 core names, plus the observed lookup/rate counts). The
-controller requires its exact census in every arm. These are synthetic values; production taxonomy
-fit and attributable cost still require their own proof. A close or noisy result calls for another
-immutable run; this is no fixed-percentage hurdle or reviewer gate.
+shared envelope. Both lanes now seed a generated production-cardinality
+taxonomy (37,526 locations and 143,004 core names, plus the observed lookup/rate
+counts). The controller requires its exact census in every arm. Worker health
+intervals match production: producer/executor 5s, supervisor 10s, comparator
+30s. Actual installed intervals are attested. Earlier fixtures used one-second
+comparator probes; their CPU figures are not production cost proof. Generated
+values do not replace production taxonomy fit or attributable cost evidence. A
+close or noisy result calls for another immutable run; this is no
+fixed-percentage hurdle or reviewer gate.
 
 The workflow's result is fixture evidence only. Production c1 admission also
 needs a read-only receipt/Redis authority preflight, bounded live output and

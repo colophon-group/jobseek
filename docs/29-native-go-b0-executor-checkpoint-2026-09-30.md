@@ -24,7 +24,15 @@ processing. Do not force due times or refetch publisher pages to manufacture
 that evidence. Re-read current receipts, release identities and holds before
 any subsequent mutation. A fresh read-only runtime collector at 15:41:59 UTC
 confirmed the same immutable v0.13.901 release, epoch 141 and healthy ordinary
-and B0 services; the native candidate remains unselected.
+and B0 services; the native candidate remains unselected. At 16:32:27 UTC,
+telemetry recorded three natural successful B0 renders/commits with no failures.
+A read-only canonical database snapshot at 16:34:10 UTC found those three fresh
+epoch-141 postings on Browser Use and Bunq, active with zero failures and
+parallel location ID/type arrays. Location arrays, titles and description hashes
+matched the prior stored rows; raw new render inputs were not retained for an
+independent location replay. This is the deployed Go location bridge behind
+the Python executor, not native ownership. See
+[portable natural evidence](evidence/go-location-natural-b0-2026-09-30.json).
 
 ## Implemented candidate
 
@@ -188,8 +196,11 @@ The corrected renderer image and pinned integration suites passed on ARM64 and
 AMD64 at PR head `a990177d2363dae33c10e9553bcbcce683dfc36b`: renderer run
 36740886647, pilot run 36740886649. Required CI run 36740886650 and installed
 runtime contracts run 36740886648 also passed. Native whole-lane run
-36740886561 is still measuring; retain its terminal artifact before replacing
-that exact candidate.
+36740886561 subsequently passed all 16 arms/eight pairs at tested merge source
+`8eb6a570b845bf14e126aa1b4b335f21da01be4a`. Its complete artifact is retained,
+and [portable policy-aware synthetic evidence](evidence/go-native-b0-policy-synthetic-2026-09-30.json)
+records identities, outputs, queues, resources and explicit measurement limits.
+That run predates the new lifetime/cardinality/health-cadence checks.
 
 A read-only production startup-taxonomy snapshot at 16:08:46 UTC contains
 37,526 locations, 143,004 names in the six startup locales, 186 technologies,
