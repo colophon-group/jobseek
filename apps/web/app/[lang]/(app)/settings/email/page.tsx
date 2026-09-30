@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { isLocale, defaultLocale } from "@/lib/i18n";
+import { initI18nForPage } from "@/lib/i18n";
 import { EmailSettingsLoader } from "./email-settings-loader";
 
 export default async function EmailSettingsPage({
@@ -7,7 +7,8 @@ export default async function EmailSettingsPage({
 }: {
   params: Promise<{ lang: string }>;
 }) {
-  const { lang } = await params;
+  // Layouts are reused during client navigation; this RSC request needs its own catalog.
+  const locale = await initI18nForPage(params);
   return (
     <Suspense
       fallback={
@@ -18,7 +19,7 @@ export default async function EmailSettingsPage({
         </div>
       }
     >
-      <EmailSettingsLoader locale={isLocale(lang) ? lang : defaultLocale} />
+      <EmailSettingsLoader locale={locale} />
     </Suspense>
   );
 }
