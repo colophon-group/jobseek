@@ -108,7 +108,8 @@ FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be
 WORKDIR /workspace/apps/crawler/go/job-enrichment
 COPY go/job-enrichment/ ./
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/job-enrichment ./cmd/live
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/job-enrichment ./cmd/live \
+    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/location-resolver ./cmd/location
 
 # Default-off SmartRecruiters monitor/detail extraction.
 FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-smartrecruiters-build
@@ -219,7 +220,9 @@ COPY --from=go-dom-build /out/dom-detail-parse /usr/local/bin/dom-detail-parse
 COPY --from=go-dom-build /out/dom-detail-fetch /usr/local/bin/dom-detail-fetch
 COPY --from=go-recruitee-build /out/recruitee-monitor-live /usr/local/bin/recruitee-monitor-live
 COPY --from=go-job-enrichment-build /out/job-enrichment /usr/local/bin/job-enrichment
+COPY --from=go-job-enrichment-build /out/location-resolver /usr/local/bin/location-resolver
 COPY go/job-enrichment/models/ /usr/local/share/jobseek/language-model/
+COPY go/job-enrichment/licenses/ /usr/local/share/jobseek/go-enrichment-licenses/
 COPY --from=go-smartrecruiters-build /out/smartrecruiters-monitor-live /usr/local/bin/smartrecruiters-monitor-live
 COPY --from=go-workable-build /out/workable-monitor-live /usr/local/bin/workable-monitor-live
 COPY --from=go-workable-build /out/workable-detail-live /usr/local/bin/workable-detail-live

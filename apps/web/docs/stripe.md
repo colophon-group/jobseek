@@ -36,6 +36,13 @@ live credentials/resources. No publishable key, Stripe.js or browser SDK is
 needed for hosted Checkout. Keep environment/credentials configured while
 subscriptions exist; close sales using `STRIPE_CHECKOUT_ENABLED=false`.
 
+Public pricing and structured offer availability use `stripeSignupOpen()`,
+which validates the launch flag and non-secret configuration. The prebuilt
+production workflow cannot read Vercel's write-only payment secrets, so public
+prerendering must not depend on them. Billing actions still use
+`stripeCheckoutEnabled()` and require matching server and webhook credentials.
+Verify homepage and Narrowed pricing as well as billing after launch changes.
+
 The initial sandbox validation used `Job Seek sandbox`, account
 `acct_1Tvn7nAXSxyCkkob`, product `prod_VM1le5FzmYVHuL`, price
 `price_1ULJiKAXSxyCkkobd2A4rk5y`, portal `bpc_1ULJkJAXSxyCkkob4wV4FBQy`.

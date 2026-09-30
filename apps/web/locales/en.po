@@ -476,18 +476,6 @@ msgstr ""
 #~ msgid "pro.example.check"
 #~ msgstr "Checked against the job description"
 
-#. Example excluded result
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.excluded"
-#~ msgstr "Filtered out"
-
-#. Example matching result
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.match"
-#~ msgstr "Match"
-
 #. Label for the example natural-language filter
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
@@ -523,6 +511,12 @@ msgstr ""
 #: src/components/PaddlePaymentLink.tsx
 #~ msgid "checkout.description"
 #~ msgstr "Use your payment link to open Paddle’s secure checkout or update your payment method."
+
+#. Labels fictional roles and description excerpts in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+#~ msgid "pro.example.illustrative"
+#~ msgstr "Illustrative examples"
 
 #. CC right 1
 #. js-lingui-explicit-id
@@ -1782,18 +1776,18 @@ msgstr "Could not remove these matching criteria. Try again."
 msgid "watchlists.updateFailed"
 msgstr "Could not save your changes."
 
-#. Marketing preference failed; checkbox retains the saved value
-#. js-lingui-explicit-id
-#: src/components/settings/ProductNewsSettings.tsx
-msgid "productNews.settings.error"
-msgstr "Could not save your preference. Please try again."
-
 #. Pause setting save failure
 #. Pause setting save failure
 #. js-lingui-explicit-id
 #: src/components/settings/NotificationSettings.tsx
 #: src/components/settings/NotificationWatchlistChoices.tsx
 msgid "settings.notifications.error"
+msgstr "Could not save your preference. Please try again."
+
+#. Marketing preference failed; checkbox retains the saved value
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.error"
 msgstr "Could not save your preference. Please try again."
 
 #. Error after a watchlist alert preference cannot be updated
@@ -2251,6 +2245,12 @@ msgstr "Enable weekly email notifications"
 msgid "pro.status.ending"
 msgstr "Ending soon"
 
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.managerTitle"
+msgstr "Engineering Manager"
+
 #. Waiting list email validation error
 #. js-lingui-explicit-id
 #: src/components/pro/ProWaitlistForm.tsx
@@ -2454,6 +2454,12 @@ msgstr "Filter industries..."
 msgid "search.technologyModal.searchPlaceholder"
 msgstr "Filter technologies..."
 
+#. Filtering result for an example that does not meet the Narrowed criteria
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.excluded"
+msgstr "Filtered out"
+
 #. Toggle button for advanced search filters panel
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx
@@ -2541,6 +2547,12 @@ msgstr "Focused search"
 #: src/content/marketing.ts
 msgid "marketing.alerts.description"
 msgstr "Follow employers in one watchlist, filter their openings, and choose a weekly email digest of new matches. Start with a free company search."
+
+#. Platform progress page subtitle inviting company requests
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/progress/progress-loader.tsx
+msgid "app.home.subtitle"
+msgstr "Follow the companies you care about. Request a missing company below."
 
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
@@ -2849,7 +2861,7 @@ msgstr "Hybrid"
 msgid "checkout.policies.acceptance"
 msgstr "I agree to the [Terms]({termsUrl}) and acknowledge the [Privacy Policy]({privacyUrl}). [Refund policy]({refundUrl})."
 
-#. Live-tested personal criteria for Narrowed
+#. Illustrative personal criteria for the Narrowed preview
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
 msgid "pro.example.request"
@@ -2902,6 +2914,12 @@ msgstr "Indexing policy"
 #: src/components/watchlist/company-search-modal.tsx
 msgid "watchlists.companyModal.industry"
 msgstr "Industry"
+
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.infrastructureTitle"
+msgstr "Infrastructure Engineer"
 
 #. Error when company request input is too long
 #. Error when company request input is too long
@@ -3086,12 +3104,6 @@ msgstr "Job Seek helps you track the companies you want to work at — watchlist
 msgid "indexing.hero.description"
 msgstr "Job Seek is a company-tracking tool — it monitors thousands of company career pages so users can build watchlists and get alerts on new postings. This page documents exactly how our crawler behaves, the controls that keep it polite, and how jobs ultimately land in the index."
 
-#. Main app page subtitle explaining the app is being built
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/progress/progress-loader.tsx
-msgid "app.home.subtitle"
-msgstr "Job Seek is being actively built. Stay tuned for updates!"
-
 #. About paragraph 1: who we are
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
@@ -3103,6 +3115,12 @@ msgstr "Job Seek is built by Colophon Group, a small team of developers based in
 #: src/components/TermsContent.tsx
 msgid "terms.billing.seller"
 msgstr "Job Seek is operated and sold by Viktor Shcherbakov in Switzerland. Stripe processes payments and provides subscription billing. Viktor Shcherbakov is responsible for the service, applicable taxes, billing support, and refunds."
+
+#. Platform progress page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/progress/progress-loader.tsx
+msgid "app.home.title"
+msgstr "Job Seek keeps growing"
 
 #. JSON-LD page description for the public Privacy Policy page.
 #. SEO description for the public Privacy Policy page.
@@ -3368,7 +3386,9 @@ msgid "myJobs.stats.loading"
 msgstr "Loading…"
 
 #. Explains localized subscription pricing and payment method eligibility
+#. Explains localized subscription pricing and payment method eligibility
 #. js-lingui-explicit-id
+#: src/components/Pricing.tsx
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.offer.localCurrency"
 msgstr "Local-currency prices and available payment methods are shown at checkout."
@@ -3424,6 +3444,12 @@ msgstr "Log in to manage alerts"
 msgid "watchlists.actions.loginToShare"
 msgstr "Log in to share"
 
+#. Excluded example: individual contributor without the required user contact
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.infrastructureExcerpt"
+msgstr "Maintain internal deployment systems and resolve reliability incidents as an individual contributor. No direct user or customer contact."
+
 #. Manage subscription button label
 #. Manage subscription button label
 #. js-lingui-explicit-id
@@ -3443,6 +3469,12 @@ msgstr "Manage your linked social accounts."
 #: src/content/marketing.ts
 msgid "marketing.tracker.step2Body"
 msgstr "Mark a role as applied, interviewing, offered, or rejected. You update the status; Job Seek does not submit applications for you."
+
+#. Filtering result for an example that meets the Narrowed criteria
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.match"
+msgstr "Match"
 
 #. Header for the server-side search-results cluster shown when the user types in the location modal search box
 #. js-lingui-explicit-id
@@ -4508,6 +4540,12 @@ msgstr "Pro subscriptions and payments"
 msgid "pro.waitlist.label"
 msgstr "Pro waiting list"
 
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.productTitle"
+msgstr "Product Engineer"
+
 #. Privacy policy heading for optional marketing emails
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
@@ -5406,6 +5444,12 @@ msgstr "Sitemap first."
 msgid "common.a11y.skipToContent"
 msgstr "Skip to content"
 
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.solutionsTitle"
+msgstr "Solutions Engineer"
+
 #. Heading shown when a page crashes unexpectedly
 #. js-lingui-explicit-id
 #: app/[lang]/error.tsx
@@ -5576,6 +5620,12 @@ msgstr "Switzerland"
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interviewType.systemDesign"
 msgstr "System Design"
+
+#. Matching example: direct user contact, product improvements, no management
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.productExcerpt"
+msgstr "Talk with users weekly and turn their feedback into product improvements. An individual contributor role with no people management."
 
 #. Interview type label: technical interview
 #. js-lingui-explicit-id
@@ -5904,17 +5954,17 @@ msgstr "Try refreshing the page."
 msgid "explore.fallback.body"
 msgstr "Try refreshing the page. In the meantime, you can explore these company profiles."
 
+#. Excluded example: user contact but people management conflicts with criteria
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.managerExcerpt"
+msgstr "Turn user feedback into product improvements while leading eight engineers. Own hiring, performance reviews, and career development."
+
 #. Label for employment type filter in advanced search
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx
 msgid "search.advanced.employmentType"
 msgstr "Type"
-
-#. Main app page heading
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/progress/progress-loader.tsx
-msgid "app.home.title"
-msgstr "Under Active Development"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
@@ -6332,6 +6382,12 @@ msgstr "Which company should we track?"
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.q.languages"
 msgstr "Which languages does Jobseek support?"
+
+#. Matching example: direct customer contact, product improvements, no direct reports
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.solutionsExcerpt"
+msgstr "Work directly with customers to understand their workflows and build improvements with our product team. No direct reports."
 
 #. Label for work-mode (onsite/hybrid/remote) filter in advanced search
 #. js-lingui-explicit-id

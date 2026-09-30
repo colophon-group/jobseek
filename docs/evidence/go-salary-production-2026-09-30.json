@@ -1,0 +1,67 @@
+{
+  "schema": "jobseek.go-salary-production/v1",
+  "observed_at": "2026-09-30T10:35:24Z",
+  "migration_complete": false,
+  "version": "0.13.900",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10177",
+  "checked_head": "56d80cdf724d436be35fc11b3252cbe7f6c5fe09",
+  "checked_base": "9f068eb2352867bc0ed6b9835f23b7339d28c6a2",
+  "promoted_revision": "3fe58bcaf639f3b666cb283627dd1e5bb5eda80f",
+  "deployment": {
+    "url": "https://github.com/colophon-group/jobseek/actions/runs/36700930614",
+    "conclusion": "success",
+    "includes_promotion": true,
+    "crawler_image": "ghcr.io/colophon-group/jobseek-crawler@sha256:cb16b8bc995b50ac04ca3937758323a2db28cf3df35edce19200427686d21bd6",
+    "browser_image": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:63ece6fc93f18ef482f42fb10967880d2367197e27e812f68eadc9f4c53f8982"
+  },
+  "cold_reversal": {
+    "retired_epoch": 136,
+    "restored_schedules": 21,
+    "terminal_dropped": 2,
+    "remaining_write_fences": 0,
+    "selector_count_cleared": 25
+  },
+  "reactivation": {
+    "active_epoch": 137,
+    "cohort": "cdom",
+    "selected_schedules": 21,
+    "selected_without_queued_task": 15,
+    "staged_selector_count": 25,
+    "plan_digest": "b30a004da9879c6735a6954b28a754e3e34b0c9d740ff24223c5269a6badd10a",
+    "compose_digest": "8410d762d3207eec6768ad05b22c2cfe54da4794e4e407cfa7cc4868f027fc80"
+  },
+  "ordinary_salary": {
+    "successful_operations": 3502,
+    "errors": 0,
+    "observed_at": "2026-09-30T10:35:19Z",
+    "go_python_replay": {
+      "descriptions": 512,
+      "boards": 140,
+      "locales": 17,
+      "drift": 0,
+      "input_sha256": "215fd813e545558a454770f107b5b377abe029c8008e39215a12dedba6c653c8",
+      "output_sha256": "23561799809393ad732132c137065335b76945d443cc76e253ee2c09e2b429c3"
+    },
+    "fresh_description_db_readback": {
+      "description_updated_since": "2026-09-30T10:27:00Z",
+      "postings": 394,
+      "boards": 76,
+      "locales": 14,
+      "salary_bearing": 46,
+      "persisted_fields_checked": 5,
+      "drift": 0
+    },
+    "older_null_salary_rows": 22,
+    "older_null_salary_interpretation": "Content/scrape timestamps predate release. Posting updated_at alone does not establish fresh enrichment."
+  },
+  "remaining_boundaries": [
+    "Python ordinary worker orchestration",
+    "Python B0 DB executor and its default enrichment",
+    "Native location loader/backfill",
+    "Enabled profile ownership reconciliation",
+    "Whole-lane actual workload resource proof",
+    "Final cutover/reversal and production Python/Chromium retirement"
+  ],
+  "publisher_policy": "Stored inputs and natural due work only; no refetch or forced due times.",
+  "protected_evidence": "Raw snapshots remain outside Git; hashes and checkpoint describe reproducible read-only replay."
+}

@@ -10,6 +10,7 @@ import { LocaleGuard } from "@/components/LocaleGuard";
 import { type Locale, isLocale, locales, loadCatalog } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { JsonLd } from "@/lib/seo";
+import { stripeSignupOpen } from "@/lib/stripe/config";
 import "../globals.css";
 
 type Props = {
@@ -143,10 +144,9 @@ export default async function LocaleLayout({ children, params }: Props) {
                   name: "Pro",
                   price: "10",
                   priceCurrency: "USD",
-                  // Pro is shown publicly as "Coming soon". OutOfStock is
-                  // Schema.org's explicit signal that an offer is not
-                  // currently available, while preserving the launch price.
-                  availability: "https://schema.org/OutOfStock",
+                  availability: stripeSignupOpen()
+                    ? "https://schema.org/InStock"
+                    : "https://schema.org/OutOfStock",
                   billingPeriod: "P1M",
                   description: i18n._({
                     id: "app.schema.offer.pro",

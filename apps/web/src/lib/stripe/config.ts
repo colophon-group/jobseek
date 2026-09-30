@@ -35,10 +35,19 @@ export function billingOrigin() {
   return url.origin;
 }
 
-export function stripeCheckoutEnabled() {
+/** Public launch state can be prerendered without write-only payment secrets. */
+export function stripeSignupOpen() {
   if (process.env.STRIPE_CHECKOUT_ENABLED !== "true") return false;
   try {
-    stripeApiKey(); stripePriceId(); billingOrigin(); stripePortalConfigurationId();
+    stripeEnvironment(); stripePriceId(); billingOrigin(); stripePortalConfigurationId();
+    return true;
+  } catch { return false; }
+}
+
+export function stripeCheckoutEnabled() {
+  if (!stripeSignupOpen()) return false;
+  try {
+    stripeApiKey();
     return Boolean(process.env.STRIPE_WEBHOOK_SECRET?.startsWith("whsec_"));
   } catch { return false; }
 }
