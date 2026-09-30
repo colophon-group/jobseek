@@ -6,7 +6,7 @@ export const JEV_BATCH_SIZE = 5;
 export const JEV_TIMEOUT_MS = 10_000;
 export const JEV_MAX_RETRIES = 1;
 
-export const AI_FILTER_PROMPT_VERSION = "jev-job-fit-choice-v1" as const;
+export const AI_FILTER_PROMPT_VERSION = "jev-job-fit-choice-v2" as const;
 export const AI_FILTER_CACHE_KEY_VERSION = "ai-filter-cache-hmac-v1" as const;
 export const AI_FILTER_PRICE_VERSION = "typesafe-2026-09-15" as const;
 

@@ -42,7 +42,7 @@ Save a watchlist for each direction you’re considering: selected employers, a 
 
 ### Track applications, interviews, and offers
 
-Save a job, record when you apply, add interview rounds and notes, and update the outcome. Your application tracker keeps the original job details alongside your progress; pipeline statistics help you see how the search is going.
+Save a job, record when you apply, add interview rounds and dates, and update the outcome. Your application tracker keeps the original job details alongside your progress; pipeline statistics help you see how the search is going.
 
 [![Application tracker showing saved jobs, applied roles, offers, and interview controls beside the job description](.github/assets/readme/application-tracker.png)](.github/assets/readme/application-tracker.png)
 
@@ -53,6 +53,8 @@ Two roles can have the same title and very different responsibilities. Describe 
 > I want to work directly with users and turn their problems into product improvements. No people management.
 
 Narrowed checks the descriptions in your watchlist and picks out the matches. It is included with **Job Seek Pro**; regular search, watchlists, weekly email digests, and application tracking remain free. [See Pro details and current availability.](https://jseek.co/en/#pricing)
+
+[![Narrowed results in a Swiss robotics watchlist, with the matching request and selected jobs](.github/assets/readme/narrowed.png)](.github/assets/readme/narrowed.png)
 
 ### Get to know an employer’s hiring
 

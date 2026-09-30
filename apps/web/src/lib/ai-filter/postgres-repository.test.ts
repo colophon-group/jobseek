@@ -27,6 +27,31 @@ describe("AI filter paid reservation authorization", () => {
     await repository.reserveBudget(input);
     expect(mocks.transaction).toHaveBeenCalledOnce();
   });
+
+  it("refuses spend when the current query uses another classifier version", async () => {
+    const where = vi.fn();
+    const query = {
+      from: () => query, innerJoin: () => query,
+      where: (predicate: SQL) => { where(predicate); return query; },
+      limit: async () => [],
+    };
+    const tx = { execute: vi.fn(), select: vi.fn(() => query), insert: vi.fn(), update: vi.fn() };
+    mocks.transaction.mockImplementation(async callback => callback(tx));
+    const repository = new PostgresAiFilterExecutionRepository({ user: null, project: null });
+    await expect(repository.reserveBudget({
+      context: { ownerId: "owner", watchlistId: "watchlist", queryVersionId: "stale-query" },
+      now: new Date("2026-09-28T18:00:00Z"),
+    } as Parameters<typeof repository.reserveBudget>[0])).rejects.toThrow("AI filter resource was not found");
+    const predicate = new PgDialect().sqlToQuery(where.mock.calls[0][0] as SQL);
+    for (const field of ["model", "prompt_version", "schema_version", "normalizer_version"]) {
+      expect(predicate.sql).toContain(`"ai_filter_query_version"."${field}" =`);
+    }
+    expect(predicate.params).toEqual(expect.arrayContaining([
+      "jev-1.13.0", "jev-job-fit-choice-v2", "classifier-input-v1", "classifier-input-normalizer-v4",
+    ]));
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(tx.update).not.toHaveBeenCalled();
+  });
 });
 
 describe("AI filter uncertain reservation recovery", () => {

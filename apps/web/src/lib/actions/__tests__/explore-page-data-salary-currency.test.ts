@@ -220,10 +220,14 @@ describe("Explore repository fallback — configuration boundary (#2640)", () =>
       degraded: true,
     });
     expect(data.repositoryFallbackCompanies).toHaveLength(10);
-    expect(data.repositoryFallbackCompanies?.[0]).toEqual({
-      name: "Accenture",
-      slug: "accenture",
-    });
+    for (const company of data.repositoryFallbackCompanies ?? []) {
+      // Editorial additions can change alphabetical order. The boundary must
+      // expose profile identities only, never fabricate live posting data.
+      expect(company).toEqual({
+        name: expect.stringMatching(/\S/u),
+        slug: expect.stringMatching(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u),
+      });
+    }
     expect(mocks.listTopCompaniesAnonymous).not.toHaveBeenCalled();
   });
 

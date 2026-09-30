@@ -651,7 +651,7 @@ msgstr "Eine gezielte Jobsuche nach deinen Vorstellungen."
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.description"
-msgstr "Kostenlose Bewerbungsverwaltung für auf Job Seek gespeicherte Stellen. Organisiere Jobs, aktualisiere den Status und sammle Gesprächsnotizen."
+msgstr "Kostenlose Bewerbungsverwaltung für auf Job Seek gespeicherte Stellen. Organisiere Jobs, aktualisiere den Status und behalte Gesprächstermine im Blick."
 
 #. Narrowed marketing page: body
 #. js-lingui-explicit-id
@@ -1108,6 +1108,12 @@ msgstr "Von Jobsuchenden entwickelt, für Jobsuchende"
 #: src/content/marketing.ts
 msgid "marketing.tracker.scopeTitle"
 msgstr "Für Jobs, die du auf Job Seek speicherst"
+
+#. Consent notice beneath the waiting list form, limited to Pro launch news
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.consent"
+msgstr "Mit deiner Anmeldung stimmst du zu, eine E-Mail zum Start von Pro zu erhalten."
 
 #. Terms page description
 #. js-lingui-explicit-id
@@ -2149,6 +2155,12 @@ msgstr "Anfrage bearbeiten"
 msgid "auth.field.email"
 msgstr "E-Mail"
 
+#. Email field in the Pro waiting list form
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.email"
+msgstr "E-Mail-Adresse"
+
 #. Explains supported behavior for emailTiming
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -2214,6 +2226,12 @@ msgstr "Wöchentliche E-Mail-Benachrichtigungen aktivieren"
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.status.ending"
 msgstr "Endet bald"
+
+#. Waiting list email validation error
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.invalidEmail"
+msgstr "Gib eine gültige E-Mail-Adresse ein."
 
 #. Forgot password page subtitle
 #. js-lingui-explicit-id
@@ -2621,6 +2639,12 @@ msgstr "Vollzeit"
 msgid "settings.nav.general"
 msgstr "Allgemein"
 
+#. Explains what joining the Pro waiting list does
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.description"
+msgstr "Erhalte eine E-Mail, sobald du dich für Pro anmelden kannst. Kein Konto und keine Zahlung nötig."
+
 #. Link to contact email
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
@@ -2895,7 +2919,7 @@ msgstr "Interview-Protokoll"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.common.exampleNote"
-msgstr "Gesprächsnotizen bleiben bei der Stelle."
+msgstr "Gesprächsrunden bleiben bei der Stelle."
 
 #. Screen-reader confirmation after updating an interview round
 #. js-lingui-explicit-id
@@ -3094,17 +3118,23 @@ msgstr "Jobs"
 msgid "company.meta.title"
 msgstr "Jobs bei {name}"
 
+#. Submit button for the Pro waiting list
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.join"
+msgstr "Auf die Warteliste setzen"
+
+#. Waiting list submit button while saving
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.joining"
+msgstr "Wird eingetragen…"
+
 #. js-lingui-explicit-id
 #. placeholder {0}: term.span.text
 #: src/components/search/search-bar.tsx
 msgid "search.bar.keepAsKeywords"
 msgstr "\"{0}\" als Suchbegriffe behalten"
-
-#. Public marketing page: tracker_step3Title
-#. js-lingui-explicit-id
-#: src/content/marketing.ts
-msgid "marketing.tracker.step3Title"
-msgstr "Sammle Gesprächsnotizen"
 
 #. Dismiss paused notification warning without changing preference
 #. js-lingui-explicit-id
@@ -3921,7 +3951,7 @@ msgstr "Hoppla, etwas ist schiefgelaufen."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.apply"
-msgstr "Öffne eine Stelle und folge dem Link zur Bewerbung auf der Website des Arbeitgebers. Speichere sie auf Job Seek, aktualisiere ihren Status bei Bewerbungen oder Gesprächen und ergänze Gesprächstermine und Notizen. Du führst den Tracker selbst; Job Seek versendet keine Bewerbungen und aktualisiert ihren Status nicht automatisch."
+msgstr "Öffne eine Stelle und folge dem Link zur Bewerbung auf der Website des Arbeitgebers. Speichere sie auf Job Seek, aktualisiere ihren Status bei Bewerbungen oder Gesprächen und ergänze Datum und Art der Gespräche. Du führst den Tracker selbst; Job Seek versendet keine Bewerbungen und aktualisiert ihren Status nicht automatisch."
 
 #. Explains where subscribed users can use Pro
 #. js-lingui-explicit-id
@@ -4365,9 +4395,11 @@ msgstr "Preise"
 
 #. Footer link to privacy policy page
 #. Footer link to privacy policy page
+#. Footer link to privacy policy page
 #. js-lingui-explicit-id
 #: src/components/Footer.tsx
 #: src/components/pro/ProPitch.tsx
+#: src/components/pro/ProWaitlistForm.tsx
 msgid "common.footer.privacyLink"
 msgstr "Datenschutz"
 
@@ -4433,6 +4465,12 @@ msgstr "Pro-Zahlungen"
 #: src/components/TermsContent.tsx
 msgid "terms.billing.title"
 msgstr "Pro-Abonnements und Zahlungen"
+
+#. Accessible name of the Pro waiting list form
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.label"
+msgstr "Pro-Warteliste"
 
 #. Third parties
 #. js-lingui-explicit-id
@@ -4504,13 +4542,13 @@ msgstr "Kürzlich aktualisiert"
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s2.p2.description"
-msgstr "Halte jede Interview-Runde mit Datum, Art und Notizen fest, damit nichts durchs Raster fällt."
+msgstr "Halte jede Gesprächsrunde mit Datum und Art fest, damit du siehst, was als Nächstes ansteht."
 
 #. Public marketing page: tracker_step3Body
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.step3Body"
-msgstr "Notiere Datum, Art und Notizen zu jeder Gesprächsrunde. Verfolge deinen Fortschritt von gespeicherten Stellen über Gespräche bis zum Angebot."
+msgstr "Halte jede Gesprächsrunde mit Datum und Art fest. Verfolge deinen Fortschritt von gespeicherten Stellen über Gespräche bis zum Angebot."
 
 #. MIT right 2
 #. js-lingui-explicit-id
@@ -4755,7 +4793,7 @@ msgstr "Setze oben die E-Mail-Benachrichtigungen fort, um deine Watchlist-Auswah
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.proofBody"
-msgstr "Kehre bei der Gesprächsvorbereitung zu den Stellendetails zurück. Status und Notizen bleiben mit der gespeicherten Stelle verknüpft."
+msgstr "Kehre bei der Gesprächsvorbereitung zu den Stellendetails zurück. Status und Gesprächsrunden bleiben mit der gespeicherten Stelle verknüpft."
 
 #. Prompt to review uncertain city or occupation matches in the proposed search filters
 #. js-lingui-explicit-id
@@ -4833,7 +4871,7 @@ msgstr "Job speichern"
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
 msgid "marketing.tracker.body"
-msgstr "Speichere Jobs, die du auf Job Seek findest, aktualisiere ihren Bewerbungsstatus und halte deine Gesprächsnotizen zusammen."
+msgstr "Speichere Jobs, die du auf Job Seek findest, aktualisiere ihren Bewerbungsstatus und behalte deine Gesprächstermine im Blick."
 
 #. Empty state for stats
 #. js-lingui-explicit-id
@@ -5713,11 +5751,23 @@ msgstr "Bis"
 msgid "watchlists.jobList.today"
 msgstr "Heute"
 
+#. Too many waiting list signup attempts
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.rateLimited"
+msgstr "Zu viele Versuche. Bitte versuche es in einer Stunde erneut."
+
+#. Public marketing page: tracker_step3Title
+#. js-lingui-explicit-id
+#: src/content/marketing.ts
+msgid "marketing.tracker.step3Title"
+msgstr "Verfolge Gesprächsrunden"
+
 #. Feature section 2 description
 #. js-lingui-explicit-id
 #: src/components/Features.tsx
 msgid "home.features.s2.description"
-msgstr "Verfolge auf Job Seek gespeicherte Stellen, aktualisiere den Bewerbungsstatus und halte deine Gesprächsnotizen an einem Ort fest."
+msgstr "Verfolge auf Job Seek gespeicherte Stellen, aktualisiere den Status bei Bewerbungen und Gesprächen und behalte deine Gesprächstermine im Blick."
 
 #. Main heading on the landing page — leads with company-watchlist ICP
 #. js-lingui-explicit-id
@@ -6031,6 +6081,12 @@ msgstr "Die Watchlist konnte nicht geladen werden."
 msgid "watchlists.load.error"
 msgstr "Deine Watchlists konnten nicht geladen werden."
 
+#. Waiting list signup could not be saved
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.unavailable"
+msgstr "Wir konnten deine Anmeldung nicht speichern. Bitte versuche es erneut."
+
 #. No selling
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
@@ -6314,6 +6370,12 @@ msgstr "Du brauchst ein Token vom Jobseek-Team — ersetze <token-from-jobseek-t
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.offer.signIn"
 msgstr "Du meldest dich zuerst an und gehst dann zum Checkout."
+
+#. Confirmation after a saved or duplicate Pro waiting list signup
+#. js-lingui-explicit-id
+#: src/components/pro/ProWaitlistForm.tsx
+msgid "pro.waitlist.success"
+msgstr "Du stehst auf der Liste. Wir schicken dir eine E-Mail, sobald du dich für Pro anmelden kannst."
 
 #. Message shown when the user has hit the per-hour limit on triggering Murmur company-add runs
 #. js-lingui-explicit-id

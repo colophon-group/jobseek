@@ -18,9 +18,12 @@ import { JevClient } from "./jev-client";
 import { executeAiFilterSegment } from "./orchestrator";
 import { PostgresAiFilterExecutionRepository } from "./postgres-repository";
 import {
+  AI_FILTER_PROMPT_VERSION,
+  JEV_MODEL,
   canRunAiFilter,
   readAiFilterRuntimePolicy,
 } from "./policy";
+import { CLASSIFIER_INPUT_NORMALIZER_VERSION, CLASSIFIER_INPUT_SCHEMA_VERSION } from "./classifier-input";
 import { aiFilterHistoricalHorizonStart } from "./horizon";
 
 const SEGMENT_LEASE_MS = 5 * 60 * 1_000;
@@ -105,6 +108,10 @@ async function claimSegment(input: {
         ownerId: aiFilterConfiguration.ownerId,
         queryVersionId: aiFilterQueryVersion.id,
         queryText: aiFilterQueryVersion.queryText,
+        model: aiFilterQueryVersion.model,
+        promptVersion: aiFilterQueryVersion.promptVersion,
+        schemaVersion: aiFilterQueryVersion.schemaVersion,
+        normalizerVersion: aiFilterQueryVersion.normalizerVersion,
         horizonStartedAt: aiFilterQueryVersion.horizonStartedAt,
         horizonEndsAt: aiFilterQueryVersion.horizonEndsAt,
         lastCaughtUpAt: aiFilterConfiguration.lastCaughtUpAt,
@@ -125,6 +132,20 @@ async function claimSegment(input: {
       .limit(1);
     if (!current) return { kind: "disabled" as const, segment: null };
     if (current.configurationStatus !== "enabled") {
+      return { kind: "disabled" as const, segment: null };
+    }
+
+    // Runtime and query versions may differ across deployments.
+    // Never mix current classifier semantics into an older immutable revision.
+    // The next normal owner reconcile creates the replacement query version.
+    if (
+      current.model !== JEV_MODEL ||
+      current.promptVersion !== AI_FILTER_PROMPT_VERSION ||
+      current.schemaVersion !== CLASSIFIER_INPUT_SCHEMA_VERSION ||
+      current.normalizerVersion !== CLASSIFIER_INPUT_NORMALIZER_VERSION
+    ) {
+      // A mismatch can also mean this worker predates the current query's
+      // deployment. Do not cancel another runtime's segments here.
       return { kind: "disabled" as const, segment: null };
     }
 

@@ -57,6 +57,9 @@ Status tags:
   `[runbook]` - captured-response parity, exact board selectors, and activation evidence.
 - [26 - Go Typesense Backfill Production Evidence](26-go-typesense-backfill-production-evidence.md)
   `[runbook]` - completed full backfill/reconciliation proof and measured resource limits.
+- [27 - Go and Lightpanda Migration Continuation Plan](27-go-lightpanda-continuation-plan.md)
+  `[proposal]` - latest salary candidate and deployed checkpoint, paced native
+  worker migration, enabled-fleet coverage, and production Python retirement.
 
 ## Search, SEO, And Web Read Paths
 

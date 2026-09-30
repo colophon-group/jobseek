@@ -1,0 +1,4692 @@
+{
+  "date": "2026-09-28",
+  "model": "jev-1.13.0",
+  "promptVersion": "jev-job-fit-choice-v1",
+  "schemaVersion": "classifier-input-v1",
+  "normalizerVersion": "classifier-input-normalizer-v4",
+  "productionQuery": "Keep jobs that build or support robots, drones (UAV/UAS), or autonomous machines—including software, avionics, maintenance, airworthiness, manufacturing, quality, supply chain, sales and customer support. Require a clear product or business-unit connection. Exclude unrelated electrical, connector and textile products, even at companies that also make robots.",
+  "productionCounts": {
+    "accepted": 119,
+    "rejected": 67
+  },
+  "strictExpectations": 176,
+  "ambiguousExpectations": 10,
+  "experiments": {
+    "questionLocal": {
+      "query": "Keep jobs that build or support robots, drones (UAV/UAS), or autonomous machines—including software, avionics, maintenance, airworthiness, manufacturing, quality, supply chain, sales and customer support. Require a clear product or business-unit connection. Exclude unrelated electrical, connector and textile products, even at companies that also make robots.",
+      "counts": {
+        "calls": 38,
+        "attempts": 38,
+        "decisionCount": 186,
+        "accepted": 121,
+        "rejected": 65,
+        "strictMismatchCount": 1,
+        "costNanodollars": 7895244
+      }
+    },
+    "shorterQuery": {
+      "query": "Keep roles supporting robots, drones (UAV/UAS), or autonomous vehicles across their full lifecycle: research, development, production, operation and customer support. Use the responsibilities and business-unit context. Exclude work tied to unrelated product lines.",
+      "counts": {
+        "calls": 38,
+        "attempts": 38,
+        "decisionCount": 186,
+        "accepted": 118,
+        "rejected": 68,
+        "strictMismatchCount": 4,
+        "costNanodollars": 8278284
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "0cef19f1-2840-4e5b-b476-cfd981e64041",
+      "company": "CASCINATION",
+      "title": "Software Developer – Real-Time Rendering & Computer Vision (C++)",
+      "inputSha256": "323d6ba9c74029fe4e734519de0d57713e08ef1ae72b1a1cf3a15bf63051d514",
+      "expected": "rejected",
+      "rationale": "Image-guided navigation, tracking, computer vision and rendering are the actual product scope; robotics appears only among permissible prior industries. No robot or autonomous machine is identified.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 0.12,
+          "rejected": 0.88
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 0.06,
+          "rejected": 0.94
+        }
+      }
+    },
+    {
+      "id": "1d9eedd0-deb5-47ab-919e-c3d13c7c32dc",
+      "company": "roboa",
+      "title": "Software Intern (6 Months)",
+      "inputSha256": "79192848c8bfbbe4ee85d3fe4d34c87e9539ff5195c89ad1ebad02d1fc8c396f",
+      "expected": "accepted",
+      "rationale": "Develops robot, UI and backend software and performs lab/field robot testing.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 0.96,
+          "rejected": 0.04
+        }
+      }
+    },
+    {
+      "id": "69500220-ab7d-41a8-ae2e-3cdfe7264bef",
+      "company": "CASCINATION",
+      "title": "AI Solutions Engineer",
+      "inputSha256": "ff62758ddce70b527f02b8583991e4ea678fed274c7b0c8b685cc9e6cf21ddb0",
+      "expected": "rejected",
+      "rationale": "Company-wide AI workflows, infrastructure, governance and staff enablement; no specific robotics product or robotics business unit.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "6a7e8faf-42e2-4e02-8bf2-bd4058c5df4f",
+      "company": "roboa",
+      "title": "Field & Hardware Engineer (60%-100%)",
+      "inputSha256": "25492ad95fa455e05c357880c3684694eaf5da8d72289b8b5a8cef44478a41ae",
+      "expected": "accepted",
+      "rationale": "Designs robotic hardware and conducts field tests, customer training and integration.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "8201e0b7-4249-46c5-9401-60500a2c2b1a",
+      "company": "roboa",
+      "title": "Service- und Produktionstechniker / Service and Production Technician (60–100%)",
+      "inputSha256": "c0ad0d9de343ea632284974ae68a7594fa00447d6b316f894588048aab88835c",
+      "expected": "accepted",
+      "rationale": "Builds, deploys and maintains robotic systems; German and English bodies state direct robot duties.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 0,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "b7badc87-bb22-4721-9530-2f2eba6debce",
+      "company": "CASCINATION",
+      "title": "System Integration and Test Engineer",
+      "inputSha256": "7d0600505e4aebc1e139cc1eaf46cbf4145f49d374089a7ac3b9992bf79a49c3",
+      "expected": "rejected",
+      "rationale": "Tests clinical navigation/imaging, software, electronics and mechanics. HiL/SiL and mechatronics do not establish a robotic device; strict rejection is defensible on this body.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "046e287c-8c67-4435-8084-ee5040d964df",
+      "company": "Swisslog",
+      "title": "Apprentice Computer Scientist (m/w/d)",
+      "inputSha256": "9aa77859cb7c6d206058eb20ee026f8a00ac7db1fd315e157d60413b83e7ba3a",
+      "expected": "accepted",
+      "rationale": "Application-development apprenticeship builds Java programs, demonstrates applications to customers and enhances products in explicitly robot-based intralogistics. PC support is one additional duty, not the whole role.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.12,
+          "accepted": 0.88
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.38,
+          "accepted": 0.62
+        }
+      }
+    },
+    {
+      "id": "4db5b9f6-d342-4a3c-8d4c-03c9379e1cbc",
+      "company": "RigiTech",
+      "title": "Marketing and Sales Internship",
+      "inputSha256": "d76f3f0db5b74014acc27b02e28ac2baa86d659cbeb507e28d3af23eaa424194",
+      "expected": "accepted",
+      "rationale": "Marketing and sales internship explicitly around the cloud-based drone-delivery solution.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.49,
+          "accepted": 0.51
+        }
+      }
+    },
+    {
+      "id": "65eadca5-441a-445b-b6ea-a9356a931809",
+      "company": "Swisslog",
+      "title": "Instandhaltungs-Techniker (m/w/d)",
+      "inputSha256": "d81c08995a65ca18dee90b22be70fa87b48e2c723bc413bdb0901045516ab32b",
+      "expected": "accepted",
+      "rationale": "Maintains, commissions and improves logistics machinery in Swisslog robot-driven intralogistics.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.21,
+          "accepted": 0.79
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.15,
+          "accepted": 0.85
+        }
+      }
+    },
+    {
+      "id": "8537759e-d2f4-49e6-8636-cd6768e1bb25",
+      "company": "Swisslog",
+      "title": "Automatiker/in EFZ",
+      "inputSha256": "cb619c950edbfa95da90608847e192b996cc511ce50d9fcedc31cbd4c5368998",
+      "expected": "accepted",
+      "rationale": "Builds controls software/electrical systems and commissions/maintains logistics installations in robot-based intralogistics; electrical work is product-connected, not unrelated electrical products.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.25,
+          "accepted": 0.75
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 1,
+        "probabilities": {
+          "rejected": 0.15,
+          "accepted": 0.85
+        }
+      }
+    },
+    {
+      "id": "b6d6efc3-e7f9-4597-95a4-861a60d611f2",
+      "company": "Swisslog",
+      "title": "Software Project Manager (m/w/d)",
+      "inputSha256": "d49503bdefb40ad3264a5985e6ef38da8fd8dbef05d6440f2c21742a1e7f0543",
+      "expected": "accepted",
+      "rationale": "Owns customer software project delivery, integration, support and presales in explicitly robot-driven intralogistics. Business-unit context supplies the connection, although the particular system is unnamed.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 2,
+        "probabilities": {
+          "accepted": 0.96,
+          "rejected": 0.04
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 2,
+        "probabilities": {
+          "rejected": 0.3,
+          "accepted": 0.7
+        }
+      }
+    },
+    {
+      "id": "b987f637-9e25-4dac-8b2b-2638f2ead926",
+      "company": "Swisslog",
+      "title": "Controls Software Service Engineer (Siemens) (m/w/d)",
+      "inputSha256": "7a038aa653fbbd131ef81823c97f14a74201df7b21530e31246136dc00d75638",
+      "expected": "accepted",
+      "rationale": "Implements intralogistics plant controls, optimizes customer installations and commissions/tests machinery; PLC software directly supports the product.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 2,
+        "probabilities": {
+          "accepted": 0.93,
+          "rejected": 0.07
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 2,
+        "probabilities": {
+          "rejected": 0.08,
+          "accepted": 0.92
+        }
+      }
+    },
+    {
+      "id": "7cac3447-06a0-4f54-a43a-f44149cdcb29",
+      "company": "Flybotix",
+      "title": "Technical Customer Support Engineer",
+      "inputSha256": "b95a6e865fe3a026fc775e44a683ba57a3d5fc726daca458e14e9384caf4184f",
+      "expected": "accepted",
+      "rationale": "Technical customer support includes drone repairs, flight testing, spare parts, maintenance and field-quality feedback.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 2,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 2,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "90b34804-dee6-4c88-b31b-c61bc323c313",
+      "company": "Flybotix",
+      "title": "Project Management Lead",
+      "inputSha256": "8c44dceacc9ef2b5f07ffd4fdd2770fc04083a9b9d54a6d4ab735294f3c68775",
+      "expected": "accepted",
+      "rationale": "Leads engineering/product-development portfolio in a robotics company with drone/robotics product-cycle and certification responsibilities.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 2,
+        "probabilities": {
+          "accepted": 0.91,
+          "rejected": 0.09
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 2,
+        "probabilities": {
+          "rejected": 0.04,
+          "accepted": 0.96
+        }
+      }
+    },
+    {
+      "id": "d0a7b360-d5e3-437a-bcf4-600cc713371c",
+      "company": "Flybotix",
+      "title": "Spontaneous Application",
+      "inputSha256": "0c11c18a6b1dda3e1f8c131ee143a4ad8e6abd528cb76145329cb56e773f2f4b",
+      "expected": null,
+      "rationale": "Unspecified spontaneous application with no actual duties or product identified. Rejection is reasonable under strict clear-role connection; preserve ambiguity consistently with other spontaneous applications.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 2,
+        "probabilities": {
+          "rejected": 0.88,
+          "accepted": 0.12
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 2,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      }
+    },
+    {
+      "id": "d369b7d1-4a97-441d-97a8-8253c2a61c03",
+      "company": "Flybotix",
+      "title": "Robotics Software Engineer – Ground Control & Onboard Systems",
+      "inputSha256": "7eba7019f4ca6f01dd9c3d7a2faed94a752bb96cd1b6b0e72938100835b057a6",
+      "expected": "accepted",
+      "rationale": "Explicit onboard drone software, autonomous navigation, ground-control interface and drone/ground/cloud communications.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "2a550ce0-df9d-442b-a9bc-818adb7ea579",
+      "company": "Embotech",
+      "title": "Software Team Lead – Safety Software",
+      "inputSha256": "cf26f6c67b949c642ff74b81358116b6dd5189babeb8ee580455d4ca6e2b3c3b",
+      "expected": "accepted",
+      "rationale": "Leads safety-critical software and perception for autonomous trucks/cars, including complete product software lifecycle.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 0.83,
+          "rejected": 0.17
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 0.96,
+          "rejected": 0.04
+        }
+      }
+    },
+    {
+      "id": "d1d6b260-111c-493e-841d-6adc20597d64",
+      "company": "Embotech",
+      "title": "System Engineer (Mid/Senior)",
+      "inputSha256": "1db5b2713050574db2a826ee66e4a629a0f730e60b24fa03c5116c012d4941c9",
+      "expected": "accepted",
+      "rationale": "Owns automated vehicle marshalling architecture, prototyping, safety analysis and validation on autonomous vehicles.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 0.91,
+          "rejected": 0.09
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "c7494abf-c5d1-4968-af5c-66b295c78ab3",
+      "company": "ABB",
+      "title": "Head of Sales – Process Industries Switzerland (80-100%)",
+      "inputSha256": "a1e997a33206a5b2aa02f3c7b2cbcbfbe089f763233c9bee7a68e1927a4b8f51",
+      "expected": "rejected",
+      "rationale": "Process Industries sales for mining/materials, grinding, rectifiers and plant electrification; no robot/autonomy product tie.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 0.01,
+          "rejected": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "b58a5657-f446-45a0-83e1-8e9d0ac38071",
+      "company": "ANYbotics",
+      "title": "Product Manager - Physical AI",
+      "inputSha256": "e260a6ff8af7dba9678df001f24c7aec48504689418e930c519ab217244ae635",
+      "expected": "accepted",
+      "rationale": "Owns ANYmal physical-AI autonomy roadmap, perception/navigation/locomotion and field deployment improvements.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 3,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "5a3fe081-34c8-4f2e-bda3-cc9f84362cac",
+      "company": "Stäubli",
+      "title": "Project Leader Renewable Energy (m/w/d)",
+      "inputSha256": "e4ad2a9878b5fa5ae175f5b28adb4099653178aeca24681ddb1025c9a0065922",
+      "expected": "rejected",
+      "rationale": "Renewable-energy electrical connector product development; MC4 photovoltaic business, not robotics.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "420ee90e-ef8b-4337-a123-9c6b35bd4983",
+      "company": "Mimic",
+      "title": "Senior Mechanical Engineer (Wearable Devices)",
+      "inputSha256": "9f37ffd84177e84b7539740ba8eca851977099874bc4e02c50c5f3cf6f1d1d7e",
+      "expected": "accepted",
+      "rationale": "Designs U-Mimic wearable collecting hand-motion and force training data for dexterous robotics.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0.21,
+          "rejected": 0.79
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0.57,
+          "rejected": 0.43
+        }
+      }
+    },
+    {
+      "id": "b64d6640-9a70-4471-a838-c0ce5ce663be",
+      "company": "ABB",
+      "title": "Sales Specialist Panel Builder (80 - 100%)",
+      "inputSha256": "12e066e9ac40de179ff5ff318a68c082e67f26a244ab05d86354841a94e69191",
+      "expected": "rejected",
+      "rationale": "Sells Smart Power electrical distribution/switchgear solutions to panel builders.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "52bbed47-483c-4968-9411-5c25a4f06079",
+      "company": "ABB",
+      "title": "R&D Center Lead - Materials Development (80-100%)",
+      "inputSha256": "7fa7d5556f18282a790fbbdc0e1db54b84ee41719582db320a9831a4ca563be3",
+      "expected": "rejected",
+      "rationale": "Materials development for Installation Products: junction boxes, conduits, cable protection and utility electrical components.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "d682c275-60aa-49e2-b6ea-b7411eeacb6d",
+      "company": "ABB",
+      "title": "Global Category Electronics Specialist",
+      "inputSha256": "f3e7ec05dc18913fcc5e4678dc29f0d92cbb274613dff1ffe8a295ac0de4f128",
+      "expected": "rejected",
+      "rationale": "Smart Power category sourcing for circuit breakers, UPS and energy distribution; unrelated electrical products.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 4,
+        "probabilities": {
+          "accepted": 0.01,
+          "rejected": 0.99
+        }
+      }
+    },
+    {
+      "id": "421b6854-6c6a-4b45-b011-251d444609a0",
+      "company": "Mimic",
+      "title": "Assembly & Maintenance Technician",
+      "inputSha256": "3608b8859862b75cb401bcfbab109fe783e2846edbe67398593eec83694b5f98",
+      "expected": "accepted",
+      "rationale": "Fabricates robotic hands, develops reliability tests and installs/maintains customer robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "390cf0b9-914a-4c29-afca-588da84c974d",
+      "company": "ABB",
+      "title": "Test engineer (80-100%)",
+      "inputSha256": "e6592ba39aa25857b97b04b1bf9f0abff4273011a7ed1af31b6446c5edc1b797",
+      "expected": "rejected",
+      "rationale": "Tests and verifies ABB Smart Power UPS products in Quartino.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "0c8aa090-032f-43a0-b934-bf847c4ec35c",
+      "company": "ABB",
+      "title": "Local Division Controller - Motion Traction",
+      "inputSha256": "e74b67d496a20ae7df29b10f6e4bd4daab267efffbbf011a0d2ac36ba0a47450",
+      "expected": "rejected",
+      "rationale": "Finance/controller role explicitly for Motion Traction, not the robotics business.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 0.01,
+          "rejected": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "eb176373-228a-44d2-b640-dffaabbc9a76",
+      "company": "Flyability",
+      "title": "Senior UX/UI Designer",
+      "inputSha256": "469ffbf5f4de8c4394a109d103922f8b401eff582435c05e9615496ce921f4fd",
+      "expected": "accepted",
+      "rationale": "Designs pilot drone apps and pre/postflight desktop workflows for Elios inspection robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 0.77,
+          "rejected": 0.23
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 0.88,
+          "rejected": 0.12
+        }
+      }
+    },
+    {
+      "id": "d3eb0834-38ec-42ef-8c58-e9d385074cc5",
+      "company": "Flyability",
+      "title": "Sensor Validation & Calibration Engineer",
+      "inputSha256": "5a86fa82bed4ff0bb925fc6c3dcf2ef50f4641d60e32069cbcf259b920f4404f",
+      "expected": "accepted",
+      "rationale": "Validates and calibrates cameras, lidar and IMUs on inspection drones; transfers tests to production.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 5,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      }
+    },
+    {
+      "id": "4aec9ec1-6002-4948-95c2-5db4afbb3ac2",
+      "company": "ABB",
+      "title": "Customer Application Engineer",
+      "inputSha256": "570d41d8124f78cc87ed5c5872f8450a6dde9a1b7ffb910702298eae9b801c43",
+      "expected": "rejected",
+      "rationale": "Customer application engineering specifically for Critical Power, UPS and power conversion.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 6,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 6,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "cd770e5a-2bfc-40e7-9efc-6aa9e9c8f79e",
+      "company": "Distalmotion",
+      "title": "Robotics Manufacturing Engineer",
+      "inputSha256": "c6d07d416d4706b0e3ad501346428743bb3b70651ce3eff84b3c3cc987152efb",
+      "expected": "accepted",
+      "rationale": "Industrialization, sustaining engineering, manufacturing tests and quality for Dexter surgical robot.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 6,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 6,
+        "probabilities": {
+          "rejected": 0.1,
+          "accepted": 0.9
+        }
+      }
+    },
+    {
+      "id": "ca3c8642-e365-43a2-8ada-ec944c8b58a6",
+      "company": "RIVR",
+      "title": "Operations Manager",
+      "inputSha256": "42b23aa3def7dc6c02d1799a1653b2e41764714fd03453c07bc75ca4d6af8a79",
+      "expected": "accepted",
+      "rationale": "Manages onsite robot fleet, deployment/testing workflows and robot/spare-part logistics.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 6,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 6,
+        "probabilities": {
+          "rejected": 0.03,
+          "accepted": 0.97
+        }
+      }
+    },
+    {
+      "id": "02f5191a-ad3f-4561-8586-62ce94f3b74d",
+      "company": "Stäubli",
+      "title": "SAP MM Inhouse Consultant",
+      "inputSha256": "36dafe67e33bc5085bc6ae69be601c9faae75f5b40d31f102b1cf56cd30a7391",
+      "expected": "rejected",
+      "rationale": "Group SAP MM consulting with Electrical Connectors/photovoltaic context; no clear robotics role or unit connection.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 6,
+        "probabilities": {
+          "accepted": 0.04,
+          "rejected": 0.96
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 6,
+        "probabilities": {
+          "rejected": 0.98,
+          "accepted": 0.02
+        }
+      }
+    },
+    {
+      "id": "d3a062c6-39a0-49a8-ac64-364eb9544105",
+      "company": "ANYbotics",
+      "title": "Head of Revenue & Commercial Operations",
+      "inputSha256": "6340c1bc131b39bf19d5a914df21d2762cc22d33633eb3e0194dcab70563bc53",
+      "expected": "accepted",
+      "rationale": "Commercial operations explicitly connect selling, deploying and supporting ANYmal robot fleets.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 6,
+        "probabilities": {
+          "accepted": 0.92,
+          "rejected": 0.08
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 6,
+        "probabilities": {
+          "rejected": 0.35,
+          "accepted": 0.65
+        }
+      }
+    },
+    {
+      "id": "af493acf-0045-411d-8f83-b3d6c06f4196",
+      "company": "ABB",
+      "title": "UPS Repair Center Manager - Europe (80-100%)",
+      "inputSha256": "8337c97b11fd86e3c7b1787f8b52987cebec5412ef48cd7006cf2bafe9595c40",
+      "expected": "rejected",
+      "rationale": "Manages UPS repair operations and service business model for Smart Power.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 7,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 7,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "3fc206cf-0e1a-497e-8888-b8881f0a0587",
+      "company": "Dufour Aerospace",
+      "title": "CAMO Engineer / Training Coordinator",
+      "inputSha256": "77a383e645bd365cef8cf4ba87738e1338a9b4471beade377bb3628380871471",
+      "expected": "accepted",
+      "rationale": "Explicit UAV development/certification, UAS-operator training, fleet maintenance, safety and reliability.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 7,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 7,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "7d9891cf-8cd5-4669-8d49-3b86aea7aad1",
+      "company": "RIVR",
+      "title": "Robotics Wireless & Network Engineer Intern",
+      "inputSha256": "5d913bd43c8c6cf2657a6e3ba685cf378716ebafccc7337eb3e7aace65edc1a6",
+      "expected": "accepted",
+      "rationale": "Builds onboard and cloud connectivity for autonomous delivery robots, including ROS2 and wireless links.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 7,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 7,
+        "probabilities": {
+          "rejected": 0.03,
+          "accepted": 0.97
+        }
+      }
+    },
+    {
+      "id": "cce72719-628d-4699-aa9a-f215f8cc53f9",
+      "company": "Fotokite",
+      "title": "Drone Assembly Operator",
+      "inputSha256": "e0f1a6b9092671abfc8dd6b9dbed30b4e5235f6ce998bc51e777882f0ab8f2b9",
+      "expected": "accepted",
+      "rationale": "Assembles/tests autonomous tethered drone electromechanical subsystems and improves manufacturing.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 7,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 7,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "7e877d2c-e42b-4772-9567-9b012de8d6e0",
+      "company": "ABB",
+      "title": "Logistics Operator IPU B&S f/m/d (80-100%)",
+      "inputSha256": "4804c05cd1d1a4216107e131cfd476326aa5cd65b7b4bd3cdc814ac20165b783",
+      "expected": "rejected",
+      "rationale": "Routine Quartino warehouse/IPU Buy & Sell work; no clear robot, drone or autonomous-product connection.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 7,
+        "probabilities": {
+          "accepted": 0.08,
+          "rejected": 0.92
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 7,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      }
+    },
+    {
+      "id": "61c1275c-1388-4dbe-9f59-c98a341601af",
+      "company": "ABB",
+      "title": "Service Project Specialist (Fixed Term Contract)",
+      "inputSha256": "b73bfddd324fc8bd46a473cad3dd5034972dc2932062b780f6f3ca68a8cf2be8",
+      "expected": "rejected",
+      "rationale": "Installed-base data and service process projects explicitly for Critical Power.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "88b4eea4-4adf-4dfe-b75a-9b07e85957c3",
+      "company": "ABB",
+      "title": "(Junior) R&D Engineer (m/f/d) (80-100%)",
+      "inputSha256": "d51cb07ab246d0825e942eaf6c31eee821549a001b7955d299826c3027f39986",
+      "expected": "rejected",
+      "rationale": "Traction converter semiconductors and power electronics for trams/locomotives; no autonomous-machine tie.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "accepted": 0.05,
+          "rejected": 0.95
+        }
+      }
+    },
+    {
+      "id": "2f4859db-3a9d-445e-8001-7546d920ab0f",
+      "company": "ABB",
+      "title": "Senior Engineering Specialist",
+      "inputSha256": "8943533f08d2095291a8b539575903817b0e7d7512dbf382f9cf71893ff7b6fa",
+      "expected": "rejected",
+      "rationale": "Product engineering explicitly for Power Protection/UPS products.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "accepted": 0.02,
+          "rejected": 0.98
+        }
+      }
+    },
+    {
+      "id": "54774302-d332-4e08-9b2c-4007526f0648",
+      "company": "ABB",
+      "title": "Internal Logistics Operator f/m/d (80-100%)",
+      "inputSha256": "5ce06abd5106758cebc7e87f95720c2eb51101154e987d106467fccac3d6da49",
+      "expected": "rejected",
+      "rationale": "Warehouse handling explicitly for Motion Traction; forklift/crane use is not a robotics product link.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "rejected": 0.98,
+          "accepted": 0.02
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "accepted": 0.05,
+          "rejected": 0.95
+        }
+      }
+    },
+    {
+      "id": "c6fad7d3-e066-4e59-b7d9-ef1d1207b5c3",
+      "company": "ABB",
+      "title": "Research Scientist in Operational Technology (OT) Cybersecurity (80-100%)",
+      "inputSha256": "274d502d5e13fb2cca983e0b07c98e95ca7828dda6aae0c4f7f199acc726a7dd",
+      "expected": "rejected",
+      "rationale": "Industrial Software Research/OT cybersecurity spans ABB digital products; no clear robotics or autonomy product/unit connection required by revised criterion.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "rejected": 0.89,
+          "accepted": 0.11
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 8,
+        "probabilities": {
+          "accepted": 0.1,
+          "rejected": 0.9
+        }
+      }
+    },
+    {
+      "id": "62963ae7-5168-4616-affa-3203a94b4f2c",
+      "company": "Stäubli",
+      "title": "Lehre als Kauffrau oder Kaufmann EFZ",
+      "inputSha256": "aa4c52f6c3e170d05d7a009ec8df83f30d1aa495f64378af906f091e2e2b48d6",
+      "expected": "rejected",
+      "rationale": "Administrative apprenticeship in Electrical Connectors/MC4 photovoltaic context; no robotics-specific work.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 9,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 9,
+        "probabilities": {
+          "accepted": 0.01,
+          "rejected": 0.99
+        }
+      }
+    },
+    {
+      "id": "019f5e4f-e66d-4717-af6b-7427cb98fbce",
+      "company": "ABB",
+      "title": "Mechanical Supervisor (80-100%)",
+      "inputSha256": "02975896d9fb28d90c9b638001c3f2406ef07eef0b5ad45677b98a9b9b389853",
+      "expected": "rejected",
+      "rationale": "Mechanical installation/maintenance of gearless mill drives at mining sites, not identified autonomous robots.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 9,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 9,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "8004344a-d8f3-4e22-8f29-704c86d14f83",
+      "company": "Auterion",
+      "title": "Electronics Engineering Intern",
+      "inputSha256": "54e427965e79c5403a6937417c0f30c93071fade6dba81ac9240f74ac95a4eb5",
+      "expected": "accepted",
+      "rationale": "Develops/tests embedded electronic hardware for Auterion, whose described business is AI-powered autonomous systems.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 9,
+        "probabilities": {
+          "rejected": 0.4,
+          "accepted": 0.6
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 9,
+        "probabilities": {
+          "accepted": 0.94,
+          "rejected": 0.06
+        }
+      }
+    },
+    {
+      "id": "b085d111-e14b-4736-8414-219771a0679a",
+      "company": "ABB",
+      "title": "Record to Report Project Management Office Lead",
+      "inputSha256": "8c17f29360f1497ecfba4385db9a256e826d5f339355c141fbe13f7a3489b38b",
+      "expected": "rejected",
+      "rationale": "Corporate accounting/Record-to-Report project governance; no robotics product or unit tie.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 9,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 9,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "d41f278a-d384-418d-8c9c-83e65ddf4c5b",
+      "company": "ANYbotics",
+      "title": "Head of Business Technology & Automation",
+      "inputSha256": "8b0e261539882b42d84584e40fe935124e78d643c3e84b14e8fb16108b3e0b3d",
+      "expected": null,
+      "rationale": "Internal business automation across Commercial, Product, Operations and R&D at a robot-only employer; overlaps supporting lifecycle operations but job does not itself work on robot products.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 9,
+        "probabilities": {
+          "rejected": 0.47,
+          "accepted": 0.53
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 9,
+        "probabilities": {
+          "accepted": 0.35,
+          "rejected": 0.65
+        }
+      }
+    },
+    {
+      "id": "d6668f2a-8dda-4165-8009-a5bfeefdcc59",
+      "company": "Dufour Aerospace",
+      "title": "Internship - Embedded Software",
+      "inputSha256": "6551257df1f7928bd3f98bea45b2a3dc30a2d067b7a57f859925424cb865cfe0",
+      "expected": "accepted",
+      "rationale": "Flight-critical embedded software and in-house flight control/avionics; UAV project experience desired.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 10,
+        "probabilities": {
+          "accepted": 0.81,
+          "rejected": 0.19
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 10,
+        "probabilities": {
+          "rejected": 0.03,
+          "accepted": 0.97
+        }
+      }
+    },
+    {
+      "id": "920688b0-309a-403a-8aa0-7d8d49523f25",
+      "company": "Auterion",
+      "title": "Production Engineer",
+      "inputSha256": "405881d613820cef32f14170a1736bf34c03d76fb41572dc4513e2750271852c",
+      "expected": "accepted",
+      "rationale": "Builds production tests and avionics/PCB fixtures for next-generation drone platforms.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 10,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 10,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      }
+    },
+    {
+      "id": "c17353eb-4bac-42fc-9c27-225bcf8e0956",
+      "company": "ABB",
+      "title": "Bid & Proposal Engineer - Mittelspannungsprodukte and -lösungen (m/w/d) (80-100%)",
+      "inputSha256": "fe3d9253084095e129b27d87b60023a294784fe1e3ba8382074e87331cdddcce",
+      "expected": "rejected",
+      "rationale": "Medium-voltage bids/proposals for Distribution Solutions/electrical grid products.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 10,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 10,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "71449a7e-abd1-46af-a01b-8e2c3592cedf",
+      "company": "ABB",
+      "title": "Internship - AI & Data Analytics in Sales f/m/d (80-100%)",
+      "inputSha256": "d6eec33a2a9d03189962d806f0760ad79f2b745d69125e896a5b8ddca6380531",
+      "expected": "rejected",
+      "rationale": "Sales-data automation for Process Industries, with mill drives/hoists/rectifiers and no explicit robotics tie.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 10,
+        "probabilities": {
+          "accepted": 0.11,
+          "rejected": 0.89
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 10,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "bc22c58a-5850-491b-9261-fa8856c954f5",
+      "company": "ABB",
+      "title": "Project Procurement Manager (80-100%)",
+      "inputSha256": "e69f5f6a12cc10584125a059f16e493512c2495ec23b8393466ed747e98deafc",
+      "expected": "rejected",
+      "rationale": "Procurement for Process Industries electrification/plant projects, including mine drives and hoists; no stated autonomous-machine tie.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 10,
+        "probabilities": {
+          "accepted": 0.15,
+          "rejected": 0.85
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 10,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "ef59f214-a90f-4880-927f-440246b5a463",
+      "company": "ABB",
+      "title": "Assembly Specialist Excitation and HPR Systems f/m/d (80-100%)",
+      "inputSha256": "6abf0898914a067775715726a366847c060de7ac9aa01fc083ca32611568f486",
+      "expected": "rejected",
+      "rationale": "Assembles power-plant excitation systems and high-power rectifiers.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "3d65b918-cdac-4499-af63-294097e38822",
+      "company": "Flyability",
+      "title": "ML/Data Infrastructure Engineer",
+      "inputSha256": "382303a91a0b666028166e175d587b26e3571e4b58b813eb41a4aafe9264905f",
+      "expected": "accepted",
+      "rationale": "Autonomy-team data/ML infrastructure turns inspection-drone data into deployable AI capabilities.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "3f37bc11-a775-44fa-87f4-892b200f4530",
+      "company": "Auterion",
+      "title": "Temporary People Operations Specialist (6 months)",
+      "inputSha256": "c24a54300e69d3b8d254727040f003af3e952a5f1de822a63463d5bb38685c15",
+      "expected": "rejected",
+      "rationale": "General HR paperwork, employee support, HRIS and onboarding; no product-linked lifecycle responsibilities.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0.01,
+          "rejected": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0.04,
+          "rejected": 0.96
+        }
+      }
+    },
+    {
+      "id": "5603d6ab-220b-4e5e-a9ec-c8e97dcfbedb",
+      "company": "ABB",
+      "title": "Fulfillment Specialist (80-100%)",
+      "inputSha256": "b8adb41d9515e329bbaaf1c09b98815ad53dd9d400338b69eeaf6bf0bff2e0b5",
+      "expected": "rejected",
+      "rationale": "Supply-chain fulfillment for Smart Power/Power Protection electrical products and UPS.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0.01,
+          "rejected": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "8c4966c5-ee55-4b5a-b8c5-0d12ea0f0461",
+      "company": "ABB",
+      "title": "(80 -100%) Global Spare Parts Forecasting Specialist",
+      "inputSha256": "688486eb6214ad2a728db07ea2c72796c58b9d0e3d448ae5b464801c6ff730aa",
+      "expected": "rejected",
+      "rationale": "Spare-parts forecasting explicitly for UPS/critical-power products.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0.02,
+          "rejected": 0.98
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 11,
+        "probabilities": {
+          "accepted": 0.01,
+          "rejected": 0.99
+        }
+      }
+    },
+    {
+      "id": "f8443b54-42fc-4601-8c84-d4c1b38a9db1",
+      "company": "Flyability",
+      "title": "Machine Learning Engineer - Spatial AI",
+      "inputSha256": "d0e019f77bbeaf3c72d1fc8131e8aacd9d60c09bfc0dd58e7e987bd32bf8d32d",
+      "expected": "accepted",
+      "rationale": "Develops drone perception/spatial AI for mapping, navigation and inspection missions.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 12,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 12,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      }
+    },
+    {
+      "id": "f2f9707a-a8f6-4ca0-9984-0109f29cbc16",
+      "company": "ABB",
+      "title": "Service Technician f/m/d (80-100%)",
+      "inputSha256": "d20e54f28d58b7ffd5607501316597eadcca9a7df545c97064e3e6eeae88de87",
+      "expected": null,
+      "rationale": "Maintains highly automated production/assembly equipment in low-voltage electrical-products factory; body does not say whether equipment includes physical robots or autonomous machines.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 12,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 12,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "5a831952-1214-41c8-b8f7-9cbad46e6aea",
+      "company": "ANYbotics",
+      "title": "Solution Architect - Power & Utilities",
+      "inputSha256": "97f4ce2190d92aeb222b45bfba72124d6dd319cd431005bd9f5ec290b0336f63",
+      "expected": "accepted",
+      "rationale": "Architects customer solutions around autonomous inspection robots, payloads and data; explicitly sales/product-linked.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 12,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 12,
+        "probabilities": {
+          "rejected": 0.04,
+          "accepted": 0.96
+        }
+      }
+    },
+    {
+      "id": "8bbefb8c-d709-42f0-83a7-9a680c7215be",
+      "company": "ABB",
+      "title": "Lead Facility Management Switzerland (m/f/d) (80-100%)",
+      "inputSha256": "f5fce0e0e54df14fd3888b17cc579961060f4c1dd5a9348d5c34bb367467ad57",
+      "expected": "rejected",
+      "rationale": "Corporate real-estate/facility management across ABB Swiss sites; no specific robotics-product link.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 12,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 12,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "1392e0a0-1b00-4df8-93bd-e2c95b6014de",
+      "company": "Wingtra",
+      "title": "Production Operator Assembly",
+      "inputSha256": "e931b4f32f041d90aa0b77b00b225e044368d3861cf01f83d462a6aa950d52f4",
+      "expected": "accepted",
+      "rationale": "Assembles, wires, calibrates and quality-tests Wingtra drones.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 12,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 12,
+        "probabilities": {
+          "rejected": 0.02,
+          "accepted": 0.98
+        }
+      }
+    },
+    {
+      "id": "8dab80cb-4f80-4be8-b8a8-d9766a8f9a44",
+      "company": "ABB",
+      "title": "Order Handling Specialist (80-100%)",
+      "inputSha256": "04a19ecd049ad6d441bdec0bd80bad26880a025ca018179456f3815f1e229ab4",
+      "expected": "rejected",
+      "rationale": "Order handling/customer support explicitly for UPS Systems in Electrification/Power Protection.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "c31147cc-8d05-40e1-9dff-91503ea10e69",
+      "company": "Gravis Robotics",
+      "title": "Senior Robotics Software Engineer - Autonomy Architecture",
+      "inputSha256": "c82368de128d7202f0a651c15d12535ba2b54035fc2e6251a7062f7577fa9d26",
+      "expected": "accepted",
+      "rationale": "Architects autonomous behavior software for robotic excavators and wheel loaders.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "fdfee8d4-0f83-4940-b743-472356c0176d",
+      "company": "Gravis Robotics",
+      "title": "Senior Machine Learning Engineer - Sim2Real & Machine Modeling",
+      "inputSha256": "bcbe354d00ae988313be8c3f9b5c25c1b1a882cddea2ff60ff7e511701bffa93",
+      "expected": "accepted",
+      "rationale": "Builds simulation/dynamics ML models to improve controllers running on autonomous construction machines.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "7f5b5b1c-f3ac-4bdf-a397-1201835143b0",
+      "company": "Flexion Robotics",
+      "title": "Finance Lead",
+      "inputSha256": "ebd41d47154c0fcd94fb8640a5698a93524c2909e95b93ff17216efeb38684c8",
+      "expected": "rejected",
+      "rationale": "Corporate FP&A, accounting, payroll and vendor/tool procurement, without robot-product lifecycle responsibilities.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 0.66,
+          "accepted": 0.34
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 0.68,
+          "accepted": 0.32
+        }
+      }
+    },
+    {
+      "id": "e04bac8a-0f34-469a-9842-3b99b7426621",
+      "company": "ABB",
+      "title": "Commercial Internship for WMS or HMS Students f/m/d (80-100%)",
+      "inputSha256": "1fa38754ef173cb26f56ff37f25fc33af28cf87cd117536225700b0679648b4a",
+      "expected": "rejected",
+      "rationale": "Administrative/IT support internship in Motion, with motors/generators/drives context and no robotics unit.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 13,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "27785aba-625c-4b5c-8330-27c3ca07ebf0",
+      "company": "Dufour Aerospace",
+      "title": "CAMO Engineer / Training Coordinator",
+      "inputSha256": "77a383e645bd365cef8cf4ba87738e1338a9b4471beade377bb3628380871471",
+      "expected": "accepted",
+      "rationale": "Explicit UAV development/certification, UAS-operator training, fleet maintenance, safety and reliability.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 14,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 14,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "0565daa9-5064-4c3e-8b0e-951c83905059",
+      "company": "RIVR",
+      "title": "Field Technician",
+      "inputSha256": "3b5767c03758d4aefcfa430b8e60852da1154058d80ab8abbc08d001f8fbdda0",
+      "expected": "accepted",
+      "rationale": "Maintains/tests robotic platforms, supports robot assembly, field deployment, repairs and spare parts.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 14,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 14,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "bf561d52-c75a-49fa-9991-55010fe527b5",
+      "company": "ABB",
+      "title": "Sales Specialist – Medium Voltage, French-speaking Switzerland (m/f/d) (80–100%)",
+      "inputSha256": "085a2d8b8deea2b4dd16baab533b4a50c84e9a2c139fcaad14cef87cce4e2da8",
+      "expected": "rejected",
+      "rationale": "Sells medium-voltage electricity-network products in Electrification Distribution Solutions.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 14,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 14,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "f15a66ef-febe-4651-9f48-65a0800b8fb1",
+      "company": "ANYbotics",
+      "title": "Key Account Manager - Oil & Gas",
+      "inputSha256": "350ecfde5375f0f711a1cee32b2df0eeea52875c5675adbe4d645fd9fc760881",
+      "expected": "accepted",
+      "rationale": "Sells and deploys autonomous robotic inspection units for oil/gas/chemical customers.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 14,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 14,
+        "probabilities": {
+          "accepted": 0.92,
+          "rejected": 0.08
+        }
+      }
+    },
+    {
+      "id": "32307b76-627e-4ed5-bd08-6b04ffc4db67",
+      "company": "Stäubli",
+      "title": "Aussenhandelsspezialist/in 80-100% (m/w/d)",
+      "inputSha256": "6146417eee15d951c31be8bf0e84bda90e6d419ba39e8a094a2618e36854c578",
+      "expected": null,
+      "rationale": "Export/import and spare-part/machine order processing at multi-division Stäubli; actual product or business unit not specified.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 14,
+        "probabilities": {
+          "rejected": 0.87,
+          "accepted": 0.13
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 14,
+        "probabilities": {
+          "accepted": 0.02,
+          "rejected": 0.98
+        }
+      }
+    },
+    {
+      "id": "19cdab20-1f82-454a-84a8-fa03f74f9009",
+      "company": "Distalmotion",
+      "title": "Complaint Handling & PMS Specialist",
+      "inputSha256": "c5f8af22cb42ec4f6ec55327e25567af6935f430b9b716113493e46b86daf244",
+      "expected": "accepted",
+      "rationale": "Handles product complaints, postmarket surveillance, returned devices and CAPA at surgical-robot manufacturer.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 0.39,
+          "accepted": 0.61
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 0.57,
+          "accepted": 0.43
+        }
+      }
+    },
+    {
+      "id": "1e7b5c60-5007-4dfd-85ad-f02e877e3f38",
+      "company": "ABB",
+      "title": "R&D Senior System Engineer (80 -100 %)  f/m/d",
+      "inputSha256": "86fea27c02be946bfd1185f37373cad4a8280024b73ac25f1e37b8f6d92574bd",
+      "expected": "rejected",
+      "rationale": "System/hardware engineering explicitly on Electrification UPS product lines.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "7495b725-6907-4d33-a8c8-306d75c64b61",
+      "company": "ABB",
+      "title": "R&D Senior Hardware Engineer (80 - 100%)  f/m/d",
+      "inputSha256": "95d5baa298c7480e2d088669a97e24fe1f890d7c010811c4ce2d231eb1697323",
+      "expected": "rejected",
+      "rationale": "Hardware engineering explicitly on Electrification UPS product lines.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "e689500f-9588-4ce3-a79c-8509550802bb",
+      "company": "ABB",
+      "title": "R&D Hardware Engineer (80 -100%)  f/m/d",
+      "inputSha256": "6b4482e2c12910d09ff2c35d0d6e7ceeb84916c0b78c6f5f6e5f9a9c30948ede",
+      "expected": "rejected",
+      "rationale": "Hardware architectures and circuits explicitly for High Power UPS products.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "4fea30fe-e309-4c7d-a5b7-235dd6eaab93",
+      "company": "RIVR",
+      "title": "Senior Mechanical Engineer – Power Electronics Packaging",
+      "inputSha256": "88ae340f074e509f1611f9dfc1f095cd5a7fe988270bfda1e0ee1adccf62f89a",
+      "expected": "accepted",
+      "rationale": "Packages power/control boards, thermal systems and wiring harnesses for autonomous delivery robot platform.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 0.32,
+          "accepted": 0.68
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 15,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "a17e8b9b-aaf6-4100-a1e8-d186166c7110",
+      "company": "ABB",
+      "title": "Feld Service Techniker:in (Mittelland / Region Bern) w/m/d (80-100%)",
+      "inputSha256": "cb50804d2a1d64ebdfb9143d2869f5418dae1617b672089c24833ec78cd8fe7c",
+      "expected": "rejected",
+      "rationale": "Smart Power field service with UPS/electrical distribution product context.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "2ccd5ce2-01e9-4ec7-8993-b83b8284cc53",
+      "company": "ABB",
+      "title": "Production Supervisor IPU B&S (80 - 100%)  f/m/d",
+      "inputSha256": "759ea3b32b168a833789880a734a17252f021560b8134a41db385783a2b45a0a",
+      "expected": "rejected",
+      "rationale": "Supervises single-phase UPS fulfillment, PCBA testing and subassembly production at Quartino.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 0.98,
+          "accepted": 0.02
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 0.98,
+          "accepted": 0.02
+        }
+      }
+    },
+    {
+      "id": "b101963c-cbd8-4fcd-9a7a-4baf93d5601c",
+      "company": "ABB",
+      "title": "Field Service Engineer (f/m/d) 80-100%",
+      "inputSha256": "184eddc55ffa31a0ad55f09a51e4ca8bfb524e137a53b472dbc09d9a3e51941d",
+      "expected": "rejected",
+      "rationale": "Motion Service frequency-converter commissioning/repair; no robot/autonomy product tie.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 0.94,
+          "accepted": 0.06
+        }
+      }
+    },
+    {
+      "id": "0114abe1-db2f-4020-81e3-5619f9ae69a8",
+      "company": "ABB",
+      "title": "R&D Engineer – Embedded Firmware  (80 - 100%)  f/m/d",
+      "inputSha256": "c7b83237182bae9dc2036bd697ed29be0c588bdcbdf82e3e28bdbc5bc32eb1e3",
+      "expected": "rejected",
+      "rationale": "Embedded firmware explicitly for UPS power supplies, despite control and microcontroller skills.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      }
+    },
+    {
+      "id": "80ac4032-f769-49af-8e53-d8d11694b702",
+      "company": "ABB",
+      "title": "(80 – 100%) IS Functional Analyst",
+      "inputSha256": "78dedec5a1b0df0adfb6f8d368fed5e171e5b9a6ddf4a4d306c500d8a276425b",
+      "expected": "rejected",
+      "rationale": "Corporate IS/business applications across all Swiss divisions; no robot-product function.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 16,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "e84d1b0c-8417-4b07-bd29-132f4ec49022",
+      "company": "ANYbotics",
+      "title": "Technical Program Manager",
+      "inputSha256": "76f026be6b0630413e6021de51c5ddb7930286bc0117d9c2e0cd5e28fe398877",
+      "expected": "accepted",
+      "rationale": "Leads a robot platform program through engineering, industrialization, supply chain, certification and launch.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      }
+    },
+    {
+      "id": "efe6d6e1-b65c-43fe-a5b0-812b7f4592a5",
+      "company": "ABB",
+      "title": "Production Engineering Specialist (80-100%)  f/m/d",
+      "inputSha256": "7e7d4c75085abe7a035fcfc9d66e8c85b0912b674f7fa4b41ac5406b5f5a85e1",
+      "expected": "rejected",
+      "rationale": "Production engineering for Power Protection department/Smart Power supplies.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "6602135a-6bbc-4c34-96f4-b96ab2954605",
+      "company": "Dufour Aerospace",
+      "title": "Internship - Embedded Software",
+      "inputSha256": "6551257df1f7928bd3f98bea45b2a3dc30a2d067b7a57f859925424cb865cfe0",
+      "expected": "accepted",
+      "rationale": "Flight-critical embedded software and in-house flight control/avionics; UAV project experience desired.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 0.84,
+          "rejected": 0.16
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 0.91,
+          "rejected": 0.09
+        }
+      }
+    },
+    {
+      "id": "c0af40f1-a156-4266-9293-8b4f0ba1db91",
+      "company": "Dufour Aerospace",
+      "title": "Hybrid Propulsion Intern",
+      "inputSha256": "b7a3d4fe0085c4f7a254cdf8f9ca30f7a130a286b325a497ac1b81772ddb9f99",
+      "expected": null,
+      "rationale": "Hybrid eVTOL propulsion testing/control work; body does not distinguish unmanned aircraft from a piloted aircraft program.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 0.51,
+          "rejected": 0.49
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 0.91,
+          "rejected": 0.09
+        }
+      }
+    },
+    {
+      "id": "9e4c14b1-5bf4-443b-8475-b0e87b837ffb",
+      "company": "RIVR",
+      "title": "AI Intern – Vision-Language-Action (VLA) & Data",
+      "inputSha256": "589b11e7a3c5fcde619817cb52b900c9a9f92a8132266f21671640f1d594f7c9",
+      "expected": "accepted",
+      "rationale": "Processes robot sensor data and trains/evaluates VLA models in simulation and on hardware.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 17,
+        "probabilities": {
+          "accepted": 0.96,
+          "rejected": 0.04
+        }
+      }
+    },
+    {
+      "id": "029b736b-08f6-432d-bddc-27a823892351",
+      "company": "RIVR",
+      "title": "(Senior) AI Engineer - Reinforcement Learning Manipulation",
+      "inputSha256": "3b465b60186fcd07d462934130f5db7efe81f341c5b4d18d479caaba3a658841",
+      "expected": "accepted",
+      "rationale": "Develops reinforcement-learning manipulation policies translating robot sensing into motor commands.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "02fa25ea-7b06-49b3-92a0-32b4cf631266",
+      "company": "Mimic",
+      "title": "Office & Operations Coordinator",
+      "inputSha256": "ab148c1e3fa526cbcc0a6810b780843d3d05b5366be2014d247064709ce4ee6f",
+      "expected": "rejected",
+      "rationale": "Office facilities, founder calendars, invoices and administration; no product-linked lifecycle duties.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 0.45,
+          "rejected": 0.55
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 0.02,
+          "rejected": 0.98
+        }
+      }
+    },
+    {
+      "id": "f8efdd5b-8881-4cc5-93a3-28f51a2e5886",
+      "company": "Dufour Aerospace",
+      "title": "Automatiker oder Elektroniker - Flugzeugbau & Unterhalt",
+      "inputSha256": "b67808849e8cb692b71624ae78cd35dbcddb55e34e358ac771848206a1027f42",
+      "expected": "accepted",
+      "rationale": "Explicitly assembles, wires and maintains Aero2 unmanned tilt-wing drone prototypes.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "a320bea2-6a5c-4977-84d2-c29a94505038",
+      "company": "Wingtra",
+      "title": "Junior Software Engineer - GTM Products",
+      "inputSha256": "18a9c22cafaeb3746c233030ad1ad5a4a00019e58109a62d35a1a1fa61bf83c4",
+      "expected": null,
+      "rationale": "Builds partner-facing GTM tools and sales/customer-success agents for drone company; indirect commercial-software link versus work on drone products is a scope boundary.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 0.94,
+          "rejected": 0.06
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 0.5,
+          "rejected": 0.5
+        }
+      }
+    },
+    {
+      "id": "ece39e2a-070d-4384-9994-42f548984b88",
+      "company": "Mimic",
+      "title": "Field / Site Reliability Engineering Intern",
+      "inputSha256": "4421081a6a28fc89088bd734a53d4159c84f7ed3bd499976a8098bce2860d971",
+      "expected": "accepted",
+      "rationale": "Deploys, commissions, diagnoses and improves physical robotic systems and reliability software.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 18,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "a97df92c-25a6-45cd-b930-0e9c69e66925",
+      "company": "Flexion Robotics",
+      "title": "Strategic Account Manager",
+      "inputSha256": "d8baccfc826186ba58fb1fe1b3a211e6ee3ae9439f5c96d66fe424d7194af036",
+      "expected": "accepted",
+      "rationale": "Owns strategic customers integrating Flexion autonomy into humanoid/robot platforms and expands those programs.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "accepted": 0.87,
+          "rejected": 0.13
+        }
+      }
+    },
+    {
+      "id": "c35ab970-e38e-412f-b88a-c0d78b5546fb",
+      "company": "Stäubli",
+      "title": "Field Service Engineer - Robotics",
+      "inputSha256": "27324c3258985a47500ae340b9f1b3bcb148017dbef5801beb5bc2330f56a23e",
+      "expected": "accepted",
+      "rationale": "Robotics division field maintenance/repair, technical support and spare parts for industrial robots/AGVs.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "accepted": 0.86,
+          "rejected": 0.14
+        }
+      }
+    },
+    {
+      "id": "9aa9edae-6e1d-4e28-bbdc-e4a051a2a930",
+      "company": "Auterion",
+      "title": "Senior Computer Vision Engineer",
+      "inputSha256": "12fb33ca8d356a79ca70df9f0480690ef1c2deec7f8a5475e4b82998e1d6d512",
+      "expected": "accepted",
+      "rationale": "Develops real-time onboard perception for autonomous aerial platforms and flight-tests it.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "197787ec-4400-4826-aad9-5aa9d4294139",
+      "company": "Flexion Robotics",
+      "title": "Product Manager - AI Platform",
+      "inputSha256": "639179cce493c8cd7759472ba4615a191c45f83de722f5c1178f380140b01860",
+      "expected": "accepted",
+      "rationale": "Owns AI autonomy platform roadmap, robot capabilities, data workflows and interfaces for deployed humanoids.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "rejected": 0.19,
+          "accepted": 0.81
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "5dc09662-0cac-4a75-8ce9-608c370eee44",
+      "company": "Dufour Aerospace",
+      "title": "CAMO Engineer / Training Coordinator",
+      "inputSha256": "77a383e645bd365cef8cf4ba87738e1338a9b4471beade377bb3628380871471",
+      "expected": "accepted",
+      "rationale": "Explicit UAV development/certification, UAS-operator training, fleet maintenance, safety and reliability.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 19,
+        "probabilities": {
+          "accepted": 0.95,
+          "rejected": 0.05
+        }
+      }
+    },
+    {
+      "id": "27c72cbc-61a4-4db2-a5d2-fbc06ca3ff6c",
+      "company": "RIVR",
+      "title": "Tech Lead – Testing Engineer",
+      "inputSha256": "c2f4895c70345def9c358c99052121c23d19d51466b1e0dda527d6d548498210",
+      "expected": "accepted",
+      "rationale": "Leads validation of robot actuators, mechatronics, sensing and complete-system reliability.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "40b4b030-d9f5-45b1-9656-b9b152b9fe97",
+      "company": "RIVR",
+      "title": "Procurement Engineer",
+      "inputSha256": "90ff62a97772532037bca141a2f179ed71f61c3cb2320dce588abdfaec2d9204",
+      "expected": "accepted",
+      "rationale": "Purchases robot-specific PCBs, cables and mechanical assemblies; supplier quality and prototype-to-volume support.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.96,
+          "rejected": 0.04
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.93,
+          "rejected": 0.07
+        }
+      }
+    },
+    {
+      "id": "82916aae-7adb-4f4d-b20d-c7d64168cd04",
+      "company": "RIVR",
+      "title": "Senior Electronics Engineer – Functional Safety",
+      "inputSha256": "67efbb5cb33b856cccd907df7e5ac22e7b80a70b6745015121269e5481a7a00d",
+      "expected": "accepted",
+      "rationale": "Designs fault-tolerant safety electronics and safe-state mechanisms for robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.93,
+          "rejected": 0.07
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "bdf583d2-3b8e-4476-93cd-3bb0d3dec9db",
+      "company": "RIVR",
+      "title": "Senior Electronics Engineer – Carrier Board",
+      "inputSha256": "7ed011819915ab431197bfe2b16d8449cdd280dcd4a13503cfacbbc8cb886572",
+      "expected": "accepted",
+      "rationale": "Owns GPU/SoC carrier boards and sensor interfaces for mobile robotic compute platform.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.74,
+          "rejected": 0.26
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "9ee714ff-e2d7-470a-8d60-c46c1b57f14b",
+      "company": "FIXPOSITION",
+      "title": "Product Marketing Specialist (60%) — Schlieren, Zurich",
+      "inputSha256": "d02e3af7cedf9b2014e3348166ac69d4d9fab5543b75803e6345e277c19210a4",
+      "expected": "accepted",
+      "rationale": "Markets positioning sensors explicitly enabling autonomous robots/vehicles; product messaging and sales support.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.92,
+          "rejected": 0.08
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 20,
+        "probabilities": {
+          "accepted": 0.38,
+          "rejected": 0.62
+        }
+      }
+    },
+    {
+      "id": "35e0fe05-7a5e-40eb-ad14-25536c3bf92e",
+      "company": "Gravis Robotics",
+      "title": "Senior Embedded Linux Engineer",
+      "inputSha256": "bb8351d128240b8834763016e56ffa8e301bb87648fd0c95c73d79750ce8f1e2",
+      "expected": "accepted",
+      "rationale": "Owns embedded Linux, sensor drivers and fleet updates for autonomous construction machine control hardware.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "809d7d70-da94-4133-a92f-c262787f4ded",
+      "company": "Flyability",
+      "title": "Head of Product Management",
+      "inputSha256": "9eda921be2fe77275b435f2b0ff24c8116d68e126f142872d8f3896990e330ba",
+      "expected": "accepted",
+      "rationale": "Leads inspection-drone product organization, product execution, field validation and commercial success.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0.92,
+          "rejected": 0.08
+        }
+      }
+    },
+    {
+      "id": "ef47abcc-1934-4e0e-a93b-b1f4bfa4f9c5",
+      "company": "Flyability",
+      "title": "Spontaneous application",
+      "inputSha256": "15482e60a06286be8ee707ad5c764e123c5c90ab0c2be8ab2067a6290e0e9abe",
+      "expected": null,
+      "rationale": "Open application to drone/robotics company with no specified role; potential technical or general corporate work cannot be distinguished.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0.34,
+          "rejected": 0.66
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0.02,
+          "rejected": 0.98
+        }
+      }
+    },
+    {
+      "id": "482c5fa5-6d67-462a-b246-153af859f2bf",
+      "company": "Stäubli",
+      "title": "Management Assistant (80%)",
+      "inputSha256": "ff9127a5099111eb61a3b381720e2a731f336b87ad667298645641faa501f3d3",
+      "expected": "rejected",
+      "rationale": "Management assistance explicitly for Electrical Connectors division.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "7f85a2a7-8bd3-494f-a9dc-7d8ee1217974",
+      "company": "Flexion Robotics",
+      "title": "Working Student/ Contractor for Physical AI Training",
+      "inputSha256": "ae6f429d347d0054e43d1f488ebc148058da5869158942d404565222a7326932",
+      "expected": "accepted",
+      "rationale": "Performs physical demonstrations, curates motion data and tests datasets for humanoid AI training.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0.81,
+          "rejected": 0.19
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 21,
+        "probabilities": {
+          "accepted": 0.55,
+          "rejected": 0.45
+        }
+      }
+    },
+    {
+      "id": "962830cc-0dc6-4008-92d5-761311896f04",
+      "company": "Dufour Aerospace",
+      "title": "Hybrid Propulsion Intern",
+      "inputSha256": "b7a3d4fe0085c4f7a254cdf8f9ca30f7a130a286b325a497ac1b81772ddb9f99",
+      "expected": null,
+      "rationale": "Hybrid eVTOL propulsion testing/control work; body does not distinguish unmanned aircraft from a piloted aircraft program.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.45,
+          "rejected": 0.55
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.95,
+          "rejected": 0.05
+        }
+      }
+    },
+    {
+      "id": "1091b49e-9401-4db7-b5f8-5b3c02c5a03c",
+      "company": "Auterion",
+      "title": "Drone Assembly Technician",
+      "inputSha256": "2ce4ae88c5ac545807dcf62b5f53ae6cec42aaf69c8f5b3f80dddab67fe51e6c",
+      "expected": "accepted",
+      "rationale": "Assembles, wires, tests and troubleshoots drones and related components.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.92,
+          "rejected": 0.08
+        }
+      }
+    },
+    {
+      "id": "b2a34920-bdb2-4b6d-a039-53487d62c56a",
+      "company": "Dufour Aerospace",
+      "title": "Internship - Embedded Software",
+      "inputSha256": "6551257df1f7928bd3f98bea45b2a3dc30a2d067b7a57f859925424cb865cfe0",
+      "expected": "accepted",
+      "rationale": "Flight-critical embedded software and in-house flight control/avionics; UAV project experience desired.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.82,
+          "rejected": 0.18
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "45ddcd41-dfa4-44b4-abeb-4aa97a775187",
+      "company": "Dufour Aerospace",
+      "title": "CAMO Engineer / Training Coordinator",
+      "inputSha256": "77a383e645bd365cef8cf4ba87738e1338a9b4471beade377bb3628380871471",
+      "expected": "accepted",
+      "rationale": "Explicit UAV development/certification, UAS-operator training, fleet maintenance, safety and reliability.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "d7d0e007-904f-4c28-b9b5-0205ab36ba06",
+      "company": "Dufour Aerospace",
+      "title": "Automatiker oder Elektroniker - Flugzeugbau & Unterhalt",
+      "inputSha256": "b67808849e8cb692b71624ae78cd35dbcddb55e34e358ac771848206a1027f42",
+      "expected": "accepted",
+      "rationale": "Explicitly assembles, wires and maintains Aero2 unmanned tilt-wing drone prototypes.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 22,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "182a240b-953b-4927-acfa-ffc96cc38732",
+      "company": "Gravis Robotics",
+      "title": "General Application Inquiry",
+      "inputSha256": "25504e6e4b1c898ffe281e2c6bad72b847b846f6f472beb6dc86874d35801982",
+      "expected": null,
+      "rationale": "General application inquiry at autonomous construction-robot company; no defined role or duties.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 23,
+        "probabilities": {
+          "accepted": 0.27,
+          "rejected": 0.73
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 23,
+        "probabilities": {
+          "accepted": 0.13,
+          "rejected": 0.87
+        }
+      }
+    },
+    {
+      "id": "621fd51f-aa1d-4a76-9f9c-2f0227ca5071",
+      "company": "Mimic",
+      "title": "Applied AI Engineer",
+      "inputSha256": "af4ad6f5e20b38cb8e8f7a1c5aa572159c6ea8c09b36f0ea44bf6da2f9e5e60b",
+      "expected": "accepted",
+      "rationale": "Trains/evaluates/deploys AI for new customer robotic tasks and builds model lifecycle workflows.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 23,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 23,
+        "probabilities": {
+          "rejected": 0.13,
+          "accepted": 0.87
+        }
+      }
+    },
+    {
+      "id": "a2724dac-b578-4de0-8f8f-32aca370e4e0",
+      "company": "Voliro",
+      "title": "Senior Cloud Engineer",
+      "inputSha256": "beb7f36519dba2330bd23eba656f4d6e135fa0adf1e172ed49c899044bfd98dc",
+      "expected": "accepted",
+      "rationale": "Builds Voliro Cloud features and operations planning for drone inspections with drone-platform team.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 23,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 23,
+        "probabilities": {
+          "rejected": 0.04,
+          "accepted": 0.96
+        }
+      }
+    },
+    {
+      "id": "3d092842-9b5d-49ff-adf2-2e9ec528de4b",
+      "company": "ABB",
+      "title": "R&D Engineer Firmware (80 -100%)",
+      "inputSha256": "bcb49183f4bd084c780bd30e0f2253355f3e326319f75d5d1fcf09eeb762d11d",
+      "expected": "rejected",
+      "rationale": "Smart Power firmware for power converters/UPS, BESS and renewable-energy systems, not robot products.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 23,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 23,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "e2e94fe8-b421-47e8-8ebb-cef998c6930b",
+      "company": "Dufour Aerospace",
+      "title": "Unmanned Aircraft Safety Engineer (UAS)",
+      "inputSha256": "e5a15e06428ef301fc470c6373c902fb531bfeb5298ab04b8486eb60ce9d19cd",
+      "expected": "accepted",
+      "rationale": "Safety assessments, certification and risk mitigation explicitly for unmanned aircraft systems.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 23,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 23,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "4ae19bd7-7329-4ec6-9b23-16c11605ea43",
+      "company": "ABB",
+      "title": "(80 - 100%) R&D Senior Engineer",
+      "inputSha256": "005ca841f8ea2c9888481850936c03a7c0d67420e1603d488ce9b3ba6c8cfefc",
+      "expected": "rejected",
+      "rationale": "Validates/customizes low-voltage UPS, batteries and accessories for power protection.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "d8f24663-60c6-4bbb-8c33-2f8013a6ee5a",
+      "company": "ABB",
+      "title": "(80 - 100%) R&D Engineer",
+      "inputSha256": "2ac4feb36c5502436393e81b48db69ef3aa66259b314719d40f6834ee053df61",
+      "expected": "rejected",
+      "rationale": "Validates/customizes UPS systems and accessories for power protection.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "025119e7-2e25-4255-936a-d3c21b7851c0",
+      "company": "Flexion Robotics",
+      "title": "Robotics Engineering Intern - Mechatronic Design",
+      "inputSha256": "61323bfa7aa1de8a1898e1a5b2ad2493588710e65697effe4f6ddf978ff7a721",
+      "expected": "accepted",
+      "rationale": "Designs/integrates humanoid manipulators, sensors and hardware and maintains robot fleet.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "e6ca21db-cb20-4dfc-9538-a795ce3e8cd1",
+      "company": "Auterion",
+      "title": "Team Assistant",
+      "inputSha256": "132fbc77505ff9676244a4dabaeacc81c8ddfe6cb5450b67accccf4657e5ae31",
+      "expected": "rejected",
+      "rationale": "General team calendars, travel, expenses, meetings and administrative support without product lifecycle duties.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0.32,
+          "rejected": 0.68
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0.05,
+          "rejected": 0.95
+        }
+      }
+    },
+    {
+      "id": "5269660b-11e4-42ed-9f71-73f807a8aa10",
+      "company": "Dufour Aerospace",
+      "title": "Automatiker oder Elektroniker - Flugzeugbau & Unterhalt",
+      "inputSha256": "b67808849e8cb692b71624ae78cd35dbcddb55e34e358ac771848206a1027f42",
+      "expected": "accepted",
+      "rationale": "Explicitly assembles, wires and maintains Aero2 unmanned tilt-wing drone prototypes.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 24,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "7e7f107d-5579-45d6-a73c-e412b2d8969f",
+      "company": "Dufour Aerospace",
+      "title": "Unmanned Aircraft Safety Engineer (UAS)",
+      "inputSha256": "e5a15e06428ef301fc470c6373c902fb531bfeb5298ab04b8486eb60ce9d19cd",
+      "expected": "accepted",
+      "rationale": "Safety assessments, certification and risk mitigation explicitly for unmanned aircraft systems.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 25,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 25,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      }
+    },
+    {
+      "id": "f86e682d-c9a8-4491-b119-2c3ce0b917e4",
+      "company": "ANYbotics",
+      "title": "Software Engineering Internship - AI Platform",
+      "inputSha256": "093f61272a9f2e50ce2b6d1197e720db89d198ef27d15efd95e39c5b31ca7e09",
+      "expected": "accepted",
+      "rationale": "Builds ML infrastructure bringing vision models into production/edge deployment on autonomous robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 25,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 25,
+        "probabilities": {
+          "rejected": 0.1,
+          "accepted": 0.9
+        }
+      }
+    },
+    {
+      "id": "2a2f11c5-d2b8-4461-ad2b-48050349f849",
+      "company": "ANYbotics",
+      "title": "Industrialization / Electronics Test Engineer",
+      "inputSha256": "2e1ce92a42066fdee223a884d70fc0ab2d184eb13553ffce39eb6faf34dd1fe1",
+      "expected": "accepted",
+      "rationale": "Owns electronics production tests and industrialization for ANYmal robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 25,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 25,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "c9a84bff-4e1e-498a-8821-8a7a212fae5c",
+      "company": "ABB",
+      "title": "Global Category Specialist Power Components",
+      "inputSha256": "fbf69d10fd5794a8796b6b89a2f18d387b569963181bac64d862306de82a044d",
+      "expected": "rejected",
+      "rationale": "Sources power-electronics components for UPS, traction, drives and renewable-energy lines; no clear robotics product connection.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 25,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 25,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "916b5d0d-cc4c-4e9d-9914-edeed12f43ab",
+      "company": "ANYbotics",
+      "title": "PCB Layout Designer / ECAD Engineer",
+      "inputSha256": "40d0937be5b0dcc9b0579fe7b598a41123df34e99ab72fd60069113b2e5609c0",
+      "expected": "accepted",
+      "rationale": "Owns PCB layout and electronics components for ANYmal autonomous mobile robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 25,
+        "probabilities": {
+          "accepted": 0.84,
+          "rejected": 0.16
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 25,
+        "probabilities": {
+          "rejected": 0.02,
+          "accepted": 0.98
+        }
+      }
+    },
+    {
+      "id": "f82bacc3-1a83-4915-8102-531e94fee437",
+      "company": "ANYbotics",
+      "title": "Senior Electrical Engineer",
+      "inputSha256": "e79a61fe8b6e27eaec2e26bd89489cfe64ffd2459d1759fdaecb51a476536180",
+      "expected": "accepted",
+      "rationale": "Designs and productizes ANYmal electronics boards, communications and battery-management systems.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "rejected": 0.2,
+          "accepted": 0.8
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      }
+    },
+    {
+      "id": "f7dad7ef-a54d-41bb-b17b-15b0264aa7dd",
+      "company": "Dufour Aerospace",
+      "title": "Automatiker oder Elektroniker - Flugzeugbau & Unterhalt",
+      "inputSha256": "b67808849e8cb692b71624ae78cd35dbcddb55e34e358ac771848206a1027f42",
+      "expected": "accepted",
+      "rationale": "Explicitly assembles, wires and maintains Aero2 unmanned tilt-wing drone prototypes.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "accepted": 0.9,
+          "rejected": 0.1
+        }
+      }
+    },
+    {
+      "id": "916e4867-1f9d-4adb-bc5b-4a575b9b9b4f",
+      "company": "Distalmotion",
+      "title": "Clinical Sales Specialist",
+      "inputSha256": "ab459031e293fb0656aef4fed4001cdd8dde24b13eba120322a2d0c95ad7aae3",
+      "expected": "accepted",
+      "rationale": "Trains surgeons and OR staff, supports Dexter robot procedures, commissioning and clinical sales.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "rejected": 0.11,
+          "accepted": 0.89
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 26,
+        "probabilities": {
+          "accepted": 0.37,
+          "rejected": 0.63
+        }
+      }
+    },
+    {
+      "id": "498c289d-b42b-432b-8f2e-3b0fbafa7ad2",
+      "company": "Verity",
+      "title": "Senior Robotics Engineer - Autonomy & Perception",
+      "inputSha256": "d0b08569178f73a2f2a8429d26a5741c94e8308c15e970794d2b465c23bb35e8",
+      "expected": "accepted",
+      "rationale": "Develops onboard drone autonomy/perception, mapping, collision avoidance and fleet coordination.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      }
+    },
+    {
+      "id": "6c56bed8-5e87-4b2c-9e7a-5f098c1b59e6",
+      "company": "Verity",
+      "title": "(Senior) Machine Vision Engineer",
+      "inputSha256": "5e43256b6152bc56a5af493fae3f40db3e1adce8eef514c7f6b70c2e4aaa5c19",
+      "expected": "accepted",
+      "rationale": "Develops perception from drone-mounted sensors for warehouse inventory and deploys on drone hardware/cloud.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 26,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "9450ce66-a1aa-4de4-8658-daad1922943b",
+      "company": "Verity",
+      "title": "Tech Lead",
+      "inputSha256": "3001a914e6928c3d5cf7597424c495ad9155ecb7c273608abfb4b2e287819ccc",
+      "expected": "accepted",
+      "rationale": "Leads end-to-end software turning drone-collected inventory scans into customer insights.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 0.13,
+          "accepted": 0.87
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 0.27,
+          "accepted": 0.73
+        }
+      }
+    },
+    {
+      "id": "f663e8bb-cf0d-434d-a20a-35965d0012eb",
+      "company": "ABB",
+      "title": "Sales Manager – Global Strategic Projects, Mining",
+      "inputSha256": "26d07247b9507c6116d193e4f3343fc5db63a3ed97aba3fe779016d98c7f92e0",
+      "expected": "rejected",
+      "rationale": "Process Industries sales for mining electrification, grinding drives and plant automation; no robot/autonomy product tie.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "1c30f37c-fe58-4464-bb8f-f1b9a89bd025",
+      "company": "RIVR",
+      "title": "Engineering Manager - Software/Cloud",
+      "inputSha256": "8f90f97d530cb2e17209635623d918aa48f1c05e2f287aa5c60ffaad3dba9683",
+      "expected": "accepted",
+      "rationale": "Leads cloud/fleet team building robot provisioning, deployments, model training and predictive maintenance tools.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "ae64bfac-0f88-4453-a32a-5f2cf603fccd",
+      "company": "ABB",
+      "title": "Technical Service Specialist - Gearless Mill Drive (80-100%)",
+      "inputSha256": "e9aa6d2a3662bbdff3b39c9c3a1b9db7c6670068b0175ca86d2770c2de7bef63",
+      "expected": "rejected",
+      "rationale": "Technical service explicitly for gearless mill drives in mining grinding plants.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "902ca8a7-60e8-45ca-9552-e9e0d97bdcc4",
+      "company": "RIVR",
+      "title": "SLAM Software Engineer",
+      "inputSha256": "745f83b95ba112d7b774c2df35a9c9cc31d2c297c19ca81eaea308329afd2841",
+      "expected": "accepted",
+      "rationale": "Develops robot SLAM/localization, sensor fusion and real-time autonomous navigation.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 27,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      }
+    },
+    {
+      "id": "fda49e63-5208-4adc-8a3c-9f99b377bbf2",
+      "company": "Mimic",
+      "title": "Field Engineer",
+      "inputSha256": "a380c9a8f98009426b15c26d663d3d4be6c744f038a7110b33df6e6d4b9d3c4c",
+      "expected": "accepted",
+      "rationale": "Deploys/services robot stations, industrial arms, PLC/control cabinets and complete robotic systems.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "2a136c65-3942-4aee-96f8-b0f6d539162e",
+      "company": "ANYbotics",
+      "title": "Production Technician II (Robotics)",
+      "inputSha256": "082ee9c63a19b4cc4a23b7ccd11f8f7918b2bd3966190d629fd8e9fd891179eb",
+      "expected": "accepted",
+      "rationale": "Diagnoses, repairs, tests and assembles ANYmal robots and their components.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "3c33fb45-313f-45f4-9294-6560b37ac58f",
+      "company": "RIVR",
+      "title": "Electronics Engineer (Senior)",
+      "inputSha256": "3afc2154cff822f74ba81c0d690234a6f915a8c8f8b2e6a3fd3a2b61e4ebe5fe",
+      "expected": "accepted",
+      "rationale": "Designs and tests custom robotic electronics, power boards and firmware for mass production.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.96,
+          "rejected": 0.04
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "81fd239f-9525-4980-b464-58cf811af7e3",
+      "company": "RIVR",
+      "title": "Junior Electronics Engineer",
+      "inputSha256": "a03a7f9dc6f1bb2d357e83d4db316e1b732421b94540201edcf986e694f4081c",
+      "expected": "accepted",
+      "rationale": "Builds/tests robot PCBs, sensors, actuators, wiring and power electronics.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "ab8bb47b-38f1-4f3e-aabc-034893b92a08",
+      "company": "BOTA Systems",
+      "title": "Junior Manufacturing Technician",
+      "inputSha256": "70f248f0fd9ac9533b0ccbcf8d78ef1478b39b9062442daef04a623b6d82f847",
+      "expected": "accepted",
+      "rationale": "Manufactures, calibrates and tests force/torque sensors explicitly used by robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.9,
+          "rejected": 0.1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 28,
+        "probabilities": {
+          "accepted": 0.81,
+          "rejected": 0.19
+        }
+      }
+    },
+    {
+      "id": "fb43ea8b-2aad-4857-830a-a66bc53e10b5",
+      "company": "ANYbotics",
+      "title": "Senior Product Quality Engineer",
+      "inputSha256": "cedbd81e517df6cf15ad8e394391427ac1af89f92fd86e4ced5cc464b6fba91f",
+      "expected": "accepted",
+      "rationale": "Owns nonconformity, root-cause analysis and quality improvement for ANYmal D/X robotic platforms.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 29,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 29,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "0bc054ea-03b9-4ff5-940b-0d2875653818",
+      "company": "Stäubli",
+      "title": "Division Procurement Controller",
+      "inputSha256": "4c6a28d0d0e0a540b5bd21adae9fb8551ae45c7f60c4ad14646bfb84411b5df1",
+      "expected": "rejected",
+      "rationale": "Procurement controlling explicitly within Electrical Connectors division.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 29,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 29,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      }
+    },
+    {
+      "id": "02688857-3cef-404a-a849-74f253f287f4",
+      "company": "Auterion",
+      "title": "Senior Software Engineer (Radio Systems)",
+      "inputSha256": "522a868c1af911bf48617e7daed8f7b4c00557eb4ce61395ff1def0aad74ca7b",
+      "expected": "accepted",
+      "rationale": "Builds Linux/C++ radio communications and RF sensing framework for unmanned air/ground/sea systems.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 29,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 29,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "26edde4d-41fb-4c1e-bd2c-6a1dcc8621b3",
+      "company": "Auterion",
+      "title": "Senior Embedded Linux Engineer",
+      "inputSha256": "aa7e56f58b44f0939269114bbe98372134b931b6f9870000b4b895face56ad9a",
+      "expected": "accepted",
+      "rationale": "Develops AuterionOS embedded Linux/drivers and customer support for autonomous robotic/drone platforms.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 29,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 29,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      }
+    },
+    {
+      "id": "5f330c4b-fc2d-4098-9971-f27121cfeb06",
+      "company": "BOTA Systems",
+      "title": "Junior Sensor Validation & Test Engineer",
+      "inputSha256": "9b0a1884e2443e9b0f689a2e631409539fd48a3e26aba5a87b2f4c23c34fa5cf",
+      "expected": "accepted",
+      "rationale": "Tests/calibrates force-torque sensors explicitly enabling robot interaction and control.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 29,
+        "probabilities": {
+          "rejected": 0.04,
+          "accepted": 0.96
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 29,
+        "probabilities": {
+          "accepted": 0.86,
+          "rejected": 0.14
+        }
+      }
+    },
+    {
+      "id": "7af1c5d6-a5f9-4747-912e-4b99bf8c7722",
+      "company": "Gravis Robotics",
+      "title": "Senior Reinforcement Learning Engineer",
+      "inputSha256": "0eb917635d2d9bfb481abe6a207e7d41074662a3892d31ea7c544fe593e19e34",
+      "expected": "accepted",
+      "rationale": "Develops learned planning/control for autonomous excavators and deploys it on real machines.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 30,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 30,
+        "probabilities": {
+          "rejected": 0.02,
+          "accepted": 0.98
+        }
+      }
+    },
+    {
+      "id": "afccf627-5878-4505-bd75-262fcc8f6cdc",
+      "company": "RIVR",
+      "title": "Robotics Trade Manager",
+      "inputSha256": "a77c765f4aef999ec0f57e4e3e45dfa18a3e52d771a7febd1c1f0bfcf5c66747",
+      "expected": "accepted",
+      "rationale": "Owns import/export and shipping compliance for RIVR robotics supply chain, hardware and prototyping.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 30,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 30,
+        "probabilities": {
+          "rejected": 0.57,
+          "accepted": 0.43
+        }
+      }
+    },
+    {
+      "id": "e4648c13-0eb0-45d8-a9c5-53f4bf776c5f",
+      "company": "Mimic",
+      "title": "Data Collector / part-time job / 8 to 40 hours a week",
+      "inputSha256": "9cef4166f3b2f72bf12873e902620c57839e2d7ffefde01653e773a02c1f5772",
+      "expected": "accepted",
+      "rationale": "Collects human hand-motion demonstrations with capture gloves to train robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 30,
+        "probabilities": {
+          "accepted": 0.88,
+          "rejected": 0.12
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 30,
+        "probabilities": {
+          "rejected": 0.36,
+          "accepted": 0.64
+        }
+      }
+    },
+    {
+      "id": "ccc881d5-44a6-4411-a96d-0521c434b8bd",
+      "company": "RIVR",
+      "title": "Support Engineer",
+      "inputSha256": "750fdd73ecb5c29d8e76c655ed907cf117bc31cf45dc68352880b3ab3d70bd6e",
+      "expected": "rejected",
+      "rationale": "Internal IT, employee devices/onboarding, lab networks and G&A productivity; not product/customer robot support.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 30,
+        "probabilities": {
+          "accepted": 0.34,
+          "rejected": 0.66
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 30,
+        "probabilities": {
+          "rejected": 0.73,
+          "accepted": 0.27
+        }
+      }
+    },
+    {
+      "id": "0020874f-e24a-4124-82bb-98cac3628391",
+      "company": "RIVR",
+      "title": "HR & Office Operations Manager – Maternity Cover (9-12 months)",
+      "inputSha256": "413d284cf569b6e18608a46823206d37816f2999764057273b9174cfd37cbdf6",
+      "expected": "rejected",
+      "rationale": "HR, payroll, employee administration, facilities and office relocation; no product lifecycle work.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 30,
+        "probabilities": {
+          "accepted": 0.09,
+          "rejected": 0.91
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 30,
+        "probabilities": {
+          "rejected": 0.95,
+          "accepted": 0.05
+        }
+      }
+    },
+    {
+      "id": "e2d8b1d3-e58c-40f2-a2a5-0395da358f5a",
+      "company": "ABB",
+      "title": "Global R&D Lead, Energy Storage Systems, Traction",
+      "inputSha256": "ba563ebb7afa0e89baac0739b791fd769277bea52ed7869fd2e73e935facb414",
+      "expected": "rejected",
+      "rationale": "Traction batteries/energy storage for rail and off-highway electrification; no autonomous-machine connection.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 0.01,
+          "rejected": 0.99
+        }
+      }
+    },
+    {
+      "id": "00da5b60-f32c-4271-a66d-48b6254563c8",
+      "company": "ANYbotics",
+      "title": "Senior Reinforcement Learning Engineer",
+      "inputSha256": "17e11bd332c917d16745cda5ce8ba20057b9720e486608a1b8ec7e77a5d2314f",
+      "expected": "accepted",
+      "rationale": "Trains/deploys reinforcement-learning motion policies on ANYmal physical robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "c6e999ca-fe37-40f2-8aa9-552f48df2129",
+      "company": "Mimic",
+      "title": "Software Engineer - AI Infrastructure",
+      "inputSha256": "c03f0a87393c5261a75dae60370b36e46331d0d43e3cd8585024569702d67eff",
+      "expected": "accepted",
+      "rationale": "Builds robot data/training/deployment infrastructure for dexterous manipulation models.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 0.93,
+          "rejected": 0.07
+        }
+      }
+    },
+    {
+      "id": "d34311a9-af94-4804-8638-d2bdbc170f57",
+      "company": "Mimic",
+      "title": "Senior Robotics Engineer",
+      "inputSha256": "ec1a6d065c237d0da935b40e21c5dd59393d633edfb0487514f13d9a4b017311",
+      "expected": "accepted",
+      "rationale": "Develops real-time robot control, teleoperation and learned-policy middleware for dexterous manipulation.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "e0e846e9-df59-4044-ae16-67057ca1b596",
+      "company": "BOTA Systems",
+      "title": "Robotics Engineer for Sales",
+      "inputSha256": "43b960869d709ab76d6aa4c6026ec3af07532e53193df375177e93a87818f220",
+      "expected": "accepted",
+      "rationale": "Sells and supports robotic force/torque sensing and physical-AI data collection systems.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 31,
+        "probabilities": {
+          "accepted": 0.61,
+          "rejected": 0.39
+        }
+      }
+    },
+    {
+      "id": "aeb25b54-a8b9-4506-9853-40d1705d1967",
+      "company": "RIVR",
+      "title": "Software Engineer – DevOps",
+      "inputSha256": "71654b545b05a1db6907f031d8aa10ce99374bdbac95d47671aef65a82255474",
+      "expected": "accepted",
+      "rationale": "Owns CI/CD, observability and infrastructure explicitly deploying software to physical robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 32,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 32,
+        "probabilities": {
+          "rejected": 0.04,
+          "accepted": 0.96
+        }
+      }
+    },
+    {
+      "id": "2e39bbbf-6aba-45e8-ad93-8975793046ef",
+      "company": "ABB",
+      "title": "(Senior) Scientist for EMC in Power Electronics",
+      "inputSha256": "90fb9fa4be8a3b57966624db52edd718017e34cd15752d172c33e008e0ac95de",
+      "expected": "rejected",
+      "rationale": "EMC/EMI research for high-power converters and energy systems; no clear robot/autonomous-product link.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 32,
+        "probabilities": {
+          "accepted": 0,
+          "rejected": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 32,
+        "probabilities": {
+          "rejected": 1,
+          "accepted": 0
+        }
+      }
+    },
+    {
+      "id": "dcae191e-50a5-4534-b366-2c496bcbba8f",
+      "company": "Ascento",
+      "title": "Business Development Manager",
+      "inputSha256": "0524379d7e0c231d6818b525eb92750cec6335d5424008ec6d00188b28990588",
+      "expected": "accepted",
+      "rationale": "Sells/demonstrates/deploys robotic security solutions and supports customer relationships.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 32,
+        "probabilities": {
+          "accepted": 1,
+          "rejected": 0
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 32,
+        "probabilities": {
+          "rejected": 0.07,
+          "accepted": 0.93
+        }
+      }
+    },
+    {
+      "id": "fda615d6-c6d6-4c08-8fa8-ef71fa32abc8",
+      "company": "Wingtra",
+      "title": "Team Lead Procurement & Supply Chain",
+      "inputSha256": "ae227c08e4d237fadce5e88483868f4d6459820c3fa4b96444c12a19e751d602",
+      "expected": "accepted",
+      "rationale": "Procures drone production components and manages product supply chain, supplier audits and export logistics.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 32,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 32,
+        "probabilities": {
+          "rejected": 0.03,
+          "accepted": 0.97
+        }
+      }
+    },
+    {
+      "id": "30386765-a3a4-4ff2-a41a-d5df90f4ac33",
+      "company": "Voliro",
+      "title": "Spontaneous Application",
+      "inputSha256": "569e54b1c0ce58823c14f87b62cd6b8f1013a784879ad2a248cfdb2b85a84aee",
+      "expected": null,
+      "rationale": "Open application to drone company without defined role or product-specific duties.",
+      "production": "rejected",
+      "questionLocal": {
+        "decision": "rejected",
+        "batch": 32,
+        "probabilities": {
+          "accepted": 0.37,
+          "rejected": 0.63
+        }
+      },
+      "shorterQuery": {
+        "decision": "rejected",
+        "batch": 32,
+        "probabilities": {
+          "rejected": 0.99,
+          "accepted": 0.01
+        }
+      }
+    },
+    {
+      "id": "0aefdef2-aadd-4a9c-8ab2-86ca42e5d87e",
+      "company": "Flexion Robotics",
+      "title": "AI Research Engineer - Dexterous Manipulation (Egocentric Models)",
+      "inputSha256": "2daa0c1e4d38031e1c4b626950220dd1e6ebbfe166af9a6f5f099ec611f9aa8e",
+      "expected": "accepted",
+      "rationale": "Develops egocentric/VLA models and learned controllers for humanoid dexterous manipulation.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "a1314089-cd94-4641-811a-846c6e8c6520",
+      "company": "ANYbotics",
+      "title": "Manufacturing Engineer",
+      "inputSha256": "92add313029aed50406ca6f5d283faf55250c0a69767668674934975ac1b64b2",
+      "expected": "accepted",
+      "rationale": "Manufacturing, maintenance, prototype/NPI builds and production troubleshooting for ANYmal robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "221d5072-bedc-4e9d-8516-c910be1c20ca",
+      "company": "Flexion Robotics",
+      "title": "Research Engineer - Generative Humanoid Motion Generation",
+      "inputSha256": "aaf1eca7bcd274d0a4afe77c3e75b64fa29bf220039634c21b76bd317d50c850",
+      "expected": "accepted",
+      "rationale": "Whole-body motion generation research in humanoid AI engineering; supplied body is short but product connection is explicit.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "accepted": 0.9,
+          "rejected": 0.1
+        }
+      }
+    },
+    {
+      "id": "746b5cf2-088b-4f20-bad5-6e65296f0e27",
+      "company": "Flexion Robotics",
+      "title": "Internship - Humanoid Motion Generation (Diffusion or Flow Matching)",
+      "inputSha256": "9b434eccb148359faeda8b272824a3c22fb043c0ee645d881fbced3358433654",
+      "expected": "accepted",
+      "rationale": "Develops generative trajectories and 3D perception for humanoid robot motion.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "accepted": 0.93,
+          "rejected": 0.07
+        }
+      }
+    },
+    {
+      "id": "b42c6a8f-cace-41b9-a727-cabdfa8d55a4",
+      "company": "Flexion Robotics",
+      "title": "Research Engineer - State Estimation and Visual Odometry (ML+classic)",
+      "inputSha256": "20065a7f349e94cfceaca560d902c243302becf56db3457b7a38297cacc70853",
+      "expected": "accepted",
+      "rationale": "Develops visual/proprioceptive state estimation and odometry explicitly for humanoid robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 33,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "dec66e74-1696-4dcd-9823-d8e1726fe7b4",
+      "company": "Flexion Robotics",
+      "title": "Forward Deployed Engineer - Robotics",
+      "inputSha256": "d138406733ce601bbd5a86a2537437a1d0458c95d8dc86f5e2f29b375efb886c",
+      "expected": "accepted",
+      "rationale": "Integrates autonomy stack onto customer robot hardware and supports deployed fleets.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "accepted": 0.99,
+          "rejected": 0.01
+        }
+      }
+    },
+    {
+      "id": "fe660fc7-6c7e-4828-9992-14ceb389fe48",
+      "company": "Flexion Robotics",
+      "title": "Product Manager - Developer Tools",
+      "inputSha256": "858fbf426a14e730a37f60bc67d09e7fe443c4c7ea7f3560bd65d7da5d64e986",
+      "expected": "accepted",
+      "rationale": "Owns SDKs/APIs/debugging and developer tooling for AI integration on humanoid robot platforms.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "706b5beb-21c2-4014-88e9-828f9b77336f",
+      "company": "Mimic",
+      "title": "AI Research Engineer (Robot Learning)",
+      "inputSha256": "c4abd0e671e0a4a27d8b85fc0f511744f4ddf93ff34d39cb03109f0109d72c11",
+      "expected": "accepted",
+      "rationale": "Develops robot-learning foundation models, data collection/training and real-robot evaluation.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "accepted": 0.89,
+          "rejected": 0.11
+        }
+      }
+    },
+    {
+      "id": "a4e4399e-425e-4761-9e3b-a4d18c49c920",
+      "company": "Mimic",
+      "title": "Head of Systems",
+      "inputSha256": "4a38994d7002741745f155e63954a0ab0983e74edc79f0efcb7ebfb251cf103c",
+      "expected": "accepted",
+      "rationale": "Architects, productizes and certifies physical robotics/AI software stack.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "accepted": 0.96,
+          "rejected": 0.04
+        }
+      }
+    },
+    {
+      "id": "c7df6ac3-b637-4374-854d-12e34be87f80",
+      "company": "Mimic",
+      "title": "AI Research Scientist (Robot Learning)",
+      "inputSha256": "a61e5d2ab73244460fd447278ab5aa1b32af715338f2e1462ef9e6439f29a1e7",
+      "expected": "accepted",
+      "rationale": "Researches foundation models for dexterous manipulation and deploys them on real robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 34,
+        "probabilities": {
+          "accepted": 0.85,
+          "rejected": 0.15
+        }
+      }
+    },
+    {
+      "id": "51f7d32b-506c-4b20-a4c8-cb44e3062a9b",
+      "company": "ANYbotics",
+      "title": "Senior Manager Product Structure & Systems (PLM/MES)",
+      "inputSha256": "ebbaeebfa7f8392bcef5cf643a868e68d37f8fd3e9c91b77354c1340c299803a",
+      "expected": "accepted",
+      "rationale": "Owns robotic product BOMs, PLM/MES, production traceability and engineering/manufacturing/service data.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0.02,
+          "accepted": 0.98
+        }
+      }
+    },
+    {
+      "id": "0d604173-5789-457e-869b-43a325ca8e77",
+      "company": "RIVR",
+      "title": "Mechanical Engineer (Junior)",
+      "inputSha256": "ea2aba2838c8ffdfabf497af582890cb4d93875ce234726c80c1ef5d4264f37a",
+      "expected": "accepted",
+      "rationale": "Designs/tests robotic actuators, payloads and electromechanical assemblies.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0.04,
+          "accepted": 0.96
+        }
+      }
+    },
+    {
+      "id": "3ad001ea-b346-4b6c-9ba2-d2ea6104ee84",
+      "company": "RIVR",
+      "title": "Senior Software Engineer – Backend",
+      "inputSha256": "1109373cd083becce1eea59992275c6435a84008977e1fa0533330dd129a84cf",
+      "expected": "accepted",
+      "rationale": "Builds backend services explicitly for robot fleet operations and customer delivery-platform integrations.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0.07,
+          "accepted": 0.93
+        }
+      }
+    },
+    {
+      "id": "42cd6e8a-0ef3-4855-804c-b276b394b073",
+      "company": "RIVR",
+      "title": "Senior AI Engineer Self-Supervised Learning",
+      "inputSha256": "d3730ec43b17b088673cd8204aac92abda82487c8f8797607ecbbc1d56ca3a6f",
+      "expected": "accepted",
+      "rationale": "Builds sensor-data/representation-learning pipelines for robot navigation, imitation learning and decisions.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0.08,
+          "accepted": 0.92
+        }
+      }
+    },
+    {
+      "id": "70311482-509d-4837-a11d-41634cc2e7ad",
+      "company": "RIVR",
+      "title": "Senior Software Engineer Robot Platform",
+      "inputSha256": "529db75d7b1af064d73954eaf89fe9b0798b18d7dacf73bce442eebc3fc4b811",
+      "expected": "accepted",
+      "rationale": "Integrates the deployed robot software stack, hardware drivers, autonomy, SLAM and field support.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 35,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      }
+    },
+    {
+      "id": "93e6ae6b-19bc-4c06-9e2e-2a803cd9b57b",
+      "company": "RIVR",
+      "title": "Testing Engineer",
+      "inputSha256": "a700c502cef773857715c17bff7c71cb507348dd9bb7758df7c704a3e7786db4",
+      "expected": "accepted",
+      "rationale": "Designs/runs mechanical and mechatronic robot reliability, performance and safety tests.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "accepted": 0.98,
+          "rejected": 0.02
+        }
+      }
+    },
+    {
+      "id": "b4749183-0132-4112-8f44-dba9a63164c2",
+      "company": "RIVR",
+      "title": "AI Engineer - Imitation Learning (Senior)",
+      "inputSha256": "c486c4eeb91e82ee64fbd99cf97458b8af03f55dded53fc019c3482c5561e133",
+      "expected": "accepted",
+      "rationale": "Develops imitation learning and deploys autonomous manipulation behaviors on real robots.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "bf45249d-316e-4297-b760-b403eebb00c5",
+      "company": "RIVR",
+      "title": "Hardware Engineering Intern",
+      "inputSha256": "fdd1b6091389e4b2b58a650f4238cb9dc11a9cc6d4154523a9a87b7accaee31d",
+      "expected": "accepted",
+      "rationale": "Designs/prototypes/tests robot structures, electronics, sensors and actuators.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "accepted": 0.75,
+          "rejected": 0.25
+        }
+      }
+    },
+    {
+      "id": "c4fad5ae-9f21-491e-92fb-6ec690a250f8",
+      "company": "RIVR",
+      "title": "Mechanical Engineer (Senior)",
+      "inputSha256": "e75b8fb6cf714a644e10e5cf5a0de10bc9b765adae2a4e8df58d62c32154cb40",
+      "expected": "accepted",
+      "rationale": "Develops robot electromechanical hardware, payloads and actuators and leads hardware team.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "accepted": 0.97,
+          "rejected": 0.03
+        }
+      }
+    },
+    {
+      "id": "ca619715-f8ba-4ed6-89f8-e6dbe204d4cb",
+      "company": "RIVR",
+      "title": "Senior AI Engineer - VLA Foundation Model",
+      "inputSha256": "bb9aa34b681953a6c0438eb317e199ff18a864871f61fa8eef428027ab8d189d",
+      "expected": "accepted",
+      "rationale": "Develops VLA foundation models and real-time edge deployment for delivery-robot autonomy/navigation.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "rejected": 0.01,
+          "accepted": 0.99
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 36,
+        "probabilities": {
+          "accepted": 0.96,
+          "rejected": 0.04
+        }
+      }
+    },
+    {
+      "id": "ff819164-67f9-475e-9575-7e8b17b1644a",
+      "company": "RIVR",
+      "title": "AI Engineer - Reinforcement Learning (Senior)",
+      "inputSha256": "4c5f1d8d7a6a51ce958f0005636cfb782565f528d46f931d2c20b81d947612f2",
+      "expected": "accepted",
+      "rationale": "Develops reinforcement-learning motor policies for robot locomotion, autonomy and manipulation.",
+      "production": "accepted",
+      "questionLocal": {
+        "decision": "accepted",
+        "batch": 37,
+        "probabilities": {
+          "rejected": 0,
+          "accepted": 1
+        }
+      },
+      "shorterQuery": {
+        "decision": "accepted",
+        "batch": 37,
+        "probabilities": {
+          "accepted": 0.92,
+          "rejected": 0.08
+        }
+      }
+    }
+  ]
+}

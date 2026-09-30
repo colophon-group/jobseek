@@ -107,6 +107,10 @@ async function assertSpendAuthorized(
         eq(watchlist.userId, input.ownerId),
         paidEntitlementCondition(watchlist.userId, input.now),
         eq(aiFilterQueryVersion.id, input.queryVersionId),
+        eq(aiFilterQueryVersion.model, JEV_MODEL),
+        eq(aiFilterQueryVersion.promptVersion, AI_FILTER_PROMPT_VERSION),
+        eq(aiFilterQueryVersion.schemaVersion, CLASSIFIER_INPUT_SCHEMA_VERSION),
+        eq(aiFilterQueryVersion.normalizerVersion, CLASSIFIER_INPUT_NORMALIZER_VERSION),
       ),
     )
     .limit(1);
