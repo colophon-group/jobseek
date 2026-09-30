@@ -1,6 +1,6 @@
 # Native Lightpanda B0 executor — inactive implementation
 
-This module is the database foundation for the next full migration boundary.
+This module contains the database and transport foundations for the next full migration boundary.
 It is not installed in the crawler image or selected by the production overlay.
 The production executor remains `src.lightpanda.executor` until the complete
 conversation, parsing/enrichment, whole-lane admission and cold reversal pass.
@@ -37,8 +37,15 @@ claims after commit, exact-description deduplication, native SQL field codecs,
 failure budgets and never-rescrape scheduling. The frozen hash fixture comes
 from Python 3.13's signed big-endian first-eight-byte SHA-256 calculation.
 
-Remaining work: strict private-socket admission and route preflight; canonical
-task/runtime-v1 validation and authorization deadlines; current board/parser
+The transport foundation reuses runtime-v1 framing and protobuf types. Frozen
+Python messages match byte for byte; request bounds, advancing authorization,
+route identity, canonical base64 and recursively unknown protobuf fields are
+checked. Frozen rendered-result cases preserve complete inline chunk integrity,
+strict UTF-8, empty HTML, chunk boundaries and HTTP status classification. These
+helpers are not a running server or a production ownership claim.
+
+Remaining work: strict private-socket admission and database route preflight; canonical
+task validation and authorization deadlines; current board/parser
 identity checks; direct reusable Go parsing/enrichment; native taxonomy/index
 loading/backfill within this pool; reserved-content policy and classification;
 complete crash/lease-loss/reversal tests; Docker/CI integration and an inactive
