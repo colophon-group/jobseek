@@ -57,7 +57,7 @@ export async function checkout(user: { id: string; email: string }, locale = "en
       pendingPriceId: priceId,
       ...(trialUsed && !account.trialUsedAt ? { trialUsedAt: new Date() } : {}),
       checkoutParameters: {
-        mode: "subscription", customer: account.customerId!, client_reference_id: account.id,
+        mode: "subscription", managed_payments: { enabled: false }, customer: account.customerId!, client_reference_id: account.id,
         line_items: [{ price: priceId, quantity: 1 }], payment_method_collection: "always",
         automatic_tax: { enabled: true }, billing_address_collection: "required",
         customer_update: { address: "auto", name: "auto" },
