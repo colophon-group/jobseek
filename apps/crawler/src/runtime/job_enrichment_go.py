@@ -161,6 +161,9 @@ class GoJobEnrichment:
                             "normalize_html",
                             "language",
                             "all_languages",
+                            "location_resolve",
+                            "location_ancestors",
+                            "location_display",
                         }
                     ),
                     outcome=outcome,

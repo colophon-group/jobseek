@@ -1,0 +1,906 @@
+{
+  "source_sha256": "60c7c6923036be984f199d45c7b8d84145401125f8f352ac27573b44c7dfc034",
+  "maps": {
+    "__annotations__": {
+      "_CITY_ALIASES": "dict[str, str]",
+      "_ISO3_TO_COUNTRY": "dict[str, str]",
+      "_ISO2_TO_COUNTRY": "dict[str, str]",
+      "_US_STATE_ABBREV": "dict[str, str]"
+    },
+    "_JOB_LOCATION_TYPE_MAP": {
+      "onsite": "onsite",
+      "on-site": "onsite",
+      "on-site working": "onsite",
+      "onsite working": "onsite",
+      "on_site": "onsite",
+      "on site": "onsite",
+      "office": "onsite",
+      "in-office": "onsite",
+      "in_office": "onsite",
+      "in office": "onsite",
+      "on-premises": "onsite",
+      "in-person": "onsite",
+      "in person": "onsite",
+      "no": "onsite",
+      "remote": "remote",
+      "remote working": "remote",
+      "telecommute": "remote",
+      "work from home": "remote",
+      "wfh": "remote",
+      "fully remote": "remote",
+      "100% remote": "remote",
+      "fulltime": "remote",
+      "hybrid": "hybrid",
+      "hybrid working": "hybrid",
+      "office, remote": "hybrid",
+      "remote, office": "hybrid",
+      "office/remote": "hybrid",
+      "remote/office": "hybrid",
+      "flexible": "hybrid",
+      "partially remote": "hybrid",
+      "partial": "hybrid",
+      "punctual": "hybrid",
+      "remotework_none": "onsite",
+      "remotework_full": "remote",
+      "remotework_partial": "hybrid",
+      "vor ort": "onsite",
+      "büro": "onsite",
+      "homeoffice": "remote",
+      "home office": "remote",
+      "fernarbeit": "remote",
+      "remote arbeit": "remote",
+      "teilweise remote": "hybrid",
+      "flexibel": "hybrid",
+      "sur site": "onsite",
+      "sur place": "onsite",
+      "présentiel": "onsite",
+      "en présentiel": "onsite",
+      "bureau": "onsite",
+      "télétravail": "remote",
+      "à distance": "remote",
+      "travail à distance": "remote",
+      "hybride": "hybrid",
+      "travail à distance possible": "hybrid",
+      "télétravail partiel": "hybrid",
+      "gedeeltelijk afstandswerk": "hybrid",
+      "afstandswerk mogelijk": "hybrid",
+      "volledig afstandswerk": "remote",
+      "geen afstandswerk": "onsite",
+      "in sede": "onsite",
+      "in ufficio": "onsite",
+      "in loco": "onsite",
+      "da remoto": "remote",
+      "lavoro da remoto": "remote",
+      "telelavoro": "remote",
+      "lavoro a distanza": "remote",
+      "ibrido": "hybrid"
+    },
+    "_COUNTRY_SUFFIX_ALIASES": {
+      "UK": "United Kingdom",
+      "USA": "United States",
+      "UAE": "United Arab Emirates"
+    },
+    "_CITY_ALIASES": {
+      "sf": "San Francisco",
+      "nyc": "New York City",
+      "ny": "New York City",
+      "la": "Los Angeles",
+      "dc": "District of Columbia",
+      "philly": "Philadelphia",
+      "us": "United States",
+      "usa": "United States",
+      "uk": "United Kingdom",
+      "uae": "United Arab Emirates",
+      "korea": "South Korea",
+      "d.c.": "District of Columbia",
+      "anywhere": "Worldwide",
+      "northeast": "Northeast US",
+      "northeastern": "Northeast US",
+      "southeast": "Southeast US",
+      "southeastern": "Southeast US",
+      "midwest": "Midwest US",
+      "midwestern": "Midwest US",
+      "central": "Central US",
+      "southwest": "Southwest US",
+      "southwestern": "Southwest US",
+      "pacific northwest": "Pacific Northwest",
+      "northwest": "Pacific Northwest",
+      "europe": "EMEA",
+      "european union": "EU",
+      "middle east": "MENA",
+      "amer": "Americas",
+      "silicon valley": "San Francisco"
+    },
+    "_ISO3_TO_COUNTRY": {
+      "AFG": "Afghanistan",
+      "ALB": "Albania",
+      "DZA": "Algeria",
+      "AND": "Andorra",
+      "AGO": "Angola",
+      "ARG": "Argentina",
+      "ARM": "Armenia",
+      "AUS": "Australia",
+      "AUT": "Austria",
+      "AZE": "Azerbaijan",
+      "BHS": "Bahamas",
+      "BHR": "Bahrain",
+      "BGD": "Bangladesh",
+      "BRB": "Barbados",
+      "BLR": "Belarus",
+      "BEL": "Belgium",
+      "BLZ": "Belize",
+      "BEN": "Benin",
+      "BTN": "Bhutan",
+      "BOL": "Bolivia",
+      "BIH": "Bosnia and Herzegovina",
+      "BWA": "Botswana",
+      "BRA": "Brazil",
+      "BRN": "Brunei",
+      "BGR": "Bulgaria",
+      "BFA": "Burkina Faso",
+      "BDI": "Burundi",
+      "KHM": "Cambodia",
+      "CMR": "Cameroon",
+      "CAN": "Canada",
+      "CPV": "Cape Verde",
+      "CAF": "Central African Republic",
+      "TCD": "Chad",
+      "CHL": "Chile",
+      "CHN": "China",
+      "COL": "Colombia",
+      "COM": "Comoros",
+      "COG": "Congo",
+      "CRI": "Costa Rica",
+      "HRV": "Croatia",
+      "CUB": "Cuba",
+      "CYP": "Cyprus",
+      "CZE": "Czechia",
+      "DNK": "Denmark",
+      "DJI": "Djibouti",
+      "DMA": "Dominica",
+      "DOM": "Dominican Republic",
+      "ECU": "Ecuador",
+      "EGY": "Egypt",
+      "SLV": "El Salvador",
+      "GNQ": "Equatorial Guinea",
+      "ERI": "Eritrea",
+      "EST": "Estonia",
+      "ETH": "Ethiopia",
+      "FJI": "Fiji",
+      "FIN": "Finland",
+      "FRA": "France",
+      "GAB": "Gabon",
+      "GMB": "Gambia",
+      "GEO": "Georgia",
+      "DEU": "Germany",
+      "GHA": "Ghana",
+      "GRC": "Greece",
+      "GTM": "Guatemala",
+      "GIN": "Guinea",
+      "GUY": "Guyana",
+      "HTI": "Haiti",
+      "HND": "Honduras",
+      "HKG": "Hong Kong",
+      "HUN": "Hungary",
+      "ISL": "Iceland",
+      "IND": "India",
+      "IDN": "Indonesia",
+      "IRN": "Iran",
+      "IRQ": "Iraq",
+      "IRL": "Ireland",
+      "ISR": "Israel",
+      "ITA": "Italy",
+      "JAM": "Jamaica",
+      "JPN": "Japan",
+      "JOR": "Jordan",
+      "KAZ": "Kazakhstan",
+      "KEN": "Kenya",
+      "KWT": "Kuwait",
+      "KGZ": "Kyrgyzstan",
+      "LAO": "Laos",
+      "LVA": "Latvia",
+      "LBN": "Lebanon",
+      "LSO": "Lesotho",
+      "LBR": "Liberia",
+      "LBY": "Libya",
+      "LIE": "Liechtenstein",
+      "LTU": "Lithuania",
+      "LUX": "Luxembourg",
+      "MDG": "Madagascar",
+      "MWI": "Malawi",
+      "MYS": "Malaysia",
+      "MDV": "Maldives",
+      "MLI": "Mali",
+      "MLT": "Malta",
+      "MRT": "Mauritania",
+      "MUS": "Mauritius",
+      "MEX": "Mexico",
+      "MDA": "Moldova",
+      "MCO": "Monaco",
+      "MNG": "Mongolia",
+      "MNE": "Montenegro",
+      "MAR": "Morocco",
+      "MOZ": "Mozambique",
+      "MMR": "Myanmar",
+      "NAM": "Namibia",
+      "NPL": "Nepal",
+      "NLD": "Netherlands",
+      "NZL": "New Zealand",
+      "NIC": "Nicaragua",
+      "NER": "Niger",
+      "NGA": "Nigeria",
+      "MKD": "North Macedonia",
+      "NOR": "Norway",
+      "OMN": "Oman",
+      "PAK": "Pakistan",
+      "PAN": "Panama",
+      "PRY": "Paraguay",
+      "PER": "Peru",
+      "PHL": "Philippines",
+      "POL": "Poland",
+      "PRT": "Portugal",
+      "QAT": "Qatar",
+      "ROU": "Romania",
+      "RUS": "Russia",
+      "RWA": "Rwanda",
+      "SAU": "Saudi Arabia",
+      "SEN": "Senegal",
+      "SRB": "Serbia",
+      "SGP": "Singapore",
+      "SVK": "Slovakia",
+      "SVN": "Slovenia",
+      "SOM": "Somalia",
+      "ZAF": "South Africa",
+      "KOR": "South Korea",
+      "ESP": "Spain",
+      "LKA": "Sri Lanka",
+      "SDN": "Sudan",
+      "SUR": "Suriname",
+      "SWE": "Sweden",
+      "CHE": "Switzerland",
+      "SYR": "Syria",
+      "TWN": "Taiwan",
+      "TJK": "Tajikistan",
+      "TZA": "Tanzania",
+      "THA": "Thailand",
+      "TGO": "Togo",
+      "TTO": "Trinidad and Tobago",
+      "TUN": "Tunisia",
+      "TUR": "Turkey",
+      "TKM": "Turkmenistan",
+      "UGA": "Uganda",
+      "UKR": "Ukraine",
+      "ARE": "United Arab Emirates",
+      "GBR": "United Kingdom",
+      "USA": "United States",
+      "URY": "Uruguay",
+      "UZB": "Uzbekistan",
+      "VEN": "Venezuela",
+      "VNM": "Vietnam",
+      "YEM": "Yemen",
+      "ZMB": "Zambia",
+      "ZWE": "Zimbabwe"
+    },
+    "_ISO2_TO_COUNTRY": {
+      "AD": "Andorra",
+      "AE": "United Arab Emirates",
+      "AF": "Afghanistan",
+      "AG": "Antigua and Barbuda",
+      "AM": "Armenia",
+      "AO": "Angola",
+      "AT": "Austria",
+      "AU": "Australia",
+      "AZ": "Azerbaijan",
+      "BA": "Bosnia and Herzegovina",
+      "BB": "Barbados",
+      "BD": "Bangladesh",
+      "BE": "Belgium",
+      "BF": "Burkina Faso",
+      "BG": "Bulgaria",
+      "BH": "Bahrain",
+      "BI": "Burundi",
+      "BJ": "Benin",
+      "BN": "Brunei",
+      "BO": "Bolivia",
+      "BR": "Brazil",
+      "BS": "Bahamas",
+      "BT": "Bhutan",
+      "BW": "Botswana",
+      "BY": "Belarus",
+      "BZ": "Belize",
+      "CD": "Congo",
+      "CF": "Central African Republic",
+      "CG": "Congo",
+      "CH": "Switzerland",
+      "CI": "Ivory Coast",
+      "CL": "Chile",
+      "CM": "Cameroon",
+      "CN": "China",
+      "CR": "Costa Rica",
+      "CU": "Cuba",
+      "CV": "Cape Verde",
+      "CY": "Cyprus",
+      "CZ": "Czechia",
+      "DJ": "Djibouti",
+      "DK": "Denmark",
+      "DM": "Dominica",
+      "DO": "Dominican Republic",
+      "DZ": "Algeria",
+      "EC": "Ecuador",
+      "EE": "Estonia",
+      "EG": "Egypt",
+      "ER": "Eritrea",
+      "ES": "Spain",
+      "ET": "Ethiopia",
+      "FI": "Finland",
+      "FJ": "Fiji",
+      "FR": "France",
+      "GB": "United Kingdom",
+      "GD": "Grenada",
+      "GH": "Ghana",
+      "GM": "Gambia",
+      "GN": "Guinea",
+      "GQ": "Equatorial Guinea",
+      "GR": "Greece",
+      "GT": "Guatemala",
+      "GW": "Guinea-Bissau",
+      "GY": "Guyana",
+      "HK": "Hong Kong",
+      "HN": "Honduras",
+      "HR": "Croatia",
+      "HT": "Haiti",
+      "HU": "Hungary",
+      "IE": "Ireland",
+      "IS": "Iceland",
+      "IT": "Italy",
+      "JM": "Jamaica",
+      "JO": "Jordan",
+      "JP": "Japan",
+      "KE": "Kenya",
+      "KG": "Kyrgyzstan",
+      "KH": "Cambodia",
+      "KR": "South Korea",
+      "KW": "Kuwait",
+      "KZ": "Kazakhstan",
+      "LB": "Lebanon",
+      "LC": "Saint Lucia",
+      "LI": "Liechtenstein",
+      "LK": "Sri Lanka",
+      "LR": "Liberia",
+      "LS": "Lesotho",
+      "LT": "Lithuania",
+      "LU": "Luxembourg",
+      "LV": "Latvia",
+      "LY": "Libya",
+      "MG": "Madagascar",
+      "MK": "North Macedonia",
+      "ML": "Mali",
+      "MM": "Myanmar",
+      "MR": "Mauritania",
+      "MU": "Mauritius",
+      "MV": "Maldives",
+      "MW": "Malawi",
+      "MX": "Mexico",
+      "MY": "Malaysia",
+      "MZ": "Mozambique",
+      "NG": "Nigeria",
+      "NI": "Nicaragua",
+      "NL": "Netherlands",
+      "NO": "Norway",
+      "NP": "Nepal",
+      "NZ": "New Zealand",
+      "OM": "Oman",
+      "PE": "Peru",
+      "PG": "Papua New Guinea",
+      "PH": "Philippines",
+      "PK": "Pakistan",
+      "PL": "Poland",
+      "PT": "Portugal",
+      "PY": "Paraguay",
+      "QA": "Qatar",
+      "RO": "Romania",
+      "RS": "Serbia",
+      "RU": "Russia",
+      "RW": "Rwanda",
+      "SA": "Saudi Arabia",
+      "SB": "Solomon Islands",
+      "SE": "Sweden",
+      "SG": "Singapore",
+      "SI": "Slovenia",
+      "SK": "Slovakia",
+      "SL": "Sierra Leone",
+      "SN": "Senegal",
+      "SO": "Somalia",
+      "SR": "Suriname",
+      "SV": "El Salvador",
+      "SY": "Syria",
+      "SZ": "Eswatini",
+      "TD": "Chad",
+      "TG": "Togo",
+      "TH": "Thailand",
+      "TJ": "Tajikistan",
+      "TM": "Turkmenistan",
+      "TR": "Turkey",
+      "TT": "Trinidad and Tobago",
+      "TW": "Taiwan",
+      "TZ": "Tanzania",
+      "UA": "Ukraine",
+      "UG": "Uganda",
+      "UY": "Uruguay",
+      "UZ": "Uzbekistan",
+      "VE": "Venezuela",
+      "VN": "Vietnam",
+      "YE": "Yemen",
+      "ZA": "South Africa",
+      "ZM": "Zambia",
+      "ZW": "Zimbabwe",
+      "AL": "Albania",
+      "AR": "Argentina",
+      "CA": "Canada",
+      "CO": "Colombia",
+      "DE": "Germany",
+      "GA": "Gabon",
+      "ID": "Indonesia",
+      "IL": "Israel",
+      "IN": "India",
+      "LA": "Laos",
+      "MA": "Morocco",
+      "MD": "Moldova",
+      "ME": "Montenegro",
+      "MN": "Mongolia",
+      "MT": "Malta",
+      "NE": "Niger",
+      "PA": "Panama",
+      "SC": "Seychelles"
+    },
+    "_US_STATE_ABBREV": {
+      "AL": "Alabama",
+      "AK": "Alaska",
+      "AZ": "Arizona",
+      "AR": "Arkansas",
+      "CA": "California",
+      "CO": "Colorado",
+      "CT": "Connecticut",
+      "DC": "District of Columbia",
+      "DE": "Delaware",
+      "FL": "Florida",
+      "GA": "Georgia",
+      "HI": "Hawaii",
+      "ID": "Idaho",
+      "IL": "Illinois",
+      "IN": "Indiana",
+      "IA": "Iowa",
+      "KS": "Kansas",
+      "KY": "Kentucky",
+      "LA": "Louisiana",
+      "ME": "Maine",
+      "MD": "Maryland",
+      "MA": "Massachusetts",
+      "MI": "Michigan",
+      "MN": "Minnesota",
+      "MS": "Mississippi",
+      "MO": "Missouri",
+      "MT": "Montana",
+      "NE": "Nebraska",
+      "NV": "Nevada",
+      "NH": "New Hampshire",
+      "NJ": "New Jersey",
+      "NM": "New Mexico",
+      "NY": "New York",
+      "NC": "North Carolina",
+      "ND": "North Dakota",
+      "OH": "Ohio",
+      "OK": "Oklahoma",
+      "OR": "Oregon",
+      "PA": "Pennsylvania",
+      "RI": "Rhode Island",
+      "SC": "South Carolina",
+      "SD": "South Dakota",
+      "TN": "Tennessee",
+      "TX": "Texas",
+      "UT": "Utah",
+      "VT": "Vermont",
+      "VA": "Virginia",
+      "WA": "Washington",
+      "WV": "West Virginia",
+      "WI": "Wisconsin",
+      "WY": "Wyoming"
+    }
+  },
+  "patterns": {
+    "_TYPE_HINT_RE": {
+      "pattern": "\\b(?:remote|fully\\s+remote|100%\\s+remote|telecommute|work\\s+from\\s+home|wfh|hybrid|partially\\s+remote|flexible|on[\\s-]?site|in[\\s-]?office|in[\\s-]?person)\\b",
+      "ignore_case": true
+    },
+    "_PAREN_HINT_RE": {
+      "pattern": "\\(([^)]+)\\)",
+      "ignore_case": false
+    },
+    "_PURE_REMOTE_RE": {
+      "pattern": "^(?:fully\\s+)?remote$|^100%\\s+remote$|^telecommute$|^work\\s+from\\s+home$|^wfh$",
+      "ignore_case": true
+    },
+    "_SKIP_RE": {
+      "pattern": "^(?:multiple\\s+locations?|various\\s+locations?|global|tbd|n/a|see\\s+description|distributed)$",
+      "ignore_case": true
+    },
+    "_COUNTRY_LOCATIONS_RE": {
+      "pattern": "^(.+?)\\s+locations?$",
+      "ignore_case": true
+    },
+    "_OTHER_LOCATIONS_RE": {
+      "pattern": "\\s*[&+]\\s*(?:other\\s+locations?|more|others?).*$",
+      "ignore_case": true
+    },
+    "_STANDALONE_TYPE_RE": {
+      "pattern": "^(?:hybrid|on[\\s-]?site|in[\\s-]?office|in[\\s-]?person)$",
+      "ignore_case": true
+    },
+    "_STATE_PREFIX_RE": {
+      "pattern": "^([A-Z]{2})-(.+)$",
+      "ignore_case": false
+    },
+    "_COUNTRY_SUFFIX_RE": {
+      "pattern": "^(.+?)-([A-Z]{2,3})$",
+      "ignore_case": false
+    },
+    "_SPLIT_RE": {
+      "pattern": "[,/|;]\\s*|\\s+-\\s+|\\s+–\\s+|\\s*[•·]\\s*|\\s+&\\s+",
+      "ignore_case": false
+    },
+    "_POSTAL_CODE_RE": {
+      "pattern": ",\\s*\\d{4,5}\\s*$",
+      "ignore_case": false
+    },
+    "_THE_PREFIX_RE": {
+      "pattern": "^the\\s+",
+      "ignore_case": true
+    },
+    "_CITY_SUFFIX_RE": {
+      "pattern": "\\s+city$",
+      "ignore_case": true
+    },
+    "_COMBINING_RE": {
+      "pattern": "[\\u0300-\\u036f]+",
+      "ignore_case": false
+    },
+    "_OFFICE_SUFFIX_RE": {
+      "pattern": "\\s+(?:HQ|Office|Campus|Branch|Headquarters)\\s*$",
+      "ignore_case": true
+    }
+  },
+  "digits": [
+    [
+      48,
+      57
+    ],
+    [
+      178,
+      179
+    ],
+    [
+      185,
+      185
+    ],
+    [
+      1632,
+      1641
+    ],
+    [
+      1776,
+      1785
+    ],
+    [
+      1984,
+      1993
+    ],
+    [
+      2406,
+      2415
+    ],
+    [
+      2534,
+      2543
+    ],
+    [
+      2662,
+      2671
+    ],
+    [
+      2790,
+      2799
+    ],
+    [
+      2918,
+      2927
+    ],
+    [
+      3046,
+      3055
+    ],
+    [
+      3174,
+      3183
+    ],
+    [
+      3302,
+      3311
+    ],
+    [
+      3430,
+      3439
+    ],
+    [
+      3558,
+      3567
+    ],
+    [
+      3664,
+      3673
+    ],
+    [
+      3792,
+      3801
+    ],
+    [
+      3872,
+      3881
+    ],
+    [
+      4160,
+      4169
+    ],
+    [
+      4240,
+      4249
+    ],
+    [
+      4969,
+      4977
+    ],
+    [
+      6112,
+      6121
+    ],
+    [
+      6160,
+      6169
+    ],
+    [
+      6470,
+      6479
+    ],
+    [
+      6608,
+      6618
+    ],
+    [
+      6784,
+      6793
+    ],
+    [
+      6800,
+      6809
+    ],
+    [
+      6992,
+      7001
+    ],
+    [
+      7088,
+      7097
+    ],
+    [
+      7232,
+      7241
+    ],
+    [
+      7248,
+      7257
+    ],
+    [
+      8304,
+      8304
+    ],
+    [
+      8308,
+      8313
+    ],
+    [
+      8320,
+      8329
+    ],
+    [
+      9312,
+      9320
+    ],
+    [
+      9332,
+      9340
+    ],
+    [
+      9352,
+      9360
+    ],
+    [
+      9450,
+      9450
+    ],
+    [
+      9461,
+      9469
+    ],
+    [
+      9471,
+      9471
+    ],
+    [
+      10102,
+      10110
+    ],
+    [
+      10112,
+      10120
+    ],
+    [
+      10122,
+      10130
+    ],
+    [
+      42528,
+      42537
+    ],
+    [
+      43216,
+      43225
+    ],
+    [
+      43264,
+      43273
+    ],
+    [
+      43472,
+      43481
+    ],
+    [
+      43504,
+      43513
+    ],
+    [
+      43600,
+      43609
+    ],
+    [
+      44016,
+      44025
+    ],
+    [
+      65296,
+      65305
+    ],
+    [
+      66720,
+      66729
+    ],
+    [
+      68160,
+      68163
+    ],
+    [
+      68912,
+      68921
+    ],
+    [
+      69216,
+      69224
+    ],
+    [
+      69714,
+      69722
+    ],
+    [
+      69734,
+      69743
+    ],
+    [
+      69872,
+      69881
+    ],
+    [
+      69942,
+      69951
+    ],
+    [
+      70096,
+      70105
+    ],
+    [
+      70384,
+      70393
+    ],
+    [
+      70736,
+      70745
+    ],
+    [
+      70864,
+      70873
+    ],
+    [
+      71248,
+      71257
+    ],
+    [
+      71360,
+      71369
+    ],
+    [
+      71472,
+      71481
+    ],
+    [
+      71904,
+      71913
+    ],
+    [
+      72016,
+      72025
+    ],
+    [
+      72784,
+      72793
+    ],
+    [
+      73040,
+      73049
+    ],
+    [
+      73120,
+      73129
+    ],
+    [
+      73552,
+      73561
+    ],
+    [
+      92768,
+      92777
+    ],
+    [
+      92864,
+      92873
+    ],
+    [
+      93008,
+      93017
+    ],
+    [
+      120782,
+      120831
+    ],
+    [
+      123200,
+      123209
+    ],
+    [
+      123632,
+      123641
+    ],
+    [
+      124144,
+      124153
+    ],
+    [
+      125264,
+      125273
+    ],
+    [
+      127232,
+      127242
+    ],
+    [
+      130032,
+      130041
+    ]
+  ]
+}

@@ -1,0 +1,310 @@
+[
+  {
+    "module": "github.com/dlclark/regexp2/v2",
+    "version": "v2.8.0",
+    "notices": [
+      {
+        "path": "github.com_dlclark_regexp2_v2@v2.8.0/LICENSE",
+        "sha256": "9be5d04bb4d706914d5bf943710da4afeb42048f7c529902fb57c82762a991a9"
+      }
+    ]
+  },
+  {
+    "module": "github.com/dustin/go-humanize",
+    "version": "v1.0.1",
+    "notices": [
+      {
+        "path": "github.com_dustin_go-humanize@v1.0.1/LICENSE",
+        "sha256": "a973b4498c13eb74baa2a8e5c351426a6826f2fcdd909916dbe53ee2e755fd71"
+      }
+    ]
+  },
+  {
+    "module": "github.com/google/pprof",
+    "version": "v0.0.0-20260802141513-ef3492d7dac3",
+    "notices": [
+      {
+        "path": "github.com_google_pprof@v0.0.0-20260802141513-ef3492d7dac3/LICENSE",
+        "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+      }
+    ]
+  },
+  {
+    "module": "github.com/google/uuid",
+    "version": "v1.6.0",
+    "notices": [
+      {
+        "path": "github.com_google_uuid@v1.6.0/LICENSE",
+        "sha256": "0a8d61ed3cbfd5312326e8126c31ce9c627a283adc99131b56896d29ada04b2d"
+      }
+    ]
+  },
+  {
+    "module": "github.com/hashicorp/golang-lru/v2",
+    "version": "v2.0.7",
+    "notices": [
+      {
+        "path": "github.com_hashicorp_golang-lru_v2@v2.0.7/LICENSE",
+        "sha256": "6c7088eb877b5d7e6e0e9d27e822ea25fcda2e83f9eba59bb5f1418a656796e0"
+      }
+    ]
+  },
+  {
+    "module": "github.com/mattn/go-isatty",
+    "version": "v0.0.24",
+    "notices": [
+      {
+        "path": "github.com_mattn_go-isatty@v0.0.24/LICENSE",
+        "sha256": "08eab1118c80885fa1fa6a6dd7303f65a379fcb3733e063d20d1bbc2c76e6fa1"
+      }
+    ]
+  },
+  {
+    "module": "github.com/ncruces/go-strftime",
+    "version": "v1.0.0",
+    "notices": [
+      {
+        "path": "github.com_ncruces_go-strftime@v1.0.0/LICENSE",
+        "sha256": "38ae43959daf953a393a585b2988672cb65a5a541aca0d0be5e72595a0a16883"
+      }
+    ]
+  },
+  {
+    "module": "github.com/remyoudompheng/bigfft",
+    "version": "v0.0.0-20230129092748-24d4a6f8daec",
+    "notices": [
+      {
+        "path": "github.com_remyoudompheng_bigfft@v0.0.0-20230129092748-24d4a6f8daec/LICENSE",
+        "sha256": "dd26a7abddd02e2d0aba97805b31f248ef7835d9e10da289b22e3b8ab78b324d"
+      }
+    ]
+  },
+  {
+    "module": "golang.org/x/mod",
+    "version": "v0.41.0",
+    "notices": [
+      {
+        "path": "golang.org_x_mod@v0.41.0/LICENSE",
+        "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      }
+    ]
+  },
+  {
+    "module": "golang.org/x/net",
+    "version": "v0.59.0",
+    "notices": [
+      {
+        "path": "golang.org_x_net@v0.59.0/LICENSE",
+        "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      }
+    ]
+  },
+  {
+    "module": "golang.org/x/sync",
+    "version": "v0.23.0",
+    "notices": [
+      {
+        "path": "golang.org_x_sync@v0.23.0/LICENSE",
+        "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      }
+    ]
+  },
+  {
+    "module": "golang.org/x/sys",
+    "version": "v0.48.0",
+    "notices": [
+      {
+        "path": "golang.org_x_sys@v0.48.0/LICENSE",
+        "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      }
+    ]
+  },
+  {
+    "module": "golang.org/x/text",
+    "version": "v0.42.0",
+    "notices": [
+      {
+        "path": "golang.org_x_text@v0.42.0/LICENSE",
+        "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      }
+    ]
+  },
+  {
+    "module": "golang.org/x/tools",
+    "version": "v0.50.0",
+    "notices": [
+      {
+        "path": "golang.org_x_tools@v0.50.0/LICENSE",
+        "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/cc/v4",
+    "version": "v4.29.7",
+    "notices": [
+      {
+        "path": "modernc.org_cc_v4@v4.29.7/LICENSE",
+        "sha256": "1c77905db36f407e0fdb513f97f1f2a3f2282049ca273637841face982d5d003"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/ccgo/v4",
+    "version": "v4.36.1",
+    "notices": [
+      {
+        "path": "modernc.org_ccgo_v4@v4.36.1/LICENSE",
+        "sha256": "343748b20da2ceb739c1ab7b85fe16f6fe4b67fad88fea40c5835a08383d8ffe"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/fileutil",
+    "version": "v1.4.0",
+    "notices": [
+      {
+        "path": "modernc.org_fileutil@v1.4.0/LICENSE",
+        "sha256": "7dc07397727fc500d5ce768d724e4d555eee8fb7687f421fd40d72249868b0ca"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/gc/v2",
+    "version": "v2.6.5",
+    "notices": [
+      {
+        "path": "modernc.org_gc_v2@v2.6.5/LICENSE",
+        "sha256": "4719790df5e9d33b1cef3a67df8264fb1e3e7f54f3ca900c562e84a951de62d9"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/gc/v3",
+    "version": "v3.1.5",
+    "notices": [
+      {
+        "path": "modernc.org_gc_v3@v3.1.5/LICENSE",
+        "sha256": "4719790df5e9d33b1cef3a67df8264fb1e3e7f54f3ca900c562e84a951de62d9"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/goabi0",
+    "version": "v0.2.0",
+    "notices": [
+      {
+        "path": "modernc.org_goabi0@v0.2.0/LICENSE",
+        "sha256": "6d33428c98f9d7113dfc86e17fca00f81aeaac33e02f79c8a5afafb0a5fd33c6"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/libc",
+    "version": "v1.77.1",
+    "notices": [
+      {
+        "path": "modernc.org_libc@v1.77.1/LICENSE",
+        "sha256": "95ff867eb55a56935fa7492406cfa953fb7c13ca73f4c0a86ae05756b4605600"
+      },
+      {
+        "path": "modernc.org_libc@v1.77.1/LICENSE-3RD-PARTY.md",
+        "sha256": "f597097efe3d97021f89170746bd3a0fb9a8b6fb26b82043ed68a4e0283bee6c"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/mathutil",
+    "version": "v1.7.1",
+    "notices": [
+      {
+        "path": "modernc.org_mathutil@v1.7.1/LICENSE",
+        "sha256": "bfa9bf72a72ca009fd62a8f84fca3dca67e51d93af96352723646599898b6cf5"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/memory",
+    "version": "v1.12.1",
+    "notices": [
+      {
+        "path": "modernc.org_memory@v1.12.1/LICENSE",
+        "sha256": "59895e669f48f168b6b858358f6005779cdf40a265f7828813061b56af67b496"
+      },
+      {
+        "path": "modernc.org_memory@v1.12.1/LICENSE-GO",
+        "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067"
+      },
+      {
+        "path": "modernc.org_memory@v1.12.1/LICENSE-LOGO",
+        "sha256": "5ae5bee3072a841376451b48d8cfcec7188e10543926d5870828d36c8a750dc5"
+      },
+      {
+        "path": "modernc.org_memory@v1.12.1/LICENSE-MMAP-GO",
+        "sha256": "c2eba69f20d05414538c3a5df7694dde392e065ff70882e1625e90f5d6659fff"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/opt",
+    "version": "v0.2.0",
+    "notices": [
+      {
+        "path": "modernc.org_opt@v0.2.0/LICENSE",
+        "sha256": "7a0dd90f1d1c8fa80d03c1806bdd8e4dca7285fae9b4a34f2c4a8a2552fdd77c"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/sortutil",
+    "version": "v1.2.1",
+    "notices": [
+      {
+        "path": "modernc.org_sortutil@v1.2.1/LICENSE",
+        "sha256": "7bc9df688c16dd8e64463ec0ad66728730a0e1a70a1dbda3dcbcd8a9b45bfaab"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/sqlite",
+    "version": "v1.60.1",
+    "notices": [
+      {
+        "path": "modernc.org_sqlite@v1.60.1/LICENSE",
+        "sha256": "c6fe05491a60ae13bcd223088d2705e36dede24e5587226231d2459ada5c4822"
+      },
+      {
+        "path": "modernc.org_sqlite@v1.60.1/LICENSE-3RD-PARTY.md",
+        "sha256": "b4366b9c27a9364633e015011a231913ed19bf1228f335bf617e50a6f7b168a6"
+      },
+      {
+        "path": "modernc.org_sqlite@v1.60.1/LICENSE-SQLITE",
+        "sha256": "8438c9c89b849131ead81d5435cb97fcf052df5b0b286dda8a2d4c29e6cb3fd0"
+      },
+      {
+        "path": "modernc.org_sqlite@v1.60.1/LICENSE-SQLITE_VEC",
+        "sha256": "6ce72bbe12d975bd5286e5ab0a064c069693300c47bccbc57bec18485f1621ea"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/strutil",
+    "version": "v1.2.1",
+    "notices": [
+      {
+        "path": "modernc.org_strutil@v1.2.1/LICENSE",
+        "sha256": "0f594b710bedb0335b15155204150cb1aac98e76144b52b852b43ce6a65eaaad"
+      }
+    ]
+  },
+  {
+    "module": "modernc.org/token",
+    "version": "v1.1.0",
+    "notices": [
+      {
+        "path": "modernc.org_token@v1.1.0/LICENSE",
+        "sha256": "2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067"
+      }
+    ]
+  }
+]

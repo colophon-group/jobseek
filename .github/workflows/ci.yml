@@ -799,6 +799,15 @@ jobs:
             --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
             -I /fixtures/verify_installed.py /usr/local/bin/job-enrichment /app/data
 
+      - name: Verify installed Go location parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/job-enrichment/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_location_installed.py
+
       - name: Verify installed SuccessFactors parser parity offline
         run: |
           timeout --foreground --signal=TERM --kill-after=5s 90s \

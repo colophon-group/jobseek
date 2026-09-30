@@ -7,12 +7,15 @@ with the saved salary candidate, then remove the Python orchestration and
 persistence boundaries while completing coverage of enabled boards. Preserve
 Python where it remains useful outside the production crawler runtime.
 
-This review made no production changes and did not reread the live hosts.
+Current execution is recorded in the [September 30 continuation checkpoint](28-go-location-resolver-checkpoint-2026-09-30.md).
+The initial review below is historical; use newer verified operational evidence first.
+
+This initial review made no production changes and did not reread the live hosts.
 Production details below are the latest recorded checkpoint, corroborated by
 the latest successful crawler deployment, rather than a new health attestation.
 Refresh live release, ownership and selectors before any operational change.
 
-## Latest checkpoint and source precedence
+## Initial checkpoint and source precedence
 
 | Surface | Verified or recorded state | Resume from |
 | --- | --- | --- |
