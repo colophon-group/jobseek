@@ -5,8 +5,9 @@
 -- ARGV[3] = default_rate_delay (float seconds)
 -- ARGV[4] = max_domains_to_check (int)
 -- ARGV[5] = lease_ttl (float seconds; lease set on claim — see #3159 / #3173)
+-- ARGV[6] = optional 32-character lowercase hex claim token (native callers)
 --
--- Returns: {task_id, source_type, domain} or nil
+-- Returns: {task_id, source_type, domain[, claim_token, leased_until]} or nil
 --
 -- Lease semantics (added in #3159 / #3173):
 --   When a task is claimed, this script also records a lease entry in
@@ -29,6 +30,27 @@ local b0_guard_key = "lightpanda-b0:legacy-guard"
 local recurring_monitor_streak_key = "claim:recurring-monitor-streak:" .. wtype
 local scrape_rotation_key = "ready:rotation:" .. wtype
 local max_recurring_monitor_streak = 8
+local claim_token = ARGV[6] or ""
+local token_key = "inflight_tokens:" .. wtype
+
+-- The optional token extends this queue's lease ABI. Validate all new state
+-- before popping work: Redis script errors cannot roll back earlier writes.
+if claim_token ~= "" and (#claim_token ~= 32 or
+    string.find(claim_token, "[^0-9a-f]") ~= nil) then
+    return redis.error_reply("ordinary claim token is invalid")
+end
+if claim_token ~= "" then
+    local clock = redis.call("TIME")
+    now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
+end
+local token_type = redis.call("TYPE", token_key)["ok"]
+if token_type ~= "none" and token_type ~= "hash" then
+    return redis.error_reply("ordinary claim token index is corrupt")
+end
+local inflight_type = redis.call("TYPE", "inflight:" .. wtype)["ok"]
+if inflight_type ~= "none" and inflight_type ~= "zset" then
+    return redis.error_reply("ordinary inflight index is corrupt")
+end
 
 -- Fail before popping any task if the persistent cutover guard is corrupt.
 -- Redis scripts do not roll back writes after a runtime WRONGTYPE error.
@@ -225,6 +247,21 @@ for _, tier in ipairs(tier_order) do
                 refresh_ready(domain, 0, false)
             end
 
+            -- A tokenized claimant cannot replace any inflight attempt. A
+            -- legacy claimant cannot replace a tokenized inflight attempt,
+            -- including one awaiting normal expiry reaping.
+            -- Keep the old lease/config and let its settlement/reaper advertise
+            -- the next attempt through the existing scheduler.
+            if task_id then
+                local member = source_type .. "|" .. domain .. "|" .. task_id
+                if (claim_token ~= "" or redis.call("HEXISTS", token_key, member) == 1) and
+                    redis.call("ZSCORE", "inflight:" .. wtype, member) ~= false then
+                    task_id = nil
+                    claimed_priority = nil
+                    refresh_ready(domain, 0, false)
+                end
+            end
+
             if task_id then
                 -- Set shared rate limit
                 local domain_delay = redis.call("GET", "delay:" .. domain)
@@ -240,6 +277,11 @@ for _, tier in ipairs(tier_order) do
                 -- reaper can re-enqueue without a side hash.
                 local inflight_member = source_type .. "|" .. domain .. "|" .. task_id
                 redis.call("ZADD", "inflight:" .. wtype, now + lease_ttl, inflight_member)
+                if claim_token ~= "" then
+                    redis.call("HSET", token_key, inflight_member, claim_token)
+                else
+                    redis.call("HDEL", token_key, inflight_member)
+                end
 
                 if claimed_priority == 1 then
                     redis.call(
@@ -256,6 +298,10 @@ for _, tier in ipairs(tier_order) do
 
                 refresh_ready(domain, now + rate_delay, claimed_priority == 2)
 
+                if claim_token ~= "" then
+                    return {task_id, source_type, domain, claim_token,
+                        redis.call("ZSCORE", "inflight:" .. wtype, inflight_member)}
+                end
                 return {task_id, source_type, domain}
             else
                 -- A stale marker must not erase a domain that still owns

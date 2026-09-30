@@ -1,8 +1,8 @@
 # Native ordinary worker queue foundation
 
-This unselected library speaks the existing `claim_work`, `heartbeat_task`,
-`complete_task` and `reschedule_task` Lua ABI. It owns no new queue/control
-plane and adds no executable, deployment command or production selection.
+This unselected library extends the existing `claim_work`, `heartbeat_task`,
+`complete_task` and `reschedule_task` Lua ABI with opt-in attempt tokens. It
+owns no new queue/control plane and adds no executable, deployment command or production selection.
 The copies are tested byte for byte against `src/lua/`.
 
 The client disables mutation retries, bounds I/O, uses Redis TIME, retains a
@@ -13,18 +13,41 @@ Errors never include connection strings or upstream configuration content.
 
 Local race tests against private Unix Redis processes verify both worker
 queues, exact claimed/rescheduled deadlines, heartbeat, completed scrape config
-cleanup, earliest deferred monitor repair and the persistent B0 guard. Fixtures
+cleanup, earliest deferred monitor repair and the persistent B0 guard. The
+attempt tests verify expiry before reaping, distinct reclaimed tokens, stale
+heartbeat/completion/reschedule with unchanged current state, legacy rejection,
+duplicate representations, completion/repair/deadletter/orphan/guard cleanup,
+corrupt-token-index preflight and cancellation before claim. Fixtures
 own private directories/processes and never clear a shared Redis database.
 `go test -race -count=1 ./...`, `go vet ./...` and `go mod tidy -diff` pass on
 local macOS/Redis 8.10.1. A skipped Redis test establishes no integration proof.
-The prepared `Go ordinary queue contracts` workflow tests both Linux
-architectures with required real Redis fixtures; missing Redis fails instead
-of skipping. No completed Linux result is claimed until that workflow runs.
+The `Go ordinary queue contracts` workflow tests both Linux architectures
+with required real Redis fixtures; missing Redis fails instead of skipping.
+The initial foundation passed both architectures at head
+`f8ec4e9a4a3b2a8e555eb84795bc2ac16c055c99`, run
+[36759941552](https://github.com/colophon-group/jobseek/actions/runs/36759941552).
+That result predates the attempt-token extension; new exact-head Linux results
+must be recorded before claiming it installed or selecting a worker.
 
-This is a foundation for replacing Python ordinary orchestration. The legacy
-Lua identifies leases by kind/domain/ID, without a claim token: a stale claimant
-can act on a newer lease for the same identity. These tests do not establish
-fenced native database authority. Before production selection, complete native
+`Claim` retains the legacy ABI; existing Python workers continue tokenless.
+`ClaimFenced` allocates a private random 128-bit token, uses Redis TIME inside
+the claim and returns the exact stored lease deadline. The same token must
+match an unexpired lease in every heartbeat and settlement. The index
+`inflight_tokens:<wtype>` extends the existing lease state; ready queues,
+fairness and source identity stay unchanged. Legacy calls fail closed while a
+tokenized lease exists. Heartbeat accepts an unchanged current token deadline
+and never shortens it. Reaping revokes expired tokens before every cleanup
+branch. Successful settlement removes the token; repair completion expires
+it for the normal reaper. A duplicate ready entry cannot replace a tokenized
+lease, and a tokenized claimant cannot replace a legacy inflight lease.
+
+This is a foundation for replacing Python ordinary orchestration. Tokenless
+legacy attempts still lack generation identity. The new token proves only
+Redis attempt ownership, not profile ownership or a PostgreSQL write grant.
+Old deployed scripts unaware of tokens cannot safely coexist with selected
+native work: admission requires the updated immutable image and full writer
+quiescence, with supported reversal. These tests do not establish fenced native
+database authority. Before production selection, complete native
 monitor/detail execution, enrichment/persistence, exclusive profile ownership,
 claim/write/settlement fencing, cancellation/recovery/cold reversal, and exact
 image/output/queue/resource proof. Reuse existing Go HTTP/API/parser and native
@@ -53,10 +76,10 @@ as a database fence. A Redis claim followed by PostgreSQL activation has a seam:
 a retired result must not activate or write merely because it reaches the DB
 later. Test the authority ordering before adding native selection.
 
-Next implementation: a bounded owner/generation extension across the existing
-claim, reaper and settlement state machine, including legacy caller behavior.
-Prove expiry followed by a new claim, stale heartbeat/completion/reschedule,
-retirement during activation, cancelled writes, and crash after durable commit
-before settlement. Then use the current enabled-profile census to choose the
-first already ported HTTP/API family and connect its native monitor/detail
+Next implementation: bind exclusive profile/epoch selection and the current
+attempt to PostgreSQL activation and each transaction. The opt-in Redis attempt
+extension above closes stale queue settlement; it does not close the Redis→DB
+activation seam. Prove retirement/expiry while DB activation is delayed,
+stale/cancelled transactions, and crash after durable commit before settlement.
+Then use the current enabled-profile census to choose the first already ported HTTP/API family and connect its native monitor/detail
 processing. This library remains unselected until those gates pass.

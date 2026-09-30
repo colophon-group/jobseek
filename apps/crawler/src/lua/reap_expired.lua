@@ -33,6 +33,11 @@ local retry_score = tonumber(ARGV[5]) or now
 local b0_guard_key = "lightpanda-b0:legacy-guard"
 local scrape_rotation_key = "ready:rotation:" .. wtype
 local monitor_repair_key = "monitor_repair_due:" .. wtype
+local token_key = "inflight_tokens:" .. wtype
+local token_type = redis.call("TYPE", token_key)["ok"]
+if token_type ~= "none" and token_type ~= "hash" then
+    return redis.error_reply("ordinary claim token index is corrupt")
+end
 
 -- Fail before touching any expired member. Redis does not roll back writes
 -- made earlier in a script when a later command raises WRONGTYPE.
@@ -67,6 +72,9 @@ local dead_lettered = 0
 local missing_config = 0
 
 for _, member in ipairs(expired) do
+    -- Revoke this expired generation on every path (retry/deadletter/orphan/
+    -- guard/malformed). New claims create a distinct token in the same queues.
+    redis.call("HDEL", token_key, member)
     -- Parse "task_type|domain|task_id" — note task_id may itself
     -- contain '|' so we split on the FIRST two delimiters only.
     local first_sep = string.find(member, "|", 1, true)

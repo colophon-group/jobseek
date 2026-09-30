@@ -8,6 +8,8 @@ on:
       - "apps/crawler/src/lua/heartbeat_task.lua"
       - "apps/crawler/src/lua/complete_task.lua"
       - "apps/crawler/src/lua/reschedule_task.lua"
+      - "apps/crawler/src/lua/reap_expired.lua"
+      - "apps/crawler/go/typesense-exporter/lease_reaper.lua"
       - ".github/workflows/go-ordinary-queue.yml"
   workflow_dispatch:
 

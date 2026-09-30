@@ -6,8 +6,9 @@
 -- ARGV[3] = task_id
 -- ARGV[4] = task_type ("monitor" or "scrape")
 -- ARGV[5] = next_due (float timestamp)
+-- ARGV[6] = optional claim token returned by tokenized claim
 --
--- Returns: 1
+-- Returns: 1 if rescheduled, 0 if guarded or a stale tokenized attempt
 --
 -- Lease cleanup (added in #3159 / #3173):
 --   This script also removes the inflight lease entry for the task,
@@ -24,6 +25,27 @@ local next_due = tonumber(ARGV[5])
 local b0_guard_key = "lightpanda-b0:legacy-guard"
 local scrape_rotation_key = "ready:rotation:" .. wtype
 local monitor_repair_key = "monitor_repair_due:" .. wtype
+local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
+local supplied_token = ARGV[6] or ""
+local token_key = "inflight_tokens:" .. wtype
+local token_type = redis.call("TYPE", token_key)["ok"]
+if token_type ~= "none" and token_type ~= "hash" then
+    return redis.error_reply("ordinary claim token index is corrupt")
+end
+if supplied_token ~= "" and (#supplied_token ~= 32 or
+    string.find(supplied_token, "[^0-9a-f]") ~= nil) then
+    return redis.error_reply("ordinary claim token is invalid")
+end
+local current_token = redis.call("HGET", token_key, inflight_member)
+-- Legacy callers cannot mutate a tokenized lease; a tokenized caller cannot
+-- mutate an absent/new generation. Expiry revokes authority before the reaper.
+if current_token ~= false or supplied_token ~= "" then
+    if current_token ~= supplied_token then return 0 end
+    local deadline = redis.call("ZSCORE", "inflight:" .. wtype, inflight_member)
+    local clock = redis.call("TIME")
+    local now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
+    if deadline == false or tonumber(deadline) <= now then return 0 end
+end
 
 local b0_guard_type = redis.call("TYPE", b0_guard_key)["ok"]
 if b0_guard_type ~= "none" and b0_guard_type ~= "hash" then
@@ -38,13 +60,11 @@ if monitor_repair_type ~= "none" and monitor_repair_type ~= "hash" then
     return redis.error_reply("monitor repair deadline index is corrupt")
 end
 if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
-    local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
     redis.call("ZREM", "inflight:" .. wtype, inflight_member)
+    redis.call("HDEL", token_key, inflight_member)
     redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
     return 0
 end
-
-local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
 
 -- A deploy-time repair can race a monitor already running with the previous
 -- config. Honor the earliest deferred repair deadline instead of letting the
@@ -72,6 +92,7 @@ end
 -- Clear inflight lease entry — the task is back on the per-domain
 -- queue, so the reaper must not double-enqueue it.
 redis.call("ZREM", "inflight:" .. wtype, inflight_member)
+redis.call("HDEL", token_key, inflight_member)
 redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
 
 -- claim_work records rotation separately from the ready marker, whose score

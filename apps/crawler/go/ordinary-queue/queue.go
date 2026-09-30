@@ -1,12 +1,14 @@
 // Package queue preserves the existing ordinary worker Redis/Lua ABI.
-// It does not provide token fencing: the legacy heartbeat/settlement scripts
-// identify a lease by task kind, domain and ID. Native database ownership must
-// add the required fencing before this is selected for production execution.
+// ClaimFenced adds attempt tokens to the same queues and settlement scripts.
+// These Redis tokens do not establish database or exclusive profile ownership;
+// both must be complete before selecting native ordinary execution.
 package queue
 
 import (
 	"context"
+	"crypto/rand"
 	_ "embed"
+	"encoding/hex"
 	"errors"
 	"math"
 	"strconv"
@@ -18,7 +20,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// The unchanged copies are checked byte-for-byte against repository Lua.
+// The copies are checked byte-for-byte against repository Lua.
 //
 //go:embed claim_work.lua
 var claimLua string
@@ -65,6 +67,7 @@ type Task struct {
 	Domain            string
 	InitialLeaseUntil float64
 	Config            map[string]string
+	claimToken        string
 }
 
 type Client struct {
@@ -78,8 +81,23 @@ func validPart(value string) bool {
 	return value != "" && utf8.ValidString(value) && !strings.ContainsRune(value, '|') && !strings.ContainsFunc(value, unicode.IsControl)
 }
 func validTask(task *Task) bool {
-	return task != nil && validWorker(task.Worker) && (task.Kind == Monitor || task.Kind == Scrape) && validPart(task.ID) && validPart(task.Domain)
+	return task != nil && validWorker(task.Worker) && (task.Kind == Monitor || task.Kind == Scrape) && validPart(task.ID) && validPart(task.Domain) && (task.claimToken == "" || validToken(task.claimToken))
 }
+func validToken(token string) bool {
+	if len(token) != 32 {
+		return false
+	}
+	for _, ch := range token {
+		if !(ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// Fenced reports the descriptor's claim mode, not current Redis/DB authority.
+func (task *Task) Fenced() bool { return task != nil && validToken(task.claimToken) }
+
 func validTime(value float64) bool { return !math.IsNaN(value) && !math.IsInf(value, 0) && value >= 0 }
 
 // Open owns its connection pool. Mutation retries are disabled: an ambiguous
@@ -117,6 +135,24 @@ func (c *Client) clock(ctx context.Context) (float64, error) {
 // so the caller retains its known inflight task for cleanup. Missing config is
 // represented by an empty map, preserving the legacy reaper's orphan handling.
 func (c *Client) Claim(ctx context.Context, worker WorkerType) (*Task, error) {
+	return c.claimTask(ctx, worker, "")
+}
+
+// ClaimFenced creates a distinct attempt token. Expired/reaped/new attempts
+// reject its heartbeat and settlement; the token stays private to this library.
+// This does not admit a profile or authorize a PostgreSQL transaction.
+func (c *Client) ClaimFenced(ctx context.Context, worker WorkerType) (*Task, error) {
+	if !validWorker(worker) {
+		return nil, ErrConfiguration
+	}
+	var token [16]byte
+	if _, err := rand.Read(token[:]); err != nil {
+		return nil, ErrObservation
+	}
+	return c.claimTask(ctx, worker, hex.EncodeToString(token[:]))
+}
+
+func (c *Client) claimTask(ctx context.Context, worker WorkerType, token string) (*Task, error) {
 	if !validWorker(worker) {
 		return nil, ErrConfiguration
 	}
@@ -126,7 +162,7 @@ func (c *Client) Claim(ctx context.Context, worker WorkerType) (*Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	raw, err := c.claim.Run(ctx, c.redis, nil, string(worker), number(now), number(c.settings.DefaultDelaySeconds), c.settings.MaxDomains, number(c.settings.LeaseTTL.Seconds())).Result()
+	raw, err := c.claim.Run(ctx, c.redis, nil, string(worker), number(now), number(c.settings.DefaultDelaySeconds), c.settings.MaxDomains, number(c.settings.LeaseTTL.Seconds()), token).Result()
 	if errors.Is(err, redis.Nil) || (err == nil && raw == nil) {
 		return nil, nil
 	}
@@ -134,7 +170,11 @@ func (c *Client) Claim(ctx context.Context, worker WorkerType) (*Task, error) {
 		return nil, ErrObservation
 	}
 	values, ok := raw.([]any)
-	if !ok || len(values) != 3 {
+	expected := 3
+	if token != "" {
+		expected = 5
+	}
+	if !ok || len(values) != expected {
 		return nil, ErrProtocol
 	}
 	id, idOK := values[0].(string)
@@ -143,6 +183,16 @@ func (c *Client) Claim(ctx context.Context, worker WorkerType) (*Task, error) {
 	task := &Task{Worker: worker, Kind: Kind(kind), ID: id, Domain: domain, InitialLeaseUntil: now + c.settings.LeaseTTL.Seconds()}
 	if !idOK || !kindOK || !domainOK || !validTask(task) {
 		return nil, ErrProtocol
+	}
+	if token != "" {
+		echo, echoOK := values[3].(string)
+		deadline, deadlineOK := values[4].(string)
+		until, err := strconv.ParseFloat(deadline, 64)
+		if !echoOK || echo != token || !deadlineOK || err != nil || !validTime(until) || until <= 0 {
+			return task, ErrProtocol
+		}
+		task.claimToken = token
+		task.InitialLeaseUntil = until
 	}
 	prefix := "scrape:"
 	if task.Kind == Monitor {
@@ -161,7 +211,9 @@ func (c *Client) Claim(ctx context.Context, worker WorkerType) (*Task, error) {
 }
 
 // Heartbeat reports the existing Lua CH result. False can mean an unchanged
-// deadline as well as a missing lease; it is not a token-fencing attestation.
+// deadline as well as a missing lease for legacy claims. For ClaimFenced, true
+// means the same token was unexpired in the atomic operation; it grants no DB
+// write authority and cannot substitute for the future transactional fence.
 func (c *Client) Heartbeat(ctx context.Context, task *Task) (bool, error) {
 	if !validTask(task) {
 		return false, ErrConfiguration
@@ -172,7 +224,7 @@ func (c *Client) Heartbeat(ctx context.Context, task *Task) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return c.transition(ctx, c.heartbeat, string(task.Worker), string(task.Kind), task.Domain, task.ID, number(now+c.settings.LeaseTTL.Seconds()))
+	return c.transition(ctx, c.heartbeat, string(task.Worker), string(task.Kind), task.Domain, task.ID, number(now+c.settings.LeaseTTL.Seconds()), task.claimToken)
 }
 func (c *Client) Complete(ctx context.Context, task *Task) (bool, error) {
 	if !validTask(task) {
@@ -180,7 +232,7 @@ func (c *Client) Complete(ctx context.Context, task *Task) (bool, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	return c.transition(ctx, c.complete, string(task.Worker), string(task.Kind), task.Domain, task.ID)
+	return c.transition(ctx, c.complete, string(task.Worker), string(task.Kind), task.Domain, task.ID, task.claimToken)
 }
 func (c *Client) Reschedule(ctx context.Context, task *Task, nextDue float64) (bool, error) {
 	if !validTask(task) || !validTime(nextDue) {
@@ -188,7 +240,7 @@ func (c *Client) Reschedule(ctx context.Context, task *Task, nextDue float64) (b
 	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	return c.transition(ctx, c.reschedule, string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue))
+	return c.transition(ctx, c.reschedule, string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue), task.claimToken)
 }
 func (c *Client) transition(ctx context.Context, script *redis.Script, args ...any) (bool, error) {
 	raw, err := script.Run(ctx, c.redis, nil, args...).Result()
