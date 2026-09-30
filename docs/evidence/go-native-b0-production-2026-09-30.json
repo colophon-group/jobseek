@@ -1,0 +1,179 @@
+{
+  "format": "jobseek.go-native-b0-production-evidence/v1",
+  "reviewed_at": "2026-09-30T19:13:55.683124+00:00",
+  "revision": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+  "version": "0.13.902",
+  "implementation_pr": "https://github.com/colophon-group/jobseek/pull/10204",
+  "tested_head": "ae6e1ec871ad347e9382988c97a662d113946055",
+  "required_ci_run": 36753632378,
+  "runtime_contract_run": 36753632490,
+  "actual_deploy_gate_run": 36758382688,
+  "whole_lane_run": 36753632374,
+  "crawler_release": {
+    "run": 36759680070,
+    "terminal_promotion": "success",
+    "images": {
+      "CRAWLER_IMAGE_TAG": "v0.13.902",
+      "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:ccb1fb7d83fedd95fc428ea174730c85021d587e20660c451a55e9a04cefaa09",
+      "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:8b60691ff6a62b174f9b5009e4aa0aebcb2c0e6ab1d40e8f482c80a8c77ac36a",
+      "JOBSEEK_DEPLOY_REVISION": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb"
+    }
+  },
+  "renderer_release": {
+    "run": 36759767703,
+    "revision": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+    "conclusion": "success",
+    "image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:a4c925d28c466b23a90850637c8344825823b6e6f5139952699a8bee21f3f719",
+    "publish_job": 110039250370,
+    "deploy_job": 110039814323,
+    "deploy_completed_at": "2026-09-30T18:40:07Z",
+    "scope": "successful exact-main protected publish/deploy, not independent post-deployment natural B0 proof"
+  },
+  "activation": {
+    "first_epoch": 143,
+    "restored_epoch": 145,
+    "selected": 20,
+    "unqueued": 15,
+    "selectors": 25,
+    "receipt": {
+      "schema": "jobseek.lightpanda-b0-active/v1",
+      "state": "active",
+      "cohort": "cdom",
+      "namespace": "production-b0",
+      "shard_id": "lightpanda-b0",
+      "routing_epoch": "145",
+      "plan_digest": "685d7ea0683fdb3c65ea54ccd56da4ef2607631103931c8fc4c7e880fc644e3b",
+      "compose_digest": "06e293484a34b56a6ad932ab1011128f1dd11b8f31489caa57bb99e35b8f25a6",
+      "crawler_image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:ccb1fb7d83fedd95fc428ea174730c85021d587e20660c451a55e9a04cefaa09",
+      "deploy_revision": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+      "activated_at_epoch": "1790795541"
+    },
+    "collector_errors": [],
+    "supported_activation_readiness": "passed"
+  },
+  "native_owner": {
+    "observed_at": "2026-09-30T19:13:55.687637+00:00",
+    "count": 1,
+    "executable": "go-lightpanda-b0-executor",
+    "uid": 10001,
+    "nofile": [
+      [
+        "64",
+        "64"
+      ]
+    ],
+    "server_command_exact": true,
+    "rss_bytes": 50241536,
+    "cgroup_resource": {
+      "memory.current": 41209856,
+      "memory.peak": {
+        "available": false
+      },
+      "memory.max": 402653184,
+      "memory.events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0
+      },
+      "cpu.stat": {
+        "usage_usec": 8584418,
+        "user_usec": 7474581,
+        "system_usec": 1109836,
+        "nr_periods": 160,
+        "nr_throttled": 48,
+        "throttled_usec": 1525858
+      }
+    },
+    "database_connections": 1,
+    "database_application_name": "jobseek:crawler:lightpanda-b0-executor:local"
+  },
+  "cold_reversal": {
+    "first_python_retirement": 142,
+    "native_retired_epoch": 144,
+    "restored_epoch": 145,
+    "ready_restored": 20,
+    "terminal_dropped": 0,
+    "inflight_settled": 0,
+    "write_fences_remaining": 0,
+    "cold_native_process_count": 0,
+    "cold_native_database_connections": 0,
+    "canonical_retention": {
+      "before_utc": "2026-09-30T18:52:22.742662+00:00",
+      "after_utc": "2026-09-30T19:08:46.405565+00:00",
+      "before_rows": 140,
+      "after_rows": 140,
+      "common_rows": 140,
+      "unchanged_rows": 140,
+      "changed_rows": 0,
+      "new_rows": 0,
+      "removed_rows": 0,
+      "changed_field_counts": {},
+      "scope": "readonly Browser Use/Bunq/Algorized canonical rows across activation and cold reversal; no fresh native commit observed; does not prove native extraction output"
+    },
+    "scope": "supported native route retirement to ordinary Python and restoration within the same promoted release; not a full older-image downgrade or injected production fault"
+  },
+  "natural_output": {
+    "database_utc": "2026-09-30T19:24:05.508974+00:00",
+    "native_fence_epoch": 145,
+    "rows": [
+      {
+        "id": "54570dc6-a27b-4aef-9da1-a2590343eb3c",
+        "board_slug": "bunq-careers",
+        "last_scraped_at": "2026-09-30T19:12:11.201885+00:00",
+        "next_scrape_at": "2026-10-01T19:12:11.201885+00:00",
+        "active": true,
+        "scrape_failures": 0,
+        "description_bytes": 3044,
+        "description_sha256": "b201d02e82eebd5b2ce53f60a096b4566339d7954b83169be7b2fc8e0633652a",
+        "canonical_description_hash_exact": true,
+        "r2_uploaded": true,
+        "r2_upload_failures": 0,
+        "location_arrays_parallel": true,
+        "retained_fields": {
+          "titles": true,
+          "locales": true,
+          "location_ids": true,
+          "location_types": true,
+          "description_r2_hash": true,
+          "description_updated_at": true
+        },
+        "tdm_reserved": false
+      }
+    ],
+    "metrics_at": "2026-09-30T19:13:55.683124+00:00",
+    "counters": {
+      "jobseek_lightpanda_b0_render_total{outcome=\"success\"}": 1.0,
+      "jobseek_lightpanda_b0_render_total{outcome=\"failure\"}": 0.0,
+      "jobseek_lightpanda_b0_executor_total{outcome=\"committed\"}": 1.0,
+      "jobseek_lightpanda_b0_executor_total{outcome=\"failure\"}": 0.0,
+      "jobseek_lightpanda_b0_failed_rescheduled_total": 0.0
+    },
+    "queue_utc": "2026-09-30T19:26:56.809411+00:00",
+    "queue_state": {
+      "state": "ready",
+      "routing_epoch": 145,
+      "engine_owner": "go",
+      "ready_at_ms": 1790881931201,
+      "lease_until_ms": null,
+      "failures": 0
+    },
+    "queue_next_ready_ms": 1790881931201,
+    "database_next_ready_ms": 1790881931201,
+    "ready": 20,
+    "inflight": 0,
+    "dead": 0,
+    "schedule_exact": true,
+    "no_due_time_forcing_or_publisher_refetch": true,
+    "commit_during_restoration_readiness": true
+  },
+  "limits": [
+    "One naturally due Bunq posting; no whole-fleet output/freshness claim.",
+    "Current held render input is not retained for independent extraction replay; frozen/installed fixture parity and actual canonical/hash/upload/schedule effects are separate evidence.",
+    "Production cgroup memory.peak is unavailable; current memory/RSS and OOM counters are observations, not peak or savings measurements.",
+    "Component CPU/RAM readback is not a comparable whole-lane or attributable cost measurement.",
+    "Ordinary workers and other browser profiles remain Python/Chromium owners; runtime consumers and final retirement remain outstanding.",
+    "Installed real Redis/PG crash proof models supervisor EOF settlement; it does not execute an actual supervisor fault or inject a fault into production."
+  ]
+}

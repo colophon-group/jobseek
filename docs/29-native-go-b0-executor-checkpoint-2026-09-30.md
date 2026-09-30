@@ -1,16 +1,16 @@
-# Native Go B0 database executor candidate
+# Native Go B0 database executor checkpoint
 
 Continuation of the [full migration plan](27-go-lightpanda-continuation-plan.md)
 and [promoted location checkpoint](28-go-location-resolver-checkpoint-2026-09-30.md).
-The full migration goal remains active. This candidate is implemented on
-`fix-crawler/go-b0-native-executor`, version 0.13.902. Its Docker build installs
-`go-lightpanda-b0-executor`; the candidate activation overlay now selects Go.
-The deployed v0.13.901 overlay still selects Python; this is a prepared cold
-release change, not a live owner change.
-No native production ownership or full production resource, fault/reversal
-or retirement proof is claimed by this checkpoint.
+The full migration goal remains active. Native [PR #10204](https://github.com/colophon-group/jobseek/pull/10204)
+merged and promoted crawler v0.13.902 at
+`b75ccb9456bf29c9477f9747c0c2cc3908ad79bb`. The active cdom database executor
+is Go at restored epoch 145. Supported native cold reversal and the first
+naturally due native fenced commit are recorded in the latest production
+section below. Ordinary workers and remaining browser profiles still require
+migration; whole-service resource/cost and final retirement remain incomplete.
 
-## Current production boundary
+## Prior location production boundary
 
 Location PR #10189 and full deployment 36719644632 promoted v0.13.901 at
 `ec906f05cb5c481ea988c9d8dd5ffdac29ee1454`. Supported cold retirement at epoch
@@ -317,7 +317,7 @@ the production native command and health selection. Fresh Required CI and image
 lifecycle proof remain required after this test-only repair; no host mutation
 or native ownership has occurred.
 
-## Next delivery gates
+## Pre-promotion delivery gates (historical)
 
 1. Complete installed-binary/image tests with real Linux UID isolation, private
    sockets, native taxonomy startup, the one-connection budget, four tasks plus
@@ -338,3 +338,114 @@ or native ownership has occurred.
    remaining runtime maintenance consumers and full resource/cutover/reversal
    proof. Retire production Python/Playwright/Chromium after replacement
    authority and the rollback window; retain useful isolated offline Python.
+
+
+## Native selection merged and promoted
+
+Native [PR #10204](https://github.com/colophon-group/jobseek/pull/10204)
+merged at 18:35:34 UTC as `b75ccb9456bf29c9477f9747c0c2cc3908ad79bb`,
+version 0.13.902, bound to tested head
+`ae6e1ec871ad347e9382988c97a662d113946055`. Required CI 36753632378,
+installed runtime contracts 36753632490, renderer build 36753632421 and both
+architecture pilots 36753632468 passed. Actual `Crawler Deploy Gate` was green
+at run 36758382688 before merge. Main drift through PRs #10205/#10206 was
+confined to `apps/web`; crawler, deployment and data trees were unchanged.
+Fresh exact PR/head/base/main checks found no holds or conflicting reviews.
+
+[Final whole-lane run 36753632374](https://github.com/colophon-group/jobseek/actions/runs/36753632374)
+passed all 16 arms/eight pairs at tested merge checkout
+`fcbad6c2c67753026eb10f4f367cf0df1826f6c3`. The complete retained report
+SHA-256 is `266c07f9b93d897236eccb7d64d53b26373bc2a41fd9d0b69602726fca668841`;
+[portable numeric evidence](evidence/go-native-b0-selection-synthetic-2026-09-30.json)
+records exact canonical/queue/metrics/cleanup checks, generated startup census,
+actual health cadence and process/container bounds. Native lifetime CPU was
+4.007–4.847 seconds versus control 5.966–10.967; density ratios were 5.86–14.69.
+These remain synthetic lane results with the same limits stated above.
+
+The supported cold rollback initially refused a held mutation lock without
+changes. After the existing holders finished, the wrapper completed retirement
+at epoch 142: zero inflight records required settlement, 20 ready records were
+restored, one terminal record was dropped under existing policy and no write
+fences remained. Ordinary services passed readiness. The verified selector
+helper cleared all 25 exact selectors against promoted v0.13.901/ec906f05.
+No due time was forced and no publisher refetch was used for this evidence.
+
+Crawler release [36759680070](https://github.com/colophon-group/jobseek/actions/runs/36759680070)
+completed including promotion; exact-main renderer release
+[36759767703](https://github.com/colophon-group/jobseek/actions/runs/36759767703)
+also completed. Both use `b75ccb9456bf29c9477f9747c0c2cc3908ad79bb`.
+
+| Promoted artifact | Immutable identity |
+| --- | --- |
+| Crawler | `ghcr.io/colophon-group/jobseek-crawler@sha256:ccb1fb7d83fedd95fc428ea174730c85021d587e20660c451a55e9a04cefaa09` |
+| Browser fallback | `ghcr.io/colophon-group/jobseek-crawler-browser@sha256:8b60691ff6a62b174f9b5009e4aa0aebcb2c0e6ab1d40e8f482c80a8c77ac36a` |
+| Renderer | `ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:a4c925d28c466b23a90850637c8344825823b6e6f5139952699a8bee21f3f719` |
+
+After exact host promotion readback, the verified helper staged 25 selectors
+and the supported wrapper activated the remaining 20 selected records at epoch
+143. Actual process readback found one `go-lightpanda-b0-executor`, UID10001,
+64-descriptor limit, and one connection with application name
+`jobseek:crawler:lightpanda-b0-executor:local`. This establishes native ownership.
+
+Supported native cold reversal retired epoch 143 to 144, restored all 20 ready
+records, dropped none, settled no inflight work and left no write fences.
+Cold readback found zero native processes and zero native database connections.
+All 140 sampled Browser Use/Bunq/Algorized canonical rows were unchanged across
+that first activation/reversal. The same promoted release was restored through
+the wrapper at epoch 145. At 19:13:55 UTC, all collectors responded, required
+services passed readiness, and one actual Go owner and one native DB connection
+were present. Its cgroup current memory was 41,209,856 bytes below the
+402,653,184-byte limit, with zero OOM events. Production `memory.peak` is
+unavailable; this component observation is not peak, savings or cost proof.
+
+A naturally due Bunq posting committed through a Go-owned epoch-145 fence at
+19:12:11 UTC during restoration readiness, before publication of the final
+activation receipt. Telemetry subsequently showed one successful render and
+one executor commit, zero failures and no inflight work. The posting remained
+active with zero scrape failures. Titles, locales, nullable location fields,
+description hash and description timestamp matched the pre-activation row.
+The 3,044 stored UTF-8 bytes recomputed to the exact signed SHA-256-prefix hash;
+its completed R2 upload remained intact. Its next scrape is exactly 24 hours
+later, and read-only Redis inspection found the exact PostgreSQL deadline in
+both the ready record and ZSET score, no lease, zero task failures, 20 ready,
+zero inflight and zero dead records. No due time was forced or publisher
+refetch used to manufacture this evidence.
+
+[Portable native production proof](evidence/go-native-b0-production-2026-09-30.json)
+records these observations and their limits. Current held render input was not
+retained for independent extraction replay; one natural posting is not whole-fleet
+output/freshness proof. The cold test retires/restores native authority within
+the same release; it is not an older-image downgrade or injected production
+fault. Full service cost, remaining consumers and final retirement remain open.
+
+The independent ordinary queue foundation is saved in draft
+[PR #10207](https://github.com/colophon-group/jobseek/pull/10207), now rebased on
+that merged main. Its existing-Lua queue contracts passed required real private
+Redis tests on Linux AMD64 and ARM64 in run 36756952939 before rebasing, then
+again in run 36759941552 at rebased head
+`f8ec4e9a4a3b2a8e555eb84795bc2ac16c055c99`. Required CI and runtime contract
+results must still be read before a future merge. It selects no ordinary worker and establishes
+no claim/write fence. Its README names the next owner/generation, settlement,
+reaper, transactional monitor/detail and exclusive-profile gates. The full
+migration goal remains active and incomplete.
+
+
+## Current continuation
+
+Continue the ordinary Go slice in draft PR #10207 while normal native B0 tasks
+supply further output/failure/freshness evidence. Complete a bounded generation
+extension across the existing claim, heartbeat, settlement and reaper state
+machine, then transactional monitor/detail authority and exclusive effective
+profile selection. Prove expiry/new-claim/stale settlement, cancelled writes,
+commit-before-settlement recovery and route retirement; a Redis read or boolean
+heartbeat is not a PostgreSQL fence. Reuse existing Go HTTP/API parsers and the
+native enrichment/store instead of recreating them or creating another queue.
+
+Reconcile every enabled effective profile and runtime consumer against current
+production and CSV/registry state. The offline candidate census counted 522
+browser-capable boards across 313 configured records and 17 registry records;
+it includes all 7,885 CSV rows and is not a live enabled denominator or migrated
+coverage percentage. Full fleet coverage, comparable whole-lane efficiency and
+attributable cost, complete final cutover/reversal and the actual rollback
+observation window precede production Python/Playwright/Chromium removal.
+Retain useful separately packaged offline Python tools and frozen oracles.
