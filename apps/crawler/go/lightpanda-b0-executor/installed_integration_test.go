@@ -487,7 +487,12 @@ INSERT INTO `+quoted+`.location_name VALUES(1,'en','Switzerland',true),(2,'en','
 	// The real queue still owns an inflight lease when the acknowledgement is
 	// lost. Model the existing supervisor's EOF settlement through its exact
 	// Lua fail_at ABI, then retry the same held HTML without another origin.
-	queue.accept(t, "fail_at", request, 0, time.Now().Add(100*time.Millisecond).UnixMilli(), granted, "")
+	settlement := request
+	settlement.LeaseUntilMS = granted
+	settlementGrant := queue.authorize(t, settlement)
+	// Match heartbeat-before-fail and Redis-clock backoff in failAndFinish;
+	// shorten only the isolated fixture's backoff to keep this test bounded.
+	queue.accept(t, "fail_at", request, 0, settlementGrant-30000+100, settlementGrant, "")
 	queue.census(t, 1, 0, 1)
 	time.Sleep(150 * time.Millisecond)
 	recovered := queue.claim(t, 30000)
