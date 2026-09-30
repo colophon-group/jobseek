@@ -11,7 +11,7 @@ import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { MarketingLinks, type MarketingPageProps } from "@/components/marketing/MarketingPage";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { buildAlternates, JsonLd } from "@/lib/seo";
-import { stripeCheckoutEnabled } from "@/lib/stripe/config";
+import { stripeSignupOpen } from "@/lib/stripe/config";
 
 export async function generateMetadata({ params }: MarketingPageProps): Promise<Metadata> {
   const { lang } = await params;
@@ -85,7 +85,7 @@ export default async function Page({ params }: MarketingPageProps) {
           </ol>
         </div>
       </section>
-      <Pricing checkoutEnabled={stripeCheckoutEnabled()} showLearnMore={false} showPitch={false} compact />
+      <Pricing checkoutEnabled={stripeSignupOpen()} showLearnMore={false} showPitch={false} compact />
       <div className="mx-auto max-w-[1200px] px-4 pb-8"><MarketingLinks locale={locale} /></div>
     </main>
   </>;
