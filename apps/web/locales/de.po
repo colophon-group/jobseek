@@ -3355,6 +3355,12 @@ msgstr "Wird geladen\\u2026"
 msgid "myJobs.stats.loading"
 msgstr "Laden…"
 
+#. Explains localized subscription pricing and payment method eligibility
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.localCurrency"
+msgstr "Preise in Landeswährung und verfügbare Zahlungsmethoden werden beim Checkout angezeigt."
+
 #. Label for location filter in advanced search
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx
@@ -4458,7 +4464,7 @@ msgstr "Pro-Zugang bis"
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.billing.offer"
-msgstr "Pro ergänzt Watchlists um Narrowed-Ergebnisse. Berechtigte Konten erhalten sieben kostenlose Tage und zahlen danach 10 US-Dollar pro Monat zuzüglich der beim Checkout angezeigten Steuern. Eine Zahlungsmethode ist erforderlich. Das Abonnement verlängert sich automatisch bis zur Kündigung; bei erneutem Abschluss gibt es keine weitere Testphase."
+msgstr "Pro ergänzt Watchlists um Narrowed-Ergebnisse. Berechtigte Konten erhalten sieben kostenlose Tage und zahlen danach 10 US-Dollar pro Monat oder den beim Checkout angezeigten Preis in Landeswährung zuzüglich anfallender Steuern. Eine Zahlungsmethode ist erforderlich. Das Abonnement verlängert sich automatisch bis zur Kündigung; bei erneutem Abschluss gibt es keine weitere Testphase."
 
 #. Payment data privacy heading
 #. js-lingui-explicit-id
@@ -5689,12 +5695,6 @@ msgstr "Danach 10 US$ pro Monat. Jederzeit kündbar."
 msgid "pro.offer.afterTrial"
 msgstr "Danach 10 US$ pro Monat. Jederzeit kündbar."
 
-#. Renewal disclosure during an active trial
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "pro.billing.trialRenewal"
-msgstr "Danach 10 US$/Monat; anfallende Steuern werden im Zahlungsportal angezeigt."
-
 #. CC right 3
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -6478,6 +6478,12 @@ msgstr "Deine globale Einstellung gilt für alle Watchlists. Setze E-Mail-Benach
 #: src/components/pro/ProPitch.tsx
 msgid "pro.free.title"
 msgstr "Deine Jobsuche bleibt kostenlos."
+
+#. Renewal disclosure during an active trial
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.trialRenewal"
+msgstr "Dein monatlicher Preis und anfallende Steuern werden im Zahlungsportal angezeigt."
 
 #. Public marketing page: alerts_eyebrow
 #. js-lingui-explicit-id

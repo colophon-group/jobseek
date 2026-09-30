@@ -3355,6 +3355,12 @@ msgstr "Loading…"
 msgid "myJobs.stats.loading"
 msgstr "Loading…"
 
+#. Explains localized subscription pricing and payment method eligibility
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.localCurrency"
+msgstr "Local-currency prices and available payment methods are shown at checkout."
+
 #. Label for location filter in advanced search
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx
@@ -4458,7 +4464,7 @@ msgstr "Pro access until"
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.billing.offer"
-msgstr "Pro adds Narrowed results for watchlists. Eligible accounts receive seven days free, then pay US$10 per month plus applicable taxes shown at checkout. A payment method is required. Subscriptions renew automatically until canceled; returning subscribers do not receive another trial."
+msgstr "Pro adds Narrowed results for watchlists. Eligible accounts receive seven days free, then pay US$10 per month or the local-currency price shown at checkout, plus applicable taxes. A payment method is required. Subscriptions renew automatically until canceled; returning subscribers do not receive another trial."
 
 #. Payment data privacy heading
 #. js-lingui-explicit-id
@@ -5689,12 +5695,6 @@ msgstr "Then US$10 per month. Cancel anytime."
 msgid "pro.offer.afterTrial"
 msgstr "Then US$10 per month. Cancel anytime."
 
-#. Renewal disclosure during an active trial
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "pro.billing.trialRenewal"
-msgstr "Then US$10/month, with applicable taxes shown in your billing portal."
-
 #. CC right 3
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -6478,6 +6478,12 @@ msgstr "Your global setting overrides every watchlist. Resume email notification
 #: src/components/pro/ProPitch.tsx
 msgid "pro.free.title"
 msgstr "Your job search stays free."
+
+#. Renewal disclosure during an active trial
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.trialRenewal"
+msgstr "Your monthly price and applicable taxes are shown in your billing portal."
 
 #. Public marketing page: alerts_eyebrow
 #. js-lingui-explicit-id

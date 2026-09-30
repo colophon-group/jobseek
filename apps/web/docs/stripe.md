@@ -109,7 +109,7 @@ does not make Stripe the merchant of record. Managed Payments is a separate
 reviewed product and is neither assumed approved nor enabled. Public terms,
 privacy, refund contact and Checkout policy links reflect this in en/de/fr/it.
 
-New purchases stay disabled. Before any live launch:
+New purchases were disabled during the initial rollout. Before a live launch:
 
 1. Verify live account onboarding, charge readiness, seller details, product tax
    classification and required tax registrations. Configure trial reminders,
@@ -139,6 +139,36 @@ our ordinary Payments/Billing model and required policy consent remain valid.
 Subscriptions marked as Managed Payments cannot grant Pro access. Do not rely
 on account defaults for this product. Dashboard trial reminders, recovery
 settings and required tax registrations remain operator settings.
+
+### Regional payment methods and currencies
+
+Production checkout was enabled after the reviewed deployment and signed
+delivery checks. The operator subsequently requested wallets and regional
+methods for the US, Switzerland and India, with local equivalents of USD 10.
+The same approved recurring Price now has exclusive-tax currency options:
+CHF 8.33 and INR 959.85, calculated from the ECB reference rates dated
+29 September 2026. These are fixed regional prices, not a daily FX adjustment;
+review changes before modifying the Price. Existing USD billing is unchanged.
+Keep currency selection automatic in Checkout; do not infer currency from the
+UI language. Stripe localizes the multi-currency Price using customer location.
+
+Apple Pay, Google Pay, Link and Amazon Pay are enabled in the live default
+payment configuration. Wallet display still depends on customer location,
+browser/device and an eligible saved wallet card. Live subscription Checkout
+probes offered card, Link, Amazon Pay and PayPal in USD; CHF additionally
+offered TWINT and Klarna. A browser verified TWINT beside CHF 8.33/month, the
+seven-day trial and required policy consent. All probe Sessions were expired
+without completing a purchase. Sandbox CHF/INR subscriptions retain the
+approved Price ID and its USD 10 base Price object, so entitlement validation
+continues to work without broadening the allowed products or prices.
+
+UPI is enabled as a payment preference but its live capability is inactive
+with `rejected.other`; it requires Stripe review before it can appear in INR
+Checkout. INR probes currently offer card and Link. SEPA debit is inactive
+pending `individual.verification.proof_of_liveness`. Do not report either
+method as available until its capability becomes active. PayPal recurring
+availability must likewise be verified for the customer and Checkout flow;
+an account payment-method preference alone does not guarantee display.
 
 ## Verification
 
