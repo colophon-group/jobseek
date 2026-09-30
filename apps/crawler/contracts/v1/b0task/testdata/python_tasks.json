@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "oracle": "Python 3.13 LightpandaB0Task.create",
+  "cases": [
+    {
+      "name": "jsonld",
+      "payload": "{\"assignment_digest_sha256\":\"1e5f59e593fc540bb3f81bf64462929dab3e2c8ca198cc43276a3ead44f82349\",\"board_id\":\"board-1\",\"browser_backend\":\"lightpanda\",\"config_revision\":3,\"domain\":\"jobs.example.test\",\"engine_owner\":\"go\",\"initial_ready_at_ms\":0,\"parser_config\":{\"browser_backend\":\"lightpanda\",\"render\":true,\"routing_revision\":\"go-b0-1\",\"timeout\":5000,\"wait\":\"load\",\"wait_fallback\":null},\"policy_key\":\"lightpanda-b0-v1\",\"render\":true,\"routing_epoch\":7,\"routing_revision\":\"go-b0-1\",\"schema_version\":\"lightpanda-b0-task-v1\",\"scraper_step\":0,\"scraper_type\":\"json-ld\",\"shard_id\":\"lightpanda-b0\",\"source_url\":\"https://jobs.example.test/posting\",\"task_id\":\"11111111-1111-1111-1111-111111111111\",\"task_kind\":\"scrape\",\"timeout_ms\":5000,\"wait\":\"load\",\"wait_fallback\":null}",
+      "sha256": "d162e8401eadd2b75627ce03191c10fa128d41ed3474ae7264b67903463aa876",
+      "sha1": "e1b177e8a06863ba75e34ebbbd81f42432d23c39"
+    },
+    {
+      "name": "unicode",
+      "payload": "{\"assignment_digest_sha256\":\"ad51072a94a5be0cc2e4ad1c3225bf799b4cf4376c69cdd120933d6accd1b5d5\",\"board_id\":\"board-1\",\"browser_backend\":\"lightpanda\",\"config_revision\":3,\"domain\":\"jobs.example.test\",\"engine_owner\":\"go\",\"initial_ready_at_ms\":0,\"parser_config\":{\"browser_backend\":\"lightpanda\",\"defaults\":{\"extras\":{\"fraction\":1.25},\"title\":\"Z\u00fcrich \u65e5\u672c\u8a9e \ud83d\udc3c <>&\u2028\"},\"render\":true,\"routing_revision\":\"go-b0-1\",\"timeout\":5000,\"wait\":\"load\",\"wait_fallback\":null},\"policy_key\":\"lightpanda-b0-v1\",\"render\":true,\"routing_epoch\":7,\"routing_revision\":\"go-b0-1\",\"schema_version\":\"lightpanda-b0-task-v1\",\"scraper_step\":0,\"scraper_type\":\"json-ld\",\"shard_id\":\"lightpanda-b0\",\"source_url\":\"https://jobs.example.test/posting\",\"task_id\":\"11111111-1111-1111-1111-111111111111\",\"task_kind\":\"scrape\",\"timeout_ms\":5000,\"wait\":\"load\",\"wait_fallback\":null}",
+      "sha256": "9db1bf4bc34a8f82596c16f0906ce8118500a6fc445b0098e7ff83118edb289c",
+      "sha1": "2bc909ec98fedcd4f15757ea53a6de5282be5f14"
+    },
+    {
+      "name": "dom",
+      "payload": "{\"assignment_digest_sha256\":\"f726ce52acbeb6b46a7b1e112536c2ee7f951c29b56854cdc8de60d0692e6e7d\",\"board_id\":\"board-1\",\"browser_backend\":\"lightpanda\",\"config_revision\":3,\"domain\":\"jobs.example.test\",\"engine_owner\":\"go\",\"initial_ready_at_ms\":0,\"parser_config\":{\"browser_backend\":\"lightpanda\",\"render\":true,\"routing_revision\":\"go-b0-1\",\"steps\":[{\"field\":\"title\",\"tag\":\"h1\"}],\"timeout\":5000,\"wait\":\"commit\",\"wait_fallback\":\"load\"},\"policy_key\":\"lightpanda-b0-v1\",\"render\":true,\"routing_epoch\":7,\"routing_revision\":\"go-b0-1\",\"schema_version\":\"lightpanda-b0-task-v1\",\"scraper_step\":0,\"scraper_type\":\"dom\",\"shard_id\":\"lightpanda-b0\",\"source_url\":\"https://jobs.example.test/posting\",\"task_id\":\"11111111-1111-1111-1111-111111111111\",\"task_kind\":\"scrape\",\"timeout_ms\":5000,\"wait\":\"commit\",\"wait_fallback\":\"load\"}",
+      "sha256": "9b215b49c3c8629b2f124f18a1465420439f9ea77af82acdf401a31043a26f25",
+      "sha1": "fd37e3d564424449c6a537cd04113befd3f8253d"
+    }
+  ]
+}

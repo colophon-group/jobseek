@@ -188,6 +188,9 @@ func (s Server) serve(ctx context.Context, path string, peerUID func(*net.UnixCo
 				var request Request
 				request, err = DecodeRequest(payload)
 				if err == nil {
+					err = request.validateTask(s.Shard, s.Epoch)
+				}
+				if err == nil {
 					err = s.Task(conversation, conn, request)
 				}
 			}

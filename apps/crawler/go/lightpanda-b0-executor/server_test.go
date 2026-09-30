@@ -251,3 +251,75 @@ func TestTaskAuthorityLossIsSanitized(t *testing.T) {
 		t.Fatal("shutdown failed")
 	}
 }
+
+func TestShutdownLetsAuthorizedConversationFinish(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	path, cancel, done := startTestServer(t, &testAttestor{}, func(ctx context.Context, conn *net.UnixConn, request Request) error {
+		close(started)
+		select {
+		case <-release:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		return WriteMessage(conn, map[string]any{"type": "committed", "claim_token": request.ClaimToken, "lease_until_ms": request.LeaseUntilMS + 1})
+	}, sameTestPeer)
+	conn := unixConversation(t, path)
+	sendTaskFixture(t, conn)
+	select {
+	case <-started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("task not admitted")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		t.Fatalf("inflight conversation abandoned: %v", err)
+	case <-time.After(30 * time.Millisecond):
+	}
+	close(release)
+	if readKind(t, conn) != "committed" {
+		t.Fatal("commit not acknowledged during grace")
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("shutdown failed")
+	}
+}
+
+func TestShutdownCancelsAtCommitGrace(t *testing.T) {
+	started := make(chan struct{})
+	finished := make(chan struct{})
+	path, cancel, done := startTestServer(t, &testAttestor{}, func(ctx context.Context, _ *net.UnixConn, _ Request) error {
+		close(started)
+		<-ctx.Done()
+		close(finished)
+		return ctx.Err()
+	}, sameTestPeer)
+	conn := unixConversation(t, path)
+	sendTaskFixture(t, conn)
+	select {
+	case <-started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("task not admitted")
+	}
+	before := time.Now()
+	cancel()
+	select {
+	case err := <-done:
+		if err == nil || time.Since(before) < CommitTimeout-100*time.Millisecond {
+			t.Fatalf("shutdown grace not enforced: %v", err)
+		}
+	case <-time.After(CommitTimeout + 3*time.Second):
+		t.Fatal("shutdown was unbounded")
+	}
+	select {
+	case <-finished:
+	case <-time.After(time.Second):
+		t.Fatal("conversation context not cancelled")
+	}
+}

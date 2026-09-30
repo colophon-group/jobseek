@@ -1,6 +1,7 @@
 # Native Lightpanda B0 executor — inactive implementation
 
-This module contains the database and transport foundations for the next full migration boundary.
+This module contains the database and conversation foundations for the next
+full migration boundary.
 It is not installed in the crawler image or selected by the production overlay.
 The production executor remains `src.lightpanda.executor` until the complete
 conversation, parsing/enrichment, whole-lane admission and cold reversal pass.
@@ -42,11 +43,26 @@ Python messages match byte for byte; request bounds, advancing authorization,
 route identity, canonical base64 and recursively unknown protobuf fields are
 checked. Frozen rendered-result cases preserve complete inline chunk integrity,
 strict UTF-8, empty HTML, chunk boundaries and HTTP status classification. These
-helpers are not a running server or a production ownership claim.
+helpers and the private socket server are not installed or production owners.
 
-Remaining work: strict private-socket admission and database route preflight; canonical
-task validation and authorization deadlines; current board/parser
-identity checks; direct reusable Go parsing/enrichment; native taxonomy/index
+The server preserves four task conversations plus a reserved route attestation.
+It checks private directory/socket ownership and Linux same-UID peer credentials,
+requires the PostgreSQL epoch at startup and health admission, bounds slow first
+frames and gives inflight commits a 15-second shutdown grace. Socket removal is
+bound to the owned inode. Local race tests exercise admission, slow/wrong peers,
+stale epoch, authority-loss responses, successful commit during shutdown and
+cancellation at grace expiry. Linux credentials are cross-compiled locally;
+the real SO_PEERCRED test still requires Linux CI execution.
+
+`contracts/v1/b0task` factors the existing Go producer/supervisor identity codec
+without queue, database or parser dependencies. The existing supervisor regression
+suite still passes. Native executor admission additionally reconstructs the
+complete canonical task, including required zero/null fields, and rejects changed
+route/owner, whitespace in source URLs and invalid claims before authorization.
+Frozen Python JSON-LD/DOM/Unicode task identities match.
+
+Remaining work: the complete task authorization/commit handler and startup
+environment guards; current board/parser identity checks; direct reusable Go parsing/enrichment; native taxonomy/index
 loading/backfill within this pool; reserved-content policy and classification;
 complete crash/lease-loss/reversal tests; Docker/CI integration and an inactive
 candidate checkpoint. Follow the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md).

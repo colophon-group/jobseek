@@ -10,6 +10,7 @@ import (
 	"io"
 	"unicode/utf8"
 
+	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"google.golang.org/protobuf/proto"
@@ -26,11 +27,25 @@ var ErrProtocol = errors.New("executor protocol rejected")
 // Request validates the transport envelope only. The caller must also validate
 // the canonical Go-owned task and route before asking for write authorization.
 type Request struct {
+	Task          b0task.Task
 	TaskPayload   string
 	PayloadSHA256 string
 	ClaimToken    string
 	LeaseUntilMS  int64
 	Result        *runtimev1.BrowserResult
+}
+
+func (r *Request) validateTask(shard string, epoch int64) error {
+	task, err := b0task.DecodeCanonical(r.TaskPayload, r.PayloadSHA256, b0task.Route{ShardID: shard, RoutingEpoch: epoch, EngineOwner: "go"})
+	if err != nil {
+		return ErrProtocol
+	}
+	fence := Fence{PostingID: task.Envelope.TaskID, ShardID: shard, RoutingEpoch: epoch, ConfigRevision: task.Envelope.ConfigRevision, PayloadSHA256: r.PayloadSHA256, ClaimToken: r.ClaimToken}
+	if err := fence.Validate(); err != nil {
+		return ErrProtocol
+	}
+	r.Task = task
+	return nil
 }
 
 func ReadFrame(input io.Reader) ([]byte, error) {
