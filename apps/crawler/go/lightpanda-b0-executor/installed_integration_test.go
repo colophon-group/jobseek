@@ -180,10 +180,13 @@ func installedCrashBeforeAcknowledgement(t *testing.T, owner *Executor, request 
 	clientDone := make(chan error, 1)
 	go func() { clientDone <- client.Wait() }()
 	defer func() { _ = client.Process.Kill() }()
-	waitFor := func(query string, args ...any) {
+	waitFor := func(stage, query string, args ...any) {
 		t.Helper()
 		deadline := time.Now().Add(3 * time.Second)
 		for {
+			if _, err := blocker.Exec(ctx, "SELECT pg_stat_clear_snapshot()"); err != nil {
+				t.Fatal(err)
+			}
 			var ready bool
 			if err := blocker.QueryRow(ctx, query, args...).Scan(&ready); err != nil {
 				t.Fatal(err)
@@ -192,12 +195,12 @@ func installedCrashBeforeAcknowledgement(t *testing.T, owner *Executor, request 
 				return
 			}
 			if time.Now().After(deadline) {
-				t.Fatal("installed commit barrier was not reached")
+				t.Fatalf("installed %s barrier was not reached", stage)
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
-	waitFor("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='jobseek:crawler:lightpanda-b0-executor:local' AND wait_event_type='Lock' AND query LIKE '%WITH prior AS MATERIALIZED%')")
+	waitFor("description", "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='jobseek:crawler:lightpanda-b0-executor:local' AND wait_event_type='Lock' AND query LIKE '%WITH prior AS MATERIALIZED%')")
 	locked := make(chan error, 1)
 	lockCompleted := false
 	go func() {
@@ -217,7 +220,7 @@ func installedCrashBeforeAcknowledgement(t *testing.T, owner *Executor, request 
 			}
 		}
 	}()
-	waitFor("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND relation='job_posting'::regclass AND mode='AccessExclusiveLock' AND NOT granted)", int32(locker.PgConn().PID()))
+	waitFor("queued posting lock", "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND relation='job_posting'::regclass AND mode='AccessExclusiveLock' AND NOT granted)", int32(locker.PgConn().PID()))
 	if err := blocker.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -240,6 +243,9 @@ func installedCrashBeforeAcknowledgement(t *testing.T, owner *Executor, request 
 	// read. A generated acknowledgement cannot precede that read completing.
 	deadline := time.Now().Add(3 * time.Second)
 	for {
+		if _, err := locker.Exec(ctx, "SELECT pg_stat_clear_snapshot()"); err != nil {
+			t.Fatal(err)
+		}
 		var waiting bool
 		if err := locker.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='jobseek:crawler:lightpanda-b0-executor:local' AND wait_event_type='Lock' AND query LIKE 'SELECT is_active, next_scrape_at FROM job_posting%')").Scan(&waiting); err != nil {
 			t.Fatal(err)
