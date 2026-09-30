@@ -13,6 +13,7 @@ import (
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
+	resourcepolicy "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/resourcepolicy"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -332,7 +333,7 @@ func sanitizeRuntimeV1Result(result *runtimev1.BrowserResult) *runtimev1.Browser
 }
 
 func validRuntimeV1RenderSuccess(success *runtimev1.BrowserSuccess) bool {
-	if success == nil || len(success.ProtoReflect().GetUnknown()) != 0 ||
+	if success == nil || !resourcepolicy.Valid(success.ResourcePolicy) || len(success.ProtoReflect().GetUnknown()) != 0 ||
 		!validRuntimeV1URL(success.FinalUrl) || success.Status == nil ||
 		*success.Status < 100 || *success.Status > 599 || success.Html == nil ||
 		len(success.ActionOutcomes) != 0 || len(success.Captures) != 0 ||

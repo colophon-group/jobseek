@@ -42,3 +42,7 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment => ../j
 replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-detail
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail => ../jsonld-detail
+
+require github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy => ../publisher-policy

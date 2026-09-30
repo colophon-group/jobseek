@@ -4,6 +4,7 @@ FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be
 WORKDIR /workspace/apps/crawler
 COPY contracts/ contracts/
 COPY src/lua/lightpanda_b0_queue.lua src/lua/lightpanda_b0_queue.lua
+COPY go/publisher-policy/ go/publisher-policy/
 COPY go/lightpanda-b0-supervisor/ go/lightpanda-b0-supervisor/
 WORKDIR /workspace/apps/crawler/go/lightpanda-b0-supervisor
 RUN go test ./... \
@@ -18,6 +19,7 @@ COPY data/ data/
 COPY go/job-enrichment/ go/job-enrichment/
 COPY go/jsonld-detail/ go/jsonld-detail/
 COPY go/dom-detail/ go/dom-detail/
+COPY go/publisher-policy/ go/publisher-policy/
 COPY go/lightpanda-b0-executor/ go/lightpanda-b0-executor/
 WORKDIR /workspace/apps/crawler/go/lightpanda-b0-executor
 RUN go test ./... \

@@ -21,7 +21,7 @@ func renderedFixture(html, finalURL string, status uint32) *runtimev1.BrowserRes
 		hash := sha256.Sum256(part)
 		manifest.Chunks = append(manifest.Chunks, &runtimev1.DataChunk{Sequence: uint32(len(manifest.Chunks)), SizeBytes: uint64(len(part)), Sha256: hex.EncodeToString(hash[:]), Storage: &runtimev1.DataChunk_InlineBody{InlineBody: part}})
 	}
-	return &runtimev1.BrowserResult{ContractVersion: "crawler.runtime/v1", Backend: runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA, Outcome: &runtimev1.BrowserResult_Success{Success: &runtimev1.BrowserSuccess{FinalUrl: finalURL, Status: &status, Html: manifest}}}
+	return &runtimev1.BrowserResult{ContractVersion: "crawler.runtime/v1", Backend: runtimev1.BrowserBackend_BROWSER_BACKEND_LIGHTPANDA, Outcome: &runtimev1.BrowserResult_Success{Success: &runtimev1.BrowserSuccess{ResourcePolicy: &runtimev1.ResourcePolicySignals{}, FinalUrl: finalURL, Status: &status, Html: manifest}}}
 }
 
 func TestDirectRenderedParsersMatchFrozenPythonCorpus(t *testing.T) {

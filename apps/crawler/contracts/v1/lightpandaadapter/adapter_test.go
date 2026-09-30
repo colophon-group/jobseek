@@ -924,3 +924,22 @@ func assertManifest(t *testing.T, manifest *runtimev1.ChunkManifest, content []b
 		t.Fatalf("joined content differs: %d/%d", len(joined), len(content))
 	}
 }
+
+func TestResourcePolicyIsBoundedAndClonedThroughAdapter(t *testing.T) {
+	value := "1"
+	runner := &fakeRunner{run: func(_ context.Context, bound BoundInput) RunnerOutcome {
+		raw := successfulRaw()
+		raw.ResourcePolicy = &runtimev1.ResourcePolicySignals{TdmReservationHeader: &value}
+		outcome := NewRunnerSuccess(bound, raw)
+		value = "0"
+		return outcome
+	}}
+	adapter, err := New(runner, &fakePrivacy{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := adapter.Execute(context.Background(), validInput())
+	if result.GetSuccess() == nil || result.GetSuccess().ResourcePolicy.GetTdmReservationHeader() != "1" {
+		t.Fatal("policy snapshot was mutated or lost")
+	}
+}

@@ -12,6 +12,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"encoding/json"
+	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -280,7 +282,7 @@ func (s *Store) ReadSchedule(ctx context.Context, postingID string) (*Schedule, 
 		return nil, errors.New("invalid posting ID")
 	}
 	result := &Schedule{}
-	err := s.pool.QueryRow(ctx, "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid", postingID).Scan(&result.IsActive, &result.NextScrapeAt)
+	err := s.pool.QueryRow(ctx, "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid AND NOT tdm_reserved", postingID).Scan(&result.IsActive, &result.NextScrapeAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -297,4 +299,19 @@ func (s *Store) PostingReserved(ctx context.Context, postingID string) (bool, er
 		return false, nil
 	}
 	return reserved, err
+}
+
+// RecordReservation preserves listing visibility and schedules while marking
+// the retained copy for existing downstream mining restrictions. The caller
+// owns the same require/write/revoke transaction as all other posting effects.
+func RecordReservation(ctx context.Context, tx pgx.Tx, postingID string, reservation *publisherpolicy.Reservation) error {
+	if !canonicalUUID.MatchString(postingID) || reservation == nil || (reservation.Source != "header" && reservation.Source != "meta") {
+		return errors.New("invalid reservation evidence")
+	}
+	evidence, err := json.Marshal(map[string]any{"url": reservation.URL, "source": reservation.Source, "policy_url": reservation.PolicyURL, "observed_at": time.Now().UTC().Format(time.RFC3339Nano)})
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, "UPDATE job_posting SET tdm_reserved=true,tdm_reservation=$2::jsonb,updated_at=clock_timestamp() WHERE id=$1::uuid", postingID, string(evidence))
+	return err
 }

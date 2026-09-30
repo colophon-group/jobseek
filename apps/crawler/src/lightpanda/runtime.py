@@ -14,6 +14,7 @@ from src.lightpanda.client import LightpandaB0Reservation
 from src.lightpanda.routing import resolve_render_assignment
 from src.runtime.jsonld_go_detail import parse_rendered_html
 from src.shared.navigation_errors import BrowserNavigationHTTPStatusError
+from src.shared.tdm import check_browser_response
 
 if TYPE_CHECKING:
     import httpx
@@ -171,6 +172,19 @@ def _validated_rendered_html(result: Any, *, requested_url: str) -> str:
         html = rendered.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
         raise LightpandaResultError("Lightpanda B0 HTML is not strict UTF-8") from exc
+    headers: dict[str, str] = {}
+    if success.HasField("resource_policy"):
+        signals = success.resource_policy
+        for field, header in (
+            ("tdm_reservation_header", "tdm-reservation"),
+            ("tdm_policy_header", "tdm-policy"),
+        ):
+            if signals.HasField(field):
+                value = getattr(signals, field)
+                if len(value.encode("utf-8")) > 8192 or "\x00" in value:
+                    raise LightpandaResultError("invalid resource policy signal bounds")
+                headers[header] = value
+    check_browser_response(headers, html, url=requested_url)
     if 400 <= success.status <= 599:
         raise BrowserNavigationHTTPStatusError(
             requested_url=requested_url,

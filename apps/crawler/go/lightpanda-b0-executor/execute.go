@@ -7,6 +7,7 @@ import (
 	"time"
 
 	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
+	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -71,6 +72,10 @@ func (e *Executor) Handle(ctx context.Context, conn *net.UnixConn, request Reque
 		if err := e.process(commit, fence, request); err != nil {
 			return err
 		}
+	} else if detail != nil {
+		if err := e.Store.AuthoritativeWrite(commit, fence, func(pgx.Tx) error { return nil }); err != nil {
+			return err
+		}
 	}
 	schedule, err := e.Store.ReadSchedule(commit, fence.PostingID)
 	if err != nil {
@@ -86,7 +91,7 @@ func (e *Executor) Handle(ctx context.Context, conn *net.UnixConn, request Reque
 func (e *Executor) process(ctx context.Context, fence Fence, request Request) error {
 	reserved, err := e.Store.PostingReserved(ctx, fence.PostingID)
 	if err == nil && reserved {
-		return nil
+		return e.Store.AuthoritativeWrite(ctx, fence, func(pgx.Tx) error { return nil })
 	}
 	var prepared *PreparedContent
 	if err == nil {
@@ -114,9 +119,20 @@ func (e *Executor) process(ctx context.Context, fence Fence, request Request) er
 		if errors.Is(err, ErrAuthorityLost) {
 			return err
 		}
+		var reservation *publisherpolicy.Reservation
+		if errors.As(err, &reservation) {
+			return e.Store.AuthoritativeWrite(ctx, fence, func(tx pgx.Tx) error { return RecordReservation(ctx, tx, fence.PostingID, reservation) })
+		}
 		return e.Store.AuthoritativeWrite(ctx, fence, func(tx pgx.Tx) error { return RecordFailure(ctx, tx, fence.PostingID, FailureClass(err)) })
 	}
 	err = e.Store.AuthoritativeWrite(ctx, fence, func(tx pgx.Tx) error {
+		var reserved bool
+		if err := tx.QueryRow(ctx, "SELECT tdm_reserved FROM job_posting WHERE id=$1::uuid FOR UPDATE", fence.PostingID).Scan(&reserved); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		if reserved {
+			return nil
+		}
 		var err error
 		if prepared.Enrich {
 			_, err = SaveEnrichment(ctx, tx, fence.PostingID, prepared.Fields, prepared.Description)

@@ -1,6 +1,6 @@
 module github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-supervisor
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0
@@ -11,6 +11,11 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	golang.org/x/net v0.59.0 // indirect
 )
 
 replace github.com/colophon-group/jobseek/apps/crawler/contracts => ../../contracts
+
+require github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy => ../publisher-policy

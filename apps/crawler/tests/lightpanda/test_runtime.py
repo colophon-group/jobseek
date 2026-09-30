@@ -370,3 +370,39 @@ async def test_runtime_rejects_readiness_drift_before_origin(patch):
             task.source_url, "json-ld", config, AsyncMock()
         )
     reservation.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("mode", ["header", "meta", "meta_opt_in", "corrupt", "oversized"])
+async def test_held_resource_policy_precedes_parser_and_http_failure(mode: str) -> None:
+    from src.shared.tdm import TDMReservedError
+
+    task, config = _task()
+    body = b'<script type="application/ld+json">{"@type":"JobPosting","title":"Engineer"}</script>'
+    if mode == "meta":
+        body = b'<meta name="tdm-reservation" content="1">' + body
+    elif mode == "meta_opt_in":
+        body = b'<meta name="tdm-reservation" content="0">' + body
+    result = _result(body)
+    result.success.resource_policy.tdm_reservation_header = "1"
+    result.success.resource_policy.tdm_policy_header = "license"
+    if mode == "corrupt":
+        result.success.html.total_sha256 = "0" * 64
+    elif mode == "oversized":
+        result.success.resource_policy.tdm_policy_header = "x" * 8193
+    elif mode == "meta":
+        result.success.status = 404
+    if mode == "meta_opt_in":
+        assert _validated_rendered_html(result, requested_url=task.source_url) == body.decode()
+        return
+    reservation = AsyncMock()
+    reservation.execute.return_value = result
+    # A missing binary would fail if extraction crossed the reservation guard.
+    runtime = LightpandaB0ScrapeRuntime(task, reservation, parser_binary="/missing/parser")
+    local_http = AsyncMock()
+    expected = LightpandaResultError if mode in {"corrupt", "oversized"} else TDMReservedError
+    with pytest.raises(expected) as caught:
+        await runtime.scrape(task.source_url, "json-ld", config, local_http)
+    if isinstance(caught.value, TDMReservedError):
+        assert caught.value.source == mode
+        assert caught.value.policy_url == "license"
+    assert local_http.mock_calls == []

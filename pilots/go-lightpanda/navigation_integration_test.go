@@ -31,6 +31,7 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 	if err := verifyFileSHA256(binary, expected); err != nil {
 		t.Fatal(err)
 	}
+	const originPolicyURL = "https://fixture.invalid/license"
 	var documentRequests atomic.Int64
 	var resetRequests atomic.Int64
 	origin := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -63,11 +64,18 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 			}
 			return
 		}
+		if r.URL.Path == "/redirect" {
+			w.Header().Set("TDM-Reservation", "0")
+			http.Redirect(w, r, "/document", http.StatusFound)
+			return
+		}
 		if r.URL.Path != "/document" {
 			http.NotFound(w, r)
 			return
 		}
 		documentRequests.Add(1)
+		w.Header().Set("TDM-Reservation", "1")
+		w.Header().Set("TDM-Policy", originPolicyURL)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(201)
 		if r.URL.Query().Get("hold") == "1" {
@@ -97,9 +105,18 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 		if success := result.GetSuccess(); success == nil || success.GetStatus() != 201 || !strings.Contains(string(bridgeManifestBody(success.Html)), "Engineer") {
 			t.Fatalf("wait %v failed: %v", wait, result)
 		}
+		if success := result.GetSuccess(); success.ResourcePolicy == nil || success.ResourcePolicy.GetTdmReservationHeader() != "1" || success.ResourcePolicy.GetTdmPolicyHeader() != originPolicyURL {
+			t.Fatal("correlated main-document policy signals missing")
+		}
 		if documentRequests.Load() != before+1 {
 			t.Fatal("navigation was repeated")
 		}
+	}
+	redirectInput := bridgeInput(origin.URL+"/redirect", "", 1024)
+	bindTransportRetry(redirectInput)
+	redirected := adapter.Execute(context.Background(), redirectInput)
+	if success := redirected.GetSuccess(); success == nil || success.FinalUrl != origin.URL+"/document" || success.ResourcePolicy.GetTdmReservationHeader() != "1" {
+		t.Fatal("redirect mixed policy signals from another document")
 	}
 	input := bridgeInput(origin.URL+"/document?hold=1", "", 1024)
 	input.Plan.Navigation.WaitUntil = 4

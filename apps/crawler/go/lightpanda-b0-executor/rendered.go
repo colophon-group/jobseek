@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
 
 const (
@@ -64,6 +65,9 @@ func RenderedHTML(result *runtimev1.BrowserResult, requestedURL string) (string,
 	digest := sha256.Sum256(body)
 	if uint64(len(body)) != manifest.TotalSizeBytes || hex.EncodeToString(digest[:]) != manifest.TotalSha256 || !utf8.Valid(body) {
 		return "", ErrRenderedResult
+	}
+	if err := publisherpolicy.Check(success.ResourcePolicy, string(body), requestedURL); err != nil {
+		return "", err
 	}
 	if success.GetStatus() >= 400 {
 		return "", &NavigationHTTPError{RequestedURL: requestedURL, ResponseURL: success.FinalUrl, Status: success.GetStatus()}

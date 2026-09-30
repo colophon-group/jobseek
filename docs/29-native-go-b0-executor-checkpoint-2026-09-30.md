@@ -114,7 +114,11 @@ holds description persistence, queues an exclusive posting-table lock, then
 releases persistence. The queued lock acquires after the native transaction
 commits and blocks its post-commit schedule read. The fixture verifies durable
 canonical content, observes the blocked read, and kills the real owner before
-it can generate an acknowledgement. Restart must reject the same claim and
+it can generate an acknowledgement. Its first Linux execution at head
+`1bae9e79528aaab97c1540bb536798f740d9549d` failed at the description barrier:
+the driver polls activity inside a transaction, which can retain a statistics
+snapshot. The fixture now clears that snapshot before polling; its corrected
+Linux execution remains pending. Restart must reject the same claim and
 retain the committed schedule. This uses only isolated migrated fixture tables,
 with no production fault hook or publisher request; Linux execution is pending.
 
@@ -126,10 +130,32 @@ renderer result discards CDP response headers. The native direct parser follows
 that same path. Both executors already skip stored `tdm_reserved` postings, but
 that does not prove detection or persistence of a fresh resource signal.
 
-Before native ownership promotion, carry bounded, main-document-bound policy
-signals through the renderer contract; verify header/meta precedence against
-the existing shared parser and persist observed posting reservations through
-the same authoritative transaction. Preserve listing visibility, facts and
+The next local candidate implements that boundary with additive optional
+`BrowserSuccess.resource_policy` signals. The renderer captures only bounded
+TDM header values from its correlated main-frame/loader/URL snapshot. The native
+executor requires signal-message presence before parsing; the fallback Python
+path accepts the optional field and runs its existing shared check. An empty
+present message means header inspection, and absence means unknown coverage.
+The supervisor checks effective signals before a challenge retry.
+
+A shared Go package matches 21 frozen Python header/meta cases, including
+Unicode excerpt bounds, extra/duplicate attributes, entities, script/style/
+comment literals, last-valid metadata and metadata precedence. Native
+PostgreSQL tests cover fenced reservation persistence without title/description/
+visibility changes, opt-in precedence, malformed/missing-evidence rejection,
+duplicate rejection and schedule exclusion. Existing reserved/unscheduled
+native skips now revoke their fence. A final locked reservation check prevents
+content persistence when a reservation wins during processing.
+
+Local validation passed real isolated PostgreSQL race tests, 75 Python B0
+tests, generated-binding stability, contract/supervisor/renderer unit suites,
+and cross-compiled Linux integration/vet. Actual renderer header correlation
+and the complete new installed image/lane remain pending remote Linux evidence.
+Strict deployed consumers reject unknown protobuf fields, so release the new
+crawler and renderer through supported cold transitions before restoring B0;
+there is no live backward-compatibility claim for an old consumer receiving
+these signals. Before native ownership promotion, prove the exact candidate
+across those installed boundaries. Preserve listing visibility, facts and
 retained-description display, and enforce existing downstream mining gates.
 Use synthetic entry-point cases, including signal-free, reserved, HTML opt-in,
 malformed manifest, redirect correlation and rollback/revocation cases. Do not

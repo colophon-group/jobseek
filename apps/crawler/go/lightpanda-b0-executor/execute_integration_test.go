@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -224,9 +225,114 @@ func TestPostgresNativeConversationSkipsReservedAndUnscheduledContent(t *testing
 			if !active || failures != 0 || descriptions != 0 || len(titles) != 1 || titles[0] != "Original title" {
 				t.Fatal("reserved or unscheduled task changed content or visibility")
 			}
-			if mode == "unscheduled" && response["next_ready_at_ms"] != nil {
-				t.Fatal("unscheduled task reacquired a schedule")
+			if response["next_ready_at_ms"] != nil {
+				t.Fatal("reserved or unscheduled task reacquired a schedule")
+			}
+			var state string
+			if err := e.Store.pool.QueryRow(context.Background(), "SELECT state FROM lightpanda_b0_write_fence WHERE job_posting_id=$1", request.Task.Envelope.TaskID).Scan(&state); err != nil || state != "revoked" {
+				t.Fatal("skip retained active write authority")
 			}
 		})
+	}
+}
+
+func TestPostgresNativeObservedReservationIsFencedAndStopsMiningSchedule(t *testing.T) {
+	for _, mode := range []string{"header", "meta", "meta_opt_in", "corrupt_manifest", "missing_evidence"} {
+		t.Run(mode, func(t *testing.T) {
+			e, request := executorFixture(t)
+			ctx := context.Background()
+			var before time.Time
+			if err := e.Store.pool.QueryRow(ctx, "SELECT next_scrape_at FROM job_posting WHERE id=$1", request.Task.Envelope.TaskID).Scan(&before); err != nil {
+				t.Fatal(err)
+			}
+			html := `<script type="application/ld+json">{"@type":"JobPosting","title":"Policy Engineer","description":"<p>Engineering work.</p>"}</script>`
+			status := uint32(200)
+			if mode == "meta" {
+				html = `<meta name="tdm-reservation" content="1"><meta name="tdm-policy" content="meta-license">` + html
+				status = 404
+			}
+			if mode == "meta_opt_in" {
+				html = `<meta name="tdm-reservation" content="0">` + html
+			}
+			request.Result = renderedFixture(html, request.Task.Envelope.SourceURL, status)
+			value, policy := "1", "header-license"
+			request.Result.GetSuccess().ResourcePolicy.TdmReservationHeader = &value
+			request.Result.GetSuccess().ResourcePolicy.TdmPolicyHeader = &policy
+			if mode == "corrupt_manifest" {
+				request.Result.GetSuccess().Html.TotalSha256 = strings.Repeat("0", 64)
+			}
+			if mode == "missing_evidence" {
+				request.Result.GetSuccess().ResourcePolicy = nil
+			}
+			response := runExecutorConversation(t, executorSocket(t, e), request, true)
+			if string(response["type"]) != `"committed"` {
+				t.Fatal("policy conversation did not commit")
+			}
+			var reserved, active bool
+			var failures, descriptions int
+			var titles []string
+			var next time.Time
+			var evidence []byte
+			if err := e.Store.pool.QueryRow(ctx, "SELECT tdm_reserved,is_active,scrape_failures,titles,next_scrape_at,tdm_reservation,(SELECT count(*) FROM descriptions WHERE posting_id=jp.id) FROM job_posting jp WHERE id=$1", request.Task.Envelope.TaskID).Scan(&reserved, &active, &failures, &titles, &next, &evidence, &descriptions); err != nil {
+				t.Fatal(err)
+			}
+			if !active {
+				t.Fatal("resource policy delisted posting")
+			}
+			switch mode {
+			case "header", "meta":
+				if !reserved || failures != 0 || descriptions != 0 || len(titles) != 1 || titles[0] != "Original title" || !next.Equal(before) || response["next_ready_at_ms"] != nil {
+					t.Fatal("reservation changed retained facts/visibility or reacquired mining schedule")
+				}
+				var recorded map[string]any
+				if json.Unmarshal(evidence, &recorded) != nil || recorded["url"] != request.Task.Envelope.SourceURL || recorded["source"] != mode {
+					t.Fatal("reservation evidence differs")
+				}
+				expectedPolicy := "header-license"
+				if mode == "meta" {
+					expectedPolicy = "meta-license"
+				}
+				if recorded["policy_url"] != expectedPolicy {
+					t.Fatal("effective resource policy URL differs")
+				}
+				if duplicate := runExecutorConversation(t, executorSocket(t, e), request, true); string(duplicate["type"]) != `"authority_lost"` {
+					t.Fatal("reservation commit retained duplicate authority")
+				}
+			case "meta_opt_in":
+				if reserved || failures != 0 || descriptions != 1 || len(titles) != 1 || titles[0] != "Policy Engineer" || response["next_ready_at_ms"] == nil {
+					t.Fatal("available HTML opt-in did not override header")
+				}
+			default:
+				if reserved || failures != 1 || descriptions != 0 || len(titles) != 1 || titles[0] != "Original title" {
+					t.Fatal("untrusted/missing evidence became a reservation or content write")
+				}
+			}
+		})
+	}
+}
+
+type reservationRaceLocations struct{ reserve func(context.Context) error }
+
+func (l *reservationRaceLocations) Resolve(ctx context.Context, _ []string, _, _ string) ([]int64, []string, error) {
+	return nil, nil, l.reserve(ctx)
+}
+func TestPostgresReservationWinningDuringPreparationBlocksContentCommit(t *testing.T) {
+	e, request := executorFixture(t)
+	e.Processor.Locations = &reservationRaceLocations{reserve: func(ctx context.Context) error {
+		_, err := e.Store.pool.Exec(ctx, "UPDATE job_posting SET tdm_reserved=true WHERE id=$1", request.Task.Envelope.TaskID)
+		return err
+	}}
+	response := runExecutorConversation(t, executorSocket(t, e), request, true)
+	if string(response["type"]) != `"committed"` || response["next_ready_at_ms"] != nil {
+		t.Fatal("concurrent reservation retained mining schedule")
+	}
+	var titles []string
+	var descriptions, failures int
+	var state string
+	if err := e.Store.pool.QueryRow(context.Background(), "SELECT jp.titles,jp.scrape_failures,(SELECT count(*) FROM descriptions WHERE posting_id=jp.id),f.state FROM job_posting jp JOIN lightpanda_b0_write_fence f ON f.job_posting_id=jp.id WHERE jp.id=$1", request.Task.Envelope.TaskID).Scan(&titles, &failures, &descriptions, &state); err != nil {
+		t.Fatal(err)
+	}
+	if len(titles) != 1 || titles[0] != "Original title" || failures != 0 || descriptions != 0 || state != "revoked" {
+		t.Fatal("content persistence bypassed reservation that won during preparation")
 	}
 }

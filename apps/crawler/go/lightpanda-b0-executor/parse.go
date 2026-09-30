@@ -3,6 +3,7 @@ package executor
 import (
 	"encoding/json"
 	"errors"
+	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	"net/url"
 	"regexp"
 	"strings"
@@ -18,6 +19,9 @@ var ErrBotChallenge = errors.New("rendered page is a bot challenge")
 // ParseRendered consumes the held result exactly once without a subprocess or
 // origin request. All mutable database identity checks remain the caller's job.
 func ParseRendered(task b0task.Task, result *runtimev1.BrowserResult) (map[string]any, error) {
+	if result != nil && result.GetSuccess() != nil && result.GetSuccess().ResourcePolicy == nil {
+		return nil, publisherpolicy.ErrSignals
+	}
 	html, err := RenderedHTML(result, task.Envelope.SourceURL)
 	if err != nil {
 		return nil, err

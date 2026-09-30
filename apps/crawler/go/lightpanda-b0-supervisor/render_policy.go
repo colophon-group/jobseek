@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	"io"
 	"net/url"
 	"os/exec"
@@ -161,6 +162,9 @@ func (s *supervisor) renderLease(ctx context.Context, initial heldReservation, c
 			return nil, err
 		}
 		if success == nil || *success.Status >= 400 {
+			return result, nil
+		}
+		if err := publisherpolicy.Check(success.ResourcePolicy, html, task.Envelope.SourceURL); err != nil {
 			return result, nil
 		}
 		classifier := s.classifier

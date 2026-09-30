@@ -56,7 +56,7 @@ if CLAIMANT_WORKERS != SERVICE_CAPACITY:  # pragma: no cover - constant contract
 _FETCH_SCHEDULE = """
 SELECT is_active, next_scrape_at
 FROM job_posting
-WHERE id = $1::uuid
+WHERE id = $1::uuid AND NOT tdm_reserved
 """
 
 

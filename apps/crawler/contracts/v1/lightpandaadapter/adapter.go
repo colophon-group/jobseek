@@ -20,6 +20,7 @@ import (
 	"unicode/utf8"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+	resourcepolicy "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/resourcepolicy"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -85,10 +86,11 @@ type RawEvaluation struct {
 // required for every admitted B1 plan; a non-nil empty HTML slice means a
 // present empty document.
 type RawSuccess struct {
-	FinalURL    string
-	Status      *uint32
-	HTML        []byte
-	Evaluations []RawEvaluation
+	ResourcePolicy *runtimev1.ResourcePolicySignals
+	FinalURL       string
+	Status         *uint32
+	HTML           []byte
+	Evaluations    []RawEvaluation
 }
 
 type runnerOutcomeKind uint8
@@ -114,7 +116,7 @@ type RunnerOutcome struct {
 // cleanup. Oversized material is represented without copying it and is mapped
 // to the closed resource-limit result by Execute.
 func NewRunnerSuccess(bound BoundInput, raw *RawSuccess) RunnerOutcome {
-	if raw == nil || len(raw.FinalURL) > maxTargetURLBytes || len(raw.Evaluations) > maxEvaluations {
+	if raw == nil || !resourcepolicy.Valid(raw.ResourcePolicy) || len(raw.FinalURL) > maxTargetURLBytes || len(raw.Evaluations) > maxEvaluations {
 		return RunnerOutcome{bindingFingerprint: bound.fingerprint}
 	}
 	if len(raw.Evaluations) == 1 && len(raw.Evaluations[0].EvaluationID) > maxEvaluationIDBytes {
@@ -129,6 +131,9 @@ func NewRunnerSuccess(bound BoundInput, raw *RawSuccess) RunnerOutcome {
 	cloned := &RawSuccess{
 		FinalURL: raw.FinalURL,
 		HTML:     append([]byte(nil), raw.HTML...),
+	}
+	if raw.ResourcePolicy != nil {
+		cloned.ResourcePolicy = proto.Clone(raw.ResourcePolicy).(*runtimev1.ResourcePolicySignals)
 	}
 	if raw.HTML != nil && cloned.HTML == nil {
 		cloned.HTML = []byte{}
@@ -573,7 +578,7 @@ func (adapter *Adapter) mapSuccess(
 	plan *runtimev1.BrowserPlan,
 	raw *RawSuccess,
 ) (*runtimev1.BrowserSuccess, bool, bool) {
-	if raw == nil || !validHTTPURL(raw.FinalURL) || raw.Status == nil ||
+	if raw == nil || !resourcepolicy.Valid(raw.ResourcePolicy) || !validHTTPURL(raw.FinalURL) || raw.Status == nil ||
 		*raw.Status < 100 || *raw.Status > 599 || raw.HTML == nil ||
 		len(raw.Evaluations) != len(plan.Evaluations) {
 		return nil, false, false
@@ -619,10 +624,11 @@ func (adapter *Adapter) mapSuccess(
 
 	statusValue := *raw.Status
 	return &runtimev1.BrowserSuccess{
-		FinalUrl:    raw.FinalURL,
-		Status:      &statusValue,
-		Html:        inlineChunkManifest(raw.HTML),
-		Evaluations: evaluations,
+		FinalUrl:       raw.FinalURL,
+		ResourcePolicy: raw.ResourcePolicy,
+		Status:         &statusValue,
+		Html:           inlineChunkManifest(raw.HTML),
+		Evaluations:    evaluations,
 	}, false, true
 }
 
