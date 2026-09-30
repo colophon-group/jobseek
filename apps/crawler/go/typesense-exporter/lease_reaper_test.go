@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	ordinaryqueue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -268,5 +271,83 @@ func TestLeaseReaperPoolBudgetOverridesDSN(t *testing.T) {
 	}
 	if config.MinConns != 0 || config.MaxConns != 1 || config.MaxConnIdleTime != time.Minute || config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] != "60000" {
 		t.Fatal("lease reaper pool escaped its fixed budget")
+	}
+}
+
+func TestLeaseReaperSweepOrdersNativeDatabaseWriter(t *testing.T) {
+	dsn := os.Getenv("JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL")
+	if dsn == "" {
+		if os.Getenv("JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES") == "1" {
+			t.Fatal("required private database absent")
+		}
+		t.Skip("private migrated ordinary database not configured")
+	}
+	parsed, err := url.Parse(dsn)
+	if err != nil || !strings.HasSuffix(parsed.Path, "_ordinary_worker_test") || (parsed.Hostname() != "127.0.0.1" && parsed.Hostname() != "localhost") {
+		t.Fatal("requires owned local fixture")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal("private fixture unavailable")
+	}
+	defer pool.Close()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", ordinaryqueue.OrdinaryLeaseBarrier); err != nil {
+		t.Fatal(err)
+	}
+	client := reaperRedisFixture(t, ctx)
+	member := "monitor|native-sweep.invalid|native"
+	if err := client.HSet(ctx, "board:native", "domain", "native-sweep.invalid").Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.ZAdd(ctx, "inflight:simple", redis.Z{Member: member, Score: 0}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.HSet(ctx, "inflight_tokens:simple", member, strings.Repeat("a", 32)).Err(); err != nil {
+		t.Fatal(err)
+	}
+	backend := redisLeaseReaper{client: client, pool: pool, settings: leaseReaperSettings{BatchSize: 200, MaxStrikes: 5}}
+	done := make(chan error, 1)
+	go func() {
+		result, err := backend.Sweep(ctx, "simple")
+		if err == nil && result.Reenqueued != 1 {
+			err = errors.New("native lease not recovered")
+		}
+		done <- err
+	}()
+	for {
+		var waiting bool
+		key := ordinaryqueue.OrdinaryLeaseBarrier
+		err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND NOT granted AND classid::bigint=$1 AND objid::bigint=$2 AND objsubid=1 AND database=(SELECT oid FROM pg_database WHERE datname=current_database()))`, key>>32, key&0xffffffff).Scan(&waiting)
+		if err != nil {
+			t.Fatal("sweep waiter not observed")
+		}
+		if waiting {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if client.HGet(ctx, "inflight_tokens:simple", member).Val() != strings.Repeat("a", 32) || client.ZCard(ctx, "inflight:simple").Val() != 1 {
+		t.Fatal("sweep retired active database authority")
+	}
+	if err := tx.Rollback(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-ctx.Done():
+		t.Fatal("guarded sweep failed to finish")
+	}
+	if client.HExists(ctx, "inflight_tokens:simple", member).Val() || client.ZCard(ctx, "monitors_simple:native-sweep.invalid").Val() != 1 {
+		t.Fatal("guarded sweep changed recovery contract")
 	}
 }

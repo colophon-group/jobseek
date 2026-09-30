@@ -47,7 +47,7 @@ func reap(t *testing.T, c *Client, worker WorkerType, strikes int) []any {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := c.redis.Eval(context.Background(), reaperSource(t), nil, string(worker), number(now), 10, strikes, number(now)).Slice()
+	raw, err := c.redis.Eval(context.Background(), reaperSource(t), nil, string(worker), number(now), 10, strikes, number(now), "guarded").Slice()
 	if err != nil || len(raw) != 3 {
 		t.Fatal("real reaper failed")
 	}

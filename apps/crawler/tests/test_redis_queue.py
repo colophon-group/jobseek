@@ -2564,3 +2564,24 @@ async def test_legacy_worker_cannot_settle_tokenized_attempt(mock_redis, browser
     assert await mock_redis.hgetall(f"scrape:{task_id}") == config
     assert await mock_redis.zcard(f"scrapes_{worker}:{domain}") == 0
     assert await mock_redis.hlen(f"inflight_strikes:{worker}") == 0
+
+
+@pytest.mark.parametrize("browser", [False, True])
+async def test_legacy_direct_reaper_leaves_native_attempt_for_pg_barrier(mock_redis, browser):
+    """Only the guarded Go sweep may end native database write authority."""
+    worker = "browser" if browser else "simple"
+    domain = "native-reaper.invalid"
+    native = f"monitor|{domain}|native"
+    legacy = f"monitor|{domain}|legacy"
+    for task in ("native", "legacy"):
+        await mock_redis.hset(f"board:{task}", mapping={"domain": domain})
+    await mock_redis.zadd(f"inflight:{worker}", {native: 0, legacy: 0})
+    await mock_redis.hset(f"inflight_tokens:{worker}", native, "a" * 32)
+
+    result = await rq.reap_expired(browser=browser)
+
+    assert result == {"reenqueued": 1, "dead_lettered": 0, "missing_config": 0}
+    assert await mock_redis.zscore(f"inflight:{worker}", native) == 0
+    assert await mock_redis.hget(f"inflight_tokens:{worker}", native) == "a" * 32
+    assert await mock_redis.zscore(f"monitors_{worker}:{domain}", "native") is None
+    assert await mock_redis.zscore(f"inflight:{worker}", legacy) is None

@@ -1,85 +1,118 @@
-# Native ordinary worker queue foundation
+# Native ordinary worker authority foundation
 
-This unselected library extends the existing `claim_work`, `heartbeat_task`,
-`complete_task` and `reschedule_task` Lua ABI with opt-in attempt tokens. It
-owns no new queue/control plane and adds no executable, deployment command or production selection.
-The copies are tested byte for byte against `src/lua/`.
+This unselected library extends the existing Redis queue and PostgreSQL write
+contracts. It adds no executable, production profile selection or separate ready
+queue. Python ordinary workers remain the production owners until supported
+quiesced cutover installs exclusive native selection and complete processing.
 
-The client disables mutation retries, bounds I/O, uses Redis TIME, retains a
-known claimed descriptor when configuration loading fails and preserves empty
-configuration for existing orphan/reaper handling. The caller must handle
-that task/error pair; it must not discard an inflight claim accidentally.
-Errors never include connection strings or upstream configuration content.
+## Attempt identity and existing queue contracts
 
-Local race tests against private Unix Redis processes verify both worker
-queues, exact claimed/rescheduled deadlines, heartbeat, completed scrape config
-cleanup, earliest deferred monitor repair and the persistent B0 guard. The
-attempt tests verify expiry before reaping, distinct reclaimed tokens, stale
-heartbeat/completion/reschedule with unchanged current state, legacy rejection,
-duplicate representations, completion/repair/deadletter/orphan/guard cleanup,
-corrupt-token-index preflight and cancellation before claim. Fixtures
-own private directories/processes and never clear a shared Redis database.
-`go test -race -count=1 ./...`, `go vet ./...` and `go mod tidy -diff` pass on
-local macOS/Redis 8.10.1. A skipped Redis test establishes no integration proof.
-The `Go ordinary queue contracts` workflow tests both Linux architectures
-with required real Redis fixtures; missing Redis fails instead of skipping.
-The initial foundation passed both architectures at head
-`f8ec4e9a4a3b2a8e555eb84795bc2ac16c055c99`, run
-[36759941552](https://github.com/colophon-group/jobseek/actions/runs/36759941552).
-That result predates the attempt-token extension; new exact-head Linux results
-must be recorded before claiming it installed or selecting a worker.
+`Claim` retains the tokenless legacy ABI. `ClaimFenced` allocates a private random
+128-bit attempt token, uses Redis TIME, and returns the stored lease deadline.
+The same token must match an unexpired lease in heartbeat and settlement. The
+`inflight_tokens:<wtype>` index extends existing lease state; ready queues,
+domain fairness and source identity retain their existing representations.
+Legacy heartbeat/completion/reschedule cannot modify a tokenized attempt.
 
-`Claim` retains the legacy ABI; existing Python workers continue tokenless.
-`ClaimFenced` allocates a private random 128-bit token, uses Redis TIME inside
-the claim and returns the exact stored lease deadline. The same token must
-match an unexpired lease in every heartbeat and settlement. The index
-`inflight_tokens:<wtype>` extends the existing lease state; ready queues,
-fairness and source identity stay unchanged. Legacy calls fail closed while a
-tokenized lease exists. Heartbeat accepts an unchanged current token deadline
-and never shortens it. Reaping revokes expired tokens before every cleanup
-branch. Successful settlement removes the token; repair completion expires
-it for the normal reaper. A duplicate ready entry cannot replace a tokenized
-lease, and a tokenized claimant cannot replace a legacy inflight lease.
+The client disables mutation retries, bounds I/O, and retains the claimed task
+when configuration loading fails. Callers must handle a partial task/error pair
+without accidentally abandoning an inflight claim. Descriptor configuration is
+a detached snapshot; authority descriptors do not expose the claim token.
+Errors omit connection strings and upstream configuration content.
 
-This is a foundation for replacing Python ordinary orchestration. Tokenless
-legacy attempts still lack generation identity. The new token proves only
-Redis attempt ownership, not profile ownership or a PostgreSQL write grant.
-Old deployed scripts unaware of tokens cannot safely coexist with selected
-native work: admission requires the updated immutable image and full writer
-quiescence, with supported reversal. These tests do not establish fenced native
-database authority. Before production selection, complete native
-monitor/detail execution, enrichment/persistence, exclusive profile ownership,
-claim/write/settlement fencing, cancellation/recovery/cold reversal, and exact
-image/output/queue/resource proof. Reuse existing Go HTTP/API/parser and native
-enrichment implementations; preserve every enabled board and the scheduler's
-repair/fairness/first-time/rate-limit behavior.
+## Native database authority
 
+Migration `0035` retains a fence for a monitor inventory or a detail attempt in
+`ordinary_worker_write_fence`. It records the existing global routing epoch,
+board identity, attempt token, configuration digest, completion state and
+canonical next deadline. The SQL embedded in Go must match the applied migration
+byte for byte. Its trigger rejects persisted fences from retired epochs.
 
-## Native ownership continuation
+`OpenAuthority` verifies the schema and expected current epoch before claiming
+work, with one owned PostgreSQL connection. The expected epoch must come from a
+verified active ownership plan; reading and adopting the allocator's latest
+value is insufficient. The library reuses the B0 routing sequence and retirement
+barrier instead of introducing another allocator. Any supported B0 epoch
+retirement also retires ordinary authority. Selection/startup/cutover must
+coordinate these owners before native ordinary work is admitted.
 
-Before selecting a first native profile, extend the existing authority rather
-than creating a separate ready queue. The current identity-only lease ABI is
-insufficient for native write ownership. Admission must cover all of these
-boundaries together:
+Transactions take locks in this order: ordinary lease barrier, existing routing
+epoch barrier, canonical board/detail rows, retained fence. Claim, heartbeat and
+writes hold shared barriers; settlement and the production Go lease reaper take
+the lease barrier exclusively. Epoch retirement takes the existing routing
+barrier exclusively. This orders lease removal and epoch retirement before or
+after the entire native transaction. All participating writers must acquire the
+barriers before row locks; the fence trigger is an additional epoch check.
 
-| Boundary | Required contract | Existing surface |
-| --- | --- | --- |
-| Claim | Distinct claim generation and immutable owner/profile selection; old Python claimers cannot acquire selected work | `claim_work.lua`, existing worker/config and B0 guard |
-| Heartbeat/settlement | Check the same generation atomically; expiry, reaping or retirement makes every old operation fail without changing new state | `heartbeat_task.lua`, `complete_task.lua`, `reschedule_task.lua`, existing Go lease reaper |
-| Persistence | Transactional generation/epoch check tied to the claimed posting or board, with stale activation and commit rejected | native B0 store is a reference; posting-only fence cannot guard an entire monitor inventory |
-| Rich monitor | Preserve source identity, insert/update/disappearance policy, streamed/truncated inventories, description dedup/R2 state and database-owned deadlines | existing Greenhouse/Lever/Ashby/Workday Go parsers and Python monitor processing |
-| Detail | Reuse native enrichment and persistence with the same scheduler, retry, policy, disabled/deleted and never-rescrape semantics | native B0 processor/store and ordinary Python pipeline |
-| Cutover | All writers quiesced, exact immutable release, exclusive current ownership and complete supported cold reversal | ADR 006 and current B0 activation/reversal contract |
+Native writes run inside a bounded transaction with fresh Redis configuration
+and token checks before and after the callback. Canonical detail-to-board
+mapping is locked and verified. Fetch/render/enrichment must run outside the
+transaction. The callback owns the actual native canonical effects; this library
+does not implement monitor inventory, enrichment, disappearance or failure
+policy. Terminal writes retain the database-owned `next_check_at` or
+`next_scrape_at` and return an opaque receipt. Settlement accepts only a matching
+committed receipt whose deadline still equals the canonical database deadline.
+A NULL detail deadline completes rather than reschedules the task.
 
-Do not treat a pre-write Redis read, a heartbeat boolean or a process-local mutex
-as a database fence. A Redis claim followed by PostgreSQL activation has a seam:
-a retired result must not activate or write merely because it reaches the DB
-later. Test the authority ordering before adding native selection.
+After a committed transaction loses its acknowledgement, a subsequent attempt
+can recover an unchanged future canonical deadline or NULL completion, including
+across epoch retirement, without repeating effects. Changed configuration,
+board mapping or deadline prevents receipt recovery. Nonterminal streamed writes
+require native processing to preserve its own idempotence and completeness
+contracts. Raw queue methods are not a PostgreSQL write grant.
 
-Next implementation: bind exclusive profile/epoch selection and the current
-attempt to PostgreSQL activation and each transaction. The opt-in Redis attempt
-extension above closes stale queue settlement; it does not close the Redis→DB
-activation seam. Prove retirement/expiry while DB activation is delayed,
-stale/cancelled transactions, and crash after durable commit before settlement.
-Then use the current enabled-profile census to choose the first already ported HTTP/API family and connect its native monitor/detail
-processing. This library remains unselected until those gates pass.
+The production Go reaper holds the database barrier through its Redis sweep.
+Legacy direct Python reaping skips tokenized attempts while continuing legacy
+work. Lua's optional `guarded` argument identifies the wrapper's sweep; it is not
+a secret or security capability. Every native lease-ending path must participate
+in the database barrier. Old deployed scripts unaware of tokens cannot safely
+coexist with native selection.
+
+## Verification and its limits
+
+Private Redis race tests cover both worker queues, attempt expiry/reclaim,
+stale heartbeat/completion/reschedule, exact scheduling, deferred monitor
+repair, duplicate representations, deadletters/orphans/guard cleanup, corrupt
+index preflight and cancellation. Fixtures own private processes/directories and
+never clear a shared Redis database.
+
+Real migrated PostgreSQL/Redis tests cover monitor/detail transactions in both
+queues, canonical posting/description/upload-state/board effects, exact
+settlement, callback/cancellation rollback, configuration changes, delayed
+activation after expiry, retirement ordered after commit, stale epochs rejected
+by the schema, guarded reaper exclusion and commit-before-ack recovery across
+retirement. The production Go `Sweep` wrapper has its own barrier regression.
+Migration upgrade/downgrade/re-upgrade is checked against the actual schema.
+These are authority fixtures, not extraction/enrichment parity or an actual
+native ordinary process SIGKILL/cold-reversal proof.
+
+The `Go ordinary queue contracts` workflow requires real private Redis and an
+actually migrated PostgreSQL 17 fixture on Linux amd64 and arm64. Missing required
+fixtures fail. Local authority race tests use PostgreSQL 18.6 and Redis 8.10.1.
+A skip or an earlier revision's green run establishes no new-head proof. Record
+exact-head CI results in the PR before considering selection.
+
+## Continuation gates
+
+1. Bind effective profile/domain eligibility to exclusive native ownership in
+   existing claims. Preserve every unselected task, domain fairness, rate limits,
+   deferred monitors, never-successful work and repair. Coordinate the current
+   epoch with the supported all-writer cutover and reversal plan.
+2. Connect the first proven native HTTP/API family to monitor and detail
+   processing. Greenhouse is the leading census candidate, pending effective
+   configuration validation. Preserve inventory completeness/truncation,
+   disappearance, source identity, native enrichment, description dedup/R2,
+   retry/circuit/publisher policy, disabled/deleted and never-rescrape semantics.
+3. Prove actual process cancellation/crash, commit-before-ack recovery and
+   supported cold reversal, then canonical output, freshness and queue
+   conservation using exact immutable candidate images.
+4. Merge/deploy only after required CI and the actual Crawler Deploy Gate pass
+   with fresh head/base/hold/ownership checks. Expand profile coverage until every
+   enabled board has a proven route and all ordinary scheduling/maintenance
+   consumers run natively.
+5. Compare whole-service CPU/RAM/density/attributable cost, pass the rollback
+   window, and retire production Python, Playwright, Chromium and runtime-only
+   assets. Preserve useful isolated offline Python tooling.
+
+The full migration goal stays active through these gates. A deployed B0 cohort,
+this authority library, or a selected first HTTP family is only a checkpoint.
