@@ -23,8 +23,13 @@ immutable images, observations and limits. Whole-service cost and fleet output
 are still incomplete. The independent ordinary queue foundation is saved in
 draft [PR #10207](https://github.com/colophon-group/jobseek/pull/10207), with real
 Linux AMD64/ARM64 Redis contracts passed. It now also prepares native
-PostgreSQL attempt authority, guarded reaping and canonical deadline recovery;
-new exact-head Linux PostgreSQL/Redis proof remains a candidate gate. See the
+PostgreSQL attempt authority, guarded reaping and canonical deadline recovery.
+At head `86813918a`, Required CI, installed runtime contracts, both Linux
+PostgreSQL/Redis architectures and all 16 synthetic B0 admission arms passed.
+Stacked draft [PR #10210](https://github.com/colophon-group/jobseek/pull/10210)
+adds strict Greenhouse eligibility and canonical PostgreSQL/Redis observation;
+implementation head `e5ecd5d29` passed both real Linux database/queue jobs.
+See the
 [ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
 It selects no ordinary worker. Next, complete exclusive effective profile
 ownership and native ordinary processing with installed fault/cold-reversal proof, then

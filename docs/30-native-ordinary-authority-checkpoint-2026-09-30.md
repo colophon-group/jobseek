@@ -73,9 +73,43 @@ using actual Redis, preserving their original scores, and reject malformed
 guards without changing ready records. The 163 focused Python activation,
 queue and producer-client tests pass. These regressions are included in the
 required Linux CI installed producer test filter. Fresh exact-head Required CI,
-installed runtime/authority tests and all 16 whole-lane arms must pass before
-the new candidate can claim admission. PR #10207 remains a draft and unselected;
+installed runtime/authority tests and all 16 whole-lane arms subsequently passed
+at `86813918a20a499c5d59a39ca8c33797161f8743`: CI run 36783332409, runtime
+run 36783332427, both ordinary Linux architectures in run 36783332419 and
+[admission run 36783332384](https://github.com/colophon-group/jobseek/actions/runs/36783332384).
+Its [portable numeric evidence](evidence/go-ordinary-foundation-b0-admission-2026-10-01.json)
+binds the tested merge checkout `db7ed34c48d125ca3f47c91348003a0893a4ff4a`
+and exact fixture images. All eight candidate/control pairs match canonical,
+per-task and source-response hashes; terminal/persisted/write counts, Redis
+conservation and cleanup are exact. This is synthetic B0 admission with a
+generated production-cardinality taxonomy, not fleet output or production
+whole-service cost. PR #10207 remains a draft and unselected;
 the draft's actual Crawler Deploy Gate is not merge or deployment authority.
+
+## Canonical profile continuation
+
+Stacked draft [PR #10210](https://github.com/colophon-group/jobseek/pull/10210)
+prepares strict native Greenhouse token/skip eligibility and an authoritative
+PostgreSQL/Redis readback. Implementation head
+`e5ecd5d294a74e8553a8c14e93dc4dd21b2f9424` passed real migrated PostgreSQL 17
+and private Redis on Linux amd64 and arm64 in
+[run 36786462494](https://github.com/colophon-group/jobseek/actions/runs/36786462494).
+Local migrated PostgreSQL 18.6/private Redis races verify effective settings,
+stale projection/state/epoch rejection, and a delayed readback that waits for
+a canonical update then rejects a newly disabled board. Observations change
+no queue state and activate no write fence. Candidate VERSION is v0.13.904.
+
+An eligibility observation grants no later authority. The next implementation
+must persist verified active membership and bind both native and legacy claims
+atomically before any pop, with bounded progress past unselected heads/domains,
+preserved global priority/fairness/rate/repair behavior and fail-closed handling
+of missing/corrupt projection or complete Redis loss. Canonical status and ready
+route membership require fresh validation at selection. Unsupported and
+suspect/gone/quarantined profiles keep their current owner until native lifecycle
+policy is proven. Native processing and installed crash/cold reversal follow.
+The stacked PR automatically runs ordinary contracts/deploy-gate only; its final
+retargeted runtime needs fresh Required CI, installed/admission and actual gate
+proof. The parent B0 admission does not prove native ordinary execution.
 
 ## Next delivery and completion gates
 
