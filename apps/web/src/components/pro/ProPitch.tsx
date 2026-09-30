@@ -1,10 +1,9 @@
 "use client";
 
 import { Trans, useLingui } from "@lingui/react/macro";
-import { ArrowDown, Check, SlidersHorizontal } from "lucide-react";
+import { ArrowDown, Check, SlidersHorizontal, X } from "lucide-react";
 import { AiSearchFilter } from "@/components/search/ai-search-filter";
-import { CompanyIcon } from "@/components/CompanyIcon";
-import recordedResults from "@/content/narrowed-results.json";
+import { narrowedPreviewExamples } from "@/content/narrowed-preview-examples";
 import { useLocalePath } from "@/lib/useLocalePath";
 
 export function BillingPolicyLinks() {
@@ -18,10 +17,9 @@ export function BillingPolicyLinks() {
 
 /** The same read-only Narrowed drawer used by shared watchlists. */
 export function ProPitch({ previewOnly = false }: { previewOnly?: boolean }) {
-  const { i18n, t } = useLingui();
-  const locale = i18n.locale in recordedResults ? i18n.locale as keyof typeof recordedResults : "en";
-  const postings = recordedResults[locale];
-  const query = t({ id: "pro.example.request", comment: "Live-tested personal criteria for Narrowed", message: "I want to work directly with users and turn their problems into product improvements. No people management." });
+  const { t } = useLingui();
+  const matchCount = narrowedPreviewExamples.filter(example => example.matches).length;
+  const query = t({ id: "pro.example.request", comment: "Illustrative personal criteria for the Narrowed preview", message: "I want to work directly with users and turn their problems into product improvements. No people management." });
   return (
     <div className={previewOnly ? undefined : "grid items-center gap-8 lg:grid-cols-[1fr_1.05fr] lg:gap-12"}>
       {!previewOnly && <div>
@@ -44,21 +42,24 @@ export function ProPitch({ previewOnly = false }: { previewOnly?: boolean }) {
       <AiSearchFilter
         isSubscribed={false}
         hasSearchFilters
+        candidateCount={narrowedPreviewExamples.length}
         readOnly
         defaultOpen
         presentation="drawer"
         initialQuery={query}
-        narrowedResultCount={postings.length}
+        narrowedResultCount={matchCount}
         drawerContent={<ul className="divide-y divide-divider py-2">
-          {postings.map(posting => <li key={posting.id}>
-            <a href={posting.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-3 rounded-md px-2 py-3 transition-colors hover:bg-border-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-              <CompanyIcon icon={posting.company.icon} alt={posting.company.name} size={24} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-[10px] text-muted">{posting.company.name}</span>
-                <span className="block text-sm leading-5">{posting.title}</span>
-                <span className="mt-0.5 block text-[10px] text-muted">{[...new Set(posting.locationNames)].join(" · ")}</span>
-              </span>
-            </a>
+          {narrowedPreviewExamples.map(example => <li key={example.id} className="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 px-2 py-3">
+            {example.matches
+              ? <Check size={32} className="row-span-2 text-success" aria-hidden="true" />
+              : <X size={32} className="row-span-2 text-muted" aria-hidden="true" />}
+            <span className="min-w-0 break-words text-sm leading-5">{t(example.title)}</span>
+            <span className={`whitespace-nowrap text-[10px] leading-5 ${example.matches ? "text-success" : "text-muted"}`}>
+              {example.matches
+                ? <Trans id="pro.example.match" comment="Filtering result for an example that meets the Narrowed criteria">Match</Trans>
+                : <Trans id="pro.example.excluded" comment="Filtering result for an example that does not meet the Narrowed criteria">Filtered out</Trans>}
+            </span>
+            <p className="col-span-2 col-start-2 text-xs leading-5 text-muted">{t(example.excerpt)}</p>
           </li>)}
         </ul>}
       />

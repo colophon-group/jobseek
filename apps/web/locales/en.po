@@ -476,18 +476,6 @@ msgstr ""
 #~ msgid "pro.example.check"
 #~ msgstr "Checked against the job description"
 
-#. Example excluded result
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.excluded"
-#~ msgstr "Filtered out"
-
-#. Example matching result
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.match"
-#~ msgstr "Match"
-
 #. Label for the example natural-language filter
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
@@ -523,6 +511,12 @@ msgstr ""
 #: src/components/PaddlePaymentLink.tsx
 #~ msgid "checkout.description"
 #~ msgstr "Use your payment link to open Paddle’s secure checkout or update your payment method."
+
+#. Labels fictional roles and description excerpts in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+#~ msgid "pro.example.illustrative"
+#~ msgstr "Illustrative examples"
 
 #. CC right 1
 #. js-lingui-explicit-id
@@ -2233,6 +2227,12 @@ msgstr "Enable weekly email notifications"
 msgid "pro.status.ending"
 msgstr "Ending soon"
 
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.managerTitle"
+msgstr "Engineering Manager"
+
 #. Waiting list email validation error
 #. js-lingui-explicit-id
 #: src/components/pro/ProWaitlistForm.tsx
@@ -2429,6 +2429,12 @@ msgstr "Filter industries..."
 #: src/components/search/technology-modal.tsx
 msgid "search.technologyModal.searchPlaceholder"
 msgstr "Filter technologies..."
+
+#. Filtering result for an example that does not meet the Narrowed criteria
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.excluded"
+msgstr "Filtered out"
 
 #. Toggle button for advanced search filters panel
 #. js-lingui-explicit-id
@@ -2831,7 +2837,7 @@ msgstr "Hybrid"
 msgid "checkout.policies.acceptance"
 msgstr "I agree to the [Terms]({termsUrl}) and acknowledge the [Privacy Policy]({privacyUrl}). [Refund policy]({refundUrl})."
 
-#. Live-tested personal criteria for Narrowed
+#. Illustrative personal criteria for the Narrowed preview
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
 msgid "pro.example.request"
@@ -2884,6 +2890,12 @@ msgstr "Indexing policy"
 #: src/components/watchlist/company-search-modal.tsx
 msgid "watchlists.companyModal.industry"
 msgstr "Industry"
+
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.infrastructureTitle"
+msgstr "Infrastructure Engineer"
 
 #. Error when company request input is too long
 #. Error when company request input is too long
@@ -3402,6 +3414,12 @@ msgstr "Log in to manage alerts"
 msgid "watchlists.actions.loginToShare"
 msgstr "Log in to share"
 
+#. Excluded example: individual contributor without the required user contact
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.infrastructureExcerpt"
+msgstr "Maintain internal deployment systems and resolve reliability incidents as an individual contributor. No direct user or customer contact."
+
 #. Manage subscription button label
 #. Manage subscription button label
 #. js-lingui-explicit-id
@@ -3421,6 +3439,12 @@ msgstr "Manage your linked social accounts."
 #: src/content/marketing.ts
 msgid "marketing.tracker.step2Body"
 msgstr "Mark a role as applied, interviewing, offered, or rejected. You update the status; Job Seek does not submit applications for you."
+
+#. Filtering result for an example that meets the Narrowed criteria
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.match"
+msgstr "Match"
 
 #. Header for the server-side search-results cluster shown when the user types in the location modal search box
 #. js-lingui-explicit-id
@@ -4474,6 +4498,12 @@ msgstr "Pro subscriptions and payments"
 msgid "pro.waitlist.label"
 msgstr "Pro waiting list"
 
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.productTitle"
+msgstr "Product Engineer"
+
 #. Third parties
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
@@ -5336,6 +5366,12 @@ msgstr "Sitemap first."
 msgid "common.a11y.skipToContent"
 msgstr "Skip to content"
 
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.solutionsTitle"
+msgstr "Solutions Engineer"
+
 #. Heading shown when a page crashes unexpectedly
 #. js-lingui-explicit-id
 #: app/[lang]/error.tsx
@@ -5506,6 +5542,12 @@ msgstr "Switzerland"
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interviewType.systemDesign"
 msgstr "System Design"
+
+#. Matching example: direct user contact, product improvements, no management
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.productExcerpt"
+msgstr "Talk with users weekly and turn their feedback into product improvements. An individual contributor role with no people management."
 
 #. Interview type label: technical interview
 #. js-lingui-explicit-id
@@ -5833,6 +5875,12 @@ msgstr "Try refreshing the page."
 #: src/components/search/explore-repository-fallback.tsx
 msgid "explore.fallback.body"
 msgstr "Try refreshing the page. In the meantime, you can explore these company profiles."
+
+#. Excluded example: user contact but people management conflicts with criteria
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.managerExcerpt"
+msgstr "Turn user feedback into product improvements while leading eight engineers. Own hiring, performance reviews, and career development."
 
 #. Label for employment type filter in advanced search
 #. js-lingui-explicit-id
@@ -6250,6 +6298,12 @@ msgstr "Which company should we track?"
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.q.languages"
 msgstr "Which languages does Jobseek support?"
+
+#. Matching example: direct customer contact, product improvements, no direct reports
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.solutionsExcerpt"
+msgstr "Work directly with customers to understand their workflows and build improvements with our product team. No direct reports."
 
 #. Label for work-mode (onsite/hybrid/remote) filter in advanced search
 #. js-lingui-explicit-id
