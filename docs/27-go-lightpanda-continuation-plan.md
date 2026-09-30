@@ -12,16 +12,20 @@ Native executor implementation and remaining ownership gates are recorded in the
 [September 30 native B0 candidate checkpoint](29-native-go-b0-executor-checkpoint-2026-09-30.md).
 The initial review below is historical; use newer verified operational evidence first.
 
-Current delivery: shared salary and location processing are promoted at crawler
-v0.13.901. Native B0 [PR #10204](https://github.com/colophon-group/jobseek/pull/10204)
-now prepares the production Go executor selection. Its startup-aware synthetic
-ARM64 lane passed output/queue/resource admission, and its real installed Linux
-PostgreSQL/Redis commit-crash recovery passed. The updated overlay needs fresh
-exact-head CI, deployment gate authority and the supported coordinated cold
-crawler/renderer release before native production ownership. Natural output,
-resources and supported reversal follow; ordinary workers and final service
-Python/Chromium retirement remain outstanding. See the native checkpoint for
-exact tested identities and explicit limits.
+Current delivery: shared salary/location and native B0 persistence are promoted
+at crawler v0.13.902, revision `b75ccb9456bf29c9477f9747c0c2cc3908ad79bb`.
+Native B0 PR #10204 passed final 16-arm admission and exact-head required gates,
+completed coordinated crawler/renderer releases, and now runs Go at epoch 145.
+Supported native cold reversal/restoration (143→144→145) and one naturally due
+Bunq fenced commit with exact stored hash/upload/schedule continuity are proven.
+The [native checkpoint](29-native-go-b0-executor-checkpoint-2026-09-30.md) binds
+immutable images, observations and limits. Whole-service cost and fleet output
+are still incomplete. The independent ordinary queue foundation is saved in
+draft [PR #10207](https://github.com/colophon-group/jobseek/pull/10207), with real
+Linux AMD64/ARM64 Redis contracts passed. It selects no ordinary worker. Next,
+complete claim/write/settlement fencing and native ordinary processing, then
+every enabled profile and runtime consumer before final Python/Chromium
+retirement. The full migration goal remains active.
 
 This initial review made no production changes and did not reread the live hosts.
 Production details below are the latest recorded checkpoint, corroborated by
@@ -70,10 +74,10 @@ shared JSON-LD/DOM parsing, classification, experience, HTML normalization and
 language detection also run through Go. Reuse those implementations.
 
 Go parsing behind a Python caller is an intermediate state. Current Compose
-still starts three ordinary workers and the browser worker with `uv run`, and
-the active Lightpanda overlay still uses the Python database executor. Python
-owns remaining location/salary processing on main and portions of scheduling,
-failure handling and persistence. Porting another parser alone does not retire
+still starts three ordinary workers and the browser worker with `uv run`, while the active Lightpanda overlay now selects the Go database executor for
+the admitted cohort. Shared location/salary processing is also Go. Python still
+owns ordinary orchestration and portions of scheduling, failure handling and
+persistence. Porting another parser alone does not retire
 these processes. See [Compose](../apps/crawler/docker-compose.yml),
 [activation overlay](../apps/crawler/lightpanda-b0-enabled.override.yml),
 [CPU stages](../apps/crawler/src/processing/cpu.py), and
