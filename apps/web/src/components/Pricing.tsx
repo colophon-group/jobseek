@@ -22,6 +22,7 @@ export function Pricing({ checkoutEnabled = false, showLearnMore = true, showPit
           <div>
             <p className="font-semibold"><Trans id="pro.discovery.trial" comment="Public Pro pricing offer">7 days to try Pro.</Trans></p>
             <p className="mt-1 text-sm text-muted"><Trans id="pro.discovery.price" comment="Public monthly price after trial">Then US$10 per month. Cancel anytime.</Trans></p>
+            <p className="mt-2 text-xs text-muted"><Trans id="pro.offer.localCurrency" comment="Explains localized subscription pricing and payment method eligibility">Local-currency prices and available payment methods are shown at checkout.</Trans></p>
             {!checkoutEnabled && <p className="mt-2 text-sm text-muted"><Trans id="pro.offer.unavailable" comment="Honest availability notice when checkout is disabled">Trial signup isn’t open yet.</Trans></p>}
           </div>
           {checkoutEnabled ? <Button href={lp("/settings/billing")} className="max-w-full gap-2 self-start whitespace-normal! text-center sm:self-auto">

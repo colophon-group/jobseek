@@ -2536,6 +2536,12 @@ msgstr "Fokussierte Suche"
 msgid "marketing.alerts.description"
 msgstr "Folge Arbeitgebern in einer Watchlist, filtere ihre Stellen und wähle eine wöchentliche E-Mail-Übersicht. Starte mit der kostenlosen Unternehmenssuche."
 
+#. Platform progress page subtitle inviting company requests
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/progress/progress-loader.tsx
+msgid "app.home.subtitle"
+msgstr "Folge den Unternehmen, die dir wichtig sind. Schlage unten ein fehlendes Unternehmen vor."
+
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/progress/progress-loader.tsx
@@ -3080,12 +3086,6 @@ msgstr "Job Seek hilft dir dabei, die Unternehmen zu verfolgen, bei denen du arb
 msgid "indexing.hero.description"
 msgstr "Job Seek ist ein Unternehmens-Tracking-Tool — es überwacht tausende Karriereseiten von Unternehmen, damit Nutzer Watchlists erstellen und Benachrichtigungen über neue Stellen erhalten können. Diese Seite dokumentiert genau, wie sich unser Crawler verhält, welche Kontrollen ihn höflich halten und wie Stellen letztlich in den Index gelangen."
 
-#. Main app page subtitle explaining the app is being built
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/progress/progress-loader.tsx
-msgid "app.home.subtitle"
-msgstr "Job Seek wird aktiv entwickelt. Bleib dran für Updates!"
-
 #. About paragraph 1: who we are
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
@@ -3097,6 +3097,12 @@ msgstr "Job Seek wird von der Colophon Group entwickelt, einem kleinen Entwickle
 #: src/components/TermsContent.tsx
 msgid "terms.billing.seller"
 msgstr "Job Seek wird von Viktor Shcherbakov in der Schweiz betrieben und verkauft. Stripe verarbeitet Zahlungen und stellt die Abonnementabrechnung bereit. Viktor Shcherbakov ist für den Dienst, anfallende Steuern, Abrechnungssupport und Rückerstattungen verantwortlich."
+
+#. Platform progress page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/progress/progress-loader.tsx
+msgid "app.home.title"
+msgstr "Job Seek wächst weiter"
 
 #. JSON-LD page description for the public Privacy Policy page.
 #. SEO description for the public Privacy Policy page.
@@ -3356,7 +3362,9 @@ msgid "myJobs.stats.loading"
 msgstr "Laden…"
 
 #. Explains localized subscription pricing and payment method eligibility
+#. Explains localized subscription pricing and payment method eligibility
 #. js-lingui-explicit-id
+#: src/components/Pricing.tsx
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.offer.localCurrency"
 msgstr "Preise in Landeswährung und verfügbare Zahlungsmethoden werden beim Checkout angezeigt."
@@ -5849,12 +5857,6 @@ msgstr "Versuche, die Seite neu zu laden. In der Zwischenzeit kannst du diese Un
 #: src/components/search/advanced-search-panel.tsx
 msgid "search.advanced.employmentType"
 msgstr "Beschäftigungsart"
-
-#. Main app page heading
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/progress/progress-loader.tsx
-msgid "app.home.title"
-msgstr "In aktiver Entwicklung"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id

@@ -11,7 +11,7 @@
 - Millions of postings tracked over time
 - 4 languages: English, German, French, Italian
 - Free tier: full search, up to 10 watchlists, email alerts, application tracker
-- Pro tier (coming soon; $10/month at launch): Narrowed results for watchlists
+- Pro tier: Narrowed results for watchlists, US$10/month or the local-currency price shown at checkout, plus applicable taxes. Eligible accounts receive a seven-day free trial requiring a payment method. Check the subscription page for current signup availability.
 - Open-source crawler (MIT), job data (CC BY-NC 4.0)
 - Built by Colophon Group, a small developer studio in Switzerland
 
@@ -21,6 +21,7 @@
 - [Remote engineering research, May 2026](https://jseek.co/en/blog/remote-engineering-jobs-2026) — Historical hiring snapshot with methodology; not a live vacancy count
 
 - [Homepage](https://jseek.co) — Product overview, features, and pricing
+- [Pro subscriptions](https://jseek.co/en/settings/billing) — Trial signup, regional pricing, and subscription management
 - [Explore Jobs](https://jseek.co/en/explore) — Search and filter job postings across all indexed companies
 - [About](https://jseek.co/en/about) — Who built Job Seek, how it works, and our philosophy
 - [FAQ](https://jseek.co/en/faq) — Frequently asked questions about pricing, crawling, privacy, and more
