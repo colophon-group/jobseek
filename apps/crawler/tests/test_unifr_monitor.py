@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -116,13 +117,7 @@ async def test_central_unions_locales_by_provider_id_and_preserves_localizations
 
 
 @pytest.mark.asyncio
-async def test_discover_accepts_runtime_metadata_alongside_named_source(monkeypatch):
-    class FixedDateTime(datetime):
-        @classmethod
-        def now(cls, tz=None):
-            return cls(2026, 8, 26, tzinfo=tz)
-
-    monkeypatch.setattr("src.core.monitors.unifr.datetime", FixedDateTime)
+async def test_discover_accepts_runtime_metadata_alongside_named_source():
     transport = _central_transport([("1911", "Titre")], [("1911", "Titel")])
     board = {
         "board_url": FR,
@@ -132,8 +127,11 @@ async def test_discover_accepts_runtime_metadata_alongside_named_source(monkeypa
             "scraper_type": "skip",
         },
     }
-    async with httpx.AsyncClient(transport=transport) as client:
-        jobs = await discover(board, client)
+    # Keep the mocked vacancy valid independently of the date CI runs.
+    with patch("src.core.monitors.unifr.datetime", wraps=datetime) as clock:
+        clock.now.return_value = datetime(2026, 8, 26, tzinfo=UTC)
+        async with httpx.AsyncClient(transport=transport) as client:
+            jobs = await discover(board, client)
 
     assert [job.url for job in jobs] == [f"{FR}?_jid=1911"]
 

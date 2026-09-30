@@ -230,7 +230,7 @@ ensure_codex_cli() {
   if ! smoke_output="$(as_runner timeout 120s "${CODEX_BIN}" exec \
       --json --ephemeral --ignore-user-config --ignore-rules \
       --skip-git-repo-check -C /tmp \
-      -m gpt-6-astra -c model_reasoning_effort=low \
+      -m gpt-6.1-sol -c model_reasoning_effort=low \
       'Reply exactly OK.' </dev/null 2>&1)"; then
     fail "Codex CLI model smoke failed; check runner authentication and model compatibility"
   fi

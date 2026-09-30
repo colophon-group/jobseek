@@ -13,7 +13,7 @@ User=codex-runner
 Group=codex-runner
 EnvironmentFile=/etc/jobseek-codex/governor.env
 WorkingDirectory=/srv/jobseek-codex/repo
-Environment=JOBSEEK_CODEX_MODEL=gpt-6-astra
+Environment=JOBSEEK_CODEX_MODEL=gpt-6.1-sol
 Environment=JOBSEEK_CODEX_REASONING_EFFORT=high
 
 # The resolver account must stay outside the Docker group.
@@ -21,7 +21,8 @@ ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n"
 
 # Create runner-owned state paths before taking the lock.
 ExecStartPre=+/usr/bin/install -d -m 0700 -o codex-runner -g codex-runner /srv/jobseek-codex/worktrees /srv/jobseek-codex/traces /srv/jobseek-codex/state /srv/jobseek-codex/logs
-ExecStart=/usr/bin/flock -n /srv/jobseek-codex/state/codex-runner.lock /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py
+# Pin the model at launch because EnvironmentFile overrides Environment.
+ExecStart=/usr/bin/flock -n /srv/jobseek-codex/state/codex-runner.lock /usr/bin/env JOBSEEK_CODEX_MODEL=gpt-6.1-sol JOBSEEK_CODEX_REASONING_EFFORT=high /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py
 
 TimeoutStartSec=4h
 Nice=10
