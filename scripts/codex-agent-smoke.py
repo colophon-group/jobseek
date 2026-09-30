@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "apps/crawler"))
 
+from src.labeller.render import render_task  # noqa: E402
 from src.workspace.codex_agents import project_agent_overrides  # noqa: E402
 
 
@@ -53,9 +54,16 @@ OUTPUT: result.html
 Wait for it to finish. Do not write its result for it. Reply exactly SMOKE_OK.
 """)
         (fixture / "input.md").write_text(
-            "Normalize this source HTML, preserving its text exactly. "
-            "Allowed tags: p. Remove attributes. Write only HTML to result.html.\n"
-            '<p class="example">Jobseek smoke fixture</p>\n'
+            render_task(
+                "normalize_html",
+                input_data={
+                    "input": {
+                        "title_raw": "Jobseek smoke fixture",
+                        "description_html_raw": '<p class="example">Jobseek smoke fixture</p>',
+                    }
+                },
+                output_path="result.html",
+            )
         )
         # Do not pass routine DSNs, GH tokens, HF tokens, SSH configuration or
         # runner environment files into the smoke. Auth stays in CODEX_HOME.
