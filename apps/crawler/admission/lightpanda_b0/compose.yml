@@ -93,13 +93,13 @@ services:
   executor:
     <<: *common
     image: ${CANDIDATE_IMAGE:?immutable candidate image required}
-    command: [/app/.venv/bin/python, -m, src.lightpanda.executor]
+    command: [/usr/local/bin/go-lightpanda-b0-executor]
     user: "10001:10001"
     read_only: true
     cap_drop: [ALL]
     environment:
       LOCAL_DATABASE_URL: postgresql://admission:admission@postgres:5432/admission
-      CRAWLER_DB_ROLE: lightpanda-b0-executor
+      GOMEMLIMIT: 288MiB
       CRAWLER_DB_POOL_MIN: "1"
       CRAWLER_DB_POOL_MAX: "1"
       LIGHTPANDA_B0_EXECUTOR_MODE: enabled
@@ -119,7 +119,8 @@ services:
         condition: service_healthy
       socket-init:
         condition: service_completed_successfully
-    healthcheck: {test: [CMD, /usr/local/bin/lightpanda-b0-supervisor, executor-health], interval: 5s, timeout: 3s, retries: 3, start_period: 10s}
+    healthcheck: {test: [CMD, /usr/local/bin/go-lightpanda-b0-executor, --health], interval: 5s, timeout: 3s, retries: 3, start_period: 10s}
+    ulimits: {nofile: {soft: 64, hard: 64}}
     mem_limit: 384m
     memswap_limit: 384m
     cpus: 1.0

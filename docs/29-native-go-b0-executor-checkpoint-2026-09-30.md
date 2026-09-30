@@ -90,16 +90,22 @@ Docker build runs native unit contracts and installs the binary. At candidate
 head `44660f03c5dd8af6132bcdfc4466ea4af3cf36e3`, Required CI run
 36729181871 and installed runtime contracts run 36729181987 passed, including
 real Linux PostgreSQL 17 native tests. Those installed contracts do not yet
-exercise native process ownership. The new installed-executable test is pending
-CI: it uses UID 10001, a 64-descriptor limit, real peer credentials, native
+exercise native process ownership. The installed-executable test passed
+in CI at head `b47394e6d486e75cf743c95a3a85c8716729ad20`: native job
+109946247296 in Required CI run 36732557873 passed, including the installed
+executable step. It uses UID 10001, a 64-descriptor limit, real peer credentials, native
 taxonomy startup, one PostgreSQL connection, four held tasks plus health, lost
 acknowledgement followed by a hard kill/restart, duplicate rejection, stale
 epoch rejection and bounded cleanup. It models a fresh private tmpfs on restart;
 container cgroup and read-only filesystem proof remains separate. Its lost-ack
 case withholds an already-generated acknowledgement from the supervisor; it
 does not prove death before acknowledgement generation or Redis conservation.
-Cross-compilation alone does not establish those installed behaviors, resource
-fit or production write ownership.
+The next candidate changes the synthetic ARM64 admission executor command and
+health check to Go, retaining the same 384 MiB/one-CPU/read-only/private-tmpfs
+container contract. Admission checks live executable identities, UID 10001 and
+the 64-descriptor limit before and after collection, and rejects missing or
+Python owner evidence. That complete native image/lane result is pending.
+These fixture results do not establish production write ownership.
 
 ## Next delivery gates
 

@@ -140,11 +140,13 @@ def test_compose_counts_real_producer_inside_equal_lane() -> None:
     services = yaml.safe_load(compose)["services"]
     assert services["executor"]["healthcheck"]["test"] == [
         "CMD",
-        "/usr/local/bin/lightpanda-b0-supervisor",
-        "executor-health",
+        "/usr/local/bin/go-lightpanda-b0-executor",
+        "--health",
     ]
     assert services["executor"]["healthcheck"]["timeout"] == "3s"
     assert services["executor"]["healthcheck"]["interval"] == "5s"
+    assert services["executor"]["command"] == ["/usr/local/bin/go-lightpanda-b0-executor"]
+    assert services["executor"]["ulimits"] == {"nofile": {"soft": 64, "hard": 64}}
     assert services["executor"]["cpus"] == 1.0
     assert services["control"]["cpus"] == sum(
         services[name]["cpus"] for name in ("producer", "supervisor", "executor", "renderer")
@@ -225,6 +227,20 @@ def _numeric_evidence() -> dict[str, Any]:
                 "state_status": "running",
                 "healthcheck_present": service != "renderer",
                 "health_status": None if service == "renderer" else "healthy",
+                "native_ownership": {
+                    "runtime": "go",
+                    "processes": [
+                        {
+                            "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                            "uid": 10001,
+                            "nofile": 64,
+                        }
+                    ],
+                    "read_only": True,
+                    "tmpfs_bytes": 32 * 1024**2,
+                }
+                if service == "executor"
+                else None,
                 "restart_count": 0,
                 "oom_killed": False,
                 "memory_events_delta": {"oom": 0, "oom_kill": 0},
@@ -312,3 +328,15 @@ def test_numeric_gate_requires_parity_and_repeatable_efficiency() -> None:
             arm["resource"]["peak_bytes"] = 1_400_000_000
             arm["resource"]["sampled_peak_bytes"] = 1_400_000_000
     assert "density" in controller.evaluate(evidence)["reasons"]
+
+
+def test_numeric_gate_rejects_python_or_missing_native_owner() -> None:
+    for ownership in (None, {}, {"runtime": "python"}, {"runtime": "go", "processes": []}):
+        evidence = _numeric_evidence()
+        executor = next(
+            row
+            for row in evidence["arms"][0]["resource"]["services"]
+            if row["service"] == "executor"
+        )
+        executor["native_ownership"] = ownership
+        assert "c1-p1/candidate:native_ownership" in controller.evaluate(evidence)["reasons"]

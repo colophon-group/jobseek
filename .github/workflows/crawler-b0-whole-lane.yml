@@ -6,6 +6,8 @@ on:
       - pilots/go-lightpanda/**
       - apps/crawler/admission/lightpanda_b0/**
       - apps/crawler/go/lightpanda-b0-supervisor/**
+      - apps/crawler/go/lightpanda-b0-executor/**
+      - apps/crawler/contracts/v1/b0task/**
       - apps/crawler/src/lightpanda/**
       - apps/crawler/src/lightpanda_queue.py
       - apps/crawler/src/lua/lightpanda_b0_queue.lua

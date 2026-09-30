@@ -429,6 +429,60 @@ def _cpu_usage(path: Path) -> int:
     return int(value)
 
 
+def attest_native_executor(item: dict[str, Any], cgroup: Path) -> dict[str, Any]:
+    config, host = item.get("Config", {}), item.get("HostConfig", {})
+    if (
+        config.get("Cmd") != ["/usr/local/bin/go-lightpanda-b0-executor"]
+        or config.get("User") != "10001:10001"
+        or host.get("ReadonlyRootfs") is not True
+        or host.get("CapDrop") != ["ALL"]
+        or host.get("Ulimits") != [{"Name": "nofile", "Hard": 64, "Soft": 64}]
+        or host.get("Tmpfs", {}).get("/tmp")
+        != "rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700"
+    ):
+        raise AdmissionError("native executor installed contract differs")
+    processes: list[dict[str, Any]] = []
+    for raw in (cgroup / "cgroup.procs").read_text().split():
+        process = Path("/proc") / str(int(raw))
+        try:
+            try:
+                executable = os.readlink(process / "exe")
+            except PermissionError:
+                # The ephemeral CI runner user differs from container UID
+                # 10001. Read only this validated PID's executable identity.
+                try:
+                    executable = _run(
+                        ["sudo", "-n", "readlink", "--", str(process / "exe")], timeout=3
+                    ).strip()
+                except AdmissionError:
+                    if not process.exists():
+                        continue
+                    raise
+            if Path(executable).name in {"docker-init", "tini", "dumb-init"}:
+                continue
+            if executable != "/usr/local/bin/go-lightpanda-b0-executor":
+                raise AdmissionError("native executor cgroup contains another runtime")
+            status = (process / "status").read_text()
+            uid = re.search(r"^Uid:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)$", status, re.M)
+            limits = (process / "limits").read_text()
+            descriptors = re.search(r"^Max open files\s+(\d+)\s+(\d+)\s+files$", limits, re.M)
+            if (
+                uid is None
+                or set(uid.groups()) != {"10001"}
+                or descriptors is None
+                or descriptors.groups() != ("64", "64")
+            ):
+                raise AdmissionError("native executor live UID/descriptor limits differ")
+            processes.append({"executable": executable, "uid": 10001, "nofile": 64})
+        except FileNotFoundError:
+            # An ephemeral health command may exit during the census. The main
+            # owner must still appear below; no missing owner is accepted.
+            continue
+    if not processes:
+        raise AdmissionError("native executor has no live Go owner")
+    return {"runtime": "go", "processes": processes, "read_only": True, "tmpfs_bytes": 32 * 1024**2}
+
+
 def attest_measured(
     env: dict[str, str], services: list[str], images: dict[str, dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -478,6 +532,7 @@ def attest_measured(
         procs = {int(value) for value in (path / "cgroup.procs").read_text().split()}
         if int(state["Pid"]) not in procs:
             raise AdmissionError(f"{service} init PID is outside its measured cgroup")
+        ownership = attest_native_executor(item, path) if service == "executor" else None
         events = _memory_events(path)
         rows.append(
             {  # fmt: skip
@@ -491,6 +546,7 @@ def attest_measured(
                 "networks": sorted(attached_networks),
                 "memory_peak_before": _integer(path / "memory.peak"),
                 "cpu_before_usec": _cpu_usage(path),
+                "native_ownership": ownership,
             }
         )
     if sum(row["memory_max"] for row in rows) != 1536 * 1024**2:
@@ -810,6 +866,9 @@ def run_arm(
                     "state_status": state["Status"],
                     "healthcheck_present": healthcheck_present,
                     "health_status": health_status,
+                    "native_ownership": attest_native_executor(item, row["path"])
+                    if row["service"] == "executor"
+                    else None,
                 }
             )
         result["resource"] = {
@@ -988,6 +1047,27 @@ def evaluate(document: dict[str, Any]) -> dict[str, Any]:
             reasons.append(f"{arm.get('pair')}/{arm.get('lane')}:memory")
             service_rows = []
         for service in service_rows:
+            if service.get("service") == "executor":
+                ownership = service.get("native_ownership", {})
+                processes = ownership.get("processes", []) if isinstance(ownership, dict) else []
+                if (
+                    not isinstance(ownership, dict)
+                    or ownership.get("runtime") != "go"
+                    or ownership.get("read_only") is not True
+                    or ownership.get("tmpfs_bytes") != 32 * 1024**2
+                    or not isinstance(processes, list)
+                    or not processes
+                    or any(
+                        row
+                        != {
+                            "executable": "/usr/local/bin/go-lightpanda-b0-executor",
+                            "uid": 10001,
+                            "nofile": 64,
+                        }
+                        for row in processes
+                    )
+                ):
+                    reasons.append(f"{arm.get('pair')}/{arm.get('lane')}:native_ownership")
             delta = service.get("memory_events_delta", {})
             memory_peak = service.get("memory_peak_bytes")
             memory_peak_before = service.get("memory_peak_before")
