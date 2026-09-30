@@ -55,7 +55,7 @@ type Props = {
   onDrawerOpenChange?: (open: boolean) => void;
   /** Shared watchlists can expose saved results without owner mutation controls. */
   readOnly?: boolean;
-  /** Start a read-only shared result preview with its drawer expanded. */
+  /** Start with the narrowed results expanded when the viewer has access. */
   defaultOpen?: boolean;
 };
 
@@ -276,7 +276,7 @@ export function AiSearchFilter({
   const resumeCanOpen = resumeRequested && eligibility.status === "eligible";
   const eligible = eligibility.status === "eligible";
   const [panelRequestedOpen, setOpen] = useState(
-    resumeCanOpen || (readOnly && defaultOpen && eligible),
+    resumeCanOpen || (defaultOpen && eligible),
   );
   const [hasOpened, setHasOpened] = useState(resumeCanOpen);
   // Invalidate the visible feed during render, before effects can run.
@@ -306,6 +306,14 @@ export function AiSearchFilter({
       );
     }
   }, [eligible, isDrawer, onDrawerOpenChange]);
+
+  useEffect(() => {
+    if (isDrawer) {
+      onDrawerOpenChange?.(
+        open && activeQuery !== null && eligibility.status !== "subscription_required",
+      );
+    }
+  }, [activeQuery, eligibility.status, isDrawer, onDrawerOpenChange, open]);
 
   const clearResumeRequest = useCallback(() => {
     if (!resumeRequested) return;

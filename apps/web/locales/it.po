@@ -776,12 +776,6 @@ msgstr "Aggiungi una breve richiesta in Narrowed: il lavoro che cerchi e quello 
 msgid "watchlists.companyModal.title"
 msgstr "Aggiungi aziende"
 
-#. Link to add a description to the watchlist
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.addDescription"
-msgstr "Aggiungi descrizione"
-
 #. Button to add an interview round
 #. js-lingui-explicit-id
 #: src/components/my-jobs/interview-list.tsx
@@ -1348,12 +1342,6 @@ msgstr "Rimuovi tutti"
 #: src/components/search/search-toolbar.tsx
 msgid "search.filters.clearAll"
 msgstr "Cancella tutto"
-
-#. Tooltip for clicking to edit watchlist description
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.editDescription"
-msgstr "Clicca per modificare la descrizione"
 
 #. Tooltip for clicking to edit watchlist title
 #. js-lingui-explicit-id
@@ -2025,12 +2013,6 @@ msgstr "Descrivi esattamente cosa cerchi. La tua richiesta verrà valutata rispe
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.narrowedRequest"
 msgstr "Descrivi il lavoro che desideri e ciò che vuoi evitare. Per esempio: «Voglio lavorare direttamente con gli utenti e trasformare i loro problemi in miglioramenti del prodotto. Senza gestione del personale.» Questa richiesta riguarda responsabilità che un titolo o una parola chiave da soli non possono dimostrare."
-
-#. Placeholder for watchlist description textarea
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.descriptionPlaceholder"
-msgstr "Descrivi questa watchlist …"
 
 #. Compact reminder that a focused watchlist can be narrowed precisely
 #. js-lingui-explicit-id
@@ -3367,6 +3349,12 @@ msgstr "Caricamento…"
 msgid "myJobs.stats.loading"
 msgstr "Caricamento…"
 
+#. Explains localized subscription pricing and payment method eligibility
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.offer.localCurrency"
+msgstr "I prezzi in valuta locale e i metodi di pagamento disponibili sono indicati al pagamento."
+
 #. Label for location filter in advanced search
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx
@@ -4482,7 +4470,7 @@ msgstr "Accesso Pro fino al"
 #. js-lingui-explicit-id
 #: src/components/TermsContent.tsx
 msgid "terms.billing.offer"
-msgstr "Pro aggiunge i risultati Narrowed alle watchlist. Gli account idonei ricevono sette giorni gratuiti, poi pagano 10 USD al mese più le imposte applicabili indicate al pagamento. È richiesto un metodo di pagamento. L’abbonamento si rinnova automaticamente fino alla disdetta; chi si riabbona non riceve un’altra prova."
+msgstr "Pro aggiunge i risultati Narrowed alle watchlist. Gli account idonei ricevono sette giorni gratuiti, poi pagano 10 USD al mese o il prezzo in valuta locale indicato al pagamento, più le imposte applicabili. È richiesto un metodo di pagamento. L’abbonamento si rinnova automaticamente fino alla disdetta; chi si riabbona non riceve un’altra prova."
 
 #. Payment data privacy heading
 #. js-lingui-explicit-id
@@ -5731,12 +5719,6 @@ msgstr "Poi 10 USD al mese. Annulla quando vuoi."
 msgid "pro.offer.afterTrial"
 msgstr "Poi 10 USD al mese. Annulla quando vuoi."
 
-#. Renewal disclosure during an active trial
-#. js-lingui-explicit-id
-#: src/components/settings/BillingSettings.tsx
-msgid "pro.billing.trialRenewal"
-msgstr "Poi 10 USD/mese, con le imposte applicabili indicate nel portale di fatturazione."
-
 #. CC right 3
 #. js-lingui-explicit-id
 #: src/components/LicenseContent.tsx
@@ -6532,6 +6514,12 @@ msgstr "L’impostazione globale si applica a tutte le liste. Riattiva le notifi
 #: src/components/pro/ProPitch.tsx
 msgid "pro.free.title"
 msgstr "La tua ricerca di lavoro resta gratuita."
+
+#. Renewal disclosure during an active trial
+#. js-lingui-explicit-id
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.billing.trialRenewal"
+msgstr "Il prezzo mensile e le imposte applicabili sono indicati nel portale di fatturazione."
 
 #. Public marketing page: alerts_eyebrow
 #. js-lingui-explicit-id

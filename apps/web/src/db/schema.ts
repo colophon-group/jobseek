@@ -816,7 +816,7 @@ export const watchlist = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     slug: text("slug").notNull(),
     title: text("title").notNull(),
-    description: text("description"),
+    // Legacy description column remains in Postgres for rollout compatibility.
     isPublic: boolean("is_public").default(false).notNull(),
     // Explicit unlisted-link sharing. Kept separate from legacy `is_public`
     // so grandfathered discoverable rows never become shared implicitly.

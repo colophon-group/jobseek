@@ -3,6 +3,7 @@ name: Crawler B0 whole-lane admission
 on:
   pull_request:
     paths:
+      - pilots/go-lightpanda/**
       - apps/crawler/admission/lightpanda_b0/**
       - apps/crawler/go/lightpanda-b0-supervisor/**
       - apps/crawler/src/lightpanda/**

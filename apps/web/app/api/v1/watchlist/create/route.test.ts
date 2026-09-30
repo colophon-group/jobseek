@@ -76,6 +76,14 @@ describe("GET /api/v1/watchlist/create — filter params", () => {
     expect(mocks.listTopCompanies).not.toHaveBeenCalled();
   });
 
+  it("ignores legacy descriptions in the creation link and preview", async () => {
+    const { res, body } = await callRoute("?locale=en&title=Roles&description=Legacy");
+
+    expect(res.status).toBe(200);
+    expect(new URL(body.url as string).searchParams.has("description")).toBe(false);
+    expect(body.preview).toEqual({ title: "Roles", matchingCompanies: 0, matchingJobs: 0 });
+  });
+
   it("rejects unsupported locales before parsing or linking filters", async () => {
     const { res, body } = await callRoute("?title=Design%20roles&locale=xx");
 

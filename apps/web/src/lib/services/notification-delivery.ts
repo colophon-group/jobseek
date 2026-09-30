@@ -1,12 +1,12 @@
 import "server-only";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { notificationDelivery, notificationQuota, user, userPreferences, watchlist } from "@/db/schema";
 import { siteConfig } from "@/content/config";
 import { lockNotificationPolicyForUser } from "./notification-preferences";
 import type { NotificationDeliveryPlan } from "@/lib/notifications/scheduler-core";
 import type { JobAlertsConfig } from "@/lib/notifications/config";
-import { MAX_NOTIFICATION_PROVIDER_ATTEMPTS } from "@/lib/notifications/policy";
+import { isNotificationSendCooldownActive, MAX_NOTIFICATION_PROVIDER_ATTEMPTS } from "@/lib/notifications/policy";
 import { calculateNotificationQuota } from "@/lib/notifications/scheduler-policy";
 import { createUnsubscribeToken } from "@/lib/notifications/unsubscribe-token";
 import { renderNotificationEmail } from "@/lib/notifications/render-email";
@@ -69,6 +69,25 @@ export async function deliverNotificationPlan(plan: NotificationDeliveryPlan, co
     if (!recipient) {
       await tx.update(notificationDelivery).set({ status: "failed", lastErrorCode: "preferences_changed", updatedAt: now }).where(eq(notificationDelivery.id, row.id));
       return { outcome: "cancelled" as const };
+    }
+    // Recheck under the owner lock: plans can outlive their scheduler snapshot.
+    // Another period's committed unknown barrier excludes competing plans even
+    // between preparation and submission, before acceptance starts a cooldown.
+    const [history] = await tx.select({
+      lastSentAt: sql<Date | null>`max(${notificationDelivery.completedAt})
+        FILTER (WHERE ${notificationDelivery.status} = 'sent')`.mapWith(notificationDelivery.completedAt),
+      unknownCount: sql<number>`count(*) FILTER (WHERE ${notificationDelivery.status} = 'unknown')`.mapWith(Number),
+    }).from(notificationDelivery).where(and(
+      eq(notificationDelivery.userId, plan.userId),
+      ne(notificationDelivery.id, row.id),
+      inArray(notificationDelivery.status, ["sent", "unknown"]),
+    ));
+    if (history!.unknownCount > 0 || isNotificationSendCooldownActive({
+      cadence: plan.cadence, lastSentAt: history!.lastSentAt, now: new Date(),
+    })) {
+      // Keep the pending period recoverable; do not advance its floor, reserve
+      // quota, consume an attempt, or confuse cooldown with an empty interval.
+      return { outcome: "deferred" as const };
     }
     // Both UTC buckets and the durable unknown barrier commit atomically.
     // Failed and uncertain attempts retain reservations, preserving the reserve
