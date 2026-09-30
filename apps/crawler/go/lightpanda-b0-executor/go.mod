@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -24,7 +25,9 @@ require (
 
 require (
 	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail v0.0.0
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
@@ -35,3 +38,7 @@ require (
 replace github.com/colophon-group/jobseek/apps/crawler/contracts => ../../contracts
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment => ../job-enrichment
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-detail
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail => ../jsonld-detail

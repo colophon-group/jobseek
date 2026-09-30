@@ -77,8 +77,15 @@ drift. Deleted/unscheduled postings preserve the existing skip behavior. Scalar,
 location-array, HTML title, locale, garbage-title and employment-type helpers
 match frozen Python cases; they are not yet a complete persistence pipeline.
 
+The native taxonomy snapshot now loads IDs and numeric currency rates through
+the same one-connection pool. Frozen Python cases retain independent title
+matches, internship overrides, sorted unique technology IDs and nullable salary/
+experience fields. Direct DOM and JSON-LD parsing consumes verified rendered
+HTML without a subprocess or origin request and passes both frozen Python
+corpora. Gone redirects precede challenges; Avature JobDetail 406 remains
+transient. These helpers still do not own a complete task conversation.
+
 Remaining work: the complete task authorization/commit handler and startup
-environment guards; direct reusable Go parsing/enrichment; remaining taxonomy
-ID/rate loading and enrichment assembly; reserved-content policy and classification;
+environment guards; enrichment assembly; reserved-content policy and classification;
 complete crash/lease-loss/reversal tests; Docker/CI integration and an inactive
 candidate checkpoint. Follow the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md).
