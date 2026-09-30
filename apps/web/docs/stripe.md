@@ -3,7 +3,8 @@
 Stripe replaces Paddle for new Job Seek Pro purchases. Pro unlocks Narrowed
 results in watchlists only; search, ten watchlists, email alerts and application
 tracking remain free. The historical `unlimited` plan identifier and independent
-manual grants remain compatible.
+manual grants remain compatible. Paddle rejected verification; the operator
+confirmed there are no Paddle customers to migrate.
 
 The Stripe implementation planner was invoked and accepted on 30 September
 2026 for hosted subscription Checkout, flat monthly pricing, a card-on-file
@@ -121,8 +122,8 @@ New purchases stay disabled. Before any live launch:
 4. Enable checkout only with explicit launch authorization after verification.
    Update public offer availability as part of launch.
 
-No live keys, deployment, migration or checkout activation were performed by
-this implementation. Sandbox account readiness is not evidence of live approval.
+No live keys were installed, and no production deployment, migration or
+checkout activation was performed by this implementation. Sandbox account readiness is not evidence of live approval.
 
 ## Verification
 
