@@ -782,12 +782,6 @@ msgstr "Schreib eine kurze Anfrage in Narrowed: welche Aufgaben du möchtest und
 msgid "watchlists.companyModal.title"
 msgstr "Unternehmen hinzufügen"
 
-#. Link to add a description to the watchlist
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.addDescription"
-msgstr "Beschreibung hinzufügen"
-
 #. Button to add an interview round
 #. js-lingui-explicit-id
 #: src/components/my-jobs/interview-list.tsx
@@ -1354,12 +1348,6 @@ msgstr "Alle entfernen"
 #: src/components/search/search-toolbar.tsx
 msgid "search.filters.clearAll"
 msgstr "Alle löschen"
-
-#. Tooltip for clicking to edit watchlist description
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.editDescription"
-msgstr "Klicken, um Beschreibung zu bearbeiten"
 
 #. Tooltip for clicking to edit watchlist title
 #. js-lingui-explicit-id
@@ -2031,12 +2019,6 @@ msgstr "Beschreibe genau, wonach du suchst. Deine Anfrage wird mit jeder Stellen
 #: app/[lang]/(public)/faq/page.tsx
 msgid "faq.a.narrowedRequest"
 msgstr "Beschreibe, welche Aufgaben du übernehmen und welche du vermeiden möchtest. Zum Beispiel: „Ich möchte direkt mit Nutzern arbeiten und ihre Probleme in Produktverbesserungen umsetzen. Keine Personalführung.“ Damit fragst du nach Verantwortlichkeiten, die ein Jobtitel oder ein einzelnes Stichwort nicht belegen kann."
-
-#. Placeholder for watchlist description textarea
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.descriptionPlaceholder"
-msgstr "Diese Watchlist beschreiben …"
 
 #. Compact reminder that a focused watchlist can be narrowed precisely
 #. js-lingui-explicit-id

@@ -104,7 +104,6 @@ export type WatchlistSummary = {
   id: string;
   slug: string;
   title: string;
-  description: string | null;
   isPublic: boolean;
   alertsEnabled: boolean;
   companyCount: number;
@@ -135,7 +134,6 @@ export type WatchlistDetail = {
   id: string;
   slug: string;
   title: string;
-  description: string | null;
   isPublic: boolean;
   alertsEnabled: boolean;
   filters: WatchlistFilters;
@@ -162,7 +160,7 @@ export type WatchlistDetail = {
  */
 export type WatchlistViewDetail = Pick<
   WatchlistDetail,
-  "id" | "title" | "description" | "filters" | "companies"
+  "id" | "title" | "filters" | "companies"
 > & {
   /** Present for owner views only; shared snapshots do not expose alert state. */
   alertsEnabled?: boolean;
@@ -256,7 +254,6 @@ class WatchlistCopySourceInvalidError extends Error {}
 
 export async function createWatchlist(params: {
   title: string;
-  description?: string;
   companyIds: string[];
   filters?: WatchlistFilters;
   isPublic?: boolean;
@@ -299,7 +296,6 @@ export async function createWatchlist(params: {
               userId,
               slug: candidate,
               title: params.title,
-              description: params.description ?? null,
               isPublic: false,
               filters: { anyCompany: true, ...params.filters },
             })
@@ -342,7 +338,6 @@ export async function createWatchlist(params: {
 
 export async function createWatchlistFromHandoff(params: {
   title: string;
-  description?: string;
   companySlugs: string[];
   filters?: WatchlistFilters;
 }): Promise<{ id: string; slug: string } | { error: string }> {
@@ -363,7 +358,6 @@ export async function createWatchlistFromHandoff(params: {
 export async function updateWatchlist(params: {
   watchlistId: string;
   title?: string;
-  description?: string | null;
   companyIds?: string[];
   filters?: WatchlistFilters;
   isPublic?: boolean;
@@ -381,7 +375,6 @@ export async function updateWatchlist(params: {
       userId: watchlist.userId,
       slug: watchlist.slug,
       title: watchlist.title,
-      description: watchlist.description,
       isPublic: watchlist.isPublic,
       filters: watchlist.filters,
     })
@@ -413,7 +406,6 @@ export async function updateWatchlist(params: {
     newSlug = await generateUniqueSlug(userId, params.title);
     updates.slug = newSlug;
   }
-  if (params.description !== undefined) updates.description = params.description;
   if (params.filters !== undefined) updates.filters = params.filters;
   if (Object.keys(updates).length > 0 || params.companyIds !== undefined) {
     await db.transaction(async (tx) => {
@@ -523,7 +515,6 @@ export async function shareWatchlist(
         id: watchlist.id,
         userId: watchlist.userId,
         title: watchlist.title,
-        description: watchlist.description,
         filters: watchlist.filters,
         shareEnabled: watchlist.shareEnabled,
       })
@@ -666,7 +657,6 @@ async function _copyWatchlist(
   }
   const sourceTitle = normalizeSharedWatchlistMetadata({
     title: source.title,
-    description: null,
   })?.title;
   if (!sourceTitle) return { error: "invalid_source" };
 
@@ -689,7 +679,6 @@ async function _copyWatchlist(
             const [currentSource] = await tx
               .select({
                 title: watchlist.title,
-                description: watchlist.description,
                 filters: watchlist.filters,
                 userId: watchlist.userId,
                 isShared: watchlist.shareEnabled,
@@ -721,7 +710,6 @@ async function _copyWatchlist(
                 userId,
                 slug: candidate,
                 title: metadata.title,
-                description: metadata.description,
                 isPublic: false,
                 filters,
                 sourceWatchlistId: watchlistId,
@@ -916,7 +904,6 @@ type UserWatchlistRow = {
   id: string;
   slug: string;
   title: string;
-  description: string | null;
   is_public: boolean;
   share_enabled: boolean;
   alerts_enabled: boolean;
@@ -938,7 +925,7 @@ async function _getUserWatchlistRows(userId: string): Promise<UserWatchlistRow[]
   const rows = await withDbRetry(
     () =>
       db.execute<UserWatchlistRow & { [key: string]: unknown }>(sql`
-        SELECT w.id, w.slug, w.title, w.description, w.is_public, w.share_enabled, w.alerts_enabled, w.filters,
+        SELECT w.id, w.slug, w.title, w.is_public, w.share_enabled, w.alerts_enabled, w.filters,
                w.last_accessed_at, w.created_at,
                (SELECT count(*)::int FROM watchlist_company wc WHERE wc.watchlist_id = w.id) AS company_count,
                (
@@ -968,7 +955,6 @@ function _toUserWatchlistSummary(
     id: row.id,
     slug: row.slug,
     title: row.title,
-    description: row.description,
     isShared: row.share_enabled,
     alertsEnabled: row.alerts_enabled,
     companyCount: row.company_count,
@@ -1102,7 +1088,6 @@ type WatchlistDetailRow = {
   wl_id: string;
   slug: string;
   title: string;
-  description: string | null;
   is_public: boolean;
   alerts_enabled: boolean;
   filters: WatchlistFilters | null;
@@ -1120,7 +1105,6 @@ function _watchlistDetail(row: WatchlistDetailRow): WatchlistDetail {
     id: row.wl_id,
     slug: row.slug,
     title: row.title,
-    description: row.description,
     isPublic: row.is_public,
     alertsEnabled: row.alerts_enabled,
     filters: normalizeWatchlistFiltersForRead(row.filters),
@@ -1144,7 +1128,7 @@ async function _getWatchlistDetailRow(
     () =>
       db.execute<{ [key: string]: unknown } & WatchlistDetailRow>(sql`
         SELECT
-          w.id AS wl_id, w.slug, w.title, w.description,
+          w.id AS wl_id, w.slug, w.title,
           w.is_public, w.alerts_enabled, w.filters,
           w.source_watchlist_id, w.created_at,
           u.id AS owner_id, u.username, u.display_username, u.name AS owner_name,
@@ -1226,7 +1210,7 @@ export async function getSharedWatchlistById(
   if (!normalizedWatchlistId) return null;
   type SharedWatchlistRow = Pick<
     WatchlistDetailRow,
-    "wl_id" | "title" | "description" | "filters" | "companies"
+    "wl_id" | "title" | "filters" | "companies"
   > & {
     companies_over_limit: boolean;
     owner_job_languages: string[];
@@ -1236,7 +1220,7 @@ export async function getSharedWatchlistById(
     () =>
       db.execute<{ [key: string]: unknown } & SharedWatchlistRow>(sql`
         SELECT
-          w.id AS wl_id, w.title, w.description, w.filters,
+          w.id AS wl_id, w.title, w.filters,
           COALESCE(up.job_languages, ARRAY[]::text[]) AS owner_job_languages,
           COALESCE(up.locale, 'en') AS owner_locale,
           EXISTS (
@@ -1301,7 +1285,6 @@ export async function getSharedWatchlistById(
   return {
     id: row.wl_id,
     title: metadata.title,
-    description: metadata.description,
     filters,
     companies,
     // Preserve the owner's exact effective scope across viewers and route
@@ -1904,7 +1887,7 @@ export async function getWatchlistByUserAndSlug(
     icon: string | null;
   };
   type WatchlistJoinRow = {
-    wl_id: string; slug: string; title: string; description: string | null;
+    wl_id: string; slug: string; title: string;
     is_public: boolean; alerts_enabled: boolean; filters: WatchlistFilters | null;
     source_watchlist_id: string | null; created_at: Date; user_id: string;
     owner_id: string; username: string | null;
@@ -1928,7 +1911,7 @@ export async function getWatchlistByUserAndSlug(
     () =>
       db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
         SELECT
-          w.id AS wl_id, w.slug, w.title, w.description,
+          w.id AS wl_id, w.slug, w.title,
           w.is_public, w.alerts_enabled, w.filters,
           w.source_watchlist_id, w.created_at, w.user_id,
           u.id AS owner_id, u.username, u.display_username, u.name AS owner_name,
@@ -1989,7 +1972,6 @@ export async function getWatchlistByUserAndSlug(
     id: row.wl_id,
     slug: row.slug,
     title: row.title,
-    description: row.description,
     isPublic: row.is_public,
     alertsEnabled: row.alerts_enabled,
     filters: normalizeWatchlistFiltersForRead(row.filters),
@@ -2051,7 +2033,7 @@ async function _fetchPublicWatchlistByUserAndSlug(
     icon: string | null;
   };
   type WatchlistJoinRow = {
-    wl_id: string; slug: string; title: string; description: string | null;
+    wl_id: string; slug: string; title: string;
     is_public: boolean; alerts_enabled: boolean; filters: WatchlistFilters | null;
     source_watchlist_id: string | null; created_at: Date; user_id: string;
     owner_id: string; username: string | null;
@@ -2063,7 +2045,7 @@ async function _fetchPublicWatchlistByUserAndSlug(
     () =>
       db.execute<{ [key: string]: unknown } & WatchlistJoinRow>(sql`
         SELECT
-          w.id AS wl_id, w.slug, w.title, w.description,
+          w.id AS wl_id, w.slug, w.title,
           w.is_public, w.alerts_enabled, w.filters,
           w.source_watchlist_id, w.created_at, w.user_id,
           u.id AS owner_id, u.username, u.display_username, u.name AS owner_name,
@@ -2107,7 +2089,6 @@ async function _fetchPublicWatchlistByUserAndSlug(
     id: row.wl_id,
     slug: row.slug,
     title: row.title,
-    description: row.description,
     isPublic: row.is_public,
     alertsEnabled: row.alerts_enabled,
     filters: normalizeWatchlistFiltersForRead(row.filters),
@@ -2958,7 +2939,7 @@ async function _searchPublicWatchlistsTypesense(
 
   const result = await client.collections("watchlist").documents().search({
     q: query,
-    query_by: "title,description",
+    query_by: "title",
     filter_by: "is_public:true",
     sort_by: "_text_match:desc,created_at:desc",
     per_page: limit,
@@ -2984,9 +2965,9 @@ async function _getPopularWatchlistsTypesense(
 
   const result = await client.collections("watchlist").documents().search({
     q: "*",
-    query_by: "title,description",
+    query_by: "title",
     filter_by: "is_public:true",
-    sort_by: "is_featured:desc,mirror_count:desc,has_description:desc",
+    sort_by: "is_featured:desc,mirror_count:desc",
     per_page: limit,
     page: Math.floor(offset / limit) + 1,
   });
@@ -3008,7 +2989,6 @@ function _mapWatchlistDoc(doc: Record<string, unknown>): InternalPublicWatchlist
     id: doc.id as string,
     slug: doc.slug as string,
     title: doc.title as string,
-    description: (doc.description as string) ?? null,
     isPublic: true,
     alertsEnabled: false, // not stored in Typesense; display-only field
     companyCount: (doc.company_count as number) ?? 0,

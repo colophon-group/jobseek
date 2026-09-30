@@ -5,7 +5,6 @@ import {
 } from "@/lib/search/types";
 
 export const WATCHLIST_TITLE_MAX_LENGTH = 100;
-export const WATCHLIST_DESCRIPTION_MAX_LENGTH = 1_000;
 export const WATCHLIST_HANDOFF_COMPANY_MAX = 25;
 export const WATCHLIST_COMPANY_MAX = 250;
 export const WATCHLIST_KEYWORD_MAX_COUNT = 20;
@@ -54,7 +53,6 @@ type Normalized<T> = { ok: true; value: T } | { ok: false };
 
 type CreateWatchlistInput = {
   title: string;
-  description?: string;
   companyIds: string[];
   filters?: WatchlistFilters;
   isPublic?: boolean;
@@ -63,7 +61,6 @@ type CreateWatchlistInput = {
 type UpdateWatchlistInput = {
   watchlistId: string;
   title?: string;
-  description?: string | null;
   companyIds?: string[];
   filters?: WatchlistFilters;
   isPublic?: boolean;
@@ -71,7 +68,6 @@ type UpdateWatchlistInput = {
 
 type HandoffWatchlistInput = {
   title: string;
-  description?: string;
   companySlugs: string[];
   filters?: WatchlistFilters;
 };
@@ -305,12 +301,6 @@ function normalizeOptionalFilters(value: unknown): Normalized<WatchlistFilters |
   return normalizeFiltersForWrite(value);
 }
 
-function normalizeOptionalDescription(value: unknown): Normalized<string | undefined> {
-  if (value === undefined) return { ok: true, value: undefined };
-  const description = boundedText(value, WATCHLIST_DESCRIPTION_MAX_LENGTH, { allowEmpty: true });
-  return description === null ? { ok: false } : { ok: true, value: description };
-}
-
 function normalizeOptionalVisibility(value: unknown): Normalized<boolean | undefined> {
   return value === undefined || typeof value === "boolean"
     ? { ok: true, value: value as boolean | undefined }
@@ -323,7 +313,6 @@ export function normalizeCreateWatchlistInput(value: unknown): Normalized<Create
     allowEmpty: false,
     title: true,
   });
-  const description = normalizeOptionalDescription(value.description);
   const companyIds = normalizeStringArrayForWrite(value.companyIds, {
     maxCount: WATCHLIST_COMPANY_MAX,
     maxLength: COMPANY_ID_MAX_LENGTH,
@@ -332,14 +321,13 @@ export function normalizeCreateWatchlistInput(value: unknown): Normalized<Create
   });
   const filters = normalizeOptionalFilters(value.filters);
   const visibility = normalizeOptionalVisibility(value.isPublic);
-  if (title === null || !description.ok || !companyIds.ok || !filters.ok || !visibility.ok) {
+  if (title === null || !companyIds.ok || !filters.ok || !visibility.ok) {
     return { ok: false };
   }
   return {
     ok: true,
     value: {
       title,
-      description: description.value,
       companyIds: companyIds.value,
       filters: filters.value,
       isPublic: visibility.value,
@@ -365,15 +353,6 @@ export function normalizeUpdateWatchlistInput(value: unknown): Normalized<Update
     title = normalized;
   }
 
-  let description: string | null | undefined;
-  if (value.description === null) {
-    description = null;
-  } else {
-    const normalized = normalizeOptionalDescription(value.description);
-    if (!normalized.ok) return { ok: false };
-    description = normalized.value;
-  }
-
   let companyIds: string[] | undefined;
   if (value.companyIds !== undefined) {
     const normalized = normalizeStringArrayForWrite(value.companyIds, {
@@ -394,7 +373,6 @@ export function normalizeUpdateWatchlistInput(value: unknown): Normalized<Update
     value: {
       watchlistId,
       title,
-      description,
       companyIds,
       filters: filters.value,
       isPublic: visibility.value,
@@ -408,7 +386,6 @@ export function normalizeHandoffWatchlistInput(value: unknown): Normalized<Hando
     allowEmpty: false,
     title: true,
   });
-  const description = normalizeOptionalDescription(value.description);
   const companySlugs = normalizeStringArrayForWrite(value.companySlugs, {
     maxCount: WATCHLIST_HANDOFF_COMPANY_MAX,
     maxLength: COMPANY_SLUG_MAX_LENGTH,
@@ -416,14 +393,13 @@ export function normalizeHandoffWatchlistInput(value: unknown): Normalized<Hando
     lowercase: true,
   });
   const filters = normalizeOptionalFilters(value.filters);
-  if (title === null || !description.ok || !companySlugs.ok || !filters.ok) {
+  if (title === null || !companySlugs.ok || !filters.ok) {
     return { ok: false };
   }
   return {
     ok: true,
     value: {
       title,
-      description: description.value,
       companySlugs: companySlugs.value,
       filters: filters.value,
     },
@@ -516,18 +492,12 @@ export function normalizeWatchlistFiltersForSharedRead(
 
 export function normalizeSharedWatchlistMetadata(value: {
   title: unknown;
-  description: unknown;
-}): { title: string; description: string | null } | null {
+}): { title: string } | null {
   const title = boundedText(value.title, WATCHLIST_TITLE_MAX_LENGTH, {
     allowEmpty: false,
     title: true,
   });
-  if (title === null) return null;
-  if (value.description === null) return { title, description: null };
-  const description = boundedText(value.description, WATCHLIST_DESCRIPTION_MAX_LENGTH, {
-    allowEmpty: true,
-  });
-  return description === null ? null : { title, description };
+  return title === null ? null : { title };
 }
 
 export function normalizeWatchlistCompanyIdsForRead(value: unknown): string[] {

@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   WATCHLIST_COMPANY_MAX,
-  WATCHLIST_DESCRIPTION_MAX_LENGTH,
   WATCHLIST_HANDOFF_COMPANY_MAX,
   WATCHLIST_TITLE_MAX_LENGTH,
   normalizeCreateWatchlistInput,
@@ -40,7 +39,6 @@ describe("watchlist server input normalization", () => {
   it("normalizes valid create input before persistence", () => {
     expect(normalizeCreateWatchlistInput({
       title: "  Engineering roles  ",
-      description: "Keep whitespace\nthat the editor accepts.",
       companyIds: [` ${COMPANY_ID_1.toUpperCase()} `, COMPANY_ID_1, COMPANY_ID_2],
       filters: {
         keywords: ["Engineer", " engineer ", "Platform"],
@@ -58,7 +56,6 @@ describe("watchlist server input normalization", () => {
       ok: true,
       value: {
         title: "Engineering roles",
-        description: "Keep whitespace\nthat the editor accepts.",
         companyIds: [COMPANY_ID_1, COMPANY_ID_2],
         filters: {
           keywords: ["Engineer", "Platform"],
@@ -77,10 +74,27 @@ describe("watchlist server input normalization", () => {
     });
   });
 
+  it("discards legacy descriptions from create, update, handoff, and shared metadata", () => {
+    const inputs = [
+      normalizeCreateWatchlistInput({ title: "Roles", companyIds: [], description: "Legacy" }),
+      normalizeUpdateWatchlistInput({ watchlistId: WATCHLIST_ID, title: "Roles", description: null }),
+      normalizeHandoffWatchlistInput({ title: "Roles", companySlugs: [], description: 42 }),
+      normalizeSharedWatchlistMetadata({ title: "Roles", ...{ description: "x".repeat(2_000) } }),
+    ];
+    for (const normalized of inputs) {
+      expect(normalized).not.toBeNull();
+      if (normalized && "ok" in normalized) {
+        expect(normalized.ok).toBe(true);
+        if (normalized.ok) expect(normalized.value).not.toHaveProperty("description");
+      } else {
+        expect(normalized).toEqual({ title: "Roles" });
+      }
+    }
+  });
+
   it.each([
     { title: " ", companyIds: [] },
     { title: "x".repeat(WATCHLIST_TITLE_MAX_LENGTH + 1), companyIds: [] },
-    { title: "Valid", description: "x".repeat(WATCHLIST_DESCRIPTION_MAX_LENGTH + 1), companyIds: [] },
     {
       title: "Valid",
       companyIds: Array.from(
@@ -103,11 +117,10 @@ describe("watchlist server input normalization", () => {
     expect(normalizeCreateWatchlistInput(input)).toEqual({ ok: false });
   });
 
-  it("normalizes partial updates while preserving null description semantics", () => {
+  it("normalizes partial updates", () => {
     expect(normalizeUpdateWatchlistInput({
       watchlistId: ` ${WATCHLIST_ID} `,
       title: " Renamed ",
-      description: null,
       companyIds: [COMPANY_ID_1, COMPANY_ID_1],
       filters: {},
     })).toEqual({
@@ -115,7 +128,6 @@ describe("watchlist server input normalization", () => {
       value: {
         watchlistId: WATCHLIST_ID,
         title: "Renamed",
-        description: null,
         companyIds: [COMPANY_ID_1],
         filters: {},
         isPublic: undefined,
@@ -202,14 +214,9 @@ describe("watchlist defensive JSON reads", () => {
     })).toBeNull();
   });
 
-  it("fails shared metadata closed instead of truncating oversized legacy text", () => {
+  it("fails shared metadata closed instead of truncating oversized titles", () => {
     expect(normalizeSharedWatchlistMetadata({
       title: "x".repeat(WATCHLIST_TITLE_MAX_LENGTH + 1),
-      description: null,
-    })).toBeNull();
-    expect(normalizeSharedWatchlistMetadata({
-      title: "Valid",
-      description: "x".repeat(WATCHLIST_DESCRIPTION_MAX_LENGTH + 1),
     })).toBeNull();
   });
 

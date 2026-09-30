@@ -334,10 +334,9 @@
       "get": {
         "operationId": "createWatchlistLink",
         "summary": "Generate a prefilled watchlist creation link",
-        "description": "Returns a URL that opens the watchlist creation page with filters, title, and description prefilled. The user must log in to save. Also returns a preview with matching job/company counts so the agent can verify the filters are useful before handing off. Unsupported locale, enum, and exact-slug values return HTTP 400.",
+        "description": "Returns a URL that opens the watchlist creation page with filters and title prefilled. The user must log in to save. Also returns a preview with matching job/company counts so the agent can verify the filters are useful before handing off. Unsupported locale, enum, and exact-slug values return HTTP 400.",
         "parameters": [
           { "name": "title", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Watchlist title" },
-          { "name": "description", "in": "query", "schema": { "type": "string" }, "description": "Watchlist description" },
           { "name": "q", "in": "query", "schema": { "type": "string" } },
           { "name": "loc", "in": "query", "schema": { "type": "string" } },
           { "name": "occ", "in": "query", "schema": { "type": "string" } },

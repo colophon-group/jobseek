@@ -15,7 +15,6 @@ export interface WatchlistDoc {
   id: string;
   slug: string;
   title: string;
-  description?: string;
   owner_name: string;
   owner_username?: string;
   filters_json?: string;
@@ -23,7 +22,6 @@ export interface WatchlistDoc {
   active_job_count: number;
   mirror_count: number;
   is_featured: boolean;
-  has_description: boolean;
   created_at: number; // Unix timestamp
   is_public: boolean;
 }
@@ -35,7 +33,8 @@ export function upsertWatchlist(doc: WatchlistDoc): void {
   client
     .collections("watchlist")
     .documents()
-    .upsert(doc)
+    // The legacy collection still requires this field during rollout.
+    .upsert({ ...doc, has_description: false })
     .catch((err) => {
       logExternalError("error", { service: "typesense", operation: "upsert_watchlist" }, err);
     });

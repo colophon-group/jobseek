@@ -622,7 +622,6 @@ describe("watchlist posting read degradation (#6167)", () => {
       id: "watchlist-1",
       slug: "remote-full-time",
       title: "Remote full-time",
-      description: null,
       isPublic: true,
       alertsEnabled: false,
       filters: {

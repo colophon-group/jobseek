@@ -64,7 +64,6 @@ describe("getSessionWatchlistPageData", () => {
       detail: {
         id: sessionWatchlistId,
         title: draft.title,
-        description: null,
         filters: draft.filters,
         companies: [],
         alertsEnabled: false,
@@ -81,7 +80,6 @@ describe("getSessionWatchlistPageData", () => {
     mocks.getSharedWatchlistById.mockResolvedValue({
       id: sourceWatchlistId,
       title: "Finance",
-      description: "Selected roles",
       filters: { occupationSlugs: ["finance"] },
       companies: [{ id: "company-1", name: "Acme", slug: "acme", icon: null }],
     });
@@ -96,7 +94,6 @@ describe("getSessionWatchlistPageData", () => {
       data: pageData,
       draft: {
         title: "Finance copy",
-        description: "Selected roles",
         companyIds: ["company-1"],
         filters: { occupationSlugs: ["finance"] },
         isPublic: false,

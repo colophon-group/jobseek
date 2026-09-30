@@ -40,7 +40,6 @@ async function materializeSessionWatchlist(
       sourceCompanies: source.companies,
       draft: {
         title: intent.title ?? source.title,
-        ...(source.description ? { description: source.description } : {}),
         companyIds: source.companies.map((candidate) => candidate.id),
         filters: source.filters,
         isPublic: false,
@@ -53,7 +52,6 @@ async function materializeSessionWatchlist(
   return {
     draft: {
       ...normalized.value,
-      description: normalized.value.description,
       filters: normalized.value.filters ?? {},
       isPublic: false,
     },
@@ -142,7 +140,6 @@ export async function getSessionWatchlistPageData(input: {
     detail: {
       id: input.sessionWatchlistId,
       title: draft.title,
-      description: draft.description ?? null,
       filters: draft.filters,
       companies,
       alertsEnabled: false,

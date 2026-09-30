@@ -53,7 +53,6 @@ const pageData = {
   detail: {
     id: sourceId,
     title: draft.title,
-    description: null,
     filters: draft.filters,
     companies: [],
     alertsEnabled: false,

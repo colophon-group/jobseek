@@ -135,7 +135,7 @@ const detail = {
   id: "11111111-1111-4111-8111-111111111111",
   slug: "us-roles",
   title: "US roles",
-  description: "A focused list",
+  ...{ description: "A focused list" },
   isPublic: false,
   alertsEnabled: false,
   filters: {
@@ -259,7 +259,6 @@ describe("WatchlistViewPage private detail", () => {
       kind: "create",
       draft: {
         title: detail.title,
-        description: detail.description,
         companyIds: [],
         filters: detail.filters,
         isPublic: false,
@@ -312,13 +311,19 @@ describe("WatchlistViewPage private detail", () => {
     )).toBe(true);
   });
 
-  it("exposes populated title and description edits as keyboard-focusable buttons", () => {
+  it.each([true, false])("omits legacy descriptions and their editor for owner=%s", (isOwner) => {
+    renderPage(isOwner);
+
+    expect(screen.queryByText("A focused list")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add description" })).toBeNull();
+    expect(screen.queryByPlaceholderText("Describe this watchlist...")).toBeNull();
+  });
+
+  it("exposes the title edit as a keyboard-focusable button", () => {
     renderPage();
 
     const titleButton = screen.getByRole("button", { name: "US roles" });
-    const descriptionButton = screen.getByRole("button", { name: "A focused list" });
     expect(titleButton.getAttribute("type")).toBe("button");
-    expect(descriptionButton.getAttribute("type")).toBe("button");
 
     fireEvent.click(titleButton);
     expect(screen.getByRole("textbox")).toBeTruthy();
@@ -380,7 +385,7 @@ describe("WatchlistViewPage private detail", () => {
     });
   });
 
-  it("cancels later title and description edits back to the last successful save", async () => {
+  it("cancels later title edits back to the last successful save", async () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "US roles" }));
@@ -394,33 +399,6 @@ describe("WatchlistViewPage private detail", () => {
     fireEvent.change(editor, { target: { value: "Discard this title" } });
     fireEvent.keyDown(editor, { key: "Escape" });
     expect(screen.getByRole("button", { name: "Platform roles" })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "A focused list" }));
-    editor = screen.getByRole("textbox");
-    fireEvent.change(editor, { target: { value: "Persisted description" } });
-    fireEvent.blur(editor);
-    await screen.findByRole("button", { name: "Persisted description" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Persisted description" }));
-    editor = screen.getByRole("textbox");
-    fireEvent.change(editor, { target: { value: "Discard this description" } });
-    fireEvent.keyDown(editor, { key: "Escape" });
-    expect(screen.getByRole("button", { name: "Persisted description" })).toBeTruthy();
-  });
-
-  it("rolls back a description when the server returns an error", async () => {
-    mocks.updateWatchlist.mockResolvedValueOnce({ error: "invalid_input" });
-    renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: "A focused list" }));
-    const textarea = screen.getByRole("textbox");
-    fireEvent.change(textarea, { target: { value: "Changed description" } });
-    fireEvent.blur(textarea);
-
-    expect((await screen.findByRole("alert")).textContent).toBe(
-      "Could not save your changes.",
-    );
-    expect(screen.getByRole("button", { name: "A focused list" })).toBeTruthy();
   });
 
   it("rolls back an optimistic company removal when persistence fails", async () => {
