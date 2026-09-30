@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, Funnel, LoaderCircle, Pencil, Trash2, X } from "lucide-react";
+import { Eye, Crown, Funnel, LoaderCircle, Pencil, Trash2, X } from "lucide-react";
 import { Plural, useLingui } from "@lingui/react/macro";
 
 import { Button } from "@/components/ui/Button";
@@ -667,7 +667,7 @@ export function AiSearchFilter({
             comment: "Accessible label for the compact precise-matching control between watchlist stats and results",
             message: "Precise matching",
           })}
-          className="flex min-h-11 w-full min-w-0 items-center gap-2.5 bg-background/40 px-3 py-2"
+          className="flex min-h-11 w-full min-w-0 flex-wrap items-center gap-2.5 bg-background/40 px-3 py-2"
         >
           <span className="grid size-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
             {eligibility.status === "subscription_required" ? (
@@ -753,43 +753,53 @@ export function AiSearchFilter({
                     })}
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={() => {
-                if (open && isEditing) cancelEditing();
-                else if (open) closePanel();
-                else openPanel();
-              }}
-              className="shrink-0 cursor-pointer whitespace-nowrap rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-contrast transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!eligible}
-              aria-describedby={!eligible ? `${panelId}-unavailable` : undefined}
-              aria-expanded={open}
-              aria-controls={panelId}
+            <div
+              role="group"
+              aria-label={t({
+                id: "search.aiFilter.resultView",
+                comment: "Choose broad or narrowed watchlist results",
+                message: "Results view",
+              })}
+              className="flex shrink-0 gap-1 rounded-lg bg-border-soft p-1"
             >
-              {open
-                ? isEditing || !activeQuery
-                  ? t({
-                      id: "common.actions.cancel",
-                      comment: "Button that cancels precise-matching setup or editing",
-                      message: "Cancel",
-                    })
-                  : t({
-                      id: "search.aiFilter.showAllResults",
-                      comment: "Button that closes narrowed results and returns to the broad watchlist feed",
-                      message: "All results",
-                    })
-                : activeQuery || persistedQuery
-                  ? t({
-                      id: "search.aiFilter.viewResults",
-                      comment: "Short button that opens narrowed watchlist results",
-                      message: "View",
-                    })
-                  : t({
-                      id: "search.aiFilter.setup",
-                      comment: "Short button that opens precise matching setup",
-                      message: "Set up",
-                    })}
-            </button>
+              <button
+                type="button"
+                aria-pressed={!(open && activeQuery !== null)}
+                onClick={() => {
+                  if (open && isEditing) cancelEditing();
+                  else if (open) closePanel();
+                }}
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-primary ${!(open && activeQuery !== null) ? "bg-surface font-semibold shadow-sm" : "text-muted"}`}
+              >
+                <Eye size={14} aria-hidden="true" />
+                {t({
+                  id: "search.aiFilter.showAllResults",
+                  comment:
+                    "Button that closes narrowed results and returns to the broad watchlist feed",
+                  message: "All results",
+                })}
+              </button>
+              <button
+                type="button"
+                aria-pressed={open && activeQuery !== null}
+                disabled={!eligible}
+                aria-describedby={!eligible ? `${panelId}-unavailable` : undefined}
+                aria-expanded={open}
+                aria-controls={panelId}
+                onClick={() => {
+                  if (!open) openPanel();
+                }}
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ${open && activeQuery !== null ? "bg-surface font-semibold shadow-sm" : "text-muted"}`}
+              >
+                <Funnel size={14} aria-hidden="true" />
+                {t({
+                  id: "settings.notifications.narrowed",
+                  comment:
+                    "Include only accepted results from the saved prompt",
+                  message: "Narrowed",
+                })}
+              </button>
+            </div>
           )}
         </aside>
       ) : !open ? (

@@ -43,7 +43,7 @@ describe("ProPitch Narrowed preview", () => {
     fireEvent.click(screen.getByRole("button", { name: "All results" }));
     expect(screen.getByText("2 matches")).toBeTruthy();
     expect(screen.queryByText("4 matches")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
     expect(screen.getAllByRole("listitem")).toHaveLength(4);
     expect(screen.queryByRole("button", { name: "Edit matching criteria" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Remove matching criteria" })).toBeNull();

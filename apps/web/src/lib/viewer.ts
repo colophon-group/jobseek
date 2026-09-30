@@ -14,7 +14,7 @@ import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
  * straight through to `[locale]`, which silently dropped any anon
  * toggle on the client.
  *
- * In both cases, an unset preference falls through to `[locale]` via
+ * In both cases, an unset preference includes all languages via
  * `resolveJobLanguages`. Returns `[]` when the viewer opted into "all
  * languages" (`"*"`).
  */

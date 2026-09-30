@@ -259,7 +259,7 @@ describe("WatchlistViewPage private detail", () => {
 
     fireEvent.click(filterControl);
     expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
-    expect((screen.getByRole("button", { name: "View" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("Precise matching is temporarily unavailable")).toBeTruthy();
   });
 
@@ -284,7 +284,7 @@ describe("WatchlistViewPage private detail", () => {
     fireEvent.click(screen.getByRole("button", { name: action }));
 
     expect(screen.getByText("Start with the job filters")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "View" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
     expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
     expect(screen.getAllByTestId("job-list")).toHaveLength(1);
@@ -299,7 +299,7 @@ describe("WatchlistViewPage private detail", () => {
     fireEvent.click(screen.getByRole("button", { name: action }));
 
     expect(screen.getByText("Start with the job filters")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "View" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
     expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
   });
@@ -310,7 +310,7 @@ describe("WatchlistViewPage private detail", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply salary" }));
 
     expect(screen.getByText("Precise matching is temporarily unavailable")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "View" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
     expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
   });

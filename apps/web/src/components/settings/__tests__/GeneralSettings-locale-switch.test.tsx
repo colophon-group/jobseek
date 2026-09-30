@@ -55,7 +55,8 @@ vi.mock("server-only", () => ({}));
 
 // SalaryDisplayProvider context — mutable so salary hydration can be covered.
 let salaryDisplayCurrency: string | null = "EUR";
-let salaryDisplayPeriod: "yearly" | "monthly" | "daily" | "hourly" | null = null;
+let salaryDisplayPeriod: "yearly" | "monthly" | "daily" | "hourly" | null =
+  null;
 const salaryDisplayUpdateMock = vi.fn();
 vi.mock("@/components/providers/SalaryDisplayProvider", () => ({
   useSalaryDisplay: () => ({
@@ -140,13 +141,19 @@ describe("GeneralSettings locale switch (#2988)", () => {
       );
     });
 
-    expect(screen.getByRole("button", { name: "Dark" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Light" }).getAttribute("aria-pressed")).toBe("false");
+    expect(
+      screen.getByRole("button", { name: "Dark" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: "Light" })
+        .getAttribute("aria-pressed"),
+    ).toBe("false");
 
     const englishButtons = screen.getAllByRole("button", { name: /English/ });
     expect(englishButtons[0]?.getAttribute("aria-pressed")).toBe("true");
-    expect(englishButtons[1]?.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "All languages" }).getAttribute("aria-pressed")).toBe("false");
+    expect(englishButtons).toHaveLength(1);
+    expect(screen.getByText("All languages")).toBeTruthy();
   });
 
   it("writes NEXT_LOCALE cookie and pushes new-locale URL on Deutsch click", async () => {
@@ -183,9 +190,9 @@ describe("GeneralSettings locale switch (#2988)", () => {
     expect(cookieWrites.some((w) => w.startsWith("NEXT_LOCALE=de"))).toBe(true);
     // The cookie write must be path=/ so it applies to every route the
     // user might land on after browser-back, not just /settings.
-    expect(
-      cookieWrites.find((w) => w.startsWith("NEXT_LOCALE=de"))!,
-    ).toMatch(/path=\//);
+    expect(cookieWrites.find((w) => w.startsWith("NEXT_LOCALE=de"))!).toMatch(
+      /path=\//,
+    );
 
     // 2. Navigation — settings page itself moves to /de/settings so the
     //    user sees confirmation. (Pre-existing behaviour; asserted to
@@ -223,7 +230,7 @@ describe("GeneralSettings locale switch (#2988)", () => {
 });
 
 describe("GeneralSettings overflow languages (#6027)", () => {
-  it("opens Find more from all-language mode and selects an overflow language directly", async () => {
+  it("opens the language picker from all-language mode and saves an overflow language", async () => {
     const user = userEvent.setup();
     act(() => {
       render(
@@ -252,17 +259,15 @@ describe("GeneralSettings overflow languages (#6027)", () => {
       );
     });
 
-    const allLanguages = screen.getByRole("button", { name: "All languages" });
-    const findMore = screen.getByRole("button", { name: "Find more" });
-    expect(allLanguages.getAttribute("aria-pressed")).toBe("true");
-    expect((findMore as HTMLButtonElement).disabled).toBe(false);
+    const choose = screen.getByRole("button", { name: "Choose" });
+    expect(screen.getByText("All languages")).toBeTruthy();
     updatePreferencesMock.mockClear();
-
-    await user.click(findMore);
+    await user.click(choose);
     expect(screen.getByRole("dialog")).toBeTruthy();
+    await user.click(screen.getByRole("radio", { name: "Choose languages" }));
     await user.click(screen.getByRole("button", { name: "svenska" }));
-
-    expect(allLanguages.getAttribute("aria-pressed")).toBe("false");
+    expect(updatePreferencesMock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => {
       expect(updatePreferencesMock).toHaveBeenCalledWith({
         jobLanguages: ["sv"],
@@ -299,13 +304,116 @@ describe("GeneralSettings salary preference hydration (#6035)", () => {
 
     await waitFor(() => {
       expect(
-        (screen.getByRole("combobox", { name: "Currency" }) as HTMLSelectElement)
-          .value,
-      ).toBe("USD");
+        screen.getByRole("button", { name: "Currency: USD" }),
+      ).toBeTruthy();
       expect(
-        (screen.getByRole("combobox", { name: "Pay period" }) as HTMLSelectElement)
-          .value,
-      ).toBe("monthly");
+        screen.getByRole("button", { name: "Pay period: Monthly" }),
+      ).toBeTruthy();
     });
+  });
+});
+
+describe("GeneralSettings save recovery", () => {
+  it("keeps the local language choice and offers account-sync retry on failure", async () => {
+    const user = userEvent.setup();
+    render(
+      <GeneralSettings
+        savedJobLanguages={[]}
+        savedDisplayCurrency="EUR"
+        savedSalaryPeriod={null}
+        availableCurrencies={["EUR"]}
+        availableLanguages={[]}
+        locale="en"
+      />,
+    );
+    updatePreferencesMock.mockRejectedValueOnce(new Error("offline"));
+    await user.click(screen.getByRole("button", { name: "Deutsch" }));
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Language changed on this device. Could not sync your account.",
+        ),
+      ).toBeTruthy(),
+    );
+    expect(cookieValue).toBe("NEXT_LOCALE=de");
+    expect(pushMock).toHaveBeenCalledWith("/de/settings");
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getByText("Saved")).toBeTruthy());
+    expect(updatePreferencesMock).toHaveBeenLastCalledWith({
+      locale: "de",
+      localeUpdatedAt: expect.any(String),
+    });
+  });
+
+  it("rolls currency back after a failed save and retries the same selection", async () => {
+    const user = userEvent.setup();
+    render(
+      <GeneralSettings
+        savedJobLanguages={[]}
+        savedDisplayCurrency="EUR"
+        savedSalaryPeriod={null}
+        availableCurrencies={["EUR", "JPY", "CAD", "USD", "GBP"]}
+        availableLanguages={[]}
+        locale="en"
+      />,
+    );
+    updatePreferencesMock.mockRejectedValueOnce(new Error("offline"));
+    await user.click(screen.getByRole("button", { name: "Currency: EUR" }));
+    await user.click(
+      screen.getByRole("button", { name: /Japanese Yen.*JPY/i }),
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/Could not save/)).toBeTruthy(),
+    );
+    expect(screen.getByRole("button", { name: "Currency: EUR" })).toBeTruthy();
+    expect(salaryDisplayUpdateMock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() =>
+      expect(updatePreferencesMock).toHaveBeenLastCalledWith({
+        displayCurrency: "JPY",
+      }),
+    );
+    expect(salaryDisplayUpdateMock).toHaveBeenCalledWith({
+      displayCurrency: "JPY",
+    });
+  });
+  it("searches Russian by its English name and discards a canceled language draft", async () => {
+    const user = userEvent.setup();
+    render(
+      <GeneralSettings
+        savedJobLanguages={[]}
+        savedDisplayCurrency="EUR"
+        savedSalaryPeriod={null}
+        availableCurrencies={["EUR"]}
+        availableLanguages={[]}
+        locale="en"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Choose" }));
+    expect(
+      (screen.getByRole("radio", { name: "All languages" }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    await user.click(screen.getByRole("radio", { name: "Choose languages" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Search languages..." }),
+      "Russian",
+    );
+    await user.click(screen.getByRole("button", { name: "русский" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(updatePreferencesMock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Choose" }));
+    expect(
+      (screen.getByRole("radio", { name: "All languages" }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+    await user.click(screen.getByRole("radio", { name: "Choose languages" }));
+    await user.click(screen.getByRole("button", { name: "русский" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(updatePreferencesMock).toHaveBeenCalledWith({
+        jobLanguages: ["ru"],
+      }),
+    );
   });
 });

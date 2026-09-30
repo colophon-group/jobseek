@@ -44,7 +44,14 @@ export function ConnectedAccountsSection({
       callbackURL: lp("/settings/account"),
     });
     if (result.error) {
-      setError(result.error.message ?? t({ id: "settings.account.socials.connectError", comment: "Error when linking social account fails", message: "Failed to connect account" }));
+      setError(
+        result.error.message ??
+          t({
+            id: "settings.account.socials.connectError",
+            comment: "Error when linking social account fails",
+            message: "Failed to connect account",
+          }),
+      );
     }
     setActionLoading(null);
   }
@@ -57,35 +64,67 @@ export function ConnectedAccountsSection({
         accountId: connectedAccount.accountId,
       });
       if (result.error) {
-        setError(result.error.message ?? t({ id: "settings.account.socials.disconnectError", comment: "Error when unlinking social account fails", message: "Failed to disconnect account" }));
+        setError(
+          result.error.message ??
+            t({
+              id: "settings.account.socials.disconnectError",
+              comment: "Error when unlinking social account fails",
+              message: "Failed to disconnect account",
+            }),
+        );
       } else {
         onDisconnect(connectedAccount.providerId);
       }
     } catch {
-      setError(t({ id: "settings.account.socials.disconnectError", comment: "Error when unlinking social account fails", message: "Failed to disconnect account" }));
+      setError(
+        t({
+          id: "settings.account.socials.disconnectError",
+          comment: "Error when unlinking social account fails",
+          message: "Failed to disconnect account",
+        }),
+      );
     }
     setActionLoading(null);
   }
 
   return (
-    <section>
-      <h2 className="mb-1 text-base font-semibold">
-        <Trans id="settings.account.socials.title" comment="Connected accounts section heading">Connected accounts</Trans>
-      </h2>
-      <p className="mb-4 text-sm text-muted">
-        <Trans id="settings.account.socials.description" comment="Connected accounts section description">
-          Manage your linked social accounts.
+    <section className="mt-7">
+      <h2 className="border-b border-divider pb-3 text-sm font-semibold">
+        <Trans
+          id="settings.account.socials.title"
+          comment="Connected accounts section heading"
+        >
+          Connected accounts
         </Trans>
-      </p>
+      </h2>
       <ErrorAlert message={error} focusOnRender />
-      <div className="space-y-2">
+      <div className="divide-y divide-border-soft">
         {socialProviders.map((p) => {
           const connectedAccount = getConnectedAccount(p.id);
           return (
-            <div key={p.id} className="flex items-center justify-between rounded-md border border-divider px-4 py-3">
+            <div
+              key={p.id}
+              className="flex items-center justify-between gap-4 py-4"
+            >
               <div className="flex items-center gap-3">
                 {p.icon}
-                <span className="text-sm font-medium">{p.label}</span>
+                <div>
+                  <span className="text-sm">{p.label}</span>
+                  {connectedAccount && (
+                    <span className="mt-1 flex items-center gap-[9px] text-[11px] text-muted">
+                      <span
+                        className="h-1 w-1 rounded-full bg-current"
+                        aria-hidden="true"
+                      />
+                      <Trans
+                        id="settings.account.socials.connected"
+                        comment="Provider account connection status"
+                      >
+                        Connected
+                      </Trans>
+                    </span>
+                  )}
+                </div>
               </div>
               <Button
                 onClick={() =>
@@ -94,12 +133,21 @@ export function ConnectedAccountsSection({
                     : handleConnect(p.id)
                 }
                 disabled={actionLoading === p.id}
-                variant={connectedAccount ? "outline" : "primary"}
+                variant="outline"
+                className="min-h-11 shrink-0 !border-divider !text-xs"
                 size="sm"
               >
                 {connectedAccount
-                  ? t({ id: "settings.account.socials.disconnect", comment: "Disconnect social account button", message: "Disconnect" })
-                  : t({ id: "settings.account.socials.connect", comment: "Connect social account button", message: "Connect" })}
+                  ? t({
+                      id: "settings.account.socials.disconnect",
+                      comment: "Disconnect social account button",
+                      message: "Disconnect",
+                    })
+                  : t({
+                      id: "settings.account.socials.connect",
+                      comment: "Connect social account button",
+                      message: "Connect",
+                    })}
               </Button>
             </div>
           );

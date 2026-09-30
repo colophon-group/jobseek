@@ -3206,7 +3206,7 @@ export function getLanguage(code: string): JobLanguage | undefined {
 /**
  * Resolve stored job-language preference to an effective language filter array.
  *
- * - `[]`        → default: filter by UI locale only
+ * - `[]`        → default: all languages, no filter
  * - `["*"]`     → all languages: no filter (returns `[]`)
  * - `["en","de"]` → specific selection (silently filtered to known codes)
  *
@@ -3216,12 +3216,12 @@ export function getLanguage(code: string): JobLanguage | undefined {
  */
 export function resolveJobLanguages(
   jobLanguages: string[],
-  locale: string,
+  _locale: string,
 ): string[] {
-  if (jobLanguages.length === 0) return [locale];
+  if (jobLanguages.length === 0) return [];
   if (jobLanguages.includes("*")) return [];
   const safe = jobLanguages.filter((c) => _langMap.has(c));
-  if (safe.length === 0) return [locale];
+  if (safe.length === 0) return [];
   // Sort + dedupe so downstream JSON.stringify cache keys (taxonomy.ts,
   // locations.ts) collapse equivalent prefs across users (["en","de"] and
   // ["de","en"] would otherwise produce distinct Redis entries).

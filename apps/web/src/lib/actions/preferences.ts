@@ -101,7 +101,7 @@ export async function getPreferences() {
  * unifying the authenticated (DB-row) and anonymous (cookie) paths.
  *
  * Returns the same shape the rest of the codebase expects:
- *   - `[]` when nothing is set (UI treats as "default = locale only")
+ *   - `[]` when nothing is set (default = all languages)
  *   - `["*"]` when the viewer opted into "all languages"
  *   - explicit codes otherwise (e.g. `["en","de"]`)
  *

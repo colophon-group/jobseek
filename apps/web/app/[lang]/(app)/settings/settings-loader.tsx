@@ -1,5 +1,3 @@
-import { NotificationSettings } from "@/components/settings/NotificationSettings";
-import { getNotificationPreferences } from "@/lib/actions/notifications";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";
 import {
   getPreferences,
@@ -8,8 +6,6 @@ import {
 } from "@/lib/actions/preferences";
 import { getCurrencyRates } from "@/lib/actions/search";
 import { getSession } from "@/lib/sessionCache";
-import { ProductNewsSettings } from "@/components/settings/ProductNewsSettings";
-import { getProductNewsSettings } from "@/lib/actions/product-news";
 
 /**
  * Server-side data fetcher for the /settings (general) page.
@@ -52,29 +48,26 @@ export async function SettingsLoader({ locale }: { locale: string }) {
   // Dynamic gate — see comment above. Discarded result; the same
   // session is re-resolved (per-request memoised) inside
   // `getPreferences` and `getViewerJobLanguages` below.
-  const session = await getSession();
+  await getSession();
 
-  const [prefs, jobLanguages, availableLanguages, currencyRates, notifications, productNews] = await Promise.all([
-    getPreferences(),
-    getViewerJobLanguages(),
-    getAvailableJobLanguages(),
-    getCurrencyRates(),
-    session ? getNotificationPreferences(locale) : Promise.resolve(null),
-    session ? getProductNewsSettings() : Promise.resolve(null),
-  ]);
+  const [prefs, jobLanguages, availableLanguages, currencyRates] =
+    await Promise.all([
+      getPreferences(),
+      getViewerJobLanguages(),
+      getAvailableJobLanguages(),
+      getCurrencyRates(),
+    ]);
 
   return (
     <div className="space-y-8">
-    {notifications && session && <NotificationSettings paused={notifications.notificationsPaused} verified={session.user.emailVerified} watchlists={notifications.watchlists} />}
-    {productNews && session && <ProductNewsSettings enabled={productNews.enabled} verified={session.user.emailVerified} />}
-    <GeneralSettings
-      savedJobLanguages={jobLanguages}
-      savedDisplayCurrency={prefs?.displayCurrency ?? "EUR"}
-      savedSalaryPeriod={prefs?.salaryPeriod ?? null}
-      availableCurrencies={currencyRates.map((r) => r.currency)}
-      availableLanguages={availableLanguages}
-      locale={locale}
-    />
+      <GeneralSettings
+        savedJobLanguages={jobLanguages}
+        savedDisplayCurrency={prefs?.displayCurrency ?? "EUR"}
+        savedSalaryPeriod={prefs?.salaryPeriod ?? null}
+        availableCurrencies={currencyRates.map((r) => r.currency)}
+        availableLanguages={availableLanguages}
+        locale={locale}
+      />
     </div>
   );
 }

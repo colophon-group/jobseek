@@ -40,38 +40,43 @@ const lists = [
   { id: "two", title: "Design", mode: "off" as const, prompt: null, narrowingAvailable: false },
 ];
 describe("watchlist contribution to the consolidated email", () => {
-  it("previews the saved prompt and saves only the selected watchlist's scope", async () => {
+  it("opens full narrowing details and saves only the selected watchlist's scope", async () => {
+    const user = userEvent.setup();
     mocks.mode.mockResolvedValue({ mode: "narrowed" });
     render(<NotificationSettings paused={false} verified watchlists={lists} />);
-    expect(screen.getByText(/One email with results from all your enabled watchlists/)).toBeTruthy();
-    expect(screen.getByText(lists[0]!.prompt!)).toBeTruthy();
-    const narrowed = within(screen.getByRole("group", { name: "Engineering" })).getByRole("radio", { name: "Narrowed" });
-    await userEvent.click(narrowed);
-    await waitFor(() => expect((narrowed as HTMLInputElement).checked).toBe(true));
+    expect(screen.queryByText(lists[0]!.prompt!)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Narrowing filters" }));
+    expect(within(screen.getByRole("dialog")).getByText(lists[0]!.prompt!)).toBeTruthy();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Engineering: All results" }));
+    await user.click(screen.getByRole("menuitemradio", { name: /Narrowed/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Engineering: Narrowed" })).toBeTruthy());
     expect(mocks.mode).toHaveBeenCalledWith("one", "narrowed");
-    expect(screen.getByText(lists[0]!.prompt!)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Engineering" }).getAttribute("href")).toBe("/en/watchlists/one");
-    expect(screen.queryByRole("button", { name: /share|delete/i })).toBeNull();
-    expect(within(screen.getByRole("group", { name: "Design" })).getByRole("radio", { name: "Narrowed" }).hasAttribute("disabled")).toBe(true);
+    await user.click(screen.getByRole("button", { name: "Design: Off" }));
+    expect(screen.getByRole("menuitemradio", { name: /Narrowed/ }).getAttribute("aria-disabled")).toBe("true");
+    await user.keyboard("{Escape}");
     expect(screen.getByText("Switzerland")).toBeTruthy();
     expect(screen.getByText("Backend")).toBeTruthy();
-    const expand = screen.getByRole("button", { name: "Show all filters" });
-    await userEvent.click(expand);
+    await user.click(screen.getByRole("button", { name: "Show all filters" }));
     expect(screen.getByText("Remote")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Show fewer filters" })).toBe(expand);
+    await user.click(screen.getByRole("button", { name: "Engineering: Narrowed" }));
     mocks.mode.mockResolvedValue({ mode: "off" });
-    const off = within(screen.getByRole("group", { name: "Engineering" })).getByRole("radio", { name: "Off" });
-    await userEvent.click(off);
-    await waitFor(() => expect((off as HTMLInputElement).checked).toBe(true));
-    expect(screen.getByText(lists[0]!.prompt!)).toBeTruthy();
+    await user.click(screen.getByRole("menuitemradio", { name: /Off/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Engineering: Off" })).toBeTruthy());
+    await user.click(screen.getByRole("button", { name: "Narrowing filters" }));
+    expect(within(screen.getByRole("dialog")).getByText(lists[0]!.prompt!)).toBeTruthy();
   });
   it("preserves the prior selection on failure and disables choices under global pause", async () => {
+    const user = userEvent.setup();
     mocks.mode.mockResolvedValue({ error: "narrowing_unavailable" });
     const view = render(<NotificationSettings paused={false} verified watchlists={lists} />);
-    await userEvent.click(within(screen.getByRole("group", { name: "Engineering" })).getByRole("radio", { name: "Narrowed" }));
+    await user.click(screen.getByRole("button", { name: "Engineering: All results" }));
+    await user.click(screen.getByRole("menuitemradio", { name: /Narrowed/ }));
     expect(await screen.findByText(/Enable narrowing with an active subscription/)).toBeTruthy();
-    expect((within(screen.getByRole("group", { name: "Engineering" })).getByRole("radio", { name: "All results" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole("button", { name: "Engineering: All results" })).toBeTruthy();
     view.rerender(<NotificationSettings paused verified watchlists={lists} />);
-    await waitFor(() => expect(lists.every(list => screen.getByRole("group", { name: list.title }).hasAttribute("disabled"))).toBe(true));
+    await waitFor(() => expect((screen.getByRole("button", { name: "Engineering: All results" }) as HTMLButtonElement).disabled).toBe(true));
+    expect((screen.getByRole("button", { name: "Design: Off" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

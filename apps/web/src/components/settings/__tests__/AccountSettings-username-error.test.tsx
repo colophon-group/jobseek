@@ -84,7 +84,8 @@ beforeEach(() => {
 
 async function submitUsername(value: string) {
   const user = userEvent.setup();
-  const username = screen.getByLabelText("Username");
+  await user.click(screen.getByRole("button", { name: "Edit" }));
+  const username = screen.getByRole("textbox", { name: "Username" });
   await user.clear(username);
   await user.type(username, value);
 
@@ -114,7 +115,7 @@ describe("AccountSettings username errors", () => {
     expect(alert.textContent).toBe("This username is reserved.");
     expect(document.activeElement).toBe(alert);
 
-    const username = screen.getByLabelText("Username");
+    const username = screen.getByRole("textbox", { name: "Username" });
     expect(username.getAttribute("aria-invalid")).toBe("true");
     expect(username.getAttribute("aria-describedby")).toBeTruthy();
     expect(mocks.sessionRefresh).not.toHaveBeenCalled();
@@ -144,7 +145,8 @@ describe("AccountSettings username errors", () => {
 
     render(<AccountSettings initialData={{ ...initialData }} />);
 
-    const username = screen.getByLabelText("Username");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const username = screen.getByRole("textbox", { name: "Username" });
     await user.clear(username);
     await user.type(username, "taken-name");
 

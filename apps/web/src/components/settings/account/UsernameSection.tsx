@@ -1,9 +1,10 @@
 "use client";
 
+import { AccountEdit } from "./AccountEdit";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Trans, useLingui } from "@lingui/react/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useSession } from "@/components/providers/SessionProvider";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
@@ -16,7 +17,11 @@ import { isReservedUsername } from "@/lib/username";
 
 const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 
-export function UsernameSection({ currentUsername }: { currentUsername: string }) {
+export function UsernameSection({
+  currentUsername,
+}: {
+  currentUsername: string;
+}) {
   const { t } = useLingui();
   const router = useRouter();
   const { refresh: refreshSession } = useSession();
@@ -40,7 +45,8 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
   const tooShort = normalized.length < 3;
   const tooLong = normalized.length > 30;
   const invalidChars = normalized.length >= 3 && !USERNAME_RE.test(normalized);
-  const reserved = !invalidChars && normalized.length >= 3 && isReservedUsername(normalized);
+  const reserved =
+    !invalidChars && normalized.length >= 3 && isReservedUsername(normalized);
 
   function handleChange(raw: string) {
     const v = raw.toLowerCase().replace(/[^a-z0-9-]/g, "");
@@ -52,7 +58,14 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     const norm = v.trim();
-    if (norm === savedUsername || norm.length < 3 || norm.length > 30 || !USERNAME_RE.test(norm) || isReservedUsername(norm)) return;
+    if (
+      norm === savedUsername ||
+      norm.length < 3 ||
+      norm.length > 30 ||
+      !USERNAME_RE.test(norm) ||
+      isReservedUsername(norm)
+    )
+      return;
 
     setChecking(true);
     debounceRef.current = setTimeout(async () => {
@@ -68,7 +81,15 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (unchanged || tooShort || tooLong || invalidChars || reserved || available === false) return;
+    if (
+      unchanged ||
+      tooShort ||
+      tooLong ||
+      invalidChars ||
+      reserved ||
+      available === false
+    )
+      return;
 
     setError("");
     setSuccess("");
@@ -87,7 +108,13 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
       }
     } catch {
       setLoading(false);
-      setError(t({ id: "settings.account.username.error", comment: "Generic username update error", message: "Failed to update username" }));
+      setError(
+        t({
+          id: "settings.account.username.error",
+          comment: "Generic username update error",
+          message: "Failed to update username",
+        }),
+      );
       return;
     }
 
@@ -99,46 +126,100 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
     setLoading(false);
     setSavedUsername(normalized);
     setAvailable(null);
-    setSuccess(t({ id: "settings.account.username.success", comment: "Username updated success message", message: "Username updated." }));
+    setSuccess(
+      t({
+        id: "settings.account.username.success",
+        comment: "Username updated success message",
+        message: "Username updated.",
+      }),
+    );
   }
 
   function getHint() {
     if (unchanged) return null;
-    if (tooShort) return t({ id: "settings.account.username.tooShort", comment: "Username too short hint", message: "At least 3 characters" });
-    if (tooLong) return t({ id: "settings.account.username.tooLong", comment: "Username too long hint", message: "At most 30 characters" });
-    if (invalidChars) return t({ id: "settings.account.username.invalidChars", comment: "Username invalid characters hint", message: "Only lowercase letters, numbers, and hyphens (cannot start/end with hyphen)" });
-    if (reserved) return t({ id: "settings.account.username.reserved", comment: "Username is reserved hint", message: "This username is reserved" });
-    if (checking) return t({ id: "settings.account.username.checking", comment: "Checking username availability", message: "Checking availability..." });
-    if (available === true) return t({ id: "settings.account.username.available", comment: "Username is available", message: "Available" });
-    if (available === false) return t({ id: "settings.account.username.taken", comment: "Username is taken", message: "Already taken" });
+    if (tooShort)
+      return t({
+        id: "settings.account.username.tooShort",
+        comment: "Username too short hint",
+        message: "At least 3 characters",
+      });
+    if (tooLong)
+      return t({
+        id: "settings.account.username.tooLong",
+        comment: "Username too long hint",
+        message: "At most 30 characters",
+      });
+    if (invalidChars)
+      return t({
+        id: "settings.account.username.invalidChars",
+        comment: "Username invalid characters hint",
+        message:
+          "Only lowercase letters, numbers, and hyphens (cannot start/end with hyphen)",
+      });
+    if (reserved)
+      return t({
+        id: "settings.account.username.reserved",
+        comment: "Username is reserved hint",
+        message: "This username is reserved",
+      });
+    if (checking)
+      return t({
+        id: "settings.account.username.checking",
+        comment: "Checking username availability",
+        message: "Checking availability...",
+      });
+    if (available === true)
+      return t({
+        id: "settings.account.username.available",
+        comment: "Username is available",
+        message: "Available",
+      });
+    if (available === false)
+      return t({
+        id: "settings.account.username.taken",
+        comment: "Username is taken",
+        message: "Already taken",
+      });
     return null;
   }
 
   const hint = getHint();
-  const usernameValidationInvalid = !unchanged && (tooShort || tooLong || invalidChars || reserved || available === false);
+  const usernameValidationInvalid =
+    !unchanged &&
+    (tooShort || tooLong || invalidChars || reserved || available === false);
   const usernameInvalid = usernameValidationInvalid || !!error;
-  const hintClassName = available === true
-    ? "mt-1 text-xs text-green-600 dark:text-green-400"
-    : usernameInvalid
-      ? "mt-1 text-xs text-error"
-      : "mt-1 text-xs text-muted";
+  const hintClassName =
+    available === true
+      ? "mt-1 text-xs text-green-600 dark:text-green-400"
+      : usernameInvalid
+        ? "mt-1 text-xs text-error"
+        : "mt-1 text-xs text-muted";
 
   return (
-    <section>
-      <h2 className="mb-1 text-base font-semibold">
-        <Trans id="settings.account.username.title" comment="Username section heading">Username</Trans>
-      </h2>
-      <p className="mb-4 text-sm text-muted">
-        <Trans id="settings.account.username.description" comment="Username section description without retired public-profile wording">
-          Your unique handle for your Job Seek account.
-        </Trans>
-      </p>
+    <AccountEdit
+      title={t({
+        id: "settings.account.username.title",
+        comment: "Username section heading",
+        message: "Username",
+      })}
+      value={savedUsername}
+      description={t({
+        id: "settings.account.username.description",
+        comment:
+          "Username section description without retired public-profile wording",
+        message: "Your unique handle for your Job Seek account.",
+      })}
+    >
       <ErrorAlert message={error} focusOnRender />
       <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-end">
           <div className="flex-1">
             <FormField
-              label={t({ id: "settings.account.username.label", comment: "Username input label", message: "Username" })}
+              label={t({
+                id: "settings.account.username.label",
+                comment: "Username input label",
+                message: "Username",
+              })}
               required
               autoComplete="username"
               value={value}
@@ -150,14 +231,39 @@ export function UsernameSection({ currentUsername }: { currentUsername: string }
               aria-invalid={usernameInvalid || undefined}
             />
           </div>
-          <Button type="submit" disabled={loading || unchanged || tooShort || tooLong || invalidChars || reserved || available === false || checking} size="sm">
+          <Button
+            type="submit"
+            disabled={
+              loading ||
+              unchanged ||
+              tooShort ||
+              tooLong ||
+              invalidChars ||
+              reserved ||
+              available === false ||
+              checking
+            }
+            size="sm"
+          >
             {loading
-              ? t({ id: "settings.account.username.saving", comment: "Username save button while loading", message: "Saving..." })
-              : t({ id: "settings.account.username.save", comment: "Username save button", message: "Update username" })}
+              ? t({
+                  id: "settings.account.username.saving",
+                  comment: "Username save button while loading",
+                  message: "Saving...",
+                })
+              : t({
+                  id: "settings.account.username.save",
+                  comment: "Username save button",
+                  message: "Update username",
+                })}
           </Button>
         </div>
-        {success && <div className="mt-3"><SuccessAlert message={success} /></div>}
+        {success && (
+          <div className="mt-3">
+            <SuccessAlert message={success} />
+          </div>
+        )}
       </form>
-    </section>
+    </AccountEdit>
   );
 }

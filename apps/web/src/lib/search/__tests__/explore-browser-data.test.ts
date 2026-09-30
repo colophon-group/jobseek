@@ -180,7 +180,7 @@ describe("loadExploreBrowserData", () => {
         keywords: ["python"],
         locationIds: [10],
         workMode: ["remote"],
-        languages: ["en"],
+        languages: [],
       }),
       false,
     );

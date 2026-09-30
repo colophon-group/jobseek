@@ -166,8 +166,8 @@ async function _listTopCompaniesImpl(
   }
 
   // Determine if this is a default/unfiltered request (cacheable).
-  // The default case has languages=[locale] (single locale from resolveJobLanguages).
-  // We consider that "unfiltered" since it's the automatic default, not a user choice.
+  // The default has no language filter. Explicit language choices remain part
+  // of the cache key below.
   const hasNoExplicitFilters =
     !params.locationIds?.length &&
     !params.occupationIds?.length &&
@@ -183,7 +183,7 @@ async function _listTopCompaniesImpl(
   const fetch = () => getSearchProvider().listTopCompanies(params);
 
   // Cache the default homepage (no user-specified filters). Include languages
-  // in the key since different locales produce different language filters.
+  // in the key so explicit language preferences never share an unfiltered result.
   // `canonicalStringCompare` (locale-independent `Intl.Collator("en", {
   // sensitivity: "base" })`) avoids the UTF-16-code-unit-order bug class
   // from #3221 — for ASCII locale codes the orders coincide today, but the
