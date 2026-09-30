@@ -1355,6 +1355,9 @@ test("Go sitemap shadow accepts exactly one report document", () => {
 });
 
 test("crawler image job proves live sampler and shutdown lifecycle", () => {
+  const imageJob = jobBlock("crawler-image");
+  assert.match(imageJob, /psql -U crawler -d crawler -v ON_ERROR_STOP=1/);
+  assert.match(imageJob, /lightpanda-b0-executor\/testdata\/startup-fixture\.sql/);
   const crawlerImageJob = jobBlock("crawler-image");
 
   assert.match(

@@ -785,6 +785,11 @@ jobs:
             -e LOCAL_DATABASE_URL -e CRAWLER_DB_ROLE=lightpanda-b0-ci-migration \
             jobseek-crawler-slim-ci:pr \
             uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
+          # Reference tables are imported separately in production. This
+          # disposable service DB needs their native startup columns/data too.
+          docker exec -i "${{ job.services.postgres.id }}" \
+            psql -U crawler -d crawler -v ON_ERROR_STOP=1 \
+            < apps/crawler/go/lightpanda-b0-executor/testdata/startup-fixture.sql
           epoch_json="$(docker run --rm --network host \
             -e LOCAL_DATABASE_URL -e CRAWLER_DB_ROLE=lightpanda-b0-ci-allocator \
             jobseek-crawler-slim-ci:pr \

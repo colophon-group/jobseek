@@ -303,6 +303,20 @@ legacy release generations remain the supported complete reversal artifacts.
 Observe natural canonical output, schedules, freshness and resources after
 restoration, then continue ordinary worker ownership and enabled profiles.
 
+## Installed image startup fixture repair
+
+Final selection head `9cc1fd3dbcf07f947878b52d3abec78ca98c7516` passed the
+native PostgreSQL/Redis job 110009685227 in Required CI run 36750890164.
+The image lifecycle job 110009685009 failed because its freshly migrated
+fixture lacks production reference tables: native startup reported missing
+`technology`. Production imports these tables separately; Alembic does not
+populate them. The candidate adds a small explicit reference-table SQL fixture
+before image volume/health checks and exercises those exact SQL bytes with
+native lookup/location loading in an owned local PostgreSQL schema. It keeps
+the production native command and health selection. Fresh Required CI and image
+lifecycle proof remain required after this test-only repair; no host mutation
+or native ownership has occurred.
+
 ## Next delivery gates
 
 1. Complete installed-binary/image tests with real Linux UID isolation, private
