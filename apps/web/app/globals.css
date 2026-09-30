@@ -100,9 +100,9 @@ html[data-explore-pending] [data-explore-pending-skeleton] { display: block; }
   --warning-color: #b45309;
   --warning-bg: rgba(180, 83, 9, 0.06);
   --warning-border: rgba(180, 83, 9, 0.25);
-  --pro-gold-color: #78570d;
-  --pro-gold-bg: rgba(212, 167, 44, 0.12);
-  --pro-gold-border: rgba(160, 116, 18, 0.24);
+  --pro-gold-color: #514600;
+  --pro-gold-bg: #fff5ad;
+  --pro-gold-border: rgba(166, 143, 0, 0.28);
   --error-color: #b91c1c;
   --error-bg: rgba(185, 28, 28, 0.06);
   --error-border: rgba(185, 28, 28, 0.25);
@@ -145,9 +145,9 @@ html[data-explore-pending] [data-explore-pending-skeleton] { display: block; }
   --warning-color: #fb923c;
   --warning-bg: rgba(251, 146, 60, 0.08);
   --warning-border: rgba(251, 146, 60, 0.2);
-  --pro-gold-color: #e9c86e;
-  --pro-gold-bg: rgba(212, 167, 44, 0.13);
-  --pro-gold-border: rgba(233, 200, 110, 0.24);
+  --pro-gold-color: #3d3500;
+  --pro-gold-bg: #efdf79;
+  --pro-gold-border: rgba(99, 85, 0, 0.28);
   --error-color: #f87171;
   --error-bg: rgba(248, 113, 113, 0.08);
   --error-border: rgba(248, 113, 113, 0.2);
