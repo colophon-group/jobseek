@@ -141,6 +141,40 @@ is the next major delivery boundary.
    useful isolated offline tooling. Refresh and validate the official Lightpanda
    nightly separately through its supported pinned renderer deployment.
 
+## Native executor implementation contract
+
+The next implementation should replace `src.lightpanda.executor` behind its
+existing private Unix socket, not create another queue or database authority.
+Keep the one-connection PostgreSQL pool, four task conversations plus one
+reserved route-attestation conversation, same-UID peer checks, 0700 socket
+directory and 0600 socket, bounded shutdown and health admission.
+
+Preserve the exact `jobseek.lightpanda.executor/v1` conversation and canonical
+Go-owned task/digest validation. Frames are bounded to 3 MiB, runtime-v1 results
+to 2 MiB, strict UTF-8 HTML to 1 MiB and inline chunks to 64 KiB. Reject unknown
+protobuf fields and unsupported result shapes. Keep first-frame, authorization
+and commit deadlines; the supervisor owns the Redis lease mutex from
+`authorized` through `committed`. The executor receives only database authority,
+with no Redis, renderer credentials or origin HTTP client.
+
+Port the existing short fence activation transaction and the separate
+require/write/revoke transaction. Re-read current posting, board, parser
+assignment, active state, interval and authoritative next due time. Reuse Go
+DOM/JSON-LD parsing and enrichment packages directly, including native taxonomy
+loading/backfill through the same connection budget. Preserve reserved-content
+policy, empty/garbage-title classification, gone/transient/failure budgets,
+COALESCE retention, scalar timestamps, exact-HTML description UPSERT and signed
+SHA-256-prefix hashes, pending R2 state and success scheduling. The admitted
+lane's no-fallback constraint must remain explicit.
+
+Prove the replacement against frozen Python conversations and real PostgreSQL
+transactions, including stale epoch/claim, lease loss, reserved tasks,
+unschedulable/deleted postings, parser changes, timeout/cancellation, rollback,
+crash after commit before acknowledgement, duplicate delivery, health under
+four active tasks and cold reversal. Deliver an explicit inactive candidate
+first; then require installed-image proof, whole-lane admission and natural
+cohort DB/freshness evidence before changing production executor ownership.
+
 Honor deployment holds, mutation locks and exact head/base merge authority.
 Keep owner-closed #7966 closed; its retirement criteria still apply. The merged
 [continuation plan](27-go-lightpanda-continuation-plan.md) remains the full goal's
