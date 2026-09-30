@@ -209,6 +209,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
           </section>
         </>
       )}
+      {planInfo.hasBillingAccount && !hasAccess && !needsPayment && !isPaused && !ended && manageButton}
       <FreeAccessNote />
       {canPurchase && <a className="inline-flex items-center gap-2 text-xs text-muted underline underline-offset-4 hover:text-foreground" href={returnPath ?? lp("/explore")}>
         <Check size={13} aria-hidden="true" /><Trans id="pro.offer.stayFree" comment="Low-pressure alternative to purchasing Pro">Keep searching for free</Trans>

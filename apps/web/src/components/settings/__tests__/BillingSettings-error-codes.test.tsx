@@ -153,4 +153,16 @@ describe("BillingSettings action errors", () => {
       );
     });
   });
+
+  it("retains billing management when an active provider period has expired locally", () => {
+    render(<BillingSettings planInfo={{ plan: "free", status: "active", hasBillingAccount: true, checkoutEnabled: true, trialEligible: false }} />);
+    expect(screen.getByRole("button", { name: "Manage subscription" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Subscribe to Pro" })).toBeNull();
+  });
+
+  it("gives manual grants Pro access without an unusable provider portal button", () => {
+    render(<BillingSettings planInfo={{ plan: "unlimited", hasBillingAccount: false }} />);
+    expect(screen.getByRole("link", { name: "Go to your watchlists" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Manage subscription" })).toBeNull();
+  });
 });

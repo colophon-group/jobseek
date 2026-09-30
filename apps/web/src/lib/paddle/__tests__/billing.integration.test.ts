@@ -103,6 +103,7 @@ describe.skipIf(!databaseUrl)("Paddle billing with disposable PostgreSQL", () =>
     const created = event(); created.occurredAt = "2026-09-27T10:00:00.123100Z";
     const canceled = event("subscription.canceled", "canceled"); canceled.occurredAt = "2026-09-27T10:00:00.123900Z";
     await applyPaddleEvent(created); await applyPaddleEvent(canceled); await applyPaddleEvent(created);
+    expect((await db.select().from(paddleSubscription))[0].status).toBe("canceled");
   });
 
   it("keeps scheduled-cancellation access until the period expires", async () => {
