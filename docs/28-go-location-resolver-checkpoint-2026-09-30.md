@@ -2,7 +2,7 @@
 
 Continuation of the [full migration plan](27-go-lightpanda-continuation-plan.md).
 The full-delivery goal remains active. This checkpoint records an ordinary-worker
-location matching candidate and the deployed salary slice, rather than completion
+deployed location matching and salary slices, rather than completion
 of the crawler service migration.
 
 ## Salary rollout
@@ -88,12 +88,13 @@ The unchanged 25 selectors and promoted salary crawler revision were retained.
 Supported reactivation completed at cdom epoch **139**, selecting 21 schedules,
 15 without queued tasks. At 12:27:37 UTC all ordinary and B0 workers were healthy
 and all seven metric collectors responded. This initial snapshot had no newly
-claimed B0 task yet; health and fixture evidence must not be presented as fresh
-natural cohort output. The location candidate is rebased on this repaired main
-and awaits fresh checks. See
+claimed B0 task yet. At 12:55:35 UTC, epoch 139 recorded one natural successful
+render, one committed executor operation and one accepted reschedule, with no
+render/executor failures. The database executor still ran Python. This metrics
+observation does not establish canonical database parity or native ownership. See
 [sanitized renderer production evidence](evidence/go-lightpanda-renderer-production-2026-09-30.json).
 
-## Location matching candidate v0.13.901
+## Location rollout v0.13.901
 
 `apps/crawler/go/job-enrichment` now has a reusable SQLite-backed Go location
 resolver and a bounded `location-resolver` JSONL companion. Public resolution,
@@ -133,8 +134,48 @@ The private snapshot, inputs and replay evidence live outside Git in
 `/Users/Viktor/.codex/migration-evidence/go-salary/2026-09-30/` (protected local
 evidence). A future operator can recreate the replay from the read-only
 production taxonomy; local paths alone are not deployment authority.
-This is compatibility evidence, not a whole-lane resource comparison or a
-completed location rollout.
+This is compatibility evidence; whole-lane production resource comparison remains
+required. The matching companion is now deployed as recorded below.
+
+## Location production promotion and restoration
+
+[PR #10189](https://github.com/colophon-group/jobseek/pull/10189) merged at
+13:09:38 UTC as `ec906f05cb5c481ea988c9d8dd5ffdac29ee1454`, v0.13.901.
+The checked head was `089dc82b27a11856ca7c6bc22ec0c7b5b2eb706b`, against
+`d04bb56b9938268e83b5b7452e04fec6a9edef2c`. Required CI 36715107576,
+installed runtime parity 36715107562, fixture whole-lane admission 36715107504
+and final Crawler Deploy Gate 36718992804 passed. Main advanced with web/MCP
+changes; fresh authority reviewed target `fb1cf6fb2f13e7e15837e242c4e9255e71011dfa`
+and verified that crawler, renderer, deployment and agent inputs were unchanged.
+
+The supported cold wrapper retired epoch 139 at **140**, restoring 21 schedules,
+dropping none and leaving no fences. The guarded helper cleared exactly 25
+selectors under the mutation lock at the then-promoted salary revision.
+[Full deployment 36719644632](https://github.com/colophon-group/jobseek/actions/runs/36719644632)
+succeeded including promotion at 13:23:31 UTC. Host readback confirmed:
+
+- Crawler: `ghcr.io/colophon-group/jobseek-crawler@sha256:943c0a36353da52e83908299aa61ccbf6a425f8f58048ee1720bc46f3ec1fc4d`.
+- Browser: `ghcr.io/colophon-group/jobseek-crawler-browser@sha256:b9560dd608efcf673430e2b6a8138e33dd6a31d1e544f4732392ba3458338924`.
+- Revision: `ec906f05cb5c481ea988c9d8dd5ffdac29ee1454`, v0.13.901.
+
+After exact-revision readback, all 25 selectors were staged under the lock and
+the supported wrapper restored cdom at **141**. It selected 21 schedules, 15
+without queued tasks; all workers/B0 services became healthy and all seven
+metrics collectors responded. Plan digest:
+`1d07252aade2ed6f94fd807a517010481f7a98573446d642ce806757aa1514d7`;
+compose digest:
+`5270b210b5e3364b2391fd712ff3ff4ead9b88e190de550c01bb0f4e202c47c4`.
+
+At 13:39:03 UTC natural ordinary traffic recorded **80,641** successful Go
+location resolutions and no capability errors. A read-only repeatable database
+snapshot at 13:43:16 UTC retained 140 cohort postings, 39 active, with no residual
+write fences. No cohort scrape was fresh since activation, and the B0 counters
+had no fresh render/commit yet. Canonical fresh location IDs/type arrays and
+miss/backfill output therefore remain pending natural output verification.
+Do not infer parity from health, a vacuous empty fresh subset or counters alone.
+No publisher refetch, forced due time or manual writer restart was used.
+
+See [portable location production evidence](evidence/go-location-production-2026-09-30.json).
 
 ## Remaining runtime ownership and next delivery
 
@@ -145,12 +186,10 @@ from ordinary workers as evidence of an entirely native B0 lane. Its replacement
 is the next major delivery boundary.
 
 1. Renderer build pin repair and supported cold rollout are complete as recorded
-   above. The original location admission failed because September 28 asset IDs
-   returned HTTP 404; fresh location admission must run against the repaired pin.
-2. Review and deploy the location candidate through Required CI and Crawler
-   Deploy Gate, after the renderer repair and salary promotion. Re-read live ownership first; perform
-   the same supported cold transition when B0 is active. Verify natural Go
-   location calls, canonical IDs/type arrays, misses/backfill and freshness.
+   above. Fresh location admission passed against the repaired immutable pin.
+2. Location promotion and supported cohort restoration are complete. Verify
+   natural canonical IDs/type arrays, misses/backfill and freshness as output
+   arrives. Re-read live ownership before any subsequent rollout.
 3. Replace the B0 DB executor with Go using the existing fenced transaction and
    authorization/commit protocol. Move taxonomy/index loading and backfill onto
    its existing bounded connection budget. Prove lease loss, crash, stale epoch,
