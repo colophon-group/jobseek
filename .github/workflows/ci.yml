@@ -470,7 +470,17 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+      redis:
+        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        ports:
+          - 6384:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     env:
+      JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL: redis://127.0.0.1:6384/15
       LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_b0_executor_test
       JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_b0_executor_test
     steps:
@@ -509,6 +519,10 @@ jobs:
           test -z "$(gofmt -l .)"
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -o "$RUNNER_TEMP/go-lightpanda-b0-executor-arm64" ./cmd/live
 
+      - name: Verify real Redis expiry, stale settlement and conservation
+        working-directory: apps/crawler/go/lightpanda-b0-executor
+        run: go test -race -tags integration -run '^TestPrivateRedisAuthorityExpiryAndConservation$' -count=1 .
+
       - name: Verify installed native executor UID, capacity and recovery
         working-directory: apps/crawler/go/lightpanda-b0-executor
         run: |
@@ -534,6 +548,7 @@ jobs:
           sudo env \
             JOBSEEK_B0_EXECUTOR_INTEGRATION_BINARY="$executor_binary" \
             JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL="$JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL" \
+            JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL="$JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL" \
             "$integration_binary" \
             -test.run '^TestInstalledNativeExecutorStartupBudgetHealthAndRecovery$' \
             -test.count=1

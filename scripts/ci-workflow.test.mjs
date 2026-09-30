@@ -1068,6 +1068,11 @@ test("Native B0 executor requires real PostgreSQL and Linux contracts", () => {
   const requiredCiJob = jobBlock("required-ci");
   assert.match(executorJob, /postgres:17-alpine@sha256:[0-9a-f]{64}/);
   assert.match(executorJob, /JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL:.*jobseek_b0_executor_test/);
+  assert.match(executorJob, /redis:8-alpine@sha256:[0-9a-f]{64}/);
+  assert.match(executorJob, /6384:6379/);
+  assert.match(executorJob, /JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL: redis:\/\/127\.0\.0\.1:6384\/15/);
+  assert.match(executorJob, /go test -race -tags integration -run '\^TestPrivateRedisAuthorityExpiryAndConservation\$'/);
+  assert.match(executorJob, /JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL="\$JOBSEEK_B0_EXECUTOR_TEST_REDIS_URL"/);
   assert.match(executorJob, /alembic -c src\/migrations\/alembic\.ini upgrade head/);
   assert.match(executorJob, /go test -race \.\/\.\.\./);
   assert.match(executorJob, /go test -c -tags integration/);

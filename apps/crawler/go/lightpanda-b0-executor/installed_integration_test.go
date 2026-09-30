@@ -99,7 +99,15 @@ func TestInstalledNativeClientHelper(t *testing.T) {
 	if json.Unmarshal(authorize["claim_token"], &claim) != nil || json.Unmarshal(authorize["lease_until_ms"], &lease) != nil {
 		t.Fatal("invalid authorization")
 	}
-	if err := WriteMessage(conn, map[string]any{"type": "authorized", "claim_token": claim, "lease_until_ms": lease + 1}); err != nil {
+	granted := lease + 1
+	if supplied := os.Getenv("JOBSEEK_NATIVE_CLIENT_AUTHORIZED_LEASE"); supplied != "" {
+		var err error
+		granted, err = strconv.ParseInt(supplied, 10, 64)
+		if err != nil || granted <= lease {
+			t.Fatal("invalid fixture Redis authorization")
+		}
+	}
+	if err := WriteMessage(conn, map[string]any{"type": "authorized", "claim_token": claim, "lease_until_ms": granted}); err != nil {
 		t.Fatal(err)
 	}
 	frame, err = ReadFrame(conn)
@@ -121,6 +129,10 @@ func TestInstalledNativeClientHelper(t *testing.T) {
 }
 
 func installedClient(t *testing.T, request Request, mode string, uid uint32) *exec.Cmd {
+	return installedClientAuthorized(t, request, mode, uid, 0)
+}
+
+func installedClientAuthorized(t *testing.T, request Request, mode string, uid uint32, granted int64) *exec.Cmd {
 	t.Helper()
 	result, err := (proto.MarshalOptions{Deterministic: true}).Marshal(request.Result)
 	if err != nil {
@@ -134,7 +146,11 @@ func installedClient(t *testing.T, request Request, mode string, uid uint32) *ex
 	if err != nil {
 		t.Fatal(err)
 	}
-	return installedCommand(self, []string{"PATH=/usr/bin:/bin", "JOBSEEK_NATIVE_CLIENT_MODE=" + mode, "JOBSEEK_NATIVE_CLIENT_REQUEST=" + base64.StdEncoding.EncodeToString(payload)}, uid, "-test.run=^TestInstalledNativeClientHelper$")
+	environment := []string{"PATH=/usr/bin:/bin", "JOBSEEK_NATIVE_CLIENT_MODE=" + mode, "JOBSEEK_NATIVE_CLIENT_REQUEST=" + base64.StdEncoding.EncodeToString(payload)}
+	if granted != 0 {
+		environment = append(environment, "JOBSEEK_NATIVE_CLIENT_AUTHORIZED_LEASE="+strconv.FormatInt(granted, 10))
+	}
+	return installedCommand(self, environment, uid, "-test.run=^TestInstalledNativeClientHelper$")
 }
 
 func installedResponse(t *testing.T, request Request, mode string, uid uint32) map[string]json.RawMessage {
@@ -154,7 +170,7 @@ func installedResponse(t *testing.T, request Request, mode string, uid uint32) m
 // A queued exclusive posting lock then wins immediately after COMMIT and blocks
 // ReadSchedule. This establishes a durable commit before any acknowledgement
 // can be generated, without adding fault hooks to the production executable.
-func installedCrashBeforeAcknowledgement(t *testing.T, owner *Executor, request Request, stop func(syscall.Signal) error) {
+func installedCrashBeforeAcknowledgement(t *testing.T, owner *Executor, request Request, stop func(syscall.Signal) error, granted int64) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -171,7 +187,7 @@ func installedCrashBeforeAcknowledgement(t *testing.T, owner *Executor, request 
 	if _, err := blocker.Exec(ctx, "LOCK TABLE descriptions IN ACCESS EXCLUSIVE MODE"); err != nil {
 		t.Fatal(err)
 	}
-	client := installedClient(t, request, "commit", installedUID)
+	client := installedClientAuthorized(t, request, "commit", installedUID, granted)
 	var output installedLog
 	client.Stdout, client.Stderr = &output, &output
 	if err := client.Start(); err != nil {
@@ -416,7 +432,11 @@ INSERT INTO `+quoted+`.location_name VALUES(1,'en','Switzerland',true),(2,'en','
 		_ = client.Wait()
 	}
 	time.Sleep(30 * time.Millisecond)
-	installedCrashBeforeAcknowledgement(t, owner, request, stop)
+	queue := newInstalledRedisQueue(t, request)
+	request = queue.claim(t, 30000)
+	granted := queue.authorize(t, request)
+	installedCrashBeforeAcknowledgement(t, owner, request, stop, granted)
+	queue.census(t, 0, 1, 0)
 	var titles []string
 	var ids, technologies []int64
 	var occupation, seniority, salary int64
@@ -427,6 +447,22 @@ INSERT INTO `+quoted+`.location_name VALUES(1,'en','Switzerland',true),(2,'en','
 	if len(titles) != 1 || titles[0] != "Senior Software Engineer" || len(ids) != 1 || ids[0] != 2 || len(technologies) != 1 || technologies[0] != 4 || occupation != 41 || seniority != 7 || salary != 100000 {
 		t.Fatal("installed native taxonomy/persistence differs")
 	}
+	// Model the description consumer finishing between the first durable commit
+	// and retry. Equal held HTML must retain its completed upload and timestamp.
+	if _, err := owner.Store.pool.Exec(ctx, "UPDATE descriptions SET r2_uploaded=true WHERE posting_id=$1", request.Task.Envelope.TaskID); err != nil {
+		t.Fatal(err)
+	}
+	canonicalSnapshot := func() []byte {
+		t.Helper()
+		var snapshot []byte
+		const query = `SELECT jsonb_build_object('posting',to_jsonb(jp)-ARRAY['updated_at','last_scraped_at','next_scrape_at'],
+'description',to_jsonb(d)) FROM job_posting jp JOIN descriptions d ON d.posting_id=jp.id WHERE jp.id=$1`
+		if err := owner.Store.pool.QueryRow(ctx, query, request.Task.Envelope.TaskID).Scan(&snapshot); err != nil {
+			t.Fatal(err)
+		}
+		return snapshot
+	}
+	beforeRetry := canonicalSnapshot()
 	_ = stop(syscall.SIGKILL)
 	// Container restart remounts the owner's private tmpfs. Model that exact
 	// ephemeral-state boundary here after the old process is confirmed dead.
@@ -448,6 +484,50 @@ INSERT INTO `+quoted+`.location_name VALUES(1,'en','Switzerland',true),(2,'en','
 	if err := owner.Store.pool.QueryRow(ctx, "SELECT next_scrape_at FROM job_posting WHERE id=$1", request.Task.Envelope.TaskID).Scan(&after); err != nil || !after.Equal(next) {
 		t.Fatal("restart/duplicate changed committed schedule")
 	}
+	// The real queue still owns an inflight lease when the acknowledgement is
+	// lost. Model the existing supervisor's EOF settlement through its exact
+	// Lua fail_at ABI, then retry the same held HTML without another origin.
+	queue.accept(t, "fail_at", request, 0, time.Now().Add(100*time.Millisecond).UnixMilli(), granted, "")
+	queue.census(t, 1, 0, 1)
+	time.Sleep(150 * time.Millisecond)
+	recovered := queue.claim(t, 30000)
+	if recovered.ClaimToken == request.ClaimToken {
+		t.Fatal("Redis recovery reused durable claim token")
+	}
+	rejected := queue.call(t, "complete", request, 0, 0, granted, "")
+	if rejected[0] == "accepted" {
+		t.Fatal("lost acknowledgement settled the recovered claim")
+	}
+	grant := queue.authorize(t, recovered)
+	output, err := installedClientAuthorized(t, recovered, "commit", installedUID, grant).CombinedOutput()
+	if err != nil {
+		t.Fatal("installed recovered held-result conversation failed")
+	}
+	var ack map[string]json.RawMessage
+	var acknowledgedReady, acknowledgedLease int64
+	if json.Unmarshal(output, &ack) != nil || string(ack["type"]) != `"committed"` || json.Unmarshal(ack["next_ready_at_ms"], &acknowledgedReady) != nil || json.Unmarshal(ack["lease_until_ms"], &acknowledgedLease) != nil || acknowledgedLease != grant {
+		t.Fatal("recovered native acknowledgement differs")
+	}
+	if err := owner.Store.pool.QueryRow(ctx, "SELECT next_scrape_at FROM job_posting WHERE id=$1", recovered.Task.Envelope.TaskID).Scan(&next); err != nil || acknowledgedReady != next.UnixMilli() {
+		t.Fatal("recovered acknowledgement differs from PostgreSQL schedule")
+	}
+	if !bytes.Equal(beforeRetry, canonicalSnapshot()) {
+		t.Fatal("held-result retry changed canonical content or completed description upload")
+	}
+	queue.accept(t, "reschedule_at", recovered, 0, acknowledgedReady, grant, "")
+	queue.census(t, 1, 0, 0)
+	score, err := queue.client.ZScore(ctx, queue.keys[2], recovered.Task.Envelope.TaskID).Result()
+	if err != nil || score != float64(acknowledgedReady) {
+		t.Fatal("recovered Redis schedule differs from native database")
+	}
+	if reply := installedResponse(t, recovered, "commit", installedUID); string(reply["type"]) != `"authority_lost"` {
+		t.Fatal("recovered duplicate retained database authority")
+	}
+	if !bytes.Equal(beforeRetry, canonicalSnapshot()) {
+		t.Fatal("recovered duplicate changed canonical content or description")
+	}
+	// Keep the stale-route assertions bound to the latest durable schedule.
+	request = recovered
 	// Current routing epoch is database-owned. A changed epoch must fail health
 	// and reject an old-route task before any new authoritative content effects.
 	if _, err := owner.Store.pool.Exec(ctx, "SELECT nextval('public.lightpanda_b0_routing_epoch_seq')"); err != nil {

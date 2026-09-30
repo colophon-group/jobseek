@@ -9,6 +9,8 @@ require (
 
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -43,6 +45,9 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-d
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail => ../jsonld-detail
 
-require github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy v0.0.0
+require (
+	github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy v0.0.0
+	github.com/redis/go-redis/v9 v9.14.0
+)
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy => ../publisher-policy

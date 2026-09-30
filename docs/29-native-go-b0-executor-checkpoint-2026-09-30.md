@@ -233,6 +233,37 @@ establish production-taxonomy semantic parity or production cost. Local real
 PostgreSQL census, adversarial numeric admission checks and native snapshot
 loading pass; exact Linux admission of these new checks remains pending.
 
+## Redis-linked recovery candidate
+
+At exact head `e79622cf01e0da3d3a736617b5c71c4667872f1e`, Required CI run
+36745802853, installed runtime contracts run 36745802507, renderer image run
+36745802510 and both architecture pilot jobs in 36745802469 passed. Native
+Linux PostgreSQL 17 job 109991854551 also passed the actual pre-acknowledgement
+crash case. That verified case has no Redis-linked recovery assertion.
+Startup-aware admission run 36745802814 remains in progress at this checkpoint.
+
+The next test-only change links the installed crash to real dedicated Redis 8
+through the existing reviewed Lua ABI, whose source SHA-256 is
+`60bc7169651d3e8cc7abfcff6dec799170fa298539904a78b7f865534a3a2803`.
+Only the isolated fixture driver receives Redis access; the native runtime and
+same-UID client receive none. It claims and advances the real lease before
+commit, checks inflight conservation after the kill, applies the supervisor's
+EOF failure settlement, acquires a new token, rejects stale completion and
+retries the same held result. It compares the native acknowledgement, PostgreSQL
+schedule and Redis next-ready score exactly. Canonical content, description
+hash/timestamp and a completed upload must survive that retry and duplicates.
+This driver models the supervisor's settlement; it does not execute the actual
+supervisor or prove a publisher-free production retry.
+
+A separate real Redis expiry case passed locally under the race detector with
+isolated PostgreSQL 18.6: expired heartbeat rejected, reaping conserves the
+record, a new claim gets a new token, stale completion is rejected, and exact
+rescheduling restores one ready record with no origin holder or inflight work.
+Both cases are wired into Required CI using a dedicated loopback database 15.
+The updated Linux integration binary cross-compiles; actual installed Linux
+Redis-linked crash/recovery remains pending fresh-head CI. These are operational
+fixtures, not supported cold reversal or native production ownership.
+
 ## Next delivery gates
 
 1. Complete installed-binary/image tests with real Linux UID isolation, private
