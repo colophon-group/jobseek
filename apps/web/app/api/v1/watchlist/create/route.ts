@@ -43,7 +43,6 @@ async function handleGet(request: NextRequest) {
   const sal = sp.get("sal") ?? undefined;
   const salcur = sp.get("salcur") ?? undefined;
   const exp = sp.get("exp") ?? undefined;
-  const description = sp.get("description") ?? undefined;
   const companies = sp.get("companies") ?? undefined;
 
   for (const [name, raw, supported] of [
@@ -148,7 +147,6 @@ async function handleGet(request: NextRequest) {
   // Build the prefilled watchlist creation URL
   const createParams = new URLSearchParams();
   createParams.set("title", title);
-  if (description) createParams.set("description", description);
   if (q) createParams.set("q", q);
   if (loc) createParams.set("loc", loc);
   if (occ) createParams.set("occ", occ);
@@ -168,7 +166,6 @@ async function handleGet(request: NextRequest) {
       ),
       preview: {
         title,
-        description: description ?? null,
         matchingCompanies: result.totalCompanies,
         matchingJobs: totalJobs,
       },

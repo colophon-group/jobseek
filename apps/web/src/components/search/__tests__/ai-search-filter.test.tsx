@@ -55,7 +55,7 @@ describe("AiSearchFilter", () => {
 
   it("shows a read-only preview immediately without exposing mutation controls", () => {
     mocks.session.isLoggedIn = false;
-    render(<AiSearchFilter isSubscribed={false} hasSearchFilters readOnly defaultOpen
+    render(<AiSearchFilter isSubscribed={false} hasSearchFilters candidateCount={12} readOnly defaultOpen
       presentation="drawer" initialQuery="Work directly with users" narrowedResultCount={4}
       drawerContent={<p>Recorded matching role</p>} />);
 
@@ -69,6 +69,89 @@ describe("AiSearchFilter", () => {
     expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
     expect(mocks.configureAiFilter).not.toHaveBeenCalled();
     expect(mocks.disableAiFilter).not.toHaveBeenCalled();
+  });
+
+  const ineligibleScopes = [
+    { name: "removed filters", changes: { hasSearchFilters: false }, title: "Start with the job filters", body: "Choose a role, location, level, or another filter." },
+    { name: "too many candidates", changes: { candidateCount: 10_001 }, title: "Narrow the search first", body: "10001 jobs match." },
+    { name: "no candidates", changes: { candidateCount: 0 }, title: "No jobs to review", body: "Adjust the current filters until at least one job matches." },
+    { name: "unknown count", changes: { candidateCount: undefined }, title: "Precise matching is temporarily unavailable", body: "We could not verify how many jobs are in this search." },
+    { name: "pending search", changes: { isSearchPending: true }, title: "Precise matching is temporarily unavailable", body: "We could not verify how many jobs are in this search." },
+    { name: "invalid count", changes: { candidateCount: NaN }, title: "Precise matching is temporarily unavailable", body: "We could not verify how many jobs are in this search." },
+  ];
+
+  it.each(ineligibleScopes)("blocks an open saved feed after $name and keeps its request for recovery", ({ changes, title, body }) => {
+    const onDrawerOpenChange = vi.fn();
+    const props = {
+      isSubscribed: true,
+      hasSearchFilters: true,
+      candidateCount: 12,
+      watchlistId: "11111111-1111-4111-8111-111111111111",
+      initialQuery: "Backend roles",
+      narrowedResultCount: 4,
+      presentation: "drawer" as const,
+      onDrawerOpenChange,
+      drawerContent: <p>Saved narrowed match</p>,
+    };
+    const { rerender } = render(<AiSearchFilter {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+
+    rerender(<AiSearchFilter {...props} {...changes} />);
+
+    const trigger = screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement;
+    expect(trigger.disabled).toBe(true);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(trigger.getAttribute("aria-describedby")).toBe(screen.getByRole("status").id);
+    expect(screen.getByText(title)).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain(body);
+    expect(screen.queryByText("Saved narrowed match")).toBeNull();
+    expect(screen.queryByText("4 matches")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(screen.queryByLabelText("What should make a job a match?")).toBeNull();
+    expect(onDrawerOpenChange).toHaveBeenLastCalledWith(false);
+    fireEvent.click(trigger);
+    expect(onDrawerOpenChange).toHaveBeenLastCalledWith(false);
+    expect(mocks.configureAiFilter).not.toHaveBeenCalled();
+    expect(mocks.disableAiFilter).not.toHaveBeenCalled();
+
+    rerender(<AiSearchFilter {...props} candidateCount={10_000} />);
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
+    expect(screen.getByText("Backend roles")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+  });
+
+  it.each(ineligibleScopes)("blocks saved and shared feeds on initial load with $name", ({ changes, title }) => {
+    window.history.replaceState({}, "", "/en/watchlists/example?narrow=1");
+    render(<AiSearchFilter
+      isSubscribed={false} readOnly defaultOpen hasSearchFilters candidateCount={12}
+      watchlistId="11111111-1111-4111-8111-111111111111"
+      initialQuery="Backend roles" presentation="drawer"
+      drawerContent={<p>Shared narrowed match</p>} {...changes}
+    />);
+
+    expect(screen.getByText(title)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText("Shared narrowed match")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+  });
+
+  it("explains invalidation while setup is open and suppresses its reminder", () => {
+    const props = { isSubscribed: true, hasSearchFilters: true, candidateCount: 12, presentation: "drawer" as const };
+    const { rerender } = render(<AiSearchFilter {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
+    expect(screen.getByLabelText("What should make a job a match?")).toBeTruthy();
+
+    rerender(<AiSearchFilter {...props} hasSearchFilters={false} />);
+    expect(screen.getByText("Start with the job filters")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByLabelText("What should make a job a match?")).toBeNull();
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 700 });
+    fireEvent.scroll(window);
+    expect(screen.queryByRole("dialog", { name: "Narrow results reminder" })).toBeNull();
   });
 
   it("keeps the collapsed trigger free of invisible subscription-badge spacing", () => {
@@ -130,7 +213,7 @@ describe("AiSearchFilter", () => {
     expect(screen.queryByRole("button", { name: "Create watchlist" })).toBeNull();
   });
 
-  it("opens narrowed results in the in-page result stack", () => {
+  it("opens saved narrowed results by default in the in-page result stack", () => {
     const onDrawerOpenChange = vi.fn();
     render(
       <div className="grid">
@@ -142,6 +225,7 @@ describe("AiSearchFilter", () => {
           initialQuery="Backend roles"
           narrowedResultCount={12}
           presentation="drawer"
+          defaultOpen
           onDrawerOpenChange={onDrawerOpenChange}
           drawerContent={(isOpen) => (
             <div>{isOpen ? "Visible narrowed result" : "Paused narrowed result"}</div>
@@ -152,12 +236,6 @@ describe("AiSearchFilter", () => {
     );
     const control = screen.getByRole("complementary", { name: "Precise matching" });
     expect(control.textContent).toContain("Narrowed results");
-    expect(control.textContent).toContain("12 matches");
-    expect(control.textContent).not.toContain("Backend roles");
-    const trigger = screen.getByRole("button", { name: "Narrowed" });
-    expect(trigger.className).not.toContain("fixed");
-    fireEvent.click(trigger);
-
     const editor = screen.getByRole("region", { name: "Narrowed results" });
     expect(onDrawerOpenChange).toHaveBeenLastCalledWith(true);
     expect(editor.className).not.toContain("fixed");
@@ -171,6 +249,9 @@ describe("AiSearchFilter", () => {
     expect(onDrawerOpenChange).toHaveBeenLastCalledWith(false);
     expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
     expect(screen.getByText("Paused narrowed result")).toBeTruthy();
+    expect(control.textContent).toContain("12 matches");
+    expect(control.textContent).not.toContain("Backend roles");
+    expect(screen.getByRole("button", { name: "Narrowed" }).className).not.toContain("fixed");
 
     fireEvent.click(screen.getByRole("button", { name: "Narrowed" }));
     fireEvent.click(screen.getByRole("button", { name: "Edit matching criteria" }));
@@ -185,6 +266,32 @@ describe("AiSearchFilter", () => {
     expect(screen.queryByLabelText("What should make a job a match?")).toBeNull();
     expect(screen.getByRole("button", { name: "All results" })).toBeTruthy();
   });
+
+  it.each([0, undefined, 10_001])(
+    "keeps default-open saved results unavailable with candidate count %s",
+    (candidateCount) => {
+      const onDrawerOpenChange = vi.fn();
+      render(
+        <AiSearchFilter
+          isSubscribed
+          hasSearchFilters
+          candidateCount={candidateCount}
+          isSearchPending={candidateCount === undefined}
+          initialQuery="Backend roles"
+          presentation="drawer"
+          defaultOpen
+          onDrawerOpenChange={onDrawerOpenChange}
+          drawerContent={<div>Saved narrowed results</div>}
+        />,
+      );
+
+      expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+      expect(screen.queryByText("Saved narrowed results")).toBeNull();
+      expect(screen.getByRole("status")).toBeTruthy();
+      expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
+      expect(onDrawerOpenChange).toHaveBeenLastCalledWith(false);
+    },
+  );
 
   it("shows shared narrowed results without owner mutation controls", () => {
     render(
@@ -230,6 +337,7 @@ describe("AiSearchFilter", () => {
         narrowedResultCount={12}
         presentation="drawer"
         onDrawerOpenChange={onDrawerOpenChange}
+        defaultOpen
         drawerContent={<div>Locked narrowed match</div>}
       />,
     );

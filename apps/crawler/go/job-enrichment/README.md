@@ -9,8 +9,8 @@ database ID resolution to the caller. `Matcher` is directly reusable by the futu
 Compose selects `JOB_ENRICHMENT_ENGINE=go`. Outside Compose the default is
 `python`; explicitly selecting `python` is the cold rollback path. There is
 no same-task Python fallback. Unknown engine names fail. The worker and
-remaining CPU stage (location), scheduling
-and persistence still run in Python. This is not the full #7966 completion.
+location index loading/backfill, scheduling
+and persistence still run in Python. Location matching runs in a separate Go resident. This is not the full #7966 completion.
 
 Each Python worker process creates one child on first use. A lock serializes
 newline JSON requests; forked processes discard inherited pipe descriptors
@@ -49,7 +49,8 @@ not whole-lane RAM, density or cost.
 Production instrumentation uses `stage="enrichment"`,
 `implementation="go-job-enrichment"`, and the bounded capabilities
 `occupation_seniority` / `technology` / `experience` / `normalize_html` /
-`language` / `all_languages` / `salary`.
+`language` / `all_languages` / `salary` / `location_resolve` /
+`location_ancestors` / `location_display`.
 These executions add no origin traffic.
 
 ## Description HTML normalization
@@ -129,7 +130,7 @@ public output and resident reuse. `testdata/replay_stored.py --scope language`
 compares private actual descriptions and measures this stage alone.
 
 
-## Salary extraction (candidate v0.13.899)
+## Salary extraction (v0.13.900)
 
 Go owns all shared salary APIs (`extract_salary`, `extract_salary_unified`,
 `parse_salary_text`) and the CPU five-field result, including annual EUR
@@ -162,5 +163,50 @@ suite work under pytest's per-test deadline.
 
 `testdata/replay_stored.py --scope salary` compares all salary ranges,
 unification, public parsed fields and EUR results on protected stored bytes.
-The candidate is **not deployed** at this checkpoint; see
-[`docs/24-go-lightpanda-resumption-plan.md`](../../../../docs/24-go-lightpanda-resumption-plan.md).
+The salary slice was merged in [#10177](https://github.com/colophon-group/jobseek/pull/10177).
+Use the [current migration checkpoint](../../../../docs/28-go-location-resolver-checkpoint-2026-09-30.md)
+for deployment and ownership status.
+
+
+## Location matching (candidate v0.13.901)
+
+The separate `location-resolver` resident owns all public free-form location
+resolution, ancestor traversal and display lookups when `JOB_ENRICHMENT_ENGINE`
+is Go. It uses a pure-Go SQLite reader over a private mode-0700 directory and
+mode-0600 index. The transition loader and batched non-core-name backfill still
+use the existing worker PostgreSQL pool, with its 500-key query chunks and
+unchanged queries. No additional PostgreSQL connection is opened by Go. The
+native worker migration must replace that loader/backfill before Python retirement.
+
+Preserved semantics include aliases/country/state collisions, accent and name
+variants, type hints, semicolon/multi-city ordering and deduplication, language
+and population disambiguation, compound recursion, ancestor-depth limits,
+miss samples and negative-cache backfill behavior. Equal population/context
+ties retain the previous CPython positive-integer set order. Regex classes share
+the bounded Python-compatible matcher used by salary; each operation has a
+five-second deadline beneath the IPC deadline. Inputs fail on the IPC
+bounds or deadline rather than truncating or falling back to Python.
+
+The index survives child-process restarts. Forks discard inherited pipes and
+open their own resident without terminating the parent or deleting its index.
+The monotone negative cache is sent on growth, replacement or restart rather
+than copied/sorted for every posting. Initial index creation and backfill still
+write through the parent loader; the Go helper opens the index read-only.
+
+`testdata/generate_location.py` freezes existing Python regressions without
+publisher traffic. Go and public bridge tests cover 322 resolution cases;
+installed-image CI exercises the public API with no network and a read-only
+image plus bounded scratch space. A private replay of the current 37,526-entry,
+7,925,760-byte production index matched 1,024 resolutions and 128 display/ancestor
+lookups exactly; the raw index and samples remain outside Git. Additional tests cover backfill visibility,
+negative-cache rehydration, cycles, display names, missing-index failure and
+fork ownership. This candidate has not yet been deployed or measured against
+an actual-workload whole-lane resource baseline.
+
+
+`testdata/replay_location.py SNAPSHOT --binary BINARY --output PRIVATE_JSON`
+replays a protected actual taxonomy snapshot without network access. The snapshot
+contains a serialized SQLite index and previously frozen Python output; require
+mode 0600 and never commit it. Replay timing covers this stage only. Dependency
+notices in `licenses/` are reproducible with `testdata/export_licenses.py` from
+the verified pinned module cache and ship in both crawler images.

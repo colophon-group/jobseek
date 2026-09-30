@@ -336,11 +336,6 @@ export function WatchlistCard({
         <span className="line-clamp-2 text-sm font-semibold leading-snug">
           {watchlist.title}
         </span>
-        {watchlist.description ? (
-          <span className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted">
-            {watchlist.description}
-          </span>
-        ) : null}
         <span className="mt-3 flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
           {activity ? (
             <>

@@ -47,9 +47,6 @@ function validCreateDraft(value: unknown): value is SearchWatchlistDraft {
   return typeof draft.title === "string" &&
     draft.title.trim().length > 0 &&
     draft.title.length <= 100 &&
-    (draft.description === undefined || (
-      typeof draft.description === "string" && draft.description.length <= 1_000
-    )) &&
     Array.isArray(draft.companyIds) &&
     draft.companyIds.length <= 25 &&
     draft.companyIds.every((id) => typeof id === "string" && UUID.test(id)) &&
@@ -71,6 +68,13 @@ export function isPendingWatchlistIntent(value: unknown): value is PendingWatchl
       intent.title.trim().length > 0 &&
       intent.title.length <= 100
     ));
+}
+
+// Project legacy browser drafts onto the current contract before reusing them.
+function currentIntent(intent: PendingWatchlistIntent): PendingWatchlistIntent {
+  if (intent.kind === "clone") return intent;
+  const { title, companyIds, filters, isPublic } = intent.draft;
+  return { kind: "create", draft: { title, companyIds, filters, isPublic } };
 }
 
 function validStoredAt(value: unknown, now: number): value is number {
@@ -104,7 +108,7 @@ function parse(raw: string | null): StoredEntry[] {
     const legacy = value as Partial<LegacyStoredIntent>;
     const legacyStoredAt = legacy.storedAt;
     if (legacy.version === 1 && validStoredAt(legacyStoredAt, now) && isPendingWatchlistIntent(legacy)) {
-      return [{ id: createEntryId(), intent: legacy, storedAt: legacyStoredAt }];
+      return [{ id: createEntryId(), intent: currentIntent(legacy), storedAt: legacyStoredAt }];
     }
 
     if (value.version !== 2 || !Array.isArray(value.entries)) return [];
@@ -118,7 +122,8 @@ function parse(raw: string | null): StoredEntry[] {
         validStoredAt(entry.storedAt, now) &&
         isPendingWatchlistIntent(entry.intent)
       ))
-      .slice(0, PENDING_WATCHLIST_LIMIT);
+      .slice(0, PENDING_WATCHLIST_LIMIT)
+      .map((entry) => ({ ...entry, intent: currentIntent(entry.intent) }));
   } catch {
     return [];
   }
@@ -153,7 +158,7 @@ export function stagePendingWatchlistEntry(
   if (!target || !isPendingWatchlistIntent(intent)) return null;
   const entries = cleanEntries(target);
   if (entries.length >= PENDING_WATCHLIST_LIMIT) return null;
-  const entry = { id: createEntryId(), intent, storedAt: Date.now() };
+  const entry = { id: createEntryId(), intent: currentIntent(intent), storedAt: Date.now() };
   if (!write(target, [
     ...entries,
     entry,
@@ -195,7 +200,7 @@ export function updatePendingWatchlist(
   const index = entries.findIndex((entry) => entry.id === id);
   if (index === -1) return false;
   const next = [...entries];
-  next[index] = { ...next[index], intent };
+  next[index] = { ...next[index], intent: currentIntent(intent) };
   return write(target, next);
 }
 

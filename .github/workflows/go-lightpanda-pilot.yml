@@ -83,6 +83,9 @@ jobs:
           go vet -tags densitybench ./...
           python3 -m unittest discover -s density -p 'test_*.py'
 
+      - name: Verify durable binary source contract
+        run: python3 -m unittest test_release_pin.py
+
       - name: Exercise checksum-pinned Lightpanda snapshot
         run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target integration-test --tag jobseek-lightpanda-integration:${{ matrix.arch }}-${{ github.run_id }} .
 

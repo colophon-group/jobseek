@@ -35,8 +35,8 @@
 - Settings layout adds a desktop rail and four mobile tabs (Preferences/General, Email, Account, Subscription/Plan).
 - App-language and job-language choices use existing flag assets. Currency and job languages open searchable dialogs; short option lists use compact menus.
 - Job languages default to all languages. Existing explicit selections remain active.
-- `/:lang/settings/email` resolves the dynamic session before reading notification preferences; Preferences no longer fetches watchlists or notification data.
-- Legacy `/:lang/settings#notifications` links redirect to `/:lang/settings/email#notifications`.
+- `/:lang/settings/email` resolves the dynamic session before reading notification preferences and product-news consent; Preferences no longer fetches watchlists or notification data.
+- Legacy `/:lang/settings#notifications` and `#product-news` links redirect to the corresponding Email section.
 
 ## Fluid compute (serverless function duration)
 

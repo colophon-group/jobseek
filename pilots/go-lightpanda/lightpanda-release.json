@@ -1,22 +1,35 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "repository": "https://github.com/lightpanda-io/browser",
   "tag": "nightly",
-  "verified_at": "2026-09-28",
+  "verified_at": "2026-09-30",
   "release_url": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
-  "note": "Nightly tag is mutable. Asset IDs and SHA-256 bind this snapshot; builds fail closed if upstream removes or replaces these bytes. Tag creation time/commit does not identify the binary build.",
+  "note": "Builds copy only the binary from the official multi-architecture OCI image by immutable index digest and verify its architecture-specific SHA-256. No nightly tag or expiring GitHub asset URL is resolved during builds. OCI deletion fails closed; retain promoted Jobseek image digests for reversal. Tag creation time/commit does not identify the binary build.",
+  "image": {
+    "repository": "lightpanda/browser",
+    "index_digest": "sha256:2d29d32d5ae76771096e2e9ecf46d30947ea58f9966cd2235cf4526657a029d2",
+    "binary_path": "/usr/bin/lightpanda"
+  },
   "assets": {
     "amd64": {
-      "id": 594332787,
+      "id": 599880505,
       "name": "lightpanda-x86_64-linux",
-      "updated_at": "2026-09-28T02:56:04Z",
-      "sha256": "e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f"
+      "updated_at": "2026-09-30T02:55:29Z",
+      "sha256": "16ee4443e34d09c522d8c416c6096bcd5a3dffd56706b7a8e2d7d0b1172ecc62",
+      "size": 181265952,
+      "image_manifest_digest": "sha256:78780bd46bab3a2454c02500571fd97cbadb41b6abf2d1d297fcce15ff94d617",
+      "image_created_at": "2026-09-30T02:56:26.754003668Z",
+      "image_binary_layer_digest": "sha256:eda1ce61118c95a9bc7d1fcf9f3bce3564b825944b671482477914b3b1498344"
     },
     "arm64": {
-      "id": 594332898,
+      "id": 599876163,
       "name": "lightpanda-aarch64-linux",
-      "updated_at": "2026-09-28T02:56:09Z",
-      "sha256": "e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f"
+      "updated_at": "2026-09-30T02:52:51Z",
+      "sha256": "112d39b5020a80e2de6b828485880eb7b8271e42c5598b825a760a8688fe0b21",
+      "size": 185715144,
+      "image_manifest_digest": "sha256:5d508702e1ec049ac04505b9ee11036eeaa66edc52ef866d5e9a11744d271c58",
+      "image_created_at": "2026-09-30T02:56:27.952230964Z",
+      "image_binary_layer_digest": "sha256:7610af2eaa1071852c777cbc5be040e4a437c51923aeceea060b9e3482c55389"
     }
   }
 }

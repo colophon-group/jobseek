@@ -101,7 +101,6 @@ const expectedToolSchemas = {
   create_watchlist_link: {
     properties: [
       "companies",
-      "description",
       "etype",
       "exp",
       "loc",

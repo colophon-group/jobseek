@@ -1,0 +1,160 @@
+{
+  "schema": "jobseek.go-lightpanda-renderer-production/v1",
+  "observed_at": "2026-09-30T12:27:37.564716+00:00",
+  "migration_complete": false,
+  "repair_pull_request": "https://github.com/colophon-group/jobseek/pull/10192",
+  "repair_merge": "b83bf7c9e9fb88f16e90fefb7a9f4234071ef8db",
+  "checked_head": "36a244ec85b104b70428d5cd2e6db1ccdbcae1fc",
+  "checked_base": "85eb214aff73008b657a581aedcea86cf1a89d4c",
+  "reviewed_target_base": "742f2ccc5b634f12717b1b10e0b2593070d6acc0",
+  "source_image": "lightpanda/browser@sha256:2d29d32d5ae76771096e2e9ecf46d30947ea58f9966cd2235cf4526657a029d2",
+  "binary_sha256": {
+    "amd64": "16ee4443e34d09c522d8c416c6096bcd5a3dffd56706b7a8e2d7d0b1172ecc62",
+    "arm64": "112d39b5020a80e2de6b828485880eb7b8271e42c5598b825a760a8688fe0b21"
+  },
+  "deployment": {
+    "schema_version": 1,
+    "source_commit": "d04bb56b9938268e83b5b7452e04fec6a9edef2c",
+    "image_digest": "sha256:65fff3f9b08cc4db7010e8fe7ed4cd2fcc8bac6e7320f47dae8ed3ded7aa2b34",
+    "run_id": 36714124285,
+    "run_attempt": 1,
+    "mode": "dormant-controlled-egress"
+  },
+  "deployment_conclusion": "success",
+  "prior_run": {
+    "id": 36713362647,
+    "conclusion": "failure",
+    "reason": "main advanced during image build; stopped before host mutation"
+  },
+  "crawler_release": {
+    "CRAWLER_IMAGE_TAG": "v0.13.900",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:cb16b8bc995b50ac04ca3937758323a2db28cf3df35edce19200427686d21bd6",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:63ece6fc93f18ef482f42fb10967880d2367197e27e812f68eadc9f4c53f8982",
+    "JOBSEEK_DEPLOY_REVISION": "3fe58bcaf639f3b666cb283627dd1e5bb5eda80f"
+  },
+  "cold_reversal": {
+    "retired_epoch": 138,
+    "ready_restored": 21,
+    "terminal_dropped": 0,
+    "write_fences_remaining": 0
+  },
+  "reactivation": {
+    "receipt": {
+      "schema": "jobseek.lightpanda-b0-active/v1",
+      "state": "active",
+      "cohort": "cdom",
+      "namespace": "production-b0",
+      "shard_id": "lightpanda-b0",
+      "routing_epoch": "139",
+      "plan_digest": "b6830f6d60c35a020bc546e462cb23ed34a12c83be4928bbcead33243a429f99",
+      "compose_digest": "c2ce85ebfa1fad2becd8328eef03da48e501e33cfb67d75761d2b9fd54163f41",
+      "crawler_image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:cb16b8bc995b50ac04ca3937758323a2db28cf3df35edce19200427686d21bd6",
+      "deploy_revision": "3fe58bcaf639f3b666cb283627dd1e5bb5eda80f",
+      "activated_at_epoch": "1790771226"
+    },
+    "selected_schedules": 21,
+    "unqueued": 15,
+    "staged_selectors_unchanged": 25,
+    "healthy": true,
+    "collector_errors": []
+  },
+  "admission": {
+    "run_id": 36707930551,
+    "mode": "synthetic",
+    "source_sha": "bcf8316fda4d549d7f97436041719a89e9ddd3ee",
+    "renderer_source_sha": "bcf8316fda4d549d7f97436041719a89e9ddd3ee",
+    "workload_sha256": "4be1503fef65b7ac74f1085f168cd7d2e9db19060fdd8271abb7b9ca42ef5390",
+    "config_sha256": "f2a2d9641a2a6d76aeed55a95281e57d1dd61340b1c233ce568da83cc1074a9f",
+    "verdict": {
+      "admitted": true,
+      "density_ratios": [
+        7.235989935423441,
+        7.7712520025084855,
+        7.458530037056334,
+        12.74795619385088,
+        13.799130111526791,
+        13.468248626556301,
+        13.54417183513475,
+        11.385442284510374
+      ],
+      "pair_metrics": [
+        {
+          "cpu_seconds_candidate": 3.792217,
+          "cpu_seconds_control": 13.999868,
+          "density_ratio": 7.235989935423441,
+          "elapsed_ratio": 2.414312437168906,
+          "p99_ratio": 0.4048958978916553,
+          "pair": "c1-p1",
+          "peak_rss_ratio": 0.33365337137214024
+        },
+        {
+          "cpu_seconds_candidate": 3.84902,
+          "cpu_seconds_control": 13.638326,
+          "density_ratio": 7.7712520025084855,
+          "elapsed_ratio": 2.4457940752023846,
+          "p99_ratio": 0.4129460803103469,
+          "pair": "c1-p2",
+          "peak_rss_ratio": 0.3147232999795793
+        },
+        {
+          "cpu_seconds_candidate": 3.846257,
+          "cpu_seconds_control": 13.129925,
+          "density_ratio": 7.458530037056334,
+          "elapsed_ratio": 2.3088379187447585,
+          "p99_ratio": 0.4255836312116854,
+          "pair": "c1-p3",
+          "peak_rss_ratio": 0.309556696463475
+        },
+        {
+          "cpu_seconds_candidate": 4.562229,
+          "cpu_seconds_control": 17.857185,
+          "density_ratio": 12.74795619385088,
+          "elapsed_ratio": 1.8404091624400094,
+          "p99_ratio": 0.5421235682458885,
+          "pair": "c4-p1",
+          "peak_rss_ratio": 0.14436895879260642
+        },
+        {
+          "cpu_seconds_candidate": 4.5198339999999995,
+          "cpu_seconds_control": 17.430735,
+          "density_ratio": 13.799130111526791,
+          "elapsed_ratio": 1.8893504737171671,
+          "p99_ratio": 0.5270874181353181,
+          "pair": "c4-p2",
+          "peak_rss_ratio": 0.13691808530299607
+        },
+        {
+          "cpu_seconds_candidate": 4.499465,
+          "cpu_seconds_control": 17.05384,
+          "density_ratio": 13.468248626556301,
+          "elapsed_ratio": 1.8609183694679539,
+          "p99_ratio": 0.5366523560799513,
+          "pair": "c4-p3",
+          "peak_rss_ratio": 0.1381707763991414
+        },
+        {
+          "cpu_seconds_candidate": 4.4052,
+          "cpu_seconds_control": 17.111178,
+          "density_ratio": 13.54417183513475,
+          "elapsed_ratio": 1.8584465054368542,
+          "p99_ratio": 0.5336705429393648,
+          "pair": "c4-p4",
+          "peak_rss_ratio": 0.13721374241693268
+        },
+        {
+          "cpu_seconds_candidate": 4.534737,
+          "cpu_seconds_control": 17.959735,
+          "density_ratio": 11.385442284510374,
+          "elapsed_ratio": 1.5570310490009982,
+          "p99_ratio": 0.6319692053085666,
+          "pair": "c4-p5",
+          "peak_rss_ratio": 0.13675630775620393
+        }
+      ],
+      "reasons": []
+    },
+    "arms": 16,
+    "limitation": "Synthetic fixture admission; not production whole-lane efficiency or native executor proof."
+  },
+  "ownership": "Python DB executor remains selected. Natural due work only; no forced due times or publisher refetches."
+}

@@ -54,7 +54,6 @@ type Company = { id: string; name: string; slug: string; icon: string | null };
 type TaxonomyItem = { id: number; slug: string; name: string };
 type WatchlistChanges = {
   title?: string;
-  description?: string | null;
   companyIds?: string[];
   filters?: WatchlistFilters;
 };
@@ -85,10 +84,6 @@ function useWatchlistPersistence(
       ...(changes.companyIds !== undefined ? { companyIds: changes.companyIds } : {}),
       ...(changes.filters !== undefined ? { filters: changes.filters } : {}),
     };
-    if (changes.description !== undefined) {
-      if (changes.description) draft.description = changes.description;
-      else delete draft.description;
-    }
     return updatePendingWatchlist(sessionWatchlistId, {
       kind: "create",
       draft,
@@ -447,7 +442,12 @@ export function WatchlistViewPage({
   const [aiMatchCount, setAiMatchCount] = useState<number>(
     initialAiAcceptedPage?.total ?? initialAiFilterState?.counts.accepted ?? 0,
   );
-  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const initiallyNarrowed = Boolean(
+    initialAiFilterState?.enabled && initialAiFilterState.query.trim(),
+  );
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(
+    initiallyNarrowed && (!isOwner || (canManage && plan === "unlimited")),
+  );
   const scopeRevisionRef = useRef(0);
   const [scopeRevision, setScopeRevision] = useState(0);
   const [persistedScopeRevision, setPersistedScopeRevision] = useState(0);
@@ -474,6 +474,7 @@ export function WatchlistViewPage({
   }, [isLoggedIn, isOwner, isSessionPending, isSessionWatchlist, refresh]);
 
   function beginScopeMutation(): number {
+    setAiCandidateCount(undefined);
     const revision = scopeRevisionRef.current + 1;
     scopeRevisionRef.current = revision;
     setScopeRevision(revision);
@@ -533,50 +534,6 @@ export function WatchlistViewPage({
       setEditingTitle(false);
     }
   }, [title, persistWatchlistChanges, updateErrorMessage]);
-
-  // ── Editable description ──
-  const [description, setDescription] = useState(detail.description ?? "");
-  const [editingDescription, setEditingDescription] = useState(false);
-  const [savingDescription, setSavingDescription] = useState(false);
-  const descriptionRef = useRef<HTMLTextAreaElement>(null);
-  const persistedDescriptionRef = useRef(detail.description ?? "");
-  const descriptionSaveInFlightRef = useRef(false);
-
-  useEffect(() => {
-    if (editingDescription) {
-      const el = descriptionRef.current;
-      if (el) {
-        el.focus();
-        el.selectionStart = el.value.length;
-      }
-    }
-  }, [editingDescription]);
-
-  const saveDescription = useCallback(async () => {
-    if (descriptionSaveInFlightRef.current) return;
-    const trimmed = description.trim();
-    if (trimmed === persistedDescriptionRef.current) {
-      setEditingDescription(false);
-      return;
-    }
-    descriptionSaveInFlightRef.current = true;
-    setSavingDescription(true);
-    setMutationError("");
-    try {
-      if (!await persistWatchlistChanges({ description: trimmed || null })) {
-        throw new Error("watchlist_write_failed");
-      }
-      persistedDescriptionRef.current = trimmed;
-      setDescription(trimmed);
-    } catch {
-      setDescription(persistedDescriptionRef.current);
-      setMutationError(updateErrorMessage());
-    } finally {
-      descriptionSaveInFlightRef.current = false;
-      setSavingDescription(false);
-      setEditingDescription(false);
-    }
-  }, [description, persistWatchlistChanges, updateErrorMessage]);
 
   // ── Editable companies ──
   const [companies, setCompanies] = useState<Company[]>(detail.companies);
@@ -953,6 +910,7 @@ export function WatchlistViewPage({
         : undefined}
       presentation="drawer"
       readOnly={!canManage}
+      defaultOpen={initiallyNarrowed}
       onDrawerOpenChange={setAiDrawerOpen}
       drawerContent={(isOpen) => aiFilterState?.enabled ? (
         <WatchlistJobList
@@ -1065,56 +1023,6 @@ export function WatchlistViewPage({
             />
           ) : null}
         </div>
-
-        {/* Description */}
-        {canManage ? (
-          editingDescription ? (
-            <div className="flex items-start gap-2">
-              <textarea
-                ref={descriptionRef}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void saveDescription();
-                  }
-                  if (e.key === "Escape") {
-                    setDescription(persistedDescriptionRef.current);
-                    setEditingDescription(false);
-                  }
-                }}
-                onBlur={() => void saveDescription()}
-                maxLength={1000}
-                rows={5}
-                className="w-full resize-y rounded-md border border-border-soft bg-transparent px-2 py-1 text-sm text-muted outline-none focus:border-primary"
-                placeholder={t({ id: "watchlists.view.descriptionPlaceholder", comment: "Placeholder for watchlist description textarea", message: "Describe this watchlist..." })}
-              />
-              {savingDescription && <Loader2 size={14} className="mt-1.5 animate-spin text-muted" />}
-            </div>
-          ) : description ? (
-            <button
-              type="button"
-              className="group/desc -mx-2 -my-1 flex w-full items-start gap-2 rounded px-2 py-1 text-left text-sm text-muted transition-colors hover:bg-border-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-              onClick={() => setEditingDescription(true)}
-              title={t({ id: "watchlists.view.editDescription", comment: "Tooltip for clicking to edit watchlist description", message: "Click to edit description" })}
-            >
-              <span className="line-clamp-6 whitespace-pre-wrap">{description}</span>
-              <Pencil size={12} className="mt-0.5 shrink-0 text-muted opacity-0 transition-opacity group-hover/desc:opacity-100 group-focus-visible/desc:opacity-100" aria-hidden="true" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setEditingDescription(true)}
-              className="flex items-center gap-1.5 cursor-pointer text-sm text-muted/60 transition-colors hover:text-muted"
-            >
-              <Pencil size={12} />
-              {t({ id: "watchlists.view.addDescription", comment: "Link to add a description to the watchlist", message: "Add description" })}
-            </button>
-          )
-        ) : description ? (
-          <p className="whitespace-pre-wrap text-sm text-muted">{description}</p>
-        ) : null}
 
         {/* Companies */}
         <div className="space-y-2 !mt-6">

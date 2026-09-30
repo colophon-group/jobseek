@@ -799,6 +799,15 @@ jobs:
             --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
             -I /fixtures/verify_installed.py /usr/local/bin/job-enrichment /app/data
 
+      - name: Verify installed Go location parity offline
+        run: |
+          timeout --foreground --signal=TERM --kill-after=5s 90s \
+            docker run --rm --network none --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/job-enrichment/testdata,target=/fixtures,readonly" \
+            --entrypoint /app/.venv/bin/python jobseek-crawler-slim-ci:pr \
+            -I /fixtures/verify_location_installed.py
+
       - name: Verify installed SuccessFactors parser parity offline
         run: |
           timeout --foreground --signal=TERM --kill-after=5s 90s \
@@ -1283,6 +1292,14 @@ jobs:
         run: |
           createdb -h 127.0.0.1 -U postgres jobseek_stripe_fixture
           pnpm --filter @jobseek/web exec vitest run src/lib/stripe
+
+      - name: Verify product-news consent and signup against PostgreSQL
+        env:
+          PGPASSWORD: postgres
+          PRODUCT_NEWS_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_product_news_fixture
+        run: |
+          createdb -h 127.0.0.1 -U postgres jobseek_product_news_fixture
+          pnpm --filter @jobseek/web exec vitest run src/lib/services/__tests__/product-news-pg.test.ts
 
       - run: pnpm --filter @jobseek/trace-viewer test
 

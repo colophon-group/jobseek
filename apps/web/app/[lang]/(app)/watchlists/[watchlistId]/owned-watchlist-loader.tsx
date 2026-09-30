@@ -37,7 +37,6 @@ function viewDetail(
   return {
     id: detail.id,
     title: detail.title,
-    description: detail.description,
     filters: detail.filters,
     companies: detail.companies,
     ...(isOwner ? { alertsEnabled: detail.alertsEnabled === true } : {}),

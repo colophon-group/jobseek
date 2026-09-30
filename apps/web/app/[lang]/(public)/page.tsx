@@ -7,7 +7,7 @@ import { Pricing } from "@/components/Pricing";
 import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { siteConfig, publicDomainAssets } from "@/content/config";
 import { buildAlternates, JsonLd } from "@/lib/seo";
-import { stripeCheckoutEnabled } from "@/lib/stripe/config";
+import { stripeSignupOpen } from "@/lib/stripe/config";
 import { MarketingLinks } from "@/components/marketing/MarketingPage";
 
 type Props = {
@@ -74,7 +74,7 @@ export default async function HomePage({ params }: Props) {
         <Hero />
         <div className="mx-auto max-w-[1200px] px-4 pb-4"><MarketingLinks locale={locale} /></div>
         <Features />
-        <Pricing checkoutEnabled={stripeCheckoutEnabled()} />
+        <Pricing checkoutEnabled={stripeSignupOpen()} />
         {afterPricingArt && (
           <section className="py-20">
             <div className="mx-auto max-w-[1200px] px-4">

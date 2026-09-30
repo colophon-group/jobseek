@@ -66,7 +66,7 @@ vi.mock("@/components/SkipToContentLink", () => ({
 }));
 vi.mock("@/components/Features", () => ({ Features: () => null }));
 vi.mock("@/components/Pricing", () => ({ Pricing: () => null }));
-vi.mock("@/lib/stripe/config", () => ({ stripeCheckoutEnabled: () => false }));
+vi.mock("@/lib/stripe/config", () => ({ stripeSignupOpen: () => false }));
 vi.mock("@/components/PublicDomainArt", () => ({ PublicDomainArt: () => null }));
 vi.mock("@/components/ThemeToggleButton", () => ({ ThemeToggleButton: () => null }));
 vi.mock("@/components/LocaleSwitcher", () => ({ LocaleSwitcher: () => null }));

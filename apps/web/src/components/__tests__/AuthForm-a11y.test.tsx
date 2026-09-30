@@ -57,6 +57,23 @@ beforeEach(() => {
 });
 
 describe("AuthForm accessibility", () => {
+  it.each([false, true])("keeps marketing optional and sends the explicit checkbox value %s on signup", async (optIn) => {
+    const user = userEvent.setup();
+    mocks.signUpEmail.mockResolvedValue({ error: null });
+    render(<AuthForm mode="sign-up" />);
+    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+    expect(checkbox.required).toBe(false);
+    if (optIn) await user.click(checkbox);
+    await user.type(screen.getByLabelText("Name"), "Alice");
+    await user.type(screen.getByLabelText("Email"), "alice@example.com");
+    await user.type(screen.getByLabelText("Password", { selector: "input" }), "password");
+    await user.click(screen.getByRole("button", { name: "Sign up" }));
+    await waitFor(() => expect(mocks.signUpEmail).toHaveBeenCalledWith(expect.objectContaining({
+      productNews: optIn, productNewsLocale: "en", productNewsConsentVersion: "product-news-v1",
+    })));
+    expect(mocks.push).toHaveBeenCalledWith("/en/check-email");
+  });
   it("focuses the error banner and marks missing fields invalid", async () => {
     const user = userEvent.setup();
     render(<AuthForm mode="sign-in" />);

@@ -45,7 +45,6 @@ const detail: WatchlistDetail = {
   id: "watchlist-1",
   slug: "backend-jobs",
   title: "Backend jobs",
-  description: null,
   isPublic: true,
   alertsEnabled: false,
   filters: { locationSlugs: ["zurich"] },

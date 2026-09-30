@@ -61,6 +61,10 @@ Status tags:
   `[proposal]` - latest salary candidate and deployed checkpoint, paced native
   worker migration, enabled-fleet coverage, and production Python retirement.
 
+- [28 - Go Location Resolver Checkpoint (2026-09-30)](28-go-location-resolver-checkpoint-2026-09-30.md)
+  `[runbook]` - salary rollout, native location candidate, actual taxonomy replay,
+  and the remaining native executor/worker delivery boundaries.
+
 ## Search, SEO, And Web Read Paths
 
 - [11 - Typesense](11-typesense.md) `[reference]` - Typesense deployment,

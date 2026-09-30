@@ -59,9 +59,6 @@ function sessionEntryOverview(
     title: intent.kind === "create"
       ? intent.draft.title
       : intent.title ?? cloneFallbackTitle,
-    description: intent.kind === "create"
-      ? intent.draft.description ?? null
-      : null,
     isShared: false,
     alertsEnabled: false,
     companyCount: intent.kind === "create" ? intent.draft.companyIds.length : 0,
@@ -170,7 +167,6 @@ export function WatchlistsPage({
   async function handleCreate(
     prefill?: {
       title?: string;
-      description?: string;
       filters?: WatchlistFilters;
       companySlugs?: string[];
     },
@@ -183,13 +179,11 @@ export function WatchlistsPage({
       const result = prefill?.companySlugs !== undefined
         ? await createWatchlistFromHandoff({
             title: prefill.title || defaultWatchlistTitle,
-            description: prefill.description,
             companySlugs: prefill.companySlugs,
             filters: prefill.filters,
           })
         : await createWatchlist({
             title: prefill?.title || defaultWatchlistTitle,
-            description: prefill?.description,
             companyIds: [],
             filters: prefill?.filters,
             isPublic: false,
@@ -230,7 +224,6 @@ export function WatchlistsPage({
   const runWatchlistHandoff = useEffectEvent(
     (prefill: {
       title: string;
-      description?: string;
       filters?: WatchlistFilters;
       companySlugs: string[];
     }) => handleCreate(prefill, "replace"),
@@ -381,7 +374,6 @@ export function WatchlistsPage({
 
     void runWatchlistHandoff({
       title,
-      description: searchParams.get("description") ?? undefined,
       filters: Object.keys(filters).length > 0 ? filters : undefined,
       companySlugs,
     }).catch(() => {

@@ -15,7 +15,6 @@ export function register(server: McpServer, client: JobseekClient) {
     "Generate a prefilled link for the user to create a watchlist on jseek.co. The link opens the watchlist creation page with filters pre-filled. The user must log in to save. Returns a preview with matching job and company counts so you can verify the filters are useful before sharing the link.",
     {
       title: z.string().describe("Watchlist title"),
-      description: z.string().optional().describe("Watchlist description"),
       q: z.string().optional().describe("Keywords"),
       loc: z
         .string()
@@ -58,7 +57,6 @@ export function register(server: McpServer, client: JobseekClient) {
     async (params) => {
       const data = await client.get("/api/v1/watchlist/create", {
         title: params.title,
-        description: params.description,
         q: params.q,
         loc: params.loc,
         occ: params.occ,

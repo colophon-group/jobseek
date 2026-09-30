@@ -8,6 +8,7 @@ import {
   advancesNotificationWindow,
   createNotificationDeliveryIdempotencyKey,
   getNotificationWindowFloor,
+  isNotificationSendCooldownActive,
 } from "./policy";
 import {
   DEFAULT_NOTIFICATION_EXECUTION_MODE,
@@ -49,6 +50,7 @@ export type EligibleNotificationUserCandidate = Readonly<{
   cadence: NotificationCadence;
   notificationsStateChangedAt: Date;
   lastProcessedWindowEnd: Date | null;
+  lastSentAt: Date | null;
   openDelivery: OpenNotificationDelivery | null;
 }>;
 
@@ -294,13 +296,24 @@ export async function runNotificationSchedulerCore(
   const dueCandidates = page.candidates.filter((candidate) =>
     candidateIsDue(candidate, input.sweep),
   );
-  const workByUser = dueCandidates.map((user) =>
+  const cooldownCandidates = dueCandidates.filter((candidate) =>
+    candidate.openDelivery?.status !== "unknown" &&
+    isNotificationSendCooldownActive({
+      cadence: candidate.cadence,
+      lastSentAt: candidate.lastSentAt,
+      now: startedAt,
+    }),
+  );
+  const blocked = new Set(cooldownCandidates);
+  // Leave both the delivery ledger and matching floor untouched. When a slot
+  // ages out of the sweep, the next eligible slot includes the retained jobs.
+  const workByUser = dueCandidates.filter(user => !blocked.has(user)).map((user) =>
     workItemsForUser(user, input.sweep),
   );
   telemetry = {
     ...telemetry,
     eligibleUsers: page.candidates.length,
-    due: workByUser.reduce((total, work) => total + work.length, 0),
+    due: dueCandidates.reduce((total, user) => total + workItemsForUser(user, input.sweep).length, 0),
   };
 
   async function visitWatchlistSegments(
@@ -509,7 +522,7 @@ export async function runNotificationSchedulerCore(
     result.kind === "failed" || result.kind === "hydration_failed",
   ).length;
   let stateConflicts = outcomes.filter((result) => result.kind === "state_conflict").length;
-  let deferred = 0;
+  let deferred = cooldownCandidates.length;
   let matched = 0;
   let matchedJobs = 0;
 

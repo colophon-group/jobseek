@@ -60,6 +60,15 @@ watchlists, Narrowed and application tracking, deliver account emails and
 requested alerts, manage subscriptions, answer support requests, prevent
 abuse, maintain reliable service, and meet legal obligations.
 
+Product news is optional and separate from requested job alerts. If you opt
+in, we send occasional Job Seek product updates and offers. We record your
+choice, email address, language, the wording and version you accepted,
+signup/settings source, and date. You can withdraw consent in Settings or
+through an email unsubscribe link without changing job alerts or account
+emails. Existing accounts are not automatically subscribed. Consent history
+is retained while your account exists and deleted with your active account
+records; recovery backups have the retention periods described below.
+
 Swiss data protection law applies to our processing. Where the EU or UK
 GDPR applies, we rely on performance of the service contract for requested
 features and billing; legitimate interests for security, diagnostics and
@@ -123,7 +132,8 @@ relationships with you; not every recipient is our processor.
   its global network processes connection/request metadata.
   https://www.cloudflare.com/privacypolicy/
 
-- Resend delivers verification, password-reset and notification emails.
+- Resend delivers verification, password-reset, notification and opted-in
+  product-news emails.
   It receives recipient addresses, message content and delivery metadata.
   Its published documentation states that customer data is stored in the
   United States. https://resend.com/legal/privacy-policy

@@ -231,6 +231,7 @@ export async function updatePreferences(
       jobLanguages: data.jobLanguages ? sanitizeJobLanguages(data.jobLanguages) : [],
       displayCurrency: data.displayCurrency ?? "EUR",
       cookieConsent: data.cookieConsent ?? false,
+      dismissedBanners: data.dismissBanner ? [data.dismissBanner] : [],
       themeUpdatedAt: data.themeUpdatedAt ? new Date(data.themeUpdatedAt) : new Date(),
       localeUpdatedAt: data.localeUpdatedAt ? new Date(data.localeUpdatedAt) : new Date(),
     })
@@ -238,6 +239,9 @@ export async function updatePreferences(
       target: userPreferences.userId,
       set: {
         updatedAt: new Date(),
+        ...(data.dismissBanner ? {
+          dismissedBanners: sql`CASE WHEN ${data.dismissBanner} = ANY(${userPreferences.dismissedBanners}) THEN ${userPreferences.dismissedBanners} ELSE array_append(${userPreferences.dismissedBanners}, ${data.dismissBanner}) END`,
+        } : {}),
       },
     })
     .returning();

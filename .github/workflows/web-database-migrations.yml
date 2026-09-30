@@ -70,7 +70,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Validate immutable release evidence before requesting approval
+      - name: Validate immutable release evidence before owner dispatch validation
         id: release-evidence
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -127,7 +127,7 @@ jobs:
     environment: production-migrations
     timeout-minutes: 5
     steps:
-      - name: Record protected owner authorization
+      - name: Validate owner dispatch
         env:
           AUTHORIZING_ACTOR: ${{ github.actor }}
           CONFIRMATION: ${{ inputs.confirmation }}
@@ -135,7 +135,7 @@ jobs:
           set -euo pipefail
           test "$AUTHORIZING_ACTOR" = viktor-shcherb
           test "$CONFIRMATION" = DROP-ONLY-JOB-POSTING-0086
-          echo "Protected production-migrations approval recorded; live evidence will be revalidated before any write." >> "$GITHUB_STEP_SUMMARY"
+          echo "Owner dispatch validated without manual environment approval; live evidence will be revalidated before any write." >> "$GITHUB_STEP_SUMMARY"
 
   apply:
     needs: [validate, authorize]

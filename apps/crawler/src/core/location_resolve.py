@@ -12,6 +12,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import re
 import sqlite3
 import unicodedata
@@ -21,6 +22,7 @@ import asyncpg
 import structlog
 
 from src.core.enum_normalize import _JOB_LOCATION_TYPE_MAP
+from src.runtime.location_go import GoLocationIndex
 
 log = structlog.get_logger()
 
@@ -608,10 +610,21 @@ class LocationResolver:
         self._negative: set[str] = set()
         self._posting_language: str | None = None
         self._location_misses: list[tuple[str, str]] = []
+        self._go: GoLocationIndex | None = None
 
     def _init_db(self, path: str = ":memory:") -> None:
         """Create SQLite schema. Use ':memory:' for tests."""
+        if self._db is not None:
+            self._db.close()
+        if self._go is not None:
+            self._go.close()
+            self._go = None
+        if GoLocationIndex.enabled():
+            self._go = GoLocationIndex()
+            path = str(self._go.index_path)
         self._db = sqlite3.connect(path, check_same_thread=False)
+        if self._go is not None:
+            os.chmod(path, 0o600)
         self._db.executescript(_SCHEMA)
 
     def drain_location_misses(self) -> list[tuple[str, str]]:
@@ -651,6 +664,8 @@ class LocationResolver:
         Returns a list containing the original ID and every ancestor found,
         in no particular order.  Safe against cycles (bounded to 20 hops).
         """
+        if self._go is not None:
+            return self._go.ancestors(location_id)
         ancestors: set[int] = {location_id}
         current: int | None = location_id
         hops = 0
@@ -819,6 +834,8 @@ class LocationResolver:
     def display_name(self, location_id: int) -> str | None:
         """Return the English display name for a location ID, or None."""
         assert self._db is not None
+        if self._go is not None:
+            return self._go.display_name(location_id)
         row = self._db.execute(
             "SELECT name FROM display_name WHERE location_id = ?", (location_id,)
         ).fetchone()
@@ -843,6 +860,18 @@ class LocationResolver:
         """
         if not raw_locations:
             return []
+
+        if self._go is not None:
+            result, lookup_misses, location_misses = self._go.resolve(
+                raw_locations,
+                job_location_type,
+                posting_language,
+                tracking=self._tracking,
+                negative=self._negative,
+            )
+            self._misses.update(lookup_misses)
+            self._location_misses.extend(location_misses)
+            return [ResolvedLocation(location_id=lid, location_type=kind) for lid, kind in result]
 
         self._posting_language = posting_language
         seen: set[tuple[int | None, str]] = set()

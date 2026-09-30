@@ -104,6 +104,17 @@ export function getNotificationMinimumIntervalMs(
   return NOTIFICATION_CADENCES[cadence].minimumIntervalDays * DAY_MS;
 }
 
+/** Actual accepted sends, not scheduled slots or empty windows, set the cooldown. */
+export function isNotificationSendCooldownActive(input: {
+  cadence: NotificationCadence;
+  lastSentAt: Date | null;
+  now: Date;
+}): boolean {
+  return input.lastSentAt !== null &&
+    input.now.getTime() < input.lastSentAt.getTime() +
+      getNotificationMinimumIntervalMs(input.cadence);
+}
+
 /** Exact server-side eligibility precedence from #8317. */
 export function isWatchlistNotificationEligible(input: {
   alertsEnabled: boolean;

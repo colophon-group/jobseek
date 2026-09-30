@@ -1,5 +1,5 @@
 import { Trans } from "@lingui/react/macro";
-import { Construction, Building2, Briefcase } from "lucide-react";
+import { TrendingUp, Building2, Briefcase } from "lucide-react";
 import { siteConfig } from "@/content/config";
 import { CompanyRequestForm } from "./company-request-form";
 
@@ -16,15 +16,15 @@ export function ProgressLoader({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <Construction className="mb-6 h-16 w-16 text-muted" />
+      <TrendingUp className="mb-6 h-16 w-16 text-muted" />
       <h1 className="text-3xl font-bold">
-        <Trans id="app.home.title" comment="Main app page heading">
-          Under Active Development
+        <Trans id="app.home.title" comment="Platform progress page heading">
+          Job Seek keeps growing
         </Trans>
       </h1>
       <p className="mt-4 max-w-md text-muted">
-        <Trans id="app.home.subtitle" comment="Main app page subtitle explaining the app is being built">
-          Job Seek is being actively built. Stay tuned for updates!
+        <Trans id="app.home.subtitle" comment="Platform progress page subtitle inviting company requests">
+          Follow the companies you care about. Request a missing company below.
         </Trans>
       </p>
 

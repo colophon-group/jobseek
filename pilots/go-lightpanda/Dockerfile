@@ -1,3 +1,4 @@
+ARG LIGHTPANDA_IMAGE=lightpanda/browser@sha256:2d29d32d5ae76771096e2e9ecf46d30947ea58f9966cd2235cf4526657a029d2
 ARG GO_IMAGE=golang:1.24.7-alpine3.22@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
 FROM ${GO_IMAGE} AS go-source
 
@@ -31,27 +32,27 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go build \
     -tags densitybench -trimpath -ldflags="-s -w" \
     -o /out/go-lightpanda-density .
 
+FROM ${LIGHTPANDA_IMAGE} AS lightpanda-source
+
 FROM debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
 
-LABEL org.jobseek.lightpanda.release="nightly-2026-09-28"
+LABEL org.jobseek.lightpanda.release="nightly-2026-09-30"
 COPY lightpanda-release.json /usr/local/share/jobseek/lightpanda-release.json
+# Copy only the binary. The upstream image's entrypoint, user, libraries and
+# network configuration never become the Jobseek runtime.
+COPY --from=lightpanda-source /usr/bin/lightpanda /usr/local/bin/lightpanda
 
 ARG TARGETARCH
 RUN case "${TARGETARCH}" in \
-        amd64) lightpanda_asset=594332787; lightpanda_sha=e7dfca7686ad4ca5831b5cd741684b2dde6579c9f6046a848206cf5ad39efd3f ;; \
-        arm64) lightpanda_asset=594332898; lightpanda_sha=e5e3b57fb1c99325c1b66e5f1e25d02199f21d116126a74296578bcc0ae9cd8f ;; \
+        amd64) lightpanda_sha=16ee4443e34d09c522d8c416c6096bcd5a3dffd56706b7a8e2d7d0b1172ecc62 ;; \
+        arm64) lightpanda_sha=112d39b5020a80e2de6b828485880eb7b8271e42c5598b825a760a8688fe0b21 ;; \
         *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && apt-get update \
-    && apt-get install --yes --no-install-recommends ca-certificates curl \
-    && curl --fail --location --retry 3 --output /usr/local/bin/lightpanda \
-        --header "Accept: application/octet-stream" \
-        --header "X-GitHub-Api-Version: 2022-11-28" \
-        "https://api.github.com/repos/lightpanda-io/browser/releases/assets/${lightpanda_asset}" \
     && echo "${lightpanda_sha}  /usr/local/bin/lightpanda" \
         | sha256sum --check --strict \
     && chmod 0755 /usr/local/bin/lightpanda \
-    && apt-get purge --yes --auto-remove curl \
+    && apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 FROM lightpanda AS pilot-base

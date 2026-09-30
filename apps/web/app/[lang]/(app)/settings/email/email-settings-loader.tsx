@@ -1,3 +1,5 @@
+import { ProductNewsSettings } from "@/components/settings/ProductNewsSettings";
+import { getProductNewsSettings } from "@/lib/actions/product-news";
 import { Trans } from "@lingui/react/macro";
 import { getSession } from "@/lib/sessionCache";
 import { getNotificationPreferences } from "@/lib/actions/notifications";
@@ -7,9 +9,12 @@ import { LoginPrompt } from "@/components/settings/account/LoginPrompt";
 export async function EmailSettingsLoader({ locale }: { locale: string }) {
   // Resolve the dynamic session before fetching account-scoped notification data.
   const session = await getSession();
-  const notifications = session
-    ? await getNotificationPreferences(locale)
-    : null;
+  const [notifications, productNews] = session
+    ? await Promise.all([
+        getNotificationPreferences(locale),
+        getProductNewsSettings(),
+      ])
+    : [null, null];
   return (
     <div>
       <h2 className="mb-7 text-xl font-semibold">
@@ -21,11 +26,19 @@ export async function EmailSettingsLoader({ locale }: { locale: string }) {
         </Trans>
       </h2>
       {session && notifications ? (
-        <NotificationSettings
-          paused={notifications.notificationsPaused}
-          verified={session.user.emailVerified}
-          watchlists={notifications.watchlists}
-        />
+        <div className="space-y-8">
+          <NotificationSettings
+            paused={notifications.notificationsPaused}
+            verified={session.user.emailVerified}
+            watchlists={notifications.watchlists}
+          />
+          {productNews && (
+            <ProductNewsSettings
+              enabled={productNews.enabled}
+              verified={session.user.emailVerified}
+            />
+          )}
+        </div>
       ) : (
         <LoginPrompt />
       )}

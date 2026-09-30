@@ -14,527 +14,11 @@ msgstr ""
 "Plural-Forms: \n"
 "X-Generator: @lingui/cli\n"
 
-#. Aria label for the checkmark button that confirms adding a filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.confirmAdd"
-#~ msgstr "Ajouter un filtre"
-
-#. Quick action tooltip: add interview round
-#. js-lingui-explicit-id
-#: src/components/my-jobs/quick-actions.tsx
-#~ msgid "myJobs.action.addInterview"
-#~ msgstr "Ajouter un entretien"
-
-#. Placeholder in the add keyword input
-#. js-lingui-explicit-id
-#: src/components/search/keyword-pills.tsx
-#~ msgid "search.keywords.addPlaceholder"
-#~ msgstr "Ajouter un mot-clé..."
-
-#. Placeholder for the company page filter search bar
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx
-#~ msgid "company.page.filterPlaceholder"
-#~ msgstr "Ajouter un filtre de lieu ou mot-clé…"
-
-#. Placeholder in the add location input
-#. js-lingui-explicit-id
-#: src/components/search/location-pills.tsx
-#~ msgid "search.locations.addPlaceholder"
-#~ msgstr "Ajouter un lieu..."
-
-#. Button to open all-locations modal on company page
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx
-#~ msgid "company.page.allLocations"
-#~ msgstr "Tous les lieux"
-
-#. Title for the all-locations modal on company page
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx
-#~ msgid "company.locationModal.title"
-#~ msgstr "Tous les lieux"
-
-#. Status option in dropdown: applied
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.statusOption.applied"
-#~ msgstr "Postulé"
-
-#. Applied status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx
-#~ msgid "myJobs.status.applied"
-#~ msgstr "Postulé"
-
-#. Apply button linking to original job posting
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "search.detail.apply"
-#~ msgstr "Postuler"
-
-#. Aria label for the X button that cancels the inline add-filter UI
-#. Aria label for the X button that cancels the inline add-filter UI
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.cancel"
-#~ msgstr "Annuler"
-
-#. Placeholder in status change dropdown
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.detail.changePlaceholder"
-#~ msgstr "Changer…"
-
-#. Aria label for upgrade modal close button
-#. js-lingui-explicit-id
-#: src/components/ui/upgrade-modal.tsx
-#~ msgid "upgrade.modal.close"
-#~ msgstr "Fermer"
-
-#. Aria label for close button on the company-page all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx
-#~ msgid "company.locationModal.close"
-#~ msgstr "Fermer"
-
-#. Aria label for the my-jobs detail panel close button
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.detail.close"
-#~ msgstr "Fermer les détails de l’offre"
-
-#. Currency label in salary override
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx
-#~ msgid "myJobs.detail.salary.currency"
-#~ msgstr "Devise"
-
-#. Button to add a filter to watchlist
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.add"
-#~ msgstr "Filtre"
-
-#. Section title for filters in watchlist view
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.view.filters"
-#~ msgstr "Filtres"
-
-#. Dismiss upgrade modal
-#. js-lingui-explicit-id
-#: src/components/ui/upgrade-modal.tsx
-#~ msgid "upgrade.modal.dismiss"
-#~ msgstr "Compris"
-
-#. Hourly salary period option
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx
-#~ msgid "myJobs.salary.hourly"
-#~ msgstr "Horaire"
-
-#. Status option in dropdown: interviewing
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.statusOption.interviewing"
-#~ msgstr "En entretien"
-
-#. Interviewing status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx
-#~ msgid "myJobs.status.interviewing"
-#~ msgstr "En entretien"
-
-#. Job detail panel title in My Jobs
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.detail.title"
-#~ msgstr "Détails du poste"
-
-#. Add keyword filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.keyword"
-#~ msgstr "Mot-clé"
-
-#. Heading shown when no search query is entered
-#. js-lingui-explicit-id
-#: src/components/search/empty-state.tsx
-#~ msgid "search.empty.heading"
-#~ msgstr "Plus grandes entreprises"
-
-#. Time range option: last day
-#. js-lingui-explicit-id
-#: src/components/watchlist/time-range-selector.tsx
-#~ msgid "watchlists.timeRange.day"
-#~ msgstr "Dernier jour"
-
-#. Time range option: last hour
-#. js-lingui-explicit-id
-#: src/components/watchlist/time-range-selector.tsx
-#~ msgid "watchlists.timeRange.hour"
-#~ msgstr "Dernière heure"
-
-#. Time range option: last week
-#. js-lingui-explicit-id
-#: src/components/watchlist/time-range-selector.tsx
-#~ msgid "watchlists.timeRange.week"
-#~ msgstr "Dernière semaine"
-
-#. Add location filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.location"
-#~ msgstr "Lieu"
-
-#. Quick action tooltip: mark job as applied
-#. js-lingui-explicit-id
-#: src/components/my-jobs/quick-actions.tsx
-#~ msgid "myJobs.action.markApplied"
-#~ msgstr "Marquer comme postulé"
-
-#. Quick action tooltip: mark job as offered
-#. js-lingui-explicit-id
-#: src/components/my-jobs/quick-actions.tsx
-#~ msgid "myJobs.action.markOffer"
-#~ msgstr "Marquer comme offre"
-
-#. Quick action tooltip: mark job as rejected
-#. js-lingui-explicit-id
-#: src/components/my-jobs/quick-actions.tsx
-#~ msgid "myJobs.action.markRejected"
-#~ msgstr "Marquer comme refusé"
-
-#. Maximum salary label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx
-#~ msgid "myJobs.salary.max"
-#~ msgstr "Max"
-
-#. Minimum salary label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx
-#~ msgid "myJobs.salary.min"
-#~ msgstr "Min"
-
-#. Monthly salary period option
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx
-#~ msgid "myJobs.salary.monthly"
-#~ msgstr "Mensuel"
-
-#. Expand location pill list to show all
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx
-#~ msgid "company.page.showMore"
-#~ msgstr "plus"
-
-#. Empty state when no filters are set
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.empty"
-#~ msgstr "Aucun filtre défini. Ajoutez des filtres pour affiner les résultats."
-
-#. No locations match search in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx
-#~ msgid "company.locationModal.noResults"
-#~ msgstr "Aucun lieu ne correspond à votre recherche."
-
-#. Add occupation filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.occupation"
-#~ msgstr "Métier"
-
-#. Offered status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx
-#~ msgid "myJobs.status.offered"
-#~ msgstr "Offre"
-
-#. Status option in dropdown: offered
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.statusOption.offered"
-#~ msgstr "Offre"
-
-#. Period label in salary override
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx
-#~ msgid "myJobs.detail.salary.period"
-#~ msgstr "Période"
-
-#. Posting not found message
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.detail.notFound"
-#~ msgstr "Offre introuvable."
-
-#. Header for the macro-region cluster (EU, EMEA, DACH) in company-page location modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx
-#~ msgid "company.locationModal.regionsHeader"
-#~ msgstr "Régions"
-
-#. Status option in dropdown: rejected
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.statusOption.rejected"
-#~ msgstr "Refusé"
-
-#. Rejected status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx
-#~ msgid "myJobs.status.rejected"
-#~ msgstr "Refusé"
-
-#. Aria label for the X button that removes a filter pill; {name} is the filter value
-#. Aria label for the X button that removes a filter pill; {name} is the filter value
-#. placeholder {0}: pill.filter.name
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx
-#~ msgid "company.page.removeFilter"
-#~ msgstr "Supprimer le filtre {0}"
-
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
-#. Aria label for remove-filter X button on a watchlist pill; {name} is the filter value
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.removeFilter"
-#~ msgstr "Supprimer le filtre {name}"
-
-#. Aria label for the X button that clears the experience-range watchlist filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.removeExperience"
-#~ msgstr "Supprimer le filtre d’expérience"
-
-#. Aria label for removing a keyword pill
-#. js-lingui-explicit-id
-#: src/components/search/keyword-pills.tsx
-#~ msgid "search.keywords.remove"
-#~ msgstr "Supprimer le mot-clé"
-
-#. Aria label for the X button that removes a keyword filter pill; {name} is the keyword
-#. placeholder {0}: pill.filter.value
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx
-#~ msgid "company.page.removeKeyword"
-#~ msgstr "Supprimer le mot-clé {0}"
-
-#. Aria label for removing a location pill
-#. js-lingui-explicit-id
-#: src/components/search/location-pills.tsx
-#~ msgid "search.locations.remove"
-#~ msgstr "Supprimer le lieu"
-
-#. Aria label for the X button that removes a location filter pill; {name} is the location label
-#. placeholder {0}: pill.filter.name
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx
-#~ msgid "company.page.removeLocation"
-#~ msgstr "Supprimer le lieu {0}"
-
-#. Aria label for the X button that clears the salary-range watchlist filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.removeSalary"
-#~ msgstr "Supprimer le filtre de salaire"
-
-#. Salary override section heading
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx
-#~ msgid "myJobs.detail.salary"
-#~ msgstr "Salaire"
-
-#. Status option in dropdown: saved
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.statusOption.saved"
-#~ msgstr "Enregistré"
-
-#. Saved status badge label
-#. js-lingui-explicit-id
-#: src/components/my-jobs/status-badge.tsx
-#~ msgid "myJobs.status.saved"
-#~ msgstr "Enregistré"
-
-#. Placeholder for company search in watchlist creation
-#. js-lingui-explicit-id
-#: src/components/watchlist/company-selector.tsx
-#~ msgid "watchlists.companySelector.placeholder"
-#~ msgstr "Rechercher des entreprises..."
-
-#. Placeholder for search input in all-locations modal
-#. js-lingui-explicit-id
-#: src/components/search/location-modal.tsx
-#~ msgid "company.locationModal.searchPlaceholder"
-#~ msgstr "Rechercher des lieux…"
-
-#. Add seniority filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.seniority"
-#~ msgstr "Niveau d'expérience"
-
-#. Action shown when fresher Explore results are available without interrupting the current feed
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/explore/search-page.tsx
-#~ msgid "explore.results.showLatest"
-#~ msgstr "Afficher les derniers résultats"
-
-#. Collapse location pill list
-#. js-lingui-explicit-id
-#: src/components/search/filter-bar.tsx
-#~ msgid "company.page.showLess"
-#~ msgstr "Afficher moins"
-
-#. Status section heading
-#. js-lingui-explicit-id
-#: src/components/my-jobs/my-job-detail-panel.tsx
-#~ msgid "myJobs.detail.status"
-#~ msgstr "Statut"
-
-#. Add technology filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.technology"
-#~ msgstr "Technologie"
-
-#. Add employment type filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.employmentType"
-#~ msgstr "Type"
-
-#. Placeholder for filter value input
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.inputPlaceholder"
-#~ msgstr "Tapez le slug et appuyez sur Entrée"
-
-#. Upgrade button in modal
-#. js-lingui-explicit-id
-#: src/components/ui/upgrade-modal.tsx
-#~ msgid "upgrade.modal.upgrade"
-#~ msgstr "Mettre à niveau"
-
-#. Upgrade modal title
-#. js-lingui-explicit-id
-#: src/components/ui/upgrade-modal.tsx
-#~ msgid "upgrade.modal.title"
-#~ msgstr "Mise à niveau requise"
-
-#. Add work-mode (onsite/hybrid/remote) filter
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-filter-editor.tsx
-#~ msgid "watchlists.filters.workMode"
-#~ msgstr "Mode de travail"
-
-#. Yearly salary period option
-#. js-lingui-explicit-id
-#: src/components/my-jobs/salary-override.tsx
-#~ msgid "myJobs.salary.yearly"
-#~ msgstr "Annuel"
-
-#. Fictional excerpt illustrating a match
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.matchText"
-#~ msgstr "« Développez des API Python. Aucune astreinte. »"
-
-#. Fictional excerpt illustrating an exclusion
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.excludedText"
-#~ msgstr "« Services Python. Participation aux astreintes. »"
-
-#. Labels the fictional Narrowed demonstration
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.label"
-#~ msgstr "Un exemple"
-
-#. Fictional role in the Pro illustration
-#. Fictional role in the Pro illustration
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.role"
-#~ msgstr "Développeur backend"
-
-#. Describes the example matching step
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.check"
-#~ msgstr "Comparé à la description du poste"
-
-#. Example excluded result
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.excluded"
-#~ msgstr "Écarté"
-
-#. Example matching result
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.match"
-#~ msgstr "Correspond"
-
-#. Label for the example natural-language filter
-#. js-lingui-explicit-id
-#: src/components/pro/ProPitch.tsx
-#~ msgid "pro.example.requestLabel"
-#~ msgstr "Vos critères"
-
-#. Paddle script failed to load
-#. js-lingui-explicit-id
-#: src/components/PaddlePaymentLink.tsx
-#~ msgid "checkout.loadError"
-#~ msgstr "Le paiement n’a pas pu être chargé. Veuillez actualiser la page et réessayer."
-
-#. Link to Paddle buyer terms
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-#~ msgid "terms.billing.buyerTerms"
-#~ msgstr "Conditions d’achat de Paddle"
-
-#. Link to Paddle refund policy
-#. js-lingui-explicit-id
-#: src/components/TermsContent.tsx
-#~ msgid "terms.refunds.policy"
-#~ msgstr "Politique de remboursement de Paddle"
-
-#. Paddle payment link page title
-#. js-lingui-explicit-id
-#: src/components/PaddlePaymentLink.tsx
-#~ msgid "checkout.title"
-#~ msgstr "Paiement sécurisé"
-
-#. Paddle payment link page instructions
-#. js-lingui-explicit-id
-#: src/components/PaddlePaymentLink.tsx
-#~ msgid "checkout.description"
-#~ msgstr "Utilisez votre lien de paiement pour ouvrir le paiement sécurisé de Paddle ou mettre à jour votre moyen de paiement."
-
-#. All languages option
-#. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx
-#~ msgid "settings.general.jobLanguages.all"
-#~ msgstr "Toutes les langues"
-
-#. Title for the all-languages modal in settings
-#. js-lingui-explicit-id
-#: src/components/settings/JobLanguageModal.tsx
-#~ msgid "settings.jobLanguages.modal.title"
-#~ msgstr "Toutes les langues"
+#. Short button that opens precise matching setup
+#. js-lingui-explicit-id
+#: src/components/search/ai-search-filter.tsx
+#~ msgid "search.aiFilter.setup"
+#~ msgstr "Configurer"
 
 #. Change email section heading
 #. js-lingui-explicit-id
@@ -542,17 +26,17 @@ msgstr ""
 #~ msgid "settings.account.email.title"
 #~ msgstr "Changer l'e-mail"
 
-#. Theme settings description
+#. Connected accounts section description
 #. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx
-#~ msgid "settings.general.theme.description"
-#~ msgstr "Choisis l'apparence de Job Seek."
+#: src/components/settings/account/ConnectedAccountsSection.tsx
+#~ msgid "settings.account.socials.description"
+#~ msgstr "Gère tes comptes sociaux liés."
 
-#. Salary display settings description
+#. All languages option
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx
-#~ msgid "settings.general.salary.description"
-#~ msgstr "Personnalisez l'affichage des salaires dans les résultats de recherche et les détails des offres."
+#~ msgid "settings.general.jobLanguages.all"
+#~ msgstr "Toutes les langues"
 
 #. Job languages settings description
 #. js-lingui-explicit-id
@@ -560,29 +44,11 @@ msgstr ""
 #~ msgid "settings.general.jobLanguages.description"
 #~ msgstr "Choisissez les langues dans lesquelles vous souhaitez voir les offres d'emploi."
 
-#. Aria label for the job-languages modal close button
-#. js-lingui-explicit-id
-#: src/components/settings/JobLanguageModal.tsx
-#~ msgid "settings.jobLanguages.modal.close"
-#~ msgstr "Fermer"
-
-#. Daily pay period option
-#. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx
-#~ msgid "settings.general.salary.period.daily"
-#~ msgstr "Journalier"
-
 #. Button to open modal with all languages
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx
 #~ msgid "settings.general.jobLanguages.findMore"
 #~ msgstr "Rechercher"
-
-#. Hourly pay period option
-#. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx
-#~ msgid "settings.general.salary.period.hourly"
-#~ msgstr "Horaire"
 
 #. Job languages settings section heading
 #. js-lingui-explicit-id
@@ -590,17 +56,35 @@ msgstr ""
 #~ msgid "settings.general.jobLanguages.title"
 #~ msgstr "Langues des offres"
 
+#. Language settings description
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx
+#~ msgid "settings.general.language.description"
+#~ msgstr "Sélectionne ta langue préférée."
+
 #. Language settings section heading
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx
 #~ msgid "settings.general.language.title"
 #~ msgstr "Langue"
 
-#. Connected accounts section description
+#. Salary display settings description
 #. js-lingui-explicit-id
-#: src/components/settings/account/ConnectedAccountsSection.tsx
-#~ msgid "settings.account.socials.description"
-#~ msgstr "Gère tes comptes sociaux liés."
+#: src/components/settings/GeneralSettings.tsx
+#~ msgid "settings.general.salary.description"
+#~ msgstr "Personnalisez l'affichage des salaires dans les résultats de recherche et les détails des offres."
+
+#. Daily pay period option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx
+#~ msgid "settings.general.salary.period.daily"
+#~ msgstr "Journalier"
+
+#. Hourly pay period option
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx
+#~ msgid "settings.general.salary.period.hourly"
+#~ msgstr "Horaire"
 
 #. Monthly pay period option
 #. js-lingui-explicit-id
@@ -614,23 +98,47 @@ msgstr ""
 #~ msgid "settings.general.salary.period.original"
 #~ msgstr "Original"
 
-#. Language settings description
-#. js-lingui-explicit-id
-#: src/components/settings/GeneralSettings.tsx
-#~ msgid "settings.general.language.description"
-#~ msgstr "Sélectionne ta langue préférée."
-
-#. Short button that opens precise matching setup
-#. js-lingui-explicit-id
-#: src/components/search/ai-search-filter.tsx
-#~ msgid "search.aiFilter.setup"
-#~ msgstr "Configurer"
-
 #. Yearly pay period option
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx
 #~ msgid "settings.general.salary.period.yearly"
 #~ msgstr "Annuel"
+
+#. Theme settings description
+#. js-lingui-explicit-id
+#: src/components/settings/GeneralSettings.tsx
+#~ msgid "settings.general.theme.description"
+#~ msgstr "Choisis l'apparence de Job Seek."
+
+#. Aria label for the job-languages modal close button
+#. js-lingui-explicit-id
+#: src/components/settings/JobLanguageModal.tsx
+#~ msgid "settings.jobLanguages.modal.close"
+#~ msgstr "Fermer"
+
+#. Title for the all-languages modal in settings
+#. js-lingui-explicit-id
+#: src/components/settings/JobLanguageModal.tsx
+#~ msgid "settings.jobLanguages.modal.title"
+#~ msgstr "Toutes les langues"
+
+#. Link to add a description to the watchlist
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-view-page.tsx
+#~ msgid "watchlists.view.addDescription"
+#~ msgstr "Ajouter une description"
+
+#. Placeholder for watchlist description textarea
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-view-page.tsx
+#~ msgid "watchlists.view.descriptionPlaceholder"
+#~ msgstr "Décrire cette watchlist …"
+
+#. Tooltip for clicking to edit watchlist description
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-view-page.tsx
+#~ msgid "watchlists.view.editDescription"
+#~ msgstr "Cliquer pour modifier la description"
 
 #. CC right 1
 #. js-lingui-explicit-id
@@ -891,12 +399,6 @@ msgstr "Ajoutez une courte demande dans Narrowed : le travail que vous recherche
 #: src/components/watchlist/company-search-modal.tsx
 msgid "watchlists.companyModal.title"
 msgstr "Ajouter des entreprises"
-
-#. Link to add a description to the watchlist
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.addDescription"
-msgstr "Ajouter une description"
 
 #. Button to add an interview round
 #. js-lingui-explicit-id
@@ -1479,12 +981,6 @@ msgstr "Tout effacer"
 msgid "search.filters.clearAll"
 msgstr "Tout effacer"
 
-#. Tooltip for clicking to edit watchlist description
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.editDescription"
-msgstr "Cliquer pour modifier la description"
-
 #. Tooltip for clicking to edit watchlist title
 #. js-lingui-explicit-id
 #: src/components/watchlist/watchlist-view-page.tsx
@@ -1932,6 +1428,12 @@ msgstr "Impossible d’enregistrer vos modifications."
 msgid "settings.notifications.error"
 msgstr "Impossible d’enregistrer votre préférence. Veuillez réessayer."
 
+#. Marketing preference failed; checkbox retains the saved value
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.error"
+msgstr "Impossible d’enregistrer votre choix. Veuillez réessayer."
+
 #. Preference persistence failed and optimistic value was restored
 #. js-lingui-explicit-id
 #: src/components/settings/GeneralSettings.tsx
@@ -2176,12 +1678,6 @@ msgstr "Décrivez précisément ce que vous recherchez. Votre demande sera éval
 msgid "faq.a.narrowedRequest"
 msgstr "Décrivez le travail que vous recherchez et ce que vous souhaitez éviter. Par exemple : « Je veux travailler directement avec les utilisateurs et transformer leurs problèmes en améliorations du produit. Sans encadrement d’équipe. » Cette demande porte sur des responsabilités qu’un intitulé ou un mot-clé ne suffit pas à établir."
 
-#. Placeholder for watchlist description textarea
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
-msgid "watchlists.view.descriptionPlaceholder"
-msgstr "Décrire cette watchlist …"
-
 #. Compact reminder that a focused watchlist can be narrowed precisely
 #. js-lingui-explicit-id
 #: src/components/search/ai-search-filter.tsx
@@ -2241,6 +1737,12 @@ msgstr "Déconnecter"
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.reminder.dismiss"
 msgstr "Fermer le rappel d’affinage"
+
+#. Dismiss the Pro launch banner without changing marketing consent
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.dismiss"
+msgstr "Fermer l’annonce Pro"
 
 #. FAQ question about whether the product suits company-targeted job seekers.
 #. js-lingui-explicit-id
@@ -2349,6 +1851,12 @@ msgstr "Adresse e-mail"
 msgid "pro.waitlist.email"
 msgstr "Adresse e-mail"
 
+#. Optional unchecked marketing opt-in, separate from job alerts; keep wording synchronized with product-news/policy.ts and version changes
+#. js-lingui-explicit-id
+#: src/components/product-news/ProductNewsCheckbox.tsx
+msgid "productNews.consent.label"
+msgstr "Je souhaite recevoir occasionnellement par e-mail les nouveautés et offres de Job Seek. Désinscription à tout moment."
+
 #. Explains supported behavior for emailTiming
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx
@@ -2414,6 +1922,12 @@ msgstr "Activer les notifications hebdomadaires par e-mail"
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.status.ending"
 msgstr "Se termine bientôt"
+
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.managerTitle"
+msgstr "Responsable d’ingénierie"
 
 #. Waiting list email validation error
 #. js-lingui-explicit-id
@@ -2495,6 +2009,12 @@ msgstr "Explorer les emplois"
 #: app/[lang]/(app)/explore/page.tsx
 msgid "explore.meta.title"
 msgstr "Explorer les emplois"
+
+#. Pro announcement link to explanation, pricing and trial terms
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.cta"
+msgstr "Découvrir Pro"
 
 #. Short link to the Pro subscription from the compact watchlist control
 #. Short link to the Pro subscription from the compact watchlist control
@@ -2612,6 +2132,12 @@ msgstr "Filtrer les secteurs..."
 msgid "search.technologyModal.searchPlaceholder"
 msgstr "Filtrer les technologies..."
 
+#. Filtering result for an example that does not meet the Narrowed criteria
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.excluded"
+msgstr "Écarté"
+
 #. Toggle button for advanced search filters panel
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx
@@ -2693,6 +2219,12 @@ msgstr "Recherche ciblée"
 #: src/content/marketing.ts
 msgid "marketing.alerts.description"
 msgstr "Suis des employeurs dans une watchlist, filtre leurs offres et choisis un récapitulatif hebdomadaire. Commence par une recherche gratuite."
+
+#. Platform progress page subtitle inviting company requests
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/progress/progress-loader.tsx
+msgid "app.home.subtitle"
+msgstr "Suivez les entreprises qui vous intéressent. Proposez une entreprise manquante ci-dessous."
 
 #. Link to follow Job Seek on LinkedIn
 #. js-lingui-explicit-id
@@ -3007,7 +2539,7 @@ msgstr "Hybride"
 msgid "checkout.policies.acceptance"
 msgstr "J’accepte les [Conditions]({termsUrl}) et prends connaissance de la [Politique de confidentialité]({privacyUrl}). [Politique de remboursement]({refundUrl})."
 
-#. Live-tested personal criteria for Narrowed
+#. Illustrative personal criteria for the Narrowed preview
 #. js-lingui-explicit-id
 #: src/components/pro/ProPitch.tsx
 msgid "pro.example.request"
@@ -3060,6 +2592,12 @@ msgstr "Politique d'indexation"
 #: src/components/watchlist/company-search-modal.tsx
 msgid "watchlists.companyModal.industry"
 msgstr "Secteur"
+
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.infrastructureTitle"
+msgstr "Ingénieur infrastructure"
 
 #. Error when company request input is too long
 #. Error when company request input is too long
@@ -3253,12 +2791,6 @@ msgstr "Job Seek t'aide à suivre les entreprises pour lesquelles tu veux travai
 msgid "indexing.hero.description"
 msgstr "Job Seek est un outil de suivi d'entreprises — il surveille des milliers de pages carrières d'entreprises pour que les utilisateurs puissent créer des watchlists et recevoir des alertes sur les nouvelles offres. Cette page décrit précisément le comportement de notre robot d'indexation, les contrôles qui garantissent sa courtoisie, et comment les offres atterrissent dans l'index."
 
-#. Main app page subtitle explaining the app is being built
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/progress/progress-loader.tsx
-msgid "app.home.subtitle"
-msgstr "Job Seek est en cours de développement. Restez à l'écoute pour les mises à jour !"
-
 #. About paragraph 1: who we are
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx
@@ -3271,12 +2803,24 @@ msgstr "Job Seek est développé par Colophon Group, une petite équipe de déve
 msgid "terms.billing.seller"
 msgstr "Job Seek est exploité et vendu par Viktor Shcherbakov en Suisse. Stripe traite les paiements et fournit la facturation des abonnements. Viktor Shcherbakov est responsable du service, des taxes applicables, de l’assistance à la facturation et des remboursements."
 
+#. Platform progress page heading
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/progress/progress-loader.tsx
+msgid "app.home.title"
+msgstr "Job Seek continue de grandir"
+
 #. JSON-LD page description for the public Privacy Policy page.
 #. SEO description for the public Privacy Policy page.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/privacy-policy/page.tsx
 msgid "privacy.meta.description"
 msgstr "Politique de confidentialité de Job Seek — données personnelles collectées, utilisation, droits, cookies et demandes de suppression du compte et des données."
+
+#. Accessible label for the dismissible gold Pro launch banner
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.label"
+msgstr "Annonce Job Seek Pro"
 
 #. Public marketing page: tracker_imageAlt
 #. js-lingui-explicit-id
@@ -3529,7 +3073,9 @@ msgid "myJobs.stats.loading"
 msgstr "Chargement…"
 
 #. Explains localized subscription pricing and payment method eligibility
+#. Explains localized subscription pricing and payment method eligibility
 #. js-lingui-explicit-id
+#: src/components/Pricing.tsx
 #: src/components/settings/BillingSettings.tsx
 msgid "pro.offer.localCurrency"
 msgstr "Les prix en devise locale et les moyens de paiement disponibles sont affichés lors du paiement."
@@ -3585,6 +3131,12 @@ msgstr "Connectez-vous pour gérer les alertes"
 msgid "watchlists.actions.loginToShare"
 msgstr "Connectez-vous pour partager"
 
+#. Excluded example: individual contributor without the required user contact
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.infrastructureExcerpt"
+msgstr "Maintenez les systèmes de déploiement internes et résolvez les incidents de fiabilité, sans encadrer une équipe. Aucun contact direct avec les utilisateurs ou les clients."
+
 #. Manage subscription button label
 #. Manage subscription button label
 #. js-lingui-explicit-id
@@ -3598,6 +3150,12 @@ msgstr "Gérer l'abonnement"
 #: src/content/marketing.ts
 msgid "marketing.tracker.step2Body"
 msgstr "Indique si tu as postulé, passé un entretien, reçu une offre ou un refus. Tu mets à jour le statut ; Job Seek ne postule pas à ta place."
+
+#. Filtering result for an example that meets the Narrowed criteria
+#. js-lingui-explicit-id
+#: src/components/pro/ProPitch.tsx
+msgid "pro.example.match"
+msgstr "Correspond"
 
 #. Header for the server-side search-results cluster shown when the user types in the location modal search box
 #. js-lingui-explicit-id
@@ -4281,6 +3839,12 @@ msgstr "Désinscription ou questions"
 msgid "indexing.optOut.title"
 msgstr "Désinscription ou questions"
 
+#. Marketing consent is independent of requested job alerts and account emails
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.description"
+msgstr "E-mails facultatifs sur les nouvelles fonctionnalités et les offres Pro. Ce choix est indépendant de vos e-mails hebdomadaires d’emploi et de vos e-mails de compte."
+
 #. Divider between form and OAuth buttons
 #. js-lingui-explicit-id
 #: src/components/ui/OAuthButtons.tsx
@@ -4693,6 +4257,12 @@ msgstr "Pro ajoute les résultats Narrowed aux watchlists. Les comptes éligible
 msgid "settings.billing.proSummary"
 msgstr "Pro ajoute des résultats affinés à vos listes."
 
+#. Pro announcement; eligibility and billing terms appear on the linked offer page
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.message"
+msgstr "Pro est disponible. Affinez vos listes de suivi avec vos propres critères. Un essai gratuit de 7 jours est proposé aux nouveaux abonnés."
+
 #. Payment data privacy heading
 #. js-lingui-explicit-id
 #: src/components/PrivacyPolicyContent.tsx
@@ -4710,6 +4280,42 @@ msgstr "Abonnements Pro et paiements"
 #: src/components/pro/ProWaitlistForm.tsx
 msgid "pro.waitlist.label"
 msgstr "Liste d’attente Pro"
+
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.productTitle"
+msgstr "Ingénieur produit"
+
+#. Privacy policy heading for optional marketing emails
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.productNews.title"
+msgstr "Nouveautés"
+
+#. Opens the optional marketing checkbox; clicking this link does not opt in
+#. js-lingui-explicit-id
+#: src/components/ProAnnouncementBanner.tsx
+msgid "pro.announcement.updates"
+msgstr "Nouveautés"
+
+#. Marketing email settings heading
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.title"
+msgstr "Nouveautés"
+
+#. Confirmation after marketing preference is persisted
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.saved"
+msgstr "Votre choix concernant les nouveautés a été enregistré."
+
+#. Explains explicit marketing opt-in, consent evidence, withdrawal and separate job alerts
+#. js-lingui-explicit-id
+#: src/components/PrivacyPolicyContent.tsx
+msgid "privacy.productNews.description"
+msgstr "Les nouveautés et offres sont facultatives. Nous enregistrons votre choix, votre adresse e-mail, votre langue, le texte de consentement et la date. Vous pouvez vous désinscrire dans les paramètres ou via un lien dans chaque e-mail de nouveautés. Cela ne modifie pas vos alertes emploi ni vos e-mails de compte."
 
 #. Third parties
 #. js-lingui-explicit-id
@@ -5606,6 +5212,12 @@ msgstr "Connexion avec un compte social"
 msgid "auth.signIn.button.loading"
 msgstr "Connexion en cours..."
 
+#. Social signup does not inherit the email form's marketing checkbox
+#. js-lingui-explicit-id
+#: src/components/AuthForm.tsx
+msgid "auth.signUp.socialProductNews"
+msgstr "Vous utilisez un compte social pour vous inscrire ? Vous pouvez activer les nouveautés dans les paramètres après connexion."
+
 #. Heading above the strip of same-industry companies on the company page
 #. js-lingui-explicit-id
 #: src/components/company/similar-companies-strip.tsx
@@ -5623,6 +5235,12 @@ msgstr "Sitemap d'abord."
 #: src/components/SkipToContentLink.tsx
 msgid "common.a11y.skipToContent"
 msgstr "Aller au contenu"
+
+#. Illustrative job title in the Narrowed preview
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.solutionsTitle"
+msgstr "Ingénieur solutions"
 
 #. Heading shown when a page crashes unexpectedly
 #. js-lingui-explicit-id
@@ -5796,6 +5414,12 @@ msgstr "Suisse"
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interviewType.systemDesign"
 msgstr "System Design"
+
+#. Matching example: direct user contact, product improvements, no management
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.productExcerpt"
+msgstr "Échangez chaque semaine avec les utilisateurs et transformez leurs retours en améliorations du produit. Un poste sans responsabilité de management."
 
 #. Interview type label: technical interview
 #. js-lingui-explicit-id
@@ -6124,17 +5748,17 @@ msgstr "Essayez d'actualiser la page."
 msgid "explore.fallback.body"
 msgstr "Essayez d’actualiser la page. En attendant, vous pouvez consulter ces profils d’entreprise."
 
+#. Excluded example: user contact but people management conflicts with criteria
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.managerExcerpt"
+msgstr "Transformez les retours des utilisateurs en améliorations du produit tout en dirigeant huit ingénieurs. Gérez le recrutement, les évaluations et le développement de carrière."
+
 #. Label for employment type filter in advanced search
 #. js-lingui-explicit-id
 #: src/components/search/advanced-search-panel.tsx
 msgid "search.advanced.employmentType"
 msgstr "Type d'emploi"
-
-#. Main app page heading
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/progress/progress-loader.tsx
-msgid "app.home.title"
-msgstr "En développement actif"
 
 #. Unsave job aria label
 #. js-lingui-explicit-id
@@ -6243,6 +5867,12 @@ msgstr "Échec de la vérification"
 #: src/components/settings/account/ChangeEmailSection.tsx
 msgid "settings.account.email.verified"
 msgstr "Vérifiée"
+
+#. Unverified accounts can choose consent but cannot receive marketing
+#. js-lingui-explicit-id
+#: src/components/settings/ProductNewsSettings.tsx
+msgid "productNews.settings.verify"
+msgstr "Vérifiez votre adresse e-mail avant de pouvoir recevoir les nouveautés."
 
 #. Notification eligibility explanation
 #. js-lingui-explicit-id
@@ -6557,6 +6187,12 @@ msgstr "Quelles langues Jobseek prend-il en charge ?"
 #: src/components/settings/GeneralSettings.tsx
 msgid "settings.general.jobLanguageHelp"
 msgstr "Les offres affichées dans vos résultats."
+
+#. Matching example: direct customer contact, product improvements, no direct reports
+#. js-lingui-explicit-id
+#: src/content/narrowed-preview-examples.ts
+msgid "pro.example.solutionsExcerpt"
+msgstr "Travaillez directement avec les clients pour comprendre leurs processus et améliorer le produit avec notre équipe. Aucun collaborateur à encadrer."
 
 #. Label for work-mode (onsite/hybrid/remote) filter in advanced search
 #. js-lingui-explicit-id

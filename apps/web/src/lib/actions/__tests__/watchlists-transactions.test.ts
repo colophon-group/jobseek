@@ -8,7 +8,6 @@ const mocks = vi.hoisted(() => {
     userId: string;
     slug: string;
     title: string;
-    description: string | null;
     isPublic: boolean;
     shareEnabled?: boolean;
     filters: Record<string, unknown>;
@@ -23,7 +22,6 @@ const mocks = vi.hoisted(() => {
     userId: { __column: "watchlist.userId" },
     slug: { __column: "watchlist.slug" },
     title: { __column: "watchlist.title" },
-    description: { __column: "watchlist.description" },
     isPublic: { __column: "watchlist.isPublic" },
     shareEnabled: { __column: "watchlist.shareEnabled" },
     alertsEnabled: { __column: "watchlist.alertsEnabled" },
@@ -129,7 +127,6 @@ const mocks = vi.hoisted(() => {
           userId: String(value.userId),
           slug: String(value.slug),
           title: String(value.title),
-          description: (value.description as string | null) ?? null,
           isPublic: Boolean(value.isPublic),
           shareEnabled: Boolean(value.shareEnabled),
           filters: (value.filters as Record<string, unknown>) ?? {},
@@ -334,7 +331,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         userId: USER_ID,
         slug: "source",
         title: "Source",
-        description: null,
         isPublic: false,
         filters: {},
       }],
@@ -356,15 +352,14 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: USER_ID,
       slug: "source",
       title: "Source",
-      description: null,
       isPublic: true,
       shareEnabled: false,
       filters: {},
     };
     mocks.setState({ watchlists: [source], companies: [] });
     mocks.queueRootSelect(
-      [{ id: WATCHLIST_ID, title: "Source", description: null, filters: {} }],
-      [{ id: WATCHLIST_ID, title: "Source", description: null, filters: {} }],
+      [{ id: WATCHLIST_ID, title: "Source", filters: {} }],
+      [{ id: WATCHLIST_ID, title: "Source", filters: {} }],
     );
 
     await expect(shareWatchlist(WATCHLIST_ID)).resolves.toEqual({
@@ -387,7 +382,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: "different-owner",
       slug: "source",
       title: "Source",
-      description: null,
       isPublic: true,
       shareEnabled: false,
       filters: {},
@@ -409,7 +403,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         userId: USER_ID,
         slug: "source",
         title,
-        description: null,
         isPublic: false,
         shareEnabled: false,
         filters,
@@ -506,7 +499,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         userId: USER_ID,
         slug: `existing-${index}`,
         title: `Existing ${index}`,
-        description: null,
         isPublic: false,
         filters: {},
       })),
@@ -530,7 +522,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         userId: USER_ID,
         slug: `existing-${index}`,
         title: `Existing ${index}`,
-        description: null,
         isPublic: false,
         filters: {},
       })),
@@ -553,7 +544,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: USER_ID,
       slug: `existing-${index}`,
       title: `Existing ${index}`,
-      description: null,
       isPublic: false,
       filters: {},
     }));
@@ -562,11 +552,11 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
 
     await expect(updateWatchlist({
       watchlistId: WATCHLIST_ID,
-      description: "Still editable",
-    })).resolves.toEqual({ slug: "existing-0" });
+      title: "Still editable",
+    })).resolves.toEqual({ slug: "still-editable" });
 
     expect(mocks.snapshot().watchlists).toHaveLength(16);
-    expect(mocks.snapshot().watchlists[0].description).toBe("Still editable");
+    expect(mocks.snapshot().watchlists[0].title).toBe("Still editable");
   });
 
   it("preserves metadata and company membership when replacement fails", async () => {
@@ -576,7 +566,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         userId: USER_ID,
         slug: "existing",
         title: "Existing",
-        description: "Original description",
         isPublic: false,
         filters: {},
       }],
@@ -588,7 +577,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
 
     await expect(updateWatchlist({
       watchlistId: WATCHLIST_ID,
-      description: "Changed description",
+      title: "Changed title",
       companyIds: [NEW_COMPANY_ID],
     })).rejects.toThrow("forced watchlist_company insert failure");
 
@@ -609,7 +598,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
           userId: USER_ID,
           slug: "existing",
           title: "Existing",
-          description: null,
           isPublic: current,
           filters: {},
         }],
@@ -620,7 +608,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
 
       await expect(updateWatchlist({
         watchlistId: WATCHLIST_ID,
-        description: "Must not partially apply",
+        title: "Must not partially apply",
         isPublic: requested,
       })).resolves.toEqual({ error: "visibility_locked" });
 
@@ -637,7 +625,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         userId: USER_ID,
         slug: "source",
         title: "Source",
-        description: null,
         isPublic: false,
         filters: {},
       }],
@@ -663,7 +650,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: "source-owner",
       slug: "source",
       title: "Shared source",
-      description: null,
       isPublic: true,
       filters: {},
     };
@@ -672,7 +658,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: USER_ID,
       slug: `destination-${index}`,
       title: `Destination ${index}`,
-      description: null,
       isPublic: false,
       filters: {},
     }));
@@ -694,7 +679,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: "source-owner",
       slug: "source",
       title: "Shared source",
-      description: "Useful filters",
       isPublic: false,
       shareEnabled: true,
       filters: { keywords: ["platform"] },
@@ -756,7 +740,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: "source-owner",
       slug: "source",
       title: "Revoked source",
-      description: null,
       isPublic: false,
       shareEnabled: false,
       filters: {},
@@ -780,7 +763,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: USER_ID,
       slug: "source",
       title: "Owned source",
-      description: "Private filters",
       isPublic: false,
       filters: { keywords: ["engineer"] },
     };
@@ -789,7 +771,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: USER_ID,
       slug: `destination-${index}`,
       title: `Destination ${index}`,
-      description: null,
       isPublic: false,
       filters: {},
     }));
@@ -812,7 +793,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         id: "wl-copy",
         userId: USER_ID,
         title: "Owned source",
-        description: "Private filters",
         isPublic: false,
         filters: { keywords: ["engineer"] },
         sourceWatchlistId: WATCHLIST_ID,
@@ -846,7 +826,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: USER_ID,
       slug: "source",
       title: "Shared source",
-      description: null,
       isPublic: false,
       filters: {},
     };
@@ -855,7 +834,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: USER_ID,
       slug: `destination-${index}`,
       title: `Destination ${index}`,
-      description: null,
       isPublic: false,
       filters: {},
     }));
@@ -876,7 +854,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       userId: USER_ID,
       slug: "source",
       title: "Source",
-      description: null,
       isPublic: false,
       filters: {},
     }]);
@@ -895,7 +872,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         userId: "different-owner",
         slug: "source",
         title: "Source",
-        description: null,
         isPublic: true,
         filters: {},
       }],
@@ -904,7 +880,6 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     mocks.queueRootSelect([{
       userId: USER_ID,
       title: "Source",
-      description: null,
       isPublic: false,
       filters: {},
     }]);

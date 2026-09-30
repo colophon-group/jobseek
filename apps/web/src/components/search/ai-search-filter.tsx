@@ -55,7 +55,7 @@ type Props = {
   onDrawerOpenChange?: (open: boolean) => void;
   /** Shared watchlists can expose saved results without owner mutation controls. */
   readOnly?: boolean;
-  /** Start a read-only shared result preview with its drawer expanded. */
+  /** Start with the narrowed results expanded when the viewer has access. */
   defaultOpen?: boolean;
 };
 
@@ -274,7 +274,13 @@ export function AiSearchFilter({
     candidateCount: isSearchPending ? undefined : candidateCount,
   });
   const resumeCanOpen = resumeRequested && eligibility.status === "eligible";
-  const [open, setOpen] = useState(resumeCanOpen || (readOnly && defaultOpen));
+  const eligible = eligibility.status === "eligible";
+  const [panelRequestedOpen, setOpen] = useState(
+    resumeCanOpen || (defaultOpen && eligible),
+  );
+  const [hasOpened, setHasOpened] = useState(resumeCanOpen);
+  // Invalidate the visible feed during render, before effects can run.
+  const open = panelRequestedOpen && (!isDrawer || eligible);
   const [query, setQuery] = useState(persistedQuery ?? "");
   const [isApplying, setIsApplying] = useState(false);
   const [activeQuery, setActiveQuery] = useState<string | null>(persistedQuery);
@@ -287,10 +293,8 @@ export function AiSearchFilter({
     ? drawerContent(open)
     : drawerContent;
   const setPanelOpen = useCallback((nextOpen: boolean) => {
-    const resolvedOpen = nextOpen && isDrawer &&
-      eligibility.status === "subscription_required"
-      ? false
-      : nextOpen;
+    const resolvedOpen = nextOpen && (!isDrawer || eligible);
+    if (resolvedOpen) setHasOpened(true);
     if (isDrawer) {
       drawerScrollYRef.current = window.scrollY;
       setDrawerLayoutRevision((revision) => revision + 1);
@@ -301,7 +305,15 @@ export function AiSearchFilter({
         resolvedOpen && appliedQueryRef.current !== null,
       );
     }
-  }, [eligibility.status, isDrawer, onDrawerOpenChange]);
+  }, [eligible, isDrawer, onDrawerOpenChange]);
+
+  useEffect(() => {
+    if (isDrawer) {
+      onDrawerOpenChange?.(
+        open && activeQuery !== null && eligibility.status !== "subscription_required",
+      );
+    }
+  }, [activeQuery, eligibility.status, isDrawer, onDrawerOpenChange, open]);
 
   const clearResumeRequest = useCallback(() => {
     if (!resumeRequested) return;
@@ -348,11 +360,16 @@ export function AiSearchFilter({
     setIsEditing(false);
   }, [persistedQuery]);
 
-  const eligible = eligibility.status === "eligible";
+  useEffect(() => {
+    if (!isDrawer || eligible) return;
+    setPanelOpen(false);
+    setIsEditing(false);
+  }, [eligible, isDrawer, setPanelOpen]);
+
   const canMountDrawerContent =
     isDrawer &&
     resolvedDrawerContent != null &&
-    eligibility.status !== "subscription_required";
+    eligible;
   const canApply = Boolean(
     (createsWatchlist && watchlistDraft) ||
     (!createsWatchlist && watchlistId),
@@ -429,11 +446,67 @@ export function AiSearchFilter({
     });
   }
 
+  const eligibilityNotice = (
+    <div id={`${panelId}-unavailable`} role="status" className="rounded-md border border-border-soft bg-background p-3">
+      <p className="text-sm font-medium">
+        {eligibility.status === "too_broad"
+          ? t({
+              id: "search.aiFilter.narrow.title",
+              comment: "Heading shown when too many jobs match for AI filtering",
+              message: "Narrow the search first",
+            })
+          : eligibility.status === "no_matches"
+            ? t({
+                id: "search.aiFilter.empty.title",
+                comment: "Heading shown when no jobs are available to AI-filter",
+                message: "No jobs to review",
+              })
+            : eligibility.status === "count_unavailable"
+              ? t({
+                  id: "search.aiFilter.unavailable.title",
+                  comment: "Heading shown when exact AI candidate eligibility cannot be established",
+                  message: "Precise matching is temporarily unavailable",
+                })
+              : t({
+                  id: "search.aiFilter.addFilters.title",
+                  comment: "Heading prompting the user to use normal filters before AI",
+                  message: "Start with the job filters",
+                })}
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
+        {eligibility.status === "too_broad"
+          ? t({
+              id: "search.aiFilter.narrow.body",
+              comment: "Explains the maximum AI-filter candidate count; variables are current count and maximum",
+              message: `${eligibility.candidateCount} jobs match. Use location, role, level, or another filter to get to ${eligibility.maxCandidates} or fewer.`,
+            })
+          : eligibility.status === "no_matches"
+            ? t({
+                id: "search.aiFilter.empty.body",
+                comment: "Explains that normal filters need to find jobs before Jev can review them",
+                message: "Adjust the current filters until at least one job matches.",
+              })
+            : eligibility.status === "count_unavailable"
+              ? t({
+                  id: "search.aiFilter.unavailable.body",
+                  comment: "Explains fail-closed behavior when the exact candidate count is unavailable",
+                  message: "We could not verify how many jobs are in this search. Try again in a moment.",
+                })
+              : t({
+                  id: "search.aiFilter.addFilters.body",
+                  comment: "Explains the normal-filter prerequisite for Jev",
+                  message: `Choose a role, location, level, or another filter. This option appears when ${eligibility.maxCandidates} or fewer jobs remain.`,
+                })}
+      </p>
+    </div>
+  );
+
   // The control is progressive disclosure: ordinary filters must first
   // produce a non-empty, economically bounded candidate set.
   if (
     !activeQuery &&
     !persistedQuery &&
+    !hasOpened &&
     (
       !hasSearchFilters ||
       isSearchPending ||
@@ -630,7 +703,7 @@ export function AiSearchFilter({
                   })}
                 </span>
               </>
-            ) : (activeQuery || persistedQuery) && !open ? (
+            ) : (activeQuery || persistedQuery) && eligible && !open ? (
               <span className="min-w-0 truncate text-[11px] tabular-nums text-muted">
                 <Plural
                   id="search.aiFilter.compactMatchCount"
@@ -709,12 +782,14 @@ export function AiSearchFilter({
               <button
                 type="button"
                 aria-pressed={open && activeQuery !== null}
+                disabled={!eligible}
+                aria-describedby={!eligible ? `${panelId}-unavailable` : undefined}
                 aria-expanded={open}
                 aria-controls={panelId}
                 onClick={() => {
                   if (!open) openPanel();
                 }}
-                className={`inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-primary ${open && activeQuery !== null ? "bg-surface font-semibold shadow-sm" : "text-muted"}`}
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ${open && activeQuery !== null ? "bg-surface font-semibold shadow-sm" : "text-muted"}`}
               >
                 <Funnel size={14} aria-hidden="true" />
                 {t({
@@ -746,6 +821,10 @@ export function AiSearchFilter({
             message: "Narrow down search",
           })}
         </Button>
+      ) : null}
+
+      {isDrawer && !eligible && eligibility.status !== "subscription_required" ? (
+        <div className="px-3 pb-3">{eligibilityNotice}</div>
       ) : null}
 
       {(open || canMountDrawerContent) && (
@@ -984,58 +1063,7 @@ export function AiSearchFilter({
               </button>
             </div>
           ) : eligibility.status !== "eligible" ? (
-            <div className="mt-4 rounded-md border border-border-soft bg-background p-3">
-              <p className="text-sm font-medium">
-                {eligibility.status === "too_broad"
-                  ? t({
-                      id: "search.aiFilter.narrow.title",
-                      comment: "Heading shown when too many jobs match for AI filtering",
-                      message: "Narrow the search first",
-                    })
-                  : eligibility.status === "no_matches"
-                    ? t({
-                        id: "search.aiFilter.empty.title",
-                        comment: "Heading shown when no jobs are available to AI-filter",
-                        message: "No jobs to review",
-                      })
-                    : eligibility.status === "count_unavailable"
-                      ? t({
-                          id: "search.aiFilter.unavailable.title",
-                          comment: "Heading shown when exact AI candidate eligibility cannot be established",
-                          message: "Precise matching is temporarily unavailable",
-                        })
-                      : t({
-                          id: "search.aiFilter.addFilters.title",
-                          comment: "Heading prompting the user to use normal filters before AI",
-                          message: "Start with the job filters",
-                        })}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-muted">
-                {eligibility.status === "too_broad"
-                  ? t({
-                      id: "search.aiFilter.narrow.body",
-                      comment: "Explains the maximum AI-filter candidate count; variables are current count and maximum",
-                      message: `${eligibility.candidateCount} jobs match. Use location, role, level, or another filter to get to ${eligibility.maxCandidates} or fewer.`,
-                    })
-                  : eligibility.status === "no_matches"
-                    ? t({
-                        id: "search.aiFilter.empty.body",
-                        comment: "Explains that normal filters need to find jobs before Jev can review them",
-                        message: "Adjust the current filters until at least one job matches.",
-                      })
-                    : eligibility.status === "count_unavailable"
-                      ? t({
-                          id: "search.aiFilter.unavailable.body",
-                          comment: "Explains fail-closed behavior when the exact candidate count is unavailable",
-                          message: "We could not verify how many jobs are in this search. Try again in a moment.",
-                        })
-                      : t({
-                          id: "search.aiFilter.addFilters.body",
-                          comment: "Explains the normal-filter prerequisite for Jev",
-                          message: `Choose a role, location, level, or another filter. This option appears when ${eligibility.maxCandidates} or fewer jobs remain.`,
-                        })}
-              </p>
-            </div>
+            <div className="mt-4">{eligibilityNotice}</div>
           ) : (
             <form
               className="mt-4"
@@ -1122,6 +1150,7 @@ export function AiSearchFilter({
       {isDrawer ? (
         <ScrollNarrowingReminder
           enabled={
+            (eligible || eligibility.status === "subscription_required") &&
             !open &&
             !isApplying &&
             !activeQuery &&

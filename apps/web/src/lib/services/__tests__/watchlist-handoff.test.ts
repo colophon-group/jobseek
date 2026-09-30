@@ -31,7 +31,6 @@ describe("createWatchlistFromHandoff", () => {
 
     await expect(createWatchlistFromHandoffWithDeps({
       title: "Roles",
-      description: "Selected companies",
       companySlugs: [" Stripe ", "gitlab", "stripe"],
       filters: { workMode: ["remote"] },
     }, mocks)).resolves.toEqual({ id: "watchlist-1", slug: "roles" });
@@ -42,7 +41,6 @@ describe("createWatchlistFromHandoff", () => {
     ]);
     expect(mocks.createWatchlist).toHaveBeenCalledWith({
       title: "Roles",
-      description: "Selected companies",
       companyIds: ["uuid-stripe", "uuid-gitlab"],
       filters: { workMode: ["remote"], anyCompany: false },
     });

@@ -15,9 +15,9 @@ export function SettingsNav() {
     const redirectNotifications = () => {
       if (
         pathname === lp("/settings") &&
-        window.location.hash === "#notifications"
+        ["#notifications", "#product-news"].includes(window.location.hash)
       )
-        router.replace(`${lp("/settings/email")}#notifications`);
+        router.replace(`${lp("/settings/email")}${window.location.hash}`);
     };
     redirectNotifications();
     window.addEventListener("hashchange", redirectNotifications);

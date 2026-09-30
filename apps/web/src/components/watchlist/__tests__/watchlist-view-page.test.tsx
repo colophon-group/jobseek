@@ -91,7 +91,9 @@ vi.mock("@/components/watchlist/watchlist-job-list", () => ({
 }));
 
 vi.mock("@/components/search/filter-pills-readonly", () => ({
-  FilterPillsReadOnly: () => null,
+  FilterPillsReadOnly: ({ onClearAll }: { onClearAll?: () => void }) => onClearAll
+    ? <button type="button" onClick={onClearAll}>Clear all</button>
+    : null,
 }));
 
 vi.mock("@/components/search/advanced-search-panel", () => ({
@@ -125,6 +127,7 @@ vi.mock("@/components/search/advanced-search-panel", () => ({
   ),
 }));
 
+import type { WatchlistFilters } from "@/lib/actions/watchlists";
 import { WatchlistViewPage } from "../watchlist-view-page";
 import {
   readPendingWatchlists,
@@ -135,7 +138,7 @@ const detail = {
   id: "11111111-1111-4111-8111-111111111111",
   slug: "us-roles",
   title: "US roles",
-  description: "A focused list",
+  ...{ description: "A focused list" },
   isPublic: false,
   alertsEnabled: false,
   filters: {
@@ -161,7 +164,7 @@ const detail = {
 
 function renderPage(
   isOwner = true,
-  detailOverride: Partial<typeof detail> = {},
+  detailOverride: Partial<Omit<typeof detail, "filters">> & { filters?: WatchlistFilters } = {},
   limitReached = false,
   initialTotal = 0,
   initialAiFilterState: React.ComponentProps<typeof WatchlistViewPage>["initialAiFilterState"] = null,
@@ -238,8 +241,78 @@ describe("WatchlistViewPage private detail", () => {
     const filterGrid = filterControl.parentElement;
     expect(filterGrid?.className).toContain("space-y-3");
 
-    const narrowButton = screen.getByRole("button", { name: "Narrowed" });
+    const narrowButton = screen.getByRole("button", { name: "All results" });
     expect(screen.getAllByTestId("job-list")[0]?.contains(narrowButton)).toBe(true);
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    expect(mocks.jobListProps.mock.calls.find(
+      ([props]) => props.resultMode === "broad",
+    )?.[0].drawerOpen).toBe(true);
+    expect(mocks.jobListProps.mock.calls.find(
+      ([props]) => props.resultMode === "narrowed",
+    )?.[0].aiFilterScopeReady).toBe(true);
+
+    fireEvent.click(narrowButton);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(mocks.jobListProps.mock.calls.filter(
+      ([props]) => props.resultMode === "broad",
+    ).at(-1)?.[0].drawerOpen).toBe(false);
+
+    fireEvent.click(filterControl);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("Precise matching is temporarily unavailable")).toBeTruthy();
+  });
+
+  const savedAiState = {
+    watchlistId: detail.id,
+    enabled: true,
+    entitled: true,
+    query: "Backend roles",
+    queryRevision: 1,
+    queryVersionId: "33333333-3333-4333-8333-333333333333",
+    status: "caught_up" as const,
+    counts: { accepted: 4, rejected: 20, total: 24 },
+    progress: { selectionOffset: 0, scannedCount: 24, completedCount: 24, stopReason: "caught_up" },
+    lastCaughtUpAt: "2026-09-22T00:00:00.000Z",
+    latestEventSequence: 1,
+  };
+
+  it.each(["Clear salary", "Clear all"])("disables a configured narrowed feed when the last filters are removed via %s", (action) => {
+    renderPage(true, {}, false, 24, savedAiState);
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: action }));
+
+    expect(screen.getByText("Start with the job filters")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
+    expect(screen.getAllByTestId("job-list")).toHaveLength(1);
+  });
+
+  it.each(["Remove Acme", "Any company"])("requires filters after the last company restriction is removed via %s", (action) => {
+    renderPage(true, {
+      filters: {},
+      companies: [{ id: "acme", name: "Acme", slug: "acme", icon: null }],
+    }, false, 24, savedAiState);
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: action }));
+
+    expect(screen.getByText("Start with the job filters")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
+  });
+
+  it("waits for a fresh count after changing an otherwise eligible filter", () => {
+    renderPage(true, {}, false, 24, savedAiState);
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply salary" }));
+
+    expect(screen.getByText("Precise matching is temporarily unavailable")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Narrowed" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("region", { name: "Narrowed results" })).toBeNull();
+    expect(mocks.jobListProps.mock.lastCall?.[0].drawerOpen).toBe(false);
   });
 
   it("keeps owner mutations hidden until the hydrated client confirms the session", async () => {
@@ -259,7 +332,6 @@ describe("WatchlistViewPage private detail", () => {
       kind: "create",
       draft: {
         title: detail.title,
-        description: detail.description,
         companyIds: [],
         filters: detail.filters,
         isPublic: false,
@@ -287,6 +359,8 @@ describe("WatchlistViewPage private detail", () => {
   });
 
   it("shows a saved narrowed feed on a shared watchlist even when the rollout flag is off", () => {
+    mocks.isLoggedIn = false;
+    mocks.plan = "free";
     renderPage(false, {}, false, 24, {
       watchlistId: detail.id,
       enabled: true,
@@ -306,19 +380,29 @@ describe("WatchlistViewPage private detail", () => {
       latestEventSequence: 1,
     });
 
-    expect(screen.getByRole("button", { name: "Narrowed" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "All results" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Narrowed results" })).toBeTruthy();
+    expect(mocks.jobListProps.mock.calls.find(
+      ([props]) => props.resultMode === "broad",
+    )?.[0].drawerOpen).toBe(true);
     expect(mocks.jobListProps.mock.calls.some(
       ([props]) => (props as { sharedSnapshot?: boolean }).sharedSnapshot === true,
     )).toBe(true);
   });
 
-  it("exposes populated title and description edits as keyboard-focusable buttons", () => {
+  it.each([true, false])("omits legacy descriptions and their editor for owner=%s", (isOwner) => {
+    renderPage(isOwner);
+
+    expect(screen.queryByText("A focused list")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add description" })).toBeNull();
+    expect(screen.queryByPlaceholderText("Describe this watchlist...")).toBeNull();
+  });
+
+  it("exposes the title edit as a keyboard-focusable button", () => {
     renderPage();
 
     const titleButton = screen.getByRole("button", { name: "US roles" });
-    const descriptionButton = screen.getByRole("button", { name: "A focused list" });
     expect(titleButton.getAttribute("type")).toBe("button");
-    expect(descriptionButton.getAttribute("type")).toBe("button");
 
     fireEvent.click(titleButton);
     expect(screen.getByRole("textbox")).toBeTruthy();
@@ -380,7 +464,7 @@ describe("WatchlistViewPage private detail", () => {
     });
   });
 
-  it("cancels later title and description edits back to the last successful save", async () => {
+  it("cancels later title edits back to the last successful save", async () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "US roles" }));
@@ -394,33 +478,6 @@ describe("WatchlistViewPage private detail", () => {
     fireEvent.change(editor, { target: { value: "Discard this title" } });
     fireEvent.keyDown(editor, { key: "Escape" });
     expect(screen.getByRole("button", { name: "Platform roles" })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "A focused list" }));
-    editor = screen.getByRole("textbox");
-    fireEvent.change(editor, { target: { value: "Persisted description" } });
-    fireEvent.blur(editor);
-    await screen.findByRole("button", { name: "Persisted description" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Persisted description" }));
-    editor = screen.getByRole("textbox");
-    fireEvent.change(editor, { target: { value: "Discard this description" } });
-    fireEvent.keyDown(editor, { key: "Escape" });
-    expect(screen.getByRole("button", { name: "Persisted description" })).toBeTruthy();
-  });
-
-  it("rolls back a description when the server returns an error", async () => {
-    mocks.updateWatchlist.mockResolvedValueOnce({ error: "invalid_input" });
-    renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: "A focused list" }));
-    const textarea = screen.getByRole("textbox");
-    fireEvent.change(textarea, { target: { value: "Changed description" } });
-    fireEvent.blur(textarea);
-
-    expect((await screen.findByRole("alert")).textContent).toBe(
-      "Could not save your changes.",
-    );
-    expect(screen.getByRole("button", { name: "A focused list" })).toBeTruthy();
   });
 
   it("rolls back an optimistic company removal when persistence fails", async () => {
