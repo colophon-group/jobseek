@@ -10,6 +10,7 @@ class ReleasePinTest(unittest.TestCase):
         pilot = Path(__file__).resolve().parent
         release = json.loads((pilot / "lightpanda-release.json").read_text())
         dockerfile = (pilot / "Dockerfile").read_text()
+        integration = (pilot / "integration_test.go").read_text()
         self.assertEqual(release["schema_version"], 2)
         image = release["image"]
         self.assertEqual(image["repository"], "lightpanda/browser")
@@ -27,6 +28,7 @@ class ReleasePinTest(unittest.TestCase):
         for arch, asset in release["assets"].items():
             self.assertRegex(asset["sha256"], r"^[0-9a-f]{64}$")
             self.assertIn(f"{arch}) lightpanda_sha={asset['sha256']} ;;", dockerfile)
+            self.assertIn(f'"{arch}": "{asset["sha256"]}"', integration)
             for field in ("image_manifest_digest", "image_binary_layer_digest"):
                 self.assertRegex(asset[field], r"^sha256:[0-9a-f]{64}$")
         self.assertIn("sha256sum --check --strict", dockerfile)
