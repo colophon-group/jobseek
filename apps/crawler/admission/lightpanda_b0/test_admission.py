@@ -340,3 +340,15 @@ def test_numeric_gate_rejects_python_or_missing_native_owner() -> None:
         )
         executor["native_ownership"] = ownership
         assert "c1-p1/candidate:native_ownership" in controller.evaluate(evidence)["reasons"]
+
+
+def test_live_proc_limits_accept_linux_padding_and_reject_changed_owner() -> None:
+    status = "Name:\tnative-executor\nUid:\t10001\t10001\t10001\t10001\n"
+    limits = (
+        "Limit                     Soft Limit           Hard Limit           Units\n"
+        "Max open files            64                   64                   files     \n"
+    )
+    assert controller.native_process_limits_match(status, limits)
+    assert not controller.native_process_limits_match(status.replace("10001", "0", 1), limits)
+    assert not controller.native_process_limits_match(status, limits.replace("64", "1024", 1))
+    assert not controller.native_process_limits_match(status, "")

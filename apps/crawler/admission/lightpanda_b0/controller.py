@@ -429,6 +429,19 @@ def _cpu_usage(path: Path) -> int:
     return int(value)
 
 
+def native_process_limits_match(status: str, limits: str) -> bool:
+    uid = re.search(r"^Uid:[ \t]+(\d+)[ \t]+(\d+)[ \t]+(\d+)[ \t]+(\d+)[ \t]*$", status, re.M)
+    descriptors = re.search(
+        r"^Max open files[ \t]+(\d+)[ \t]+(\d+)[ \t]+files[ \t]*$", limits, re.M
+    )
+    return (
+        uid is not None
+        and set(uid.groups()) == {"10001"}
+        and descriptors is not None
+        and descriptors.groups() == ("64", "64")
+    )
+
+
 def attest_native_executor(item: dict[str, Any], cgroup: Path) -> dict[str, Any]:
     config, host = item.get("Config", {}), item.get("HostConfig", {})
     if (
@@ -463,15 +476,7 @@ def attest_native_executor(item: dict[str, Any], cgroup: Path) -> dict[str, Any]
             if executable != "/usr/local/bin/go-lightpanda-b0-executor":
                 raise AdmissionError("native executor cgroup contains another runtime")
             status = (process / "status").read_text()
-            uid = re.search(r"^Uid:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)$", status, re.M)
-            limits = (process / "limits").read_text()
-            descriptors = re.search(r"^Max open files\s+(\d+)\s+(\d+)\s+files$", limits, re.M)
-            if (
-                uid is None
-                or set(uid.groups()) != {"10001"}
-                or descriptors is None
-                or descriptors.groups() != ("64", "64")
-            ):
+            if not native_process_limits_match(status, (process / "limits").read_text()):
                 raise AdmissionError("native executor live UID/descriptor limits differ")
             processes.append({"executable": executable, "uid": 10001, "nofile": 64})
         except FileNotFoundError:
