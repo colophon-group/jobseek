@@ -150,6 +150,119 @@ func installedResponse(t *testing.T, request Request, mode string, uid uint32) m
 	return response
 }
 
+// The description lock holds the native transaction after its posting UPDATE.
+// A queued exclusive posting lock then wins immediately after COMMIT and blocks
+// ReadSchedule. This establishes a durable commit before any acknowledgement
+// can be generated, without adding fault hooks to the production executable.
+func installedCrashBeforeAcknowledgement(t *testing.T, owner *Executor, request Request, stop func(syscall.Signal) error) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	locker, err := pgx.Connect(ctx, os.Getenv("JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL"))
+	if err != nil {
+		t.Fatal("isolated lock fixture connection unavailable")
+	}
+	defer locker.Close(context.Background())
+	blocker, err := owner.Store.pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer blocker.Rollback(context.Background())
+	if _, err := blocker.Exec(ctx, "LOCK TABLE descriptions IN ACCESS EXCLUSIVE MODE"); err != nil {
+		t.Fatal(err)
+	}
+	client := installedClient(t, request, "commit", installedUID)
+	var output installedLog
+	client.Stdout, client.Stderr = &output, &output
+	if err := client.Start(); err != nil {
+		t.Fatal(err)
+	}
+	clientDone := make(chan error, 1)
+	go func() { clientDone <- client.Wait() }()
+	defer func() { _ = client.Process.Kill() }()
+	waitFor := func(query string, args ...any) {
+		t.Helper()
+		deadline := time.Now().Add(3 * time.Second)
+		for {
+			var ready bool
+			if err := blocker.QueryRow(ctx, query, args...).Scan(&ready); err != nil {
+				t.Fatal(err)
+			}
+			if ready {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("installed commit barrier was not reached")
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	waitFor("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='jobseek:crawler:lightpanda-b0-executor:local' AND wait_event_type='Lock' AND query LIKE '%WITH prior AS MATERIALIZED%')")
+	locked := make(chan error, 1)
+	lockCompleted := false
+	go func() {
+		_, err := locker.Exec(ctx, "BEGIN; LOCK TABLE job_posting IN ACCESS EXCLUSIVE MODE")
+		locked <- err
+	}()
+	// Cancellation/rollback releases the synthetic barriers even if a check
+	// fails, so fixture cleanup never waits for a blocked production handler.
+	defer func() {
+		cancel()
+		_ = stop(syscall.SIGKILL)
+		if !lockCompleted {
+			select {
+			case <-locked:
+			case <-time.After(3 * time.Second):
+				t.Error("isolated lock fixture did not cancel")
+			}
+		}
+	}()
+	waitFor("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND relation='job_posting'::regclass AND mode='AccessExclusiveLock' AND NOT granted)", int32(locker.PgConn().PID()))
+	if err := blocker.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-locked:
+		lockCompleted = true
+		if err != nil {
+			t.Fatal("post-commit acknowledgement barrier failed")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("native transaction did not commit within fixture barrier")
+	}
+	defer func() { _, _ = locker.Exec(context.Background(), "ROLLBACK") }()
+	var title []string
+	var scraped *time.Time
+	if err := locker.QueryRow(ctx, "SELECT titles,last_scraped_at FROM job_posting WHERE id=$1", request.Task.Envelope.TaskID).Scan(&title, &scraped); err != nil || len(title) != 1 || title[0] != "Senior Software Engineer" || scraped == nil {
+		t.Fatal("hard-kill fixture did not establish durable native commit")
+	}
+	// The native connection must now be blocked in its post-commit schedule
+	// read. A generated acknowledgement cannot precede that read completing.
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		var waiting bool
+		if err := locker.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='jobseek:crawler:lightpanda-b0-executor:local' AND wait_event_type='Lock' AND query LIKE 'SELECT is_active, next_scrape_at FROM job_posting%')").Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("native owner was not held before acknowledgement generation")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	_ = stop(syscall.SIGKILL)
+	select {
+	case err := <-clientDone:
+		if err == nil || bytes.Contains([]byte(output.String()), []byte(`"type":"committed"`)) {
+			t.Fatal("hard-killed owner delivered a commit acknowledgement")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("hard-killed owner retained client conversation")
+	}
+}
+
 func TestInstalledNativeExecutorStartupBudgetHealthAndRecovery(t *testing.T) {
 	binary := os.Getenv("JOBSEEK_B0_EXECUTOR_INTEGRATION_BINARY")
 	if binary == "" {
@@ -297,10 +410,7 @@ INSERT INTO `+quoted+`.location_name VALUES(1,'en','Switzerland',true),(2,'en','
 		_ = client.Wait()
 	}
 	time.Sleep(30 * time.Millisecond)
-	response := installedResponse(t, request, "discard_ack", installedUID)
-	if string(response["type"]) != `"ack_discarded"` {
-		t.Fatal("commit acknowledgement not withheld")
-	}
+	installedCrashBeforeAcknowledgement(t, owner, request, stop)
 	var titles []string
 	var ids, technologies []int64
 	var occupation, seniority, salary int64
@@ -324,7 +434,7 @@ INSERT INTO `+quoted+`.location_name VALUES(1,'en','Switzerland',true),(2,'en','
 		t.Fatal(err)
 	}
 	start()
-	response = installedResponse(t, request, "commit", installedUID)
+	response := installedResponse(t, request, "commit", installedUID)
 	if string(response["type"]) != `"authority_lost"` {
 		t.Fatal("restart allowed committed duplicate")
 	}

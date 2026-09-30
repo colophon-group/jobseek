@@ -107,6 +107,36 @@ the 64-descriptor limit before and after collection, and rejects missing or
 Python owner evidence. That complete native image/lane result is pending.
 These fixture results do not establish production write ownership.
 
+## Pending fault and publisher-policy evidence
+
+A stronger installed fixture is prepared after the passing lost-ack test. It
+holds description persistence, queues an exclusive posting-table lock, then
+releases persistence. The queued lock acquires after the native transaction
+commits and blocks its post-commit schedule read. The fixture verifies durable
+canonical content, observes the blocked read, and kills the real owner before
+it can generate an acknowledgement. Restart must reject the same claim and
+retain the committed schedule. This uses only isolated migrated fixture tables,
+with no production fault hook or publisher request; Linux execution is pending.
+
+The held-result policy audit identified an existing B0 boundary gap in both
+executors: `src/lightpanda/runtime.py` validates the HTML manifest and invokes
+raw Go parsers without the shared header/meta reservation check.
+`BrowserSuccess` currently carries no main-document response headers, and the
+renderer result discards CDP response headers. The native direct parser follows
+that same path. Both executors already skip stored `tdm_reserved` postings, but
+that does not prove detection or persistence of a fresh resource signal.
+
+Before native ownership promotion, carry bounded, main-document-bound policy
+signals through the renderer contract; verify header/meta precedence against
+the existing shared parser and persist observed posting reservations through
+the same authoritative transaction. Preserve listing visibility, facts and
+retained-description display, and enforce existing downstream mining gates.
+Use synthetic entry-point cases, including signal-free, reserved, HTML opt-in,
+malformed manifest, redirect correlation and rollback/revocation cases. Do not
+claim complete origin-file/protocol coverage: the broader existing work remains
+in issue #10090 and its documented scope. This audit authorizes no blanket
+source exclusions or new origin traffic.
+
 ## Next delivery gates
 
 1. Complete installed-binary/image tests with real Linux UID isolation, private
