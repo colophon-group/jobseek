@@ -369,3 +369,29 @@ settlement of a committed future-due receipt. The real native executable also
 admits exact joint startup and exits without queue/canonical changes after witness
 loss. This proves the native component; legacy joint admission, the supported
 host wrapper, complete transfer/full reversal and fleet admission remain required.
+
+## Retained cold retirement
+
+Migration 0041 and `BeginColdOwnershipReversal` retain an immutable exact reversal
+intent and set the forward journal to reversing before sequence allocation.
+The document binds the source intent/revision/epoch/plan/phase, rollback release,
+previous ordinary plan/B0 receipt and independently attested host-cold digest.
+Retirement does not require a candidate to remain enabled or its Redis witnesses
+to survive. `ReserveColdReversalEpoch` allocates a fresh epoch and atomically
+retires the active ordinary owner; a failed SQL commit burns the sequence while
+retaining pending intent, so recovery allocates another fresh epoch. Exact
+reserved retries require the recorded epoch and no active ordinary owner.
+
+`InspectColdReversal` reads retained immutable progress without mutation/epoch
+barriers or live allocator reads. It can observe pending history while an
+allocation transaction is paused. Real PostgreSQL/Redis tests cover all four
+source phases, changed/disabled configurations, missing witnesses and complete
+private Redis loss, wrong rollback bindings, barrier contention and actual
+executable SIGKILL before retirement commit. Canonical receipts/future deadlines
+and every Redis value/expiry class remain unchanged through recovery.
+
+This is retirement, not restoration. The journal remains reversing, supported
+claims remain blocked, and the schema refuses a reversed phase without completed
+restoration evidence. The supported ADR006 host wrapper, PG-derived B0 transfer,
+durable cross-store restoration and complete prior-release readiness remain to
+implement and prove before any production ordinary owner is selected.

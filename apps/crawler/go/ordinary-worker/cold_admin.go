@@ -16,10 +16,14 @@ import (
 // ColdAdminOperation recognizes only explicit one-shot coordinator arguments.
 func ColdAdminOperation(argument string) string {
 	switch argument {
-	case "--cold-b0-target", "--cold-begin", "--cold-reserve", "--cold-inspect", "--cold-prepare", "--cold-publish", "--cold-activate":
+	case "--cold-b0-target", "--cold-begin", "--cold-reserve", "--cold-inspect", "--cold-prepare", "--cold-publish", "--cold-activate", "--cold-reversal-begin", "--cold-reversal-reserve", "--cold-reversal-inspect":
 		return strings.TrimPrefix(argument, "--")
 	}
 	return ""
+}
+
+func coldReversalOperation(operation string) bool {
+	return operation == "cold-reversal-begin" || operation == "cold-reversal-reserve" || operation == "cold-reversal-inspect"
 }
 
 type ColdAdminConfig struct {
@@ -27,23 +31,27 @@ type ColdAdminConfig struct {
 	intentFile, intentSHA, targetFile, targetSHA, luaFile string
 	planSHA, namespace, shard, cohort                     string
 	epoch                                                 int64
+	reversalFile, reversalSHA                             string
 }
 
 // ColdAdminIdentity reports the completed primitive, not host release readiness
 // or a grant to start services. Target contains only bounded board identities and
 // configuration digests; the host must durably retain its exact canonical bytes.
 type ColdAdminIdentity struct {
-	Version        string          `json:"version"`
-	Operation      string          `json:"operation"`
-	SourceRevision string          `json:"source_revision"`
-	IntentSHA256   string          `json:"intent_sha256,omitempty"`
-	RoutingEpoch   int64           `json:"routing_epoch,omitempty"`
-	PlanSHA256     string          `json:"plan_sha256,omitempty"`
-	ProjectionSHA1 string          `json:"projection_sha1,omitempty"`
-	Members        int             `json:"members,omitempty"`
-	B0TargetSHA256 string          `json:"b0_target_sha256,omitempty"`
-	Target         json.RawMessage `json:"target,omitempty"`
-	RetainedPhase  string          `json:"retained_phase,omitempty"`
+	Version         string          `json:"version"`
+	Operation       string          `json:"operation"`
+	SourceRevision  string          `json:"source_revision"`
+	IntentSHA256    string          `json:"intent_sha256,omitempty"`
+	RoutingEpoch    int64           `json:"routing_epoch,omitempty"`
+	PlanSHA256      string          `json:"plan_sha256,omitempty"`
+	ProjectionSHA1  string          `json:"projection_sha1,omitempty"`
+	Members         int             `json:"members,omitempty"`
+	B0TargetSHA256  string          `json:"b0_target_sha256,omitempty"`
+	Target          json.RawMessage `json:"target,omitempty"`
+	RetainedPhase   string          `json:"retained_phase,omitempty"`
+	ReversalSHA256  string          `json:"reversal_sha256,omitempty"`
+	ReversalPhase   string          `json:"reversal_phase,omitempty"`
+	RetirementEpoch int64           `json:"retirement_routing_epoch,omitempty"`
 }
 
 // ReadColdAdminConfig requires a distinct protected mode, compiled source,
@@ -70,7 +78,11 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 	c.targetFile, c.targetSHA = getenv("ORDINARY_COLD_B0_TARGET_FILE"), getenv("ORDINARY_COLD_B0_TARGET_SHA256")
 	c.luaFile, c.planSHA = getenv("ORDINARY_COLD_B0_LUA_FILE"), getenv("ORDINARY_COLD_PLAN_SHA256")
 	c.namespace, c.shard, c.cohort = getenv("ORDINARY_COLD_B0_NAMESPACE"), getenv("ORDINARY_COLD_B0_SHARD_ID"), getenv("ORDINARY_COLD_B0_COHORT")
+	c.reversalFile, c.reversalSHA = getenv("ORDINARY_COLD_REVERSAL_FILE"), getenv("ORDINARY_COLD_REVERSAL_SHA256")
 	path := func(p string) bool { return filepath.IsAbs(p) && !strings.ContainsRune(p, 0) }
+	if !coldReversalOperation(operation) && (c.reversalFile != "" || c.reversalSHA != "") {
+		return ColdAdminConfig{}, ErrStartup
+	}
 	if operation == "cold-b0-target" {
 		if !path(c.luaFile) || c.namespace == "" || c.shard == "" || c.cohort == "" || c.intentFile != "" || c.intentSHA != "" || c.targetFile != "" || c.targetSHA != "" || c.planSHA != "" {
 			return ColdAdminConfig{}, ErrStartup
@@ -79,6 +91,12 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 	}
 	if !path(c.intentFile) || !planPattern.MatchString(c.intentSHA) || c.namespace != "" || c.shard != "" || c.cohort != "" {
 		return ColdAdminConfig{}, ErrStartup
+	}
+	if coldReversalOperation(operation) {
+		if !path(c.reversalFile) || !planPattern.MatchString(c.reversalSHA) || !planPattern.MatchString(c.planSHA) || c.luaFile != "" || c.targetFile != "" || c.targetSHA != "" {
+			return ColdAdminConfig{}, ErrStartup
+		}
+		return c, nil
 	}
 	if operation == "cold-reserve" || operation == "cold-inspect" {
 		if c.luaFile != "" || c.targetFile != "" || c.targetSHA != "" || c.planSHA != "" {
@@ -105,10 +123,11 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 		return nil, ErrStartup
 	}
 	var spec queue.ColdTransitionSpec
+	var reversal queue.ColdReversalSpec
 	var target *queue.ColdB0Target
 	var lua []byte
 	var err error
-	if c.operation != "cold-reserve" && c.operation != "cold-inspect" {
+	if c.operation != "cold-reserve" && c.operation != "cold-inspect" && !coldReversalOperation(c.operation) {
 		lua, err = readProtectedOwnershipFile(c.luaFile, 128<<10)
 		if err != nil {
 			return nil, ErrStartup
@@ -123,7 +142,16 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 		if err != nil || spec.SourceRevision != c.source || ((c.operation == "cold-begin" || c.operation == "cold-reserve" || c.operation == "cold-inspect") && spec.PreviousEpoch != c.epoch) {
 			return nil, ErrStartup
 		}
-		if c.operation != "cold-reserve" && c.operation != "cold-inspect" {
+		if coldReversalOperation(c.operation) {
+			body, err := readProtectedOwnershipFile(c.reversalFile, 4096)
+			if err != nil {
+				return nil, ErrStartup
+			}
+			reversal, err = queue.DecodeColdReversalSpec(string(body), c.reversalSHA)
+			if err != nil || reversal.SourceRevision != c.source || reversal.ForwardIntentSHA256 != c.intentSHA || reversal.SourceEpoch != c.epoch || reversal.SourcePlanSHA256 != c.planSHA || reversal.RollbackReleaseSHA256 != spec.RollbackReleaseSHA256 || reversal.RollbackOrdinaryPlanSHA256 != spec.PreviousOrdinaryPlanSHA256 || reversal.RollbackB0ReceiptSHA256 != spec.PreviousB0ReceiptSHA256 {
+				return nil, ErrStartup
+			}
+		} else if c.operation != "cold-reserve" && c.operation != "cold-inspect" {
 			body, err := readProtectedOwnershipFile(c.targetFile, 16384)
 			if err != nil {
 				return nil, ErrStartup
@@ -216,6 +244,23 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 		plan, err = queue.PublishColdOwnership(ctx, pool, client, c.intentSHA, c.source, target)
 	case "cold-activate":
 		plan, err = queue.ActivateColdOwnership(ctx, pool, client, c.intentSHA, c.source, target)
+	case "cold-reversal-begin":
+		result.ReversalSHA256, err = queue.BeginColdOwnershipReversal(ctx, pool, reversal)
+		result.RoutingEpoch, result.PlanSHA256 = c.epoch, c.planSHA
+	case "cold-reversal-reserve", "cold-reversal-inspect":
+		var retained *queue.ColdReversalState
+		if c.operation == "cold-reversal-reserve" {
+			retained, err = queue.ReserveColdReversalEpoch(ctx, pool, c.reversalSHA, c.source)
+		} else {
+			retained, err = queue.InspectColdReversal(ctx, pool, c.reversalSHA, c.source)
+		}
+		if err == nil {
+			if retained.Spec() != reversal {
+				return nil, ErrStartup
+			}
+			result.ReversalSHA256, result.ReversalPhase, result.RetirementEpoch = retained.SHA256(), retained.Phase(), retained.RetirementEpoch()
+			result.RoutingEpoch, result.PlanSHA256 = c.epoch, c.planSHA
+		}
 	}
 	if err != nil {
 		return nil, ErrStartup

@@ -191,7 +191,7 @@ cookie, body-size and task-duration compatibility against that baseline.
 
 ## Protected cold coordinator primitives
 
-The compiled-source-bound executable now accepts seven distinct one-shot commands:
+The compiled-source-bound executable now accepts ten distinct one-shot commands:
 
 | Argument / matching `ORDINARY_GO_WORKER_MODE` | Operation |
 | --- | --- |
@@ -202,6 +202,9 @@ The compiled-source-bound executable now accepts seven distinct one-shot command
 | `--cold-prepare` / `cold-prepare` | Retain pending Redis witness before committed publishing phase. |
 | `--cold-publish` / `cold-publish` | Audit actual B0 queues and publish/persist/read back joint routing. |
 | `--cold-activate` / `cold-activate` | Atomically install the exact ordinary DB owner and active journal. |
+| `--cold-reversal-begin` / `cold-reversal-begin` | Retain exact reversal intent and contain the forward owner before allocation. |
+| `--cold-reversal-reserve` / `cold-reversal-reserve` | Allocate a fresh retirement epoch or retry its exact retained reservation. |
+| `--cold-reversal-inspect` / `cold-reversal-inspect` | Read retained reversal progress without allocation locks or restore authority. |
 
 All require protected database/Redis URLs, compiled matching
 `ORDINARY_OWNERSHIP_SOURCE_REVISION` and canonical positive
@@ -219,7 +222,7 @@ contains a target SHA256 plus canonical `target` object with board IDs/slugs and
 configuration hashes. The host must durably save those exact object bytes; no
 credentials or raw configuration are returned. Capture creates no ownership.
 
-Other operations require `ORDINARY_COLD_INTENT_FILE` and
+Other forward operations require `ORDINARY_COLD_INTENT_FILE` and
 `ORDINARY_COLD_INTENT_SHA256`. Except reservation/inspection, they also require
 `ORDINARY_COLD_B0_TARGET_FILE`, `ORDINARY_COLD_B0_TARGET_SHA256` and
 `ORDINARY_COLD_B0_LUA_FILE`. Reservation and inspection reject those unused fields. Files must
@@ -241,8 +244,31 @@ staged plan recover through exact publication/activation retries without changin
 canonical rows/deadlines/receipts or other Redis keys. Missing witnesses remain
 contained. The installed-image workflow runs this fixture on both architectures.
 
+Reversal operations require both the original protected intent file/hash and
+`ORDINARY_COLD_REVERSAL_FILE`/`ORDINARY_COLD_REVERSAL_SHA256` (canonical JSON,
+at most 4 KiB). They require the explicit forward source epoch/plan in
+`ORDINARY_COLD_ROUTING_EPOCH`/`ORDINARY_COLD_PLAN_SHA256`; they reject all unused
+B0 target/Lua/selector fields. The reversal binds the exact forward intent,
+source revision/epoch/plan/phase, previous ordinary plan/B0 receipt, rollback
+release and independently attested cold-host digest. Begin can contain a
+disabled or changed candidate or a lost Redis witness. Reservation retires an
+active source owner and records a fresh epoch while leaving Redis and canonical
+rows/receipts/future deadlines untouched. A sequence burn before SQL commit
+retains pending intent; exact recovery allocates another fresh epoch.
+
+Reversal output includes `reversal_sha256`; reservation/inspection also report
+`reversal_phase` and `retirement_routing_epoch`. Begin omits phase because an
+exact retry may already be reserved. Routing epoch/plan in output remain the
+explicit source identity. Inspection observes retained history through a
+read-only transaction, even while allocation is paused, and grants no live
+allocator authority. Migration 0041 keeps the forward journal reversing and
+claims blocked until a complete restoration protocol is implemented and proven.
+Retirement alone cannot mark it reversed. The actual executable fixture kills
+reservation after nextval/owner retirement, observes pending state independently,
+and proves SQL rollback and fresh-epoch recovery without replaying data effects.
+
 These commands do not stop services, deploy releases, transfer full PG-derived
-B0 tasks, verify host-cold/release/rollback evidence or implement reversal. The
+B0 tasks, verify host-cold/release/rollback evidence or complete restoration. The
 supported ADR006 wrapper must own those operations under its mutation lock before
 these primitives can select production authority. Ordinary production remains
 Python until that complete protocol, readiness and full reversal are proven.

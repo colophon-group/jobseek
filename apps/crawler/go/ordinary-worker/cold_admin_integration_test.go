@@ -157,7 +157,7 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	// DB can truncate fixtures, after retiring the activated test plan.
 	t.Cleanup(func() {
 		_, _ = f.pg.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE state='active'")
-		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_transition"); err != nil {
+		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_reversal,crawler_ownership_transition"); err != nil {
 			t.Error("private journal cleanup failed")
 		}
 		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_target"); err != nil {
@@ -476,6 +476,139 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	}
 	if retained := call("cold-inspect", reserveEnv, true); retained.RetainedPhase != "active" || retained.RoutingEpoch != reserved.RoutingEpoch {
 		t.Fatal("witness containment discarded retained journal history")
+	}
+	// Explicit cold reversal is still possible after witness loss. Host-cold and
+	// release digests here are private fixture bindings, not host attestation.
+	reversal := queue.ColdReversalSpec{Version: "jobseek.crawler.cold-reversal/v1", ReversalID: fixtureID(t), ForwardIntentSHA256: intent,
+		SourceRevision: source, SourceEpoch: reserved.RoutingEpoch, SourcePlanSHA256: reserved.PlanSHA256, SourcePhase: "active",
+		RollbackReleaseSHA256: spec.RollbackReleaseSHA256, RollbackOrdinaryPlanSHA256: spec.PreviousOrdinaryPlanSHA256,
+		RollbackB0ReceiptSHA256: spec.PreviousB0ReceiptSHA256, ColdAttestationSHA256: strings.Repeat("6", 64)}
+	reversalBody, _ := json.Marshal(reversal)
+	reversalHash := sha256.Sum256(reversalBody)
+	reversalSHA := hex.EncodeToString(reversalHash[:])
+	reversalFile := filepath.Join(e.directory, "reversal.json")
+	if err := os.WriteFile(reversalFile, reversalBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reversalEnv := map[string]string{"ORDINARY_COLD_INTENT_FILE": intentFile, "ORDINARY_COLD_INTENT_SHA256": intent,
+		"ORDINARY_COLD_ROUTING_EPOCH": fmt.Sprint(reserved.RoutingEpoch), "ORDINARY_COLD_PLAN_SHA256": reserved.PlanSHA256,
+		"ORDINARY_COLD_REVERSAL_FILE": reversalFile, "ORDINARY_COLD_REVERSAL_SHA256": reversalSHA}
+	for _, altered := range []string{string(reversalBody) + " ", strings.TrimSuffix(string(reversalBody), "}") + `,"source_phase":"active"}`, strings.TrimSuffix(string(reversalBody), "}") + `,"unknown":"secret-input"}`} {
+		if err := os.WriteFile(reversalFile, []byte(altered), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		h := sha256.Sum256([]byte(altered))
+		reversalEnv["ORDINARY_COLD_REVERSAL_SHA256"] = hex.EncodeToString(h[:])
+		call("cold-reversal-begin", reversalEnv, false)
+	}
+	if err := os.WriteFile(reversalFile, reversalBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reversalEnv["ORDINARY_COLD_REVERSAL_SHA256"] = reversalSHA
+	if got := call("cold-reversal-begin", reversalEnv, true); got.ReversalSHA256 != reversalSHA {
+		t.Fatal("actual executable lost exact reversal identity")
+	}
+	call("cold-reversal-begin", reversalEnv, true)
+	if got := call("cold-reversal-inspect", reversalEnv, true); got.ReversalPhase != "pending" || got.RetirementEpoch != 0 || got.PlanSHA256 != reserved.PlanSHA256 {
+		t.Fatal("pending reversal inspection adopted an epoch")
+	}
+	retireBaseline, retireCanonical := fullColdExecutableRedisSnapshot(t, f), coldExecutableCanonicalSnapshot(t, f)
+	// Pause AFTER nextval and ordinary retirement, before the reservation commit.
+	// The sequence advance survives SIGKILL, while its SQL effects roll back.
+	retireName := "ordinary_retire_crash_" + strings.ReplaceAll(f.board, "-", "")
+	retireQuoted := pgx.Identifier{retireName}.Sanitize()
+	const retireClass, retireObject = 18273645, 914275
+	if _, err := f.pg.Exec(ctx, "CREATE FUNCTION "+retireQuoted+"() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(18273645,914275); RETURN NEW; END $$"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = f.pg.Exec(context.Background(), "DROP TRIGGER IF EXISTS "+retireQuoted+" ON crawler_ownership_reversal")
+		_, _ = f.pg.Exec(context.Background(), "DROP FUNCTION "+retireQuoted+"()")
+	})
+	if _, err := f.pg.Exec(ctx, "CREATE TRIGGER "+retireQuoted+" AFTER UPDATE ON crawler_ownership_reversal FOR EACH ROW WHEN (OLD.phase='pending' AND NEW.phase='reserved' AND NEW.reversal_sha256='"+reversalSHA+"') EXECUTE FUNCTION "+retireQuoted+"()"); err != nil {
+		t.Fatal(err)
+	}
+	// The fixture has two PG connections: reuse its now-unlocked barrier
+	// connection so the other remains available for bounded observation.
+	retireLock := lock
+	if _, err := retireLock.Exec(ctx, "SELECT pg_advisory_lock($1,$2)", retireClass, retireObject); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = retireLock.Exec(context.Background(), "SELECT pg_advisory_unlock($1,$2)", retireClass, retireObject)
+	}()
+	retireCommand := command("cold-reversal-reserve", reversalEnv)
+	retireLog, err := os.OpenFile(filepath.Join(e.directory, "retirement-crash.log"), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer retireLog.Close()
+	retireCommand.Stdout, retireCommand.Stderr = retireLog, retireLog
+	if err := retireCommand.Start(); err != nil {
+		t.Fatal("actual retirement coordinator failed to start")
+	}
+	retireProcess := &nativeFixtureProcess{command: retireCommand, done: make(chan error, 1)}
+	go func() { retireProcess.done <- retireCommand.Wait() }()
+	t.Cleanup(func() {
+		if !retireProcess.finished {
+			_ = retireCommand.Process.Kill()
+			<-retireProcess.done
+		}
+	})
+	waitNativeFixture(t, retireProcess, "post-nextval retirement barrier", func() bool {
+		observation, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+		var waiting bool
+		_ = f.pg.QueryRow(observation, "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND classid=$1 AND objid=$2 AND NOT granted)", retireClass, retireObject).Scan(&waiting)
+		return waiting
+	})
+	var burned int64
+	if err := f.pg.QueryRow(ctx, "SELECT last_value FROM lightpanda_b0_routing_epoch_seq").Scan(&burned); err != nil || burned != reserved.RoutingEpoch+1 {
+		t.Fatal("retirement seam lacks a burned sequence advance")
+	}
+	if got := call("cold-reversal-inspect", reversalEnv, true); got.ReversalPhase != "pending" || got.RetirementEpoch != 0 {
+		t.Fatal("inspection blocked behind uncommitted retirement or adopted burned epoch")
+	}
+	if err := retireCommand.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	crash = retireProcess.wait(t)
+	if !errors.As(crash, &exit) {
+		t.Fatal("retirement coordinator did not exit abnormally")
+	}
+	if status, ok := exit.Sys().(syscall.WaitStatus); !ok || !status.Signaled() || status.Signal() != syscall.SIGKILL {
+		t.Fatal("retirement coordinator did not receive actual SIGKILL")
+	}
+	if _, err := retireLock.Exec(ctx, "SELECT pg_advisory_unlock($1,$2)", retireClass, retireObject); err != nil {
+		t.Fatal(err)
+	}
+	// This DDL waits for the killed transaction's rollback and cannot mutate
+	// runtime state; statements in the owned fixture remain bounded.
+	if _, err := f.pg.Exec(ctx, "DROP TRIGGER "+retireQuoted+" ON crawler_ownership_reversal"); err != nil {
+		t.Fatal(err)
+	}
+	if got := call("cold-reversal-inspect", reversalEnv, true); got.ReversalPhase != "pending" || got.RetirementEpoch != 0 {
+		t.Fatal("SIGKILL lost pending reversal or adopted burned epoch")
+	}
+	if err := f.pg.QueryRow(ctx, "SELECT state FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", reserved.PlanSHA256).Scan(&planState); err != nil || planState != "active" {
+		t.Fatal("killed retirement failed to roll back ordinary owner mutation")
+	}
+	retired := call("cold-reversal-reserve", reversalEnv, true)
+	if retired.ReversalPhase != "reserved" || retired.RetirementEpoch != burned+1 || retired.ReversalSHA256 != reversalSHA {
+		t.Fatal("restarted coordinator adopted burned retirement epoch")
+	}
+	if repeat := call("cold-reversal-reserve", reversalEnv, true); !reflect.DeepEqual(repeat, retired) {
+		t.Fatal("uncertain retirement commit retry allocated again")
+	}
+	if got := call("cold-reversal-inspect", reversalEnv, true); got.RetirementEpoch != retired.RetirementEpoch || got.ReversalPhase != "reserved" {
+		t.Fatal("retained inspection lost exact committed retirement")
+	}
+	legacyProbe(false)
+	if !reflect.DeepEqual(retireBaseline, fullColdExecutableRedisSnapshot(t, f)) || retireCanonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("actual retirement SIGKILL/restart replayed Redis/canonical/future-due effects")
+	}
+	if _, err := f.pg.Exec(ctx, "UPDATE crawler_ownership_transition SET phase='reversed' WHERE intent_sha256=$1", intent); err == nil {
+		t.Fatal("retirement alone released authority before complete restoration")
 	}
 }
 
