@@ -25,6 +25,7 @@ on:
       - "apps/crawler/src/core/monitors/greenhouse.py"
       - "apps/crawler/src/shared/truncation.py"
       - "apps/crawler/src/shared/http.py"
+      - "apps/crawler/src/shared/ssrf.py"
       - "apps/crawler/src/lua/claim_work.lua"
       - "apps/crawler/src/lua/heartbeat_task.lua"
       - "apps/crawler/src/lua/complete_task.lua"
@@ -147,6 +148,9 @@ jobs:
           git diff --exit-code -- go/ordinary-worker/testdata/python_inventory.json go/ordinary-worker/testdata/python_urls.json
           uv run --frozen python go/ordinary-worker/testdata/collect_discovery.py
           git diff --exit-code -- go/ordinary-worker/testdata/python_discovery.json
+          uv run --frozen python go/ordinary-worker/testdata/collect_ssrf.py
+          uv run --frozen python go/ordinary-worker/testdata/collect_http_transport.py
+          git diff --exit-code -- go/ordinary-worker/ssrf_networks.json go/ordinary-worker/testdata/python_ssrf.json go/ordinary-worker/testdata/python_http_decoding.json
 
       - name: Verify assembled native inventory and owned processing pipeline
         working-directory: apps/crawler/go/ordinary-worker

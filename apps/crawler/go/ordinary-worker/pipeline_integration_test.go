@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"os"
 	"os/exec"
@@ -261,7 +263,7 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 		t.Fatal(err)
 	}
 	requests := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests++
 		if request.URL.Path != "/v1/boards/fixture/jobs" || request.URL.Query().Get("content") != "true" {
 			t.Error("owned fixture fetched a different provider resource")
@@ -270,22 +272,27 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 		_, _ = w.Write(payload)
 	}))
 	t.Cleanup(server.Close)
-	physical := server.Client()
-	t.Cleanup(physical.CloseIdleConnections)
-	client := &http.Client{Transport: testRoundTripper(func(original *http.Request) (*http.Response, error) {
-		request := original.Clone(original.Context())
-		target := *original.URL
-		target.Scheme, target.Host = "http", strings.TrimPrefix(server.URL, "http://")
-		request.URL = &target
-		response, err := physical.Transport.RoundTrip(request)
-		if response != nil {
-			response.Request = original
+	client, transport := directFixtureClient(t, server)
+	transport.inner.TLSClientConfig.ServerName = "example.com" // fixture certificate SAN; verification remains enabled
+	transport.lookup = func(context.Context, string) ([]netip.Addr, error) {
+		return []netip.Addr{netip.MustParseAddr("8.8.8.8")}, nil
+	}
+	transport.dial = func(ctx context.Context, network, address string) (net.Conn, error) {
+		if address != "8.8.8.8:443" {
+			t.Error("owned discovery did not pin the validated API address")
 		}
-		return response, err
-	})}
+		// Only the physical destination changes for this owned fixture. Native
+		// DNS guard, TLS verification, request/body accounting and parsing run.
+		return (&net.Dialer{}).DialContext(ctx, network, strings.TrimPrefix(server.URL, "https://"))
+	}
+	ctx, observation := ObserveHTTP(ctx)
 	discovered, err := DiscoverGreenhouse(ctx, client, "fixture")
 	if err != nil || requests != 1 || discovered.Response.Status() != 202 {
 		t.Fatalf("native discovery fixture did not complete one successful GET: %v", err)
+	}
+	traffic := observation.Snapshot()
+	if traffic.Requests != 1 || traffic.Responses != 1 || traffic.NoResponse != 0 || traffic.EncodedBytes != int64(len(payload)) || traffic.LastHost != "boards-api.greenhouse.io" {
+		t.Fatalf("owned discovery lost native origin/body conservation: %+v", traffic)
 	}
 	inventory, err := NormalizeGreenhouseInventory(ctx, "https://job-boards.greenhouse.io/fixture", discovered.Inventory)
 	if err != nil {

@@ -2,8 +2,8 @@
 
 This package connects the standard Greenhouse token/skip inventory to the
 existing native enrichment, owned rich batches and terminal board lifecycle.
-It is an assembly library; the native process executable and verified shared
-transport/circuit integration are still required before production selection.
+It is an assembly library; the native process executable, protected transport
+startup and circuit integration are still required before production selection.
 
 `DiscoverGreenhouse` performs one logical GET through a caller-owned persistent
 HTTP client. It checks only the final fully read response's resource headers,
@@ -15,6 +15,25 @@ resource observations preserve redirected publisher/provider evidence without
 granting queue/write authority; the owned lifecycle's redirected-source adapter
 remains to be proven. The inherited native 64 MiB response bound requires cohort
 admission. Errors carry bounded symbols, never source bodies or diagnostics.
+
+`NewDirectHTTP` now creates one persistent verified HTTP/1.1 client from an
+explicit trusted CA bundle and frozen startup internal-host allowlist. It
+preserves the effective 100-connection/20-keepalive/five-second pool, separate
+30-second network/pool deadlines, 20 redirects and a process-owned cookie jar.
+Every hop and reused connection revalidates all DNS answers; new connections pin
+only validated literals, with staggered address fallback. The compiled address
+policy, including mapped IPv4 and private-range exceptions, is regenerated from
+Python. Refused targets never enter origin/failure accounting. A private
+non-rewindable empty GET body prevents net/http's hidden retry without changing
+wire method/body/header semantics. Explicit request headers remain authoritative.
+
+`ObserveHTTP` provides detached request/response/no-response and encoded-byte
+snapshots for the future runtime circuit/metrics adapters. Compressed bytes are
+counted before lazy gzip/zlib/raw-deflate decoding; 25 actual httpx cases cover
+combined encodings, members/trailers and errors. Decoder completion never masks
+an incomplete HTTP body. Encoded and decoded body bounds both remain 64 MiB and
+require cohort admission. This is prepared transport, not installed startup,
+publisher/provider write authority or global metric publication.
 
 `NormalizeGreenhouseInventory` matches the default Python non-streaming rich
 monitor's raw-URL dictionary, URL sanity/canonicalization and canonical alias
@@ -39,24 +58,28 @@ success/absence authority; earlier committed chunks survive for failure or
 lease recovery. Terminal deadlines still come from the database receipt.
 
 The ordinary queue workflow requires PostgreSQL17 and private Redis on both
-Linux architectures. It regenerates 40 URL, six inventory and 52 HTTP cases from the
+Linux architectures. It regenerates 40 URL, six inventory, 52 HTTP, 233 address,
+nine DNS and 25 content-decoding cases from the
 actual Python functions, rejecting stale captures, and exercises inventories
 above the 50,000-job flag without slicing. Real native assembly proof loads
 reference tables and the SQLite location index in an owned schema, processes
-one real HTTP 202 inventory of 1,001 postings across three batches, checks enrichment/description/R2/absence
+one verified native TLS HTTP 202 inventory of 1,001 postings across three batches,
+checks request/encoded-byte and enrichment/description/R2/absence
 effects and settles the exact canonical deadline. A separate preparation failure
 after the first committed 500 rows proves that no partial second chunk or
 success/absence receipt survives, while canonical failure scheduling remains
 available.
 
-Continue with a persistent verified HTTP client and typed response outcomes,
-matching redirect/SSRF/header/cookie/request accounting and Greenhouse's single
-GET behavior. Python's declared 20/10 connection limits are not its effective
+Continue with protected exact-source startup for this persistent verified client
+and typed response outcomes, including pinned CA asset/internal-host construction,
+deployment/profile TLS/cookie admission and redirected publisher/provider lifecycle.
+Python's declared 20/10 connection limits are not its effective
 wrapped direct transport limits: the pinned httpx0.28.1/httpcore1.0.9 inner pool
 has 100 connections, 20 keepalive connections and a five-second keepalive expiry.
 It uses HTTP/1.1, 20 redirects and separate 30-second connect/read/write/pool
 timeouts. Match or explicitly prove changes against that effective baseline.
-Integrate shared host circuits, deferrals, exact-source startup,
+Integrate these native snapshots with shared host circuits, canonical deferrals,
+fenced learned-egress publication, exact-source startup,
 heartbeat and bounded shutdown into the native executable. Prove the installed
 process and supported all-writer cutover/cold reversal with B0's shared epoch
 before selection. The [continuation plan](../../../../docs/27-go-lightpanda-continuation-plan.md)
