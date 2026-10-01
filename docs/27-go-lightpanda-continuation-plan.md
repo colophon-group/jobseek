@@ -110,18 +110,38 @@ across three hash seeds, and private fixtures shut down. See the
 [portable direct transport evidence](evidence/go-ordinary-direct-http-2026-10-01.json).
 This is prepared transport; ordinary production workers remain Python.
 
-Next, complete shared host circuits, canonical deferrals/lower bounds and
-safely fenced learned-egress publication. Bind final-resource provider/publisher
-observations to the exact owned claim; redirected outcomes do not yet authorize
-the terminal lifecycle. Package protected CA/internal-host startup inputs and
-connect the completed assembly to the exact-source/plan/epoch native executable
-with concurrency, heartbeat and bounded drain. Preserve the immutable claim
-through settlement and recovery. Prove installed cancellation/crash/claim-loss,
-all-writer ownership/projection cutover and shared B0 epoch cold reversal before
-selecting an ordinary cohort. Then complete every enabled effective profile and
-runtime consumer, fleet output/freshness/queue conservation, comparable
-whole-service CPU/RAM/density/cost and the rollback window before retiring
-production Python/Playwright/Chromium. The full migration goal remains active.
+Latest runtime source `8a84d82ca` prepares the shared host circuit path on the
+existing Redis keys and byte-identical production Lua. Native preflight uses
+the learned failure host, then configured board hostname; open and occupied
+half-open circuits commit future PostgreSQL deferrals with opaque receipts.
+Failure finalization records one protective circuit outcome per actual run and
+commits its lower bound alongside normal backoff. Migration0037 retains the
+learned host with the terminal receipt, and token-guarded Redis settlement
+publishes it atomically after lease retirement. Commit-before-ack recovery keeps
+that host and deadline without a second circuit increment. The inflight claim
+snapshot remains unchanged. Circuit trouble fails open; fresh attempt authority
+still guards every canonical effect.
+
+Real migrated PostgreSQL/private Redis queue races (17.140 seconds), native
+assembly races (22.135 seconds), reader/preparation races (3.276 seconds), 185
+mandatory legacy tests without skips and 39 repository checks passed. Migration
+head/down0036/head and fixture cleanup passed. The TLS 1,001-posting fixture
+recovers its observed API circuit; a failed preparation fixture publishes its
+fallback host at settlement. See the
+[portable host circuit evidence](evidence/go-ordinary-host-circuit-2026-10-01.json).
+This prepared library still selects no production ordinary worker.
+
+Next, bind final-resource provider/publisher observations to the exact owned
+claim and verified native fetch lineage; redirected outcomes do not yet
+authorize the terminal lifecycle. Package protected CA/internal-host startup
+inputs and connect the completed assembly to the exact-source/plan/epoch native
+executable with metrics, bounded concurrency, heartbeat and drain. Preserve the
+immutable claim through settlement and recovery. Prove installed cancellation/
+crash/claim-loss, all-writer ownership/projection cutover and shared B0 epoch cold
+reversal before selecting an ordinary cohort. Then complete every enabled
+effective profile and runtime consumer, fleet output/freshness/queue conservation,
+comparable whole-service CPU/RAM/density/cost and the rollback window before
+retiring production Python/Playwright/Chromium. The full migration goal remains active.
 
 This initial review made no production changes and did not reread the live hosts.
 Production details below are the latest recorded checkpoint, corroborated by

@@ -1,0 +1,66 @@
+{
+  "schema": "jobseek.migration.ordinary-host-circuit-evidence/v1",
+  "runtime_source_head": "8a84d82ca06597a254d675acf979a1bbe0bf500b",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "draft": true,
+  "selected_in_production": false,
+  "local": {
+    "source_head": "8a84d82ca06597a254d675acf979a1bbe0bf500b",
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "migration": "head0037/down0036/head0037 passed",
+    "full_native_queue_race_seconds": 17.14,
+    "full_native_assembly_race_seconds": 22.135,
+    "reader_and_preparation_race_seconds": 3.276,
+    "mandatory_legacy_python_tests": 185,
+    "legacy_python_skips": 0,
+    "runtime_version_documentation_node_tests": 39,
+    "vet_module_format_ruff": "passed",
+    "cleanup": true,
+    "production_changed": false
+  },
+  "shared_circuit": {
+    "failure_threshold": 3,
+    "failure_window_seconds": 600,
+    "open_seconds": 1800,
+    "half_open_probe_seconds": 600,
+    "redis_keys": [
+      "host_fail:{host}",
+      "host_open:{host}",
+      "host_probe:{host}"
+    ],
+    "lua_source": "byte-identical to actual production Python _RECORD_HOST_FAILURE_LUA/_RECORD_HOST_SUCCESS_LUA",
+    "preflight": "learned failure host, else configured board hostname; strict Greenhouse has no provider-wide circuit",
+    "circuit_errors": "protective fail-open with bounded diagnostics; attempt/receipt authority remains mandatory",
+    "canonical_timestamp_precision": "round circuit lower bounds upward to PostgreSQL microseconds"
+  },
+  "durable_learned_host": {
+    "migration": "0037",
+    "table": "ordinary_worker_write_fence",
+    "column": "learned_egress_host",
+    "retained_with": "completed canonical due-time receipt",
+    "published_with": "token-guarded Redis reschedule atomically after lease retirement",
+    "inflight_snapshot": "unchanged",
+    "recovery": "retain host and due time through commit-before-ack process loss/reaping; no circuit replay"
+  },
+  "verified": [
+    "real shared Redis failure threshold, fixed open interval despite late inflight failures, 64 competing half-open acquisitions with exactly one winner, immediate reopen after failed probe and success recovery",
+    "real owned preflight open/occupied-probe canonical deferrals without failure-budget changes; free probe, configured-board fallback and Redis fail-open permit discovery",
+    "native failure receipt commits circuit lower bound and learned host; mismatched retained host refuses settlement; future claim sees new host and preflights its existing shared circuit",
+    "actual PostgreSQL terminal rollback retains active receipt state and unchanged board failure count; retry does not increment shared circuit again; failed run cannot acquire success/absence authority",
+    "actual commit-before-ack process loss/reap/reclaim retains canonical deadline and learned host and publishes on recovered settlement without rerunning failed host outcome",
+    "expired claim and retired routing epoch cannot mutate circuits/publish stale host; failure receipt cannot authorize host-success reset",
+    "protective circuit Lua error after partial INCR does not hide canonical board failure/backoff; learned host remains available for subsequent routing",
+    "verified TLS HTTP202 ->1001 native posting assembly recovers observed API circuit; preparation failure after committed prefix publishes configured fallback host only during settlement",
+    "migration upgrade/down0036/upgrade, mandatory legacy Python PostgreSQL/Redis boundary, all queue/assembly races and cleanup passed"
+  ],
+  "not_verified": [
+    "fresh current-source Linux/full/installed/B0 checks and actual deploy gate",
+    "verified final-resource redirected provider/publisher lifecycle binding to installed claim",
+    "native executable exact-source/plan/epoch CA/internal-host startup, metrics/concurrency/heartbeat/drain and installed crash/cancel/claim-loss",
+    "supported all-writer ownership/projection cutover/cold reversal with shared B0 epoch",
+    "production effective-profile/network admission, every enabled profile/runtime consumer, fleet output/freshness/queue/cost and rollback window before production Python/Playwright/Chromium retirement"
+  ],
+  "next": "Bind final-resource provider/publisher observations to the exact opaque claim and verified native fetch lineage. Package protected CA/internal-host assets and implement the exact-source/plan/epoch ordinary executable with bounded task concurrency, metrics, heartbeat, cancellation and drain using the completed native transport/discovery/inventory/preparation/batches/lifecycle/host-circuit/receipt assembly. Prove installed crash/cancel/claim-loss and all-writer ownership/projection cutover/cold reversal with shared B0 epoch before selection. Complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/attributable cost and rollback window before retiring production Python/Playwright/Chromium. Full migration goal remains active."
+}

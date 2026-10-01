@@ -386,6 +386,48 @@ all-writer cutover and shared-epoch cold reversal before selection. Production
 ordinary workers remain Python; full profile/consumer, fleet/cost and retirement
 gates remain in the continuation plan. The full migration goal remains active.
 
+### Shared host circuits and durable deferrals, October 1
+
+Source `8a84d82ca06597a254d675acf979a1bbe0bf500b` now prepares native host
+preflight and outcomes using the existing shared Redis keys and byte-identical
+Python failure/success Lua. Strict Greenhouse preflight uses the learned failure
+host, then configured board hostname, preserving the Python fallback rather
+than assuming the API hostname. Open circuits defer to their deadline; occupied
+half-open leases defer to the next probe time. One bounded recovery probe remains
+shared across workers. Native deferrals commit a future canonical PostgreSQL
+deadline and receipt without changing board success/failure or listing state.
+
+Failure completion records one circuit outcome for the actual run and retains
+it across SQL rollback/retry, including ambiguous protective replies. Normal
+board backoff and the available circuit lower bound commit together. Circuit
+bounds round upward to PostgreSQL microseconds. Migration0037 adds a nullable
+learned-host field to the completed attempt receipt; the inflight configuration
+stays unchanged. Redis settlement publishes that field atomically after token-
+guarded lease retirement, so the next claim sees new routing. A restarted
+worker recovers and publishes the same host/due receipt without another failed
+run. Mismatched receipt host, stale claim and retired epoch reject publication.
+Native success receipts reset actual observed hosts without replaying completed
+protective transitions. Circuit errors fail open while canonical attempt
+checks remain mandatory; provider404/publisher outcomes remain separate.
+
+Head0037/down0036/head0037 passed on owned PostgreSQL18.6. Full native queue races
+passed in 17.140 seconds, assembly races in 22.135 seconds and reader/preparation
+races in 3.276 seconds. All 185 mandatory legacy PostgreSQL/Redis Python tests
+passed without skips; 39 repository checks and linters passed. Real fixtures
+prove threshold/no-extension, 64 competing probe acquisitions with one winner,
+canonical preflight, failure lower bounds, terminal rollback without circuit
+replay, receipt mismatch/stale/epoch guards and commit-before-ack host recovery.
+The verified TLS 1,001-posting assembly now recovers its API circuit; preparation
+failure after a committed prefix publishes its fallback host only at settlement.
+Private fixtures shut down and production is unchanged. See the
+[portable circuit evidence](evidence/go-ordinary-host-circuit-2026-10-01.json).
+
+This is a prepared library, requiring fresh candidate checks. It does not prove
+the native executable, redirected provider/publisher lineage, protected startup
+assets, installed process faults or all-writer cutover/cold reversal. Complete
+those next, followed by all enabled profiles/consumers and fleet/cost/retirement
+gates. Ordinary production workers remain Python and the full goal remains active.
+
 At 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885
 enabled and 134 disabled. Of enabled boards, 522 had stored browser requirements
 (419 monitor, 264 scraper, overlapping); Greenhouse accounted for 2,280 boards,
