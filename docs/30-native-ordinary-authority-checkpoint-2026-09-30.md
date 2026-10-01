@@ -780,3 +780,54 @@ full container/effective settings/profile and fleet resource/cost admission rema
 All enabled effective profiles/runtime consumers, canonical/publisher/freshness/
 queue parity, actual rollback window and retirement of production Python/
 Playwright/Chromium remain in the active full migration goal.
+
+
+## Legacy joint admission and exact metadata numbers, October 1
+
+Runtime source `aab47b5e8857e6521a7bfb38f8cc174391988e52` completes legacy
+ordinary startup/claim joint admission. Every claim, including unselected workers,
+holds the shared lease/epoch barriers and refuses unfinished joint intent.
+Journalled legacy owners require protected installed actual B0 Lua and freshly
+bind exact active journal/source/plan/epoch, immutable target, canonical/Redis B0
+configuration, fixed selectors and permanent shared witnesses using the same
+read-only actual audit/admission Lua as native workers. No later owner or missing
+witness is adopted/repaired. Legacy write/settlement still requires the supported
+host to drain and stop every writer before ownership changes.
+
+Go previously retained numeric spelling, so JSONB `0.0000000001` and Redis
+`1e-10` could reject equal configurations. Both guards now normalize exact values
+without float rounding. Fifteen shared canonical cases verify bytes, SHA256 and
+idempotence; fourteen invalid cases cover duplicates, depth, malformed numbers
+and bounded raw/normalized exponents. Precise integers, negative zero and string
+escaping retain cross-runtime identity. Changed hashes require target capture
+and approval before intent, never runtime replacement.
+
+The actual native coordinator publishes the target/journal consumed by a real
+Python process. Nine owned-fixture faults refuse startup and claims without any
+Redis value/expiry-class or canonical change. A real B0 inflight lease remains
+compatible. The unselected real pipeline loop cannot invoke claim during intent;
+protected-file startup failures redact inputs. Full private queue/worker races
+passed (37.948s/31.448s); final affected cold/joint races and executable proof
+passed after the normalized exponent bound (6.696s/9.781s). All 295 mandatory
+legacy tests passed without skips, plus 132 repository checks and vet/ruff/pyright.
+Fixtures stopped; production unchanged. See
+[portable legacy joint evidence](evidence/go-ordinary-legacy-joint-admission-2026-10-01.json).
+
+The preceding exact `8768e48e9` passed all four workflows: Linux 36894194063,
+full CI 36894242440, installed images 36894248042 and whole B0 36894194188.
+Both downloaded artifacts verify all four actual executable fixtures, native
+joint containment, exact source/image/binary and matching 34 asset hashes.
+The older `79da5b27a` whole B0 also completed successfully. These results do not
+admit later legacy guard/number-normalization source. Fresh exact-head checks are
+required; actual deploy gate intentionally rejects draft.
+
+Next implement the supported ADR006 all-writer wrapper, complete PG-derived B0
+transfer, independently verified immutable active/target/rollback generation,
+spec/env/image/data/sentinel/receipt identities, cross-store durability/readback
+and readiness. Complete full cold reversal with a fresh retirement epoch,
+changed/disabled-cohort restore and receipt/future-due conservation; prove the
+remaining actual process interruption seams. Actual production container/public
+fetch/settings, every enabled effective profile/runtime consumer, fleet canonical/
+publisher/freshness/queue parity, comparable whole-service CPU/RAM/density/cost,
+actual rollback window and Python/Playwright/Chromium retirement remain in the
+active full migration goal.
