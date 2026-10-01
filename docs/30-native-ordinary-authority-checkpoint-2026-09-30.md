@@ -2,8 +2,9 @@
 
 The full [Go and Lightpanda migration plan](27-go-lightpanda-continuation-plan.md)
 remains active. This checkpoint continues draft
-[PR #10207](https://github.com/colophon-group/jobseek/pull/10207). It is an
-unselected authority foundation, with no ordinary native executable or
+[PR #10207](https://github.com/colophon-group/jobseek/pull/10207). It began as an
+unselected authority foundation; the current stacked PR #10210 now contains the
+native processing executable and protected cold coordinator commands, with no
 production ownership change. Its
 [module contract and next gates](../apps/crawler/go/ordinary-queue/README.md)
 are the implementation handoff.
@@ -697,3 +698,43 @@ coordinator SIGKILL/restart, the supported host wrapper and full cold reversal
 remain next. Actual containers/public fetch/settings, every enabled profile and
 runtime consumer, fleet conservation/cost and rollback-window Python retirement
 remain part of the active full goal.
+
+
+## Protected native coordinator, October 1
+
+Runtime source `6f0ceca14fed1ec34ed92ba289a3d5173cb1a6ce` exposes exact source-bound
+B0 target capture, intent, reservation, retained-history inspection, preparation,
+publication and activation
+commands. They require distinct protected modes, explicit approved epochs,
+canonical file/hash identities and exact reserved plan. Files are bounded regular
+non-symlink inputs not writable by group/others; worker-mode fields cannot select
+an operation. Statements/critical transactions/commands remain bounded at
+10/15/30 seconds with PostgreSQL pool one and Redis pool two.
+
+The real executable fixture receives SIGKILL after Redis MSET, acknowledged SAVE
+and readback, before PostgreSQL publication commit. It proves retained publishing
+intent/staged plan, exact restart/retry without epoch adoption or task/DB replay,
+then exact activation and containment after witness loss. Canonical board/posting/
+description/deadline/receipt data and every other Redis key remain conserved.
+Full worker races passed (27.723s); 126 repository checks and vet passed. Fixtures
+stopped; production unchanged. See
+[portable coordinator evidence](evidence/go-ordinary-cold-coordinator-2026-10-01.json).
+
+Previous exact publication checkpoint `a487631ce` passed all four workflows:
+Linux 36877346278, full CI 36877544747, both installed images 36877551175 and whole
+B0 36877346343. Both downloaded image artifacts bind exact source/image/binary and
+pass all three earlier executable fixtures with matching 34 asset hashes. These
+older results do not admit the later coordinator source; its installed workflow
+will also run the new fourth executable fixture. Actual deploy gate refuses draft.
+
+Next implement the supported ADR006 host wrapper and complete ordinary joint
+journal/witness admission. It must independently verify release/rollback/data/
+image/spec/env/sentinel/receipt identities, stop and attest every writer/claimant/
+exporter/drain/one-off under its mutation lock, transfer complete PG-derived B0
+work at the exact shared reservation, persist/read back cross-store evidence and
+gate full-stack readiness. Prove every remaining interruption seam and full cold
+reversal, including changed/disabled cohorts and conserved committed receipts/
+future deadlines. These commands do not implement host selection or reversal.
+Actual containers/public fetch/effective settings, all enabled profiles/runtime
+consumers, fleet output/freshness/queue/cost, actual rollback window and retirement
+of production Python/Playwright/Chromium remain part of the active full goal.

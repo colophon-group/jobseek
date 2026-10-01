@@ -1,14 +1,27 @@
 # Go and Lightpanda migration continuation plan
 
-Current verified journal checkpoint, October 1: `3da2d75dc` passed Linux AMD64/
-ARM64 PostgreSQL/Redis (36871349415), full CI (36871396549) and actual image-
-extracted binary/assets/admin/process recovery on both architectures (36871400927).
-Both downloaded artifacts passed all three executable fixtures and bind exact
-source/image/binary plus matching 34 asset hashes. Whole B0 admission 36871349200 also passed. All four exact-head workflows passed.
+Current verified publication checkpoint, October 1: `a487631ce` passed all four
+exact-head workflows: Linux AMD64/ARM64 PostgreSQL/Redis (36877346278), full CI
+(36877544747), both installed-image architectures (36877551175) and whole B0
+(36877346343). Both downloaded image artifacts bind the exact source/image/binary
+and pass all three prior executable fixtures with matching 34 asset hashes.
 Actual deploy gate refuses the draft. These are component/source results, not
 full production-container/public-fetch or later-source admission.
 
-Latest runtime source `28d155566b50297b65933757294d5ff8bfb442d3` adds native
+Latest runtime source `6f0ceca14fed1ec34ed92ba289a3d5173cb1a6ce` exposes seven
+protected compiled-source-bound coordinator commands: B0 target capture, exact
+canonical intent, reservation, retained-history inspection, preparation, publication
+and activation. Exact
+bounded non-symlink files bind digests and source. Begin/reserve require intent's
+previous epoch; prepare/publish/activate require the exact reserved epoch/plan.
+A real executable SIGKILL after MSET/SAVE/readback and before SQL publication
+commit leaves publishing intent and staged plan. Exact restart/retries recover
+without replaying canonical or other Redis effects. Missing witnesses remain
+contained. Full worker races passed (27.723s); 126 repository checks and vet passed.
+See [coordinator evidence](evidence/go-ordinary-cold-coordinator-2026-10-01.json).
+Fresh pushed-source Linux/full CI/both installed-image/B0 checks remain required.
+
+Publication runtime source `28d155566b50297b65933757294d5ff8bfb442d3` adds native
 shared-epoch publication/activation through migration 0039. A fresh canonical/
 Redis B0 target binds fixed selectors and exact configuration hashes. Redis
 pending witness precedes committed `publishing`; only then can the unmodified,
@@ -27,13 +40,14 @@ durable RDB witness/projection/B0 records/guards. See
 [publication evidence](evidence/go-ordinary-cold-publication-2026-10-01.json).
 Fresh pushed-source Linux/full CI/installed-image/B0 checks remain required.
 
-The methods remain internal: no protected installed coordinator command or
-production selection path exists yet. They do not replace complete PG-derived
+Protected commands now expose the completed native primitives; no supported
+production selection wrapper exists yet. They do not replace complete PG-derived
 B0 task-transfer/sentinel/receipt evidence or attest all-writer host quiescence,
-release/rollback identities and readiness. Next expose the compiled-source-bound
-native coordinator, integrate the supported host wrapper, and prove actual
-process interruption/recovery and full cold reversal. Do not redo completed
-native staging, process/crash, reservation or publication implementation.
+release/rollback identities and readiness. Next integrate the supported host
+wrapper and ordinary worker joint journal/witness admission, prove all remaining
+interruption seams and full cold reversal (including changed/disabled cohorts).
+Do not redo completed staging, worker process/crash, intent/reservation,
+publication/activation or the protected coordinator commands.
 Production ordinary remains Python and the full migration goal is active.
 Running B0 and installed-image measurements finish while the newest pending
 candidate waits; each source needs its own report and admission.
@@ -86,9 +100,10 @@ allocation can burn a sequence value: exact pending recovery allocates another
 fresh epoch; it never adopts the high-water. Exact reserved retry rechecks the
 current epoch and fresh staged cohort without reallocating. B0-only allocation
 refuses unfinished journal phases, and rollback cannot delete retained history.
-These are internal database primitives. They have no production CLI/activation
-path; input evidence digests do not prove host quiescence or release identity.
-Cross-store phases, process interruption and full cold reversal remain to prove.
+Protected native commands now expose these database primitives; input evidence
+digests do not prove host quiescence or release identity. Publication and its
+actual SIGKILL/restart seam are proven locally; remaining interruption seams,
+supported all-writer selection and full cold reversal remain to implement/prove.
 
 Shared publication now captures exact canonical/Redis B0 board configurations
 and fixed producer selectors without adopting an epoch. Redis pending witness
