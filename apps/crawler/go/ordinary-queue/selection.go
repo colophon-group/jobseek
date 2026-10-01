@@ -213,3 +213,13 @@ func ownershipProbeScore(command *redis.Cmd) (*float64, error) {
 	}
 	return &value, nil
 }
+
+// AttestOwnershipProjection compares the separately installed legacy projection
+// identity with the exact native plan and fresh canonical/Redis active state.
+// It grants no activation permission and never adopts a changed identity.
+func (a *Authority) AttestOwnershipProjection(ctx context.Context, projection string) error {
+	if a == nil || a.ownership == nil || a.ownership.ProjectionSHA1() != projection {
+		return ErrAuthorityLost
+	}
+	return a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error { return a.requireOwnership(ctx, tx, nil) })
+}

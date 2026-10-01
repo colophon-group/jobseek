@@ -736,6 +736,8 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: apps/crawler
+          build-args: |
+            CRAWLER_SOURCE_REVISION=${{ github.sha }}
           target: slim
           platforms: linux/amd64
           tags: jobseek-crawler-slim-ci:pr
@@ -886,6 +888,8 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: apps/crawler
+          build-args: |
+            CRAWLER_SOURCE_REVISION=${{ github.sha }}
           target: full
           platforms: linux/amd64
           tags: jobseek-crawler-ci:pr

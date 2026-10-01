@@ -56,9 +56,11 @@ jobs:
           set -euo pipefail
           source_sha="$(git rev-parse HEAD)"
           docker build --target slim \
+            --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
             --tag "jobseek-b0-candidate:${source_sha}" apps/crawler
           docker build --target benchmark-browser \
+            --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
             --tag "jobseek-b0-control:${source_sha}" apps/crawler
           docker build --build-context contracts=apps/crawler/contracts \

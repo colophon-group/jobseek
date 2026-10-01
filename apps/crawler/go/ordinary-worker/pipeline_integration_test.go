@@ -194,30 +194,8 @@ func privatePipelineFixture(t *testing.T) nativePipelineFixture {
 func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.T) {
 	f := privatePipelineFixture(t)
 	ctx := context.Background()
-	// Alembic's ordinary fixture has no separately imported production
-	// reference snapshot. Reuse native startup's real columns in an owned
-	// private schema and load both lookup and SQLite location indexes.
-	schema := "pipeline_refs_" + strings.ReplaceAll(fixtureID(t), "-", "")
-	quoted := pgx.Identifier{schema}.Sanitize()
-	if _, err := f.pg.Exec(ctx, "CREATE SCHEMA "+quoted); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _, _ = f.pg.Exec(context.Background(), "DROP SCHEMA "+quoted+" CASCADE") })
-	references, err := os.ReadFile("../lightpanda-b0-executor/testdata/startup-fixture.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := f.pg.Exec(ctx, strings.ReplaceAll(string(references), "public.", quoted+".")); err != nil {
-		t.Fatal(err)
-	}
-	nativeDSN, err := url.Parse(f.dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	query := nativeDSN.Query()
-	query.Set("search_path", schema+",public")
-	nativeDSN.RawQuery = query.Encode()
-	store, err := executor.OpenOrdinaryLookupStore(ctx, nativeDSN.String())
+	nativeDSN := privatePipelineReferenceDSN(t, f)
+	store, err := executor.OpenOrdinaryLookupStore(ctx, nativeDSN)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +345,7 @@ func TestRealOwnedPipelinePreparationFailureRetainsPrefixAndRejectsAbsence(t *te
 	}
 	cause := errors.New("private preparation failure")
 	result, err := PersistGreenhouseInventory(ctx, cycle, &pipelinePreparer{failAt: 751, cause: cause}, inventory)
-	if result != nil || !errors.Is(err, cause) {
+	if result == nil || result.Cycle != nil || result.Batches.Inserted != 500 || !errors.Is(err, cause) {
 		t.Fatal("failed preparation returned whole-cycle success")
 	}
 	var count int
@@ -396,4 +374,33 @@ func TestRealOwnedPipelinePreparationFailureRetainsPrefixAndRejectsAbsence(t *te
 	if err := f.pg.QueryRow(ctx, "SELECT consecutive_failures,metadata ? 'recent_discovered_counts' FROM job_board WHERE id=$1::uuid", f.board).Scan(&strikes, &hasHistory); err != nil || strikes != 1 || hasHistory {
 		t.Fatal("partial failure created a success baseline or lost failure scheduling")
 	}
+}
+
+func privatePipelineReferenceDSN(t *testing.T, f nativePipelineFixture) string {
+	t.Helper()
+	ctx := context.Background()
+	// Alembic's ordinary fixture has no separately imported production
+	// reference snapshot. Reuse native startup's real columns in an owned
+	// private schema and load both lookup and SQLite location indexes.
+	schema := "pipeline_refs_" + strings.ReplaceAll(fixtureID(t), "-", "")
+	quoted := pgx.Identifier{schema}.Sanitize()
+	if _, err := f.pg.Exec(ctx, "CREATE SCHEMA "+quoted); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = f.pg.Exec(context.Background(), "DROP SCHEMA "+quoted+" CASCADE") })
+	references, err := os.ReadFile("../lightpanda-b0-executor/testdata/startup-fixture.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pg.Exec(ctx, strings.ReplaceAll(string(references), "public.", quoted+".")); err != nil {
+		t.Fatal(err)
+	}
+	nativeDSN, err := url.Parse(f.dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := nativeDSN.Query()
+	query.Set("search_path", schema+",public")
+	nativeDSN.RawQuery = query.Encode()
+	return nativeDSN.String()
 }

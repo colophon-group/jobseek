@@ -26,6 +26,21 @@ RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/go-lightpanda-b0-executor ./cmd/live
 
+# ── Unselected native ordinary Greenhouse worker ────────────────────
+FROM go-b0-executor-build AS go-ordinary-worker-build
+WORKDIR /workspace/apps/crawler
+COPY go/greenhouse-monitor/ go/greenhouse-monitor/
+COPY go/ordinary-queue/ go/ordinary-queue/
+COPY go/ordinary-worker/ go/ordinary-worker/
+WORKDIR /workspace/apps/crawler/go/ordinary-worker
+ARG CRAWLER_SOURCE_REVISION
+RUN test "${#CRAWLER_SOURCE_REVISION}" -eq 40 \
+    && case "$CRAWLER_SOURCE_REVISION" in *[!0-9a-f]*) exit 1 ;; esac \
+    && go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath \
+       -ldflags="-s -w -X main.sourceRevision=${CRAWLER_SOURCE_REVISION}" \
+       -o /out/go-ordinary-worker ./cmd/live
+
 # ── Independent Go R2 description drain ─────────────────────────────
 FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-r2-drain-build
 WORKDIR /workspace/apps/crawler/go/r2-drain
@@ -223,6 +238,7 @@ RUN uv build --wheel --out-dir /tmp/jobseek-wheel \
 COPY --from=lightpanda-b0-build /out/lightpanda-b0-supervisor /usr/local/bin/lightpanda-b0-supervisor
 COPY --from=go-r2-drain-build /out/go-r2-drain /usr/local/bin/go-r2-drain
 COPY --from=go-b0-executor-build /out/go-lightpanda-b0-executor /usr/local/bin/go-lightpanda-b0-executor
+COPY --from=go-ordinary-worker-build /out/go-ordinary-worker /usr/local/bin/go-ordinary-worker
 COPY --from=go-typesense-exporter-build /out/go-typesense-exporter /usr/local/bin/go-typesense-exporter
 COPY --from=go-sitemap-build /out/sitemap-monitor-live /usr/local/bin/sitemap-monitor-live
 COPY scripts/exporter-entrypoint.sh /usr/local/bin/exporter-entrypoint

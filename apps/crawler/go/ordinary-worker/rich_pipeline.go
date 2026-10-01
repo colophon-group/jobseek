@@ -81,23 +81,23 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 		batch := make([]queue.GreenhouseRichPosting, 0, end-start)
 		for _, job := range inventory.Jobs[start:end] {
 			if err := ctx.Err(); err != nil {
-				return nil, err
+				return result, err
 			}
 			content, err := preparer.Prepare(ctx, job)
 			if err != nil {
-				return nil, err
+				return result, err
 			}
 			if content == nil {
-				return nil, errors.New("native rich preparation returned no content")
+				return result, errors.New("native rich preparation returned no content")
 			}
 			batch = append(batch, queue.GreenhouseRichPosting{URL: job.URL, Content: content})
 		}
 		counts, err := sink.WriteRichBatch(ctx, batch)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 		if counts == nil {
-			return nil, errors.New("native batch returned no committed accounting")
+			return result, errors.New("native batch returned no committed accounting")
 		}
 		result.Batches.Inserted += counts.Inserted
 		result.Batches.Touched += counts.Touched
@@ -107,14 +107,14 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 		result.Batches.Deduplicated += counts.Deduplicated
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return result, err
 	}
 	cycle, err := sink.FinishSuccess(ctx, queue.GreenhouseInventorySummary{Discovered: inventory.Discovered, ProcessingFiltered: filtered, Truncated: inventory.Truncated})
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	if cycle == nil {
-		return nil, errors.New("native inventory returned no terminal result")
+		return result, errors.New("native inventory returned no terminal result")
 	}
 	completed = true
 	result.Cycle = cycle

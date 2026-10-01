@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
@@ -35,11 +36,14 @@ func claimRunError(phase string, err error) error {
 }
 
 type GreenhouseClaimResult struct {
-	Cycle       *queue.GreenhouseCycleResult
-	Batches     queue.GreenhouseRichBatchResult
-	HTTP        HTTPSnapshot
-	Diagnostics []string
-	Settled     bool
+	Cycle                                                *queue.GreenhouseCycleResult
+	Batches                                              queue.GreenhouseRichBatchResult
+	HTTP                                                 HTTPSnapshot
+	Diagnostics                                          []string
+	Settled                                              bool
+	DiscoveryStarted, DiscoveryError, DiscoveryCancelled bool
+	DiscoveryDuration                                    time.Duration
+	Discovered                                           int
 }
 
 // RunGreenhouseClaim connects one already installed opaque claim to the native
@@ -66,7 +70,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		if cycle == nil || cycle.Receipt == nil {
 			return result, claimRunError("receipt", queue.ErrConfiguration)
 		}
-		if err := authority.Settle(ctx, claim, cycle.Receipt); err != nil {
+		if err := settleClaim(ctx, func() error { return authority.Settle(ctx, claim, cycle.Receipt) }); err != nil {
 			return result, claimRunError("settlement", err)
 		}
 		result.Settled = true
@@ -153,7 +157,13 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	}
 	ctx, observation = ObserveHTTP(ctx)
 	defer func() { result.HTTP = observation.Snapshot() }()
+	result.DiscoveryStarted = true
+	started := time.Now()
 	discovery, fetchErr := DiscoverGreenhouse(ctx, http.client, profile.Token)
+	result.DiscoveryDuration = time.Since(started)
+	result.DiscoveryError = fetchErr != nil
+	result.DiscoveryCancelled = ctx.Err() != nil
+	result.Discovered = len(discovery.Inventory.Jobs)
 	if ctx.Err() != nil {
 		cycle.InvalidateInventory()
 		return result, claimRunError("fetch", ctx.Err())
@@ -190,6 +200,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		return failure("inventory", err)
 	}
 	processed, err := PersistGreenhouseInventory(ctx, cycle, preparer, inventory)
+	if processed != nil {
+		result.Batches = processed.Batches
+	}
 	if err != nil {
 		return failure("processing", err)
 	}

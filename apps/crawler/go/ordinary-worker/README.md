@@ -2,8 +2,9 @@
 
 This package connects the standard Greenhouse token/skip inventory to the
 existing native enrichment, owned rich batches and terminal board lifecycle.
-It is an assembly library; protected executable startup, heartbeat/drain and
-installed cutover proof are still required before production selection.
+The native executable now connects this assembly to protected startup, bounded
+claims, heartbeat, deadlines, metrics and drain. Installed image/fault admission
+and supported all-writer cutover proof remain required before production selection.
 
 `RunGreenhouseClaim` now connects one installed opaque claim to the entire native
 path. `VerifiedDirectHTTP` seals its transport/redirect/cookie configuration.
@@ -31,8 +32,8 @@ statuses. Repeated headers, Python header decoding/whitespace and JSON byte
 encoding detection match 52 captures from the actual Python monitor. Failed or
 canceled reads and malformed inventories expose no partial jobs. Private final
 resource observations preserve redirected publisher/provider evidence without
-granting queue/write authority; the owned lifecycle's redirected-source adapter
-remains to be proven. The inherited native 64 MiB response bound requires cohort
+granting queue/write authority; the connected owned runner proves its
+redirected-source lifecycle adapters. The inherited native 64 MiB response bound requires cohort
 admission. Errors carry bounded symbols, never source bodies or diagnostics.
 
 `NewDirectHTTP` now creates one persistent verified HTTP/1.1 client from an
@@ -48,7 +49,7 @@ non-rewindable empty GET body prevents net/http's hidden retry without changing
 wire method/body/header semantics. Explicit request headers remain authoritative.
 
 `ObserveHTTP` provides detached request/response/no-response and encoded-byte
-snapshots for the future runtime circuit/metrics adapters. Compressed bytes are
+snapshots for runtime circuit/metrics adapters. Compressed bytes are
 counted before lazy gzip/zlib/raw-deflate decoding; 25 actual httpx cases cover
 combined encodings, members/trailers and errors. Decoder completion never masks
 an incomplete HTTP body. Encoded and decoded body bounds both remain 64 MiB and
@@ -90,22 +91,69 @@ after the first committed 500 rows proves that no partial second chunk or
 success/absence receipt survives, while canonical failure scheduling remains
 available.
 
-Continue with protected exact-source startup for this persistent verified client
-and typed response outcomes, including pinned CA asset/internal-host construction
-and deployment/profile TLS/cookie admission. The connected runner proves
-redirected provider/publisher lifecycle in owned TLS/database fixtures.
-Python's declared 20/10 connection limits are not its effective
-wrapped direct transport limits: the pinned httpx0.28.1/httpcore1.0.9 inner pool
-has 100 connections, 20 keepalive connections and a five-second keepalive expiry.
-It uses HTTP/1.1, 20 redirects and separate 30-second connect/read/write/pool
-timeouts. Match or explicitly prove changes against that effective baseline.
-The prepared ordinary queue circuit path now supplies shared host preflight,
-canonical deferrals/backoff lower bounds and durable learned-host settlement.
-The native TLS pipeline fixture recovers its observed API circuit; a failed
-preparation fixture publishes its fallback failure host after settlement.
-Integrate these prepared paths with exact-source startup,
-heartbeat and bounded shutdown into the native executable. Prove the installed
-process and supported all-writer cutover/cold reversal with B0's shared epoch
-before selection. The [continuation plan](../../../../docs/27-go-lightpanda-continuation-plan.md)
-retains all enabled profiles, remaining runtime consumers, whole-service cost,
-the rollback window and production Python/Playwright/Chromium retirement.
+`cmd/live` builds `go-ordinary-worker`. The binary's `--health` probes the installed process without another DB pool,
+requires matching source/plan/epoch and live claim-loop progress, and follows no
+redirects. Its `--identity` prints only
+its immutable source revision, CA SHA256 and profile. Startup compares its own
+clean Go VCS metadata or protected linker revision with
+`ORDINARY_OWNERSHIP_SOURCE_REVISION`, the exact plan SHA256, installed projection
+SHA1 and canonical routing epoch. It cannot activate a plan, rebuild a projection
+or adopt the allocator. Docker release, CI and B0 builders inject the checked-out
+revision with `CRAWLER_SOURCE_REVISION`; a missing or malformed build identity
+fails the image build. Both crawler images carry the binary, but no service is
+selected or started by this change.
+
+Runtime requires `ORDINARY_GO_WORKER_MODE=enabled`, all four
+`ORDINARY_OWNERSHIP_*` fields, `LOCAL_DATABASE_URL` and `REDIS_URL`. It loads native
+models from protected `ORDINARY_GO_DATA_DIRECTORY` (default `/app/data`), one
+ordinary authority connection and one read-only lookup connection. The CA asset
+is the exact certifi2026.2.25 snapshot from `uv.lock`, hash
+`fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28`;
+its bundled MPL notice is in `trust/LICENSE`. Runtime invokes no Python and
+substitutes no system CA. Internal-host exemptions derive once from protected
+service/proxy endpoints and `INTERNAL_HOSTS_ALLOW`, never queue/board evidence.
+
+Active monitor claims are bounded by the smaller discovery/monitor concurrency
+(default five; a zero monitor setting retains bounded discovery concurrency).
+There is no claimed-work prefetch beyond these slots. Defaults preserve the
+600-second lease, 120-second renewal, two-second queue fallback delay and ten
+domain probes. Every heartbeat revalidates the exact installed owner. A local
+settlement guard prevents an acknowledged terminal lease from racing its own
+renewal; PostgreSQL/token barriers remain the cross-process authority.
+
+`ORDINARY_GO_TASK_TIMEOUT_SECONDS` defaults to600 and requires cohort duration
+admission. The process stops claims on signal, keeps task contexts/heartbeats live
+for `SHUTDOWN_GRACE_SECONDS` (default30), then cancels unfinished work without
+inventing failure/success or removing its recoverable lease. Individual tasks and
+process shutdown have bounded cancellation grace (default5); uncooperative work
+forces process exit and skips blocking resource cleanup. A600-second default
+claim-loop watchdog also makes a responsive metrics server unhealthy during a
+claim outage. The listener defaults to `127.0.0.1:9104`, configurable through
+protected `ORDINARY_GO_METRICS_ADDRESS`.
+
+The runtime exports bounded legacy task/status/duration, heartbeat/drain and
+monitor posting metrics, native extraction duration/output and conserved
+origin/response/transport-error/encoded-byte counters. Extraction timing excludes
+posting persistence; recovered receipts and no-fetch deferrals emit no extraction
+execution. Partial processing results retain only confirmed committed batch
+counts, never whole-inventory success authority. Errors and public metrics expose
+no credentials, upstream URLs, hosts or arbitrary exception strings.
+
+Real fixtures build and run the native command against migrated private
+PostgreSQL/Redis, actual reference/model/location assets and the exact fixture
+plan. They prove no-fetch reservation settlement, health/metrics, signal drain
+and refusal of a wrong installed projection. Real TLS/queue token loss cancels a
+blocked fetch without canonical failure or fabricated terminal receipt. Race
+fixtures cover bounded claims, live renewal during drain, task deadlines,
+acknowledgement/renewal serialization, watchdogs and uncooperative cancellation.
+This is local executable evidence; it does not prove the immutable installed
+Linux image, SIGKILL/restart/cold reversal or exclusive production cutover.
+
+Continue with installed image/process fault admission, supported all-writer
+startup/projection/cutover and B0's shared epoch cold reversal before selection.
+The [continuation plan](../../../../docs/27-go-lightpanda-continuation-plan.md)
+retains every enabled effective profile, remaining runtime consumers, whole-service
+output/freshness/queue/cost, the rollback window and production Python/Playwright/
+Chromium retirement. Python's effective direct transport remains100/20/five-second,
+HTTP1.1/20redirects/separate30-second operations; admit deployment/profile TLS,
+cookie, body-size and task-duration compatibility against that baseline.

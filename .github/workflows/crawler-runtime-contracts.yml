@@ -208,7 +208,19 @@ jobs:
           persist-credentials: false
 
       - name: Build slim crawler image
-        run: docker build --target slim --tag jobseek-crawler:runtime-v1 apps/crawler
+        run: docker build --target slim --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:runtime-v1 apps/crawler
+
+      - name: Verify installed native ordinary source and CA identity
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --entrypoint go-ordinary-worker jobseek-crawler:runtime-v1 --identity \
+            > "$RUNNER_TEMP/ordinary-identity.json"
+          python3 - "$RUNNER_TEMP/ordinary-identity.json" "$GITHUB_SHA" <<'PY'
+          import json, sys
+          identity = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert identity == {"source_revision": sys.argv[2], "ca_sha256": "fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28", "profile": "greenhouse.token-skip/v1"}
+          PY
 
       - name: Import the installed contract surface from the image
         run: |

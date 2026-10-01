@@ -108,8 +108,15 @@ func TestNativeRichPipelineFailureNeverFinalizesPartialSuccess(t *testing.T) {
 				wantChunks = nil
 			}
 			result, err := PersistGreenhouseInventory(ctx, sink, preparer, inventory)
-			if err == nil || result != nil || sink.finished || !sink.invalidated || !reflect.DeepEqual(sink.chunks, wantChunks) {
+			if err == nil || result != nil && result.Cycle != nil || sink.finished || !sink.invalidated || !reflect.DeepEqual(sink.chunks, wantChunks) {
 				t.Fatal("failed inventory finalized success or committed partial preparation")
+			}
+			wantInserted := 0
+			for _, n := range wantChunks {
+				wantInserted += n
+			}
+			if wantInserted > 0 && result == nil || result != nil && result.Batches.Inserted != wantInserted {
+				t.Fatal("partial inventory lost committed-prefix observations")
 			}
 		})
 	}
