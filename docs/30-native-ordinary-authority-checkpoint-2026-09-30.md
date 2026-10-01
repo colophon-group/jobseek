@@ -956,3 +956,21 @@ remaining actual interruption seams. All enabled effective profiles/runtime
 consumers, canonical/publisher/freshness/queue parity, comparable whole-service
 CPU/RAM/density/cost, exact-gated rollout, actual rollback window and production
 Python/Playwright/Chromium retirement remain in the active full migration goal.
+
+
+### Restoration evidence follow-up
+
+Final executable fixture source `37c0bd723d980be6df845af625f55cc03edba466` compares canonical exact
+logical Redis bytes/types/scores/expiry classes, preserving non-UTF8 values.
+Initial restoration head8bdb17832 Linux AMD64 run36913625577 failed opaque combined
+DUMP/canonical comparisons at retirement (attempt1) and preparation (attempt2);
+ARM64 passed. Internal encoding/iteration order is the working diagnosis; fresh
+exact-source Linux/image admission must close the finding. Typed observations now
+separate canonical diagnostics and detect actual hash value, microsecond queue
+score, type, expiry-class and binary-byte changes while conserving equal reinserted
+hashes. Full corrected worker races passed30.722s with owned fixtures stopped.
+No production runtime change accompanied this evidence correction.
+
+Previous planner de9fc4f52 whole B0 run36908705415 completed successfully, completing
+its four-workflow admission. Its downloaded installed-image evidence remains bound
+to that historical source. Later restoration source still needs its own admission.

@@ -20,9 +20,18 @@ repository checks passed. See
 Preceding planner checkpoint `de9fc4f52` passed Linux PG17/Redis 36908705159,
 full CI 36908788510 and both installed images 36908792798. Both downloaded artifacts
 verify all four actual executable fixtures, exact source/image/binary and matching
-34 asset hashes. Whole B0 36908705415 is still running. Earlier retirement checkpoint
+34 asset hashes. Whole B0 36908705415 also passed, completing all four workflows. Earlier retirement checkpoint
 `286810cfc` has now passed all four workflows, including whole B0 36905777358.
 The actual deploy gate refuses draft. Current-source checks remain required.
+
+Final fixture source `37c0bd723d980be6df845af625f55cc03edba466` compares exact logical Redis bytes,
+types, scores and expiry classes. Linux AMD64 on the initial restoration checkpoint
+reported opaque combined DUMP/canonical mismatches at different read-only seams;
+ARM64 passed. DUMP embeds internal encoding/iteration order, so the fixture now
+uses stable logical observations, separates canonical diagnostics and proves real
+value/type/microsecond-score/expiry/non-UTF8 drift detection. Full corrected worker
+races passed (30.722s). Fresh exact-source Linux and image checks must resolve the
+CI finding before admission; no production runtime was changed by this correction.
 
 Next complete fresh ordinary/B0 restored ownership, sentinel/host receipt recovery
 and full release readiness through the supported ADR006 all-writer host wrapper.
@@ -196,9 +205,10 @@ subsequent exact owner/active-journal installation is atomic. SQL/Save failures
 retain inspectable recovery phases. Lost/expired/partial witnesses are contained.
 An exact active predecessor can be retained as superseded; its release/plan/epoch
 and prior projection/witness must match. A stale B0 route prevents publication.
-These are internal primitives, not an installed coordinator or host readiness
-proof. They do not transfer B0 tasks or supply its complete PG-derived manifest.
-Actual coordinator interruption, supported wrapper and full cold reversal remain.
+Protected source-bound commands expose these primitives, with actual publication,
+retirement and B0 restoration interruption/recovery proof. They still require the
+supported host wrapper, complete forward B0 task transfer and full cold reversal
+before selecting production ownership.
 
 Bind one protected transition to the exact active and candidate release generation,
 immutable crawler/browser/renderer image identities, installed binary sources,
@@ -230,6 +240,38 @@ Redis publication/persistence, receipt publication, startup and readiness bounda
 A failed reversal must leave the affected lane stopped, with its recovery authority
 intact. Then verify one naturally due owned cycle, old-owner exclusion, posting/
 description/upload continuity, due times and remaining-owner freshness.
+
+### Remaining ownership and host work in dependency order
+
+1. Replace Python forward activation planning/application with native PG-derived
+   B0 task transfer at the exact retained shared epoch. Preserve existing producer
+   UDS preparation/activation digests, actual Lua transfers, legacy schedule intent,
+   completed terminal records and bounded lifetime capacity; refuse inflight/suffix
+   authority. Retain a durable complete manifest before the first per-task effect,
+   then prove partial transfer/SAVE/restart without replay or lost schedules.
+2. Restore both supported rollback targets: a legacy ordinary owner and a prior
+   native ordinary owner. The native target needs a fresh plan at the retained
+   retirement epoch bound to the rollback binary's source and freshly validated
+   effective configurations. Retired plans remain immutable. Existing native
+   admission requires an exact active journal and B0 target/projection/witness;
+   closing the old reversal without that replacement would leave it unowned.
+   Design and prove the atomic history/owner completion before releasing claims.
+3. Independently verify immutable active/target/rollback generation, complete data
+   tree and runtime contract, spec present/absent manifest, env and image/binary
+   identities. Under `/run/lock/jobseek-crawler-mutation.lock`, stop and attest
+   ordinary/browser/native claimants, producer, exporter, drain, maintenance and
+   competing one-offs. Integrate the protected native commands with the supported
+   ADR006 host workflow; preserve the existing active B0 receipt as recovery authority.
+4. Complete Go-owned sentinel and durable host receipt recovery, acknowledged
+   Redis persistence and exact readback, final fresh database/queue ownership and
+   full-stack readiness. Actual SIGKILL must cover historical fence cleanup before
+   commit, sentinel/receipt publication, release selection and readiness failure.
+   Any failed restore leaves every writer stopped and the exact recovery record intact.
+5. Prove installed container/public-fetch settings and a naturally due owned cycle,
+   then promote through fresh exact-head gates. Refresh all enabled effective
+   profiles and port remaining monitor/detail/browser and runtime consumers with
+   canonical/publisher/freshness/queue conservation. Complete comparable whole-service
+   resource/cost admission and the actual rollback window before runtime retirement.
 
 ## Historical delivery record
 

@@ -300,9 +300,11 @@
     },
     "whole_b0": {
       "id": 36908705415,
-      "status": "in_progress"
+      "status": "completed",
+      "conclusion": "success"
     },
-    "actual_deploy_gate": "failure: Draft PR; no merge authority is granted; evaluator success is not authority"
+    "actual_deploy_gate": "failure: Draft PR; no merge authority is granted; evaluator success is not authority",
+    "all_four": "success"
   },
   "previous_retirement_whole_b0": {
     "head": "286810cfc074cc201d3d9b51700cd03886525654",
@@ -316,5 +318,92 @@
     "Source receipt/host/release digests are integrity bindings. Independent immutable release/data/spec/env/image/sentinel/receipt identity and all-writer cold-host evidence belong to the supported ADR006 wrapper.",
     "Private process/Redis/PG fixtures do not prove production deployment, container effective settings/public fetch, fleet coverage or resource/cost admission."
   ],
-  "next": "Complete ordinary/B0 fresh ownership restoration, sentinel/receipt recovery and supported ADR006 all-writer host wrapper with independently verified active/target/rollback generation/spec/env/data/image identities and full readiness. Finish forward PG-derived B0 transfer and remaining actual process interruption seams. Continue every enabled effective profile/runtime consumer, canonical/publisher/freshness/queue parity, comparable whole-service CPU/RAM/density/cost, exact gates/rollout, actual rollback window and production Python/Playwright/Chromium retirement while preserving useful isolated offline Python."
+  "next": "Complete ordinary/B0 fresh ownership restoration, sentinel/receipt recovery and supported ADR006 all-writer host wrapper with independently verified active/target/rollback generation/spec/env/data/image identities and full readiness. Finish forward PG-derived B0 transfer and remaining actual process interruption seams. Continue every enabled effective profile/runtime consumer, canonical/publisher/freshness/queue parity, comparable whole-service CPU/RAM/density/cost, exact gates/rollout, actual rollback window and production Python/Playwright/Chromium retirement while preserving useful isolated offline Python.",
+  "final_fixture_source_revision": "37c0bd723d980be6df845af625f55cc03edba466",
+  "final_worker_races_after_logical_snapshot_correction": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.316,
+        "log": "ordinary-b0-restoration-migration-upgrade.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "downgrade",
+          "0041"
+        ],
+        "exit_code": 0,
+        "seconds": 0.268,
+        "log": "ordinary-b0-restoration-migration-downgrade-0041.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.271,
+        "log": "ordinary-b0-restoration-migration-upgrade-head.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 30.722,
+        "log": "ordinary-b0-restoration-final-worker-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "linux_snapshot_follow_up": {
+    "head": "8bdb1783289bbf7e8a0378a83ed826db31e04731",
+    "run": 36913625577,
+    "attempts": [
+      {
+        "attempt": 1,
+        "result": "AMD64 opaque DUMP/canonical combined mismatch at retirement; ARM64 passed"
+      },
+      {
+        "attempt": 2,
+        "result": "AMD64 opaque DUMP/canonical combined mismatch at preparation/retention; ARM64 result retained from attempt1"
+      }
+    ],
+    "correction": "Compare canonical exact logical Redis bytes (including non-UTF8), type, sorted hash/set entries, zset members/scores, list order and expiry classes; internal DUMP encoding/order is outside the runtime contract. Separate canonical and changed-key diagnostics. Regression proves reinsertion of equal values is conserved and actual value/type/microsecond-score/expiry/binary-byte drift is detected.",
+    "cause_status": "Internal encoding/order is the working diagnosis; fresh exact-source Linux/image admission is required before closing the CI finding.",
+    "production_runtime_changed_by_correction": false
+  }
 }
