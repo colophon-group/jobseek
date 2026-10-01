@@ -80,5 +80,24 @@
     },
     "actual_deploy_gate": "failure while draft",
     "limitation": "earlier head success does not cover later circuit source or authorize merging a draft"
-  }
+  },
+  "checkpoint_checks": {
+    "head": "3684247cc9621946bf6e5f0a497656261d287c2a",
+    "linux": {
+      "run": 36846132716,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36846125648,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36846132352,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "Earlier-head success does not cover later claim-run source or authorize merging a draft."
+  },
+  "continued_by_runtime_source_head": "3e9aef091edcd8f1ab9f911c45b2f184bb2f465d"
 }

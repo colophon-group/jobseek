@@ -428,7 +428,7 @@ assets, installed process faults or all-writer cutover/cold reversal. Complete
 those next, followed by all enabled profiles/consumers and fleet/cost/retirement
 gates. Ordinary production workers remain Python and the full goal remains active.
 
-At 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885
+On September 30 at 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885
 enabled and 134 disabled. Of enabled boards, 522 had stored browser requirements
 (419 monitor, 264 scraper, overlapping); Greenhouse accounted for 2,280 boards,
 741 naturally due, four with existing failures and none never successful.
@@ -459,3 +459,46 @@ Measure comparable whole-service CPU/RAM/density/attributable cost and complete
 the actual rollback window before removing production Python, Playwright,
 Chromium and legacy runtime-only assets. Preserve useful isolated offline Python.
 A first cohort or this authority library does not complete the migration goal.
+
+### Complete claim-bound Greenhouse runner, October 1
+
+Source `3e9aef091edcd8f1ab9f911c45b2f184bb2f465d` now connects the completed
+native assembly through `RunGreenhouseClaim`. A sealed verified client prevents
+callers replacing its transport or redirect policy. The runner requires an
+ownership-bound opaque claim; every canonical effect still checks the fresh
+installed plan/epoch/configuration. The initial token endpoint stays bound to
+the claim while private completed fetch responses supply the final resource for
+provider404 and publisher-policy lifecycle. Publisher headers take precedence
+over status/JSON only after the complete verified response body is obtained.
+
+Pre-existing reservations and circuit deferrals settle without fetch. Recovered
+terminal receipts settle without fetching, preparing or replaying host outcomes.
+A publisher reservation during preparation preserves committed prefix batches
+and finalizes reservation without failure budget or absence. Cancellation never
+manufactures terminal lifecycle authority. Result settlement is true only after
+token-guarded acknowledgement; committed receipts remain recoverable on failure.
+
+Production Python and Go reschedule Lua remain identical. Both now preflight all
+used queue/index types and finite numeric inputs before mutations, preventing a
+corrupt ready index from removing a lease or losing learned-host publication.
+Thirteen real Redis fault cases compare exact queue/lease/cache snapshots.
+
+The real TLS 1,001-posting fixture now runs through this complete runner. Eight
+redirected response cases, two no-fetch cases, mid-body cancellation, reservation
+after the first 500 postings, strict response-resource rejection and a true
+commit-before-ack process-loss/reap/reclaim fixture passed. Recovery preserves
+canonical due time and learned host without HTTP/CPU/circuit/failure replay.
+Queue races passed in 26.414 seconds, assembly in 20.259 seconds and reader/
+preparation in 2.875 seconds. Migration head/down0036/head, all 185 mandatory
+legacy tests without skips, 39 repository checks and vet/format passed. Private
+fixtures shut down and production is unchanged. See
+[portable claim-run evidence](evidence/go-ordinary-claim-run-2026-10-01.json).
+
+Circuit checkpoint `3684247cc` passed both Linux architectures (36846132716),
+full CI (36846125648) and B0 admission (36846132352). Its actual deploy gate
+rejects the draft; those checks do not cover this later source. Fresh checks and
+the installed native executable remain required. Continue with protected startup,
+metrics/concurrency/deadlines/heartbeat/drain, installed fault proof and supported
+all-writer cutover/shared-epoch cold reversal, then every enabled profile/consumer,
+fleet/freshness/queue/cost and rollback-window retirement gates. The full migration
+goal remains active; ordinary production workers remain Python.

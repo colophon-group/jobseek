@@ -135,17 +135,40 @@ fallback host at settlement. See the
 [portable host circuit evidence](evidence/go-ordinary-host-circuit-2026-10-01.json).
 This prepared library still selects no production ordinary worker.
 
-Next, bind final-resource provider/publisher observations to the exact owned
-claim and verified native fetch lineage; redirected outcomes do not yet
-authorize the terminal lifecycle. Package protected CA/internal-host startup
-inputs and connect the completed assembly to the exact-source/plan/epoch native
-executable with metrics, bounded concurrency, heartbeat and drain. Preserve the
-immutable claim through settlement and recovery. Prove installed cancellation/
-crash/claim-loss, all-writer ownership/projection cutover and shared B0 epoch cold
-reversal before selecting an ordinary cohort. Then complete every enabled
-effective profile and runtime consumer, fleet output/freshness/queue conservation,
-comparable whole-service CPU/RAM/density/cost and the rollback window before
-retiring production Python/Playwright/Chromium. The full migration goal remains active.
+Circuit checkpoint `3684247cc` passed both Linux architectures (36846132716),
+full CI (36846125648) and B0 admission (36846132352). Its actual deploy gate
+still rejects the draft; those results do not cover later source.
+
+Latest runtime source `3e9aef091` connects the complete claim-bound Greenhouse
+runner to a sealed verified transport. Initial token identity remains bound to
+the owned claim while completed final-resource responses authorize redirected
+provider404 and publisher policy. The runner connects preflight, native full
+inventory/preparation/batches/lifecycle, host outcomes and receipt settlement.
+It recovers committed receipts without HTTP, CPU or circuit replay. Concurrent
+publisher reservation retains committed batches without spending failure budget
+or absence authority. Redis settlement now validates all relevant index types
+and numeric inputs before any mutations, preserving the lease and durable host
+receipt when an index is corrupt.
+
+Real TLS/PostgreSQL/Redis runner fixtures include the 1,001-posting assembly,
+eight redirected policy/provider/error outcomes, no-fetch deferrals/reservations,
+mid-body cancellation, reservation after a 500-posting prefix, true process-loss/
+reap/reclaim recovery and thirteen atomic-settlement rejection cases. Full queue
+races (26.414 seconds), assembly races (20.259 seconds), reader/preparation races
+(2.875 seconds), 185 mandatory legacy tests without skips, 39 repository checks
+and vet/format passed. Private fixtures shut down; production is unchanged. See
+[portable claim-run evidence](evidence/go-ordinary-claim-run-2026-10-01.json).
+Fresh candidate checks are required; this library selects no production worker.
+
+Next, package protected CA/internal-host startup inputs and connect the completed
+claim runner to the exact-source/plan/epoch native executable with metrics,
+bounded concurrency, task deadlines, heartbeat and drain. Prove installed
+cancellation/crash/claim-loss, all-writer ownership/projection cutover and shared
+B0 epoch cold reversal before selecting an ordinary cohort. Then complete every
+enabled effective profile and runtime consumer, fleet output/freshness/queue
+conservation, comparable whole-service CPU/RAM/density/cost and the rollback
+window before retiring production Python/Playwright/Chromium. The full migration
+goal remains active.
 
 This initial review made no production changes and did not reread the live hosts.
 Production details below are the latest recorded checkpoint, corroborated by
