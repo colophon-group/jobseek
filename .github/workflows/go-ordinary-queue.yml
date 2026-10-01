@@ -35,6 +35,7 @@ on:
       - "apps/crawler/src/migrations/**"
       - "apps/crawler/src/ordinary_ownership.py"
       - "apps/crawler/src/lightpanda/activation.py"
+      - "apps/crawler/src/lightpanda/producer_client.py"
       - "apps/crawler/src/redis_queue.py"
       - "apps/crawler/src/config.py"
       - "apps/crawler/src/workers/pipeline.py"
@@ -153,6 +154,16 @@ jobs:
           uv run --frozen python go/ordinary-worker/testdata/collect_ssrf.py
           uv run --frozen python go/ordinary-worker/testdata/collect_http_transport.py
           git diff --exit-code -- go/ordinary-worker/ssrf_networks.json go/ordinary-worker/testdata/python_ssrf.json go/ordinary-worker/testdata/python_http_decoding.json
+
+      - name: Verify native producer socket and actual Python wire compatibility
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen python contracts/v1/b0producer/testdata/collect.py
+          git diff --exit-code -- contracts/v1/b0producer/testdata/python_protocol.json
+          cd contracts
+          go test -race -count=1 -timeout=30s ./v1/b0producer
+          go vet ./v1/b0producer
 
       - name: Verify assembled native inventory and owned processing pipeline
         working-directory: apps/crawler/go/ordinary-worker

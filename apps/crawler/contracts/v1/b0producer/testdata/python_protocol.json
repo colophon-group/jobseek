@@ -1,0 +1,407 @@
+{
+  "responses": [
+    {
+      "name": "legacy",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "legacy",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "c1",
+      "body": "{\"activated\":false,\"board_slugs\":[\"browser-use-careers\"],\"cohort\":\"c1\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"manifest\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"manifest\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "manifest",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "c2",
+      "body": "{\"activated\":false,\"board_slugs\":[\"browser-use-careers\",\"kandou-ai-careers\"],\"cohort\":\"c2\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"manifest\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"manifest\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "manifest",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "cdom",
+      "body": "{\"activated\":false,\"board_slugs\":[\"algorized-careers\",\"browser-use-careers\",\"bunq-careers\"],\"cohort\":\"cdom\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"manifest\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"manifest\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "manifest",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "prepared-new",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "prepared",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "prepared-ready",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"existing_state\":\"ready\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "prepared",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "prepared-inflight",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"existing_state\":\"inflight\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "prepared",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "prepared-dead",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"existing_state\":\"dead\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "prepared",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "prepared-terminal",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"existing_state\":\"terminal\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "prepared",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "activated",
+      "body": "{\"activated\":true,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"activated\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"activated\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "activated",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "reactivated",
+      "body": "{\"activated\":true,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"activated\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"reactivated\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "activated",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "already_activated",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"activated\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"already_activated\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "outcome": "activated",
+      "reason": "",
+      "accepted": true
+    },
+    {
+      "name": "request_invalid",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"error\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"request_invalid\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "authority_lost",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"error\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"authority_lost\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "digest_mismatch",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"error\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"digest_mismatch\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "namespace_full",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":0,\"lifetime_occupancy\":2048,\"outcome\":\"capacity\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"namespace_full\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": true,
+      "reason": "namespace_full"
+    },
+    {
+      "name": "pilot_occupancy_limit",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":448,\"lifetime_occupancy\":1600,\"outcome\":\"capacity\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"pilot_occupancy_limit\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": true,
+      "reason": "pilot_occupancy_limit"
+    },
+    {
+      "name": "unknown-version",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"secret\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "unknown-field",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"secret\":\"input\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "activated-legacy",
+      "body": "{\"activated\":true,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "wrong-reason",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"authority_lost\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "boolean-count",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":true,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "negative-count",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2049,\"lifetime_occupancy\":-1,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "over-capacity",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":-1,\"lifetime_occupancy\":2049,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "bad-headroom",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":0,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "bad-capacity",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2049,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "unknown-outcome",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"secret\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "legacy-with-digest",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "unknown-existing",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"existing_state\":\"secret\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "missing-existing-hash",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"ready\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "orphan-existing-hash",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "prepared-activated",
+      "body": "{\"activated\":true,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "wrong-digest",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"secret\",\"reason\":\"prepared\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "prepared-wrong-reason",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"prepared\",\"payload_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"preparation_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"reason\":\"activated\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "unsorted",
+      "body": "{\"activated\":false,\"board_slugs\":[\"z\",\"a\"],\"cohort\":\"c1\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"manifest\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"manifest\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "duplicate",
+      "body": "{\"activated\":false,\"board_slugs\":[\"a\",\"a\"],\"cohort\":\"c1\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"manifest\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"manifest\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "empty",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"c1\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"manifest\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"manifest\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "missing-field",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "duplicate-field",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\",\"reason\":\"literal_legacy\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "trailing-json",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}{}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "noncanonical",
+      "body": "{\"activated\":false,\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"} ",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    },
+    {
+      "name": "wrong-boolean",
+      "body": "{\"activated\":\"false\",\"board_slugs\":[],\"cohort\":\"\",\"existing_payload_sha256\":\"\",\"existing_state\":\"\",\"lifetime_capacity\":2048,\"lifetime_headroom\":2048,\"lifetime_occupancy\":0,\"outcome\":\"legacy\",\"payload_sha256\":\"\",\"preparation_digest\":\"\",\"reason\":\"literal_legacy\",\"version\":\"jobseek.lightpanda.producer/v1\"}",
+      "accepted": false,
+      "capacity": false,
+      "reason": ""
+    }
+  ],
+  "requests": [
+    {
+      "request": {
+        "browser": false,
+        "cohort": "cdom",
+        "config": {},
+        "domain": "",
+        "expected_digest": "",
+        "first_time": false,
+        "next_scrape_at_ms": 0,
+        "operation": "manifest",
+        "operator_transfer": true,
+        "posting_id": "",
+        "version": "jobseek.lightpanda.producer/v1"
+      },
+      "body": "{\"browser\":false,\"cohort\":\"cdom\",\"config\":{},\"domain\":\"\",\"expected_digest\":\"\",\"first_time\":false,\"next_scrape_at_ms\":0,\"operation\":\"manifest\",\"operator_transfer\":true,\"posting_id\":\"\",\"version\":\"jobseek.lightpanda.producer/v1\"}"
+    },
+    {
+      "request": {
+        "browser": true,
+        "cohort": "",
+        "config": {
+          "board_id": "11111111-1111-4111-8111-111111111111",
+          "source_url": "https://jobs.example.test/\u00e9/<posting>",
+          "scrape_step": "0",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_interval_hours": "24"
+        },
+        "domain": "jobs.example.test",
+        "expected_digest": "",
+        "first_time": true,
+        "next_scrape_at_ms": 350001,
+        "operation": "prepare",
+        "operator_transfer": true,
+        "posting_id": "00000000-0000-4000-8000-000000000001",
+        "version": "jobseek.lightpanda.producer/v1",
+        "legacy_schedule_score": "350.0001"
+      },
+      "body": "{\"browser\":true,\"cohort\":\"\",\"config\":{\"board_id\":\"11111111-1111-4111-8111-111111111111\",\"description_r2_hash\":\"-9223372036854775808\",\"scrape_interval_hours\":\"24\",\"scrape_step\":\"0\",\"source_url\":\"https://jobs.example.test/\\u00e9/<posting>\"},\"domain\":\"jobs.example.test\",\"expected_digest\":\"\",\"first_time\":true,\"legacy_schedule_score\":\"350.0001\",\"next_scrape_at_ms\":350001,\"operation\":\"prepare\",\"operator_transfer\":true,\"posting_id\":\"00000000-0000-4000-8000-000000000001\",\"version\":\"jobseek.lightpanda.producer/v1\"}"
+    },
+    {
+      "request": {
+        "browser": true,
+        "cohort": "",
+        "config": {
+          "board_id": "11111111-1111-4111-8111-111111111111",
+          "source_url": "https://jobs.example.test/\u00e9/<posting>",
+          "scrape_step": "0",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_interval_hours": "24"
+        },
+        "domain": "jobs.example.test",
+        "expected_digest": "",
+        "first_time": false,
+        "next_scrape_at_ms": 1925089445101,
+        "operation": "prepare",
+        "operator_transfer": true,
+        "posting_id": "00000000-0000-4000-8000-000000000001",
+        "version": "jobseek.lightpanda.producer/v1",
+        "legacy_schedule_score": "1925089445.100001"
+      },
+      "body": "{\"browser\":true,\"cohort\":\"\",\"config\":{\"board_id\":\"11111111-1111-4111-8111-111111111111\",\"description_r2_hash\":\"-9223372036854775808\",\"scrape_interval_hours\":\"24\",\"scrape_step\":\"0\",\"source_url\":\"https://jobs.example.test/\\u00e9/<posting>\"},\"domain\":\"jobs.example.test\",\"expected_digest\":\"\",\"first_time\":false,\"legacy_schedule_score\":\"1925089445.100001\",\"next_scrape_at_ms\":1925089445101,\"operation\":\"prepare\",\"operator_transfer\":true,\"posting_id\":\"00000000-0000-4000-8000-000000000001\",\"version\":\"jobseek.lightpanda.producer/v1\"}"
+    },
+    {
+      "request": {
+        "browser": true,
+        "cohort": "",
+        "config": {
+          "board_id": "11111111-1111-4111-8111-111111111111",
+          "source_url": "https://jobs.example.test/\u00e9/<posting>",
+          "scrape_step": "0",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_interval_hours": "24"
+        },
+        "domain": "jobs.example.test",
+        "expected_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "first_time": false,
+        "next_scrape_at_ms": 1925089445101,
+        "operation": "activate",
+        "operator_transfer": true,
+        "posting_id": "00000000-0000-4000-8000-000000000001",
+        "version": "jobseek.lightpanda.producer/v1",
+        "legacy_schedule_score": "1925089445.100001"
+      },
+      "body": "{\"browser\":true,\"cohort\":\"\",\"config\":{\"board_id\":\"11111111-1111-4111-8111-111111111111\",\"description_r2_hash\":\"-9223372036854775808\",\"scrape_interval_hours\":\"24\",\"scrape_step\":\"0\",\"source_url\":\"https://jobs.example.test/\\u00e9/<posting>\"},\"domain\":\"jobs.example.test\",\"expected_digest\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"first_time\":false,\"legacy_schedule_score\":\"1925089445.100001\",\"next_scrape_at_ms\":1925089445101,\"operation\":\"activate\",\"operator_transfer\":true,\"posting_id\":\"00000000-0000-4000-8000-000000000001\",\"version\":\"jobseek.lightpanda.producer/v1\"}"
+    },
+    {
+      "request": {
+        "browser": true,
+        "cohort": "",
+        "config": {
+          "board_id": "11111111-1111-4111-8111-111111111111",
+          "source_url": "https://jobs.example.test/\u00e9/<posting>",
+          "scrape_step": "0",
+          "description_r2_hash": "-9223372036854775808",
+          "scrape_interval_hours": "24"
+        },
+        "domain": "jobs.example.test",
+        "expected_digest": "",
+        "first_time": false,
+        "next_scrape_at_ms": 0,
+        "operation": "enqueue",
+        "operator_transfer": false,
+        "posting_id": "00000000-0000-4000-8000-000000000001",
+        "version": "jobseek.lightpanda.producer/v1"
+      },
+      "body": "{\"browser\":true,\"cohort\":\"\",\"config\":{\"board_id\":\"11111111-1111-4111-8111-111111111111\",\"description_r2_hash\":\"-9223372036854775808\",\"scrape_interval_hours\":\"24\",\"scrape_step\":\"0\",\"source_url\":\"https://jobs.example.test/\\u00e9/<posting>\"},\"domain\":\"jobs.example.test\",\"expected_digest\":\"\",\"first_time\":false,\"next_scrape_at_ms\":0,\"operation\":\"enqueue\",\"operator_transfer\":false,\"posting_id\":\"00000000-0000-4000-8000-000000000001\",\"version\":\"jobseek.lightpanda.producer/v1\"}"
+    }
+  ]
+}

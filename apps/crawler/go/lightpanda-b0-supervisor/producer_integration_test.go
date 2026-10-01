@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	b0producer "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0producer"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	"github.com/redis/go-redis/v9"
 )
@@ -242,13 +243,20 @@ func runInstalledProducerLifecycle(t *testing.T, scraperType string) {
 		t.Fatal(err)
 	}
 	request.Operation, request.OperatorTransfer, request.LegacyScheduleScore = "prepare", true, "0"
-	prepared := controlExchange(t, producerSocketPath, request)
-	if prepared.Outcome != "prepared" || !hex256.MatchString(prepared.PreparationDigest) {
+	native := b0producer.NewClient()
+	manifest, err := native.Manifest(ctx, "c1")
+	if err != nil || manifest.Outcome != "manifest" || len(manifest.BoardSlugs) != 1 || manifest.BoardSlugs[0] != "browser-use-careers" || manifest.LifetimeOccupancy != 0 {
+		t.Fatal("native client failed actual installed producer manifest", err)
+	}
+	task := b0producer.Task{Domain: request.Domain, PostingID: request.PostingID, NextScrapeAtMS: request.NextScrapeAtMS,
+		Config: request.Config, Browser: request.Browser, FirstTime: request.FirstTime, LegacyScheduleScore: request.LegacyScheduleScore}
+	prepared, err := native.Prepare(ctx, task)
+	if err != nil || prepared.Outcome != "prepared" || !hex256.MatchString(prepared.PreparationDigest) {
 		t.Fatalf("installed source-bound preparation failed: %#v", prepared)
 	}
 	request.Operation, request.ExpectedDigest = "activate", prepared.PreparationDigest
-	first := controlExchange(t, producerSocketPath, request)
-	if first.Outcome != "activated" || first.Reason != "activated" || !first.Activated {
+	first, err := native.Activate(ctx, task, prepared.PreparationDigest)
+	if err != nil || first.Outcome != "activated" || first.Reason != "activated" || !first.Activated {
 		t.Fatalf("first real activation failed: %#v", first)
 	}
 	if _, err := client.ZScore(ctx, "scrapes_browser:"+request.Domain, integrationTaskID).Result(); err != redis.Nil {
@@ -257,9 +265,23 @@ func runInstalledProducerLifecycle(t *testing.T, scraperType string) {
 	if present, err := client.HExists(ctx, "scrape:"+integrationTaskID, "__operator_source_score").Result(); err != nil || present {
 		t.Fatalf("operator CAS marker leaked into the legacy hash: %t %v", present, err)
 	}
+	// Recover the exact approved operator transfer after an uncertain reply;
+	// preserve its source score and digest without switching to enqueue.
+	operatorRetry, err := native.Activate(ctx, task, prepared.PreparationDigest)
+	if err != nil || operatorRetry.Reason != "already_activated" || operatorRetry.Activated || operatorRetry.PreparationDigest != prepared.PreparationDigest {
+		t.Fatal("exact native operator retry failed", err)
+	}
+	if _, err := native.Activate(ctx, task, strings.Repeat("f", 64)); !errors.Is(err, b0producer.ErrAuthority) {
+		t.Fatal("actual producer accepted wrong approved digest", err)
+	}
+	occupied, err := native.Manifest(ctx, "c1")
+	if err != nil || occupied.LifetimeOccupancy != 1 || occupied.LifetimeHeadroom != 2047 {
+		t.Fatal("actual native retry changed lifetime occupancy", err)
+	}
 	request.Operation, request.OperatorTransfer, request.LegacyScheduleScore, request.ExpectedDigest = "enqueue", false, "", ""
-	second := controlExchange(t, producerSocketPath, request)
-	if second.Outcome != "activated" || second.Reason != "already_activated" || second.Activated {
+	task.LegacyScheduleScore = ""
+	second, err := native.Enqueue(ctx, task)
+	if err != nil || second.Outcome != "activated" || second.Reason != "already_activated" || second.Activated {
 		t.Fatalf("idempotent real activation failed: %#v", second)
 	}
 	sentinelInfo, err := os.Stat(producerSentinelPath)
@@ -295,8 +317,8 @@ func runInstalledProducerLifecycle(t *testing.T, scraperType string) {
 	if err := queue.terminal(ctx, current, nil); err != nil {
 		t.Fatal(err)
 	}
-	third := controlExchange(t, producerSocketPath, request)
-	if third.Outcome != "activated" || third.Reason != "reactivated" || !third.Activated {
+	third, err := native.Enqueue(ctx, task)
+	if err != nil || third.Outcome != "activated" || third.Reason != "reactivated" || !third.Activated {
 		t.Fatalf("terminal revision was not reactivated: %#v", third)
 	}
 	stored, err := queue.inspect(ctx, integrationTaskID)
