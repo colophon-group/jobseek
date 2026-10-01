@@ -28,6 +28,25 @@ type DirectHTTPConfig struct {
 	InternalHosts []string
 }
 
+// VerifiedDirectHTTP seals the process-owned client used by the native claim
+// runner. Callers cannot swap its transport, redirect policy or cookie jar.
+// CA/internal-host inputs still require protected installed startup admission.
+type VerifiedDirectHTTP struct{ client *http.Client }
+
+func NewVerifiedDirectHTTP(config DirectHTTPConfig) (*VerifiedDirectHTTP, error) {
+	client, err := NewDirectHTTP(config)
+	if err != nil {
+		return nil, err
+	}
+	return &VerifiedDirectHTTP{client: client}, nil
+}
+
+func (c *VerifiedDirectHTTP) CloseIdleConnections() {
+	if c != nil && c.client != nil {
+		c.client.CloseIdleConnections()
+	}
+}
+
 // NewDirectHTTP creates one reusable verified HTTP/1.1 client. Request contexts
 // bound the whole task; network operations retain separate 30-second limits.
 // This is transport, not startup/claim/host-circuit or database authority.

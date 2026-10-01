@@ -2,8 +2,27 @@
 
 This package connects the standard Greenhouse token/skip inventory to the
 existing native enrichment, owned rich batches and terminal board lifecycle.
-It is an assembly library; the native process executable, protected transport
-startup and installed circuit integration are still required before production selection.
+It is an assembly library; protected executable startup, heartbeat/drain and
+installed cutover proof are still required before production selection.
+
+`RunGreenhouseClaim` now connects one installed opaque claim to the entire native
+path. `VerifiedDirectHTTP` seals its transport/redirect/cookie configuration.
+The runner consumes its own completed response, binds the initial token endpoint
+to the claim and records the final resource URL for provider404 or publisher
+headers. Publisher signals precede status/body parsing; redirect-only headers,
+partial bodies, refused redirects and cancellations never grant final-resource
+authority. Pre-existing reservations and shared-circuit deferrals perform no
+fetch. Provider404 bypasses generic host outcomes; publisher outcomes retain
+Python's successful host-reset behavior. A racing reservation after a committed
+prefix preserves that prefix without another chunk, absence or failure budget.
+
+A recovered receipt settles without network/CPU work or repeated circuit
+accounting. A result is a settled completion only when `Settled` is true; errors
+can retain an already committed receipt for durable recovery. Diagnostics are
+bounded symbols, and arbitrary upstream/preparation/SQL messages do not enter
+logged error text. Cancellation abandons uncommitted work to lease recovery.
+The Redis reschedule script now preflights all queue/index types and numeric
+inputs before effects, preserving the lease/snapshot on corrupt ready state.
 
 `DiscoverGreenhouse` performs one logical GET through a caller-owned persistent
 HTTP client. It checks only the final fully read response's resource headers,
@@ -72,8 +91,9 @@ success/absence receipt survives, while canonical failure scheduling remains
 available.
 
 Continue with protected exact-source startup for this persistent verified client
-and typed response outcomes, including pinned CA asset/internal-host construction,
-deployment/profile TLS/cookie admission and redirected publisher/provider lifecycle.
+and typed response outcomes, including pinned CA asset/internal-host construction
+and deployment/profile TLS/cookie admission. The connected runner proves
+redirected provider/publisher lifecycle in owned TLS/database fixtures.
 Python's declared 20/10 connection limits are not its effective
 wrapped direct transport limits: the pinned httpx0.28.1/httpcore1.0.9 inner pool
 has 100 connections, 20 keepalive connections and a five-second keepalive expiry.

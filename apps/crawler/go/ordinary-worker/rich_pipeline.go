@@ -18,6 +18,9 @@ type RichPreparer interface {
 type NativeRichPreparer struct{ Processor *executor.Processor }
 
 func (p NativeRichPreparer) Prepare(ctx context.Context, job greenhouse.Job) (*queue.GreenhouseRichContent, error) {
+	if p.Processor == nil {
+		return nil, errors.New("native rich processor unavailable")
+	}
 	prepared, err := p.Processor.PrepareRichMonitor(ctx, executor.RichMonitorContent{Title: job.Title, Description: job.Description, Locations: job.Locations, Language: job.Language})
 	if err != nil {
 		return nil, err

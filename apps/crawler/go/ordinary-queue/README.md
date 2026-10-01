@@ -230,6 +230,11 @@ circuit increment. Stale leases, changed receipt host or retired epochs reject
 publication. `RecordGreenhouseHostSuccess` requires the native success receipt,
 resets actual observed hosts and never replays completed protective updates.
 Provider404 and publisher outcomes remain separate from generic host failures.
+Final resource adapters bind their initial token endpoint to the installed claim
+while retaining the completed response resource as evidence. The claim runner
+uses its own sealed verified fetch; these URLs authorize no extra retrieval.
+Rescheduling validates all queue/index types and numerical inputs before writes,
+so a corrupt ready index cannot partially retire the lease or lose host recovery.
 The native worker executable must integrate this prepared path before selection.
 
 The durable document and native/legacy selection library are prepared. An

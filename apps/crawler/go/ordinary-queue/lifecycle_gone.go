@@ -88,6 +88,14 @@ func evaluateGreenhouseGone(state greenhouseGoneState, now time.Time) (greenhous
 }
 
 func (c *GreenhouseCycle) FinishProviderGone(ctx context.Context, observation GreenhouseGoneObservation) (*GreenhouseCycleResult, error) {
+	return c.FinishProviderGoneResource(ctx, observation.Endpoint, observation)
+}
+
+// FinishProviderGoneResource retains the final response resource as evidence
+// while checking the initial token endpoint against the exact claim profile.
+// The worker must supply its own completed verified response, never a URL from
+// an inventory posting, redirect header, probe or caller-synthesized result.
+func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initialEndpoint string, observation GreenhouseGoneObservation) (*GreenhouseCycleResult, error) {
 	if c == nil || c.authority == nil || observation.HTTPStatus != 404 {
 		return nil, ErrConfiguration
 	}
@@ -97,7 +105,7 @@ func (c *GreenhouseCycle) FinishProviderGone(ctx context.Context, observation Gr
 		return nil, ErrConfiguration
 	}
 	profile, err := InspectGreenhouseMonitor(c.claim.task.ID, c.claim.task.Config)
-	if err != nil || observation.Endpoint != profile.Endpoint {
+	if err != nil || initialEndpoint != profile.Endpoint || !validGreenhouseResponseResource(observation.Endpoint) {
 		return nil, ErrConfiguration
 	}
 	result := &GreenhouseCycleResult{}

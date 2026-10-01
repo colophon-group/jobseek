@@ -35,8 +35,8 @@ func (e *DiscoveryError) Unwrap() error { return e.cause }
 
 // GreenhouseResponse observes the final fully read response. Its private
 // fields prevent a caller from changing the resource that emitted a signal.
-// This observation is not claim/write authority. Redirected provider/publisher
-// outcomes still require an explicitly proven owned-lifecycle adapter.
+// This observation is not claim/write authority. RunGreenhouseClaim consumes
+// only its own completed sealed-client response under an installed opaque claim.
 type GreenhouseResponse struct {
 	endpoint, finalURL string
 	status, bytes      int

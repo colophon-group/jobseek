@@ -316,7 +316,7 @@ func (r *GreenhouseHostRun) failureOutcome(ctx context.Context, observation Gree
 // and before settlement. A protective Redis error does not revoke that receipt.
 // Duplicate calls and ambiguous replies never replay completed host mutations.
 func (a *Authority) RecordGreenhouseHostSuccess(ctx context.Context, run *GreenhouseHostRun, receipt *Receipt, observation GreenhouseHostObservation) error {
-	if a == nil || run == nil || run.authority != a || receipt == nil || receipt.claim != run.claim || receipt.terminalOutcome != "succeeded" || run.claim.recovered != nil || run.deferUntil != nil || len(observation.Hosts) > 64 {
+	if a == nil || run == nil || run.authority != a || receipt == nil || receipt.claim != run.claim || (receipt.terminalOutcome != "succeeded" && receipt.terminalOutcome != "publisher_reserved") || run.claim.recovered != nil || run.deferUntil != nil || len(observation.Hosts) > 64 {
 		return ErrConfiguration
 	}
 	hosts := make(map[string]bool)

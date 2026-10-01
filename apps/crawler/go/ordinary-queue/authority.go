@@ -100,6 +100,12 @@ func (claim *Claim) Descriptor() Task {
 	task.Config = cloneConfig(task.Config)
 	return task
 }
+
+// OwnershipBound reports how this opaque claim was installed, not current
+// permission. Writes/settlement still revalidate the exact plan and epoch.
+func (claim *Claim) OwnershipBound() bool {
+	return claim != nil && claim.owner != nil && claim.owner.ownership != nil
+}
 func cloneConfig(config map[string]string) map[string]string {
 	copy := make(map[string]string, len(config))
 	for key, value := range config {

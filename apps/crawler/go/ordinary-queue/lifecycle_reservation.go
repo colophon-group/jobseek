@@ -24,6 +24,17 @@ type GreenhouseHeaderReservation struct {
 // closes the legacy Redis-only skip deadline gap without changing visibility,
 // the success/failure budget, or granting permission when headers disappear.
 func (a *Authority) FinishGreenhouseReservation(ctx context.Context, claim *Claim, observation *GreenhouseHeaderReservation) (*GreenhouseCycleResult, error) {
+	initial := ""
+	if observation != nil {
+		initial = observation.Endpoint
+	}
+	return a.FinishGreenhouseReservationResource(ctx, claim, initial, observation)
+}
+
+// FinishGreenhouseReservationResource records the completed final resource
+// while binding its original request to the installed token profile. A nil
+// observation remains the pre-existing durable opt-out path with no fetch.
+func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, claim *Claim, initialEndpoint string, observation *GreenhouseHeaderReservation) (*GreenhouseCycleResult, error) {
 	if a == nil || !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || claim.recovered != nil {
 		return nil, ErrConfiguration
 	}
@@ -32,7 +43,7 @@ func (a *Authority) FinishGreenhouseReservation(ctx context.Context, claim *Clai
 		return nil, err
 	}
 	if observation != nil {
-		if observation.Endpoint != profile.Endpoint {
+		if initialEndpoint != profile.Endpoint || !validGreenhouseResponseResource(observation.Endpoint) {
 			return nil, ErrConfiguration
 		}
 		if policy := observation.PolicyURL; policy != nil && (len(*policy) > 8192 || !utf8.ValidString(*policy) || strings.ContainsRune(*policy, 0)) {
@@ -68,10 +79,19 @@ func (a *Authority) FinishGreenhouseReservation(ctx context.Context, claim *Clai
 		return nil, err
 	}
 	result.Receipt = receipt
+	receipt.terminalOutcome = "publisher_reserved"
 	return result, nil
 }
 
 func (c *GreenhouseCycle) FinishReservation(ctx context.Context, observation *GreenhouseHeaderReservation) (*GreenhouseCycleResult, error) {
+	initial := ""
+	if observation != nil {
+		initial = observation.Endpoint
+	}
+	return c.FinishReservationResource(ctx, initial, observation)
+}
+
+func (c *GreenhouseCycle) FinishReservationResource(ctx context.Context, initialEndpoint string, observation *GreenhouseHeaderReservation) (*GreenhouseCycleResult, error) {
 	if c == nil || c.authority == nil {
 		return nil, ErrConfiguration
 	}
@@ -80,7 +100,7 @@ func (c *GreenhouseCycle) FinishReservation(ctx context.Context, observation *Gr
 	if c.done {
 		return nil, ErrConfiguration
 	}
-	result, err := c.authority.FinishGreenhouseReservation(ctx, c.claim, observation)
+	result, err := c.authority.FinishGreenhouseReservationResource(ctx, c.claim, initialEndpoint, observation)
 	if err == nil {
 		c.done = true
 	}

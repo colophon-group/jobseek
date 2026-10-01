@@ -244,14 +244,6 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	preflight, err := f.a.PreflightGreenhouseHost(ctx, claim, circuits)
-	if err != nil || preflight.Receipt != nil {
-		t.Fatal("native pipeline circuit preflight failed", err)
-	}
-	cycle, err := f.a.BeginGreenhouseCycle(ctx, claim)
-	if err != nil {
-		t.Fatal(err)
-	}
 	title, description := "Senior Software Engineer", "<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>"
 	input := greenhouse.Inventory{Jobs: make([]greenhouse.Job, 1001)}
 	for i := range input.Jobs {
@@ -303,22 +295,13 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 	if err := f.r.Set(ctx, "host_fail:boards-api.greenhouse.io", "2", time.Hour).Err(); err != nil {
 		t.Fatal(err)
 	}
-	ctx, observation := ObserveHTTP(ctx)
-	discovered, err := DiscoverGreenhouse(ctx, client, "fixture")
-	if err != nil || requests != 1 || discovered.Response.Status() != 202 {
-		t.Fatalf("native discovery fixture did not complete one successful GET: %v", err)
+	result, err := RunGreenhouseClaim(ctx, f.a, claim, &VerifiedDirectHTTP{client: client}, preparer, circuits)
+	if err != nil || !result.Settled || requests != 1 || result.Batches.Inserted != 1001 || result.Cycle.Gone != 1 || result.Cycle.Receipt == nil {
+		t.Fatalf("native claim runner did not complete the owned assembly: %v", err)
 	}
-	traffic := observation.Snapshot()
+	traffic := result.HTTP
 	if traffic.Requests != 1 || traffic.Responses != 1 || traffic.NoResponse != 0 || traffic.EncodedBytes != int64(len(payload)) || traffic.LastHost != "boards-api.greenhouse.io" {
 		t.Fatalf("owned discovery lost native origin/body conservation: %+v", traffic)
-	}
-	inventory, err := NormalizeGreenhouseInventory(ctx, "https://job-boards.greenhouse.io/fixture", discovered.Inventory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	result, err := PersistGreenhouseInventory(ctx, cycle, preparer, inventory)
-	if err != nil || result.Batches.Inserted != 1001 || result.Cycle.Gone != 1 || result.Cycle.Receipt == nil {
-		t.Fatalf("native assembled pipeline failed: %v", err)
 	}
 	var active, descriptions, noDetails int
 	if err := f.pg.QueryRow(ctx, "SELECT count(*) FILTER(WHERE is_active),count(*) FILTER(WHERE next_scrape_at IS NULL) FROM job_posting WHERE board_id=$1::uuid", f.board).Scan(&active, &noDetails); err != nil || active != 1001 || noDetails != 1002 {
@@ -335,14 +318,8 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 	if err := f.pg.QueryRow(ctx, "SELECT titles FROM job_posting WHERE source_url=$1", duplicate.URL).Scan(&titles); err != nil || len(titles) != 1 || titles[0] != last {
 		t.Fatal("global duplicate content winner changed")
 	}
-	if err := f.a.RecordGreenhouseHostSuccess(ctx, preflight.Run, result.Cycle.Receipt, queue.GreenhouseHostObservation{Hosts: traffic.Hosts, LastHost: traffic.LastHost}); err != nil {
-		t.Fatal(err)
-	}
 	if f.r.Exists(ctx, "host_open:boards-api.greenhouse.io", "host_fail:boards-api.greenhouse.io").Val() != 0 {
 		t.Fatal("native HTTP success did not recover its observed API circuit")
-	}
-	if err := f.a.Settle(ctx, claim, result.Cycle.Receipt); err != nil {
-		t.Fatal(err)
 	}
 	var due time.Time
 	var md []byte
