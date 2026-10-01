@@ -678,8 +678,11 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	if got := call("cold-b0-rollback-inspect", inspectRestoreEnv, true); got.B0RestorationPhase != "prepared" || got.B0RollbackPlanSHA256 != preparedRestore.B0RollbackPlanSHA256 {
 		t.Fatal("retained restoration inspection adopted authority")
 	}
-	if !reflect.DeepEqual(restoreBaseline, fullColdExecutableRedisSnapshot(t, f)) || restoreCanonical != coldExecutableCanonicalSnapshot(t, f) {
-		t.Fatal("preparation/retention replayed canonical/queue data")
+	if observed := fullColdExecutableRedisSnapshot(t, f); !reflect.DeepEqual(restoreBaseline, observed) {
+		t.Fatal("preparation/retention changed Redis value/type/expiry classes: " + coldSnapshotChangedKeys(restoreBaseline, observed))
+	}
+	if restoreCanonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("preparation/retention changed canonical/receipt/future-due effects")
 	}
 	// A correctly hashed but different protected receipt must reject before
 	// any restore effect, even when the approved retained plan digest is valid.
