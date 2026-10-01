@@ -1,0 +1,484 @@
+{
+  "window": {
+    "start": "2026-09-30T20:00:00Z",
+    "end": "2026-10-01T08:00:00Z"
+  },
+  "deployment": {
+    "id": "dpl_FiG83oGn5uQfAZjBV6kjSjWLu6sJ",
+    "sha": "dae3f51fa96804c0a8cca0c4e1a3f52bc289f386",
+    "readyAt": "2026-09-30T18:21:50.332Z",
+    "promotionVerifiedAt": "2026-09-30T18:23:19.5684284Z",
+    "ownedWorkflow": 36757707441,
+    "stagedCompanyHitFunctionInvocations": [
+      0,
+      0
+    ]
+  },
+  "main": {
+    "sha": "8d5e17e94f949c8a5e35c53878c988b7d3ad4c9a",
+    "latestWebRelevantSha": "dae3f51fa96804c0a8cca0c4e1a3f52bc289f386",
+    "cumulativeWebDelta": []
+  },
+  "waf": {
+    "activeVersion": 7,
+    "activeUpdatedAt": "2026-08-30T18:27:57.013Z",
+    "enabled": true,
+    "unpublishedDraftVersion": 8
+  },
+  "billing": {
+    "baseline": {
+      "start": "2026-09-23T04:05:00Z",
+      "end": "2026-09-23T16:05:00Z",
+      "functionsSeconds": 235,
+      "middlewareSeconds": 61,
+      "totalSeconds": 296
+    },
+    "after": {
+      "functionsSeconds": 223,
+      "middlewareSeconds": 27,
+      "totalSeconds": 250
+    },
+    "projectFilter": "jobseek-web",
+    "functionBillingMinusVisibleRouteSeconds": 51.487,
+    "precision": "Rounded dashboard Type labels; route arithmetic sums displayed labels, not raw millisecond precision."
+  },
+  "routeTable": {
+    "environment": "Production",
+    "pageSize": 50,
+    "page": 1,
+    "pages": 1,
+    "nextDisabled": true,
+    "rowCount": 45,
+    "invocations": 1315,
+    "visibleActiveCpuSeconds": 171.513,
+    "rows": [
+      {
+        "route": "/en/company/[slug]",
+        "invocations": 164,
+        "activeCpuLabel": "39s",
+        "activeCpuSeconds": 39.0,
+        "errorRateLabel": "0%",
+        "group": "companyPages"
+      },
+      {
+        "route": "/api/v1/search",
+        "invocations": 421,
+        "activeCpuLabel": "35s",
+        "activeCpuSeconds": 35.0,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/company/[slug]",
+        "invocations": 66,
+        "activeCpuLabel": "18s",
+        "activeCpuSeconds": 18.0,
+        "errorRateLabel": "0%",
+        "group": "companyPages"
+      },
+      {
+        "route": "/it/company/[slug]",
+        "invocations": 56,
+        "activeCpuLabel": "16s",
+        "activeCpuSeconds": 16.0,
+        "errorRateLabel": "0%",
+        "group": "companyPages"
+      },
+      {
+        "route": "/de/company/[slug]",
+        "invocations": 66,
+        "activeCpuLabel": "13s",
+        "activeCpuSeconds": 13.0,
+        "errorRateLabel": "0%",
+        "group": "companyPages"
+      },
+      {
+        "route": "/en/watchlists/[watchlistId]",
+        "invocations": 163,
+        "activeCpuLabel": "11s",
+        "activeCpuSeconds": 11.0,
+        "errorRateLabel": "0.6%",
+        "group": "watchlistRoutes"
+      },
+      {
+        "route": "/en/explore",
+        "invocations": 91,
+        "activeCpuLabel": "10s",
+        "activeCpuSeconds": 10.0,
+        "errorRateLabel": "0%",
+        "group": "explore"
+      },
+      {
+        "route": "/api/typesense-key",
+        "invocations": 85,
+        "activeCpuLabel": "7s",
+        "activeCpuSeconds": 7.0,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/api/v1/resolve",
+        "invocations": 35,
+        "activeCpuLabel": "3.91s",
+        "activeCpuSeconds": 3.91,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/mcp",
+        "invocations": 59,
+        "activeCpuLabel": "3.05s",
+        "activeCpuSeconds": 3.05,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en",
+        "invocations": 3,
+        "activeCpuLabel": "1.17s",
+        "activeCpuSeconds": 1.17,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/api/internal/job-alerts",
+        "invocations": 1,
+        "activeCpuLabel": "910ms",
+        "activeCpuSeconds": 0.91,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/og/blog/[lang]/[slug]",
+        "invocations": 3,
+        "activeCpuLabel": "900ms",
+        "activeCpuSeconds": 0.9,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/og/how-we-index/[lang]",
+        "invocations": 2,
+        "activeCpuLabel": "880ms",
+        "activeCpuSeconds": 0.88,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/settings",
+        "invocations": 2,
+        "activeCpuLabel": "820ms",
+        "activeCpuSeconds": 0.82,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/api/search/query-intent",
+        "invocations": 5,
+        "activeCpuLabel": "770ms",
+        "activeCpuSeconds": 0.77,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en/watchlists",
+        "invocations": 4,
+        "activeCpuLabel": "760ms",
+        "activeCpuSeconds": 0.76,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/settings/billing",
+        "invocations": 2,
+        "activeCpuLabel": "710ms",
+        "activeCpuSeconds": 0.71,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/watchlists",
+        "invocations": 3,
+        "activeCpuLabel": "600ms",
+        "activeCpuSeconds": 0.6,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/sitemap.xml",
+        "invocations": 7,
+        "activeCpuLabel": "580ms",
+        "activeCpuSeconds": 0.58,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/api/v1/job",
+        "invocations": 33,
+        "activeCpuLabel": "573ms",
+        "activeCpuSeconds": 0.573,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/sign-in",
+        "invocations": 1,
+        "activeCpuLabel": "570ms",
+        "activeCpuSeconds": 0.57,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/settings/email",
+        "invocations": 1,
+        "activeCpuLabel": "520ms",
+        "activeCpuSeconds": 0.52,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en/blog/job-alerts-from-company-career-pages",
+        "invocations": 1,
+        "activeCpuLabel": "510ms",
+        "activeCpuSeconds": 0.51,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/my-jobs",
+        "invocations": 1,
+        "activeCpuLabel": "470ms",
+        "activeCpuSeconds": 0.47,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/api/auth/[...all]",
+        "invocations": 2,
+        "activeCpuLabel": "460ms",
+        "activeCpuSeconds": 0.46,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en/my-jobs",
+        "invocations": 1,
+        "activeCpuLabel": "410ms",
+        "activeCpuSeconds": 0.41,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/api/v1/taxonomies",
+        "invocations": 1,
+        "activeCpuLabel": "410ms",
+        "activeCpuSeconds": 0.41,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/api/web/watchlists/counts",
+        "invocations": 1,
+        "activeCpuLabel": "380ms",
+        "activeCpuSeconds": 0.38,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/[lang]/[userSlug]/[watchlistSlug]",
+        "invocations": 16,
+        "activeCpuLabel": "380ms",
+        "activeCpuSeconds": 0.38,
+        "errorRateLabel": "0%",
+        "group": "watchlistRoutes"
+      },
+      {
+        "route": "/en/sign-up",
+        "invocations": 1,
+        "activeCpuLabel": "350ms",
+        "activeCpuSeconds": 0.35,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en/sign-in",
+        "invocations": 3,
+        "activeCpuLabel": "350ms",
+        "activeCpuSeconds": 0.35,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/it/narrowed",
+        "invocations": 1,
+        "activeCpuLabel": "340ms",
+        "activeCpuSeconds": 0.34,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/it/job-alerts",
+        "invocations": 1,
+        "activeCpuLabel": "290ms",
+        "activeCpuSeconds": 0.29,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en/settings",
+        "invocations": 4,
+        "activeCpuLabel": "290ms",
+        "activeCpuSeconds": 0.29,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en/settings/email",
+        "invocations": 1,
+        "activeCpuLabel": "180ms",
+        "activeCpuSeconds": 0.18,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/de/my-jobs",
+        "invocations": 1,
+        "activeCpuLabel": "180ms",
+        "activeCpuSeconds": 0.18,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/it/sign-in",
+        "invocations": 1,
+        "activeCpuLabel": "170ms",
+        "activeCpuSeconds": 0.17,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en/settings/billing",
+        "invocations": 1,
+        "activeCpuLabel": "170ms",
+        "activeCpuSeconds": 0.17,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/narrowed",
+        "invocations": 1,
+        "activeCpuLabel": "160ms",
+        "activeCpuSeconds": 0.16,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/en/settings/account",
+        "invocations": 1,
+        "activeCpuLabel": "90ms",
+        "activeCpuSeconds": 0.09,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/it/settings/email",
+        "invocations": 1,
+        "activeCpuLabel": "70ms",
+        "activeCpuSeconds": 0.07,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/fr/job-alerts",
+        "invocations": 1,
+        "activeCpuLabel": "70ms",
+        "activeCpuSeconds": 0.07,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/og/watchlist/[lang]/[userSlug]/[watchlistSlug]",
+        "invocations": 1,
+        "activeCpuLabel": "60ms",
+        "activeCpuSeconds": 0.06,
+        "errorRateLabel": "0%",
+        "group": "other"
+      },
+      {
+        "route": "/_middleware",
+        "invocations": 0,
+        "activeCpuLabel": "0ms",
+        "activeCpuSeconds": 0.0,
+        "errorRateLabel": "0%",
+        "group": "other"
+      }
+    ],
+    "groups": {
+      "companyOg": {
+        "invocations": 0,
+        "activeCpuSeconds": 0
+      },
+      "companyPages": {
+        "invocations": 352,
+        "activeCpuSeconds": 86.0
+      },
+      "watchlistRoutes": {
+        "invocations": 179,
+        "activeCpuSeconds": 11.38
+      },
+      "explore": {
+        "invocations": 91,
+        "activeCpuSeconds": 10.0
+      },
+      "other": {
+        "invocations": 693,
+        "activeCpuSeconds": 64.133
+      }
+    }
+  },
+  "performance": {
+    "activeCpuP75Ms": 273,
+    "cpuThrottleP75Pct": 13.7,
+    "errorRateLabel": "<0.1%",
+    "errorRateUpperBoundPct": 0.1,
+    "timeoutRatePct": 0,
+    "coldStartPct": 11.2
+  },
+  "ppr": {
+    "shellHits": 214,
+    "shellMisses": 541,
+    "hitRatePct": 28.344370860927153,
+    "dynamicInvocations": 469,
+    "allRouteDynamicInvocationsShown": 0,
+    "companyShellHitRateLabel": "26.3%",
+    "exploreShellHitRateLabel": "18.9%"
+  },
+  "outbound": {
+    "typesense": {
+      "label": "6.2K",
+      "exactCount": null
+    },
+    "upstash": {
+      "label": "2K",
+      "exactCount": null
+    },
+    "assets": 295,
+    "vercelDataCacheFra1": 57,
+    "apiTypesafeAi": 5,
+    "jseekCo": 2,
+    "googleOauth": 1
+  },
+  "dailyTarget": {
+    "billedCpuBudgetSeconds": 300,
+    "completeCurrentDeployment24hWindowAvailable": false,
+    "earliestConservativeEnd": "2026-10-01T18:24:00Z",
+    "observedBilledCpuSeconds": null
+  },
+  "sources": {
+    "afterBilling": "https://vercel.com/viktor-shcherbakovs-projects/~/usage/vercel-functions-fluid-cpu-duration?view=Type&from=1790798400000&to=1790841600000&projectId=prj_NqkWn9aYWWGsrxGjQf69vkR1POAi",
+    "baselineBilling": "https://vercel.com/viktor-shcherbakovs-projects/~/usage/vercel-functions-fluid-cpu-duration?view=Type&from=1790136300000&to=1790179500000&projectId=prj_NqkWn9aYWWGsrxGjQf69vkR1POAi",
+    "routes": "https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/observability/vercel-functions?environment=production&pageSize=50&from=1790798400&to=1790841600",
+    "ppr": "https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/observability/ppr?environment=production&pageSize=50&from=1790798400&to=1790841600",
+    "external": "https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/observability/external-apis?environment=production&pageSize=50&from=1790798400&to=1790841600"
+  }
+}

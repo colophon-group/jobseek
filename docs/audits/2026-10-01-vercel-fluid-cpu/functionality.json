@@ -1,0 +1,66 @@
+{
+  "checkedAfterWindow": true,
+  "checks": {
+    "home": {
+      "passed": true,
+      "evidence": "HTTP 200 localized document."
+    },
+    "explore": {
+      "passed": true,
+      "evidence": "Anonymous browser initial results rendered; Work mode > Remote produced wm=remote and changed actual results from NHS to BJAK (2210 active jobs), with job buttons."
+    },
+    "companyPage": {
+      "passed": true,
+      "evidence": "Aircall stable facts and hydrated jobs rendered (77 active, 189 last year), including related companies."
+    },
+    "companyOgDirect": {
+      "passed": true,
+      "evidence": "Metadata points to a versioned R2 PNG; curl/8.7.1 received HTTP 200 image/png, complete 53198 bytes, 1200x630."
+    },
+    "companyOgLegacyRedirect": {
+      "passed": true,
+      "evidence": "Former OG URL returned HTTP 308 to the same direct PNG."
+    },
+    "ownedWatchlist": {
+      "passed": true,
+      "evidence": "Existing owner session rendered actual owned UUID title and job results, including its saved narrowed view."
+    },
+    "sharedWatchlist": {
+      "passed": true,
+      "evidence": "Existing unlisted shared UUID rendered actual title and job results anonymously."
+    },
+    "privateWatchlistAnonymousDenied": {
+      "passed": true,
+      "evidence": "Private UUID redirected to sign-in after hydration; no private watchlist title/results."
+    },
+    "privateWatchlistCrossOwnerDenied": {
+      "passed": true,
+      "evidence": "Signed-in non-owner private UUID redirected to own watchlist overview after hydration; no private content."
+    },
+    "legacyWatchlistAnonymousDenied": {
+      "passed": true,
+      "evidence": "Private legacy path returned HTTP 404 and Watchlist not found."
+    },
+    "legacyWatchlistCrossOwnerDenied": {
+      "passed": true,
+      "evidence": "Signed-in non-owner saw Watchlist not found; matching request-log receipt at 08:09:31.187 UTC was HTTP 404."
+    },
+    "legacyWatchlistOwnerRedirects": {
+      "passed": true,
+      "evidence": "Owner legacy URL reached owned UUID; matching request-log receipt at 08:09:43.467 UTC was HTTP 307."
+    },
+    "authentication": {
+      "passed": true,
+      "evidence": "Existing owner session could access owned results; anonymous sign-in form rendered."
+    }
+  },
+  "scannerProbe": {
+    "status": 403,
+    "path": "/en/company/.env"
+  },
+  "probeCaveats": [
+    "The initial default Python User-Agent direct-PNG request returned 403; the standard curl User-Agent retry returned the complete PNG. No security configuration changed.",
+    "Post-window request logs verify individual redirect/denial receipts only; the 50-row response has more rows and is not a natural-traffic completeness source."
+  ],
+  "privacy": "Existing fixture IDs, watchlist names and user criteria are retained privately, not published. No sharing settings changed."
+}
