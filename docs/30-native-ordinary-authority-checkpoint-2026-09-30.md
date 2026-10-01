@@ -342,15 +342,49 @@ are required; earlier greens do not cover this source or authorize a draft.
 The [portable discovery evidence](evidence/go-ordinary-discovery-2026-10-01.json)
 records source identity, the effective HTTP baseline and remaining gates.
 
-Complete the native persistent verified transport against the actual pinned
-Python/httpx pool: 100 connections, 20 keepalive connections, five-second expiry,
-HTTP/1.1, 20 redirects and separate 30-second operation timeouts. The apparent
-20/10 `_CLIENT_DEFAULTS` limits are overridden by the wrapped inner transport.
-This adapter uses an injected client; it does not yet prove production SSRF,
-TLS/cookie completeness, egress meters, host circuits or canonical deferrals.
-Bind fetch/terminal outcomes to an installed exact-source owner, preserve the
-immutable claim through settlement, and prove shutdown/heartbeat/claim-loss,
-all-writer cutover and shared-epoch cold reversal before production selection.
+Discovery checkpoint `c249e1742c24e10f6b50eceb935a648e333bd320` subsequently
+passed both Linux architectures in run 36835150216, full CI in run 36835149192
+and B0 admission in run 36835150489. The actual deploy gate rejects the draft;
+these results do not cover the later transport source.
+
+### Persistent verified direct transport, October 1
+
+Source `593a7c9021e36076a20c7b61faa9f6ce393634b2` now prepares a reusable
+verified HTTP/1.1 client against the actual pinned Python/httpx pool: 100
+connections, 20 keepalive connections, five-second expiry, 20 redirects and
+separate 30-second connect/read/write/pool deadlines. An explicit CA PEM bundle
+is mandatory; startup freezes the internal-host allowlist. Public hostname
+requests validate all DNS answers at every redirect and before reuse, then pin
+new dials to validated literals. Temporary DNS errors have two bounded retries;
+HTTP requests have no automatic retry, including failed reused GETs.
+
+Process-owned cookies, explicit header overrides and encoded body accounting
+are preserved. Detached race-safe observations conserve requests = responses +
+no-response outcomes without turning a decode failure into another request.
+Gzip/deflate decoding matches Python HTTPX captures, including complete HTTP
+bodies missing compression trailers; raw HTTP truncation/cancellation still
+fails. Encoded and decoded bodies have 64MiB limits requiring cohort admission.
+233 actual Python address cases, nine DNS answer sets and 25 content-decoding
+captures pass, alongside verified TLS/reuse, blocked redirect/rebinding,
+request replay suppression, pool pressure, timeouts and cancellation fixtures.
+
+The real 1,001-posting PostgreSQL/Redis assembly now receives its HTTP202
+inventory through this native verified TLS transport, including encoded-byte
+conservation. Full native assembly races passed in 24.672 seconds and reader/
+preparation races in 3.357 seconds; 39 repository checks and linters passed.
+Capture regeneration is byte-identical across hash seeds 1, 2 and 37. Private
+fixtures shut down, and production is unchanged. The
+[portable transport evidence](evidence/go-ordinary-direct-http-2026-10-01.json)
+binds the runtime source, proof and remaining gates.
+
+The native executable, protected CA/internal-host assets, production metric
+attribution, shared host circuits, canonical deferrals and fenced learned-egress
+publication remain outstanding. Bind final-resource provider/publisher outcomes
+to the installed owner without mutating the inflight claim snapshot. Prove
+startup/concurrency/heartbeat/drain, installed cancellation/crash/claim-loss,
+all-writer cutover and shared-epoch cold reversal before selection. Production
+ordinary workers remain Python; full profile/consumer, fleet/cost and retirement
+gates remain in the continuation plan. The full migration goal remains active.
 
 At 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885
 enabled and 134 disabled. Of enabled boards, 522 had stored browser requirements

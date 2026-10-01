@@ -20,7 +20,8 @@ admission. Errors carry bounded symbols, never source bodies or diagnostics.
 explicit trusted CA bundle and frozen startup internal-host allowlist. It
 preserves the effective 100-connection/20-keepalive/five-second pool, separate
 30-second network/pool deadlines, 20 redirects and a process-owned cookie jar.
-Every hop and reused connection revalidates all DNS answers; new connections pin
+Every request to a public hostname, including redirects and reused connections,
+revalidates all DNS answers; new public connections pin
 only validated literals, with staggered address fallback. The compiled address
 policy, including mapped IPv4 and private-range exceptions, is regenerated from
 Python. Refused targets never enter origin/failure accounting. A private

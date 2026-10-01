@@ -89,23 +89,39 @@ were stable across three Python hash seeds. Production remains unchanged. See
 [portable discovery evidence](evidence/go-ordinary-discovery-2026-10-01.json).
 See the
 [ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
-It selects no ordinary worker in production. Next, connect the completed full
-discovery/inventory/preparation/batch/cycle assembly to the native executable. Complete shared HTTP transport,
-retry/circuit/deferral behavior, startup/shutdown/heartbeat and typed provider/
-publisher response handling. Preserve the full Redis claim snapshot through
-settlement and recovery; terminal lifecycle metadata is read from PostgreSQL.
-Use the effective direct HTTP baseline, not only `_CLIENT_DEFAULTS`: the
-wrapped pinned transport has 100 connections, 20 keepalive connections and a
-five-second keepalive expiry, with HTTP/1.1, 20 redirects and separate 30-second
-connect/read/write/pool timeouts. Verify SSRF at each hop, request/body accounting,
-cookie/TLS behavior and final-resource provenance before selecting a cohort.
-Redirected provider/publisher observations do not yet authorize the owned
-terminal lifecycle. Canonical deferrals/circuit lower bounds and safely fenced
-learned-egress publication still require proof.
-Then prove the installed
-executable and exclusive ownership with fault/cold-reversal evidence, followed by
-every enabled profile and runtime consumer before final Python/Chromium
-retirement. The full migration goal remains active.
+It selects no ordinary worker in production. Discovery checkpoint `c249e1742`
+passed both Linux PostgreSQL/Redis architectures (36835150216), full CI
+(36835149192) and B0 admission (36835150489). Its actual deploy gate remains
+failed while draft; earlier-head results grant no later-head authority.
+
+Latest runtime source `593a7c902` prepares a persistent verified native HTTP/1.1
+client with an explicit CA bundle, process-owned cookies, 100 connections,
+20 keepalive connections, five-second expiry, 20 redirects and separate
+30-second operation deadlines. Every public hostname request rechecks the
+Python address policy, including redirects and reused connections; new public
+dials pin validated addresses. Native metering preserves request/response/
+no-response conservation and encoded bytes. Hidden Go request retries are
+suppressed. Gzip/deflate decoding matches 25 actual Python HTTPX captures;
+233 address and nine DNS answer cases match the Python SSRF policy.
+Verified TLS now feeds the real 1,001-posting owned database/queue assembly.
+Local assembly races (24.672 seconds), reader/preparation races (3.357 seconds),
+39 repository checks and linters passed; capture regeneration is byte-identical
+across three hash seeds, and private fixtures shut down. See the
+[portable direct transport evidence](evidence/go-ordinary-direct-http-2026-10-01.json).
+This is prepared transport; ordinary production workers remain Python.
+
+Next, complete shared host circuits, canonical deferrals/lower bounds and
+safely fenced learned-egress publication. Bind final-resource provider/publisher
+observations to the exact owned claim; redirected outcomes do not yet authorize
+the terminal lifecycle. Package protected CA/internal-host startup inputs and
+connect the completed assembly to the exact-source/plan/epoch native executable
+with concurrency, heartbeat and bounded drain. Preserve the immutable claim
+through settlement and recovery. Prove installed cancellation/crash/claim-loss,
+all-writer ownership/projection cutover and shared B0 epoch cold reversal before
+selecting an ordinary cohort. Then complete every enabled effective profile and
+runtime consumer, fleet output/freshness/queue conservation, comparable
+whole-service CPU/RAM/density/cost and the rollback window before retiring
+production Python/Playwright/Chromium. The full migration goal remains active.
 
 This initial review made no production changes and did not reread the live hosts.
 Production details below are the latest recorded checkpoint, corroborated by

@@ -81,5 +81,24 @@
     "supported all-writer ownership/projection cutover/cold reversal with shared B0 epoch",
     "every enabled effective profile and runtime consumer, fleet output/freshness/queue/cost and rollback window before production Python/Playwright/Chromium retirement"
   ],
-  "next": "Reuse discovery, normalization, preparation, owned posting batches and lifecycle. Implement a process-owned verified direct transport against the effective pinned baseline; bind final-resource outcomes to the exact installed claim and preserve immutable projection through settlement. Prove shared host circuits/deferrals and installed process/cutover/reversal before selection. Full migration goal remains active."
+  "next": "Reuse discovery, normalization, preparation, owned posting batches and lifecycle. Implement a process-owned verified direct transport against the effective pinned baseline; bind final-resource outcomes to the exact installed claim and preserve immutable projection through settlement. Prove shared host circuits/deferrals and installed process/cutover/reversal before selection. Full migration goal remains active.",
+  "checkpoint_checks": {
+    "head": "c249e1742c24e10f6b50eceb935a648e333bd320",
+    "linux": {
+      "run": 36835150216,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36835149192,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36835150489,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "earlier-head success does not cover this source or authorize draft merge"
+  },
+  "continued_by_runtime_source_head": "593a7c9021e36076a20c7b61faa9f6ce393634b2"
 }
