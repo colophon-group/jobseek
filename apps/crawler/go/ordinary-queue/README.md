@@ -150,6 +150,24 @@ exact-head CI results in the PR before considering selection.
 
 ## Continuation gates
 
+`Authority.WriteGreenhouseRichBatch` now persists one prepared 1–500 posting
+chunk through installed ownership and exact Redis/PG attempt authority. It uses
+the frozen Python URL diff/insert/description statements, ordered global posting
+locks, first-owner foreign liveness/relist rules, rich replacement/NULL refresh
+rules and exact-byte R2 deduplication. Inserts, diff effects and descriptions are
+atomic within the native chunk; a SQL or staged-hash failure rolls them back.
+Only a monotonic heartbeat extension can survive that rollback. Native rich
+preparation in the executor separately matches the actual Python rich writer,
+including missing titles and default locales. Maintenance consumers import only
+the queue's detached nullable persistence values, without enrichment dependencies.
+
+This chunk API is deliberately nonterminal. It does not establish complete or
+filtered inventory, perform disappearance/drop/empty policy, change board
+metadata/schedule, acknowledge a claim or implement transport/failure/TDM policy.
+Python currently commits diff classification separately from rich writes; native
+full-cycle failure and recovery proof must cover the atomic chunk's effects.
+No native ordinary executable or production selection is introduced here.
+
 The offline `InspectGreenhouseMonitor` boundary observes the standard explicit
 token/skip profile on the existing board hash. It validates canonical board and
 company IDs, provider URL, both browser flags, intervals and unchanged shared

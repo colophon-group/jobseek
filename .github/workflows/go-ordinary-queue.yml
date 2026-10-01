@@ -4,6 +4,19 @@ on:
   pull_request:
     paths:
       - "apps/crawler/go/ordinary-queue/**"
+      - "apps/crawler/go/lightpanda-b0-executor/**"
+      - "apps/crawler/go/job-enrichment/**"
+      - "apps/crawler/go/dom-detail/**"
+      - "apps/crawler/go/jsonld-detail/**"
+      - "apps/crawler/go/publisher-policy/**"
+      - "apps/crawler/contracts/**"
+      - "apps/crawler/data/**"
+      - "apps/crawler/src/queries/monitor.py"
+      - "apps/crawler/src/processing/board.py"
+      - "apps/crawler/src/processing/cpu.py"
+      - "apps/crawler/src/processing/scrape.py"
+      - "apps/crawler/src/core/job_content.py"
+      - "apps/crawler/src/core/monitors/greenhouse.py"
       - "apps/crawler/src/lua/claim_work.lua"
       - "apps/crawler/src/lua/heartbeat_task.lua"
       - "apps/crawler/src/lua/complete_task.lua"
@@ -18,6 +31,7 @@ on:
       - "apps/crawler/tests/test_ordinary_ownership.py"
       - "apps/crawler/tests/test_redis_queue.py"
       - "apps/crawler/tests/test_pipeline.py"
+      - "apps/crawler/tests/test_rich_monitor_contract.py"
       - "apps/crawler/Dockerfile"
       - "apps/crawler/uv.lock"
       - ".github/workflows/go-ordinary-queue.yml"
@@ -117,8 +131,24 @@ jobs:
           go vet ./...
           go mod tidy -diff
 
+      - name: Verify the rich oracle still matches the actual Python writer
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen python go/lightpanda-b0-executor/testdata/collect_rich_monitor.py
+          git diff --exit-code -- go/lightpanda-b0-executor/testdata/python_rich_monitor.json
+
+      - name: Verify native rich preparation against captured Python output
+        working-directory: apps/crawler/go/lightpanda-b0-executor
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout=90s -run '^Test(RichMonitorPreparation|PreparedContent)' ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
       - name: Verify legacy ownership attestation and private queue exclusion
         working-directory: apps/crawler
         run: |
           set -euo pipefail
-          uv run --frozen pytest tests/test_ordinary_ownership.py tests/test_redis_queue.py tests/test_pipeline.py -q
+          uv run --frozen pytest tests/test_ordinary_ownership.py tests/test_redis_queue.py tests/test_pipeline.py tests/test_rich_monitor_contract.py -q
