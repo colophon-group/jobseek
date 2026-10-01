@@ -173,6 +173,63 @@ The [portable selection evidence](evidence/go-ordinary-selection-2026-10-01.json
 records exact identities, scope and remaining gates. These are source fixtures,
 not installed processing/image fault proof or fleet/whole-service cost evidence.
 
+## Rich processing continuation — October 1
+
+Source `8a5834e618e6ab75a42e91c898ec8811a322e35e` adds
+`Processor.PrepareRichMonitor`, matching 18 captured cases from the actual Python
+`_build_rich_new_records` and rich description staging path. Missing/garbage
+titles remain valid rich records; locales retain their default; normalized and
+trimmed description bytes/hash, language/coercion, salaries, experience,
+technologies and taxonomy resolution match the fixture. Location inputs are
+compared with a deterministic resolver; real location index/backfill evidence
+remains in the earlier shared enrichment checkpoint. CI regenerates the oracle
+from Python before replay, rejecting stale captures.
+
+`Authority.WriteGreenhouseRichBatch` persists a prepared 1–500 posting chunk
+under installed ownership and the exact canonical/config/lease fence. Frozen
+Python URL diff, rich insert and description SQL retain ordered global posting
+locks, first-owner attribution, active foreign liveness and inactive foreign
+relisting. Rich refresh uses Python's replacement/NULL expressions, preserves
+absent experience/taxonomy/technology derivations, and advances the existing CDC
+trigger when content changes. Exact description bytes retain a completed R2
+upload; changed bytes become pending without recording a detail scrape.
+PostgreSQL 40P01 retries are bounded to three attempts with the existing jitter
+budget. Detached nullable inputs keep enrichment/model dependencies out of the
+shared exporter/reaper library.
+
+Follow-up `449e58052ce52bac494436bfc6997c524d15fa29` rechecks a board's current
+publisher reservation under the canonical row lock before any diff/content
+effect, rejecting a reservation acquired during preparation. This does not yet
+implement fetch-time publisher/transport policy or terminal reservation scheduling.
+
+Local follow-up verification passed actual PostgreSQL18.6 migration reversal,
+full native/private Redis races (18.756 seconds), production Go reaper races
+(4.450 seconds), nine real legacy ownership and two SQL boundary tests, native
+rich/detail preparation races, Go vet/module/format, Ruff, workflow lint and 117
+workflow/version/documentation tests. Source `8a5834e61` passed both Linux
+PostgreSQL17/private Redis jobs in
+[run 36796933484](https://github.com/colophon-group/jobseek/actions/runs/36796933484).
+That Linux run precedes the publisher follow-up. Current-head Linux, full required,
+installed and admission results must be refreshed before any promotion. The
+[portable rich evidence](evidence/go-ordinary-rich-2026-10-01.json) records this
+distinction. Production remains unchanged and ordinary workers remain Python.
+
+This API is nonterminal: it provides no complete-inventory receipt, absence/drop/
+empty decision, board metadata/schedule update or queue acknowledgement. Unlike
+Python's separate classification and rich write transactions, the native chunk
+commits those effects atomically; full-cycle failure/recovery proof must cover
+that boundary. The native executable, capture/filter/completeness pipeline,
+failure/circuit/publisher policy and installed fault/cold-reversal evidence remain
+required. No current fixture proves whole-inventory or fleet parity.
+
+Before terminal integration, extend/prove owned lifecycle states. Canonical
+observation currently requires `active`; Python can legitimately move an enabled
+board to `suspect`, `quarantined`, `gone_pending` or `gone` and continue recovery
+polls. A retained member in those states would currently be rejected by native
+claims and excluded by legacy. Never activate this incomplete state contract.
+Metadata publication must also preserve the full immutable claim snapshot through
+terminal settlement/commit-before-ack recovery.
+
 ## Next delivery and completion gates
 
 At 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885
@@ -182,8 +239,9 @@ enabled and 134 disabled. Of enabled boards, 522 had stored browser requirements
 Stored family/browser flags do not establish effective profile or native coverage.
 
 Prioritize a bounded standard Greenhouse HTTP/API cohort after effective
-configuration validation. The ownership/selection library is prepared. Connect
-the native executable and supported all-writer startup/projection/cutover while
+configuration validation. Ownership/selection and rich batch persistence are
+prepared. Connect native preparation/batches to complete inventory/lifecycle
+processing, the native executable and supported all-writer startup/projection/cutover while
 preserving unselected ready work, producer/repair/deferred/never-successful
 behavior and the shared B0 epoch. Implement native monitor/detail fetch,
 enrichment, canonical persistence,

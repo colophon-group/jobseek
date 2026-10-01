@@ -34,13 +34,26 @@ staged/active/retired cohorts and exact active readback; both Linux PostgreSQL17
 Redis architectures passed run 36790040524. Subsequent `f7ccc7b06` binds native
 and legacy claims to the exact active plan, canonical configuration and atomic
 before-pop selection; both Linux architectures passed run 36793700617 with
-mandatory real legacy PostgreSQL/Redis attestation tests. This remains unselected
-in production: native ordinary processing and installed ownership/cutover proof
-are next.
+mandatory real legacy PostgreSQL/Redis attestation tests. Rich processing source
+`8a5834e61` now adds native content preparation against 18 captured Python cases
+and owned atomic 500-posting insert/touch/relist/description batches; both Linux
+architectures passed run 36796933484. Follow-up `449e58052` rechecks the current
+board publisher reservation under the canonical write lock and passed local
+real database/queue races. Fresh Linux/required/installed/admission proof for the
+follow-up is pending; the prior green run does not cover it. This remains
+unselected in production. Complete native inventory/lifecycle processing and
+the installed executable next.
 See the
 [ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
-It selects no ordinary worker in production. Next, connect native ordinary
-processing and prove installed exclusive ownership with fault/cold-reversal evidence, then
+It selects no ordinary worker in production. Next, normalize/deduplicate the full
+Greenhouse inventory, connect native rich preparation and owned batch writes,
+and implement complete/truncated/filtered, empty/drop/confirmed-drop/disappearance,
+failure/circuit/publisher policy and database scheduling. Extend and prove owned
+lifecycle recovery states: the current active-only observation would strand a
+retained member after a legitimate suspect/quarantine/gone transition while
+legacy excludes it. Preserve the full Redis claim snapshot through settlement
+and recovery when publishing lifecycle metadata. Then prove the installed
+executable and exclusive ownership with fault/cold-reversal evidence, followed by
 every enabled profile and runtime consumer before final Python/Chromium
 retirement. The full migration goal remains active.
 

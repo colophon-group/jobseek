@@ -156,6 +156,8 @@ the frozen Python URL diff/insert/description statements, ordered global posting
 locks, first-owner foreign liveness/relist rules, rich replacement/NULL refresh
 rules and exact-byte R2 deduplication. Inserts, diff effects and descriptions are
 atomic within the native chunk; a SQL or staged-hash failure rolls them back.
+Database deadlocks alone receive the existing three-attempt jitter budget.
+A fresh publisher reservation is rejected under the canonical board lock.
 Only a monotonic heartbeat extension can survive that rollback. Native rich
 preparation in the executor separately matches the actual Python rich writer,
 including missing titles and default locales. Maintenance consumers import only
