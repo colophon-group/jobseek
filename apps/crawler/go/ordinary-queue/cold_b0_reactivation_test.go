@@ -161,7 +161,14 @@ func TestRealColdB0ReactivationRestoresPriorGoQueuesAtReservedRetirement(t *test
 				// Redis versions render the same binary64 ZSET score differently.
 				// Preserve the exact retained source bytes rather than requiring a
 				// platform-specific decimal spelling of the canonical PG schedule.
-				score := task.LegacyScheduleScore
+				// LegacyScheduleScore is the normalized producer request field;
+				// Snapshot.Legacy retains Redis's original ZSCORE bytes.
+				score := ""
+				for index, row := range plan.forward.document.PostgresRows {
+					if row.ID == task.PostingID {
+						score = plan.forward.document.Snapshot.Legacy[index].Scores[3]
+					}
+				}
 				if millis, err := coldB0ForwardMillis(score); err != nil || millis != 1925089445101 || task.NextScrapeAtMS != millis || task.FirstTime {
 					t.Fatal("restored canonical fractional schedule changed", score, err)
 				}
