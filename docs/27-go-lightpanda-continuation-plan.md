@@ -160,15 +160,41 @@ and vet/format passed. Private fixtures shut down; production is unchanged. See
 [portable claim-run evidence](evidence/go-ordinary-claim-run-2026-10-01.json).
 Fresh candidate checks are required; this library selects no production worker.
 
-Next, package protected CA/internal-host startup inputs and connect the completed
-claim runner to the exact-source/plan/epoch native executable with metrics,
-bounded concurrency, task deadlines, heartbeat and drain. Prove installed
-cancellation/crash/claim-loss, all-writer ownership/projection cutover and shared
-B0 epoch cold reversal before selecting an ordinary cohort. Then complete every
-enabled effective profile and runtime consumer, fleet output/freshness/queue
-conservation, comparable whole-service CPU/RAM/density/cost and the rollback
-window before retiring production Python/Playwright/Chromium. The full migration
-goal remains active.
+Claim-run checkpoint `426a6c47d` passed both Linux architectures (36851878686),
+full CI (36851882626) and B0 admission (36851878654). Its actual deploy gate
+still rejects the draft; those results do not cover the later process source.
+
+Latest runtime source `2b775782f` prepares `go-ordinary-worker`: exact compiled
+source/plan/projection/epoch startup, pinned certifi CA and native model/reference/
+location assets, five default active claims, lease renewal, task deadlines,
+bounded signal drain/cancellation, claim-loop watchdog and stable bounded metrics.
+Its identity-bound health probe opens no additional database pool and follows no
+redirects. Docker slim/full wiring now embeds the checked-out source revision;
+release, full CI, runtime-contract and B0 builders supply that exact argument.
+No ordinary service is selected or started by this wiring.
+
+A real native executable fixture completes and settles an owned no-fetch publisher
+cycle, exposes identity/health/network/queue metrics, drains on signal and rejects
+a wrong installed projection. Real TLS token loss cancels a blocked fetch without
+canonical failure or terminal receipt. Race fixtures prove bounded claims, live
+renewal during drain, own-acknowledgement serialization, deadlines/watchdogs and
+uncooperative cancellation. Committed partial batches retain observed counts
+without granting inventory completion. Full queue races (21.292 seconds), runtime/
+assembly races (42.679 seconds), reader/preparation races (15.437 seconds), 185
+mandatory legacy tests without skips, 96 deployment/image tests, 130 repository
+checks, linters and both Linux cross-builds passed. These local wall times include
+parallel build load and are not fleet performance/cost measurements. Private
+fixtures shut down; production is unchanged. See
+[portable ordinary process evidence](evidence/go-ordinary-runtime-2026-10-01.json).
+Fresh installed-image/source checks remain required.
+
+Next, prove the immutable installed Linux worker and process faults, including
+SIGKILL after commit before acknowledgement and restart/recovery. Prepare supported
+all-writer ownership/projection installation and shared B0 epoch cutover/cold
+reversal before selecting a native ordinary cohort. Then complete every enabled
+effective profile and runtime consumer, fleet output/freshness/queue conservation,
+comparable whole-service CPU/RAM/density/cost and the rollback window before retiring
+production Python/Playwright/Chromium. The full migration goal remains active.
 
 This initial review made no production changes and did not reread the live hosts.
 Production details below are the latest recorded checkpoint, corroborated by

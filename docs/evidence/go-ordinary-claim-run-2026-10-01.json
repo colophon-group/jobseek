@@ -55,5 +55,24 @@
     "actual_deploy_gate": "failure while draft",
     "limitation": "Earlier-head success does not cover later claim-run source or authorize merging a draft."
   },
-  "next": "Package protected CA/internal-host assets and implement the exact-source/plan/epoch ordinary executable with bounded concurrency, task deadlines, metrics, heartbeat, cancellation and drain using the completed claim runner. Prove installed crash/cancel/claim-loss and supported all-writer ownership/projection cutover/cold reversal with the shared B0 epoch before selection. Complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/attributable cost and the rollback window before retiring production Python/Playwright/Chromium. The full migration goal remains active."
+  "next": "Package protected CA/internal-host assets and implement the exact-source/plan/epoch ordinary executable with bounded concurrency, task deadlines, metrics, heartbeat, cancellation and drain using the completed claim runner. Prove installed crash/cancel/claim-loss and supported all-writer ownership/projection cutover/cold reversal with the shared B0 epoch before selection. Complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/attributable cost and the rollback window before retiring production Python/Playwright/Chromium. The full migration goal remains active.",
+  "checkpoint_checks": {
+    "head": "426a6c47da7066480797c4b47e30ee723a853965",
+    "linux": {
+      "run": 36851878686,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36851882626,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36851878654,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "Earlier-head success does not cover later ordinary process/image source or authorize merging a draft."
+  },
+  "continued_by_runtime_source_head": "2b775782f275a48b6a5890463bbfc9ac96b37d17"
 }

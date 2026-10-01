@@ -502,3 +502,52 @@ metrics/concurrency/deadlines/heartbeat/drain, installed fault proof and support
 all-writer cutover/shared-epoch cold reversal, then every enabled profile/consumer,
 fleet/freshness/queue/cost and rollback-window retirement gates. The full migration
 goal remains active; ordinary production workers remain Python.
+
+### Native ordinary process and image wiring, October 1
+
+Source `2b775782f275a48b6a5890463bbfc9ac96b37d17` connects the claim runner to
+`go-ordinary-worker`. Startup binds the binary's own clean VCS/linker revision to
+the exact installed source, plan SHA256, projection SHA1 and routing epoch. It
+cannot activate ownership, repair projections or adopt an allocator. Models,
+reference/currency rows and SQLite locations load natively through the separate
+read-only one-connection reader; ordinary write authority keeps its one-connection
+budget. Certifi2026.2.25's CA snapshot and MPL notice are compiled without runtime
+Python or system-store fallback. Trusted service/proxy/internal-host inputs freeze
+before claims. Both images now install the binary with protected source-build
+arguments; no native ordinary service is enabled by this change.
+
+The process bounds active claims (default five) without extra prefetch. It renews
+600-second leases every120 seconds under fresh ownership checks, enforces600-second
+task deadlines and keeps task contexts/heartbeats live during30-second signal drain.
+Expired drain cancels work without clearing recoverable leases or inventing terminal
+state. Five-second cancellation grace also bounds uncooperative tasks; process exit
+skips blocking cleanup when work remains. A claim-loop watchdog prevents a responsive
+metrics listener masking a claim outage. Health probes verify installed source/plan/
+epoch and live progress without another database connection or redirects.
+
+Stable bounded task/duration/heartbeat/drain/posting and conserved origin/response/
+transport-error/body-byte metrics preserve the replacement boundary. Native extraction
+duration excludes posting persistence; no-fetch/recovered receipts do not emit another
+extraction. Partial batch observations retain only confirmed committed counts without
+whole-inventory authority. Metrics/errors expose no credentials or upstream URLs/hosts.
+
+Real native command fixtures prove owned no-fetch publisher-cycle settlement, exact
+build/CA/profile identity, health, signal drain and rejection of a wrong projection.
+Real TLS token loss cancels a blocked fetch without canonical failure or fabricated
+terminal receipt. Deadline/drain/heartbeat/acknowledgement/watchdog/uncooperative-task
+race cases passed along with the existing1,001-posting rich/description/absence and
+recovery fixtures. Queue races passed in21.292 seconds, process/assembly in42.679 and
+reader/preparation in15.437; these include parallel cross-build load, not comparative
+performance. All185 mandatory legacy tests without skips,96 image/deployment tests,
+130 repository checks, vet/tidy/format/actionlint and Linux AMD64/ARM64 cross-builds
+passed. Private fixtures shut down; production is unchanged. See
+[portable process evidence](evidence/go-ordinary-runtime-2026-10-01.json).
+
+Prior claim-run checkpoint `426a6c47d` passed both Linux architectures (36851878686),
+full CI (36851882626) and B0 admission (36851878654). Its actual gate refuses the
+draft and those checks do not cover this later source. Prove the immutable installed
+Linux worker and true SIGKILL/restart recovery, then supported all-writer ownership/
+projection installation, shared B0 epoch cutover/cold reversal and effective profile
+admission before native selection. Every enabled profile/runtime consumer, fleet/
+freshness/queue/cost and actual rollback-window retirement remain required. Ordinary
+production workers remain Python and the full migration goal remains active.
