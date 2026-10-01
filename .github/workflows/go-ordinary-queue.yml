@@ -13,6 +13,9 @@ on:
       - "apps/crawler/data/**"
       - "apps/crawler/src/queries/monitor.py"
       - "apps/crawler/src/processing/board.py"
+      - "apps/crawler/src/processing/gone_policy.py"
+      - "apps/crawler/src/processing/tdm.py"
+      - "apps/crawler/src/shared/tdm.py"
       - "apps/crawler/src/processing/cpu.py"
       - "apps/crawler/src/processing/scrape.py"
       - "apps/crawler/src/core/job_content.py"
@@ -137,6 +140,13 @@ jobs:
           set -euo pipefail
           uv run --frozen python go/lightpanda-b0-executor/testdata/collect_rich_monitor.py
           git diff --exit-code -- go/lightpanda-b0-executor/testdata/python_rich_monitor.json
+
+      - name: Verify disappearance and provider-gone oracles against Python
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen python go/ordinary-queue/testdata/collect_lifecycle.py
+          git diff --exit-code -- go/ordinary-queue/testdata/python_lifecycle.json go/ordinary-queue/testdata/python_gone.json
 
       - name: Verify native rich preparation against captured Python output
         working-directory: apps/crawler/go/lightpanda-b0-executor

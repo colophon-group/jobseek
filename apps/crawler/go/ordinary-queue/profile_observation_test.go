@@ -128,7 +128,7 @@ func TestRealAuthorityGreenhouseObservationWithoutClaimEffects(t *testing.T) {
 }
 
 func TestRealAuthorityGreenhouseObservationRejectsRetiredAndStaleState(t *testing.T) {
-	for _, mode := range []string{"disabled", "gone", "suspect", "quarantined", "canonical_token", "cached_token", "company", "interval", "throttle", "unsupported", "missing_cache", "retired_epoch"} {
+	for _, mode := range []string{"disabled", "canonical_token", "cached_token", "company", "interval", "throttle", "unsupported", "missing_cache", "retired_epoch"} {
 		t.Run(mode, func(t *testing.T) {
 			f := greenhouseAuthorityFixture(t)
 			ctx := context.Background()
@@ -137,9 +137,6 @@ func TestRealAuthorityGreenhouseObservationRejectsRetiredAndStaleState(t *testin
 			switch mode {
 			case "disabled":
 				_, err = f.observer.Exec(ctx, "UPDATE job_board SET is_enabled=false WHERE id=$1::uuid", f.task.ID)
-				want = ErrUnsupportedProfile
-			case "gone", "suspect", "quarantined":
-				_, err = f.observer.Exec(ctx, "UPDATE job_board SET board_status=$2 WHERE id=$1::uuid", f.task.ID, mode)
 				want = ErrUnsupportedProfile
 			case "canonical_token":
 				_, err = f.observer.Exec(ctx, `UPDATE job_board SET metadata='{"token":"changed","scraper_type":"skip"}'::jsonb WHERE id=$1::uuid`, f.task.ID)

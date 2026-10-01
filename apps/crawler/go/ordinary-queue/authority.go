@@ -85,6 +85,8 @@ type Claim struct {
 	boardID      string
 	configDigest string
 	recovered    *Receipt
+	cycleMu      sync.Mutex
+	cycleStarted bool
 }
 
 // Descriptor returns a detached configuration snapshot, without claim tokens.

@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from src.processing.scrape import _UPSERT_DESCRIPTION
+from src.queries import monitor
 from src.queries.monitor import (
     _BATCH_UPDATE_RICH_CONTENT,
     _DIFF_BATCH,
@@ -13,6 +14,24 @@ from src.queries.monitor import (
 )
 
 CRAWLER = Path(__file__).resolve().parents[1]
+
+
+def test_native_board_lifecycle_uses_exact_python_statements():
+    statements = {
+        "success": "_RECORD_SUCCESS_NONEMPTY",
+        "empty": "_RECORD_EMPTY_CHECK",
+        "failure": "_RECORD_FAILURE",
+        "metadata": "_UPDATE_METADATA",
+        "count": "_COUNT_BOARD_ACTIVE_AND_MISSING",
+        "missing": "_MARK_GONE_BY_TIMESTAMP",
+        "delist": "_DELIST_BOARD_POSTINGS",
+        "gone_state": "_FETCH_BOARD_GONE_STATE",
+        "gone": "_RECORD_BOARD_GONE",
+    }
+    for filename, symbol in statements.items():
+        assert (CRAWLER / f"go/ordinary-queue/lifecycle/{filename}.sql").read_text() == getattr(
+            monitor, symbol
+        )
 
 
 def test_native_rich_monitor_diff_and_insert_are_exact_python_statements():

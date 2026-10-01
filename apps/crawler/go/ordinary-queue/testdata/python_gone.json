@@ -1,0 +1,462 @@
+[
+  {
+    "name": "first-no-history",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "active",
+      "confirmation_count": 0,
+      "first_confirmed_at": null,
+      "last_confirmed_at": null,
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T06:00:00+00:00"
+    }
+  },
+  {
+    "name": "negative-count",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "active",
+      "confirmation_count": -1,
+      "first_confirmed_at": null,
+      "last_confirmed_at": null,
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T06:00:00+00:00"
+    }
+  },
+  {
+    "name": "recent-healthy",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "active",
+      "confirmation_count": 0,
+      "first_confirmed_at": null,
+      "last_confirmed_at": null,
+      "last_success_at": "2026-09-24T00:00:00+00:00",
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 3,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T06:00:00+00:00"
+    }
+  },
+  {
+    "name": "older-healthy",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "active",
+      "confirmation_count": 0,
+      "first_confirmed_at": null,
+      "last_confirmed_at": null,
+      "last_success_at": "2026-09-23T23:59:59.999999+00:00",
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T06:00:00+00:00"
+    }
+  },
+  {
+    "name": "recovery-resets-episode",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "active",
+      "confirmation_count": 0,
+      "first_confirmed_at": "2026-09-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-30T23:00:00+00:00",
+      "last_success_at": null,
+      "gone_at": "2026-09-11T00:00:00+00:00"
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T06:00:00+00:00"
+    }
+  },
+  {
+    "name": "pending-spacing-0",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "first_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 2,
+      "confirmation_advanced": false,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T06:00:00+00:00"
+    }
+  },
+  {
+    "name": "healthy-third-0",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone_pending",
+      "confirmation_count": 2,
+      "first_confirmed_at": null,
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_success_at": "2026-09-30T00:00:00+00:00",
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 2,
+      "required_confirmations": 3,
+      "confirmation_advanced": false,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T06:00:00+00:00"
+    }
+  },
+  {
+    "name": "pending-spacing-21599",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "first_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-30T18:00:01+00:00",
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 2,
+      "confirmation_advanced": false,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-30T18:00:01+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T00:00:01+00:00"
+    }
+  },
+  {
+    "name": "healthy-third-21599",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone_pending",
+      "confirmation_count": 2,
+      "first_confirmed_at": null,
+      "last_confirmed_at": "2026-09-30T18:00:01+00:00",
+      "last_success_at": "2026-09-30T00:00:00+00:00",
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 2,
+      "required_confirmations": 3,
+      "confirmation_advanced": false,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-09-30T18:00:01+00:00",
+      "last_confirmed_at": "2026-09-30T18:00:01+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T00:00:01+00:00"
+    }
+  },
+  {
+    "name": "pending-spacing-21600",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "first_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-30T18:00:00+00:00",
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 2,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": true,
+      "first_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": "2026-10-01T00:00:00+00:00",
+      "next_check_at": "2026-10-02T00:00:00+00:00"
+    }
+  },
+  {
+    "name": "healthy-third-21600",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone_pending",
+      "confirmation_count": 2,
+      "first_confirmed_at": null,
+      "last_confirmed_at": "2026-09-30T18:00:00+00:00",
+      "last_success_at": "2026-09-30T00:00:00+00:00",
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "required_confirmations": 3,
+      "confirmation_advanced": true,
+      "terminal_transition": true,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": "2026-10-01T00:00:00+00:00",
+      "next_check_at": "2026-10-02T00:00:00+00:00"
+    }
+  },
+  {
+    "name": "pending-spacing-21601",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "first_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-30T17:59:59+00:00",
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 2,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": true,
+      "first_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": "2026-10-01T00:00:00+00:00",
+      "next_check_at": "2026-10-02T00:00:00+00:00"
+    }
+  },
+  {
+    "name": "healthy-third-21601",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone_pending",
+      "confirmation_count": 2,
+      "first_confirmed_at": null,
+      "last_confirmed_at": "2026-09-30T17:59:59+00:00",
+      "last_success_at": "2026-09-30T00:00:00+00:00",
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "required_confirmations": 3,
+      "confirmation_advanced": true,
+      "terminal_transition": true,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": "2026-10-01T00:00:00+00:00",
+      "next_check_at": "2026-10-02T00:00:00+00:00"
+    }
+  },
+  {
+    "name": "gone-recovery-0",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "first_confirmed_at": "2026-09-11T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_success_at": null,
+      "gone_at": "2026-09-21T00:00:00+00:00"
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "required_confirmations": 2,
+      "confirmation_advanced": false,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-09-11T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": "2026-09-21T00:00:00+00:00",
+      "next_check_at": "2026-10-02T00:00:00+00:00"
+    }
+  },
+  {
+    "name": "gone-recovery-86399",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "first_confirmed_at": "2026-09-11T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-30T00:00:01+00:00",
+      "last_success_at": null,
+      "gone_at": "2026-09-21T00:00:00+00:00"
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "required_confirmations": 2,
+      "confirmation_advanced": false,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-09-11T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-30T00:00:01+00:00",
+      "gone_at": "2026-09-21T00:00:00+00:00",
+      "next_check_at": "2026-10-01T00:00:01+00:00"
+    }
+  },
+  {
+    "name": "gone-recovery-86400",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "first_confirmed_at": "2026-09-11T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-30T00:00:00+00:00",
+      "last_success_at": null,
+      "gone_at": "2026-09-21T00:00:00+00:00"
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-09-11T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": "2026-09-21T00:00:00+00:00",
+      "next_check_at": "2026-10-02T00:00:00+00:00"
+    }
+  },
+  {
+    "name": "gone-recovery-86401",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "first_confirmed_at": "2026-09-11T00:00:00+00:00",
+      "last_confirmed_at": "2026-09-29T23:59:59+00:00",
+      "last_success_at": null,
+      "gone_at": "2026-09-21T00:00:00+00:00"
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 3,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-09-11T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": "2026-09-21T00:00:00+00:00",
+      "next_check_at": "2026-10-02T00:00:00+00:00"
+    }
+  },
+  {
+    "name": "gone-no-timestamps",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "gone",
+      "confirmation_count": 2,
+      "first_confirmed_at": null,
+      "last_confirmed_at": null,
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone",
+      "confirmation_count": 2,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": "2026-10-01T00:00:00+00:00",
+      "next_check_at": "2026-10-02T00:00:00+00:00"
+    }
+  },
+  {
+    "name": "future-confirmation",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "active",
+      "confirmation_count": 1,
+      "first_confirmed_at": null,
+      "last_confirmed_at": "2026-10-01T01:00:00+00:00",
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 2,
+      "confirmation_advanced": false,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T01:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T01:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T07:00:00+00:00"
+    }
+  },
+  {
+    "name": "quarantined-starts-confirmation",
+    "now": "2026-10-01T00:00:00+00:00",
+    "state": {
+      "board_status": "quarantined",
+      "confirmation_count": 0,
+      "first_confirmed_at": null,
+      "last_confirmed_at": null,
+      "last_success_at": null,
+      "gone_at": null
+    },
+    "result": {
+      "board_status": "gone_pending",
+      "confirmation_count": 1,
+      "required_confirmations": 2,
+      "confirmation_advanced": true,
+      "terminal_transition": false,
+      "first_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "last_confirmed_at": "2026-10-01T00:00:00+00:00",
+      "gone_at": null,
+      "next_check_at": "2026-10-01T06:00:00+00:00"
+    }
+  }
+]

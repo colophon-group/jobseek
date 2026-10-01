@@ -163,12 +163,32 @@ preparation in the executor separately matches the actual Python rich writer,
 including missing titles and default locales. Maintenance consumers import only
 the queue's detached nullable persistence values, without enrichment dependencies.
 
-This chunk API is deliberately nonterminal. It does not establish complete or
-filtered inventory, perform disappearance/drop/empty policy, change board
-metadata/schedule, acknowledge a claim or implement transport/failure/TDM policy.
-Python currently commits diff classification separately from rich writes; native
-full-cycle failure and recovery proof must cover the atomic chunk's effects.
-No native ordinary executable or production selection is introduced here.
+The standalone chunk API remains nonterminal. `BeginGreenhouseCycle` now binds
+the PostgreSQL discovery start to one owned claim; `WriteRichBatch` accounts for
+only committed chunks and poisons absence finalization after a failed chunk.
+`FinishSuccess` applies the Python disappearance, repeated-empty, partial and
+confirmed-contraction policies using fresh PostgreSQL metadata. `FinishFailure`
+retains the five-strike recovery quarantine and daily-capped backoff. Terminal
+effects and the canonical deadline commit with the opaque attempt receipt;
+`Settle` acknowledges that same durable deadline. Malformed lifecycle metadata
+fails closed. The detached Redis claim snapshot is preserved through settlement.
+
+`FinishProviderGone` accepts only the exact Greenhouse token API's HTTP 404,
+with spaced confirmations, daily confirmed-gone probes and nonempty recovery.
+`FinishGreenhouseReservation` handles pre-existing reservations without a fetch,
+or a new exact-resource header signal; it preserves visibility, prior success and
+failure accounting. The native skip persists the future canonical deadline,
+closing Python's Redis-only skip scheduling gap. No missing header clears a
+reservation. This component does not implement the network transport or claim
+complete publisher-policy coverage.
+
+CI regenerates 21 disappearance and 20 provider-gone cases from the actual
+Python processor/policy, alongside the nine frozen lifecycle SQL statements.
+Real database/queue tests cover repeated cycles with stale Redis metadata,
+transaction rollback retaining earlier chunks, and terminal commit-before-ack
+recovery in changed lifecycle states. Full inventory normalization/completeness,
+the installed executable, transport/circuit behavior and actual process fault/
+cold-reversal evidence remain required. No production owner is selected here.
 
 The offline `InspectGreenhouseMonitor` boundary observes the standard explicit
 token/skip profile on the existing board hash. It validates canonical board and
@@ -181,12 +201,13 @@ observations; its exact snapshot digest still binds all of them. Native
 processing must freshly validate and preserve their policy before effects.
 
 `Authority.ObserveGreenhouseMonitor` joins that observation to the actual
-enabled, active PostgreSQL board while holding the existing routing epoch
+enabled, recoverable PostgreSQL board while holding the existing routing epoch
 barrier and a shared canonical row lock. It compares company/source/interval/
 throttle/browser/effective metadata settings to the current Redis hash and
 returns no profile on a stale projection, unsupported state or retired epoch.
-It neither claims work nor installs a fence. Suspect/gone/quarantined rows keep
-their current owner until native lifecycle processing is proven. Actual ready
+It neither claims work nor installs a fence. Enabled suspect/quarantined/
+gone_pending/gone rows remain eligible for their installed native owner so
+ordinary recovery cannot strand selected members excluded from legacy. Actual ready
 route membership, active-plan ownership and fresh canonical state still must be
 checked at selection; this observation grants no later authority.
 
