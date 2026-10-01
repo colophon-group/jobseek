@@ -150,6 +150,32 @@ exact-head CI results in the PR before considering selection.
 
 ## Continuation gates
 
+Migration `0038` adds the durable joint ordinary/B0 transition journal. Internal
+native `BeginColdOwnershipTransition` commits one canonical intent binding the
+prepared cohort, prior ordinary/B0 identities and exact active/target/rollback
+release and host-cold evidence digests before allocating an epoch. A digest is
+an integrity binding; the supported ADR006 host wrapper must independently
+verify those releases and attest every writer stopped under its mutation lock.
+These primitives have no production CLI or activation/startup path yet.
+
+`ReserveColdOwnershipEpoch` revalidates that exact intent and fresh canonical/
+Redis cohort, allocates one new shared epoch, retires the old ordinary owner,
+stages its replacement and commits the reservation together. PostgreSQL sequences
+can advance through rollback. An interrupted allocation retains pending intent;
+recovery allocates another fresh epoch rather than adopting the burned high-water.
+An uncertain successful commit is inspected by exact intent/source and returns
+its same reserved plan after fresh readback. B0-only allocation now refuses any
+unfinished joint journal before `nextval`, including when ordinary ownership has
+already retired. History and immutable identity survive application rollback.
+
+Real private database tests prove initial/replacement reservation, retirement,
+barrier ordering, configuration/source rejection before allocation, a forced SQL
+failure after sequence advance/retirement, independent-connection recovery and
+uncertain-commit retry. Full canonical rows, deadlines, receipts and Redis state
+remain unchanged. This does not yet prove joint Redis/B0 publication, activation,
+actual coordinator-process interruption, host/container quiescence or full cold
+reversal. Implement and verify those phases before selecting ordinary Go.
+
 `Authority.WriteGreenhouseRichBatch` now persists one prepared 1–500 posting
 chunk through installed ownership and exact Redis/PG attempt authority. It uses
 the frozen Python URL diff/insert/description statements, ordered global posting

@@ -141,6 +141,13 @@ _ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL = (
 _ORDINARY_ACTIVE_OWNERSHIP_SQL = (
     "SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan WHERE state='active')"
 )
+_JOINT_OWNERSHIP_SCHEMA_EXISTS_SQL = (
+    "SELECT to_regclass('public.crawler_ownership_transition') IS NOT NULL"
+)
+_JOINT_OPEN_OWNERSHIP_SQL = (
+    "SELECT EXISTS(SELECT 1 FROM public.crawler_ownership_transition "
+    "WHERE phase NOT IN ('reversed','superseded'))"
+)
 _CURRENT_ROUTING_EPOCH_SQL = (
     "SELECT last_value, is_called FROM public.lightpanda_b0_routing_epoch_seq"
 )
@@ -1263,6 +1270,17 @@ async def _reserve_routing_epoch(pool: Any) -> int:
                 if active:
                     raise ActivationError(
                         "active ordinary ownership requires a coordinated epoch transition"
+                    )
+            journal_present = await connection.fetchval(_JOINT_OWNERSHIP_SCHEMA_EXISTS_SQL)
+            if not isinstance(journal_present, bool):
+                raise ActivationError("joint ownership schema attestation failed")
+            if journal_present:
+                unfinished = await connection.fetchval(_JOINT_OPEN_OWNERSHIP_SQL)
+                if not isinstance(unfinished, bool):
+                    raise ActivationError("joint ownership state attestation failed")
+                if unfinished:
+                    raise ActivationError(
+                        "joint ownership transition requires coordinated recovery"
                     )
             routing_epoch = await connection.fetchval(_RESERVE_ROUTING_EPOCH_SQL)
     except ActivationError:

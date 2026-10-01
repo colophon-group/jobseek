@@ -355,3 +355,85 @@ async def test_real_b0_only_epoch_reservation_preserves_active_ordinary_owner():
             expected.plan_sha256,
         )
         assert await activation._reserve_routing_epoch(pool) == before + 1
+
+
+async def test_real_b0_only_epoch_reservation_preserves_pending_joint_journal():
+    async with private_active_plan() as (pool, expected, _payload):
+        await pool.execute(
+            "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1",
+            expected.plan_sha256,
+        )
+        before = await pool.fetchval("SELECT last_value FROM lightpanda_b0_routing_epoch_seq")
+        transition_id = str(uuid.uuid4())
+        # Private SQL fixture tests the legacy guard for ANY unfinished journal;
+        # native tests separately prove canonical preparation and reservation.
+        body = json.dumps(
+            {
+                "version": "jobseek.crawler.cold-transition/v1",
+                "transition_id": transition_id,
+                "source_revision": expected.source_revision,
+                "previous_epoch": before,
+                "prepared_plan_sha256": expected.plan_sha256,
+            },
+            separators=(",", ":"),
+        )
+        digest = hashlib.sha256(body.encode()).hexdigest()
+        await pool.execute(
+            "INSERT INTO crawler_ownership_transition "
+            "(intent_sha256,transition_id,source_revision,previous_epoch,"
+            "prepared_plan_sha256,payload) "
+            "VALUES($1,$2::uuid,$3,$4,$5,$6)",
+            digest,
+            uuid.UUID(transition_id),
+            expected.source_revision,
+            before,
+            expected.plan_sha256,
+            body,
+        )
+        try:
+            with pytest.raises(activation.ActivationError, match="coordinated recovery"):
+                await activation._reserve_routing_epoch(pool)
+            assert (
+                await pool.fetchval("SELECT last_value FROM lightpanda_b0_routing_epoch_seq")
+                == before
+            )
+            assert (
+                await pool.fetchval(
+                    "SELECT phase FROM crawler_ownership_transition WHERE intent_sha256=$1", digest
+                )
+                == "pending"
+            )
+            migration_env = os.environ.copy()
+            migration_env["LOCAL_DATABASE_URL"] = os.environ[
+                "JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL"
+            ]
+            result = await asyncio.to_thread(
+                subprocess.run,
+                [
+                    "uv",
+                    "run",
+                    "--frozen",
+                    "alembic",
+                    "-c",
+                    "src/migrations/alembic.ini",
+                    "downgrade",
+                    "0037",
+                ],
+                cwd=Path(__file__).resolve().parents[1],
+                env=migration_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=20,
+            )
+            assert result.returncode != 0, "schema downgrade discarded retained intent"
+            assert await pool.fetchval("SELECT version_num FROM alembic_version") == "0038"
+            assert (
+                await pool.fetchval(
+                    "SELECT intent_sha256 FROM crawler_ownership_transition WHERE intent_sha256=$1",
+                    digest,
+                )
+                == digest
+            )
+        finally:
+            # Only the independently validated private fixture may discard history.
+            await pool.execute("TRUNCATE crawler_ownership_transition")

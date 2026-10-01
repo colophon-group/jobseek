@@ -936,7 +936,10 @@ async def test_routing_epoch_reservations_are_db_only_and_monotonic(
 
         async def fetchval(self, query: str) -> int:
             self.queries.append(query)
-            if query == activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL:
+            if query in {
+                activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL,
+                activation._JOINT_OWNERSHIP_SCHEMA_EXISTS_SQL,
+            }:
                 return False
             return next(self.values)
 
@@ -971,10 +974,12 @@ async def test_routing_epoch_reservations_are_db_only_and_monotonic(
         lease_call,
         lock_call,
         activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL,
+        activation._JOINT_OWNERSHIP_SCHEMA_EXISTS_SQL,
         activation._RESERVE_ROUTING_EPOCH_SQL,
         lease_call,
         lock_call,
         activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL,
+        activation._JOINT_OWNERSHIP_SCHEMA_EXISTS_SQL,
         activation._RESERVE_ROUTING_EPOCH_SQL,
     ]
     assert closes == 2
@@ -1058,7 +1063,10 @@ async def test_routing_epoch_allocator_failure_is_fail_closed_before_redis(
             return None
 
         async def fetchval(self, query: str) -> int:
-            if query == activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL:
+            if query in {
+                activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL,
+                activation._JOINT_OWNERSHIP_SCHEMA_EXISTS_SQL,
+            }:
                 return False
             assert query == activation._RESERVE_ROUTING_EPOCH_SQL
             raise RuntimeError(failure)
