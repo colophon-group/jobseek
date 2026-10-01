@@ -53,6 +53,10 @@ type ColdB0ReactivationPlan struct {
 func (p *ColdB0ReactivationPlan) SHA256() string                     { return p.digest }
 func (p *ColdB0ReactivationPlan) Payload() string                    { return p.body }
 func (p *ColdB0ReactivationPlan) Request() ColdB0ReactivationRequest { return p.document.Request }
+func (p *ColdB0ReactivationPlan) RetirementEpoch() int64             { return p.document.RetirementEpoch }
+func (p *ColdB0ReactivationPlan) RollbackReceiptSHA256() string {
+	return p.document.RollbackReceiptSHA256
+}
 
 var coldB0ReceiptImage = regexp.MustCompile(`^ghcr\.io/[a-z0-9][a-z0-9-]*/jobseek-crawler@sha256:[0-9a-f]{64}$`)
 

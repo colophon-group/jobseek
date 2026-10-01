@@ -21,6 +21,8 @@ func ColdAdminOperation(argument string) string {
 		return strings.TrimPrefix(argument, "--")
 	case "--cold-ordinary-rollback-plan", "--cold-ordinary-rollback-retain", "--cold-ordinary-rollback-inspect":
 		return strings.TrimPrefix(argument, "--")
+	case "--cold-b0-reactivation-plan", "--cold-b0-reactivation-retain", "--cold-b0-reactivation-apply", "--cold-b0-reactivation-inspect":
+		return strings.TrimPrefix(argument, "--")
 	case "--cold-forward-prepare", "--cold-forward-publish", "--cold-forward-activate":
 		return strings.TrimPrefix(argument, "--")
 	case "--cold-b0-forward-plan", "--cold-b0-forward-retain", "--cold-b0-forward-apply", "--cold-b0-forward-inspect":
@@ -61,6 +63,8 @@ type ColdAdminConfig struct {
 	forwardRequestFile, forwardRequestSHA, forwardPlanSHA           string
 	forwardReceiptSHA                                               string
 	ordinaryRequestFile, ordinaryRequestSHA, ordinaryRestorationSHA string
+	priorB0ReceiptFile, priorB0ReceiptSHA, reactivationPlanSHA      string
+	retirementEpoch                                                 int64
 }
 
 // ColdAdminIdentity reports the completed primitive, not host release readiness
@@ -91,6 +95,10 @@ type ColdAdminIdentity struct {
 	OrdinaryRestorationPlan       json.RawMessage `json:"ordinary_restoration_plan,omitempty"`
 	OrdinaryRestorationMode       string          `json:"ordinary_restoration_mode,omitempty"`
 	B0RestorationPhase            string          `json:"b0_restoration_phase,omitempty"`
+	B0ReactivationPlanSHA256      string          `json:"b0_reactivation_plan_sha256,omitempty"`
+	B0ReactivationPlan            json.RawMessage `json:"b0_reactivation_plan,omitempty"`
+	B0ReactivationPhase           string          `json:"b0_reactivation_phase,omitempty"`
+	B0ReactivationReceiptSHA256   string          `json:"b0_reactivation_receipt_sha256,omitempty"`
 }
 
 // ReadColdAdminConfig requires a distinct protected mode, compiled source,
@@ -104,6 +112,14 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 	for _, key := range []string{"ORDINARY_OWNERSHIP_ROUTING_EPOCH", "ORDINARY_OWNERSHIP_PLAN_SHA256", "ORDINARY_OWNERSHIP_PROJECTION_SHA1", "ORDINARY_GO_COHORT_FILE"} {
 		if getenv(key) != "" {
 			return c, ErrStartup
+		}
+	}
+	if coldB0ReactivationOperation(operation) {
+		return readColdB0ReactivationConfig(getenv, installed, operation)
+	}
+	for _, key := range []string{"ORDINARY_COLD_RETIREMENT_EPOCH", "ORDINARY_COLD_PRIOR_B0_RECEIPT_FILE", "ORDINARY_COLD_PRIOR_B0_RECEIPT_SHA256", "ORDINARY_COLD_B0_REACTIVATION_PLAN_SHA256"} {
+		if getenv(key) != "" {
+			return ColdAdminConfig{}, ErrStartup
 		}
 	}
 	c.database, c.redis, c.source, c.operation = getenv("LOCAL_DATABASE_URL"), getenv("REDIS_URL"), installed, operation
@@ -240,6 +256,9 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, error) {
 	if ColdAdminOperation("--"+c.operation) != c.operation || c.operation == "" || !sourcePattern.MatchString(c.source) || c.database == "" || c.redis == "" || c.epoch < 1 || c.epoch > 9999999999999 {
 		return nil, ErrStartup
+	}
+	if coldB0ReactivationOperation(c.operation) {
+		return runColdB0ReactivationAdmin(ctx, c)
 	}
 	var spec queue.ColdTransitionSpec
 	var reversal queue.ColdReversalSpec

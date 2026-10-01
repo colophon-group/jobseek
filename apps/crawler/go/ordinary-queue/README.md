@@ -603,8 +603,11 @@ the unchanged queue Lua, fractional recurring transfer, uncertain replies, SAVE
 denial, SQL failure after SAVE, RDB restart, drift refusals and immutable history
 for both legacy and native ordinary predecessors.
 
-These tests use a private producer control adapter. Protected CLI commands and
-actual root/UID-10001 producer execution remain required. The host must reuse the
+These tests use a private producer control adapter. Protected native CLI commands
+are implemented; the Linux integration fixture additionally uses the actual
+root/UID-10001 producer and CLI with a post-SAVE/pre-SQL SIGKILL, RDB/producer
+restart, exact retry and historical inspection. Fresh Linux execution remains
+required before admitting that operational contract. The host must reuse the
 existing Go sentinel/tombstone clearing and producer initialization workflow before
 planning. This API does not clear the sentinel, publish ordinary ownership, close
 the reversal, select releases, start services or attest host readiness.

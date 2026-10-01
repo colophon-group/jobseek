@@ -443,3 +443,45 @@ Output reports `ordinary_restoration_plan_sha256`, the full bounded canonical
 `ordinary_restoration_plan` and `ordinary_restoration_mode`. Retain it privately
 and durably with release evidence. These commands do not publish ownership, complete
 a joint reversal, select a release or grant permission to start services.
+
+### Prior Go B0 reactivation commands
+
+| Argument / protected mode | Effect |
+| --- | --- |
+| `--cold-b0-reactivation-plan` / `cold-b0-reactivation-plan` | Preview transfer to the prior Go B0 owner at reserved retirement R. |
+| `--cold-b0-reactivation-retain` / `cold-b0-reactivation-retain` | Retain the exact approved reactivation manifest. |
+| `--cold-b0-reactivation-apply` / `cold-b0-reactivation-apply` | Apply pending transfers and retain completion after SAVE/readback. |
+| `--cold-b0-reactivation-inspect` / `cold-b0-reactivation-inspect` | Inspect retained approval/completion without a producer or Redis connection. |
+
+All require the protected original forward intent and reversal files/digests,
+compiled coordinator source, original source E/plan and exact
+`ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256`. `ORDINARY_COLD_ROUTING_EPOCH`
+continues to name source E; `ORDINARY_COLD_RETIREMENT_EPOCH` names the already
+reserved R explicitly. The retained ordinary decision must bind that reversal
+and R. Retention/application/inspection additionally require
+`ORDINARY_COLD_B0_REACTIVATION_PLAN_SHA256`; preview refuses the approval selector.
+Unrelated operation fields and worker/staging selectors are refused.
+
+Preview/retention/application require protected B0 target/pinned Lua and
+`ORDINARY_COLD_PRIOR_B0_RECEIPT_FILE` plus its exact
+`ORDINARY_COLD_PRIOR_B0_RECEIPT_SHA256`. The receipt hash must match the original
+intent and reversal's prior Go B0 identity. Receipt text is never adopted as shell
+or environment configuration. Prior cohort/revision/epoch checks and every effect
+remain bound to the native queue API and fixed authenticated producer. Historical
+inspection forbids target/Lua/receipt inputs and does not open Redis; its configured
+Redis URL may point to an unavailable socket.
+
+Output reports the exact bounded canonical `b0_reactivation_plan`,
+`b0_reactivation_plan_sha256` and reserved retirement identity. Application and
+inspection report `b0_reactivation_phase` (`prepared` or `redis-reactivated`) and
+`b0_reactivation_receipt_sha256` only when completion is committed. Keep output
+privately and durably. Completed application retries verify exact persisted state
+without activation or SAVE. Missing evidence is never reconstructed.
+
+The Linux root fixture exercises the actual UID-10001 producer and source-bound
+CLI, SIGKILL after SAVE before SQL completion, RDB/producer restart, exact retry
+and historical inspection while ownership barriers are held. Fresh execution must
+pass on both architectures. Its controlled prior receipt and Lua restoration do
+not prove independent immutable production releases or full sentinel clearing.
+These commands publish no ordinary owner, close no reversal and grant no release
+selection, service start or full host readiness.

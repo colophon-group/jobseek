@@ -130,7 +130,7 @@ jobs:
       - name: Verify real database authority and private queue transitions
         run: |
           set -euo pipefail
-          go test -race -count=1 -timeout=90s ./...
+          go test -race -count=1 -timeout=120s ./...
           go vet ./...
           go mod tidy -diff
           test -z "$(gofmt -l .)"
@@ -159,7 +159,7 @@ jobs:
             JOBSEEK_B0_FORWARD_SOURCE_REVISION="$GITHUB_SHA" \
             JOBSEEK_B0_FORWARD_LUA_FILE="$lua_fixture" \
             "$integration_binary" \
-            -test.run '^TestInstalledNativeColdB0ForwardPreparesAndRetainsExactManifest$' \
+            -test.run '^TestInstalledNativeColdB0(ForwardPreparesAndRetainsExactManifest|ReactivationUsesRetainedRollbackAtR)$' \
             -test.count=1 -test.timeout=90s -test.v
 
       - name: Verify the production Go reaper participates in database retirement

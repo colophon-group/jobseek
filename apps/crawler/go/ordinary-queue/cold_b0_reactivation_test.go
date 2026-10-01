@@ -52,10 +52,14 @@ func TestColdB0ReactivationReceiptRejectsMalformedHashedHostData(t *testing.T) {
 }
 
 func reactivationFixture(t *testing.T, native bool) (publicationFixture, ColdB0ReactivationRequest, *forwardLuaControl, string) {
+	return reactivationFixtureWithSource(t, native, "{}", strings.Repeat("a", 40))
+}
+
+func reactivationFixtureWithSource(t *testing.T, native bool, metadata, source string) (publicationFixture, ColdB0ReactivationRequest, *forwardLuaControl, string) {
 	t.Helper()
 	ctx := context.Background()
 	receipt := ""
-	p := realPublicationSeedWithPriorSpec(t, "{}", strings.Repeat("a", 40), true, native, func(s *ColdTransitionSpec) {
+	p := realPublicationSeedWithPriorSpec(t, metadata, source, true, native, func(s *ColdTransitionSpec) {
 		receipt = reactivationHostReceipt(s.PreviousEpoch)
 		s.PreviousB0ReceiptSHA256 = coldForwardBytesDigest(receipt)
 	})
@@ -154,8 +158,15 @@ func TestRealColdB0ReactivationRestoresPriorGoQueuesAtReservedRetirement(t *test
 				t.Fatal("reactivation activated ordinary owner", err)
 			}
 			for _, task := range plan.forward.document.Tasks {
-				if guard := p.f.client.redis.HGet(ctx, "lightpanda-b0:legacy-guard", task.PostingID).Val(); !strings.Contains(guard, "|"+strconv.FormatInt(epoch, 10)+"|") || !strings.HasSuffix(guard, "|1925089445.100001") {
-					t.Fatal("fresh R guard lost exact restored fractional due", guard)
+				// Redis versions render the same binary64 ZSET score differently.
+				// Preserve the exact retained source bytes rather than requiring a
+				// platform-specific decimal spelling of the canonical PG schedule.
+				score := task.LegacyScheduleScore
+				if millis, err := coldB0ForwardMillis(score); err != nil || millis != 1925089445101 || task.NextScrapeAtMS != millis || task.FirstTime {
+					t.Fatal("restored canonical fractional schedule changed", score, err)
+				}
+				if guard := p.f.client.redis.HGet(ctx, "lightpanda-b0:legacy-guard", task.PostingID).Val(); !strings.Contains(guard, "|"+strconv.FormatInt(epoch, 10)+"|") || !strings.HasSuffix(guard, "|"+score) {
+					t.Fatal("fresh R guard lost exact retained fractional source score", guard)
 				}
 			}
 			restartPublicationRedisWithoutSave(t, p.f.client)
