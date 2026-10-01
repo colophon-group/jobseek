@@ -973,10 +973,10 @@ async def _discovery_worker(
             if progress_callback is not None:
                 progress_callback()
             try:
-                if ownership is None:
-                    work = await claim_work(browser=browser)
-                else:
-                    async with legacy_ownership_barrier(local_pool, ownership):
+                async with legacy_ownership_barrier(local_pool, ownership):
+                    if ownership is None:
+                        work = await claim_work(browser=browser)
+                    else:
                         work = await claim_work(browser=browser, ownership=ownership)
             except Exception:
                 worker_log.warning("pipeline.claim_error", exc_info=True)

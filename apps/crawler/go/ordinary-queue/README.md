@@ -98,8 +98,13 @@ reattest ownership, canonical eligibility and projection before their effects.
 Legacy pipeline startup rejects active ownership unless all four installed
 identity fields match: `ORDINARY_OWNERSHIP_PLAN_SHA256`,
 `ORDINARY_OWNERSHIP_PROJECTION_SHA1`, `ORDINARY_OWNERSHIP_SOURCE_REVISION` and
-`ORDINARY_OWNERSHIP_ROUTING_EPOCH`. Each planned legacy claim holds the shared
-DB lease/epoch barriers through its Lua pop. SHA1 is Redis's available byte
+`ORDINARY_OWNERSHIP_ROUTING_EPOCH`. Every legacy claim holds the shared
+DB lease/epoch barriers through its Lua pop. Unselected claims refuse any
+unfinished joint transition. A journalled legacy owner also requires protected
+`ORDINARY_GO_B0_AUDIT_LUA_FILE` bytes and freshly re-attests the exact active
+journal, retained B0 target, canonical/Redis configurations and the same actual
+B0 audit/permanent shared witnesses. Legacy write/settlement remains governed
+by complete all-writer drain/stop before ownership changes. SHA1 is Redis's available byte
 integrity check bound to the SHA256-attested durable payload, not a credential.
 Neither owner reconstructs missing routing state or adopts a new allocator.
 
@@ -157,7 +162,13 @@ journal through `reserved → publishing → published → active`. A source-pin
 configuration and matching Redis settings. The target binds exact board UUIDs,
 configuration hashes, namespace, shard and cohort; epoch comes only from the
 durable reservation. Unknown/duplicate JSON fields, nested metadata duplicates,
-unsupported selectors and changed configurations fail admission.
+unsupported selectors and changed configurations fail admission. Metadata
+numbers normalize by exact mathematical value across JSONB/Redis spellings,
+including precise integers beyond float64. Normalization bounds exponent
+magnitude at one million and uses scientific notation outside decimal exponents
+-6 through 20, preventing enormous zero expansion. A shared Go/Python corpus
+verifies exact bytes/hashes and malformed metadata rejection. Newly changed
+target hashes must be captured/approved before intent, never adopted at runtime.
 
 `PrepareColdOwnershipPublication` first installs an exact pending Redis witness
 against the prior ordinary projection, then commits `publishing`. Only this

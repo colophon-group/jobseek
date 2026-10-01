@@ -281,7 +281,27 @@ process becomes ready under joint authority, then exits without popping future
 work or changing canonical state after witness loss. Installed-image tests run
 this behavior on both architectures before admission of the later source.
 
-Remaining legacy ordinary workers still need this complete joint guard. The
-supported all-writer wrapper, complete PG-derived B0 transfer, full cold reversal,
+Legacy ordinary startup and every claim now use the same retained journal/target,
+source-pinned actual B0 audit, fixed selectors and permanent shared witnesses.
+The installed `ORDINARY_GO_B0_AUDIT_LUA_FILE` requirement also applies to a
+journalled legacy owner. Unselected legacy claims hold the existing DB barriers
+and refuse unfinished joint intent. This does not add legacy write/settlement
+fences; all legacy inflight work must finish while the supported host drains and
+stops every writer before a transition.
+
+Metadata configuration hashes compare exact numeric values across PostgreSQL
+JSONB and Redis spelling, without binary float rounding. A shared Go/Python
+corpus covers precise integers, decimal/scientific spelling, negative zero,
+string escaping, duplicate/deep malformed objects and bounded exponents.
+Changed target hashes require a freshly captured and approved target before
+intent; no installed witness is automatically repaired or replaced.
+
+The real native coordinator publishes the journal/target used by an actual
+Python startup/claim probe. Nine reversible owned-fixture evidence faults block
+both admission paths without changing any Redis value/expiry class or canonical
+state. A real B0 inflight lease remains compatible with legacy admission. These
+checks run inside the fourth installed executable fixture on both architectures.
+
+The supported all-writer wrapper, complete PG-derived B0 transfer, full cold reversal,
 remaining interruption seams and real production container/public-fetch proof
 also remain before ordinary native selection. Full migration scope is unchanged.

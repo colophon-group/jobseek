@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -151,7 +152,61 @@ func coldJSONValue(d *json.Decoder, depth int) (any, error) {
 			return nil, ErrAuthorityLost
 		}
 	}
+	if n, ok := token.(json.Number); ok {
+		return normalizeColdNumber(string(n))
+	}
 	return token, nil
+}
+
+// Compare mathematical JSON numbers without float rounding or unbounded decimal
+// expansion. The same contract is exercised by the legacy guard's shared corpus.
+// Exponents are bounded independently of coefficient precision and input size.
+func normalizeColdNumber(raw string) (json.Number, error) {
+	negative := strings.HasPrefix(raw, "-")
+	if negative {
+		raw = raw[1:]
+	}
+	exponent := int64(0)
+	if i := strings.IndexAny(raw, "eE"); i >= 0 {
+		var err error
+		exponent, err = strconv.ParseInt(raw[i+1:], 10, 32)
+		if err != nil || exponent < -1000000 || exponent > 1000000 {
+			return "", ErrAuthorityLost
+		}
+		raw = raw[:i]
+	}
+	if i := strings.IndexByte(raw, '.'); i >= 0 {
+		exponent -= int64(len(raw) - i - 1)
+		raw = raw[:i] + raw[i+1:]
+	}
+	digits := strings.TrimLeft(raw, "0")
+	if digits == "" {
+		return json.Number("0"), nil
+	}
+	exponent += int64(len(digits)) - 1
+	digits = strings.TrimRight(digits, "0")
+	var body string
+	if exponent >= -6 && exponent < 21 {
+		position := int(exponent) + 1
+		switch {
+		case position <= 0:
+			body = "0." + strings.Repeat("0", -position) + digits
+		case position >= len(digits):
+			body = digits + strings.Repeat("0", position-len(digits))
+		default:
+			body = digits[:position] + "." + digits[position:]
+		}
+	} else {
+		body = digits[:1]
+		if len(digits) > 1 {
+			body += "." + digits[1:]
+		}
+		body += "e" + strconv.FormatInt(exponent, 10)
+	}
+	if negative {
+		body = "-" + body
+	}
+	return json.Number(body), nil
 }
 func coldMetadata(raw string) (string, error) {
 	if len(raw) == 0 || len(raw) > 1<<20 {

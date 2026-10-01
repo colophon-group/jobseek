@@ -12,11 +12,12 @@ import hashlib
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import asyncpg
 
 from src.config import settings
+from src.joint_ownership import attest_joint_ownership, read_b0_audit
 
 LEASE_BARRIER = 7544422533504811010
 EPOCH_BARRIER = 7544422533504811009
@@ -33,6 +34,7 @@ class LegacyOwnership:
     projection_sha1: str
     source_revision: str
     routing_epoch: str
+    audit_lua: str = field(default="", repr=False)
 
     def __post_init__(self) -> None:
         if (
@@ -65,10 +67,12 @@ def configured_legacy_ownership() -> LegacyOwnership | None:
     )
     if not any(values):
         return None
-    return LegacyOwnership(*values)
+    return LegacyOwnership(*values, audit_lua=read_b0_audit(settings.ordinary_go_b0_audit_lua_file))
 
 
-async def _attest(conn: asyncpg.Connection, expected: LegacyOwnership | None) -> None:
+async def _attest(
+    conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy, expected: LegacyOwnership | None
+) -> None:
     row = await conn.fetchrow(
         "SELECT plan_sha256,routing_epoch,source_revision,payload "
         "FROM public.ordinary_worker_ownership_plan WHERE state='active'"
@@ -76,6 +80,7 @@ async def _attest(conn: asyncpg.Connection, expected: LegacyOwnership | None) ->
     if expected is None:
         if row is not None:
             raise OrdinaryOwnershipError()
+        await attest_joint_ownership(conn, None, "", "", "", "")
         return
     if row is None:
         raise OrdinaryOwnershipError()
@@ -96,6 +101,14 @@ async def _attest(conn: asyncpg.Connection, expected: LegacyOwnership | None) ->
         or hashlib.sha1(payload.encode("utf-8")).hexdigest() != expected.projection_sha1
     ):
         raise OrdinaryOwnershipError()
+    await attest_joint_ownership(
+        conn,
+        payload,
+        expected.plan_sha256,
+        expected.source_revision,
+        expected.routing_epoch,
+        expected.audit_lua,
+    )
 
 
 @asynccontextmanager
@@ -116,7 +129,10 @@ async def legacy_ownership_barrier(
 
 
 async def prepare_legacy_ownership(pool: asyncpg.Pool) -> LegacyOwnership | None:
-    expected = configured_legacy_ownership()
+    try:
+        expected = configured_legacy_ownership()
+    except Exception:
+        raise OrdinaryOwnershipError() from None
     async with legacy_ownership_barrier(pool, expected):
         pass
     return expected

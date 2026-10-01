@@ -51,10 +51,10 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	}
 	b0 := fixtureID(t)
 	if _, err := f.pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser)
- VALUES($1::uuid,$2::uuid,'browser-use-careers','https://jobs.example.test/careers','api_sniffer','{}',60,24,'',false,true)`, b0, f.company); err != nil {
+ VALUES($1::uuid,$2::uuid,'browser-use-careers','https://jobs.example.test/careers','api_sniffer','{"precise":9007199254740993,"small":0.0000000001,"zero":0}',60,24,'',false,true)`, b0, f.company); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.r.HSet(ctx, "board:"+b0, map[string]string{"board_slug": "browser-use-careers", "board_url": "https://jobs.example.test/careers", "crawler_type": "api_sniffer", "company_id": f.company, "metadata": "{}", "check_interval_minutes": "60", "scrape_interval_hours": "24", "throttle_key": "", "domain": "jobs.example.test", "monitor_needs_browser": "0", "scraper_needs_browser": "1"}).Err(); err != nil {
+	if err := f.r.HSet(ctx, "board:"+b0, map[string]string{"board_slug": "browser-use-careers", "board_url": "https://jobs.example.test/careers", "crawler_type": "api_sniffer", "company_id": f.company, "metadata": `{"zero":-0.00,"small":1E-10,"precise":9007199254740993.000}`, "check_interval_minutes": "60", "scrape_interval_hours": "24", "throttle_key": "", "domain": "jobs.example.test", "monitor_needs_browser": "0", "scraper_needs_browser": "1"}).Err(); err != nil {
 		t.Fatal(err)
 	}
 	lua, err := os.ReadFile("../../src/lua/lightpanda_b0_queue.lua")
@@ -152,6 +152,7 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 		t.Fatal("intent identity changed")
 	}
 	call("cold-begin", env, true)
+	runLegacyJointProbe(t, f, source, "", "", "", "", false)
 	// Retained production intent history is never deleted. Only this owned test
 	// DB can truncate fixtures, after retiring the activated test plan.
 	t.Cleanup(func() {
@@ -351,6 +352,86 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	}
 	baseline := coldExecutableRedisSnapshot(t, f)
 	canonical = coldExecutableCanonicalSnapshot(t, f)
+	legacyProbe := func(accepted bool) {
+		runLegacyJointProbe(t, f, source, reserved.PlanSHA256, reserved.ProjectionSHA1, fmt.Sprint(reserved.RoutingEpoch), luaFile, accepted)
+	}
+	legacyProbe(true)
+	// Same native-published journal/target and actual source-pinned audit, with
+	// reversible faults confined to the owned fixture. No production repair API.
+	for _, mode := range []string{"marker", "projection", "route_epoch", "route_ttl", "producer_cohort", "selector", "record", "canonical_disabled", "redis_config"} {
+		route := "lightpanda-b0:{ordinary-executable-joint}:route"
+		marker := f.r.Get(ctx, "crawler:ownership:transition").Val()
+		projection := f.r.Get(ctx, "ordinary:ownership:active").Val()
+		switch mode {
+		case "marker":
+			err = f.r.Del(ctx, "crawler:ownership:transition").Err()
+		case "projection":
+			err = f.r.Set(ctx, "ordinary:ownership:active", projection+" ", 0).Err()
+		case "route_epoch":
+			err = f.r.HSet(ctx, route, "routing_epoch", reserved.RoutingEpoch-1).Err()
+		case "route_ttl":
+			err = f.r.Expire(ctx, route, time.Hour).Err()
+		case "producer_cohort":
+			err = f.r.HSet(ctx, "lightpanda-b0:producer-owner", "cohort", "c2").Err()
+		case "selector":
+			err = f.r.HDel(ctx, "lightpanda-b0:producer-owner", "board_slug:browser-use-careers").Err()
+		case "record":
+			err = f.r.HSet(ctx, "lightpanda-b0:{ordinary-executable-joint}:records", "not-a-task", "{}").Err()
+		case "canonical_disabled":
+			_, err = f.pg.Exec(ctx, "UPDATE job_board SET is_enabled=false WHERE id=$1::uuid", b0)
+		case "redis_config":
+			err = f.r.HSet(ctx, "board:"+b0, "check_interval_minutes", "61").Err()
+		}
+		if err != nil {
+			t.Fatal("private legacy authority fault failed")
+		}
+		faultState := fullColdExecutableRedisSnapshot(t, f)
+		faultCanonical := coldExecutableCanonicalSnapshot(t, f)
+		legacyProbe(false)
+		if !reflect.DeepEqual(faultState, fullColdExecutableRedisSnapshot(t, f)) || faultCanonical != coldExecutableCanonicalSnapshot(t, f) {
+			t.Fatal("rejected legacy owner changed private queue or canonical state: " + mode)
+		}
+		switch mode {
+		case "marker":
+			err = f.r.Set(ctx, "crawler:ownership:transition", marker, 0).Err()
+		case "projection":
+			err = f.r.Set(ctx, "ordinary:ownership:active", projection, 0).Err()
+		case "route_epoch":
+			err = f.r.HSet(ctx, route, "routing_epoch", reserved.RoutingEpoch).Err()
+		case "route_ttl":
+			err = f.r.Persist(ctx, route).Err()
+		case "producer_cohort":
+			err = f.r.HSet(ctx, "lightpanda-b0:producer-owner", "cohort", "c1").Err()
+		case "selector":
+			err = f.r.HSet(ctx, "lightpanda-b0:producer-owner", "board_slug:browser-use-careers", "1").Err()
+		case "record":
+			err = f.r.HDel(ctx, "lightpanda-b0:{ordinary-executable-joint}:records", "not-a-task").Err()
+		case "canonical_disabled":
+			_, err = f.pg.Exec(ctx, "UPDATE job_board SET is_enabled=true WHERE id=$1::uuid", b0)
+		case "redis_config":
+			err = f.r.HSet(ctx, "board:"+b0, "check_interval_minutes", "60").Err()
+		}
+		if err != nil {
+			t.Fatal("owned fixture fault cleanup failed")
+		}
+	}
+	legacyProbe(true)
+	// Runtime admission accepts a conserved real B0 inflight lease. Publication
+	// quiescence conditions must not prevent unrelated ordinary claims at runtime.
+	b0Keys := []string{}
+	for _, suffix := range []string{"route", "records", "ready", "inflight", "dead", "terminal", "origin-holders"} {
+		b0Keys = append(b0Keys, "lightpanda-b0:{ordinary-executable-joint}:"+suffix)
+	}
+	now, err := f.r.Time(ctx).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b0Args := []any{"claim_next", "lightpanda-b0", fmt.Sprint(reserved.RoutingEpoch), "go", "", "0", fmt.Sprint(now.UnixMilli()), "600000", "0", "0", "", "", "", "64", "2.0", "", "0", "ordinary-executable-joint", "", "0", "c1", 1, "0", "browser-use-careers"}
+	if reply, err := f.r.Eval(ctx, string(lua), b0Keys, b0Args...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" || f.r.ZCard(ctx, b0Keys[3]).Val() != 1 {
+		t.Fatal("actual legacy runtime B0 inflight fixture failed")
+	}
+	legacyProbe(true)
+	baseline = coldExecutableRedisSnapshot(t, f)
 	rejectStartup("")
 	badLua := filepath.Join(e.directory, "untrusted.lua")
 	if err := os.WriteFile(badLua, append(append([]byte{}, lua...), '\n'), 0o600); err != nil {
@@ -384,6 +465,7 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	if err := running.wait(t); err == nil {
 		t.Fatal("live native worker kept running after joint witness loss")
 	}
+	legacyProbe(false)
 	if !reflect.DeepEqual(baseline, coldExecutableRedisSnapshot(t, f)) || canonical != coldExecutableCanonicalSnapshot(t, f) || f.r.ZCard(ctx, "inflight:simple").Val() != 0 {
 		t.Fatal("lost joint authority popped work or changed canonical/future state")
 	}
@@ -395,6 +477,55 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	if retained := call("cold-inspect", reserveEnv, true); retained.RetainedPhase != "active" || retained.RoutingEpoch != reserved.RoutingEpoch {
 		t.Fatal("witness containment discarded retained journal history")
 	}
+}
+
+func runLegacyJointProbe(t *testing.T, f nativePipelineFixture, source, plan, projection, epoch, lua string, accepted bool) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+	defer cancel()
+	result := "rejected"
+	if accepted {
+		result = "accepted"
+	}
+	cmd := exec.CommandContext(ctx, "uv", "run", "--frozen", "--no-sync", "python", "-m", "contracts.v1.tools.legacy_joint_probe", result)
+	cmd.Dir = "../.."
+	if plan == "" {
+		source = ""
+	}
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "LOCAL_DATABASE_URL=" + f.dsn, "REDIS_URL=unix://" + f.r.Options().Addr,
+		"JOBSEEK_ORDINARY_LEGACY_JOINT_PROBE=1", "ORDINARY_OWNERSHIP_SOURCE_REVISION=" + source,
+		"ORDINARY_OWNERSHIP_PLAN_SHA256=" + plan, "ORDINARY_OWNERSHIP_PROJECTION_SHA1=" + projection,
+		"ORDINARY_OWNERSHIP_ROUTING_EPOCH=" + epoch, "ORDINARY_GO_B0_AUDIT_LUA_FILE=" + lua}
+	if venv := os.Getenv("UV_PROJECT_ENVIRONMENT"); venv != "" {
+		cmd.Env = append(cmd.Env, "UV_PROJECT_ENVIRONMENT="+venv)
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil || string(output) != "legacy joint probe verified\n" {
+		t.Fatal("actual legacy/native joint admission probe diverged")
+	}
+}
+
+func fullColdExecutableRedisSnapshot(t *testing.T, f nativePipelineFixture) map[string]string {
+	t.Helper()
+	ctx := context.Background()
+	keys, err := f.r.Keys(ctx, "*").Result()
+	if err != nil {
+		t.Fatal("private full Redis observation failed")
+	}
+	state := map[string]string{}
+	for _, key := range keys {
+		body, err := f.r.Dump(ctx, key).Result()
+		if err != nil {
+			t.Fatal("private full Redis observation failed")
+		}
+		ttl, err := f.r.PTTL(ctx, key).Result()
+		if err != nil {
+			t.Fatal("private full Redis expiry observation failed")
+		}
+		// Wall-clock countdown is not drift, while expiry removal/addition is.
+		state[key] = fmt.Sprint(ttl > 0) + ":" + body
+	}
+	return state
 }
 
 func seedExecutableColdB0(t *testing.T, f nativePipelineFixture, board string, epoch int64, lua []byte) {

@@ -162,6 +162,7 @@ class Settings(BaseSettings):
     ordinary_ownership_projection_sha1: str = ""
     ordinary_ownership_source_revision: str = ""
     ordinary_ownership_routing_epoch: str = ""
+    ordinary_go_b0_audit_lua_file: str = ""
     lightpanda_b0_service_host: str = ""
     lightpanda_b0_ca_certificate: str = ""
     lightpanda_b0_client_certificate: str = ""

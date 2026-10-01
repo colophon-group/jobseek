@@ -17,6 +17,10 @@ func TestJointTargetSchemaMatchesAppliedMigration(t *testing.T) {
 	if err != nil || string(data) != jointTargetSchema {
 		t.Fatal("retained target schema differs from migration")
 	}
+	data, err = os.ReadFile("../../src/lua/ordinary_joint_admission.lua")
+	if err != nil || string(data) != jointAdmissionLua {
+		t.Fatal("legacy and native joint admission scripts differ")
+	}
 }
 
 func activateJointFixture(t *testing.T, p publicationFixture) *Authority {

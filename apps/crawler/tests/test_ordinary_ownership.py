@@ -20,6 +20,7 @@ from redis.exceptions import ResponseError
 
 import src.redis_queue as rq
 from src.config import settings
+from src.joint_ownership import canonical_metadata, read_b0_audit
 from src.lightpanda import activation
 from src.ordinary_ownership import (
     EPOCH_BARRIER,
@@ -73,6 +74,7 @@ def install_settings(monkeypatch, expected: LegacyOwnership | None) -> None:
 def fake_pool(rows):
     conn = AsyncMock(spec=asyncpg.Connection)
     conn.fetchrow.side_effect = rows
+    conn.fetchval.return_value = False
     conn.transaction = MagicMock()
     conn.transaction.return_value.__aenter__ = AsyncMock()
     conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -80,6 +82,79 @@ def fake_pool(rows):
     pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
     pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
     return pool, conn
+
+
+def test_exact_cross_runtime_metadata_corpus():
+    corpus = json.loads(
+        (
+            Path(__file__).resolve().parents[1] / "go/ordinary-queue/testdata/cold_metadata.json"
+        ).read_text()
+    )
+    assert len(corpus["cases"]) == 15
+    assert len(corpus["invalid"]) == 12
+    for case in corpus["cases"]:
+        actual = canonical_metadata(case["raw"])
+        assert actual == case["canonical"]
+        assert hashlib.sha256(actual.encode()).hexdigest() == case["sha256"]
+    for raw in corpus["invalid"]:
+        with pytest.raises(ValueError):
+            canonical_metadata(raw)
+
+
+def test_installed_b0_audit_requires_exact_protected_file(tmp_path):
+    lua = Path(__file__).resolve().parents[1] / "src/lua/lightpanda_b0_queue.lua"
+    protected = tmp_path / "audit.lua"
+    protected.write_bytes(lua.read_bytes())
+    protected.chmod(0o600)
+    assert read_b0_audit(str(protected)) == lua.read_text()
+    link = tmp_path / "link.lua"
+    link.symlink_to(protected)
+    with pytest.raises(OSError):
+        read_b0_audit(str(link))
+    protected.chmod(0o622)
+    with pytest.raises(ValueError):
+        read_b0_audit(str(protected))
+    protected.chmod(0o600)
+    protected.write_bytes(lua.read_bytes() + b"\n")
+    with pytest.raises(ValueError):
+        read_b0_audit(str(protected))
+
+
+async def test_unselected_claim_barrier_refuses_joint_intent():
+    pool, conn = fake_pool([None])
+    conn.fetchval.return_value = True
+    with pytest.raises(OrdinaryOwnershipError):
+        async with legacy_ownership_barrier(pool, None):
+            pytest.fail("unselected legacy owner entered claim during intent")
+
+
+async def test_missing_installed_audit_redacts_startup_error(monkeypatch, tmp_path):
+    expected, _ = expectation()
+    install_settings(monkeypatch, expected)
+    monkeypatch.setattr(
+        settings, "ordinary_go_b0_audit_lua_file", str(tmp_path / "secret-audit.lua")
+    )
+    pool, conn = fake_pool([])
+    with pytest.raises(OrdinaryOwnershipError, match="^ordinary ownership rejected$"):
+        await prepare_legacy_ownership(pool)
+    conn.execute.assert_not_awaited()
+
+
+async def test_unselected_pipeline_cannot_claim_during_joint_intent(monkeypatch):
+    from src.workers import pipeline
+
+    pool, conn = fake_pool([None])
+    conn.fetchval.return_value = True
+    claimed = AsyncMock()
+    monkeypatch.setattr(pipeline, "claim_work", claimed)
+    shutdown = asyncio.Event()
+    # Signal the real loop on rejection, without mocking its ownership barrier.
+    logger = MagicMock()
+    logger.warning.side_effect = lambda *_a, **_kw: shutdown.set()
+    monkeypatch.setattr(pipeline, "log", MagicMock(bind=MagicMock(return_value=logger)))
+    await asyncio.wait_for(pipeline._discovery_worker(0, pool, MagicMock(), shutdown), timeout=2)
+    claimed.assert_not_awaited()
+    conn.fetchval.assert_awaited_once()
 
 
 async def test_legacy_startup_requires_explicit_active_identity(monkeypatch):
@@ -97,7 +172,7 @@ async def test_legacy_startup_requires_explicit_active_identity(monkeypatch):
     with pytest.raises(OrdinaryOwnershipError, match="^ordinary ownership rejected$"):
         await prepare_legacy_ownership(pool)
     install_settings(monkeypatch, expected)
-    pool, conn = fake_pool([row, dict(last_value=7, is_called=True)])
+    pool, conn = fake_pool([row, dict(last_value=7, is_called=True), None])
     assert await prepare_legacy_ownership(pool) == expected
     assert conn.execute.await_args_list[0].args == (
         "SELECT pg_advisory_xact_lock_shared($1)",
@@ -357,7 +432,7 @@ async def test_real_b0_only_epoch_reservation_preserves_active_ordinary_owner():
         assert await activation._reserve_routing_epoch(pool) == before + 1
 
 
-async def test_real_b0_only_epoch_reservation_preserves_pending_joint_journal():
+async def test_real_b0_only_epoch_reservation_preserves_pending_joint_journal(monkeypatch):
     async with private_active_plan() as (pool, expected, _payload):
         await pool.execute(
             "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1",
@@ -392,6 +467,15 @@ async def test_real_b0_only_epoch_reservation_preserves_pending_joint_journal():
             body,
         )
         try:
+            # Both a new unselected process and its already running claim loop
+            # must stop before popping otherwise due private ordinary work.
+            async with private_redis(monkeypatch) as client:
+                await seed_private_queue(client)
+                snapshot_before = await queue_snapshot(client)
+                with pytest.raises(OrdinaryOwnershipError):
+                    async with legacy_ownership_barrier(pool, None):
+                        await rq.claim_work()
+                assert snapshot_before == await queue_snapshot(client)
             with pytest.raises(activation.ActivationError, match="coordinated recovery"):
                 await activation._reserve_routing_epoch(pool)
             assert (
