@@ -114,7 +114,7 @@ Unaware callers reject an installed projection; both planned callers reject
 missing/corrupt routing, including complete Redis loss. Supported activation
 must stop and replace every old writer before installing these expectations.
 
-There is no production activation command for this library. Before activation,
+There is no supported production selection wrapper for this library. Before activation,
 the supported all-writer release must install the exact startup/projection
 identities and full native processing, prove installed ownership and coordinate
 B0's shared epoch. Private tests use direct SQL for isolated owner fixtures and
@@ -180,10 +180,11 @@ failure/retry, atomic activation rollback/retry, wrong B0 route/selectors/record
 canonical/Redis config drift and corrupt routing types. A real private Redis
 no-save shutdown and fresh process verify durable RDB projection/witness and B0
 records/guards. Canonical rows/deadlines/receipts and every other Redis key remain
-unchanged. These are internal library primitives with no installed coordinator
-command or production selection path. They do not transfer B0 tasks, substitute
-for a complete PG-derived B0 transfer manifest, prove actual coordinator-process
-interruption, attest all-writer host quiescence, or implement full cold reversal.
+unchanged. Protected source-bound native coordinator commands now expose these
+primitives, with real executable SIGKILL/restart proof after SAVE and before SQL
+publication commit. They have no supported production selection wrapper. They do
+not transfer full B0 tasks, substitute for a complete PG-derived B0 transfer
+manifest, attest all-writer host quiescence, or implement full cold reversal.
 
 Migration `0038` adds the durable joint ordinary/B0 transition journal. Internal
 native `BeginColdOwnershipTransition` commits one canonical intent binding the
@@ -191,7 +192,8 @@ prepared cohort, prior ordinary/B0 identities and exact active/target/rollback
 release and host-cold evidence digests before allocating an epoch. A digest is
 an integrity binding; the supported ADR006 host wrapper must independently
 verify those releases and attest every writer stopped under its mutation lock.
-These primitives have no production CLI or activation/startup path yet.
+Protected native commands expose exact intent/reservation/publication/activation;
+the all-writer host wrapper and production selection path remain to implement.
 
 `ReserveColdOwnershipEpoch` revalidates that exact intent and fresh canonical/
 Redis cohort, allocates one new shared epoch, retires the old ordinary owner,
@@ -207,9 +209,10 @@ Real private database tests prove initial/replacement reservation, retirement,
 barrier ordering, configuration/source rejection before allocation, a forced SQL
 failure after sequence advance/retirement, independent-connection recovery and
 uncertain-commit retry. Full canonical rows, deadlines, receipts and Redis state
-remain unchanged. This does not yet prove joint Redis/B0 publication, activation,
-actual coordinator-process interruption, host/container quiescence or full cold
-reversal. Implement and verify those phases before selecting ordinary Go.
+remain unchanged. Subsequent publication fixtures and the protected native
+executable now prove joint routing, activation and actual coordinator-process
+interruption/recovery. Host/container quiescence and full cold reversal still need
+implementation and proof before selecting ordinary Go.
 
 `Authority.WriteGreenhouseRichBatch` now persists one prepared 1–500 posting
 chunk through installed ownership and exact Redis/PG attempt authority. It uses

@@ -66,7 +66,10 @@ func ReadOwnershipAdminConfig(getenv func(string) string, installed string, insp
 	return c, nil
 }
 
-func readOwnershipCohort(path string) ([]string, error) {
+func readProtectedOwnershipFile(path string, limit int64) ([]byte, error) {
+	if !filepath.IsAbs(path) || strings.ContainsRune(path, 0) || limit < 1 {
+		return nil, ErrStartup
+	}
 	// O_NONBLOCK also prevents a raced FIFO/device replacement from hanging the
 	// one-shot tool; O_NOFOLLOW rejects a symlink before opening its target.
 	fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
@@ -76,10 +79,18 @@ func readOwnershipCohort(path string) ([]string, error) {
 	file := os.NewFile(uintptr(fd), "ordinary-cohort")
 	defer file.Close()
 	info, err := file.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0o022 != 0 || info.Size() > cohortFileLimit {
+	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0o022 != 0 || info.Size() > limit {
 		return nil, ErrStartup
 	}
-	data, err := io.ReadAll(io.LimitReader(file, cohortFileLimit+1))
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil || len(data) == 0 || int64(len(data)) > limit {
+		return nil, ErrStartup
+	}
+	return data, nil
+}
+
+func readOwnershipCohort(path string) ([]string, error) {
+	data, err := readProtectedOwnershipFile(path, cohortFileLimit)
 	var ids []string
 	if err != nil || len(data) > cohortFileLimit || json.Unmarshal(data, &ids) != nil || len(ids) < 1 || len(ids) > 20000 {
 		return nil, ErrStartup

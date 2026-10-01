@@ -18,8 +18,12 @@ func main() {
 	health := len(os.Args) == 2 && os.Args[1] == "--health"
 	stage := len(os.Args) == 2 && os.Args[1] == "--stage-ownership"
 	inspect := len(os.Args) == 2 && os.Args[1] == "--inspect-ownership"
-	if len(os.Args) != 1 && !identity && !health && !stage && !inspect {
-		fmt.Fprintln(os.Stderr, "use no arguments, --identity, --health, --stage-ownership or --inspect-ownership")
+	cold := ""
+	if len(os.Args) == 2 {
+		cold = worker.ColdAdminOperation(os.Args[1])
+	}
+	if len(os.Args) != 1 && !identity && !health && !stage && !inspect && cold == "" {
+		fmt.Fprintln(os.Stderr, "ordinary worker argument rejected")
 		os.Exit(2)
 	}
 	revision, err := worker.InstalledBuildRevision(sourceRevision)
@@ -40,6 +44,22 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if cold != "" {
+		config, err := worker.ReadColdAdminConfig(os.Getenv, revision, cold)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ordinary cold coordinator environment rejected")
+			os.Exit(1)
+		}
+		result, err := worker.RunColdAdmin(ctx, config)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ordinary cold coordinator operation rejected")
+			os.Exit(1)
+		}
+		if json.NewEncoder(os.Stdout).Encode(result) != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	if stage || inspect {
 		config, err := worker.ReadOwnershipAdminConfig(os.Getenv, revision, inspect)
 		if err != nil {

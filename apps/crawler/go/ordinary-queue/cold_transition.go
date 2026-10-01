@@ -22,8 +22,8 @@ const coldTransitionVersion = "jobseek.crawler.cold-transition/v1"
 
 // ColdTransitionSpec binds a protected host coordinator's independently verified
 // ADR006 evidence. Digests do not prove quiescence or authenticate a release.
-// These internal database primitives have no production command/startup path;
-// the supported host wrapper must hold its mutation lock and attest ALL writers
+// Protected native commands expose these primitives without selecting a host
+// release. The supported host wrapper must hold its mutation lock and attest ALL writers
 // stopped before reservation, publication, recovery or reversal.
 type ColdTransitionSpec struct {
 	Version                    string `json:"version"`
@@ -71,6 +71,16 @@ func decodeColdTransition(body, digest string) (ColdTransitionSpec, error) {
 	canonical, err := json.Marshal(s)
 	if err != nil || !bytes.Equal(canonical, []byte(body)) {
 		return ColdTransitionSpec{}, ErrAuthorityLost
+	}
+	return s, nil
+}
+
+// DecodeColdTransitionSpec validates exact canonical protected-file bytes and
+// their caller-supplied digest. It grants no ownership or host attestation.
+func DecodeColdTransitionSpec(body, digest string) (ColdTransitionSpec, error) {
+	s, err := decodeColdTransition(body, digest)
+	if err != nil {
+		return ColdTransitionSpec{}, ErrConfiguration
 	}
 	return s, nil
 }

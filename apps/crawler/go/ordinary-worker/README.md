@@ -188,3 +188,56 @@ output/freshness/queue/cost, the rollback window and production Python/Playwrigh
 Chromium retirement. Python's effective direct transport remains100/20/five-second,
 HTTP1.1/20redirects/separate30-second operations; admit deployment/profile TLS,
 cookie, body-size and task-duration compatibility against that baseline.
+
+## Protected cold coordinator primitives
+
+The compiled-source-bound executable now accepts six distinct one-shot commands:
+
+| Argument / matching `ORDINARY_GO_WORKER_MODE` | Operation |
+| --- | --- |
+| `--cold-b0-target` / `cold-b0-target` | Capture exact fresh PG/Redis fixed B0 board configurations. |
+| `--cold-begin` / `cold-begin` | Retain exact canonical intent before any sequence allocation. |
+| `--cold-reserve` / `cold-reserve` | Allocate or inspect the exact intent's fresh reservation. |
+| `--cold-prepare` / `cold-prepare` | Retain pending Redis witness before committed publishing phase. |
+| `--cold-publish` / `cold-publish` | Audit actual B0 queues and publish/persist/read back joint routing. |
+| `--cold-activate` / `cold-activate` | Atomically install the exact ordinary DB owner and active journal. |
+
+All require protected database/Redis URLs, compiled matching
+`ORDINARY_OWNERSHIP_SOURCE_REVISION` and canonical positive
+`ORDINARY_COLD_ROUTING_EPOCH`. Worker ownership epoch/plan/projection and cohort
+file fields must be absent. Capture uses the current caller-attested epoch;
+begin/reserve bind the intent's previous epoch, including pending burned-epoch
+recovery. Prepare/publish/activate require the exact reserved epoch and
+`ORDINARY_COLD_PLAN_SHA256`; neither a high-water nor a latest-plan selector is
+accepted. PostgreSQL pool capacity is one; statements are bounded to ten seconds,
+each critical transaction to fifteen and the one-shot operation to thirty.
+
+Capture requires `ORDINARY_COLD_B0_NAMESPACE`, `ORDINARY_COLD_B0_SHARD_ID`,
+`ORDINARY_COLD_B0_COHORT` and `ORDINARY_COLD_B0_LUA_FILE`. Its bounded JSON output
+contains a target SHA256 plus canonical `target` object with board IDs/slugs and
+configuration hashes. The host must durably save those exact object bytes; no
+credentials or raw configuration are returned. Capture creates no ownership.
+
+Other operations require `ORDINARY_COLD_INTENT_FILE` and
+`ORDINARY_COLD_INTENT_SHA256`. Except reservation, they also require
+`ORDINARY_COLD_B0_TARGET_FILE`, `ORDINARY_COLD_B0_TARGET_SHA256` and
+`ORDINARY_COLD_B0_LUA_FILE`. Reservation rejects those unused fields. Files must
+be absolute regular non-symlink files, not group/other writable; intent/target/Lua
+limits are 4 KiB/16 KiB/128 KiB. Canonical JSON rejects duplicate/unknown fields,
+trailing data and reformatted bytes even with a matching hash. The actual B0 Lua
+must match its reviewed SHA256. Input hashes and source must bind the exact intent;
+the immutable journal binds the reserved epoch/plan before publication effects.
+
+Outputs identify the completed primitive and exact documents, not host readiness
+or permission to start services. Errors are constant and omit inputs/credentials.
+A real executable fixture kills publication with SIGKILL after MSET, acknowledged
+SAVE and readback, before PostgreSQL commit. Its retained publishing intent and
+staged plan recover through exact publication/activation retries without changing
+canonical rows/deadlines/receipts or other Redis keys. Missing witnesses remain
+contained. The installed-image workflow runs this fixture on both architectures.
+
+These commands do not stop services, deploy releases, transfer full PG-derived
+B0 tasks, verify host-cold/release/rollback evidence or implement reversal. The
+supported ADR006 wrapper must own those operations under its mutation lock before
+these primitives can select production authority. Ordinary production remains
+Python until that complete protocol, readiness and full reversal are proven.
