@@ -738,3 +738,45 @@ future deadlines. These commands do not implement host selection or reversal.
 Actual containers/public fetch/effective settings, all enabled profiles/runtime
 consumers, fleet output/freshness/queue/cost, actual rollback window and retirement
 of production Python/Playwright/Chromium remain part of the active full goal.
+
+
+## Native joint runtime admission, October 1
+
+Runtime source `d1a2316f0d1662e06aa95f6924c3a09840ec3ae2` and migration 0040 retain
+immutable canonical B0 targets with publishing phase, require them before later
+phases and refuse schema downgrade through target/journal history. Each reserved
+plan binds to one journal. Native joint startup requires protected installed bytes
+of the reviewed actual B0 Lua; missing/untrusted/symlink inputs fail before claims.
+
+Every native claim/write/heartbeat/host-circuit/settlement re-attests exact active
+journal/plan/source/epoch, retained target and fresh PG/Redis B0 configurations.
+One read-only EVAL combines the unmodified actual B0 conservation audit with exact
+fixed selectors and permanent ordinary projection/joint witness/B0 route/producer
+owner. Healthy conserved live B0 inflight/dead/terminal states remain valid.
+Unselected native claimants refuse unfinished joint intent.
+
+Real tests reject 15 authority faults before pop and conserve all state. An actual
+B0 inflight claim remains compatible with ordinary work; witness loss fences
+heartbeat, canonical callback and settlement of an actual completed future-due
+receipt. The actual native worker becomes ready under joint authority and exits
+without pop or canonical/future queue mutation after witness loss. Full queue and
+worker race suites passed (36.234s/30.134s), 290 mandatory legacy tests passed with
+zero skips, 126 repository checks and vet/ruff/pyright passed. Final complete
+migration upgrade/downgrade/re-upgrade passed in the owned private cache. Fixtures
+stopped, production unchanged. See
+[portable native joint evidence](evidence/go-ordinary-joint-admission-2026-10-01.json).
+
+Previous exact `79da5b27a` passed Linux/full CI/both installed images. Both artifacts
+were downloaded and verified, with all four real executable fixtures and matching
+34 asset hashes. Whole B0 36889628434 is still running. These reports do not admit
+later native joint source; fresh exact-head checks remain required.
+
+Next complete legacy ordinary joint admission and the supported ADR006 all-writer
+wrapper, full PG-derived B0 transfer, verified release/rollback/data/spec/env/image/
+sentinel/receipt identities, readiness, remaining process-interruption seams and
+full cold reversal (including changed/disabled cohorts and receipt/future-due
+conservation). This native component proof deliberately performs no public fetch;
+full container/effective settings/profile and fleet resource/cost admission remain.
+All enabled effective profiles/runtime consumers, canonical/publisher/freshness/
+queue parity, actual rollback window and retirement of production Python/
+Playwright/Chromium remain in the active full migration goal.

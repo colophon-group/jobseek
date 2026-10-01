@@ -1,14 +1,35 @@
 # Go and Lightpanda migration continuation plan
 
-Current verified publication checkpoint, October 1: `a487631ce` passed all four
-exact-head workflows: Linux AMD64/ARM64 PostgreSQL/Redis (36877346278), full CI
-(36877544747), both installed-image architectures (36877551175) and whole B0
-(36877346343). Both downloaded image artifacts bind the exact source/image/binary
-and pass all three prior executable fixtures with matching 34 asset hashes.
-Actual deploy gate refuses the draft. These are component/source results, not
-full production-container/public-fetch or later-source admission.
+Current verified coordinator checkpoint, October 1: `79da5b27a` passed Linux
+AMD64/ARM64 PostgreSQL/Redis (36889628805), full CI (36889641277) and both installed
+images (36889645493). Both downloaded artifacts bind source/image/binary and pass
+all four executable fixtures, including coordinator SIGKILL/recovery, with matching
+34 asset hashes. Whole B0 36889628434 is still running. Actual deploy gate refuses
+draft. Older results do not admit later native joint runtime source.
 
-Latest runtime source `6f0ceca14fed1ec34ed92ba289a3d5173cb1a6ce` exposes seven
+Latest runtime source `d1a2316f0d1662e06aa95f6924c3a09840ec3ae2` closes native joint
+runtime admission through migration 0040. Publishing commits an immutable canonical
+B0 target; later phases require that retained witness, and downgrade refuses
+history. A unique reserved-plan binding identifies the exact active journal.
+Native startup/claim/write/heartbeat/host-circuit/settlement re-attest that journal,
+source/epoch/plan, target and fresh PG/Redis B0 configurations. One read-only EVAL
+uses the actual source-pinned B0 conservation audit and exact fixed selectors and
+permanent ordinary projection/joint marker/B0 route/producer owner. Healthy live
+inflight/dead/terminal B0 states remain valid; this is not cutover quiescence.
+Protected installed B0 Lua bytes are required for a journalled native owner.
+Unselected native claimants cannot run through unfinished intent.
+
+Fifteen real fault cases reject before pop without state changes. Actual B0
+inflight remains compatible with ordinary processing; lost joint witness fences
+heartbeat, canonical callback and settlement of a completed future-due receipt.
+The real worker becomes ready under joint authority, then exits without pop or
+canonical/future queue effects after witness loss. Full queue/worker races passed
+(36.234s/30.134s), 290 mandatory legacy tests passed without skips, 126 repository
+checks plus vet/ruff/pyright passed, and upgrade/downgrade/re-upgrade passed.
+See [native joint evidence](evidence/go-ordinary-joint-admission-2026-10-01.json).
+Fresh exact pushed-source Linux/full CI/both installed-image/B0 checks are required.
+
+Coordinator runtime source `6f0ceca14fed1ec34ed92ba289a3d5173cb1a6ce` exposes seven
 protected compiled-source-bound coordinator commands: B0 target capture, exact
 canonical intent, reservation, retained-history inspection, preparation, publication
 and activation. Exact
@@ -43,11 +64,11 @@ Fresh pushed-source Linux/full CI/installed-image/B0 checks remain required.
 Protected commands now expose the completed native primitives; no supported
 production selection wrapper exists yet. They do not replace complete PG-derived
 B0 task-transfer/sentinel/receipt evidence or attest all-writer host quiescence,
-release/rollback identities and readiness. Next integrate the supported host
-wrapper and ordinary worker joint journal/witness admission, prove all remaining
+release/rollback identities and readiness. Next complete the remaining legacy ordinary joint guard and supported host
+wrapper, prove all remaining
 interruption seams and full cold reversal (including changed/disabled cohorts).
 Do not redo completed staging, worker process/crash, intent/reservation,
-publication/activation or the protected coordinator commands.
+publication/activation, protected coordinator commands or completed native joint guard.
 Production ordinary remains Python and the full migration goal is active.
 Running B0 and installed-image measurements finish while the newest pending
 candidate waits; each source needs its own report and admission.
