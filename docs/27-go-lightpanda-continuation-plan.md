@@ -39,20 +39,32 @@ mandatory real legacy PostgreSQL/Redis attestation tests. Rich processing source
 and owned atomic 500-posting insert/touch/relist/description batches; both Linux
 architectures passed run 36796933484. Follow-up `449e58052` rechecks the current
 board publisher reservation under the canonical write lock and passed local
-real database/queue races. Fresh Linux/required/installed/admission proof for the
-follow-up is pending; the prior green run does not cover it. This remains
-unselected in production. Complete native inventory/lifecycle processing and
-the installed executable next.
+real database/queue races. Checkpoint `01b7366f5` subsequently passed both Linux
+architectures in run 36797683763 and full CI in run 36797708877; its B0 admission
+run 36797683889 was still measuring when the next implementation was saved.
+Those results do not cover later source or grant merge authority for a draft.
+
+Latest implementation `8a6f1bc08` binds owned Greenhouse batches to a terminal
+board cycle. It applies disappearance/empty/partial/confirmed-contraction,
+quarantine/backoff, provider-404 and publisher-reservation policies under the
+same PostgreSQL attempt authority and commits the canonical due time with the
+receipt. Enabled suspect/quarantined/gone_pending/gone states retain their
+installed native owner; fresh PostgreSQL metadata avoids stale Redis baseline
+and confirmation state. Local real database/queue proof includes 41 actual
+Python decision cases, 10 lifecycle integration groups and commit-before-ack
+recovery in changed board states. See the
+[portable lifecycle evidence](evidence/go-ordinary-lifecycle-2026-10-01.json).
+Fresh current-head Linux/full/installed/admission checks remain required.
+Production ordinary workers remain Python.
 See the
 [ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
 It selects no ordinary worker in production. Next, normalize/deduplicate the full
-Greenhouse inventory, connect native rich preparation and owned batch writes,
-and implement complete/truncated/filtered, empty/drop/confirmed-drop/disappearance,
-failure/circuit/publisher policy and database scheduling. Extend and prove owned
-lifecycle recovery states: the current active-only observation would strand a
-retained member after a legitimate suspect/quarantine/gone transition while
-legacy excludes it. Preserve the full Redis claim snapshot through settlement
-and recovery when publishing lifecycle metadata. Then prove the installed
+Greenhouse inventory and connect native rich preparation, owned batch writes
+and the terminal cycle into the native executable. Complete shared HTTP transport,
+retry/circuit/deferral behavior, startup/shutdown/heartbeat and typed provider/
+publisher response handling. Preserve the full Redis claim snapshot through
+settlement and recovery; terminal lifecycle metadata is read from PostgreSQL.
+Then prove the installed
 executable and exclusive ownership with fault/cold-reversal evidence, followed by
 every enabled profile and runtime consumer before final Python/Chromium
 retirement. The full migration goal remains active.

@@ -1,0 +1,58 @@
+{
+  "schema": "jobseek.migration.ordinary-lifecycle-evidence/v1",
+  "runtime_source_head": "8a6f1bc08724591ef544259070555d857ee88086",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "draft": true,
+  "selected_in_production": false,
+  "local": {
+    "source_head": "8a6f1bc08724591ef544259070555d857ee88086",
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "migration": "head/down0034/head passed",
+    "full_native_race_seconds": 23.724,
+    "production_reaper_race_seconds": 4.469,
+    "captured_disappearance_cases": 21,
+    "captured_provider_gone_cases": 20,
+    "real_lifecycle_db_test_groups": 10,
+    "python_ownership_and_sql_tests": 12,
+    "node_workflow_runtime_version_documentation_tests": 130,
+    "vet_module_format_ruff_actionlint": "passed",
+    "cleanup": true
+  },
+  "previous_checkpoint": {
+    "source_head": "01b7366f503a6145bf83dfe074282afa69ed78c8",
+    "linux_run": 36797683763,
+    "linux_conclusion": "success",
+    "full_ci_run": 36797708877,
+    "full_ci_conclusion": "success",
+    "b0_admission_run": 36797683889,
+    "b0_admission_state": "in_progress at 2026-10-01T01:15:34Z",
+    "limitation": "precedes lifecycle source; no current-head or draft merge authority"
+  },
+  "verified": [
+    "fresh PostgreSQL discovery start and metadata; only committed chunks contribute inventory accounting",
+    "failed chunk rejects success/absence receipt; generic failure remains available",
+    "Python disappearance median/drop/blast guards, exact three-cycle contraction and 5000 missing cap",
+    "truncated results skip absence; empty results delist after six confirmations",
+    "five-strike recoverable quarantine and capped exponential canonical schedule",
+    "enabled suspect/quarantined/gone_pending/gone native claims and successful recovery",
+    "exact token API HTTP404 spaced confirmations/daily recovery probes/terminal delisting",
+    "publisher reservation propagation without visibility or success/failure accounting changes",
+    "already reserved skip without fetch; no missing header grants permission",
+    "terminal SQL rollback retains prior chunks and rejects receipt/absence/metadata/due effects",
+    "canonical committed deadline conserves queue settlement and commit-before-ack recovery after changed lifecycle status",
+    "nine frozen lifecycle statements match actual Python SQL and mandatory fresh decision-oracle regeneration"
+  ],
+  "intentional_difference": "Reservation skips persist a future canonical PostgreSQL deadline with the terminal receipt, closing the legacy Redis-only skip deadline gap.",
+  "not_verified": [
+    "current lifecycle Linux/full required/installed/admission checks",
+    "complete inventory normalization/URL sanity/canonical dedup/filter pipeline integrated with native rich preparer and writer",
+    "native HTTP client/retry/provider circuits/deferrals/response publisher checks",
+    "native ordinary executable with embedded revision and installed startup/heartbeat/shutdown/fault/crash proof",
+    "supported all-writer ownership/projection installation/cutover and cold reversal with shared B0 epoch",
+    "actual fleet canonical output/freshness/queue conservation/resources/whole-service cost",
+    "all enabled profiles/runtime consumers/rollback window and Python/Playwright/Chromium retirement"
+  ],
+  "next": "Implement native full-inventory normalization and exact-revision ordinary executable using completed ownership, rich preparation/batch and lifecycle APIs; prove transport/circuits/deferrals and installed fault/cutover/reversal before selecting the first cohort. Continue every enabled profile and consumer through cost/window/retirement; full goal remains active."
+}

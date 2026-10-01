@@ -222,13 +222,62 @@ that boundary. The native executable, capture/filter/completeness pipeline,
 failure/circuit/publisher policy and installed fault/cold-reversal evidence remain
 required. No current fixture proves whole-inventory or fleet parity.
 
-Before terminal integration, extend/prove owned lifecycle states. Canonical
-observation currently requires `active`; Python can legitimately move an enabled
+At the rich-only checkpoint, canonical observation required `active`; Python can legitimately move an enabled
 board to `suspect`, `quarantined`, `gone_pending` or `gone` and continue recovery
 polls. A retained member in those states would currently be rejected by native
-claims and excluded by legacy. Never activate this incomplete state contract.
+claims and excluded by legacy. The lifecycle implementation below resolves that library gap.
 Metadata publication must also preserve the full immutable claim snapshot through
 terminal settlement/commit-before-ack recovery.
+
+## Native Greenhouse lifecycle checkpoint, October 1
+
+Implementation `8a6f1bc08724591ef544259070555d857ee88086` adds an opaque cycle
+capturing PostgreSQL discovery start before fetch, counting only committed rich
+chunks and retaining unique URL identities. A failed chunk prevents success/
+absence finalization. Success, failure, provider-gone and reservation paths
+commit their terminal effects and canonical deadline with the opaque attempt
+receipt; queue settlement still validates that exact committed deadline.
+
+Enabled `suspect`, `quarantined`, `gone_pending` and `gone` states remain eligible
+for their installed native owner. Lifecycle baseline/confirmation state comes
+from fresh locked PostgreSQL metadata; the full detached Redis claim snapshot
+remains unchanged through settlement and crash recovery. Complete contractions
+require three identical inventories/config fingerprints and at most 5,000
+missing rows. Partial/filtered inventories retain the existing guard behavior;
+truncated results skip absence. Empty runs retain six-confirmation delisting,
+and generic failures retain recoverable five-strike quarantine/daily-capped due.
+
+Provider disappearance requires the exact token API endpoint and HTTP 404,
+spaced six-hour confirmations, a third confirmation after recent success, and
+daily probes after a confirmed gone transition. Nonempty responses recover the
+same selected board. Header reservations are recorded monotonically with their
+resource/policy provenance; pre-existing reservations can finish without fetch.
+Listing visibility and success/failure accounting are preserved. Native skips
+persist a future PostgreSQL deadline with the receipt, intentionally closing
+the legacy worker's Redis-only reservation skip schedule gap. Missing headers
+never clear the flag. This is not complete publisher-policy or network proof.
+
+The mandatory CI workflow regenerates 21 disappearance and 20 provider-gone
+decision cases from the actual Python processor/policy. Three Python contract
+tests bind the native rich expressions and nine lifecycle SQL statements.
+Local PostgreSQL18.6 migration head/down0034/head passed; full native/private
+Redis races passed in 23.724 seconds, production reaper races in 4.469 seconds,
+12 ownership/SQL Python tests and native rich preparation races passed. Ten
+lifecycle database test groups cover stale-cache repeated cycles, recovery,
+partial/rejected effects, publisher propagation, actual terminal SQL rollback
+retaining earlier chunks, and commit-before-ack recovery after a lifecycle
+state change. Go vet/tidy/format, Ruff, workflow lint and 130 workflow/runtime/
+version/documentation tests passed. Fixtures shut down and production was unchanged.
+The [portable lifecycle evidence](evidence/go-ordinary-lifecycle-2026-10-01.json)
+records exact source and remaining limits.
+
+Prior checkpoint `01b7366f503a6145bf83dfe074282afa69ed78c8` passed both Linux
+architectures in [run 36797683763](https://github.com/colophon-group/jobseek/actions/runs/36797683763)
+and full CI in [run 36797708877](https://github.com/colophon-group/jobseek/actions/runs/36797708877).
+Its B0 admission was still measuring; those earlier results do not validate this
+implementation or authorize merging a draft. Fresh current-head checks remain
+required. PR #10210 remains draft, v0.13.904 remains an unselected candidate,
+and ordinary production workers remain Python.
 
 ## Next delivery and completion gates
 
@@ -240,8 +289,9 @@ Stored family/browser flags do not establish effective profile or native coverag
 
 Prioritize a bounded standard Greenhouse HTTP/API cohort after effective
 configuration validation. Ownership/selection and rich batch persistence are
-prepared. Connect native preparation/batches to complete inventory/lifecycle
-processing, the native executable and supported all-writer startup/projection/cutover while
+prepared, including terminal board lifecycle. Normalize/deduplicate the full
+inventory and connect preparation/batches/cycle to the native executable and
+supported all-writer startup/projection/cutover while
 preserving unselected ready work, producer/repair/deferred/never-successful
 behavior and the shared B0 epoch. Implement native monitor/detail fetch,
 enrichment, canonical persistence,
