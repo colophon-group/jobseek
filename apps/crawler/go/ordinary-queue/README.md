@@ -395,3 +395,38 @@ claims remain blocked, and the schema refuses a reversed phase without completed
 restoration evidence. The supported ADR006 host wrapper, PG-derived B0 transfer,
 durable cross-store restoration and complete prior-release readiness remain to
 implement and prove before any production ordinary owner is selected.
+
+## Native PostgreSQL-derived B0 rollback preparation
+
+`BuildColdB0RollbackPlan` now prepares an opaque deterministic rollback manifest
+from exact retained reversal/source/retirement identities and an explicit source
+queue epoch. The source-pinned actual B0 audit and a read-only atomic observation
+require permanent route/record/producer/guard evidence, exact fixed selectors,
+conserved ready/dead/terminal records and no inflight work. A second observation
+must match while canonical rows remain locked under the shared mutation barriers.
+No allocator high-water or latest route is adopted.
+
+PostgreSQL supplies current URL/domain/board/hash/interval and eligibility.
+Ready records preserve their original transfer kind and exact decimal score;
+dead/terminal records use canonical future due time and current parser lane.
+Disabled, gone, inactive, missing and unscheduled rows drop. Historical Go SQL
+fence IDs remain in the manifest; live DB leases or matching legacy inflight/
+dead-letter suffix authority reject. Changed candidate configuration and lost
+ordinary joint witnesses do not prevent preparation; complete Redis task-authority
+loss remains contained. Exact bigint hashes, microsecond due times and first-time
+intent survive without fetch/parser/enrichment/database callback replay.
+
+Observation is bounded to 2048 records/fence IDs, 32 MiB record/manifest bytes,
+65536 entries per legacy authority index, and 16 KiB canonical source URLs.
+Exceeding a bound rejects before effects; it does not discard enabled work.
+The plan binds the caller's source receipt digest, but independent receipt/
+sentinel/release/host verification belongs to the supported ADR006 wrapper.
+
+Real private tests feed the native manifest to the unchanged actual rollback Lua
+for ready/dead/terminal work and changed/disabled/deleted configurations. These
+fixtures prove compatible restored schedule/config/drop effects while leaving
+canonical rows/receipts/future deadlines and the reversing journal untouched.
+The production API prepares only: durable plan retention before Redis mutation,
+SAVE/readback/tombstone recovery, exact historical fence cleanup, sentinel/receipt
+recovery, restored ordinary/B0 ownership and full release readiness remain to
+implement and prove. No protected restore command or production owner is selected.
