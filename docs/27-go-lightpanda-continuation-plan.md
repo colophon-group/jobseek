@@ -1,5 +1,45 @@
 # Go and Lightpanda migration continuation plan
 
+Completion-bound publication source `3dc88089ea55bf5f3953ed8e37f8209d55415fda`
+adds protected native `cold-forward-prepare`, `cold-forward-publish` and
+`cold-forward-activate` commands. They require exact immutable forward approval
+and completion digests, original protected request/intent, shared epoch/ordinary
+plan/target and the fixed authenticated producer. Before activation, each effect
+rechecks fresh canonical rows and the complete transferred snapshot under the
+same exclusive barriers. Only exact known prior/pending/published witness pairs
+are accepted across SQL commit seams. Missing evidence is never reconstructed.
+Any retained forward approval blocks older publication primitives, including
+while transfer remains merely prepared. Active canonical schedule progression
+preserves historical completion identity; existing current ownership audits apply.
+
+Focused real PG/Redis tests pass (6.359s), full queue/worker/exporter races pass
+(54.516s/32.030s/4.851s), and all 295 legacy tests pass without skips. The tests
+cover wrong/missing/prepared completion, drift, bypass refusal, both Redis-to-SQL
+witness seams, RDB reload, exact activation and complete logical queue/canonical
+conservation. Both Linux architectures cross-compile and integration vet pass.
+The combined actual root producer/PG/CLI fixture now extends recovered application
+through the three completion-bound publication commands and exact activation
+retry; fresh execution is required. See
+[publication evidence](evidence/go-b0-native-forward-publication-2026-10-02.json).
+
+Preceding application source `f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa` passes
+Linux PG17/Redis 36931282603, full CI 36931290132 and both installed images
+36931294380. Both actual producer/CLI lost-reply/SIGKILL/RDB/sentinel-restart logs
+and both image artifacts are downloaded and verified: exact source/CA, four
+executable fixtures and 34 matching asset hashes. Whole B0 36931282462 is still
+running and must finish without cancellation or an observation-driven restart.
+Dormant renderer 36931282270 passes with publication/deployment skipped. This
+preceding evidence does not admit the new publication extension. The actual
+deploy gate refuses draft, production ownership is unchanged, and the full goal
+remains active.
+
+After fresh publication admission, complete fresh legacy/prior-native rollback
+ownership at retained retirement R and supported ADR006 all-writer host cutover,
+independent immutable releases, Go-owned sentinel/host receipts and full readiness.
+Every enabled profile/runtime consumer, output/freshness/queue parity, comparable
+whole-service resource/cost admission, exact promotion, actual rollback window and
+production Python/Playwright/Chromium retirement remain delivery requirements.
+
 Native forward-application source `da579a54bbad0014dd5cb494a79409d4231cb552`
 now applies only immutable retained B0 approval through the authenticated producer.
 It classifies every task as exact original source or exact pinned Lua effect and
@@ -338,9 +378,10 @@ description/upload continuity, due times and remaining-owner freshness.
 ### Remaining ownership and host work in dependency order
 
 1. Native PG-derived planning/immutable approval and retained application are
-   implemented by migrations 0043/0044. Verify fresh actual producer/PG/CLI
-   lost-reply/SIGKILL/RDB recovery on both architectures, then require exact
-   completion before joint publication in the supported host workflow. Preserve
+   implemented by migrations 0043/0044. Completion-bound publication and
+   no-bypass ordering are implemented in the native library/protected CLI.
+   Verify fresh actual producer/PG/CLI recovery plus publication on both
+   architectures, then integrate these commands with the supported host workflow. Preserve
    full retained manifests, legacy intent, terminal history and bounded capacity;
    no completed work may replay or disappear during recovery.
 2. Restore both supported rollback targets: a legacy ordinary owner and a prior
