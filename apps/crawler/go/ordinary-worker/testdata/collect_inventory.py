@@ -77,7 +77,7 @@ def capture(name, raw, *, truncated=False):
         "raw_jobs": raw,
         "truncated": truncated,
         "discovered": len(result.urls),
-        "drop_reasons": reasons,
+        "drop_reasons": dict(sorted(reasons.items())),
         "jobs": [
             {
                 "url": url,

@@ -367,9 +367,9 @@
     "truncated": false,
     "discovered": 40,
     "drop_reasons": {
-      "invalid": 8,
+      "bare_host": 3,
       "board_homepage": 2,
-      "bare_host": 3
+      "invalid": 8
     },
     "jobs": [
       {

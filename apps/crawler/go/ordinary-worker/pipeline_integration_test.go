@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
@@ -213,7 +215,7 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 	query := nativeDSN.Query()
 	query.Set("search_path", schema+",public")
 	nativeDSN.RawQuery = query.Encode()
-	store, err := executor.OpenStore(ctx, nativeDSN.String())
+	store, err := executor.OpenOrdinaryLookupStore(ctx, nativeDSN.String())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +252,42 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 	duplicate := input.Jobs[0]
 	duplicate.Title = &last
 	input.Jobs = append(input.Jobs, duplicate)
-	inventory, err := NormalizeGreenhouseInventory(ctx, "https://job-boards.greenhouse.io/fixture", input)
+	rawJobs := make([]map[string]any, 0, len(input.Jobs))
+	for _, job := range input.Jobs {
+		rawJobs = append(rawJobs, map[string]any{"absolute_url": job.URL, "title": job.Title, "content": job.Description, "location": map[string]string{"name": "Zurich"}, "language": job.Language})
+	}
+	payload, err := json.Marshal(map[string]any{"jobs": rawJobs})
+	if err != nil {
+		t.Fatal(err)
+	}
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests++
+		if request.URL.Path != "/v1/boards/fixture/jobs" || request.URL.Query().Get("content") != "true" {
+			t.Error("owned fixture fetched a different provider resource")
+		}
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write(payload)
+	}))
+	t.Cleanup(server.Close)
+	physical := server.Client()
+	t.Cleanup(physical.CloseIdleConnections)
+	client := &http.Client{Transport: testRoundTripper(func(original *http.Request) (*http.Response, error) {
+		request := original.Clone(original.Context())
+		target := *original.URL
+		target.Scheme, target.Host = "http", strings.TrimPrefix(server.URL, "http://")
+		request.URL = &target
+		response, err := physical.Transport.RoundTrip(request)
+		if response != nil {
+			response.Request = original
+		}
+		return response, err
+	})}
+	discovered, err := DiscoverGreenhouse(ctx, client, "fixture")
+	if err != nil || requests != 1 || discovered.Response.Status() != 202 {
+		t.Fatalf("native discovery fixture did not complete one successful GET: %v", err)
+	}
+	inventory, err := NormalizeGreenhouseInventory(ctx, "https://job-boards.greenhouse.io/fixture", discovered.Inventory)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -24,6 +24,7 @@ on:
       - "apps/crawler/src/core/monitor.py"
       - "apps/crawler/src/core/monitors/greenhouse.py"
       - "apps/crawler/src/shared/truncation.py"
+      - "apps/crawler/src/shared/http.py"
       - "apps/crawler/src/lua/claim_work.lua"
       - "apps/crawler/src/lua/heartbeat_task.lua"
       - "apps/crawler/src/lua/complete_task.lua"
@@ -138,12 +139,14 @@ jobs:
           go vet ./...
           go mod tidy -diff
 
-      - name: Regenerate ordinary inventory and URL captures from Python
+      - name: Regenerate ordinary inventory, URL and HTTP captures from Python
         working-directory: apps/crawler
         run: |
           set -euo pipefail
           uv run --frozen python go/ordinary-worker/testdata/collect_inventory.py
           git diff --exit-code -- go/ordinary-worker/testdata/python_inventory.json go/ordinary-worker/testdata/python_urls.json
+          uv run --frozen python go/ordinary-worker/testdata/collect_discovery.py
+          git diff --exit-code -- go/ordinary-worker/testdata/python_discovery.json
 
       - name: Verify assembled native inventory and owned processing pipeline
         working-directory: apps/crawler/go/ordinary-worker
@@ -172,7 +175,7 @@ jobs:
         working-directory: apps/crawler/go/lightpanda-b0-executor
         run: |
           set -euo pipefail
-          go test -race -count=1 -timeout=90s -run '^Test(RichMonitorPreparation|PreparedContent)' ./...
+          go test -race -count=1 -timeout=90s -run '^Test(RichMonitorPreparation|PreparedContent|OrdinaryLookupStore)' ./...
           go vet ./...
           go mod tidy -diff
           test -z "$(gofmt -l .)"
