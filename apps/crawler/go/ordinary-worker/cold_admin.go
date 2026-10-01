@@ -18,12 +18,18 @@ func ColdAdminOperation(argument string) string {
 	switch argument {
 	case "--cold-b0-target", "--cold-begin", "--cold-reserve", "--cold-inspect", "--cold-prepare", "--cold-publish", "--cold-activate", "--cold-reversal-begin", "--cold-reversal-reserve", "--cold-reversal-inspect":
 		return strings.TrimPrefix(argument, "--")
+	case "--cold-b0-rollback-plan", "--cold-b0-rollback-retain", "--cold-b0-rollback-restore", "--cold-b0-rollback-inspect":
+		return strings.TrimPrefix(argument, "--")
 	}
 	return ""
 }
 
 func coldReversalOperation(operation string) bool {
-	return operation == "cold-reversal-begin" || operation == "cold-reversal-reserve" || operation == "cold-reversal-inspect"
+	return operation == "cold-reversal-begin" || operation == "cold-reversal-reserve" || operation == "cold-reversal-inspect" || coldB0RestorationOperation(operation)
+}
+
+func coldB0RestorationOperation(operation string) bool {
+	return operation == "cold-b0-rollback-plan" || operation == "cold-b0-rollback-retain" || operation == "cold-b0-rollback-restore" || operation == "cold-b0-rollback-inspect"
 }
 
 type ColdAdminConfig struct {
@@ -32,26 +38,30 @@ type ColdAdminConfig struct {
 	planSHA, namespace, shard, cohort                     string
 	epoch                                                 int64
 	reversalFile, reversalSHA                             string
+	restoreRequestFile, restoreRequestSHA, restorePlanSHA string
 }
 
 // ColdAdminIdentity reports the completed primitive, not host release readiness
 // or a grant to start services. Target contains only bounded board identities and
 // configuration digests; the host must durably retain its exact canonical bytes.
 type ColdAdminIdentity struct {
-	Version         string          `json:"version"`
-	Operation       string          `json:"operation"`
-	SourceRevision  string          `json:"source_revision"`
-	IntentSHA256    string          `json:"intent_sha256,omitempty"`
-	RoutingEpoch    int64           `json:"routing_epoch,omitempty"`
-	PlanSHA256      string          `json:"plan_sha256,omitempty"`
-	ProjectionSHA1  string          `json:"projection_sha1,omitempty"`
-	Members         int             `json:"members,omitempty"`
-	B0TargetSHA256  string          `json:"b0_target_sha256,omitempty"`
-	Target          json.RawMessage `json:"target,omitempty"`
-	RetainedPhase   string          `json:"retained_phase,omitempty"`
-	ReversalSHA256  string          `json:"reversal_sha256,omitempty"`
-	ReversalPhase   string          `json:"reversal_phase,omitempty"`
-	RetirementEpoch int64           `json:"retirement_routing_epoch,omitempty"`
+	Version              string          `json:"version"`
+	Operation            string          `json:"operation"`
+	SourceRevision       string          `json:"source_revision"`
+	IntentSHA256         string          `json:"intent_sha256,omitempty"`
+	RoutingEpoch         int64           `json:"routing_epoch,omitempty"`
+	PlanSHA256           string          `json:"plan_sha256,omitempty"`
+	ProjectionSHA1       string          `json:"projection_sha1,omitempty"`
+	Members              int             `json:"members,omitempty"`
+	B0TargetSHA256       string          `json:"b0_target_sha256,omitempty"`
+	Target               json.RawMessage `json:"target,omitempty"`
+	RetainedPhase        string          `json:"retained_phase,omitempty"`
+	ReversalSHA256       string          `json:"reversal_sha256,omitempty"`
+	ReversalPhase        string          `json:"reversal_phase,omitempty"`
+	RetirementEpoch      int64           `json:"retirement_routing_epoch,omitempty"`
+	B0RollbackPlanSHA256 string          `json:"b0_rollback_plan_sha256,omitempty"`
+	B0RollbackPlan       json.RawMessage `json:"b0_rollback_plan,omitempty"`
+	B0RestorationPhase   string          `json:"b0_restoration_phase,omitempty"`
 }
 
 // ReadColdAdminConfig requires a distinct protected mode, compiled source,
@@ -79,8 +89,12 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 	c.luaFile, c.planSHA = getenv("ORDINARY_COLD_B0_LUA_FILE"), getenv("ORDINARY_COLD_PLAN_SHA256")
 	c.namespace, c.shard, c.cohort = getenv("ORDINARY_COLD_B0_NAMESPACE"), getenv("ORDINARY_COLD_B0_SHARD_ID"), getenv("ORDINARY_COLD_B0_COHORT")
 	c.reversalFile, c.reversalSHA = getenv("ORDINARY_COLD_REVERSAL_FILE"), getenv("ORDINARY_COLD_REVERSAL_SHA256")
+	c.restoreRequestFile, c.restoreRequestSHA, c.restorePlanSHA = getenv("ORDINARY_COLD_B0_RESTORE_REQUEST_FILE"), getenv("ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256"), getenv("ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256")
 	path := func(p string) bool { return filepath.IsAbs(p) && !strings.ContainsRune(p, 0) }
 	if !coldReversalOperation(operation) && (c.reversalFile != "" || c.reversalSHA != "") {
+		return ColdAdminConfig{}, ErrStartup
+	}
+	if !coldB0RestorationOperation(operation) && (c.restoreRequestFile != "" || c.restoreRequestSHA != "" || c.restorePlanSHA != "") {
 		return ColdAdminConfig{}, ErrStartup
 	}
 	if operation == "cold-b0-target" {
@@ -93,7 +107,28 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 		return ColdAdminConfig{}, ErrStartup
 	}
 	if coldReversalOperation(operation) {
-		if !path(c.reversalFile) || !planPattern.MatchString(c.reversalSHA) || !planPattern.MatchString(c.planSHA) || c.luaFile != "" || c.targetFile != "" || c.targetSHA != "" {
+		if !path(c.reversalFile) || !planPattern.MatchString(c.reversalSHA) || !planPattern.MatchString(c.planSHA) {
+			return ColdAdminConfig{}, ErrStartup
+		}
+		if coldB0RestorationOperation(operation) {
+			if !path(c.restoreRequestFile) || !planPattern.MatchString(c.restoreRequestSHA) {
+				return ColdAdminConfig{}, ErrStartup
+			}
+			if operation == "cold-b0-rollback-plan" {
+				if c.restorePlanSHA != "" {
+					return ColdAdminConfig{}, ErrStartup
+				}
+			} else if !planPattern.MatchString(c.restorePlanSHA) {
+				return ColdAdminConfig{}, ErrStartup
+			}
+			if operation == "cold-b0-rollback-inspect" {
+				if c.luaFile != "" || c.targetFile != "" || c.targetSHA != "" {
+					return ColdAdminConfig{}, ErrStartup
+				}
+			} else if !path(c.luaFile) || !path(c.targetFile) || !planPattern.MatchString(c.targetSHA) {
+				return ColdAdminConfig{}, ErrStartup
+			}
+		} else if c.luaFile != "" || c.targetFile != "" || c.targetSHA != "" {
 			return ColdAdminConfig{}, ErrStartup
 		}
 		return c, nil
@@ -124,10 +159,11 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 	}
 	var spec queue.ColdTransitionSpec
 	var reversal queue.ColdReversalSpec
+	var restoreRequest queue.ColdB0RollbackRequest
 	var target *queue.ColdB0Target
 	var lua []byte
 	var err error
-	if c.operation != "cold-reserve" && c.operation != "cold-inspect" && !coldReversalOperation(c.operation) {
+	if c.operation != "cold-reserve" && c.operation != "cold-inspect" && (!coldReversalOperation(c.operation) || coldB0RestorationOperation(c.operation) && c.operation != "cold-b0-rollback-inspect") {
 		lua, err = readProtectedOwnershipFile(c.luaFile, 128<<10)
 		if err != nil {
 			return nil, ErrStartup
@@ -150,6 +186,26 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 			reversal, err = queue.DecodeColdReversalSpec(string(body), c.reversalSHA)
 			if err != nil || reversal.SourceRevision != c.source || reversal.ForwardIntentSHA256 != c.intentSHA || reversal.SourceEpoch != c.epoch || reversal.SourcePlanSHA256 != c.planSHA || reversal.RollbackReleaseSHA256 != spec.RollbackReleaseSHA256 || reversal.RollbackOrdinaryPlanSHA256 != spec.PreviousOrdinaryPlanSHA256 || reversal.RollbackB0ReceiptSHA256 != spec.PreviousB0ReceiptSHA256 {
 				return nil, ErrStartup
+			}
+			if coldB0RestorationOperation(c.operation) {
+				body, err := readProtectedOwnershipFile(c.restoreRequestFile, 4096)
+				if err != nil {
+					return nil, ErrStartup
+				}
+				restoreRequest, err = queue.DecodeColdB0RollbackRequest(string(body), c.restoreRequestSHA)
+				if err != nil || restoreRequest.SourceRevision != c.source || restoreRequest.ReversalSHA256 != c.reversalSHA || restoreRequest.RetirementEpoch <= reversal.SourceEpoch || (restoreRequest.B0SourceEpoch != reversal.SourceEpoch && (restoreRequest.B0SourceEpoch != spec.PreviousEpoch || (reversal.SourcePhase != "reserved" && reversal.SourcePhase != "publishing"))) {
+					return nil, ErrStartup
+				}
+				if c.operation != "cold-b0-rollback-inspect" {
+					body, err := readProtectedOwnershipFile(c.targetFile, 16384)
+					if err != nil {
+						return nil, ErrStartup
+					}
+					target, err = queue.DecodeColdB0Target(string(body), c.targetSHA, lua)
+					if err != nil || target.SHA256() != spec.TargetB0ManifestSHA256 {
+						return nil, ErrStartup
+					}
+				}
 			}
 		} else if c.operation != "cold-reserve" && c.operation != "cold-inspect" {
 			body, err := readProtectedOwnershipFile(c.targetFile, 16384)
@@ -198,6 +254,42 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 		}
 	}
 	switch c.operation {
+	case "cold-b0-rollback-plan", "cold-b0-rollback-retain", "cold-b0-rollback-restore", "cold-b0-rollback-inspect":
+		var rollback *queue.ColdB0RollbackPlan
+		var retained *queue.ColdB0RestorationState
+		switch c.operation {
+		case "cold-b0-rollback-plan":
+			rollback, err = queue.BuildColdB0RollbackPlan(ctx, pool, client, restoreRequest, target)
+		case "cold-b0-rollback-retain":
+			retained, err = queue.RetainColdB0RollbackPlan(ctx, pool, client, restoreRequest, target, c.restorePlanSHA)
+		case "cold-b0-rollback-restore":
+			// Retained bytes are immutable. Compare the protected request before
+			// any Redis effect; a matching revision/digest alone is insufficient.
+			retained, err = queue.InspectColdB0Restoration(ctx, pool, c.restorePlanSHA, c.source)
+			if err == nil && retained.Plan().Request() != restoreRequest {
+				return nil, ErrStartup
+			}
+			if err == nil {
+				retained, err = queue.RestoreColdB0Rollback(ctx, pool, client, c.restorePlanSHA, c.source, target)
+			}
+		case "cold-b0-rollback-inspect":
+			retained, err = queue.InspectColdB0Restoration(ctx, pool, c.restorePlanSHA, c.source)
+		}
+		if err == nil {
+			if retained != nil {
+				rollback = retained.Plan()
+				result.B0RestorationPhase = retained.Phase()
+			}
+			if rollback == nil || rollback.Request() != restoreRequest {
+				return nil, ErrStartup
+			}
+			result.B0RollbackPlanSHA256 = rollback.SHA256()
+			if c.operation == "cold-b0-rollback-plan" {
+				result.B0RollbackPlan = json.RawMessage(rollback.Payload())
+			}
+			result.ReversalSHA256, result.RetirementEpoch = c.reversalSHA, restoreRequest.RetirementEpoch
+			result.RoutingEpoch, result.PlanSHA256 = c.epoch, c.planSHA
+		}
 	case "cold-b0-target":
 		target, err = queue.CaptureColdB0Target(ctx, pool, client, c.epoch, c.namespace, c.shard, c.cohort, lua)
 		if err == nil {

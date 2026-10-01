@@ -157,10 +157,10 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	// DB can truncate fixtures, after retiring the activated test plan.
 	t.Cleanup(func() {
 		_, _ = f.pg.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE state='active'")
-		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_reversal,crawler_ownership_transition"); err != nil {
+		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_restoration,crawler_ownership_reversal,crawler_ownership_transition"); err != nil {
 			t.Error("private journal cleanup failed")
 		}
-		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_target"); err != nil {
+		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_restoration,crawler_ownership_b0_target"); err != nil {
 			t.Error("private target cleanup failed")
 		}
 	})
@@ -427,8 +427,12 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 		t.Fatal(err)
 	}
 	b0Args := []any{"claim_next", "lightpanda-b0", fmt.Sprint(reserved.RoutingEpoch), "go", "", "0", fmt.Sprint(now.UnixMilli()), "600000", "0", "0", "", "", "", "64", "2.0", "", "0", "ordinary-executable-joint", "", "0", "c1", 1, "0", "browser-use-careers"}
-	if reply, err := f.r.Eval(ctx, string(lua), b0Keys, b0Args...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" || f.r.ZCard(ctx, b0Keys[3]).Val() != 1 {
+	b0Claim, err := f.r.Eval(ctx, string(lua), b0Keys, b0Args...).Slice()
+	if err != nil || len(b0Claim) != 12 || b0Claim[0] != "accepted" || f.r.ZCard(ctx, b0Keys[3]).Val() != 1 {
 		t.Fatal("actual legacy runtime B0 inflight fixture failed")
+	}
+	if _, err := f.pg.Exec(ctx, "SELECT public.jobseek_lightpanda_b0_activate_write_fence($1::uuid,$2,$3,'go',$4,$5,$6)", b0Claim[3], "lightpanda-b0", reserved.RoutingEpoch, int64(3), b0Claim[7], b0Claim[4]); err != nil {
+		t.Fatal("actual native B0 fence unavailable", err)
 	}
 	legacyProbe(true)
 	baseline = coldExecutableRedisSnapshot(t, f)
@@ -610,6 +614,187 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	if _, err := f.pg.Exec(ctx, "UPDATE crawler_ownership_transition SET phase='reversed' WHERE intent_sha256=$1", intent); err == nil {
 		t.Fatal("retirement alone released authority before complete restoration")
 	}
+	request := queue.ColdB0RollbackRequest{ReversalSHA256: reversalSHA, SourceRevision: source, RetirementEpoch: retired.RetirementEpoch, B0SourceEpoch: reserved.RoutingEpoch, SourceReceiptSHA256: strings.Repeat("8", 64)}
+	requestFile := filepath.Join(e.directory, "b0-restore-request.json")
+	requestBody, _ := json.Marshal(request)
+	requestHash := sha256.Sum256(requestBody)
+	if err := os.WriteFile(requestFile, requestBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	restoreEnv := map[string]string{}
+	for key, value := range reversalEnv {
+		restoreEnv[key] = value
+	}
+	restoreEnv["ORDINARY_COLD_B0_RESTORE_REQUEST_FILE"] = requestFile
+	restoreEnv["ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256"] = hex.EncodeToString(requestHash[:])
+	restoreEnv["ORDINARY_COLD_B0_TARGET_FILE"], restoreEnv["ORDINARY_COLD_B0_TARGET_SHA256"], restoreEnv["ORDINARY_COLD_B0_LUA_FILE"] = targetFile, target.B0TargetSHA256, luaFile
+	// Live source inflight work cannot be silently converted by restoration.
+	call("cold-b0-rollback-plan", restoreEnv, false)
+	completed := append([]any{}, b0Args...)
+	completed[0] = "complete"
+	completed[4] = b0Claim[3]
+	completed[5] = b0Claim[6]
+	completed[6] = b0Claim[4]
+	completed[11] = b0Claim[7]
+	completed[16] = b0Claim[5]
+	b0Legacy := sha1.Sum([]byte(b0Claim[8].(string)))
+	completed[12] = hex.EncodeToString(b0Legacy[:])
+	if reply, err := f.r.Eval(ctx, string(lua), b0Keys, completed...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" {
+		t.Fatal("cold fixture could not finish actual B0 source lease")
+	}
+	for _, altered := range []string{string(requestBody) + " ", strings.TrimSuffix(string(requestBody), "}") + `,"retirement_epoch":1}`, strings.TrimSuffix(string(requestBody), "}") + `,"unknown":"secret-input"}`} {
+		if err := os.WriteFile(requestFile, []byte(altered), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		hash := sha256.Sum256([]byte(altered))
+		restoreEnv["ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256"] = hex.EncodeToString(hash[:])
+		call("cold-b0-rollback-plan", restoreEnv, false)
+	}
+	if err := os.WriteFile(requestFile, requestBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	restoreEnv["ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256"] = hex.EncodeToString(requestHash[:])
+	restoreBaseline, restoreCanonical := fullColdExecutableRedisSnapshot(t, f), coldExecutableCanonicalSnapshot(t, f)
+	preparedRestore := call("cold-b0-rollback-plan", restoreEnv, true)
+	if !planPattern.MatchString(preparedRestore.B0RollbackPlanSHA256) || len(preparedRestore.B0RollbackPlan) == 0 || preparedRestore.RetirementEpoch != retired.RetirementEpoch {
+		t.Fatal("actual executable did not prepare exact canonical B0 plan")
+	}
+	restoreEnv["ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256"] = preparedRestore.B0RollbackPlanSHA256
+	if got := call("cold-b0-rollback-retain", restoreEnv, true); got.B0RestorationPhase != "prepared" {
+		t.Fatal("actual executable did not retain plan before effects")
+	}
+	call("cold-b0-rollback-retain", restoreEnv, true)
+	inspectRestoreEnv := map[string]string{}
+	for key, value := range restoreEnv {
+		inspectRestoreEnv[key] = value
+	}
+	delete(inspectRestoreEnv, "ORDINARY_COLD_B0_TARGET_FILE")
+	delete(inspectRestoreEnv, "ORDINARY_COLD_B0_TARGET_SHA256")
+	delete(inspectRestoreEnv, "ORDINARY_COLD_B0_LUA_FILE")
+	if got := call("cold-b0-rollback-inspect", inspectRestoreEnv, true); got.B0RestorationPhase != "prepared" || got.B0RollbackPlanSHA256 != preparedRestore.B0RollbackPlanSHA256 {
+		t.Fatal("retained restoration inspection adopted authority")
+	}
+	if !reflect.DeepEqual(restoreBaseline, fullColdExecutableRedisSnapshot(t, f)) || restoreCanonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("preparation/retention replayed canonical/queue data")
+	}
+	// A correctly hashed but different protected receipt must reject before
+	// any restore effect, even when the approved retained plan digest is valid.
+	wrongRequest := request
+	wrongRequest.SourceReceiptSHA256 = strings.Repeat("9", 64)
+	wrongBody, _ := json.Marshal(wrongRequest)
+	wrongHash := sha256.Sum256(wrongBody)
+	if err := os.WriteFile(requestFile, wrongBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	restoreEnv["ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256"] = hex.EncodeToString(wrongHash[:])
+	call("cold-b0-rollback-restore", restoreEnv, false)
+	if !reflect.DeepEqual(restoreBaseline, fullColdExecutableRedisSnapshot(t, f)) {
+		t.Fatal("wrong protected request caused restoration effects")
+	}
+	if err := os.WriteFile(requestFile, requestBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	restoreEnv["ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256"] = hex.EncodeToString(requestHash[:])
+	restoreName := "ordinary_b0_restore_crash_" + strings.ReplaceAll(f.board, "-", "")
+	restoreQuoted := pgx.Identifier{restoreName}.Sanitize()
+	const restoreClass, restoreObject = 18273645, 914276
+	if _, err := f.pg.Exec(ctx, "CREATE FUNCTION "+restoreQuoted+"() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(18273645,914276); RETURN NEW; END $$"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = f.pg.Exec(context.Background(), "DROP TRIGGER IF EXISTS "+restoreQuoted+" ON crawler_ownership_b0_restoration")
+		_, _ = f.pg.Exec(context.Background(), "DROP FUNCTION "+restoreQuoted+"()")
+	})
+	if _, err := f.pg.Exec(ctx, "CREATE TRIGGER "+restoreQuoted+" AFTER UPDATE ON crawler_ownership_b0_restoration FOR EACH ROW WHEN (OLD.phase='prepared' AND NEW.phase='redis-restored' AND NEW.plan_sha256='"+preparedRestore.B0RollbackPlanSHA256+"') EXECUTE FUNCTION "+restoreQuoted+"()"); err != nil {
+		t.Fatal(err)
+	}
+	// Reuse the already owned fixture connection; keep the other free for
+	// bounded MVCC inspection while the executable is paused after SAVE/readback.
+	if _, err := retireLock.Exec(ctx, "SELECT pg_advisory_lock($1,$2)", restoreClass, restoreObject); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_, _ = retireLock.Exec(context.Background(), "SELECT pg_advisory_unlock($1,$2)", restoreClass, restoreObject)
+	}()
+	restoreCommand := command("cold-b0-rollback-restore", restoreEnv)
+	restoreLog, err := os.OpenFile(filepath.Join(e.directory, "b0-restoration-crash.log"), os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restoreLog.Close()
+	restoreCommand.Stdout, restoreCommand.Stderr = restoreLog, restoreLog
+	if err := restoreCommand.Start(); err != nil {
+		t.Fatal("actual restoration coordinator failed to start")
+	}
+	restoreProcess := &nativeFixtureProcess{command: restoreCommand, done: make(chan error, 1)}
+	go func() { restoreProcess.done <- restoreCommand.Wait() }()
+	t.Cleanup(func() {
+		if !restoreProcess.finished {
+			_ = restoreCommand.Process.Kill()
+			<-restoreProcess.done
+		}
+	})
+	waitNativeFixture(t, restoreProcess, "post-SAVE restoration barrier", func() bool {
+		observation, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+		var waiting bool
+		_ = f.pg.QueryRow(observation, "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype='advisory' AND classid=$1 AND objid=$2 AND NOT granted)", restoreClass, restoreObject).Scan(&waiting)
+		return waiting
+	})
+	if got := call("cold-b0-rollback-inspect", inspectRestoreEnv, true); got.B0RestorationPhase != "prepared" {
+		t.Fatal("inspection blocked or adopted uncommitted restoration")
+	}
+	var b0Fences int
+	if err := f.pg.QueryRow(ctx, "SELECT count(*) FROM lightpanda_b0_write_fence WHERE job_posting_id=$1::uuid", b0Claim[3]).Scan(&b0Fences); err != nil || b0Fences != 1 {
+		t.Fatal("historical fence cleared before durable Redis progress")
+	}
+	if f.r.HGet(ctx, "lightpanda-b0:producer-owner", "schema").Val() != "jobseek.lightpanda.producer-rollback/v1" {
+		t.Fatal("paused executable lacks actual saved restoration tombstone")
+	}
+	if err := restoreCommand.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	crash = restoreProcess.wait(t)
+	if !errors.As(crash, &exit) {
+		t.Fatal("restoration coordinator did not exit abnormally")
+	}
+	if status, ok := exit.Sys().(syscall.WaitStatus); !ok || !status.Signaled() || status.Signal() != syscall.SIGKILL {
+		t.Fatal("restoration did not receive actual SIGKILL")
+	}
+	if _, err := retireLock.Exec(ctx, "SELECT pg_advisory_unlock($1,$2)", restoreClass, restoreObject); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.pg.Exec(ctx, "DROP TRIGGER "+restoreQuoted+" ON crawler_ownership_b0_restoration"); err != nil {
+		t.Fatal(err)
+	}
+	if got := call("cold-b0-rollback-inspect", inspectRestoreEnv, true); got.B0RestorationPhase != "prepared" {
+		t.Fatal("SIGKILL lost retained restoration phase")
+	}
+	postRestoreCrash := fullColdExecutableRedisSnapshot(t, f)
+	if restored := call("cold-b0-rollback-restore", restoreEnv, true); restored.B0RestorationPhase != "fences-cleared" || restored.RetirementEpoch != retired.RetirementEpoch {
+		t.Fatal("actual restart failed exact tombstone recovery")
+	}
+	call("cold-b0-rollback-restore", restoreEnv, true)
+	if !reflect.DeepEqual(postRestoreCrash, fullColdExecutableRedisSnapshot(t, f)) || restoreCanonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("actual SIGKILL/restart replayed canonical/receipt/future/queue effects")
+	}
+	if err := f.pg.QueryRow(ctx, "SELECT count(*) FROM lightpanda_b0_write_fence WHERE job_posting_id=$1::uuid", b0Claim[3]).Scan(&b0Fences); err != nil || b0Fences != 0 {
+		t.Fatal("exact historical source fence not cleared")
+	}
+	var epochAfterRestore int64
+	if err := f.pg.QueryRow(ctx, "SELECT last_value FROM lightpanda_b0_routing_epoch_seq").Scan(&epochAfterRestore); err != nil || epochAfterRestore != retired.RetirementEpoch {
+		t.Fatal("restoration allocated/adopted another epoch")
+	}
+	if score, err := f.r.ZScore(ctx, "scrapes_browser:jobs.example.test", b0Claim[3].(string)).Result(); err != nil || score != 1925089445.100001 {
+		t.Fatal("actual restore lost canonical future B0 due")
+	}
+	if config := f.r.HGet(ctx, "scrape:"+b0Claim[3].(string), "description_r2_hash").Val(); config != "-9223372036854775808" {
+		t.Fatal("actual restore lost canonical bigint hash")
+	}
+	legacyProbe(false)
+	if _, err := f.pg.Exec(ctx, "UPDATE crawler_ownership_transition SET phase='reversed' WHERE intent_sha256=$1", intent); err == nil {
+		t.Fatal("B0 restore alone released host/ordinary ownership")
+	}
 }
 
 func runLegacyJointProbe(t *testing.T, f nativePipelineFixture, source, plan, projection, epoch, lua string, accepted bool) {
@@ -690,13 +875,18 @@ func seedExecutableColdB0(t *testing.T, f nativePipelineFixture, board string, e
 		t.Fatal("B0 task codec failed")
 	}
 	envelope["task_id"], envelope["board_id"], envelope["routing_epoch"], envelope["shard_id"] = fixtureID(t), board, epoch, "lightpanda-b0"
+	envelope["source_url"] = "https://jobs.example.test/posting/" + envelope["task_id"].(string)
 	payload, _ := json.Marshal(envelope)
 	hash := sha256.Sum256(payload)
 	legacy := sha1.Sum(payload)
-	config, _ := json.Marshal(map[string]string{"domain": "jobs.example.test", "board_id": board, "source_url": "https://jobs.example.test/posting", "description_r2_hash": "", "scrape_step": "0", "scrape_interval_hours": "24"})
+	config, _ := json.Marshal(map[string]string{"domain": "jobs.example.test", "board_id": board, "source_url": envelope["source_url"].(string), "description_r2_hash": "", "scrape_step": "0", "scrape_interval_hours": "24"})
 	args[0], args[4], args[5], args[10], args[11], args[12], args[18], args[22] = "activate_legacy", envelope["task_id"], "3", string(payload), hex.EncodeToString(hash[:]), hex.EncodeToString(legacy[:]), string(config), "1"
 	if reply, err := f.r.Eval(ctx, string(lua), keys, args...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" {
 		t.Fatal("actual B0 transfer failed")
+	}
+	if _, err := f.pg.Exec(ctx, `INSERT INTO job_posting(id,company_id,board_id,source_url,description_r2_hash,next_scrape_at)
+ VALUES($1::uuid,$2::uuid,$3::uuid,$4,-9223372036854775808,'2031-01-02 03:04:05.100001+00')`, envelope["task_id"], f.company, board, envelope["source_url"]); err != nil {
+		t.Fatal("canonical native B0 posting unavailable", err)
 	}
 }
 

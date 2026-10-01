@@ -16,6 +16,21 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+func coldB0CanonicalSnapshot(t *testing.T, p publicationFixture) string {
+	t.Helper()
+	var body string
+	err := p.f.observer.QueryRow(context.Background(), `SELECT jsonb_build_object(
+ 'company',(SELECT to_jsonb(c) FROM company c WHERE id=$1::uuid),
+ 'boards',(SELECT jsonb_agg(to_jsonb(b) ORDER BY id) FROM job_board b WHERE company_id=$1::uuid),
+ 'postings',(SELECT jsonb_agg(to_jsonb(j) ORDER BY id) FROM job_posting j WHERE company_id=$1::uuid),
+ 'descriptions',(SELECT jsonb_agg(to_jsonb(d) ORDER BY d.posting_id,d.locale) FROM descriptions d JOIN job_posting j ON j.id=d.posting_id WHERE j.company_id=$1::uuid),
+ 'receipts',(SELECT jsonb_agg(to_jsonb(f) ORDER BY f.task_kind,f.task_id) FROM ordinary_worker_write_fence f JOIN job_board b ON b.id=f.board_id WHERE b.company_id=$1::uuid))::text`, p.f.company).Scan(&body)
+	if err != nil {
+		t.Fatal("complete owned canonical B0/ordinary snapshot unavailable")
+	}
+	return body
+}
+
 func rollbackFixturePosting(t *testing.T, p publicationFixture) string {
 	t.Helper()
 	ctx := context.Background()
@@ -139,7 +154,7 @@ func TestRealColdB0RollbackDerivesCanonicalAndPreservesTransferIntent(t *testing
 					t.Fatal("canonical source change failed", err)
 				}
 				request := rollbackFixtureRequest(t, p)
-				before, canonical := snapshot(t, p.f.client), coldCanonicalSnapshot(t, p.f)
+				before, canonical := snapshot(t, p.f.client), coldB0CanonicalSnapshot(t, p)
 				plan, err := BuildColdB0RollbackPlan(ctx, p.f.observer, p.f.client, request, p.target)
 				if err != nil {
 					t.Fatal("native canonical rollback rejected", err)
@@ -177,7 +192,7 @@ func TestRealColdB0RollbackDerivesCanonicalAndPreservesTransferIntent(t *testing
 				if err != nil || retry.body != plan.body || retry.digest != plan.digest {
 					t.Fatal("unchanged canonical plan not deterministic")
 				}
-				if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldCanonicalSnapshot(t, p.f) {
+				if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldB0CanonicalSnapshot(t, p) {
 					t.Fatal("planning mutated queue/canonical/future state")
 				}
 				// In this owned fixture only, exercise the unchanged actual lifecycle
@@ -193,7 +208,7 @@ func TestRealColdB0RollbackDerivesCanonicalAndPreservesTransferIntent(t *testing
 				if err != nil || len(reply) != 12 || reply[0] != "accepted" {
 					t.Fatal("native plan incompatible with actual rollback", reply, err)
 				}
-				if canonical != coldCanonicalSnapshot(t, p.f) || publicationPhase(t, p) != "reversing" {
+				if canonical != coldB0CanonicalSnapshot(t, p) || publicationPhase(t, p) != "reversing" {
 					t.Fatal("compatibility fixture released claims/replayed canonical effects")
 				}
 				if entry.Action == "schedule" {
@@ -259,11 +274,11 @@ func TestRealColdB0RollbackRejectsUnsafeSourcesBeforeEffects(t *testing.T) {
 			if err != nil {
 				t.Fatal("fault installation failed", err)
 			}
-			before, canonical := snapshot(t, p.f.client), coldCanonicalSnapshot(t, p.f)
+			before, canonical := snapshot(t, p.f.client), coldB0CanonicalSnapshot(t, p)
 			if _, err := BuildColdB0RollbackPlan(ctx, p.f.observer, p.f.client, request, target); err == nil || strings.Contains(err.Error(), "secret") {
 				t.Fatal("unsafe rollback source admitted/exposed input")
 			}
-			if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldCanonicalSnapshot(t, p.f) {
+			if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldB0CanonicalSnapshot(t, p) {
 				t.Fatal("rejection changed canonical/queue state")
 			}
 		})
@@ -315,7 +330,7 @@ func TestRealColdB0RollbackAfterActiveCandidateDriftAndWitnessLoss(t *testing.T)
 				t.Fatal(err)
 			}
 			request := ColdB0RollbackRequest{ReversalSHA256: digest, SourceRevision: s.SourceRevision, RetirementEpoch: state.retirement, B0SourceEpoch: p.plan.Epoch(), SourceReceiptSHA256: strings.Repeat("8", 64)}
-			before, canonical := snapshot(t, p.f.client), coldCanonicalSnapshot(t, p.f)
+			before, canonical := snapshot(t, p.f.client), coldB0CanonicalSnapshot(t, p)
 			_, err = BuildColdB0RollbackPlan(ctx, p.f.observer, p.f.client, request, p.target)
 			if fault == "redis_lost" {
 				if !errors.Is(err, ErrAuthorityLost) {
@@ -324,7 +339,7 @@ func TestRealColdB0RollbackAfterActiveCandidateDriftAndWitnessLoss(t *testing.T)
 			} else if err != nil {
 				t.Fatal("damaged candidate cannot prepare restoration", err)
 			}
-			if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldCanonicalSnapshot(t, p.f) || publicationPhase(t, p) != "reversing" {
+			if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldB0CanonicalSnapshot(t, p) || publicationPhase(t, p) != "reversing" {
 				t.Fatal("planning repaired witness/released claims/replayed data")
 			}
 		})

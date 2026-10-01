@@ -191,7 +191,7 @@ cookie, body-size and task-duration compatibility against that baseline.
 
 ## Protected cold coordinator primitives
 
-The compiled-source-bound executable now accepts ten distinct one-shot commands:
+The compiled-source-bound executable now accepts fourteen distinct one-shot commands:
 
 | Argument / matching `ORDINARY_GO_WORKER_MODE` | Operation |
 | --- | --- |
@@ -205,6 +205,10 @@ The compiled-source-bound executable now accepts ten distinct one-shot commands:
 | `--cold-reversal-begin` / `cold-reversal-begin` | Retain exact reversal intent and contain the forward owner before allocation. |
 | `--cold-reversal-reserve` / `cold-reversal-reserve` | Allocate a fresh retirement epoch or retry its exact retained reservation. |
 | `--cold-reversal-inspect` / `cold-reversal-inspect` | Read retained reversal progress without allocation locks or restore authority. |
+| `--cold-b0-rollback-plan` / `cold-b0-rollback-plan` | Derive the exact PG-backed B0 restoration manifest without queue effects. |
+| `--cold-b0-rollback-retain` / `cold-b0-rollback-retain` | Re-derive and retain the approved manifest before Redis effects. |
+| `--cold-b0-rollback-restore` / `cold-b0-rollback-restore` | Apply pinned rollback Lua, SAVE/read back its tombstone, then clear exact historical SQL fences. |
+| `--cold-b0-rollback-inspect` / `cold-b0-rollback-inspect` | Read immutable manifest/progress without allocation locks or Redis observation. |
 
 All require protected database/Redis URLs, compiled matching
 `ORDINARY_OWNERSHIP_SOURCE_REVISION` and canonical positive
@@ -244,11 +248,11 @@ staged plan recover through exact publication/activation retries without changin
 canonical rows/deadlines/receipts or other Redis keys. Missing witnesses remain
 contained. The installed-image workflow runs this fixture on both architectures.
 
-Reversal operations require both the original protected intent file/hash and
+Reversal and B0 restoration operations require both the original protected intent file/hash and
 `ORDINARY_COLD_REVERSAL_FILE`/`ORDINARY_COLD_REVERSAL_SHA256` (canonical JSON,
 at most 4 KiB). They require the explicit forward source epoch/plan in
 `ORDINARY_COLD_ROUTING_EPOCH`/`ORDINARY_COLD_PLAN_SHA256`; they reject all unused
-B0 target/Lua/selector fields. The reversal binds the exact forward intent,
+B0 target/Lua/selector fields for the three reversal commands. The reversal binds the exact forward intent,
 source revision/epoch/plan/phase, previous ordinary plan/B0 receipt, rollback
 release and independently attested cold-host digest. Begin can contain a
 disabled or changed candidate or a lost Redis witness. Reservation retires an
@@ -267,11 +271,37 @@ Retirement alone cannot mark it reversed. The actual executable fixture kills
 reservation after nextval/owner retirement, observes pending state independently,
 and proves SQL rollback and fresh-epoch recovery without replaying data effects.
 
-These commands do not stop services, deploy releases, transfer full PG-derived
-B0 tasks, verify host-cold/release/rollback evidence or complete restoration. The
-supported ADR006 wrapper must own those operations under its mutation lock before
-these primitives can select production authority. Ordinary production remains
-Python until that complete protocol, readiness and full reversal are proven.
+B0 restoration additionally requires canonical protected
+`ORDINARY_COLD_B0_RESTORE_REQUEST_FILE`/`ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256`
+(at most 4 KiB). Its request binds reversal/source, exact retirement epoch,
+explicit B0 source epoch and independently verified source receipt digest.
+`ORDINARY_COLD_ROUTING_EPOCH`/`ORDINARY_COLD_PLAN_SHA256` still identify the forward
+source. Preview rejects `ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256`; retain/restore/
+inspect require that exact approved digest. Preview/retain/restore require the
+original target file/hash and pinned Lua; inspection rejects these unused inputs.
+All reject B0 namespace/shard/cohort selectors. Preview returns canonical
+`b0_rollback_plan` and its `b0_rollback_plan_sha256`; subsequent operations report
+`b0_restoration_phase`. The host must durably save and approve exact preview bytes.
+
+Migration 0042 commits the immutable plan before any Redis mutation. Restore
+compares the protected request to retained bytes before effects and re-derives the
+approved plan under SQL barriers/row locks. An atomic observation CAS precedes the
+unchanged actual rollback Lua. Acknowledged SAVE and exact permanent tombstone
+readback precede `redis-restored`; a subsequent transaction removes only the
+manifest's historical Go source-epoch/shard fences and commits `fences-cleared`.
+Exact tombstone recovery never replays canonical callbacks. Lost, expired,
+mismatched or partial evidence rejects. Read-only inspection remains available
+while mutation is paused. The actual executable fixture proves SIGKILL after
+SAVE/readback before SQL progress, then exact restart and repeated cleanup with
+canonical rows, receipts and microsecond future deadlines conserved.
+
+Full ordinary/B0 ownership restoration, sentinel/host receipt recovery and release
+readiness still require the supported ADR006 all-writer wrapper under its mutation
+lock. B0 restoration leaves the forward journal reversing and ordinary claims
+blocked. The host must independently verify cold-host/release/data/spec/env/image
+and receipt identities before these primitives can select production authority.
+Ordinary production remains Python until that complete protocol, readiness and
+full reversal are proven.
 
 ## Native joint runtime admission
 

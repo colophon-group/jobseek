@@ -426,7 +426,37 @@ Real private tests feed the native manifest to the unchanged actual rollback Lua
 for ready/dead/terminal work and changed/disabled/deleted configurations. These
 fixtures prove compatible restored schedule/config/drop effects while leaving
 canonical rows/receipts/future deadlines and the reversing journal untouched.
-The production API prepares only: durable plan retention before Redis mutation,
-SAVE/readback/tombstone recovery, exact historical fence cleanup, sentinel/receipt
-recovery, restored ordinary/B0 ownership and full release readiness remain to
-implement and prove. No protected restore command or production owner is selected.
+The protected native executable now exposes preview, retention, restoration and
+read-only progress inspection for this manifest. Production owner selection still
+requires complete ordinary/B0 ownership and supported host/release readiness.
+
+## Durable native B0 restoration
+
+Migration 0042 retains immutable approved manifest bytes and exact reversal/source/
+retirement/target identities before the first Redis mutation. It permits only
+`prepared → redis-restored → fences-cleared`; delete, rewrite and phase skipping
+are refused. Downgrade refuses any retained restoration history.
+
+`RetainColdB0RollbackPlan` re-derives the exact approved plan under existing SQL
+mutation barriers and canonical row locks. `RestoreColdB0Rollback` freshly checks
+the same retirement and source context, re-derives the approved plan, then compares
+actual records/guards/legacy suffix-authority membership atomically before invoking
+the unchanged pinned actual B0 rollback Lua. Acknowledged synchronous SAVE and
+exact permanent tombstone readback precede committed SQL `redis-restored` progress.
+The next transaction clears only the manifest-bound Go source-epoch/shard SQL fence
+IDs, refuses live canonical leases and commits `fences-cleared` atomically.
+
+Interrupted progress uses the exact retained plan and matching tombstone without
+replaying queue or canonical callbacks. Missing, expired, mismatched and partial
+Redis evidence remains contained. `InspectColdB0Restoration` observes immutable
+history in a bounded read-only transaction without epoch barriers, allocator
+adoption or service-start authority. Actual private tests cover ready/dead/terminal
+restoration, SAVE denial, both SQL-progress failures, independent Redis RDB restart,
+lost evidence, advanced epochs and immutable history. The actual native executable
+is killed after SAVE/readback before SQL progress; exact restart/retry clears the
+historical fence while conserving all owned canonical rows/receipts/future dues.
+
+This primitive leaves the forward journal reversing, ordinary projection and
+joint witness in place, and ordinary claims blocked. Sentinel/host receipt recovery,
+fresh ordinary/B0 restored owners, the ADR006 all-writer host wrapper and complete
+release readiness remain required before production selection.

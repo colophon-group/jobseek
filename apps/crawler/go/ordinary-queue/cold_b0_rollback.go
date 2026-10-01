@@ -65,10 +65,12 @@ type coldB0RollbackDocument struct {
 type ColdB0RollbackPlan struct {
 	document     coldB0RollbackDocument
 	body, digest string
+	snapshot     *coldB0RollbackSnapshot
 }
 
-func (p *ColdB0RollbackPlan) SHA256() string  { return p.digest }
-func (p *ColdB0RollbackPlan) Payload() string { return p.body }
+func (p *ColdB0RollbackPlan) SHA256() string                 { return p.digest }
+func (p *ColdB0RollbackPlan) Payload() string                { return p.body }
+func (p *ColdB0RollbackPlan) Request() ColdB0RollbackRequest { return p.document.Request }
 
 type coldB0RollbackSnapshot struct {
 	Records   map[string]string `json:"records"`
@@ -205,217 +207,233 @@ func coldRollbackGuard(raw string, target *ColdB0Target, task b0task.Task) (stri
 // stale retirement reject before any effect. A second atomic observation binds
 // the same queue snapshot. No HTTP/parser/database callback is replayed.
 func BuildColdB0RollbackPlan(ctx context.Context, pool *pgxpool.Pool, c *Client, request ColdB0RollbackRequest, target *ColdB0Target) (*ColdB0RollbackPlan, error) {
-	if c == nil || target == nil || !ownershipSHA256.MatchString(request.ReversalSHA256) || !ownershipRevision.MatchString(request.SourceRevision) || !ownershipSHA256.MatchString(request.SourceReceiptSHA256) || request.RetirementEpoch < 2 || request.RetirementEpoch > 9999999999999 || request.B0SourceEpoch < 1 || request.B0SourceEpoch >= request.RetirementEpoch {
+	if c == nil || target == nil || !request.valid() {
 		return nil, ErrConfiguration
 	}
 	var result *ColdB0RollbackPlan
 	err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
-		state, err := loadColdReversal(ctx, tx, request.ReversalSHA256, request.SourceRevision)
-		if err != nil {
-			return err
-		}
-		if state.phase != "reserved" || state.retirement != request.RetirementEpoch {
-			return ErrAuthorityLost
-		}
-		if err := reversalForwardBinding(ctx, tx, state.spec, "reversing"); err != nil {
-			return err
-		}
-		if err := reversalOwner(ctx, tx, state.spec, true); err != nil {
-			return err
-		}
-		var current int64
-		var called bool
-		if err := tx.QueryRow(ctx, "SELECT last_value,is_called FROM public.lightpanda_b0_routing_epoch_seq").Scan(&current, &called); err != nil {
-			return err
-		}
-		if !called || current != request.RetirementEpoch {
-			return ErrAuthorityLost
-		}
-		var forwardBody string
-		if err := tx.QueryRow(ctx, "SELECT payload FROM public.crawler_ownership_transition WHERE intent_sha256=$1", state.spec.ForwardIntentSHA256).Scan(&forwardBody); err != nil {
-			return err
-		}
-		forward, err := decodeColdTransition(forwardBody, state.spec.ForwardIntentSHA256)
-		if err != nil || forward.TargetB0ManifestSHA256 != target.digest {
-			return ErrAuthorityLost
-		}
-		if request.B0SourceEpoch != state.spec.SourceEpoch {
-			if request.B0SourceEpoch != forward.PreviousEpoch || (state.spec.SourcePhase != "reserved" && state.spec.SourcePhase != "publishing") {
-				return ErrAuthorityLost
-			}
-		}
-		snapshot, snapshotHash, err := observeColdB0Rollback(ctx, c, target, request.B0SourceEpoch)
-		if err != nil {
-			return err
-		}
-		ids := map[string]bool{}
-		records := map[string]coldB0RollbackRecord{}
-		tasks := map[string]b0task.Task{}
-		for id, raw := range snapshot.Records {
-			if !canonicalUUID.MatchString(id) {
-				return ErrAuthorityLost
-			}
-			var record coldB0RollbackRecord
-			decoder := json.NewDecoder(strings.NewReader(raw))
-			decoder.UseNumber()
-			value, parseErr := coldJSONValue(decoder, 0)
-			object, isObject := value.(map[string]any)
-			if parseErr != nil || !isObject || len(object) != 20 {
-				return ErrAuthorityLost
-			}
-			if _, err := decoder.Token(); err != io.EOF {
-				return ErrAuthorityLost
-			}
-			if json.Unmarshal([]byte(raw), &record) != nil || record.TaskID != id || (record.State != "ready" && record.State != "dead" && record.State != "terminal") {
-				return ErrAuthorityLost
-			}
-			payloadDecoder := json.NewDecoder(strings.NewReader(record.Payload))
-			payloadDecoder.UseNumber()
-			if _, err := coldJSONValue(payloadDecoder, 0); err != nil {
-				return ErrAuthorityLost
-			}
-			if _, err := payloadDecoder.Token(); err != io.EOF {
-				return ErrAuthorityLost
-			}
-			task, err := b0task.Decode(record.Payload, record.PayloadSHA256, b0task.Route{ShardID: target.document.ShardID, RoutingEpoch: request.B0SourceEpoch, EngineOwner: "go"})
-			if err != nil || task.Envelope.TaskID != id {
-				return ErrAuthorityLost
-			}
-			allowed := false
-			for _, board := range target.document.Boards {
-				if board.ID == task.Envelope.BoardID {
-					allowed = true
-				}
-			}
-			if !allowed {
-				return ErrAuthorityLost
-			}
-			ids[id] = true
-			records[id] = record
-			tasks[id] = task
-		}
-		fenceIDs := []string{}
-		fences, err := tx.Query(ctx, `SELECT job_posting_id::text FROM public.lightpanda_b0_write_fence WHERE engine_owner='go' AND shard_id=$1 AND routing_epoch=$2 ORDER BY job_posting_id LIMIT 2049`, target.document.ShardID, request.B0SourceEpoch)
-		if err != nil {
-			return err
-		}
-		for fences.Next() {
-			var id string
-			if err := fences.Scan(&id); err != nil {
-				fences.Close()
-				return err
-			}
-			fenceIDs = append(fenceIDs, id)
-			ids[id] = true
-		}
-		err = fences.Err()
-		fences.Close()
-		if err != nil {
-			return err
-		}
-		if len(ids) > 2048 {
-			return ErrAuthorityLost
-		}
-		for _, members := range snapshot.Authority {
-			for _, member := range members {
-				if strings.HasPrefix(member, "scrape|") {
-					at := strings.LastIndexByte(member, '|')
-					if at >= 0 && ids[member[at+1:]] {
-						return ErrAuthorityLost
-					}
-				}
-			}
-		}
-		queryIDs := make([]string, 0, len(ids))
-		for id := range ids {
-			queryIDs = append(queryIDs, id)
-		}
-		sort.Strings(queryIDs)
-		plan := map[string]coldB0RollbackEntry{}
-		for id := range records {
-			plan[id] = coldB0RollbackEntry{Action: "drop"}
-		}
-		rows, err := tx.Query(ctx, `SELECT jp.id::text,jp.board_id::text,jp.source_url,jp.description_r2_hash,jp.is_active,jp.next_scrape_at,
- COALESCE(jp.leased_until>now(),false),jb.is_enabled,jb.board_status,jb.scraper_needs_browser,jb.scrape_interval_hours
- FROM public.job_posting jp JOIN public.job_board jb ON jb.id=jp.board_id WHERE jp.id=ANY($1::uuid[]) ORDER BY jp.id FOR SHARE OF jp,jb`, queryIDs)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id, board, source, status string
-			var hash *int64
-			var active, leased, enabled, browser bool
-			var due *time.Time
-			var interval int
-			if err := rows.Scan(&id, &board, &source, &hash, &active, &due, &leased, &enabled, &status, &browser, &interval); err != nil {
-				return err
-			}
-			if leased {
-				return ErrAuthorityLost
-			}
-			record, exists := records[id]
-			if !exists || !active || due == nil || !enabled || status != "active" {
-				continue
-			}
-			domain, err := coldRollbackSourceDomain(source)
-			if err != nil || !canonicalUUID.MatchString(board) || interval < 1 || interval > 8760 {
-				return ErrAuthorityLost
-			}
-			first := hash == nil
-			worker := "simple"
-			if browser {
-				worker = "browser"
-			}
-			score := "0"
-			if !first {
-				seconds := due.Unix()
-				micros := due.Nanosecond() / 1000
-				if seconds < 0 || seconds > 9999999999 || seconds == 9999999999 && micros > 999000 {
-					return ErrAuthorityLost
-				}
-				score = strconv.FormatInt(seconds, 10)
-				if micros != 0 {
-					score += "." + strings.TrimRight(strconv.FormatInt(int64(micros)+1000000, 10)[1:], "0")
-				}
-			}
-			if record.State == "ready" {
-				kind, guardScore, err := coldRollbackGuard(snapshot.Guards[id], target, tasks[id])
-				if err != nil {
-					return err
-				}
-				first = strings.HasPrefix(kind, "ft_")
-				worker = strings.TrimPrefix(strings.TrimPrefix(kind, "ft_"), "recurring_")
-				score = guardScore
-			}
-			hint := ""
-			if hash != nil {
-				hint = strconv.FormatInt(*hash, 10)
-			}
-			plan[id] = coldB0RollbackEntry{Action: "schedule", Domain: domain, WorkerType: worker, FirstTime: &first, Score: score, Config: map[string]string{"domain": domain, "board_id": board, "source_url": source, "description_r2_hash": hint, "scrape_step": "0", "scrape_interval_hours": strconv.Itoa(interval)}}
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		rows.Close()
-		_, finalHash, err := observeColdB0Rollback(ctx, c, target, request.B0SourceEpoch)
-		if err != nil {
-			return err
-		}
-		if finalHash != snapshotHash {
-			return ErrAuthorityLost
-		}
-		doc := coldB0RollbackDocument{Version: "jobseek.crawler.cold-b0-rollback/v1", Request: request, TargetSHA256: target.digest, Namespace: target.document.Namespace, ShardID: target.document.ShardID, Cohort: target.document.Cohort, SnapshotSHA256: snapshotHash, FenceTaskIDs: fenceIDs, RedisPlan: plan}
-		body, err := json.Marshal(doc)
-		if err != nil || len(body) > 32*1024*1024 {
-			return ErrProtocol
-		}
-		digest := sha256.Sum256(body)
-		result = &ColdB0RollbackPlan{document: doc, body: string(body), digest: hex.EncodeToString(digest[:])}
-		return nil
+		var err error
+		result, err = deriveColdB0RollbackPlan(ctx, tx, c, request, target)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (request ColdB0RollbackRequest) valid() bool {
+	return ownershipSHA256.MatchString(request.ReversalSHA256) && ownershipRevision.MatchString(request.SourceRevision) && ownershipSHA256.MatchString(request.SourceReceiptSHA256) && request.RetirementEpoch >= 2 && request.RetirementEpoch <= 9999999999999 && request.B0SourceEpoch >= 1 && request.B0SourceEpoch < request.RetirementEpoch
+}
+
+func deriveColdB0RollbackPlan(ctx context.Context, tx pgx.Tx, c *Client, request ColdB0RollbackRequest, target *ColdB0Target) (*ColdB0RollbackPlan, error) {
+	if err := requireColdB0RollbackContext(ctx, tx, request, target); err != nil {
+		return nil, err
+	}
+	snapshot, snapshotHash, err := observeColdB0Rollback(ctx, c, target, request.B0SourceEpoch)
+	if err != nil {
+		return nil, err
+	}
+	ids := map[string]bool{}
+	records := map[string]coldB0RollbackRecord{}
+	tasks := map[string]b0task.Task{}
+	for id, raw := range snapshot.Records {
+		if !canonicalUUID.MatchString(id) {
+			return nil, ErrAuthorityLost
+		}
+		var record coldB0RollbackRecord
+		decoder := json.NewDecoder(strings.NewReader(raw))
+		decoder.UseNumber()
+		value, parseErr := coldJSONValue(decoder, 0)
+		object, isObject := value.(map[string]any)
+		if parseErr != nil || !isObject || len(object) != 20 {
+			return nil, ErrAuthorityLost
+		}
+		if _, err := decoder.Token(); err != io.EOF {
+			return nil, ErrAuthorityLost
+		}
+		if json.Unmarshal([]byte(raw), &record) != nil || record.TaskID != id || (record.State != "ready" && record.State != "dead" && record.State != "terminal") {
+			return nil, ErrAuthorityLost
+		}
+		payloadDecoder := json.NewDecoder(strings.NewReader(record.Payload))
+		payloadDecoder.UseNumber()
+		if _, err := coldJSONValue(payloadDecoder, 0); err != nil {
+			return nil, ErrAuthorityLost
+		}
+		if _, err := payloadDecoder.Token(); err != io.EOF {
+			return nil, ErrAuthorityLost
+		}
+		task, err := b0task.Decode(record.Payload, record.PayloadSHA256, b0task.Route{ShardID: target.document.ShardID, RoutingEpoch: request.B0SourceEpoch, EngineOwner: "go"})
+		if err != nil || task.Envelope.TaskID != id {
+			return nil, ErrAuthorityLost
+		}
+		allowed := false
+		for _, board := range target.document.Boards {
+			if board.ID == task.Envelope.BoardID {
+				allowed = true
+			}
+		}
+		if !allowed {
+			return nil, ErrAuthorityLost
+		}
+		ids[id] = true
+		records[id] = record
+		tasks[id] = task
+	}
+	fenceIDs := []string{}
+	fences, err := tx.Query(ctx, `SELECT job_posting_id::text FROM public.lightpanda_b0_write_fence WHERE engine_owner='go' AND shard_id=$1 AND routing_epoch=$2 ORDER BY job_posting_id LIMIT 2049`, target.document.ShardID, request.B0SourceEpoch)
+	if err != nil {
+		return nil, err
+	}
+	for fences.Next() {
+		var id string
+		if err := fences.Scan(&id); err != nil {
+			fences.Close()
+			return nil, err
+		}
+		fenceIDs = append(fenceIDs, id)
+		ids[id] = true
+	}
+	err = fences.Err()
+	fences.Close()
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) > 2048 {
+		return nil, ErrAuthorityLost
+	}
+	for _, members := range snapshot.Authority {
+		for _, member := range members {
+			if strings.HasPrefix(member, "scrape|") {
+				at := strings.LastIndexByte(member, '|')
+				if at >= 0 && ids[member[at+1:]] {
+					return nil, ErrAuthorityLost
+				}
+			}
+		}
+	}
+	queryIDs := make([]string, 0, len(ids))
+	for id := range ids {
+		queryIDs = append(queryIDs, id)
+	}
+	sort.Strings(queryIDs)
+	plan := map[string]coldB0RollbackEntry{}
+	for id := range records {
+		plan[id] = coldB0RollbackEntry{Action: "drop"}
+	}
+	rows, err := tx.Query(ctx, `SELECT jp.id::text,jp.board_id::text,jp.source_url,jp.description_r2_hash,jp.is_active,jp.next_scrape_at,
+ COALESCE(jp.leased_until>now(),false),jb.is_enabled,jb.board_status,jb.scraper_needs_browser,jb.scrape_interval_hours
+ FROM public.job_posting jp JOIN public.job_board jb ON jb.id=jp.board_id WHERE jp.id=ANY($1::uuid[]) ORDER BY jp.id FOR SHARE OF jp,jb`, queryIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, board, source, status string
+		var hash *int64
+		var active, leased, enabled, browser bool
+		var due *time.Time
+		var interval int
+		if err := rows.Scan(&id, &board, &source, &hash, &active, &due, &leased, &enabled, &status, &browser, &interval); err != nil {
+			return nil, err
+		}
+		if leased {
+			return nil, ErrAuthorityLost
+		}
+		record, exists := records[id]
+		if !exists || !active || due == nil || !enabled || status != "active" {
+			continue
+		}
+		domain, err := coldRollbackSourceDomain(source)
+		if err != nil || !canonicalUUID.MatchString(board) || interval < 1 || interval > 8760 {
+			return nil, ErrAuthorityLost
+		}
+		first := hash == nil
+		worker := "simple"
+		if browser {
+			worker = "browser"
+		}
+		score := "0"
+		if !first {
+			seconds := due.Unix()
+			micros := due.Nanosecond() / 1000
+			if seconds < 0 || seconds > 9999999999 || seconds == 9999999999 && micros > 999000 {
+				return nil, ErrAuthorityLost
+			}
+			score = strconv.FormatInt(seconds, 10)
+			if micros != 0 {
+				score += "." + strings.TrimRight(strconv.FormatInt(int64(micros)+1000000, 10)[1:], "0")
+			}
+		}
+		if record.State == "ready" {
+			kind, guardScore, err := coldRollbackGuard(snapshot.Guards[id], target, tasks[id])
+			if err != nil {
+				return nil, err
+			}
+			first = strings.HasPrefix(kind, "ft_")
+			worker = strings.TrimPrefix(strings.TrimPrefix(kind, "ft_"), "recurring_")
+			score = guardScore
+		}
+		hint := ""
+		if hash != nil {
+			hint = strconv.FormatInt(*hash, 10)
+		}
+		plan[id] = coldB0RollbackEntry{Action: "schedule", Domain: domain, WorkerType: worker, FirstTime: &first, Score: score, Config: map[string]string{"domain": domain, "board_id": board, "source_url": source, "description_r2_hash": hint, "scrape_step": "0", "scrape_interval_hours": strconv.Itoa(interval)}}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	_, finalHash, err := observeColdB0Rollback(ctx, c, target, request.B0SourceEpoch)
+	if err != nil {
+		return nil, err
+	}
+	if finalHash != snapshotHash {
+		return nil, ErrAuthorityLost
+	}
+	doc := coldB0RollbackDocument{Version: "jobseek.crawler.cold-b0-rollback/v1", Request: request, TargetSHA256: target.digest, Namespace: target.document.Namespace, ShardID: target.document.ShardID, Cohort: target.document.Cohort, SnapshotSHA256: snapshotHash, FenceTaskIDs: fenceIDs, RedisPlan: plan}
+	body, err := json.Marshal(doc)
+	if err != nil || len(body) > 32*1024*1024 {
+		return nil, ErrProtocol
+	}
+	digest := sha256.Sum256(body)
+	return &ColdB0RollbackPlan{document: doc, body: string(body), digest: hex.EncodeToString(digest[:]), snapshot: snapshot}, nil
+}
+
+func requireColdB0RollbackContext(ctx context.Context, tx pgx.Tx, request ColdB0RollbackRequest, target *ColdB0Target) error {
+	state, err := loadColdReversal(ctx, tx, request.ReversalSHA256, request.SourceRevision)
+	if err != nil {
+		return err
+	}
+	if state.phase != "reserved" || state.retirement != request.RetirementEpoch {
+		return ErrAuthorityLost
+	}
+	if err := reversalForwardBinding(ctx, tx, state.spec, "reversing"); err != nil {
+		return err
+	}
+	if err := reversalOwner(ctx, tx, state.spec, true); err != nil {
+		return err
+	}
+	var current int64
+	var called bool
+	if err := tx.QueryRow(ctx, "SELECT last_value,is_called FROM public.lightpanda_b0_routing_epoch_seq").Scan(&current, &called); err != nil {
+		return err
+	}
+	if !called || current != request.RetirementEpoch {
+		return ErrAuthorityLost
+	}
+	var forwardBody string
+	if err := tx.QueryRow(ctx, "SELECT payload FROM public.crawler_ownership_transition WHERE intent_sha256=$1", state.spec.ForwardIntentSHA256).Scan(&forwardBody); err != nil {
+		return err
+	}
+	forward, err := decodeColdTransition(forwardBody, state.spec.ForwardIntentSHA256)
+	if err != nil || forward.TargetB0ManifestSHA256 != target.digest {
+		return ErrAuthorityLost
+	}
+	if request.B0SourceEpoch != state.spec.SourceEpoch {
+		if request.B0SourceEpoch != forward.PreviousEpoch || (state.spec.SourcePhase != "reserved" && state.spec.SourcePhase != "publishing") {
+			return ErrAuthorityLost
+		}
+	}
+	return nil
 }
