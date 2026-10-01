@@ -328,3 +328,33 @@ owners' startup identities and supported quiesced activation/reversal first.
 
 The full migration goal stays active through these gates. A deployed B0 cohort,
 this authority library, or a selected first HTTP family is only a checkpoint.
+
+## Native joint runtime admission
+
+Migration 0040 retains immutable canonical B0 targets alongside joint history and
+binds each reserved plan to one journal. Preparation commits the exact target
+with publishing phase; later missing targets cause containment. Schema transitions
+into publishing/published/active require that target; downgrade refuses retained
+journal or target history. Private fixtures alone may truncate their owned tables.
+
+`OpenJointOwnedAuthority` requires the exact approved ordinary plan/source/epoch
+and separately installed bytes of the reviewed actual B0 Lua. The matching active
+journal binds the target hash; its retained canonical payload and fresh PG/Redis
+configurations are re-attested. `OpenOwnedAuthority` cannot ignore a journalled
+plan or an unfinished joint transition. Unselected claimants also reject open
+joint intent, even before any ordinary plan becomes active.
+
+Each operation verifies the immutable binding under the existing lease/epoch
+barriers. One read-only EVAL combines the actual B0 conservation audit with fixed
+producer selectors and exact permanent projection/joint witness/route/owner.
+Healthy live B0 inflight/dead/terminal work is allowed; this is not a quiescence
+attestation. Current claim checks retain the bound audit through end-of-write,
+host circuits, heartbeat and settlement. Lost/mismatched/expired evidence grants
+no pop/write/lease retirement and is never repaired from a latest selector.
+
+Real private tests cover 15 authority faults before pop, conserved actual B0
+inflight alongside ordinary execution, and witness loss before heartbeat/write/
+settlement of a committed future-due receipt. The real native executable also
+admits exact joint startup and exits without queue/canonical changes after witness
+loss. This proves the native component; legacy joint admission, the supported
+host wrapper, complete transfer/full reversal and fleet admission remain required.

@@ -50,6 +50,7 @@ type OwnershipPlan struct {
 	body           string
 	digest         string
 	projectionHash string
+	joint          *jointOwnership
 }
 
 func (p *OwnershipPlan) SHA256() string {
@@ -216,7 +217,15 @@ func (a *Authority) loadActiveOwnership(ctx context.Context, tx pgx.Tx, digest, 
 	if err != nil {
 		return nil, err
 	}
-	return decodeOwnership(body, digest)
+	p, err := decodeOwnership(body, digest)
+	if err != nil {
+		return nil, err
+	}
+	p.joint, err = a.loadJointOwnership(ctx, tx, p)
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 // InspectStagedOwnership is exact, fresh candidate readback, never an owner or
@@ -267,5 +276,5 @@ func requireUnselectedAuthority(ctx context.Context, tx pgx.Tx) error {
 	if active {
 		return ErrAuthorityLost
 	}
-	return nil
+	return requireNoOpenJointOwnership(ctx, tx)
 }

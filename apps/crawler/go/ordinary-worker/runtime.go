@@ -277,7 +277,16 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		}
 		_ = client.Close()
 	}
-	authority, err = queue.OpenOwnedAuthority(startup, c.databaseURL, client, c.epoch, c.plan, c.source)
+	if c.jointLuaFile != "" {
+		lua, readErr := readProtectedOwnershipFile(c.jointLuaFile, 128<<10)
+		if readErr != nil {
+			cleanup()
+			return ErrStartup
+		}
+		authority, err = queue.OpenJointOwnedAuthority(startup, c.databaseURL, client, c.epoch, c.plan, c.source, lua)
+	} else {
+		authority, err = queue.OpenOwnedAuthority(startup, c.databaseURL, client, c.epoch, c.plan, c.source)
+	}
 	if err != nil {
 		cleanup()
 		return ErrStartup

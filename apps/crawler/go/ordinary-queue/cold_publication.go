@@ -59,6 +59,16 @@ func loadColdPublication(ctx context.Context, tx pgx.Tx, c *Client, digest, revi
 	if target.digest != s.TargetB0ManifestSHA256 {
 		return nil, ErrAuthorityLost
 	}
+	if phase != "reserved" {
+		var retained string
+		err := tx.QueryRow(ctx, "SELECT payload FROM public.crawler_ownership_b0_target WHERE target_sha256=$1", target.digest).Scan(&retained)
+		if errors.Is(err, pgx.ErrNoRows) || err == nil && retained != target.body {
+			return nil, ErrAuthorityLost
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 	var current int64
 	var called bool
 	if err := tx.QueryRow(ctx, "SELECT last_value,is_called FROM lightpanda_b0_routing_epoch_seq").Scan(&current, &called); err != nil {
@@ -155,6 +165,22 @@ func PrepareColdOwnershipPublication(ctx context.Context, pool *pgxpool.Pool, c 
 		p, err := loadColdPublication(ctx, tx, c, digest, revision, t)
 		if err != nil {
 			return err
+		}
+		if p.phase == "reserved" {
+			if _, err := tx.Exec(ctx, `INSERT INTO public.crawler_ownership_b0_target(target_sha256,payload)
+ VALUES($1,$2) ON CONFLICT(target_sha256) DO NOTHING`, t.digest, t.body); err != nil {
+				return err
+			}
+		}
+		var targetBody string
+		if err := tx.QueryRow(ctx, "SELECT payload FROM public.crawler_ownership_b0_target WHERE target_sha256=$1", t.digest).Scan(&targetBody); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrAuthorityLost
+			}
+			return err
+		}
+		if targetBody != t.body {
+			return ErrAuthorityLost
 		}
 		op := "inspect"
 		if p.phase == "reserved" {

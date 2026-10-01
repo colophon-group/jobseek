@@ -199,7 +199,7 @@ func TestRealColdPublicationPersistenceActivationAndExactRetry(t *testing.T) {
 	if publicationPhase(t, p) != "active" {
 		t.Fatal("activation not committed")
 	}
-	owner, err := OpenOwnedAuthority(ctx, p.f.dsn, p.f.client, p.plan.Epoch(), p.plan.digest, p.spec.SourceRevision)
+	owner, err := OpenJointOwnedAuthority(ctx, p.f.dsn, p.f.client, p.plan.Epoch(), p.plan.digest, p.spec.SourceRevision, []byte(p.target.lua))
 	if err != nil {
 		t.Fatal("installed ordinary owner cannot attest published identity")
 	}

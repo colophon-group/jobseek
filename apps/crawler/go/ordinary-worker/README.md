@@ -246,3 +246,42 @@ B0 tasks, verify host-cold/release/rollback evidence or implement reversal. The
 supported ADR006 wrapper must own those operations under its mutation lock before
 these primitives can select production authority. Ordinary production remains
 Python until that complete protocol, readiness and full reversal are proven.
+
+## Native joint runtime admission
+
+Migration 0040 retains the exact canonical B0 configuration target before
+publishing phase commits. Its content/hash are immutable; the schema binds each
+reserved ordinary plan to at most one journal. Publishing/published/active phases
+require the retained target, and downgrade refuses any target or journal history.
+No witness is recreated automatically after a publishing phase has committed.
+
+For an active joint plan the native worker requires
+`ORDINARY_GO_B0_AUDIT_LUA_FILE`: an absolute regular non-symlink file, not writable
+by group/others and at most 128 KiB. Its bytes must match the reviewed actual B0
+Lua SHA256. Missing/untrusted Lua rejects startup before claiming. Foundation
+fixtures without any unfinished joint transition retain their standalone binding;
+they are not production selection proof.
+
+Startup and each native claim/write/heartbeat/settlement freshly bind the exact
+active journal to the approved ordinary plan/source/epoch and retained B0 target.
+The target's PG eligibility/configuration and Redis stable fields are re-attested.
+One read-only EVAL invokes the unmodified source-pinned B0 conservation audit and
+checks exact fixed selectors plus permanent ordinary projection/joint witness/
+B0 route/producer owner. Conserved live inflight/dead/terminal B0 states are valid;
+runtime admission does not impose the cutover's zero-inflight/dead requirement.
+Lost/expired/changed evidence declines authority and never adopts a later owner.
+Final Redis checks also guard the operation's held claim/receipt. Supported
+ownership/configuration mutators must honor the existing lease/epoch barriers.
+
+Private tests reject 15 journal/target/config/route/selector/record/type/TTL faults
+before pop without changing state. A real B0 inflight claim remains compatible
+with ordinary execution, while witness loss fences heartbeat, canonical callback
+and settlement of a real completed receipt with a future due. The actual worker
+process becomes ready under joint authority, then exits without popping future
+work or changing canonical state after witness loss. Installed-image tests run
+this behavior on both architectures before admission of the later source.
+
+Remaining legacy ordinary workers still need this complete joint guard. The
+supported all-writer wrapper, complete PG-derived B0 transfer, full cold reversal,
+remaining interruption seams and real production container/public-fetch proof
+also remain before ordinary native selection. Full migration scope is unchanged.

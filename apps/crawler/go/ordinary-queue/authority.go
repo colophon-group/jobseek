@@ -73,6 +73,7 @@ type Authority struct {
 	pool            *pgxpool.Pool
 	epoch           int64
 	ownership       *OwnershipPlan
+	jointAuditLua   string
 	ownershipCursor int
 	ownershipMu     sync.Mutex
 }

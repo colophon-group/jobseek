@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"github.com/jackc/pgx/v5"
+	"github.com/redis/go-redis/v9"
 )
 
 func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testing.T) {
@@ -156,6 +158,9 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 		_, _ = f.pg.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE state='active'")
 		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_transition"); err != nil {
 			t.Error("private journal cleanup failed")
+		}
+		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_target"); err != nil {
+			t.Error("private target cleanup failed")
 		}
 	})
 	reserveEnv := map[string]string{"ORDINARY_COLD_INTENT_FILE": intentFile, "ORDINARY_COLD_INTENT_SHA256": intent}
@@ -302,9 +307,85 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	if !reflect.DeepEqual(before, coldExecutableRedisSnapshot(t, f)) || canonical != coldExecutableCanonicalSnapshot(t, f) {
 		t.Fatal("coordinator replayed queue/canonical effects or lost due/receipt data")
 	}
+	// Install the exact joint plan in the actual worker. Future scheduled work
+	// keeps this startup/authority fixture independent of public network fetch.
+	var due time.Time
+	if err := f.pg.QueryRow(ctx, "UPDATE job_board SET next_check_at=now()+interval '1 hour' WHERE id=$1::uuid RETURNING next_check_at", f.board).Scan(&due); err != nil {
+		t.Fatal(err)
+	}
+	for key := range map[string]bool{"monitors_simple:greenhouse": true, "ready:simple:1": true} {
+		member := f.board
+		if key == "ready:simple:1" {
+			member = "greenhouse"
+		}
+		if err := f.r.ZAdd(ctx, key, redis.Z{Member: member, Score: float64(due.UnixMicro()) / 1e6}).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	runtimeEnv := map[string]string{}
+	for _, item := range e.env {
+		pair := strings.SplitN(item, "=", 2)
+		runtimeEnv[pair[0]] = pair[1]
+	}
+	runtimeEnv["LOCAL_DATABASE_URL"] = privatePipelineReferenceDSN(t, f)
+	runtimeEnv["ORDINARY_OWNERSHIP_PLAN_SHA256"] = reserved.PlanSHA256
+	runtimeEnv["ORDINARY_OWNERSHIP_PROJECTION_SHA1"] = reserved.ProjectionSHA1
+	runtimeEnv["ORDINARY_OWNERSHIP_ROUTING_EPOCH"] = fmt.Sprint(reserved.RoutingEpoch)
+	workerEnv := func(luaPath string) []string {
+		out := []string{}
+		for k, v := range runtimeEnv {
+			out = append(out, k+"="+v)
+		}
+		if luaPath != "" {
+			out = append(out, "ORDINARY_GO_B0_AUDIT_LUA_FILE="+luaPath)
+		}
+		return out
+	}
+	rejectStartup := func(path string) {
+		t.Helper()
+		bad := exec.Command(e.binary)
+		bad.Env = workerEnv(path)
+		if output, err := bad.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker failed") || strings.Contains(string(output), f.dsn) {
+			t.Fatal("joint worker admitted absent/untrusted audit or exposed input")
+		}
+	}
+	baseline := coldExecutableRedisSnapshot(t, f)
+	canonical = coldExecutableCanonicalSnapshot(t, f)
+	rejectStartup("")
+	badLua := filepath.Join(e.directory, "untrusted.lua")
+	if err := os.WriteFile(badLua, append(append([]byte{}, lua...), '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rejectStartup(badLua)
+	auditLink := filepath.Join(e.directory, "audit-link.lua")
+	if err := os.Symlink(luaFile, auditLink); err != nil {
+		t.Fatal(err)
+	}
+	rejectStartup(auditLink)
+	e.env = workerEnv(luaFile)
+	running := e.start(t, "joint-worker")
+	httpClient := &http.Client{Timeout: time.Second}
+	defer httpClient.CloseIdleConnections()
+	waitNativeFixture(t, running, "active joint native worker readiness", func() bool {
+		response, err := httpClient.Get("http://" + e.address + "/healthz")
+		if err != nil {
+			return false
+		}
+		defer response.Body.Close()
+		return response.StatusCode == http.StatusNoContent
+	})
+	if !reflect.DeepEqual(baseline, coldExecutableRedisSnapshot(t, f)) || canonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("joint worker startup changed future queues or canonical state")
+	}
 	// A missing published witness cannot be repaired by restarting the one-shot.
 	if err := f.r.Del(ctx, "crawler:ownership:transition").Err(); err != nil {
 		t.Fatal(err)
+	}
+	if err := running.wait(t); err == nil {
+		t.Fatal("live native worker kept running after joint witness loss")
+	}
+	if !reflect.DeepEqual(baseline, coldExecutableRedisSnapshot(t, f)) || canonical != coldExecutableCanonicalSnapshot(t, f) || f.r.ZCard(ctx, "inflight:simple").Val() != 0 {
+		t.Fatal("lost joint authority popped work or changed canonical/future state")
 	}
 	call("cold-publish", env, false)
 	call("cold-activate", env, false)

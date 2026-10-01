@@ -52,6 +52,9 @@ func coldSpec(t *testing.T, f authorityFixture, before, prepared *OwnershipPlan)
 		if _, err := f.observer.Exec(context.Background(), "TRUNCATE public.crawler_ownership_transition"); err != nil {
 			t.Error("private journal cleanup failed")
 		}
+		if _, err := f.observer.Exec(context.Background(), "TRUNCATE public.crawler_ownership_b0_target"); err != nil {
+			t.Error("private target cleanup failed")
+		}
 	})
 	return s
 }

@@ -33,6 +33,7 @@ var ErrDrainTimeout = errors.New("ordinary worker cancellation drain expired")
 
 type RuntimeConfig struct {
 	databaseURL, redisURL, source, plan, projection, metricsAddress, dataDirectory                string
+	jointLuaFile                                                                                  string
 	epoch                                                                                         int64
 	concurrency                                                                                   int
 	leaseTTL, heartbeat, taskTimeout, shutdownGrace, cancellationGrace, idleBackoff, stallTimeout time.Duration
@@ -98,6 +99,10 @@ func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (Ru
 		return RuntimeConfig{}, ErrStartup
 	}
 	c.epoch = epoch
+	c.jointLuaFile = getenv("ORDINARY_GO_B0_AUDIT_LUA_FILE")
+	if c.jointLuaFile != "" && (!filepath.IsAbs(c.jointLuaFile) || strings.ContainsRune(c.jointLuaFile, 0)) {
+		return RuntimeConfig{}, ErrStartup
+	}
 	c.databaseURL = getenv("LOCAL_DATABASE_URL")
 	c.redisURL = getenv("REDIS_URL")
 	if c.databaseURL == "" || c.redisURL == "" {

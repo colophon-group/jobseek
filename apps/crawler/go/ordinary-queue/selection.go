@@ -20,10 +20,15 @@ const ownershipCandidateBatch = 64
 // OpenOwnedAuthority binds one native owner to an externally verified exact
 // plan/source/epoch. It cannot stage, activate or reconstruct Redis ownership.
 func OpenOwnedAuthority(ctx context.Context, dsn string, client *Client, epoch int64, digest, revision string) (*Authority, error) {
+	return openOwnedAuthority(ctx, dsn, client, epoch, digest, revision, "")
+}
+
+func openOwnedAuthority(ctx context.Context, dsn string, client *Client, epoch int64, digest, revision, jointLua string) (*Authority, error) {
 	a, err := OpenAuthority(ctx, dsn, client, epoch)
 	if err != nil {
 		return nil, err
 	}
+	a.jointAuditLua = jointLua
 	a.ownership, err = a.LoadActiveOwnership(ctx, digest, revision)
 	if err == nil {
 		err = client.verifyOwnershipProjection(ctx, a.ownership)
@@ -38,6 +43,9 @@ func OpenOwnedAuthority(ctx context.Context, dsn string, client *Client, epoch i
 func (c *Client) verifyOwnershipProjection(ctx context.Context, plan *OwnershipPlan) error {
 	if plan == nil {
 		return ErrConfiguration
+	}
+	if plan.joint != nil {
+		return c.verifyJointOwnership(ctx, plan)
 	}
 	body, err := c.redis.Get(ctx, ownershipProjectionKey).Result()
 	if errors.Is(err, redis.Nil) {
@@ -75,6 +83,9 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 		return err
 	}
 	if plan.body != a.ownership.body {
+		return ErrAuthorityLost
+	}
+	if (plan.joint == nil) != (a.ownership.joint == nil) || (plan.joint != nil && (plan.joint.intent != a.ownership.joint.intent || plan.joint.target.body != a.ownership.joint.target.body)) {
 		return ErrAuthorityLost
 	}
 	if err := a.queue.verifyOwnershipProjection(ctx, plan); err != nil {
