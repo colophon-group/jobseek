@@ -1,0 +1,136 @@
+{
+  "checkpoint": "protected native B0 reactivation CLI and actual-producer crash fixture",
+  "date": "2026-10-02",
+  "runtime_source_revision": "5957f001e9b63da675a3ac8e1a31860007e0b4d6",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "operations": [
+    "cold-b0-reactivation-plan",
+    "cold-b0-reactivation-retain",
+    "cold-b0-reactivation-apply",
+    "cold-b0-reactivation-inspect"
+  ],
+  "contract": {
+    "inputs": "protected original intent/reversal, exact source E/plan, explicit reserved retirement R, exact ordinary restoration decision and compiled candidate source",
+    "preview": "rejects approval selector; fixed authenticated producer and protected target/pinned Lua/prior receipt file+SHA",
+    "retain_apply": "require exact immutable reactivation approval SHA; original prior receipt SHA must bind intent/reversal and retained plan",
+    "inspect": "read-only exact history; rejects target/Lua/receipt inputs and opens neither Redis nor producer; does not acquire ownership/allocator barriers",
+    "output": "bounded canonical reactivation manifest, SHA, R, prepared/redis-reactivated phase and committed completion SHA",
+    "not_granted": [
+      "new epoch allocation",
+      "ordinary owner publication",
+      "reversal closure",
+      "host release selection",
+      "sentinel clearing",
+      "service startup or full host readiness"
+    ]
+  },
+  "local_validation": {
+    "full_real_pg_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 68.065,
+          "log": "ordinary-b0-reactivation-cli-final-queue-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 30.898,
+          "log": "ordinary-b0-reactivation-cli-final-worker-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 4.883,
+          "log": "ordinary-b0-reactivation-cli-final-exporter-race.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "pytest",
+            "-q",
+            "tests/test_ordinary_ownership.py",
+            "tests/test_lightpanda_activation.py",
+            "tests/test_redis_queue.py",
+            "tests/test_pipeline.py",
+            "tests/test_rich_monitor_contract.py"
+          ],
+          "exit_code": 0,
+          "seconds": 6.26,
+          "log": "ordinary-b0-reactivation-cli-final-legacy.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "legacy": "295 passed, no skips, 5.85s test time",
+    "protected_configuration_race": "all cold admin tests pass under race; explicit modes/source/digests/epochs and selector/inspection/cross-operation input refusals",
+    "linux_compilation_and_vet": "actual Linux integration file cross-compiled AMD64/ARM64; GOOS=linux integration-tag queue vet and worker vet pass",
+    "workflow_contracts": "104 passed, no failures/skips; CI and crawler runtime contracts",
+    "version": "0.13.903 -> 0.13.904 against stacked base; same-PR candidate retained"
+  },
+  "actual_linux_fixture": {
+    "name": "TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR",
+    "implementation": "real root CLI and UID10001 authenticated producer at R; SIGKILL after acknowledged SAVE/readback before SQL completion, actual RDB reload/producer restart, exact completed retry and historical inspection while barrier held",
+    "status": "implemented; fresh Linux execution required on both architectures",
+    "scope_limit": "controlled prior host receipt and real Lua restoration; does not prove independent production release identity or full prior sentinel clearing"
+  },
+  "preceding_linux_failure": {
+    "head": "b61f1fe28ef89352c5b351cd2e31d8a7dc8ad3f0",
+    "run": 36939626059,
+    "jobs": [
+      110627839794,
+      110627840024
+    ],
+    "result": "failure on both architectures; root fixture skipped",
+    "evidence_sha256": "e794f8e26417c0f346b81cbdff76cf6d5b657c4ebcad118726aec53f63c5a1f3",
+    "finding": "only fractional guard spelling assertion failed: Linux Redis emitted 1925089445.1000011 vs local 1925089445.100001",
+    "correction": "require exact retained Redis source score bytes and canonical schedule millisecond ceiling 1925089445101; preserve complete canonical snapshot; no queue transfer algorithm changed",
+    "admitted": false
+  },
+  "ci_pacing": "Full queue race suite bounded at 120s after preceding jobs took 83.085s/88.406s near 90s; root executable fixture retains 90s. Preserve running whole-B0 source without cancellation; new exact source requires fresh admission.",
+  "next": [
+    "Execute new combined root producer/PG/CLI fixture on AMD64/ARM64 and verify both logs, full CI and installed-image proofs",
+    "Finish running predecessor whole B0 and recompute artifact verdict; retain new exact-source numeric evidence",
+    "Restore compatible ordinary joint authority at R, persist/readback exact projection/witness and close original reversal only after durable B0 completion",
+    "Complete supported ADR006 all-writer immutable-release/sentinel/receipt/readiness/cold-reversal wrapper",
+    "Every enabled profile/consumer, output/publisher/freshness/queue parity, whole-service resource/cost admission, exact required gates, actual rollback window and production Python/Playwright/Chromium retirement remain required"
+  ],
+  "private_log_sha256": {
+    "ordinary-b0-reactivation-cli-final-queue-race.log": "120feebb8302dbdf08bd5bd6dbd26fc39d888ce4aeac1fe1470bcd8a95684cbe",
+    "ordinary-b0-reactivation-cli-final-worker-race.log": "d4c238be240f0885547c8358f67b0f34806329b7107c5ff98d2aea04a85c0ed3",
+    "ordinary-b0-reactivation-cli-final-exporter-race.log": "9b8f06b73d4912695c9ff4434fc57789ec4b474ed773108280d3f91aa63ef7e2",
+    "ordinary-b0-reactivation-cli-final-legacy.log": "74eb4650e854b08a80c12461b545051a0e065e95755b38d45842249f93164bfc"
+  }
+}

@@ -1235,3 +1235,52 @@ Continue in this order:
 
 This checkpoint supersedes pending status observations in the historical sections
 below. Their implementation details and original evidence remain historical.
+
+## Protected B0 reactivation CLI and root crash fixture, October 2
+
+Protected reactivation CLI source `5957f001e9b63da675a3ac8e1a31860007e0b4d6`
+adds native `cold-b0-reactivation-plan`, `cold-b0-reactivation-retain`,
+`cold-b0-reactivation-apply` and `cold-b0-reactivation-inspect` commands. All bind
+the original protected intent/reversal, compiled candidate source, original E/plan,
+explicit reserved R and exact ordinary restoration decision. Live operations bind
+the protected prior host receipt to original and retained identity and use the fixed
+authenticated producer. Preview rejects an approval selector; retain/apply/inspect
+require the exact immutable approval SHA. Historical inspection rejects live
+inputs, opens neither Redis nor producer, and does not acquire ownership barriers.
+Output reports bounded canonical manifest and committed completion identity without
+publishing ordinary ownership, closing the reversal or granting host readiness.
+
+Full real PG/Redis queue/worker/exporter races pass (68.065s/30.898s/4.883s),
+all 295 legacy tests pass without skips (5.85s), and 104 CI/runtime workflow
+contract tests pass. Protected configuration race checks pass; the actual Linux
+integration file cross-compiles on AMD64/ARM64, Linux integration-tag queue vet and
+worker vet pass. The new root fixture uses the real UID-10001 producer and compiled
+CLI, SIGKILL after SAVE/readback before SQL completion, RDB/producer restart, exact
+completed retry and historical inspection while barriers are held. Fresh execution
+on both architectures remains required. Its controlled prior receipt and Lua
+restoration do not prove independent production releases or full sentinel clearing.
+See [CLI evidence](evidence/go-b0-reactivation-cli-2026-10-02.json).
+
+Preceding checkpoint `b61f1fe28ef89352c5b351cd2e31d8a7dc8ad3f0` failed both
+Linux jobs in run 36939626059: the test required the local decimal spelling of a
+fractional Redis ZSET score. Linux preserved `1925089445.1000011` whereas local
+Redis emitted `1925089445.100001`. The check now requires exact retained source
+bytes and the canonical millisecond ceiling; complete canonical schedule
+conservation remains checked independently. The queue transfer algorithm is
+unchanged. Those jobs skipped actual root execution and do not admit the source.
+The growing full queue race suite is now bounded at 120s (preceding jobs took
+83.085s/88.406s); the root fixture stays bounded at 90s.
+
+Continue by executing and verifying the new exact-source combined root producer,
+PG/CLI proof, full CI and installed images. Preserve whole B0 36936491185's running
+preceding source and recompute its completed report; admit the new numeric evidence.
+Then restore compatible ordinary joint authority at R, persist/read back the exact
+projection/witness and close the original reversal only after durable B0 completion.
+Complete supported ADR006 all-writer immutable release/sentinel/receipt/readiness
+and cold reversal. Every enabled profile/consumer, canonical/publisher/freshness/
+queue parity, comparable whole-service CPU/RAM/density/cost, exact required gates,
+actual rollback window and production Python/Playwright/Chromium/runtime-only asset
+retirement remain full-goal requirements. Keep useful offline Python isolated and
+preserve every enabled board. Production is unchanged; the full goal stays active.
+
+This checkpoint supersedes older implementation/pending-status observations below.

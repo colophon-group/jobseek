@@ -543,5 +543,18 @@
     "ordinary-b0-reactivation-final-worker-race.log": "e3bd9520fb0cfe2328c3cdc56812233850252cc485adada1b621012e7fd9482b",
     "ordinary-b0-reactivation-final-exporter-race.log": "271dfa7a374883eb424d91ef49e118d38b8fd4cc20f7436b302c56179a0893f6",
     "ordinary-b0-reactivation-final-legacy.log": "4614df70806d7368ffc1d25bc943b3e5afd19981c904f407575fbabd5471e243"
+  },
+  "fresh_reactivation_ci": {
+    "head": "b61f1fe28ef89352c5b351cd2e31d8a7dc8ad3f0",
+    "run": 36939626059,
+    "jobs": [
+      110627839794,
+      110627840024
+    ],
+    "result": "failure on both architectures; root fixture skipped",
+    "evidence_sha256": "e794f8e26417c0f346b81cbdff76cf6d5b657c4ebcad118726aec53f63c5a1f3",
+    "finding": "only fractional guard spelling assertion failed: Linux Redis emitted 1925089445.1000011 vs local 1925089445.100001",
+    "correction": "require exact retained Redis source score bytes and canonical schedule millisecond ceiling 1925089445101; preserve complete canonical snapshot; no queue transfer algorithm changed",
+    "admitted": false
   }
 }
