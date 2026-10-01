@@ -31,12 +31,16 @@ adds strict Greenhouse eligibility and canonical PostgreSQL/Redis observation;
 implementation head `e5ecd5d29` passed both real Linux database/queue jobs.
 Its subsequent `6a71c4c99` ownership implementation adds immutable durable
 staged/active/retired cohorts and exact active readback; both Linux PostgreSQL17/
-Redis architectures passed run 36790040524. This remains unselected: atomic
-native/legacy queue selection and full ordinary processing are next.
+Redis architectures passed run 36790040524. Subsequent `f7ccc7b06` binds native
+and legacy claims to the exact active plan, canonical configuration and atomic
+before-pop selection; both Linux architectures passed run 36793700617 with
+mandatory real legacy PostgreSQL/Redis attestation tests. This remains unselected
+in production: native ordinary processing and installed ownership/cutover proof
+are next.
 See the
 [ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
-It selects no ordinary worker. Next, complete exclusive effective profile
-ownership and native ordinary processing with installed fault/cold-reversal proof, then
+It selects no ordinary worker in production. Next, connect native ordinary
+processing and prove installed exclusive ownership with fault/cold-reversal evidence, then
 every enabled profile and runtime consumer before final Python/Chromium
 retirement. The full migration goal remains active.
 

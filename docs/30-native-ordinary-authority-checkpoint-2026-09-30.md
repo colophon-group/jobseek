@@ -141,6 +141,38 @@ for both owners with exact startup/projection identities, missing/corrupt/full
 Redis loss protection and full native processing through supported all-writer
 cutover and cold reversal. Production remains unchanged and the full goal active.
 
+## Atomic selection continuation
+
+Implementation `f7ccc7b060e0e9100caae9d654c15d3f45891ca2` in draft
+[PR #10210](https://github.com/colophon-group/jobseek/pull/10210) now binds native
+owned authority and legacy claims to exact active plan/source/epoch identity.
+The existing Lua queues filter before removal. Native claims validate an enabled
+canonical profile under a row lock and compare the complete current Redis hash;
+legacy excludes retained members even after config/domain/browser-route drift.
+Bounded cohort batches and legacy domain/task cursors progress past foreign
+heads. Global first-time priority, eight-monitor fairness, shared throttle,
+scrape rotation and B0/native duplicate repair remain shared. Missing/corrupt
+projection and complete Redis loss reject planned callers before effects.
+
+Legacy pipeline startup requires all installed identity fields when a plan is
+active. Every planned legacy claim reattests that plan under the database
+lease/epoch barriers through the Lua pop. Native writes, heartbeat and settlement
+also reject revoked canonical state, plan, epoch or projection before effects.
+Unaware queue callers reject an installed projection. Supported cutover must
+quiesce and replace every old writer before installation; there is no production
+activation/projection writer or ordinary processing executable yet.
+
+Exact committed source passed actual local PostgreSQL18.6 migration reversal,
+full native/queue races (18.940 seconds), production Go reaper races (4.863 seconds)
+and nine real Python ownership boundary tests. Pipeline/runtime/migration tests
+(251), workflow/version/documentation tests (117), Go vet/module/format, Python
+Ruff and workflow lint passed. Both Linux PostgreSQL17/private Redis architectures
+passed native, reaper and mandatory legacy claim checks in
+[run 36793700617](https://github.com/colophon-group/jobseek/actions/runs/36793700617).
+The [portable selection evidence](evidence/go-ordinary-selection-2026-10-01.json)
+records exact identities, scope and remaining gates. These are source fixtures,
+not installed processing/image fault proof or fleet/whole-service cost evidence.
+
 ## Next delivery and completion gates
 
 At 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885
@@ -150,10 +182,11 @@ enabled and 134 disabled. Of enabled boards, 522 had stored browser requirements
 Stored family/browser flags do not establish effective profile or native coverage.
 
 Prioritize a bounded standard Greenhouse HTTP/API cohort after effective
-configuration validation. First bind exclusive profile/domain ownership to
-existing claims and the verified active epoch. Preserve unselected ready work,
-domain fairness/rate limits, deferred monitors, repair and never-successful jobs.
-Then connect native monitor/detail fetch, enrichment, canonical persistence,
+configuration validation. The ownership/selection library is prepared. Connect
+the native executable and supported all-writer startup/projection/cutover while
+preserving unselected ready work, producer/repair/deferred/never-successful
+behavior and the shared B0 epoch. Implement native monitor/detail fetch,
+enrichment, canonical persistence,
 complete/truncated inventories, disappearance, retry/circuit/publisher policy,
 description deduplication/R2 and database-owned scheduling. Reuse the existing
 Go Greenhouse parser and shared native enrichment/persistence.
