@@ -114,10 +114,11 @@ Unaware callers reject an installed projection; both planned callers reject
 missing/corrupt routing, including complete Redis loss. Supported activation
 must stop and replace every old writer before installing these expectations.
 
-There is no production activation endpoint in this library. Before activation,
+There is no production activation command for this library. Before activation,
 the supported all-writer release must install the exact startup/projection
 identities and full native processing, prove installed ownership and coordinate
-B0's shared epoch. Direct SQL activation appears only in owned private tests.
+B0's shared epoch. Private tests use direct SQL for isolated owner fixtures and
+the journalled native API for joint publication/activation fixtures.
 
 Private Redis race tests cover both worker queues, attempt expiry/reclaim,
 stale heartbeat/completion/reschedule, exact scheduling, deferred monitor
@@ -149,6 +150,40 @@ A skip or an earlier revision's green run establishes no new-head proof. Record
 exact-head CI results in the PR before considering selection.
 
 ## Continuation gates
+
+Migration `0039` and the native publication primitives now extend the retained
+journal through `reserved → publishing → published → active`. A source-pinned
+`ColdB0Target` captures each fixed producer selector's canonical enabled browser
+configuration and matching Redis settings. The target binds exact board UUIDs,
+configuration hashes, namespace, shard and cohort; epoch comes only from the
+durable reservation. Unknown/duplicate JSON fields, nested metadata duplicates,
+unsupported selectors and changed configurations fail admission.
+
+`PrepareColdOwnershipPublication` first installs an exact pending Redis witness
+against the prior ordinary projection, then commits `publishing`. Only this
+committed phase permits projection effects. `PublishColdOwnership` wraps the
+unmodified, SHA256-pinned production B0 Lua conservation audit and projection
+CAS in one EVAL. It requires the exact new shared-epoch route/producer selectors,
+1–1600 conserved records and no inflight/dead work. One `MSET` publishes ordinary
+projection and joint witness together. Acknowledged synchronous `SAVE` and fresh
+atomic readback precede `published`. A failed SAVE/database commit leaves an
+inspectable attempt; missing, expired, corrupt or partial witnesses are contained
+instead of reconstructed. `ActivateColdOwnership` commits the exact ordinary DB
+owner and active journal together after fresh publication/profile/B0 readback.
+It does not start services or claim host/release readiness.
+
+An exact successor can supersede only the prior active journal's plan/epoch and
+target release. Its pending publication must replace the exact prior witness;
+an old B0 epoch is rejected until the supported host has transferred that owner.
+Private tests exercise SAVE denial/retry, missing Redis witnesses, post-SAVE SQL
+failure/retry, atomic activation rollback/retry, wrong B0 route/selectors/records,
+canonical/Redis config drift and corrupt routing types. A real private Redis
+no-save shutdown and fresh process verify durable RDB projection/witness and B0
+records/guards. Canonical rows/deadlines/receipts and every other Redis key remain
+unchanged. These are internal library primitives with no installed coordinator
+command or production selection path. They do not transfer B0 tasks, substitute
+for a complete PG-derived B0 transfer manifest, prove actual coordinator-process
+interruption, attest all-writer host quiescence, or implement full cold reversal.
 
 Migration `0038` adds the durable joint ordinary/B0 transition journal. Internal
 native `BeginColdOwnershipTransition` commits one canonical intent binding the

@@ -378,6 +378,7 @@ async def test_real_b0_only_epoch_reservation_preserves_pending_joint_journal():
             separators=(",", ":"),
         )
         digest = hashlib.sha256(body.encode()).hexdigest()
+        schema_revision = await pool.fetchval("SELECT version_num FROM alembic_version")
         await pool.execute(
             "INSERT INTO crawler_ownership_transition "
             "(intent_sha256,transition_id,source_revision,previous_epoch,"
@@ -426,7 +427,7 @@ async def test_real_b0_only_epoch_reservation_preserves_pending_joint_journal():
                 timeout=20,
             )
             assert result.returncode != 0, "schema downgrade discarded retained intent"
-            assert await pool.fetchval("SELECT version_num FROM alembic_version") == "0038"
+            assert await pool.fetchval("SELECT version_num FROM alembic_version") == schema_revision
             assert (
                 await pool.fetchval(
                     "SELECT intent_sha256 FROM crawler_ownership_transition WHERE intent_sha256=$1",

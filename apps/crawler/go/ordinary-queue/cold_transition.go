@@ -192,6 +192,25 @@ func BeginColdOwnershipTransition(ctx context.Context, pool *pgxpool.Pool, clien
 		if _, err := preparedColdPlan(ctx, tx, client, s); err != nil {
 			return err
 		}
+		// A successor may supersede only the exact active joint generation whose
+		// ordinary plan/epoch and target release are this intent's prior owner.
+		// The verified host must already be cold before beginning this transition.
+		var priorIntent, priorBody, priorPhase string
+		var priorPlan *string
+		var priorEpoch *int64
+		err = tx.QueryRow(ctx, `SELECT intent_sha256,payload,phase,reserved_plan_sha256,routing_epoch
+ FROM crawler_ownership_transition WHERE phase NOT IN ('reversed','superseded')`).Scan(&priorIntent, &priorBody, &priorPhase, &priorPlan, &priorEpoch)
+		if err == nil {
+			prior, decodeErr := decodeColdTransition(priorBody, priorIntent)
+			if decodeErr != nil || priorPhase != "active" || priorPlan == nil || priorEpoch == nil || *priorPlan != s.PreviousOrdinaryPlanSHA256 || *priorEpoch != s.PreviousEpoch || prior.TargetReleaseSHA256 != s.ActiveReleaseSHA256 {
+				return ErrAuthorityLost
+			}
+			if _, err = tx.Exec(ctx, "UPDATE crawler_ownership_transition SET phase='superseded' WHERE intent_sha256=$1 AND phase='active'", priorIntent); err != nil {
+				return err
+			}
+		} else if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
 		_, err = tx.Exec(ctx, `INSERT INTO public.crawler_ownership_transition
  (intent_sha256,transition_id,source_revision,previous_epoch,prepared_plan_sha256,payload)
  VALUES($1,$2::uuid,$3,$4,$5,$6)`, digest, s.TransitionID, s.SourceRevision, s.PreviousEpoch, s.PreparedPlanSHA256, string(body))
