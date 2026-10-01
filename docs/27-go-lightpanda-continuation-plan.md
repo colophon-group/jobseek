@@ -1,19 +1,20 @@
 # Go and Lightpanda migration continuation plan
 
-Current resumption checkpoint, October 1: native process source
-`2b775782f275a48b6a5890463bbfc9ac96b37d17` and its portable checkpoint
-`c32640c66eb06e49831ab3c6d9912b75907b00e4` passed Linux AMD64/ARM64
-PostgreSQL/Redis (36856484383), full CI (36856561101) and installed source/CA
-identity (36856620870). Its B0 run 36856484342 is still measuring. Actual deploy
-gate remains failed while draft. Later source
-`ad8cc268f9a02ca72b646fb1fa1d3ad296991601` adds real executable SIGKILL/restart
-receipt proof and Linux image-extracted binary/asset admission. Local full native
-worker races passed in 36.973 seconds; new exact-head CI remains required.
-See [process crash evidence](evidence/go-ordinary-process-crash-2026-10-01.json).
-B0 admission now preserves the running measurement and queues the newest pending
-candidate. Keep each report bound to its measured source; an earlier completed
-report never supplies the newer candidate's admission or merge authority.
+Current resumption checkpoint, October 1: process/crash checkpoint `16de7543b`
+passed Linux AMD64/ARM64 PostgreSQL/Redis (36860289163), full CI (36860354886)
+and actual image-extracted AMD64 binary/assets plus SIGKILL/reaper/restart
+execution (36860358274). Its B0 run 36860289348 is still measuring. Actual deploy
+gate refuses the draft. Earlier process checkpoint `c32640c66` passed all four
+workflows, including B0 admission; older-head checks grant no later-head authority.
+
+Latest runtime source `91e971a5aebe72670238ea687309cae07bdf2286` adds native
+ownership staging/inspection, a B0-only epoch guard and dual-architecture installed
+image admission. Real private queue/worker races and 289 mandatory legacy tests
+without skips passed. Fresh candidate checks remain required. See
+[ownership preparation evidence](evidence/go-ordinary-ownership-admin-2026-10-01.json).
 Production ordinary workers remain Python; the full migration goal is active.
+Running B0 and installed-image measurements now finish while the newest pending
+candidate waits. Each source still requires its own report and admission.
 
 The next delivery sequence is:
 
@@ -50,15 +51,17 @@ B0-only reversal cannot silently retire an active ordinary owner. Extend the
 supported deployment/ownership protocol under ADR006; the existing B0 active
 receipt intentionally prevents an ordinary image release until cold reversal.
 Do not bypass that receipt or patch a running environment to activate Go.
-Until the joint path is implemented, B0-only epoch allocation/reversal must refuse
-an active ordinary plan before burning a new epoch. Cover legacy databases where
-the optional ordinary schema is absent as well as staged, active and retired plans.
+The prepared B0-only allocator now refuses an active ordinary plan before burning
+a new epoch, taking the ordinary lease barrier before its epoch barrier. Real
+PostgreSQL proves preserved owner/sequence and allocation after retirement; legacy
+absent-schema behavior remains compatible. Fresh deployed-source checks are required.
 
 Bind one protected transition to the exact active and candidate release generation,
 immutable crawler/browser/renderer image identities, installed binary sources,
 canonical data/runtime contracts, ordinary cohort configuration digests and B0
-selectors. Use native one-shot staging/readback for the ordinary plan; staging
-must never activate ownership or adopt an allocator epoch. A changed board or
+selectors. Native `--stage-ownership`/`--inspect-ownership` now prepare and inspect an exact
+staged ordinary plan. They require protected modes, compiled source and explicit
+current epoch; staging cannot activate ownership or adopt an allocator epoch. A changed board or
 projection invalidates the proposed transition and requires fresh preparation.
 
 Under the host mutation lock, stop and attest every claimant/writer, exporter,

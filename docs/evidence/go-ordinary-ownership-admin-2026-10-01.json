@@ -1,0 +1,80 @@
+{
+  "schema": "jobseek.migration.ordinary-ownership-admin-evidence/v1",
+  "runtime_source_head": "91e971a5aebe72670238ea687309cae07bdf2286",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "selected_in_production": false,
+  "local": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "native_queue_full_race_seconds": 20.928,
+    "native_worker_full_race_seconds": 49.163,
+    "final_native_admin_executable_race_seconds": 7.684,
+    "mandatory_legacy_python_tests": 289,
+    "legacy_python_skips": 0,
+    "legacy_pytest_seconds": 7.86,
+    "node_checks": 130,
+    "vet_tidy_format_actionlint_ruff_pyright": "passed",
+    "linux_cross_builds": {
+      "amd64": {
+        "sha256": "8373af8e6d8aad8bb46b661784d0ee706c1822b1ffe4e3aaf6e3a1f1e83bf8f8",
+        "compiled_source": "91e971a5aebe72670238ea687309cae07bdf2286",
+        "executed": false
+      },
+      "arm64": {
+        "sha256": "dc7fe85507f0a534a434f0eab31475c8e8c4f7f1f3e9108a906ea54c51ebcca6",
+        "compiled_source": "91e971a5aebe72670238ea687309cae07bdf2286",
+        "executed": false
+      }
+    },
+    "cleanup": true,
+    "production_changed": false,
+    "limitation": "Local native fixtures use an explicit synthetic source binding. Cross-built Linux binaries were not executed locally. Test wall times are not fleet performance/cost measurements."
+  },
+  "verified": [
+    "Native --stage-ownership and --inspect-ownership require separate protected modes, compiled matching source and explicit current epoch; no adoption/allocation, claims, owner activation or Redis projection writes.",
+    "Bounded regular non-symlink cohort JSON rejects shared-writable files, FIFO/device replacements, duplicate/noncanonical identifiers, oversized or ambiguous data before database access. Errors and output omit input/configuration/credentials.",
+    "Staging persists an immutable staged document, then performs another exact fresh readback. Inspection verifies staged state, source/digest/current epoch and every canonical enabled profile plus current Redis configuration under lease/epoch/row barriers.",
+    "Actual native command against real private PostgreSQL/Redis proves exact idempotence and readback, changed-config/disabled-board/wrong-source/digest/stale-epoch rejection and unchanged board/queue/configuration/ownership/allocator state.",
+    "B0-only reservation now acquires ordinary lease barrier before epoch barrier. It refuses active ordinary ownership before nextval; real PostgreSQL proves owner/sequence unchanged and allocation permitted after retirement. Legacy absent-schema behavior and allocator failures remain covered.",
+    "Mandatory matrix adds activation dependencies and all 289 legacy boundary tests; installed-image matrix now prepares native AMD64 and ARM64 execution and per-architecture source/image/binary/asset records. Running installed evidence is retained while newer candidates wait."
+  ],
+  "previous_process_crash_checkpoint": {
+    "head": "16de7543b4c1cb0c8de15ed033ae03283f55633f",
+    "linux": {
+      "run": 36860289163,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36860354886,
+      "conclusion": "success"
+    },
+    "installed_amd64_components": {
+      "run": 36860358274,
+      "conclusion": "success",
+      "source_revision": "16de7543b4c1cb0c8de15ed033ae03283f55633f",
+      "image_id": "sha256:d906e939831a1090cd6676a6da18e084ad1c1668a3e52958fa2057ab0e2237d2",
+      "binary_sha256": "8f10f0569251b0e207e7e6b354d48e976b3ab8f322e0d2f19532addcfb2b21df",
+      "asset_count": 34,
+      "tests": [
+        "native startup/identity/health/signal drain",
+        "SIGKILL after commit-before-ack, guarded reap and actual binary restart without replay"
+      ],
+      "scope": "image-extracted native binary and assets on Linux; private PostgreSQL/Redis",
+      "limitation": "Actual image-extracted binary/read-only assets on Linux, not complete production-container/public-network authority; does not cover later admin source or ARM64 installed image."
+    },
+    "b0_admission": {
+      "run": 36860289348,
+      "status": "in_progress"
+    },
+    "actual_deploy_gate": "failure while draft"
+  },
+  "not_verified": [
+    "Fresh source Linux/full CI/B0 and both installed-image architectures; actual green deploy gate.",
+    "Coordinated native ordinary/B0 epoch allocation, active-plan transition, cross-store projection publication and durable pending/active/reversal journal under the supported all-writer mutation lock.",
+    "Production-container public fetch/processing, effective settings, actual all-writer cutover and cold reversal; no ordinary Go service is selected.",
+    "Every enabled effective monitor/detail/browser profile and runtime consumer, fleet output/publisher/freshness/queue conservation, comparable whole-service resource/density/attributable cost, actual rollback window and production Python/Playwright/Chromium retirement."
+  ],
+  "next": "Execute exact-source dual-architecture installed admin/process proof, then implement the joint all-writer ordinary/B0 transition and durable interrupted-publication/cold-reversal recovery protocol. Staging/readback, process and crash/restart are implemented; do not redo them. Complete all enabled profiles/consumers and fleet/freshness/queue/cost/window retirement. Full migration goal remains active."
+}

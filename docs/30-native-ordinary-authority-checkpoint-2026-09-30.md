@@ -586,3 +586,42 @@ Continue with installed proof and the coordinated all-writer ordinary/B0
 ownership protocol in the [continuation plan](27-go-lightpanda-continuation-plan.md),
 then all enabled profiles/consumers, fleet/freshness/queue/cost and actual
 rollback-window retirement. The full migration goal remains active.
+
+### Native ownership staging and allocator guard, October 1
+
+Source `91e971a5aebe72670238ea687309cae07bdf2286` adds native
+`--stage-ownership` and `--inspect-ownership` to the source-bound worker. Separate
+protected modes require matching compiled source and an explicit current epoch.
+Staging reads a bounded protected regular non-symlink cohort file, captures fresh
+canonical profiles and performs exact staged readback. Inspection rejects active/
+retired plans, wrong source/digest, stale epochs and configuration/eligibility drift.
+Neither command allocates/adopts an epoch, claims, activates or publishes ownership.
+Outputs expose bounded document identities without configuration or credentials.
+
+A real native command fixture proves idempotent staging/readback, configuration
+and disabled-board rejection, stale identity refusal and unchanged canonical,
+queue, allocator and ownership state. B0-only reservation now takes the ordinary
+lease barrier before its epoch barrier and refuses an active ordinary plan before
+nextval. Real PostgreSQL confirms preserved owner/sequence and safe allocation
+following retirement; older absent-schema behavior remains compatible.
+
+Full queue races passed in 20.928 seconds, worker races in 49.163 seconds and final
+native admin execution in 7.684 seconds. All 289 mandatory legacy tests without
+skips, 130 repository checks, vet/tidy/format/actionlint/ruff/pyright and both Linux
+cross-builds passed. Private fixtures stopped; production is unchanged. Local
+fixture source bindings are synthetic; cross-built binaries were not run locally.
+Fresh installed-image checks now cover AMD64 and ARM64 with distinct artifacts.
+See [portable ownership preparation evidence](evidence/go-ordinary-ownership-admin-2026-10-01.json).
+
+Previous checkpoint `16de7543b` passed Linux 36860289163, full CI 36860354886 and
+installed AMD64 process/crash execution 36860358274. The downloaded artifact binds
+source, image ID, binary SHA256 and 34 read-only model asset hashes; both actual
+binary tests pass. This proves image-extracted components on Linux, not the entire
+production container or public network. B0 run 36860289348 is still measuring;
+actual deploy gate refuses draft and fresh source checks remain required.
+
+Continue with the joint all-writer ordinary/B0 transition, cross-store publication
+journal and deterministic interrupted activation/cold reversal, then all enabled
+profiles/consumers and fleet/freshness/queue/cost/window retirement. Do not redo
+completed native staging, process or SIGKILL recovery. The full migration goal
+remains active; production ordinary workers remain Python.
