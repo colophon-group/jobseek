@@ -1,28 +1,33 @@
 {
-  "checkpoint": "completion-bound native joint publication",
+  "checkpoint": "retained ordinary rollback preparation",
   "date": "2026-10-02",
-  "runtime_source_revision": "3dc88089ea55bf5f3953ed8e37f8209d55415fda",
+  "runtime_source_revision": "c9c42faa6216c2aed5098da8f6dc233b4137ee9b",
   "candidate_version": "0.13.904",
   "pr": 10210,
   "draft": true,
   "production_changed": false,
   "full_migration_goal": "active",
+  "migration": "0045",
   "operations": [
-    "cold-forward-prepare",
-    "cold-forward-publish",
-    "cold-forward-activate"
+    "cold-ordinary-rollback-plan",
+    "cold-ordinary-rollback-retain",
+    "cold-ordinary-rollback-inspect"
   ],
-  "authority": {
-    "required": "exact immutable forward approval/completion/request/intent/source/E/ordinary plan/target plus fixed authenticated producer",
-    "barriers": "same exclusive transaction barriers as every publication effect",
-    "before_activation": "exact fresh canonical rows and complete transferred snapshot must match completion",
-    "phase_retry": "only exact known prior/pending/published projection and witness pairs; no reconstruction",
-    "active_retry": "historical completion stays immutable while canonical schedules legitimately progress; existing current routing/target/owner audits still required",
-    "bypass_refusal": "any retained forward approval prevents use of older component publication primitives, prepared or completed",
-    "host_limit": "does not attest full-writer quiescence, immutable release selection, host sentinel/receipts or full readiness"
+  "contract": {
+    "required": "exact reserved reversal, retirement R, fences-cleared B0 restoration and durable tombstone",
+    "legacy": "explicit no-native-owner decision",
+    "native": "same prior board/company/kind/worker/profile cohort freshly validated under barriers at R and prior binary source; old owner remains retired",
+    "retention": "fresh staged plan and immutable history in one transaction; changed approval leaves no orphan stage",
+    "inspection": "read-only history without allocator/lease barriers or Redis",
+    "not_granted": [
+      "another routing epoch",
+      "ordinary projection or active owner",
+      "joint reversal completion",
+      "release selection",
+      "service startup or host readiness"
+    ]
   },
   "local_validation": {
-    "platform": "Darwin ARM64",
     "focused_real_pg_redis": {
       "database": "owned fully migrated PostgreSQL18.6",
       "redis": "private per-test Redis UDS",
@@ -40,8 +45,8 @@
             "head"
           ],
           "exit_code": 0,
-          "seconds": 0.27,
-          "log": "ordinary-forward-publication-migration-upgrade.log"
+          "seconds": 0.257,
+          "log": "ordinary-ordinary-restoration-migration-upgrade.log"
         },
         {
           "command": [
@@ -53,11 +58,11 @@
             "-c",
             "src/migrations/alembic.ini",
             "downgrade",
-            "0043"
+            "0044"
           ],
           "exit_code": 0,
-          "seconds": 0.267,
-          "log": "ordinary-forward-publication-migration-downgrade-0043.log"
+          "seconds": 0.271,
+          "log": "ordinary-ordinary-restoration-migration-downgrade-0044.log"
         },
         {
           "command": [
@@ -72,8 +77,8 @@
             "head"
           ],
           "exit_code": 0,
-          "seconds": 0.27,
-          "log": "ordinary-forward-publication-migration-upgrade-head.log"
+          "seconds": 0.271,
+          "log": "ordinary-ordinary-restoration-migration-upgrade-head.log"
         },
         {
           "command": [
@@ -83,12 +88,12 @@
             "-count=1",
             "-timeout=90s",
             "-run",
-            "^Test(RealColdForwardPublication|ColdB0Forward|ColdPublication)",
+            "^Test(RealColdOrdinaryRestoration|ColdOrdinaryRestoration)",
             "./..."
           ],
           "exit_code": 0,
-          "seconds": 6.359,
-          "log": "ordinary-forward-publication-executable-race.log"
+          "seconds": 5.385,
+          "log": "ordinary-ordinary-restoration-executable-race.log"
         }
       ],
       "cleanup": true,
@@ -108,8 +113,8 @@
             "./..."
           ],
           "exit_code": 0,
-          "seconds": 54.516,
-          "log": "ordinary-forward-publication-final-queue-race.log"
+          "seconds": 60.428,
+          "log": "ordinary-ordinary-restoration-final-queue-race.log"
         },
         {
           "command": [
@@ -121,8 +126,8 @@
             "./..."
           ],
           "exit_code": 0,
-          "seconds": 32.03,
-          "log": "ordinary-forward-publication-final-worker-race.log"
+          "seconds": 33.458,
+          "log": "ordinary-ordinary-restoration-final-worker-race.log"
         },
         {
           "command": [
@@ -134,8 +139,8 @@
             "./..."
           ],
           "exit_code": 0,
-          "seconds": 4.851,
-          "log": "ordinary-forward-publication-final-exporter-race.log"
+          "seconds": 4.896,
+          "log": "ordinary-ordinary-restoration-final-exporter-race.log"
         },
         {
           "command": [
@@ -152,123 +157,20 @@
             "tests/test_rich_monitor_contract.py"
           ],
           "exit_code": 0,
-          "seconds": 6.167,
-          "log": "ordinary-forward-publication-final-legacy.log"
+          "seconds": 6.187,
+          "log": "ordinary-ordinary-restoration-final-legacy.log"
         }
       ],
       "cleanup": true,
       "production_changed": false
     },
-    "legacy_tests": {
-      "passed": 295,
-      "skipped": 0
-    },
-    "tests": [
-      "prepared/missing/wrong approval or completion cannot publish",
-      "canonical/source/producer drift refuses before effects",
-      "older publication cannot bypass retained approval",
-      "Redis pending witness before SQL publishing failure and exact retry",
-      "Redis published witness/SAVE before SQL published failure, real RDB reload and exact recovery",
-      "completed activation preserves all logical queue and canonical values",
-      "active canonical progression retains historical receipt identity"
-    ],
-    "linux_extension": "AMD64/ARM64 cross-compile and integration vet pass; actual root CLI completion-bound prepare/publish/activate/retry execution still required",
-    "fixture_limit": "private synthetic producer preparation adapter with actual frozen Lua; actual UID10001 source-bound fixture supplies operational producer authority"
+    "legacy": "295 passed, no skips, 5.76s test time",
+    "linux_cross_compile_and_vet": "AMD64/ARM64 queue and worker; actual integration tag included",
+    "actual_native_cli": "preview, wrong approval refusal, exact retention/retry, inspection while Redis unavailable; legacy ordinary predecessor",
+    "native_predecessor": "real PostgreSQL/Redis API validation, immutable prior source/cohort, fresh staged R, live lease/drift/refusal and atomic retention checks",
+    "history_downgrade": "actual Alembic retained-history refusal plus empty downgrade/re-upgrade"
   },
-  "preceding_application_checkpoint": {
-    "source_revision": "f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa",
-    "linux": {
-      "source_revision": "f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa",
-      "run": 36931282603,
-      "result": "success both complete jobs",
-      "architectures": [
-        {
-          "architecture": "amd64",
-          "job": 110600839999,
-          "actual_uid10001_producer_pg_cli_fixture": "PASS",
-          "uncertain_reply_sigkill_after_save_rdb_reload_sentinel_restart": "PASS",
-          "private_log": "ordinary-native-forward-application-ci-f2bc20dc3-amd64.log",
-          "sha256": "8e8609ed7eabed4298361350d27a0541502933f7b88f931c1e24d7aecfa9dbe7"
-        },
-        {
-          "architecture": "arm64",
-          "job": 110600840369,
-          "actual_uid10001_producer_pg_cli_fixture": "PASS",
-          "uncertain_reply_sigkill_after_save_rdb_reload_sentinel_restart": "PASS",
-          "private_log": "ordinary-native-forward-application-ci-f2bc20dc3-arm64.log",
-          "sha256": "0cf3ead94d771a5fd9c2e147353e7b6b1559b3de4dd8e074bacd918713d24c0f"
-        }
-      ],
-      "production_changed": false
-    },
-    "full_ci": {
-      "run": 36931290132,
-      "result": "success"
-    },
-    "installed_images": {
-      "run": 36931294380,
-      "result": "success both images; downloaded artifacts verified",
-      "architectures": [
-        {
-          "architecture": "amd64",
-          "image_id": "sha256:f157278da50164a58534dd4be0ed1f280178128f2930eba27d6d6015863478ad",
-          "binary_sha256": "b3e179add0907bb9d350425efeaef344713e1eefeee5973907f9f6e9dbf48e48",
-          "source_ca_identity_verified": true,
-          "actual_executable_fixtures": [
-            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
-            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
-            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
-            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
-          ],
-          "asset_hashes_verified": 34
-        },
-        {
-          "architecture": "arm64",
-          "image_id": "sha256:919d3d845b0d46ebb257680eb2a6fbf69db7ca98bd859106afb534355694be1f",
-          "binary_sha256": "7cfeb98a58499a8f957827272ce86b4fee0dee8d3b3587e16d7701a4cfd1c7cd",
-          "source_ca_identity_verified": true,
-          "actual_executable_fixtures": [
-            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
-            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
-            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
-            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
-          ],
-          "asset_hashes_verified": 34
-        }
-      ]
-    },
-    "whole_b0": {
-      "run": 36931282462,
-      "result": "success; numeric artifact verification still pending"
-    },
-    "dormant_renderer": {
-      "run": 36931282270,
-      "result": "success; publish/deploy skipped"
-    },
-    "actual_deploy_gate": "FAILURE draft; evaluator workflow SUCCESS is not merge authority"
-  },
-  "fresh_admission_required": [
-    "new source combined actual producer/CLI application recovery plus completion-bound publication on both Linux architectures",
-    "full CI",
-    "both installed images/executable fixtures",
-    "whole B0"
-  ],
-  "next": [
-    "fresh legacy/prior-native rollback ordinary ownership at retained retirement R without reopening retired plans",
-    "supported ADR006 all-writer wrapper, independent immutable releases, Go-owned sentinel/host receipts, acknowledged SAVE/readback and full readiness",
-    "all enabled profiles/runtime consumers; canonical/publisher/freshness/queue parity; comparable whole-service CPU/RAM/density/cost; exact gates/deployment; actual rollback window; production Python/Playwright/Chromium retirement"
-  ],
-  "private_log_sha256": {
-    "ordinary-forward-publication-final-queue-race.log": "3e26b1bdd7a264e34dd14dd80c7a184beefbe27148b7e973d38402381b1fb59e",
-    "ordinary-forward-publication-final-worker-race.log": "0cb044873f4476994a9e71d3ff187a80e843f9b84beb03ee9efb4b57d52d1639",
-    "ordinary-forward-publication-final-exporter-race.log": "bbad06c31ce095db7997451a8abe95c94001cf64ffb45ab5a2e11b28343e02c8",
-    "ordinary-forward-publication-final-legacy.log": "82a7def18d1aaa11560b901cb6c62bb2c7d7fe5167859059d0ace8a315e8671e",
-    "ordinary-forward-publication-migration-upgrade.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "ordinary-forward-publication-migration-downgrade-0043.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "ordinary-forward-publication-migration-upgrade-head.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "ordinary-forward-publication-executable-race.log": "193ee51c6e7b0c0dc0928f38a87ae785cd394288ea452a091b50c0bfabb5715a"
-  },
-  "fresh_publication_ci": {
+  "preceding_publication_ci": {
     "source_revision": "f33590cd0810e48c8000453374b97783f1b644ce",
     "linux_pg17_redis": {
       "source_revision": "f33590cd0810e48c8000453374b97783f1b644ce",
@@ -373,5 +275,26 @@
       "result": "success; publish/deploy skipped"
     },
     "actual_deploy_gate": "FAILURE draft; evaluator success is not deployment authority"
+  },
+  "fresh_admission_required": [
+    "new source Linux PG17/private Redis on both architectures",
+    "both installed images/executable fixtures",
+    "full CI",
+    "whole B0"
+  ],
+  "next": [
+    "apply exact retained ordinary decision with compatible fresh joint B0/ordinary authority at R; do not reactivate retired plans or downgrade an existing Go B0 predecessor",
+    "supported ADR006 all-writer host wrapper, independent immutable release/data/spec/env/images, Go-owned sentinel and durable host receipts, SAVE/readback and full readiness",
+    "all enabled profiles/runtime consumers; canonical/publisher/freshness/queue parity; comparable whole-service CPU/RAM/density/cost; exact gates/deployment; actual rollback window; production Python/Playwright/Chromium retirement"
+  ],
+  "private_log_sha256": {
+    "ordinary-ordinary-restoration-migration-upgrade.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-ordinary-restoration-migration-downgrade-0044.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-ordinary-restoration-migration-upgrade-head.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-ordinary-restoration-executable-race.log": "55286063f116db4bc976219fc03f4e0cf050bb5f3c7b751a984016e5850cc847",
+    "ordinary-ordinary-restoration-final-queue-race.log": "4c85641f91515cd7efde3da7fb836424ae700a0ab205b9d32547e74bd4cb10ad",
+    "ordinary-ordinary-restoration-final-worker-race.log": "ec4f681073b7b8d2c8c4409ab2cfbb5fdfd4855c5fead9217ec3efd3398453bc",
+    "ordinary-ordinary-restoration-final-exporter-race.log": "ce3093ce5bfac269f7a914e686e7421ff23b3b9b5d529284087f599c7ffa0998",
+    "ordinary-ordinary-restoration-final-legacy.log": "f0e352c5e8a29417d20f5aa733f2088abaa7d1843b36c275a730e19507589f8e"
   }
 }

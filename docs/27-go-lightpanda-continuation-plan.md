@@ -1,5 +1,62 @@
 # Go and Lightpanda migration continuation plan
 
+Ordinary rollback preparation source `c9c42faa6216c2aed5098da8f6dc233b4137ee9b`
+adds migration 0045 and protected native preview/retain/inspect commands. It
+requires the exact reserved reversal, retirement R and completed B0 fence cleanup
+with durable tombstone. Legacy rollback retains an explicit no-native-owner
+decision. Prior native rollback preserves its retired immutable cohort and stages
+a freshly validated replacement at R, bound to the prior binary revision. Cohort
+identity is enforced by both canonical decoding and SQL; repeated canonical/Redis
+profile observation and live-lease refusal occur under the ownership barriers.
+Fresh staging and immutable retention are atomic. Preparation publishes no
+projection, activates no owner, completes no reversal and starts no services.
+
+Focused real PG/Redis races pass (5.385s), including actual retained-history
+Alembic downgrade refusal and empty downgrade/re-upgrade. Full queue/worker/
+exporter races pass (60.428s/33.458s/4.896s); all 295 legacy tests pass without
+skips (5.76s test time). The actual compiled CLI exercises legacy preview, wrong
+approval refusal, exact retention/retry and historical inspection with Redis
+unavailable. Prior native API tests conserve the cohort and source, leave the old
+owner retired and the fresh owner staged, and prove drift/lease refusal, immutable
+history and atomic retention. Both Linux architectures cross-compile, including
+the actual integration tag, and vet passes. New-source Linux and installed-image
+execution remains required. See
+[ordinary preparation evidence](evidence/go-ordinary-restoration-preparation-2026-10-02.json).
+
+Preceding publication checkpoint `f33590cd0810e48c8000453374b97783f1b644ce`
+passes both Linux PG17/Redis jobs (36933306768), full CI (36933347206) and both
+installed images (36933350194). Downloaded Linux logs verify actual authenticated
+producer/application crash recovery followed by completion-bound publication and
+exact activation retry. Both installed artifacts verify exact source/CA, all four
+executable fixtures and 34 matching data asset hashes. Whole B0 36933306741 is
+still running and must finish without cancellation; prior whole B0 36931282462
+completed successfully, with numeric artifact verification pending. Dormant
+renderer validation/build passes with publication/deployment skipped. These proofs
+remain bound to the preceding source. The actual deploy gate refuses draft.
+No production ownership changed; the full migration goal remains active.
+
+Continue in this order:
+
+1. Admit this exact new source on both Linux architectures and installed images;
+   retain comparable whole-lane B0 numeric evidence from each completed run.
+2. Apply the retained ordinary rollback decision at R with compatible fresh joint
+   authority, target/projection/witness and durable completion. Never reopen a
+   retired plan or silently switch a prior Go B0 owner back to Python. Existing
+   Go-owned sentinel clearing is implemented and must be reused with its exact
+   rollback tombstone/receipt checks.
+3. Complete the supported ADR006 all-writer host wrapper: independent immutable
+   releases/data/spec/env/images, mutation lock, durable host receipts, acknowledged
+   SAVE/readback, release selection, full readiness and complete cold reversal.
+4. Cover every enabled profile and runtime consumer with native authority and
+   canonical output, publisher-policy, freshness and queue conservation proofs.
+5. Admit comparable whole-service CPU/RAM/density/attributable cost; promote exact
+   required CI/deploy-gate identities, exercise the real schedule-dependent rollback
+   window, then retire production Python, Playwright, Chromium and legacy runtime
+   assets. Keep useful offline Python isolated. Preserve every enabled board.
+
+The checkpoint above supersedes earlier pending status observations below; older
+sections remain historical implementation and evidence records.
+
 Completion-bound publication source `3dc88089ea55bf5f3953ed8e37f8209d55415fda`
 adds protected native `cold-forward-prepare`, `cold-forward-publish` and
 `cold-forward-activate` commands. They require exact immutable forward approval
