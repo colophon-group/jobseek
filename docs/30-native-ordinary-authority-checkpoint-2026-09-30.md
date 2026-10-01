@@ -312,6 +312,46 @@ separates this source from earlier green checks. Previous lifecycle checkpoint
 36800629213; it remains draft and those checks do not cover later code.
 Production is unchanged and ordinary workers remain Python.
 
+### Native HTTP discovery continuation, October 1
+
+Source `aa99863e3302b4709db463c848065002f74dcd4f` now performs the Greenhouse
+monitor's single logical GET through a process-owned client and feeds the
+owned 1,001-posting fixture from one real HTTP 202 inventory. Fifty-two actual
+Python captures prove successful 2xx statuses, final-resource reservation
+precedence over 404/status/JSON, joined duplicate headers, Unicode/Latin-1
+header decoding, UTF-8/16/32 JSON byte detection, redirects and failure classes.
+Every failure supplies no partial inventory. Read/cancel/body-limit failures
+also supply no completed resource signal. A real HTTP redirect fixture
+preserves cookies and client reuse.
+Private response observations bind the final resource without becoming write
+authority. Redirected provider/publisher lifecycle handling is still unselected.
+
+The separate ordinary lookup store has one connection, its own application
+attribution and a read-only PostgreSQL default. Native taxonomy/currency and
+SQLite location preparation pass through it; an actual board update is rejected.
+Full native assembly races passed in 15.394 seconds, reader/preparation races
+in 3.069 seconds, and 39 runtime/version/documentation checks plus Go/Ruff/workflow
+linters passed. Private fixtures shut down. All saved inventory/URL/HTTP oracles
+remain byte-identical across Python hash seeds 1, 2 and 37.
+
+The previous pipeline checkpoint `654ed153e` passed full CI 36831279197 and
+B0 admission 36831284162. Linux run 36831284128 passed ARM64; AMD64's dependency
+download timeout was retried and exposed only nondeterministic drop-count key
+ordering in the capture. This source fixes that serialization. Fresh checks
+are required; earlier greens do not cover this source or authorize a draft.
+The [portable discovery evidence](evidence/go-ordinary-discovery-2026-10-01.json)
+records source identity, the effective HTTP baseline and remaining gates.
+
+Complete the native persistent verified transport against the actual pinned
+Python/httpx pool: 100 connections, 20 keepalive connections, five-second expiry,
+HTTP/1.1, 20 redirects and separate 30-second operation timeouts. The apparent
+20/10 `_CLIENT_DEFAULTS` limits are overridden by the wrapped inner transport.
+This adapter uses an injected client; it does not yet prove production SSRF,
+TLS/cookie completeness, egress meters, host circuits or canonical deferrals.
+Bind fetch/terminal outcomes to an installed exact-source owner, preserve the
+immutable claim through settlement, and prove shutdown/heartbeat/claim-loss,
+all-writer cutover and shared-epoch cold reversal before production selection.
+
 At 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885
 enabled and 134 disabled. Of enabled boards, 522 had stored browser requirements
 (419 monitor, 264 scraper, overlapping); Greenhouse accounted for 2,280 boards,

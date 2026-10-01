@@ -59,7 +59,7 @@ full CI in run 36800624392 and B0 admission in run 36800629213. The actual
 deploy gate still rejects the draft; earlier-head greens grant no later-head
 merge authority. Production ordinary workers remain Python.
 
-Latest processing assembly `9d7a8f5a8` adds the
+Processing assembly `9d7a8f5a8` adds the
 [native ordinary package](../apps/crawler/go/ordinary-worker/README.md).
 Forty URL and six full-inventory captures match the actual default Python rich
 monitor's dictionary, sanity/canonicalization and alias content rules, including
@@ -68,15 +68,40 @@ the 50,000-job flag. A real owned PostgreSQL/Redis fixture now connects native
 models, lookup/currency snapshots, SQLite locations, three 500/500/1 posting
 batches, terminal disappearance and canonical receipt settlement for 1,001
 postings. Preparation failure after a committed prefix invalidates later
-success/absence authority. Current source remains unselected and needs fresh
-checks; see [portable pipeline evidence](evidence/go-ordinary-pipeline-2026-10-01.json).
+success/absence authority. Checkpoint `654ed153e` passed full CI in run
+36831279197 and B0 admission in run 36831284162. Linux run 36831284128 passed
+ARM64, but AMD64 first timed out fetching dependencies and then rejected a
+different dictionary ordering in the saved Python drop-count capture. Runtime
+counts matched; the next source makes capture serialization deterministic.
+See [portable pipeline evidence](evidence/go-ordinary-pipeline-2026-10-01.json).
+
+Latest source `aa99863e3` connects native Greenhouse discovery to the real
+1,001-posting owned fixture through one HTTP 202 response. It preserves the
+Python monitor's successful 2xx statuses, final-resource publisher headers
+before provider/status/body checks, redirects and JSON byte encoding behavior
+against 52 freshly captured Python cases. Failed reads and malformed inventories
+never expose partial jobs. A real redirect fixture checks process-owned cookies
+and client reuse. Ordinary taxonomy/currency/location lookups now use a separate
+read-only one-connection reader with their own attribution. Local full native
+assembly races (15.394 seconds), native reader/preparation races (3.069 seconds),
+39 runtime/version/documentation checks and linters passed; all three oracles
+were stable across three Python hash seeds. Production remains unchanged. See
+[portable discovery evidence](evidence/go-ordinary-discovery-2026-10-01.json).
 See the
 [ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
 It selects no ordinary worker in production. Next, connect the completed full
-inventory/preparation/batch/cycle assembly to the native executable. Complete shared HTTP transport,
+discovery/inventory/preparation/batch/cycle assembly to the native executable. Complete shared HTTP transport,
 retry/circuit/deferral behavior, startup/shutdown/heartbeat and typed provider/
 publisher response handling. Preserve the full Redis claim snapshot through
 settlement and recovery; terminal lifecycle metadata is read from PostgreSQL.
+Use the effective direct HTTP baseline, not only `_CLIENT_DEFAULTS`: the
+wrapped pinned transport has 100 connections, 20 keepalive connections and a
+five-second keepalive expiry, with HTTP/1.1, 20 redirects and separate 30-second
+connect/read/write/pool timeouts. Verify SSRF at each hop, request/body accounting,
+cookie/TLS behavior and final-resource provenance before selecting a cohort.
+Redirected provider/publisher observations do not yet authorize the owned
+terminal lifecycle. Canonical deferrals/circuit lower bounds and safely fenced
+learned-egress publication still require proof.
 Then prove the installed
 executable and exclusive ownership with fault/cold-reversal evidence, followed by
 every enabled profile and runtime consumer before final Python/Chromium

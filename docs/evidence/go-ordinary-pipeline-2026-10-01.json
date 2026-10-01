@@ -51,5 +51,25 @@
     "fleet effective profile/output/freshness/queue/resource/whole-service cost proof",
     "remaining enabled profiles/runtime consumers/rollback window and Python/Playwright/Chromium retirement"
   ],
-  "next": "Connect this completed native processing assembly to the exact-revision ordinary executable and persistent verified HTTP/circuit runtime. Do not reimplement inventory/rich/batch/lifecycle components. Prove installed faults and supported cutover/reversal before selecting the first cohort; full migration goal remains active."
+  "next": "Connect this completed native processing assembly to the exact-revision ordinary executable and persistent verified HTTP/circuit runtime. Do not reimplement inventory/rich/batch/lifecycle components. Prove installed faults and supported cutover/reversal before selecting the first cohort; full migration goal remains active.",
+  "pipeline_checkpoint_654": {
+    "head": "654ed153e78738c53b68adbbc3872a4c9225fcb3",
+    "full_ci": {
+      "run": 36831279197,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36831284162,
+      "conclusion": "success"
+    },
+    "linux": {
+      "run": 36831284128,
+      "arm64": "success",
+      "amd64_attempt1": "dependency download timeout before tests",
+      "amd64_attempt2": "capture serialization key-order difference; counts unchanged; fixed in this source"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "does not cover later source or grant draft merge authority"
+  },
+  "continued_by_discovery_source": "aa99863e3302b4709db463c848065002f74dcd4f"
 }
