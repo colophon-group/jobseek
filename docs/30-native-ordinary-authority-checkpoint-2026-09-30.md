@@ -1007,3 +1007,34 @@ that private bucket before any baseline, preserving its exact value in strict
 snapshots. Production rate limiting is unchanged. Three local repetitions of
 crash/recovery and full metrics settlement pass after correction (26.846s).
 Fresh Linux/full CI/both installed images/whole B0 remain required for admission.
+
+## Native forward preparation and immutable retention, October 1
+
+Native forward-preparation source `4adab07e19245c9cd54f94660aca752cacd28604`
+now derives complete B0 transfer manifests from canonical PostgreSQL schedules,
+atomic source/legacy Redis observations and the authenticated producer. Migration
+0043 retains exact approved bytes before activation; the same intent cannot change
+approval. Preview, retention and read-only history inspection have protected
+source-bound CLI commands. Cached hints, canonical microsecond due times,
+first-time source scores, pruned unqueued work and unscheduled terminal history
+are preserved. Retained decoding re-derives request fields from source evidence.
+
+Final full real PG/Redis queue/worker/exporter races passed
+(55.047s/30.739s/4.828s), all 295 mandatory legacy tests passed without skips,
+and final focused forward races passed (6.388s). Migration 0043 empty downgrade/
+re-upgrade and retained-history downgrade refusal pass. The combined Linux root
+fixture uses the actual UID-10001 producer, PG/Redis and native CLI; AMD64/ARM64
+compilation/vet pass, and fresh execution is required. See
+[forward preparation evidence](evidence/go-b0-native-forward-preparation-2026-10-01.json).
+The next slice applies only retained approval, proves partial transfer/uncertain
+reply/SAVE/readback and exact restart, then connects full cold ownership/readiness.
+
+Preceding checkpoint `d82a3b16439c5e85c1bf6e5fbd24d9c813070951` now passes Linux
+PG17/Redis 36920581526, full CI 36920604964, both installed images 36920610473
+and whole B0 36920581681. Both downloaded image artifacts verify exact source,
+CA, all four executable fixtures and 34 matching asset hashes. Dormant renderer
+36920581739 passes with publication/deployment skipped. The earlier conservation
+and metrics-observation findings are resolved on that source. This is historical
+component evidence; the new forward source needs fresh checks. The actual deploy
+gate continues to refuse draft. Production ownership remains unchanged.
+

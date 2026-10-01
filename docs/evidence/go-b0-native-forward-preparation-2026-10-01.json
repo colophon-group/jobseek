@@ -1,0 +1,285 @@
+{
+  "checkpoint": "native PostgreSQL-derived B0 forward preparation and immutable full-manifest retention",
+  "date": "2026-10-01",
+  "runtime_source_revision": "4adab07e19245c9cd54f94660aca752cacd28604",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "migration": "0043",
+  "operations": [
+    "cold-b0-forward-plan",
+    "cold-b0-forward-retain",
+    "cold-b0-forward-inspect"
+  ],
+  "authority": {
+    "journal_phase": "reserved",
+    "binding": [
+      "exact intent",
+      "compiled source",
+      "reserved epoch",
+      "staged ordinary plan",
+      "complete target",
+      "current allocator",
+      "fresh canonical/Redis configuration",
+      "previous projection/witness",
+      "actual source snapshot",
+      "producer cohort/capacity/preparation digests"
+    ],
+    "exclusive_barriers": "existing ordinary lease and global epoch barriers",
+    "mutation": "immutable PG history only; no task activation, Redis SAVE, publication, release selection or service start",
+    "inspect": "read-only PG; no allocator adoption/barriers/producer/Redis calls"
+  },
+  "conservation": {
+    "complete_manifest": true,
+    "manifest_max_bytes": 33554432,
+    "capacity": 2048,
+    "projected_pilot_max": 1600,
+    "source": [
+      "canonical microsecond due times",
+      "exact Redis float source scores",
+      "separate cached int64 hint and PG hash",
+      "first-time membership",
+      "pruned unqueued IDs",
+      "retained unscheduled terminal IDs"
+    ],
+    "reject": [
+      "live canonical lease",
+      "inflight/dead B0 work",
+      "suffix legacy authority",
+      "target/ordinary/cohort/capacity drift",
+      "late source change",
+      "changed approval for same intent"
+    ],
+    "decoder": "re-derives exact producer request fields from retained source evidence"
+  },
+  "local_validation": {
+    "platform": "Darwin ARM64",
+    "full_real_postgres_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 55.047,
+          "log": "ordinary-b0-forward-final-final-queue-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 30.739,
+          "log": "ordinary-b0-forward-final-final-worker-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 4.828,
+          "log": "ordinary-b0-forward-final-final-exporter-race.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "pytest",
+            "-q",
+            "tests/test_ordinary_ownership.py",
+            "tests/test_lightpanda_activation.py",
+            "tests/test_redis_queue.py",
+            "tests/test_pipeline.py",
+            "tests/test_rich_monitor_contract.py"
+          ],
+          "exit_code": 0,
+          "seconds": 6.091,
+          "log": "ordinary-b0-forward-final-final-legacy.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "focused_final_real_postgres_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.267,
+          "log": "ordinary-b0-forward-preparation-migration-upgrade.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "downgrade",
+            "0042"
+          ],
+          "exit_code": 0,
+          "seconds": 0.27,
+          "log": "ordinary-b0-forward-preparation-migration-downgrade-0042.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.271,
+          "log": "ordinary-b0-forward-preparation-migration-upgrade-head.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "-run",
+            "^Test(RealColdB0Forward|ColdB0Forward)",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 6.388,
+          "log": "ordinary-b0-forward-preparation-executable-race.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "legacy_tests": {
+      "passed": 295,
+      "skipped": 0
+    },
+    "linux_installed_combined_fixture": "AMD64/ARM64 compilation and integration vet passed; execution pending fresh CI",
+    "fixture_producer_in_local_library_tests": "private opaque read-only preparation responses; not actual installed producer authority",
+    "other_checks": [
+      "queue/worker vet",
+      "module metadata and formatting",
+      "migration/test Ruff",
+      "actionlint",
+      "0.13.903 to 0.13.904 version contract"
+    ]
+  },
+  "previous_checkpoint": {
+    "source_revision": "d82a3b16439c5e85c1bf6e5fbd24d9c813070951",
+    "linux_pg17_redis": {
+      "run": 36920581526,
+      "result": "success both architectures"
+    },
+    "full_ci": {
+      "run": 36920604964,
+      "result": "success"
+    },
+    "installed_images": {
+      "run": 36920610473,
+      "result": "success; both downloaded artifacts verified",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:7a670630694dc11f1233e91e3038882c7b5ed0e01ace23252e6a9ff6e24d2d33",
+          "binary_sha256": "65ef6a77a482f171af9546fa3644e7debbb8bee9d63496a39cbcfdeb726f274e",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:ef21e33ca125ba2db5364245c47239d1961c24ad81f99065170954528f176ed2",
+          "binary_sha256": "5dd11ba61d8d7884d2c9e735284b76feb9524a60e64111afff8ab3b8083ac79b",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ]
+    },
+    "whole_b0": {
+      "run": 36920581681,
+      "result": "success"
+    },
+    "dormant_renderer": {
+      "run": 36920581739,
+      "result": "success; publish/deploy skipped"
+    },
+    "conservation_findings": "corrected private expiring-rate-bucket and metrics-settlement fixture now passes source-bound Linux and both installed execution",
+    "actual_deploy_gate": "draft refuses merge authority"
+  },
+  "fresh_ci_required": [
+    "new combined actual UID10001 producer/PG/native CLI fixture on both Linux architectures",
+    "full current-source CI",
+    "both installed native worker images/executable fixtures",
+    "whole current-source B0 admission"
+  ],
+  "next": [
+    "apply only exact retained forward manifest through approved producer digests",
+    "reconcile partial transfers and ambiguous replies without rebuilding approval or replaying completed work",
+    "acknowledged SAVE and complete readback with SIGKILL/restart proof before publication",
+    "fresh legacy/prior-native rollback ownership, full release/sentinel/host receipt readiness",
+    "all enabled profiles/runtime consumers, canonical/publisher/freshness/queue parity, comparable CPU/RAM/density/cost, exact gates, actual rollback window and production Python/Playwright/Chromium retirement"
+  ],
+  "private_log_sha256": {
+    "ordinary-b0-forward-final-final-queue-race.log": "ee9fb9551e9db1b0a5d6fda388cada59bc25d1a295acee2c692458d9bbaa4356",
+    "ordinary-b0-forward-final-final-worker-race.log": "cc5fd5b95ab1e9f02c28cea0ee1f4013242a141a44aea32d3ba5cebf3d010b61",
+    "ordinary-b0-forward-final-final-exporter-race.log": "e0a73be9172502346ba41fd41af914a90bee504a757bb97369ccf63d2fa1648a",
+    "ordinary-b0-forward-final-final-legacy.log": "de231d2147b09554f52bc6a158b7bc3cce43fb555aaf95919ea4111ba1840879",
+    "ordinary-b0-forward-preparation-migration-upgrade.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-forward-preparation-migration-downgrade-0042.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-forward-preparation-migration-upgrade-head.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-forward-preparation-executable-race.log": "de6b5d44730891d6008b526e9b0938201a531e65f4d802bc29161931bf695aff"
+  }
+}
