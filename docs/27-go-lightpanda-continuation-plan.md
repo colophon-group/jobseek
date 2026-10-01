@@ -1,29 +1,44 @@
 # Go and Lightpanda migration continuation plan
 
-Latest native runtime source `a7502f1bb87a80a2acb8df818080b4f1acee6ae8` prepares PostgreSQL-derived
-B0 rollback manifests bound to an exact retained retirement, approved target and
-explicit source queue. Ready work retains transfer kind/exact score; dead/terminal
-work uses current canonical future due/config/lane. Disabled/deleted/inactive work
-drops. Actual unchanged rollback Lua accepts the native plans in private fixtures;
-planning changes no canonical/Redis state or claim authority. Full queue/worker/
-exporter races passed (38.201s/32.724s/4.843s), followed by final bounded-source
-focused races (6.782s), 108 repository checks and vet. See
-[rollback preparation evidence](evidence/go-ordinary-b0-rollback-preparation-2026-10-01.json).
+Latest native runtime source `9d252deccfbe031ea1c4dbffee05996261b68db2` adds durable B0 restoration and
+exact historical fence cleanup through migration 0042. Approved manifest bytes
+commit before Redis effects. Fresh PG-derived plan and atomic source-pinned actual
+queue observations precede the unchanged rollback Lua; acknowledged SAVE and exact
+permanent tombstone readback precede SQL progress. A subsequent transaction clears
+only retained Go source-epoch/shard fence IDs. Exact interrupted retries preserve
+canonical rows, ordinary receipts and microsecond future deadlines.
 
-Previous retirement source `286810cfc` passed Linux PG17/Redis 36905777222,
-full CI 36905796129 (attempt 2 after a dependency-download transport failure) and
-both installed images 36905800217. Both downloaded artifacts verify actual
-retirement SIGKILL/read-only paused inspection/fresh-epoch recovery with exact
-source/image/binary and matching 34 assets. Whole B0 36905777358 is still running.
+Four protected source-bound commands expose preview, retention, restoration and
+read-only progress inspection. The actual native executable survives SIGKILL after
+SAVE/readback before SQL progress; independent inspection works while paused,
+then exact restart and repeated cleanup reach fences-cleared at the same epoch.
+Full queue/worker/exporter races passed (45.589s/31.263s/4.891s), all 295 mandatory
+legacy tests passed without skips, migration downgrade-0041/re-upgrade and 37
+repository checks passed. See
+[durable restoration evidence](evidence/go-ordinary-b0-restoration-2026-10-01.json).
+
+Preceding planner checkpoint `de9fc4f52` passed Linux PG17/Redis 36908705159,
+full CI 36908788510 and both installed images 36908792798. Both downloaded artifacts
+verify all four actual executable fixtures, exact source/image/binary and matching
+34 asset hashes. Whole B0 36908705415 is still running. Earlier retirement checkpoint
+`286810cfc` has now passed all four workflows, including whole B0 36905777358.
 The actual deploy gate refuses draft. Current-source checks remain required.
 
-Next retain the exact restoration manifest before Redis effects, implement pinned
-actual Lua restoration/retry with SAVE/tombstone readback and exact historical
-fence cleanup, and prove remaining actual SIGKILL seams. Then restore ordinary/B0
-ownership and full release readiness through the supported ADR006 all-writer host
-wrapper. Preparation and retirement alone leave the forward journal reversing and
-claims blocked. Every enabled profile/runtime consumer, parity/resource/cost,
-production rollout, actual rollback window and Python retirement remain required.
+Next complete fresh ordinary/B0 restored ownership, sentinel/host receipt recovery
+and full release readiness through the supported ADR006 all-writer host wrapper.
+Finish forward PG-derived B0 transfer and remaining actual SIGKILL seams. The
+completed B0 restoration deliberately leaves the forward journal reversing,
+ordinary projection/joint witness in place and ordinary claims blocked. Every
+enabled effective profile/runtime consumer, canonical/publisher/freshness/queue
+parity, comparable whole-service resource/cost, exact-gated rollout, actual rollback
+window and Python/Playwright/Chromium retirement remain required by the active full
+migration goal. Preserve useful isolated offline Python tooling.
+
+Preceding runtime `a7502f1bb87a80a2acb8df818080b4f1acee6ae8` introduced the
+canonical PG-derived B0 rollback manifest and its bounded actual-Lua preparation
+proof. Keep its
+[preparation evidence](evidence/go-ordinary-b0-rollback-preparation-2026-10-01.json)
+as the historical preparation checkpoint.
 
 Current verified joint checkpoint, October 1: `f2b82c73d` passed Linux AMD64/ARM64
 PostgreSQL/Redis (36899324776), full CI (36899366997), both installed images
@@ -32,7 +47,7 @@ source/image/binary and all four executable fixtures with matching 34 asset
 hashes. Dormant renderer 36899324562 passed build-only; publish/deploy skipped.
 The actual deploy gate refuses draft. These results do not admit later source.
 
-Latest runtime source `c0f46f848db6862f185a548b183a87b615aeb6eb` adds migration 0041 and three protected
+Previous runtime source `c0f46f848db6862f185a548b183a87b615aeb6eb` adds migration 0041 and three protected
 native reversal commands: begin, reserve and retained-history inspection. Exact
 reversal intent commits before allocation, contains the forward owner and binds
 source/rollback identities. Fresh retirement survives disabled/changed candidates

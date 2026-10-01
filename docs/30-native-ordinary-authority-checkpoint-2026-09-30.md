@@ -917,3 +917,42 @@ receipt identities and complete release readiness. Every enabled effective
 profile/runtime consumer, canonical/publisher/freshness/queue parity, whole-service
 CPU/RAM/density/cost, production rollout, actual rollback window and production
 Python/Playwright/Chromium retirement remain in the active full migration goal.
+
+
+## Durable native B0 restoration, October 1
+
+Runtime source `9d252deccfbe031ea1c4dbffee05996261b68db2` adds immutable restoration manifests in migration0042
+and protected native preview/retain/restore/inspect commands. Exact approved bytes
+commit before Redis effects. Fresh retained retirement/source/target, canonical
+row locks and atomic records/guards/legacy-authority CAS precede unchanged actual
+rollback Lua. SAVE acknowledgement and permanent exact tombstone readback precede
+SQL redis-restored progress; a subsequent transaction clears only the retained
+historical Go source-epoch/shard fences and commits fences-cleared.
+
+Private ready/dead/terminal restoration, SAVE denial, both SQL-progress failures,
+lost/expired/mismatched witnesses, immutable history and independent Redis RDB
+restart are proven. The actual executable is killed after SAVE/readback before
+SQL progress. Actual read-only inspection observes prepared state during the
+pause; exact restart/retry finishes cleanup at the same retirement epoch without
+canonical/receipt/future-deadline replay. Wrong protected source receipt rejects
+before effects. Full queue/worker/exporter races passed (45.589s/31.263s/4.891s),
+295 mandatory legacy tests passed with zero skips, migration round trip and 37
+repository checks passed. Fixtures stopped; production unchanged. See
+[portable restoration evidence](evidence/go-ordinary-b0-restoration-2026-10-01.json).
+
+Previous exact planner head de9fc4f52 passed Linux36908705159, full CI36908788510
+and installed images36908792798. Both artifacts verify all four executable fixtures
+and exact source/image/binary with matching34 asset hashes. Its whole B0
+36908705415 remains running. The older retirement head286810cfc whole B0
+36905777358 completed successfully, completing its four-workflow admission.
+These historical reports do not admit this later restoration source. Current exact
+source checks are required; actual draft deploy gate refuses authority.
+
+The forward journal remains reversing and ordinary claims blocked. Next complete
+fresh ordinary/B0 restored owners, sentinel/host receipt recovery and supported
+ADR006 all-writer host wrapper with independent immutable release/data/spec/env/
+image evidence and full readiness; finish forward PG-derived B0 transfer and the
+remaining actual interruption seams. All enabled effective profiles/runtime
+consumers, canonical/publisher/freshness/queue parity, comparable whole-service
+CPU/RAM/density/cost, exact-gated rollout, actual rollback window and production
+Python/Playwright/Chromium retirement remain in the active full migration goal.
