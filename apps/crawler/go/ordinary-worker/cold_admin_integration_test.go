@@ -159,12 +159,18 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 		}
 	})
 	reserveEnv := map[string]string{"ORDINARY_COLD_INTENT_FILE": intentFile, "ORDINARY_COLD_INTENT_SHA256": intent}
+	if retained := call("cold-inspect", reserveEnv, true); retained.RetainedPhase != "pending" || retained.RoutingEpoch != 0 || retained.IntentSHA256 != intent {
+		t.Fatal("pending inspection adopted an allocator epoch")
+	}
 	reserved := call("cold-reserve", reserveEnv, true)
 	if reserved.RoutingEpoch <= previous || reserved.Members != 1 || !planPattern.MatchString(reserved.PlanSHA256) {
 		t.Fatal("reservation did not allocate exact fresh ownership")
 	}
 	if repeat := call("cold-reserve", reserveEnv, true); !reflect.DeepEqual(repeat, reserved) {
 		t.Fatal("reservation retry allocated or changed identity")
+	}
+	if retained := call("cold-inspect", reserveEnv, true); retained.RetainedPhase != "reserved" || retained.RoutingEpoch != reserved.RoutingEpoch || retained.PlanSHA256 != reserved.PlanSHA256 {
+		t.Fatal("retained inspection lost exact reservation")
 	}
 	seedExecutableColdB0(t, f, b0, reserved.RoutingEpoch, lua)
 	env["ORDINARY_COLD_ROUTING_EPOCH"] = fmt.Sprint(reserved.RoutingEpoch)
@@ -278,6 +284,9 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	if err := f.pg.QueryRow(ctx, "SELECT state FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", reserved.PlanSHA256).Scan(&planState); err != nil || planState != "staged" {
 		t.Fatal("SIGKILL selected ordinary database ownership")
 	}
+	if retained := call("cold-inspect", reserveEnv, true); retained.RetainedPhase != "publishing" || retained.RoutingEpoch != reserved.RoutingEpoch || retained.PlanSHA256 != reserved.PlanSHA256 {
+		t.Fatal("killed coordinator cannot inspect its exact retained journal")
+	}
 	for i := 0; i < 2; i++ {
 		got := call("cold-publish", env, true)
 		if got.PlanSHA256 != reserved.PlanSHA256 || got.RoutingEpoch != reserved.RoutingEpoch || got.ProjectionSHA1 != reserved.ProjectionSHA1 {
@@ -301,6 +310,9 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	call("cold-activate", env, false)
 	if f.r.Exists(ctx, "crawler:ownership:transition").Val() != 0 {
 		t.Fatal("coordinator reconstructed lost witness")
+	}
+	if retained := call("cold-inspect", reserveEnv, true); retained.RetainedPhase != "active" || retained.RoutingEpoch != reserved.RoutingEpoch {
+		t.Fatal("witness containment discarded retained journal history")
 	}
 }
 

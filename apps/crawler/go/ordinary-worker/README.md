@@ -191,13 +191,14 @@ cookie, body-size and task-duration compatibility against that baseline.
 
 ## Protected cold coordinator primitives
 
-The compiled-source-bound executable now accepts six distinct one-shot commands:
+The compiled-source-bound executable now accepts seven distinct one-shot commands:
 
 | Argument / matching `ORDINARY_GO_WORKER_MODE` | Operation |
 | --- | --- |
 | `--cold-b0-target` / `cold-b0-target` | Capture exact fresh PG/Redis fixed B0 board configurations. |
 | `--cold-begin` / `cold-begin` | Retain exact canonical intent before any sequence allocation. |
 | `--cold-reserve` / `cold-reserve` | Allocate or inspect the exact intent's fresh reservation. |
+| `--cold-inspect` / `cold-inspect` | Read retained phase/reservation by exact intent, granting no authority. |
 | `--cold-prepare` / `cold-prepare` | Retain pending Redis witness before committed publishing phase. |
 | `--cold-publish` / `cold-publish` | Audit actual B0 queues and publish/persist/read back joint routing. |
 | `--cold-activate` / `cold-activate` | Atomically install the exact ordinary DB owner and active journal. |
@@ -206,7 +207,7 @@ All require protected database/Redis URLs, compiled matching
 `ORDINARY_OWNERSHIP_SOURCE_REVISION` and canonical positive
 `ORDINARY_COLD_ROUTING_EPOCH`. Worker ownership epoch/plan/projection and cohort
 file fields must be absent. Capture uses the current caller-attested epoch;
-begin/reserve bind the intent's previous epoch, including pending burned-epoch
+begin/reserve/inspect bind the intent's previous epoch, including pending burned-epoch
 recovery. Prepare/publish/activate require the exact reserved epoch and
 `ORDINARY_COLD_PLAN_SHA256`; neither a high-water nor a latest-plan selector is
 accepted. PostgreSQL pool capacity is one; statements are bounded to ten seconds,
@@ -219,14 +220,18 @@ configuration hashes. The host must durably save those exact object bytes; no
 credentials or raw configuration are returned. Capture creates no ownership.
 
 Other operations require `ORDINARY_COLD_INTENT_FILE` and
-`ORDINARY_COLD_INTENT_SHA256`. Except reservation, they also require
+`ORDINARY_COLD_INTENT_SHA256`. Except reservation/inspection, they also require
 `ORDINARY_COLD_B0_TARGET_FILE`, `ORDINARY_COLD_B0_TARGET_SHA256` and
-`ORDINARY_COLD_B0_LUA_FILE`. Reservation rejects those unused fields. Files must
+`ORDINARY_COLD_B0_LUA_FILE`. Reservation and inspection reject those unused fields. Files must
 be absolute regular non-symlink files, not group/other writable; intent/target/Lua
 limits are 4 KiB/16 KiB/128 KiB. Canonical JSON rejects duplicate/unknown fields,
 trailing data and reformatted bytes even with a matching hash. The actual B0 Lua
 must match its reviewed SHA256. Input hashes and source must bind the exact intent;
 the immutable journal binds the reserved epoch/plan before publication effects.
+
+Inspection returns `retained_phase` and any exact recorded reservation, including
+after publication interruption or witness loss. It does not attest live allocator,
+configuration, Redis routing or permission to start an owner.
 
 Outputs identify the completed primitive and exact documents, not host readiness
 or permission to start services. Errors are constant and omit inputs/credentials.

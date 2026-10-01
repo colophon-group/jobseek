@@ -16,7 +16,7 @@ import (
 // ColdAdminOperation recognizes only explicit one-shot coordinator arguments.
 func ColdAdminOperation(argument string) string {
 	switch argument {
-	case "--cold-b0-target", "--cold-begin", "--cold-reserve", "--cold-prepare", "--cold-publish", "--cold-activate":
+	case "--cold-b0-target", "--cold-begin", "--cold-reserve", "--cold-inspect", "--cold-prepare", "--cold-publish", "--cold-activate":
 		return strings.TrimPrefix(argument, "--")
 	}
 	return ""
@@ -43,6 +43,7 @@ type ColdAdminIdentity struct {
 	Members        int             `json:"members,omitempty"`
 	B0TargetSHA256 string          `json:"b0_target_sha256,omitempty"`
 	Target         json.RawMessage `json:"target,omitempty"`
+	RetainedPhase  string          `json:"retained_phase,omitempty"`
 }
 
 // ReadColdAdminConfig requires a distinct protected mode, compiled source,
@@ -79,7 +80,7 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 	if !path(c.intentFile) || !planPattern.MatchString(c.intentSHA) || c.namespace != "" || c.shard != "" || c.cohort != "" {
 		return ColdAdminConfig{}, ErrStartup
 	}
-	if operation == "cold-reserve" {
+	if operation == "cold-reserve" || operation == "cold-inspect" {
 		if c.luaFile != "" || c.targetFile != "" || c.targetSHA != "" || c.planSHA != "" {
 			return ColdAdminConfig{}, ErrStartup
 		}
@@ -90,7 +91,7 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 		if c.planSHA != "" {
 			return ColdAdminConfig{}, ErrStartup
 		}
-	} else if operation != "cold-reserve" && !planPattern.MatchString(c.planSHA) {
+	} else if operation != "cold-reserve" && operation != "cold-inspect" && !planPattern.MatchString(c.planSHA) {
 		return ColdAdminConfig{}, ErrStartup
 	}
 	return c, nil
@@ -107,7 +108,7 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 	var target *queue.ColdB0Target
 	var lua []byte
 	var err error
-	if c.operation != "cold-reserve" {
+	if c.operation != "cold-reserve" && c.operation != "cold-inspect" {
 		lua, err = readProtectedOwnershipFile(c.luaFile, 128<<10)
 		if err != nil {
 			return nil, ErrStartup
@@ -119,10 +120,10 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 			return nil, ErrStartup
 		}
 		spec, err = queue.DecodeColdTransitionSpec(string(body), c.intentSHA)
-		if err != nil || spec.SourceRevision != c.source || ((c.operation == "cold-begin" || c.operation == "cold-reserve") && spec.PreviousEpoch != c.epoch) {
+		if err != nil || spec.SourceRevision != c.source || ((c.operation == "cold-begin" || c.operation == "cold-reserve" || c.operation == "cold-inspect") && spec.PreviousEpoch != c.epoch) {
 			return nil, ErrStartup
 		}
-		if c.operation != "cold-reserve" {
+		if c.operation != "cold-reserve" && c.operation != "cold-inspect" {
 			body, err := readProtectedOwnershipFile(c.targetFile, 16384)
 			if err != nil {
 				return nil, ErrStartup
@@ -179,6 +180,35 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 		result.IntentSHA256, err = queue.BeginColdOwnershipTransition(ctx, pool, client, spec)
 	case "cold-reserve":
 		plan, err = queue.ReserveColdOwnershipEpoch(ctx, pool, client, c.intentSHA, c.source)
+	case "cold-inspect":
+		// Retained history only: this read grants no allocator/queue authority,
+		// and never adopts a high-water or an unrelated latest reservation.
+		var body string
+		var epoch *int64
+		var digest *string
+		err = pool.QueryRow(ctx, `SELECT payload,phase,routing_epoch,reserved_plan_sha256
+ FROM public.crawler_ownership_transition WHERE intent_sha256=$1 AND source_revision=$2`, c.intentSHA, c.source).Scan(&body, &result.RetainedPhase, &epoch, &digest)
+		if err == nil {
+			retained, decodeErr := queue.DecodeColdTransitionSpec(body, c.intentSHA)
+			if decodeErr != nil || retained != spec || (epoch == nil) != (digest == nil) {
+				return nil, ErrStartup
+			}
+			switch result.RetainedPhase {
+			case "pending":
+				if epoch != nil {
+					return nil, ErrStartup
+				}
+			case "reserved", "publishing", "published", "active", "reversing", "reversed", "superseded":
+			default:
+				return nil, ErrStartup
+			}
+			if epoch != nil {
+				if *epoch <= spec.PreviousEpoch || *epoch > 9999999999999 || !planPattern.MatchString(*digest) {
+					return nil, ErrStartup
+				}
+				result.RoutingEpoch, result.PlanSHA256 = *epoch, *digest
+			}
+		}
 	case "cold-prepare":
 		err = queue.PrepareColdOwnershipPublication(ctx, pool, client, c.intentSHA, c.source, target)
 		result.RoutingEpoch, result.PlanSHA256 = c.epoch, c.planSHA
