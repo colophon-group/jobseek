@@ -162,7 +162,7 @@ func privatePipelineFixture(t *testing.T) nativePipelineFixture {
 		t.Fatal(err)
 	}
 	defer stage.Close()
-	plan, err := stage.StageGreenhouseOwnership(ctx, strings.Repeat("a", 40), []string{f.board})
+	plan, err := stage.StageGreenhouseOwnership(ctx, ordinaryFixtureSourceRevision(t), []string{f.board})
 	if err != nil {
 		t.Fatal(err)
 	}

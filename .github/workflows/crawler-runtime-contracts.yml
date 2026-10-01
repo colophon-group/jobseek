@@ -202,10 +202,51 @@ jobs:
     needs: bindings-and-conformance
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_ordinary_worker_test
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_ordinary_worker_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/ordinary-worker/go.mod
+          cache-dependency-path: apps/crawler/go/ordinary-worker/go.sum
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.15"
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.3"
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
+      - name: Prepare isolated native process database and Redis fixtures
+        working-directory: apps/crawler
+        env:
+          LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends redis-server
+          uv sync --frozen --group dev
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
 
       - name: Build slim crawler image
         run: docker build --target slim --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:runtime-v1 apps/crawler
@@ -221,6 +262,55 @@ jobs:
           identity = json.load(open(sys.argv[1], encoding="utf-8"))
           assert identity == {"source_revision": sys.argv[2], "ca_sha256": "fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28", "profile": "greenhouse.token-skip/v1"}
           PY
+
+      - name: Verify image-installed native process crash and receipt recovery
+        working-directory: apps/crawler/go/ordinary-worker
+        env:
+          JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+          JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
+          JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
+          JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          fixture_directory="$(mktemp -d "$RUNNER_TEMP/ordinary-image.XXXXXX")"
+          chmod 0700 "$fixture_directory"
+          fixture_container="$(docker create jobseek-crawler:runtime-v1)"
+          trap 'docker rm "$fixture_container" >/dev/null' EXIT
+          docker cp "$fixture_container:/usr/local/bin/go-ordinary-worker" "$fixture_directory/ordinary-worker"
+          docker cp "$fixture_container:/app/data" "$fixture_directory/data"
+          chmod -R a-w "$fixture_directory/data"
+          export JOBSEEK_ORDINARY_IMAGE_BINARY="$fixture_directory/ordinary-worker"
+          export JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$fixture_directory/data"
+          docker image inspect --format '{{.Id}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-id"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --entrypoint sha256sum jobseek-crawler:runtime-v1 \
+            /usr/local/bin/go-ordinary-worker > "$fixture_directory/installed-binary-sha256"
+          python3 - "$fixture_directory" "$GITHUB_SHA" "$RUNNER_TEMP/ordinary-image-proof.json" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          binary_sha = hashlib.sha256((root / "ordinary-worker").read_bytes()).hexdigest()
+          assert binary_sha == (root / "installed-binary-sha256").read_text().split()[0]
+          assets = {str(path.relative_to(root / "data")): hashlib.sha256(path.read_bytes()).hexdigest()
+                    for path in sorted((root / "data").rglob("*")) if path.is_file()}
+          assert assets
+          proof = {"source_revision": sys.argv[2], "image_id": (root / "image-id").read_text().strip(),
+                   "binary_sha256": binary_sha, "installed_asset_sha256": assets,
+                   "scope": "image-extracted native binary and assets on Linux; private PostgreSQL/Redis",
+                   "production_changed": False}
+          pathlib.Path(sys.argv[3]).write_text(json.dumps(proof, indent=2) + "\n")
+          PY
+          go test -race -count=1 -timeout=90s -v -run '^TestRealNativeExecutable' ./... \
+            | tee "$RUNNER_TEMP/ordinary-image-process-tests.log"
+
+      - name: Save installed native process identities and test results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ordinary-image-process-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/ordinary-identity.json
+            ${{ runner.temp }}/ordinary-image-proof.json
+            ${{ runner.temp }}/ordinary-image-process-tests.log
+          if-no-files-found: error
 
       - name: Import the installed contract surface from the image
         run: |
