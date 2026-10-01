@@ -1,0 +1,237 @@
+{
+  "version": "jobseek.go-ordinary.cold-journal-evidence/v1",
+  "observed_at": "2026-10-01T13:46:31.538573+00:00",
+  "runtime_source_head": "d880692fca5bb57ac7a7bcf29fe9bd3152a762cf",
+  "candidate_version": "0.13.904",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10210",
+  "production_selected": false,
+  "production_changed": false,
+  "implemented": [
+    "native canonical retained joint-transition intent before nextval",
+    "bounded exclusive lease-before-epoch transaction ordering",
+    "fresh PG/Redis prepared cohort readback before allocation",
+    "atomic old ordinary retirement, new epoch-bound staged plan and durable reservation",
+    "exact-intent/source retry; burned sequence recovery allocates another fresh epoch",
+    "B0-only reservation rejects any unfinished joint journal before nextval",
+    "schema downgrade locks journal and refuses retained history"
+  ],
+  "local": {
+    "ordinary-cold-proof.json": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 1.092,
+          "log": "ordinary-cold-migration-upgrade-head.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "downgrade",
+            "0037"
+          ],
+          "exit_code": 0,
+          "seconds": 0.613,
+          "log": "ordinary-cold-migration-downgrade-0037.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.557,
+          "log": "ordinary-cold-migration-upgrade-head.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 25.053,
+          "log": "ordinary-cold-queue-race.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "pytest",
+            "tests/test_ordinary_ownership.py",
+            "tests/test_lightpanda_activation.py",
+            "tests/test_redis_queue.py",
+            "tests/test_pipeline.py",
+            "tests/test_rich_monitor_contract.py",
+            "-q"
+          ],
+          "exit_code": 0,
+          "seconds": 7.586,
+          "log": "ordinary-cold-legacy-contracts.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 42.94,
+          "log": "ordinary-cold-worker-race.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "ordinary-cold-final-proof.json": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "-run",
+            "^Test(RealColdTransition|ColdTransition)",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 5.229,
+          "log": "ordinary-cold-final-journal.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "pytest",
+            "tests/test_ordinary_ownership.py",
+            "tests/test_lightpanda_activation.py",
+            "-q"
+          ],
+          "exit_code": 0,
+          "seconds": 2.351,
+          "log": "ordinary-cold-final-legacy.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "ordinary-cold-retained-history-proof.json": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "downgrade",
+            "0037"
+          ],
+          "exit_code": 0,
+          "seconds": 0.548,
+          "log": "ordinary-cold-final-migration-downgrade.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.503,
+          "log": "ordinary-cold-final-migration-upgrade.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "pytest",
+            "tests/test_ordinary_ownership.py",
+            "-k",
+            "pending_joint_journal",
+            "-q"
+          ],
+          "exit_code": 0,
+          "seconds": 1.134,
+          "log": "ordinary-cold-retained-history.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    }
+  },
+  "local_checks": {
+    "mandatory_legacy_tests": 290,
+    "skips": 0,
+    "repository_node_checks": 130,
+    "go_vet": "pass",
+    "go_mod_tidy": "pass",
+    "ruff": "pass",
+    "pyright": "zero errors/warnings/information",
+    "private_process_cleanup": true
+  },
+  "previous_verified_checkpoint": {
+    "head": "dec0e9103f99185b90c5bc354c50e3f4fa7d04c5",
+    "linux_amd64_arm64": 36864418628,
+    "full_ci": 36864646193,
+    "installed_amd64_arm64": 36864650430,
+    "whole_b0_admission": 36864418650,
+    "all_four": "success",
+    "installed_scope": "actual image-extracted binary/assets on Linux, private PG17/Redis; all three process/admin tests each architecture",
+    "installed_assets": 34,
+    "actual_deploy_gate": "failure: draft, no merge authority"
+  },
+  "fresh_candidate_checks": "required at final pushed checkpoint; older-head success grants no later-head admission",
+  "limits": [
+    "internal database primitives only; no production CLI/selection/startup path",
+    "evidence digests bind inputs but do not themselves attest host quiescence or verify complete release/image/data identities",
+    "SQL rollback/independent-connection/uncertain-commit recovery; actual coordinator process interruption remains unproven",
+    "joint Redis/B0 publication, persistence/readback, activation and full cold reversal not implemented",
+    "actual container/public verified fetch/effective settings still required",
+    "all enabled profiles/runtime consumers, fleet output/freshness/queue conservation, whole-service cost and actual rollback-window retirement remain incomplete"
+  ],
+  "next": "Complete supported all-writer host coordinator: full verified release/rollback evidence under host mutation lock, pending receipt before cross-store effects, exact shared-epoch ordinary+B0 publication/readback/Redis persistence, native and Python startup bindings, deterministic interrupted-publication containment/recovery, full cold reversal including changed/disabled cohort and receipt preservation. Prove actual container/public fetch/settings before production selection; continue full migration scope."
+}

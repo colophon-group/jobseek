@@ -625,3 +625,39 @@ journal and deterministic interrupted activation/cold reversal, then all enabled
 profiles/consumers and fleet/freshness/queue/cost/window retirement. Do not redo
 completed native staging, process or SIGKILL recovery. The full migration goal
 remains active; production ordinary workers remain Python.
+
+
+## Joint cold-transition journal, October 1
+
+Source `d880692fca5bb57ac7a7bcf29fe9bd3152a762cf` adds migration 0038 and
+native canonical intent/reservation primitives. A durable intent precedes the
+nontransactional sequence, binding prepared cohort, prior ordinary/B0 evidence
+and active/target/rollback release and cold-host evidence digests. Reservation
+revalidates canonical PG/Redis profiles, allocates a fresh shared epoch, retires
+the exact old ordinary owner and stages its replacement with the retained
+reservation in one transaction. Failed allocation can burn an epoch; exact
+pending recovery allocates another fresh epoch. Reserved retry inspects the same
+committed plan/source/epoch and fresh cohort without another allocation.
+
+Private real PostgreSQL/Redis tests prove initial/replacement reservation,
+barrier ordering, wrong source/disabled cohort rejection, forced SQL rollback
+after nextval/retirement, independent-connection recovery, uncertain-commit retry
+and complete row/deadline/receipt/Redis conservation. B0-only allocation refuses
+unfinished journals. Actual Alembic downgrade succeeds with an empty journal,
+but refuses retained pending history and preserves schema 0038 and the intent.
+Full queue/worker race runs passed (25.053s/42.940s), 290 mandatory legacy tests
+passed without skips, final native journal proof passed (5.229s), and 130
+repository checks plus vet/tidy/ruff/pyright passed. See the
+[portable journal evidence](evidence/go-ordinary-cold-journal-2026-10-01.json).
+
+Previous checkpoint `dec0e9103` passed all four Linux/full CI/both installed-image
+architecture/B0 workflows; downloaded image artifacts passed all three native
+admin/process/crash fixtures per architecture with matching 34 asset hashes.
+Those successes do not admit the later journal source. No production ordinary
+selection changed. The journal remains internal, with no production CLI or
+activation/startup path. Input hashes are integrity bindings, not host/release
+attestation. Joint Redis/B0 publication/readback/persistence, activation,
+coordinator process interruption, the supported all-writer wrapper and full cold
+reversal remain next. Actual container/public fetch/settings, every enabled
+profile/runtime consumer, fleet output/freshness/queue conservation, whole-service
+cost and rollback-window Python retirement remain part of the active full goal.

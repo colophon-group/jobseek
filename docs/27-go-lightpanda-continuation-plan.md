@@ -1,28 +1,40 @@
 # Go and Lightpanda migration continuation plan
 
-Current resumption checkpoint, October 1: process/crash checkpoint `16de7543b`
-passed Linux AMD64/ARM64 PostgreSQL/Redis (36860289163), full CI (36860354886)
-and actual image-extracted AMD64 binary/assets plus SIGKILL/reaper/restart
-execution (36860358274). Its B0 run 36860289348 is still measuring. Actual deploy
-gate refuses the draft. Earlier process checkpoint `c32640c66` passed all four
-workflows, including B0 admission; older-head checks grant no later-head authority.
+Current verified checkpoint, October 1: `dec0e9103` passed Linux AMD64/ARM64
+PostgreSQL/Redis (36864418628), full CI (36864646193), actual image-extracted
+binary/assets/admin/process recovery on both architectures (36864650430), and
+whole B0 admission (36864418650). Downloaded installed artifacts bind exact
+source/image/binary plus matching 34 asset hashes; all three real executable
+fixtures passed on each architecture. Actual deploy gate refuses the draft.
+This remains component evidence, not full production-container/public-fetch or
+later-source admission. Production ordinary workers remain Python.
 
-Latest runtime source `91e971a5aebe72670238ea687309cae07bdf2286` adds native
-ownership staging/inspection, a B0-only epoch guard and dual-architecture installed
-image admission. Real private queue/worker races and 289 mandatory legacy tests
-without skips passed. Fresh candidate checks remain required. See
-[ownership preparation evidence](evidence/go-ordinary-ownership-admin-2026-10-01.json).
-Production ordinary workers remain Python; the full migration goal is active.
-Running B0 and installed-image measurements now finish while the newest pending
-candidate waits. Each source still requires its own report and admission.
+Latest runtime source `d880692fca5bb57ac7a7bcf29fe9bd3152a762cf` adds the native
+joint-transition intent and epoch reservation journal. Real database tests prove
+old-owner retirement/new staging in one reservation, fresh canonical cohort
+checks, recovery after a rolled-back sequence allocation burns an epoch, exact
+uncertain-commit retry and preservation of complete rows/deadlines/receipts/Redis.
+The B0-only allocator rejects unfinished joint journals before allocation, and
+actual schema downgrade refuses retained history. Full private queue/worker
+races, 290 legacy tests without skips, final journal/history proof and 130
+repository checks passed. Fresh pushed-source checks remain required. See
+[cold journal evidence](evidence/go-ordinary-cold-journal-2026-10-01.json).
+
+Native staging/inspection and installed process/crash proofs are completed;
+do not repeat them as new implementation. Next, finish shared cross-store
+publication/activation, the supported all-writer host wrapper and full reversal.
+The internal journal has no production CLI or selection path yet. The full
+migration goal remains active. Running B0 and installed-image measurements
+finish while the newest pending candidate waits; each source needs its own
+report and admission.
 
 The next delivery sequence is:
 
-1. Execute the prepared Linux image binary/asset tests, retaining exact source,
+1. Preserve the completed Linux image binary/asset tests, retaining exact source,
    image ID, binary/asset hashes and result logs. Prove the deployed container's
    effective settings and full public fetch/processing before selecting a cohort.
    The no-fetch crash fixture does not supply public TLS/profile admission.
-2. Add the coordinated ownership protocol described below, then prove its real
+2. Complete the coordinated ownership protocol described below, then prove its real
    all-writer cutover, interrupted-publication containment and cold reversal on
    private PostgreSQL/Redis and installed containers before production selection.
 3. Promote the queue foundation and ordinary runtime through current exact-head
@@ -43,7 +55,7 @@ The next delivery sequence is:
    after replacement coverage and operational authority are established; retain
    useful isolated offline Python tooling.
 
-## Coordinated ordinary and B0 ownership protocol to implement
+## Coordinated ordinary and B0 ownership protocol to complete
 
 Ordinary ownership and B0 use the same PostgreSQL routing-epoch allocator. An
 ordinary transition cannot advance it while B0 continues claiming, and a later
@@ -55,6 +67,18 @@ The prepared B0-only allocator now refuses an active ordinary plan before burnin
 a new epoch, taking the ordinary lease barrier before its epoch barrier. Real
 PostgreSQL proves preserved owner/sequence and allocation after retirement; legacy
 absent-schema behavior remains compatible. Fresh deployed-source checks are required.
+
+Native journal preparation/reservation now persists canonical intent before
+`nextval`. It validates the prepared current-epoch cohort against fresh PG/Redis
+state, retires an exact old ordinary owner, stages its replacement at a fresh
+shared epoch and records reservation in one bounded transaction. A rolled-back
+allocation can burn a sequence value: exact pending recovery allocates another
+fresh epoch; it never adopts the high-water. Exact reserved retry rechecks the
+current epoch and fresh staged cohort without reallocating. B0-only allocation
+refuses unfinished journal phases, and rollback cannot delete retained history.
+These are internal database primitives. They have no production CLI/activation
+path; input evidence digests do not prove host quiescence or release identity.
+Cross-store phases, process interruption and full cold reversal remain to prove.
 
 Bind one protected transition to the exact active and candidate release generation,
 immutable crawler/browser/renderer image identities, installed binary sources,
