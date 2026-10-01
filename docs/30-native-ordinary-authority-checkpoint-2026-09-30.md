@@ -874,3 +874,46 @@ and remaining actual crash seams. All enabled effective profiles/runtime consume
 canonical/publisher/freshness/queue parity, comparable whole-service resource/cost,
 production rollout, actual rollback window and Python/Playwright/Chromium retirement
 remain required by the active full migration goal.
+
+
+## Native canonical B0 rollback preparation, October 1
+
+Runtime source `a7502f1bb87a80a2acb8df818080b4f1acee6ae8` adds `BuildColdB0RollbackPlan` and a
+source-pinned actual B0 audit/read-only atomic observation. Exact retained reversal/
+source/retirement, approved target and explicit source route bind the manifest.
+PostgreSQL supplies eligibility and current URL/board/hash/interval; ready work
+preserves transfer kind/exact decimal score, dead/terminal work uses canonical
+microsecond future due time and current lane. Disabled/gone/inactive/missing/
+unscheduled work drops. Historical source SQL fence IDs remain retained.
+
+Twenty-one real ready/dead/terminal cases validate changed/first-time/disabled/
+inactive/gone/null-due/missing rows. The unchanged actual rollback Lua accepts
+all native manifests in private fixtures and restores matching schedule/config/
+drop effects without canonical replay or forward-journal release. Twelve unsafe
+source faults reject before effects. Active candidate drift and joint-witness
+loss permit preparation; full Redis task-authority loss refuses reconstruction.
+Canonical receipts/future deadlines and all Redis values/expiry classes remain
+unchanged by planning. Explicit size/count/time bounds reject rather than discard
+work. Full queue/worker/exporter races passed (38.201s/32.724s/4.843s), followed by
+final focused races after URL/manifest bounds (6.782s), 108 repository checks and
+vet. Fixtures stopped; production unchanged. See
+[portable preparation evidence](evidence/go-ordinary-b0-rollback-preparation-2026-10-01.json).
+
+Previous exact retirement head `286810cfc` passed Linux 36905777222, full CI
+36905796129 attempt 2 and installed images 36905800217. Its first full-CI attempt
+failed before tests on a Go proxy HTTP/2 dependency-download error; rerun passed.
+Both downloaded installed artifacts verify all four real executable fixtures,
+including retirement SIGKILL/independent pending inspection/fresh-epoch recovery,
+with exact source/image/binary and matching 34 asset hashes. Whole B0 36905777358
+remains in progress. The actual draft deploy gate refuses authority. These results
+do not admit later planner source; fresh exact-source checks remain required.
+
+Next retain the approved restoration manifest before Redis mutation, implement
+pinned actual Lua apply/retry with durable SAVE/tombstone readback, clear only exact
+historical source fences and prove actual process interruption seams. Complete
+fresh ordinary/B0 restored ownership, protected commands and ADR006 all-writer
+host wrapper with independent immutable generation/spec/env/data/image/sentinel/
+receipt identities and complete release readiness. Every enabled effective
+profile/runtime consumer, canonical/publisher/freshness/queue parity, whole-service
+CPU/RAM/density/cost, production rollout, actual rollback window and production
+Python/Playwright/Chromium retirement remain in the active full migration goal.

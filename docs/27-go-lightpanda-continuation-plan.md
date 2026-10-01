@@ -1,5 +1,30 @@
 # Go and Lightpanda migration continuation plan
 
+Latest native runtime source `a7502f1bb87a80a2acb8df818080b4f1acee6ae8` prepares PostgreSQL-derived
+B0 rollback manifests bound to an exact retained retirement, approved target and
+explicit source queue. Ready work retains transfer kind/exact score; dead/terminal
+work uses current canonical future due/config/lane. Disabled/deleted/inactive work
+drops. Actual unchanged rollback Lua accepts the native plans in private fixtures;
+planning changes no canonical/Redis state or claim authority. Full queue/worker/
+exporter races passed (38.201s/32.724s/4.843s), followed by final bounded-source
+focused races (6.782s), 108 repository checks and vet. See
+[rollback preparation evidence](evidence/go-ordinary-b0-rollback-preparation-2026-10-01.json).
+
+Previous retirement source `286810cfc` passed Linux PG17/Redis 36905777222,
+full CI 36905796129 (attempt 2 after a dependency-download transport failure) and
+both installed images 36905800217. Both downloaded artifacts verify actual
+retirement SIGKILL/read-only paused inspection/fresh-epoch recovery with exact
+source/image/binary and matching 34 assets. Whole B0 36905777358 is still running.
+The actual deploy gate refuses draft. Current-source checks remain required.
+
+Next retain the exact restoration manifest before Redis effects, implement pinned
+actual Lua restoration/retry with SAVE/tombstone readback and exact historical
+fence cleanup, and prove remaining actual SIGKILL seams. Then restore ordinary/B0
+ownership and full release readiness through the supported ADR006 all-writer host
+wrapper. Preparation and retirement alone leave the forward journal reversing and
+claims blocked. Every enabled profile/runtime consumer, parity/resource/cost,
+production rollout, actual rollback window and Python retirement remain required.
+
 Current verified joint checkpoint, October 1: `f2b82c73d` passed Linux AMD64/ARM64
 PostgreSQL/Redis (36899324776), full CI (36899366997), both installed images
 (36899371310) and whole B0 (36899324501). Both downloaded artifacts bind exact
