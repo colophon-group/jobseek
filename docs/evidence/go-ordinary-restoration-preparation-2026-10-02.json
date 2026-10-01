@@ -267,8 +267,139 @@
       }
     },
     "whole_b0": {
+      "schema": "jobseek.migration.synthetic-b0-admission/v1",
+      "pr": 10210,
+      "pr_head": "f33590cd0810e48c8000453374b97783f1b644ce",
+      "tested_merge_checkout": "5339206feb0ec8c9549942e9fcfde45038039be7",
+      "verified_merge_parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "f33590cd0810e48c8000453374b97783f1b644ce"
+      ],
       "run": 36933306741,
-      "result": "in_progress; preserve running source"
+      "job": 110612592189,
+      "report_sha256": "23aae66530123eacf6b17bbc7a13b5fc5180c0c1c8b7c003b847523be625bd68",
+      "mode": "synthetic",
+      "arms": 16,
+      "pairs": 8,
+      "admitted": true,
+      "verdict_recomputed": true,
+      "images": {
+        "browser": "sha256:87b2c0b7bcc53cc9baa94e06456f3e4af7414ede4ad842f2b2f8d8da9073b2fb",
+        "candidate": "sha256:d3c5511e1ed40eca2eb9eb1a004d35079da8e3a645f7662851fd2a8e18f6c1c4",
+        "renderer": "sha256:1d252a4acf072c1945e3c50f992fab915a7e7d87b8ebb82b3ef188aa3a4065b9"
+      },
+      "checkout": {
+        "clean": true,
+        "head": "5339206feb0ec8c9549942e9fcfde45038039be7",
+        "postflight_clean": true,
+        "postflight_head": "5339206feb0ec8c9549942e9fcfde45038039be7"
+      },
+      "verdict": {
+        "admitted": true,
+        "density_ratios": [
+          7.2883628876348725,
+          5.992415894048672,
+          5.553062607486037,
+          13.061197400439346,
+          12.940863249950398,
+          13.637606910124306,
+          13.884336046602666,
+          13.797312703921552
+        ],
+        "pair_metrics": [
+          {
+            "cpu_seconds_candidate": 1.690072,
+            "cpu_seconds_control": 2.497913,
+            "density_ratio": 7.2883628876348725,
+            "elapsed_ratio": 1.8460296994788152,
+            "lifetime_cpu_seconds_candidate": 3.949618,
+            "lifetime_cpu_seconds_control": 6.066232,
+            "p99_ratio": 0.5324339229000837,
+            "pair": "c1-p1",
+            "peak_rss_ratio": 0.2532845479758851
+          },
+          {
+            "cpu_seconds_candidate": 1.708954,
+            "cpu_seconds_control": 2.558097,
+            "density_ratio": 5.992415894048672,
+            "elapsed_ratio": 1.450231756582136,
+            "lifetime_cpu_seconds_candidate": 4.017886,
+            "lifetime_cpu_seconds_control": 6.104877,
+            "p99_ratio": 0.6892076569667168,
+            "pair": "c1-p2",
+            "peak_rss_ratio": 0.24201119919303737
+          },
+          {
+            "cpu_seconds_candidate": 1.697816,
+            "cpu_seconds_control": 2.474718,
+            "density_ratio": 5.553062607486037,
+            "elapsed_ratio": 1.4334619836336495,
+            "lifetime_cpu_seconds_candidate": 3.988759,
+            "lifetime_cpu_seconds_control": 6.009285,
+            "p99_ratio": 0.6907457972863883,
+            "pair": "c1-p3",
+            "peak_rss_ratio": 0.25813899193234585
+          },
+          {
+            "cpu_seconds_candidate": 2.357808,
+            "cpu_seconds_control": 5.961611,
+            "density_ratio": 13.061197400439346,
+            "elapsed_ratio": 1.5508425318871129,
+            "lifetime_cpu_seconds_candidate": 4.635456,
+            "lifetime_cpu_seconds_control": 10.509686,
+            "p99_ratio": 0.6394427546527377,
+            "pair": "c4-p1",
+            "peak_rss_ratio": 0.1187366276107998
+          },
+          {
+            "cpu_seconds_candidate": 2.332865,
+            "cpu_seconds_control": 5.955464,
+            "density_ratio": 12.940863249950398,
+            "elapsed_ratio": 1.5558489668235136,
+            "lifetime_cpu_seconds_candidate": 4.6169709999999995,
+            "lifetime_cpu_seconds_control": 10.51469,
+            "p99_ratio": 0.6396531245603994,
+            "pair": "c4-p2",
+            "peak_rss_ratio": 0.12022760280922348
+          },
+          {
+            "cpu_seconds_candidate": 2.35355,
+            "cpu_seconds_control": 5.972557,
+            "density_ratio": 13.637606910124306,
+            "elapsed_ratio": 1.5743253082795843,
+            "lifetime_cpu_seconds_candidate": 4.631381,
+            "lifetime_cpu_seconds_control": 10.497554,
+            "p99_ratio": 0.630981365241729,
+            "pair": "c4-p3",
+            "peak_rss_ratio": 0.11543999754904463
+          },
+          {
+            "cpu_seconds_candidate": 2.335784,
+            "cpu_seconds_control": 5.770985,
+            "density_ratio": 13.884336046602666,
+            "elapsed_ratio": 1.5651947840845357,
+            "lifetime_cpu_seconds_candidate": 4.620476,
+            "lifetime_cpu_seconds_control": 10.282939,
+            "p99_ratio": 0.6392670407052266,
+            "pair": "c4-p4",
+            "peak_rss_ratio": 0.11273097819232923
+          },
+          {
+            "cpu_seconds_candidate": 2.396596,
+            "cpu_seconds_control": 5.940846,
+            "density_ratio": 13.797312703921552,
+            "elapsed_ratio": 1.608261925910785,
+            "lifetime_cpu_seconds_candidate": 4.673668,
+            "lifetime_cpu_seconds_control": 10.583975,
+            "p99_ratio": 0.6251639680416021,
+            "pair": "c4-p5",
+            "peak_rss_ratio": 0.11656341784974371
+          }
+        ],
+        "reasons": []
+      },
+      "scope": "Generated B0 fixture with production startup cardinality and exact canonical/per-task/source-response/write/Redis/cleanup. Does not prove all crawler profiles or full production service cost.",
+      "production_changed": false
     },
     "dormant_renderer": {
       "run": 36933306659,
@@ -296,5 +427,77 @@
     "ordinary-ordinary-restoration-final-worker-race.log": "ec4f681073b7b8d2c8c4409ab2cfbb5fdfd4855c5fead9217ec3efd3398453bc",
     "ordinary-ordinary-restoration-final-exporter-race.log": "ce3093ce5bfac269f7a914e686e7421ff23b3b9b5d529284087f599c7ffa0998",
     "ordinary-ordinary-restoration-final-legacy.log": "f0e352c5e8a29417d20f5aa733f2088abaa7d1843b36c275a730e19507589f8e"
+  },
+  "fresh_preparation_ci": {
+    "source_revision": "de3ee9b689d1fd4b23a2e822db5961c1d7370d2f",
+    "linux_pg17_redis": {
+      "source_revision": "de3ee9b689d1fd4b23a2e822db5961c1d7370d2f",
+      "run": 36936491296,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "job": 110617864607,
+          "actual_pg17_redis_ordinary_queue_worker_restoration": "PASS",
+          "actual_producer_recovery_and_completion_bound_publication": "PASS",
+          "log": "ordinary-ordinary-restoration-ci-de3ee9b68-amd64.log",
+          "sha256": "c1bbf60354826ac56ffed599bf00c02eaa0e4f5522a7c61f08fe728c609bd7fd"
+        },
+        {
+          "architecture": "arm64",
+          "job": 110617864957,
+          "actual_pg17_redis_ordinary_queue_worker_restoration": "PASS",
+          "actual_producer_recovery_and_completion_bound_publication": "PASS",
+          "log": "ordinary-ordinary-restoration-ci-de3ee9b68-arm64.log",
+          "sha256": "98f8d560d295206d27522e6d866192d13ea143b01fdd9181c97f5a41d1047e7b"
+        }
+      ],
+      "production_changed": false
+    },
+    "full_ci": {
+      "run": 36936645570,
+      "result": "success"
+    },
+    "installed_images": {
+      "source_revision": "de3ee9b689d1fd4b23a2e822db5961c1d7370d2f",
+      "run": 36936649045,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:0a3c4eb0b698e97902e49d81e0c266311f2d02fe875ac7ae22a3a184432c2ba2",
+          "binary_sha256": "a6586b795b1608968203fe19ab5aa08b87c533799170f3f87edfdfbb450ed3af",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:e951fb39e7c997881473856bed4e76a713bd32939128325cce9476098e2d7ed8",
+          "binary_sha256": "1f0fc0a48510c203eacd7ec849daa7898581874507ade563b8f9119799d9b27d",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ]
+    },
+    "whole_b0": {
+      "run": 36936491185,
+      "result": "in_progress; preserve running source"
+    },
+    "dormant_renderer": {
+      "run": 36936491173,
+      "result": "success; publish/deploy skipped"
+    },
+    "actual_deploy_gate": "FAILURE draft; evaluator success is not deployment authority"
   }
 }

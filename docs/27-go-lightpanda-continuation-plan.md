@@ -1,5 +1,64 @@
 # Go and Lightpanda migration continuation plan
 
+Prior Go B0 reactivation source `5cb8d2e35ee21f25b6045c0c23176767c8229ffc`
+adds migration 0046 and native queue APIs for preview, immutable approval,
+application and historical inspection at the already reserved retirement R. Exact
+ordinary restoration history, reserved reversal, completed B0 fence cleanup and
+strict prior host receipt identity are required. A native ordinary predecessor
+must remain freshly staged at R with the prior release revision. Shared forward
+classification reuses the unchanged queue Lua: one activation per pending task,
+explicit recovery skips exact completed effects, and immutable completion commits
+only after acknowledged SAVE and full source/canonical/target/producer readback.
+Completed retries preserve the receipt and snapshot without activation or SAVE.
+No ordinary owner is published and the original reversal remains open.
+
+Focused real PG/Redis races pass (11.246s), including strict hashed receipt parsing,
+empty migration downgrade/re-upgrade and retained-history refusal. Full queue,
+worker and exporter races pass (74.559s/33.143s/4.872s); all 295 legacy tests pass
+without skips (5.84s test time). Both Linux architectures cross-compile; queue
+integration-tag and worker vet pass. Tests cover legacy/native ordinary
+predecessors, exact recurring fractional guards, uncertain replies, SAVE denial,
+SQL failure after SAVE, persisted RDB restart, drift refusals and historical
+inspection. They use a private producer control adapter executing the real Lua.
+Protected CLI and actual root/UID-10001 producer reactivation execution remain
+required. See [reactivation evidence](evidence/go-b0-reactivation-2026-10-02.json).
+
+Preceding checkpoint `de3ee9b689d1fd4b23a2e822db5961c1d7370d2f` passes both
+Linux PG17/Redis jobs (36936491296), full CI (36936645570) and installed-image
+execution (36936649045). Downloaded Linux logs prove actual producer/application
+recovery and completion-bound publication on AMD64/ARM64. Both image artifacts
+verify exact source/CA, all four executable fixtures and 34 installed asset hashes.
+Whole B0 36936491185 is running; finish it without cancellation. Completed prior
+whole B0 36933306741 and 36931282462 are now numerically verified: stored verdicts
+recompute exactly, all 16 arms/8 pairs admit and tested merge parents bind their
+respective PR heads. Density ratios are 5.553063–13.884336 and 5.411432–14.439954.
+These generated B0 workloads with production startup cardinality do not prove all
+profiles or full production service cost. The actual deploy gate still refuses
+draft. Production ownership is unchanged and the full migration goal stays active.
+
+Continue in this order:
+
+1. Expose protected, source-bound reactivation commands and prove actual
+   authenticated producer/root sentinel clearing, reinitialization and crash/restart
+   seams. Admit the exact new source on both Linux architectures and installed
+   images; retain completed whole-B0 numeric evidence without observation restarts.
+2. Restore compatible ordinary joint authority at R, publish/read back the durable
+   projection and witness, and close the original reversal only after exact B0
+   completion. Never reopen a retired plan, allocate R+1 implicitly or switch a
+   prior Go B0 owner silently back to Python.
+3. Complete the supported ADR006 all-writer host wrapper: independent immutable
+   releases/data/spec/env/images, mutation lock, durable host receipts, acknowledged
+   SAVE/readback, release selection, full readiness and complete cold reversal.
+4. Cover every enabled profile and runtime consumer with native authority and
+   canonical output, publisher-policy, freshness and queue conservation proofs.
+5. Admit comparable whole-service CPU/RAM/density/attributable cost; promote exact
+   required CI/deploy-gate identities, exercise the real schedule-dependent rollback
+   window, then retire production Python, Playwright, Chromium and legacy runtime
+   assets. Keep useful offline Python isolated. Preserve every enabled board.
+
+This checkpoint supersedes pending status observations in the historical sections
+below. Their implementation details and original evidence remain historical.
+
 Ordinary rollback preparation source `c9c42faa6216c2aed5098da8f6dc233b4137ee9b`
 adds migration 0045 and protected native preview/retain/inspect commands. It
 requires the exact reserved reversal, retirement R and completed B0 fence cleanup
