@@ -10,6 +10,9 @@ gate remains failed while draft. Later source
 receipt proof and Linux image-extracted binary/asset admission. Local full native
 worker races passed in 36.973 seconds; new exact-head CI remains required.
 See [process crash evidence](evidence/go-ordinary-process-crash-2026-10-01.json).
+B0 admission now preserves the running measurement and queues the newest pending
+candidate. Keep each report bound to its measured source; an earlier completed
+report never supplies the newer candidate's admission or merge authority.
 Production ordinary workers remain Python; the full migration goal is active.
 
 The next delivery sequence is:

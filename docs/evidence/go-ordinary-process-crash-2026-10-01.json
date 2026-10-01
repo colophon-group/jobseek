@@ -54,5 +54,9 @@
     "Every enabled effective monitor/detail/browser profile and runtime consumer; fleet canonical output, publisher policy, freshness, queue conservation and whole-service attributable cost.",
     "Actual rollback observation window and removal of production Python/Playwright/Chromium/runtime-only assets, preserving useful isolated offline Python."
   ],
-  "next": "Finish exact-source installed executable and asset proof; implement one coordinated cold ownership transition for ordinary workers and B0 under ADR006, including interrupted publication/reversal. Then expand to all enabled effective profiles/consumers and prove fleet/freshness/queue/cost/window retirement. Full migration goal remains active."
+  "next": "Finish exact-source installed executable and asset proof; implement one coordinated cold ownership transition for ordinary workers and B0 under ADR006, including interrupted publication/reversal. Then expand to all enabled effective profiles/consumers and prove fleet/freshness/queue/cost/window retirement. Full migration goal remains active.",
+  "pacing": {
+    "b0_concurrency": "One active measurement finishes; newest pending candidate waits.",
+    "authority": "Earlier-source reports do not satisfy later-source admission."
+  }
 }
