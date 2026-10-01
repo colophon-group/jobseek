@@ -936,6 +936,8 @@ async def test_routing_epoch_reservations_are_db_only_and_monotonic(
 
         async def fetchval(self, query: str) -> int:
             self.queries.append(query)
+            if query == activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL:
+                return False
             return next(self.values)
 
     pool = Pool()
@@ -964,10 +966,15 @@ async def test_routing_epoch_reservations_are_db_only_and_monotonic(
         f"{activation._LOCK_ROUTING_EPOCH_ALLOCATOR_SQL}:"
         f"{(activation._ROUTING_EPOCH_ADVISORY_LOCK_ID,)!r}"
     )
+    lease_call = f"{activation._LOCK_ROUTING_EPOCH_ALLOCATOR_SQL}:{(activation.LEASE_BARRIER,)!r}"
     assert pool.queries == [
+        lease_call,
         lock_call,
+        activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL,
         activation._RESERVE_ROUTING_EPOCH_SQL,
+        lease_call,
         lock_call,
+        activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL,
         activation._RESERVE_ROUTING_EPOCH_SQL,
     ]
     assert closes == 2
@@ -1035,7 +1042,24 @@ async def test_routing_epoch_allocator_failure_is_fail_closed_before_redis(
     closed = False
 
     class Pool:
+        def acquire(self) -> Pool:
+            return self
+
+        def transaction(self) -> Pool:
+            return self
+
+        async def __aenter__(self) -> Pool:
+            return self
+
+        async def __aexit__(self, *_args: object) -> None:
+            return None
+
+        async def execute(self, _query: str, *_args: object) -> None:
+            return None
+
         async def fetchval(self, query: str) -> int:
+            if query == activation._ORDINARY_OWNERSHIP_SCHEMA_EXISTS_SQL:
+                return False
             assert query == activation._RESERVE_ROUTING_EPOCH_SQL
             raise RuntimeError(failure)
 

@@ -219,6 +219,46 @@ func (a *Authority) loadActiveOwnership(ctx context.Context, tx pgx.Tx, digest, 
 	return decodeOwnership(body, digest)
 }
 
+// InspectStagedOwnership is exact, fresh candidate readback, never an owner or
+// write grant. It rejects active/retired plans and changed canonical eligibility.
+// The existing shared lease/epoch barriers protect the document and allocator;
+// no plan row lock inverts the state-transition trigger's barrier order.
+func (a *Authority) InspectStagedOwnership(ctx context.Context, digest, revision string) (*OwnershipPlan, error) {
+	if a == nil || a.pool == nil || a.queue == nil || !ownershipSHA256.MatchString(digest) || !ownershipRevision.MatchString(revision) {
+		return nil, ErrConfiguration
+	}
+	var plan *OwnershipPlan
+	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
+		var body string
+		err := tx.QueryRow(ctx, `SELECT payload FROM public.ordinary_worker_ownership_plan
+ WHERE plan_sha256=$1 AND source_revision=$2 AND routing_epoch=$3 AND state='staged'`, digest, revision, a.epoch).Scan(&body)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrAuthorityLost
+		}
+		if err != nil {
+			return err
+		}
+		plan, err = decodeOwnership(body, digest)
+		if err != nil {
+			return err
+		}
+		for _, member := range plan.document.Members {
+			profile, _, err := a.observeGreenhouseMonitor(ctx, tx, member.BoardID)
+			if err != nil {
+				return err
+			}
+			if profile.CompanyID != member.CompanyID || profile.Domain != member.Domain || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
+				return ErrAuthorityLost
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, authorityError(err)
+	}
+	return plan, nil
+}
+
 func requireUnselectedAuthority(ctx context.Context, tx pgx.Tx) error {
 	var active bool
 	if err := tx.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan WHERE state='active')").Scan(&active); err != nil {

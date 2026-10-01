@@ -146,8 +146,39 @@ and refusal of a wrong installed projection. Real TLS/queue token loss cancels a
 blocked fetch without canonical failure or fabricated terminal receipt. Race
 fixtures cover bounded claims, live renewal during drain, task deadlines,
 acknowledgement/renewal serialization, watchdogs and uncooperative cancellation.
-This is local executable evidence; it does not prove the immutable installed
-Linux image, SIGKILL/restart/cold reversal or exclusive production cutover.
+The real SIGKILL/guarded-reaper/restart fixture also preserves committed receipts,
+canonical board/posting rows, future deadlines, failure budget and unrelated host
+outcomes without HTTP or extraction replay. Checkpoint `16de7543b` passed this
+fixture using the actual image-extracted AMD64 binary and read-only model assets
+on Linux against private PostgreSQL/Redis (run 36860358274). That is installed
+component evidence, not full production-container/public-network or cold cutover
+authority. Fresh AMD64/ARM64 installed-image admission is now prepared.
+
+## Native ownership preparation
+
+The same source-bound executable provides `--stage-ownership` and
+`--inspect-ownership`. They use distinct protected `ORDINARY_GO_WORKER_MODE`
+values `stage-ownership` and `inspect-ownership`, the compiled matching
+`ORDINARY_OWNERSHIP_SOURCE_REVISION`, an explicit current
+`ORDINARY_OWNERSHIP_ROUTING_EPOCH`, and protected database/Redis URLs. They never
+allocate/adopt an epoch, claim work, activate ownership or publish its projection.
+
+Staging requires `ORDINARY_GO_COHORT_FILE`: an absolute regular non-symlink file,
+not writable by group/others, containing a bounded JSON array of distinct
+canonical board UUIDs. `ORDINARY_OWNERSHIP_PLAN_SHA256` and projection SHA1 must
+be absent. The tool stages fresh canonical eligible configurations and performs
+another exact readback. Inspection requires only the expected plan SHA256;
+cohort file and projection SHA1 must be absent. It rejects active/retired plans,
+configuration/eligibility drift, wrong source/digest and stale epochs. Both modes
+emit bounded document identities, not board configuration or credentials.
+
+Activation remains part of the coordinated all-writer ordinary/B0 cold protocol.
+The B0-only allocator now takes the ordinary lease barrier before its epoch
+barrier and declines an active ordinary plan before burning another epoch. It
+retains compatibility when the ordinary schema is absent and may allocate after
+the old ordinary plan is retired. Installed process fixtures cover staging,
+idempotent readback, drift/disabled-board rejection, epoch/source binding and
+unchanged canonical/queue/owner state; production selection remains disabled.
 
 Continue with installed image/process fault admission, supported all-writer
 startup/projection/cutover and B0's shared epoch cold reversal before selection.

@@ -34,10 +34,12 @@ on:
       - "apps/crawler/go/typesense-exporter/**"
       - "apps/crawler/src/migrations/**"
       - "apps/crawler/src/ordinary_ownership.py"
+      - "apps/crawler/src/lightpanda/activation.py"
       - "apps/crawler/src/redis_queue.py"
       - "apps/crawler/src/config.py"
       - "apps/crawler/src/workers/pipeline.py"
       - "apps/crawler/tests/test_ordinary_ownership.py"
+      - "apps/crawler/tests/test_lightpanda_activation.py"
       - "apps/crawler/tests/test_redis_queue.py"
       - "apps/crawler/tests/test_pipeline.py"
       - "apps/crawler/tests/test_rich_monitor_contract.py"
@@ -188,4 +190,4 @@ jobs:
         working-directory: apps/crawler
         run: |
           set -euo pipefail
-          uv run --frozen pytest tests/test_ordinary_ownership.py tests/test_redis_queue.py tests/test_pipeline.py tests/test_rich_monitor_contract.py -q
+          uv run --frozen pytest tests/test_ordinary_ownership.py tests/test_lightpanda_activation.py tests/test_redis_queue.py tests/test_pipeline.py tests/test_rich_monitor_contract.py -q

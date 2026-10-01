@@ -33,7 +33,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Finish installed-source evidence already being collected; retain only the
+  # newest pending revision. Each newer source still needs its own admission.
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -198,9 +200,17 @@ jobs:
             --require-installed
 
   image-parity:
-    name: Installed image parity
+    name: Installed image parity (${{ matrix.arch }})
     needs: bindings-and-conformance
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     services:
       postgres:
@@ -282,18 +292,21 @@ jobs:
           export JOBSEEK_ORDINARY_IMAGE_BINARY="$fixture_directory/ordinary-worker"
           export JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$fixture_directory/data"
           docker image inspect --format '{{.Id}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-id"
+          docker image inspect --format '{{.Architecture}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-architecture"
           docker run --rm --network none --read-only --cap-drop ALL \
             --entrypoint sha256sum jobseek-crawler:runtime-v1 \
             /usr/local/bin/go-ordinary-worker > "$fixture_directory/installed-binary-sha256"
-          python3 - "$fixture_directory" "$GITHUB_SHA" "$RUNNER_TEMP/ordinary-image-proof.json" <<'PY'
+          python3 - "$fixture_directory" "$GITHUB_SHA" "$RUNNER_TEMP/ordinary-image-proof.json" "${{ matrix.arch }}" <<'PY'
           import hashlib, json, pathlib, sys
           root = pathlib.Path(sys.argv[1])
+          architecture = (root / "image-architecture").read_text().strip()
+          assert architecture == sys.argv[4] and architecture in {"amd64", "arm64"}
           binary_sha = hashlib.sha256((root / "ordinary-worker").read_bytes()).hexdigest()
           assert binary_sha == (root / "installed-binary-sha256").read_text().split()[0]
           assets = {str(path.relative_to(root / "data")): hashlib.sha256(path.read_bytes()).hexdigest()
                     for path in sorted((root / "data").rglob("*")) if path.is_file()}
           assert assets
-          proof = {"source_revision": sys.argv[2], "image_id": (root / "image-id").read_text().strip(),
+          proof = {"source_revision": sys.argv[2], "image_id": (root / "image-id").read_text().strip(), "architecture": architecture,
                    "binary_sha256": binary_sha, "installed_asset_sha256": assets,
                    "scope": "image-extracted native binary and assets on Linux; private PostgreSQL/Redis",
                    "production_changed": False}
@@ -305,7 +318,7 @@ jobs:
       - name: Save installed native process identities and test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ordinary-image-process-${{ github.sha }}
+          name: ordinary-image-process-${{ matrix.arch }}-${{ github.sha }}
           path: |
             ${{ runner.temp }}/ordinary-identity.json
             ${{ runner.temp }}/ordinary-image-proof.json

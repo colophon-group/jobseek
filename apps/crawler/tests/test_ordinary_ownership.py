@@ -20,6 +20,7 @@ from redis.exceptions import ResponseError
 
 import src.redis_queue as rq
 from src.config import settings
+from src.lightpanda import activation
 from src.ordinary_ownership import (
     EPOCH_BARRIER,
     LEASE_BARRIER,
@@ -332,3 +333,25 @@ async def test_real_projection_blocks_unaware_legacy_claim(monkeypatch):
         with pytest.raises(ResponseError, match="ordinary ownership rejected"):
             await rq.claim_work()
         assert before == await queue_snapshot(client)
+
+
+async def test_real_b0_only_epoch_reservation_preserves_active_ordinary_owner():
+    async with private_active_plan() as (pool, expected, _payload):
+        before = await pool.fetchval("SELECT last_value FROM lightpanda_b0_routing_epoch_seq")
+        with pytest.raises(activation.ActivationError, match="coordinated epoch transition"):
+            await activation._reserve_routing_epoch(pool)
+        assert (
+            await pool.fetchval("SELECT last_value FROM lightpanda_b0_routing_epoch_seq") == before
+        )
+        assert (
+            await pool.fetchval(
+                "SELECT state FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1",
+                expected.plan_sha256,
+            )
+            == "active"
+        )
+        await pool.execute(
+            "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1",
+            expected.plan_sha256,
+        )
+        assert await activation._reserve_routing_epoch(pool) == before + 1
