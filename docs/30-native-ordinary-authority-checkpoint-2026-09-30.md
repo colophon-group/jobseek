@@ -661,3 +661,39 @@ coordinator process interruption, the supported all-writer wrapper and full cold
 reversal remain next. Actual container/public fetch/settings, every enabled
 profile/runtime consumer, fleet output/freshness/queue conservation, whole-service
 cost and rollback-window Python retirement remain part of the active full goal.
+
+
+## Native shared publication, October 1
+
+Source `28d155566b50297b65933757294d5ff8bfb442d3` and migration 0039 implement
+internal shared-epoch publication through retained pending Redis witness,
+`publishing`, `published` and `active` journal phases. Fresh fixed B0 selectors
+bind canonical board UUID/configuration hashes and matching Redis snapshots.
+One EVAL wraps the unmodified SHA256-pinned production B0 conservation audit and
+exact route/producer/prior-byte checks; one MSET changes ordinary projection and
+joint witness. Synchronous SAVE acknowledgement and exact atomic readback precede
+published state. Exact ordinary owner and active journal commit together after
+fresh profile/B0 readback. Successors bind prior active plan/epoch/target release,
+retain superseded history and reject old B0 route publication.
+
+Real private tests prove SAVE denial/retry, missing witness containment, post-SAVE
+SQL rollback/retry, atomic activation rollback/retry, stale B0 route/selectors/
+records, canonical/Redis configuration drift and corrupt routing types. A real
+Redis no-save shutdown and fresh process load retain acknowledged RDB routing,
+B0 records and guards. Complete ordinary rows/deadlines/receipts and all other
+Redis keys remain conserved. Full queue/worker races passed (30.145s/43.047s),
+290 mandatory legacy tests passed without skips, final publication races passed
+(7.400s), and 130 repository checks plus vet/ruff/pyright passed. See
+[portable publication evidence](evidence/go-ordinary-cold-publication-2026-10-01.json).
+
+Previous exact journal checkpoint `3da2d75dc` passed Linux/full CI/both installed
+image architectures, with both downloaded artifacts verified. Whole B0 36871349200 also passed; all four workflows are green. These results
+do not admit later publication source.
+Production is unchanged. Internal methods have no protected installed coordinator
+command or production selection path. They do not attest host all-writer
+quiescence, complete release/rollback identities/readiness, perform PG-derived
+B0 transfers or replace their full manifest/sentinel/receipt evidence. Actual
+coordinator SIGKILL/restart, the supported host wrapper and full cold reversal
+remain next. Actual containers/public fetch/settings, every enabled profile and
+runtime consumer, fleet conservation/cost and rollback-window Python retirement
+remain part of the active full goal.

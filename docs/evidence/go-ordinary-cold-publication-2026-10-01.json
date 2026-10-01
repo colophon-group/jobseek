@@ -1,0 +1,212 @@
+{
+  "version": "jobseek.go-ordinary.cold-publication-evidence/v1",
+  "observed_at": "2026-10-01T14:29:21.106602+00:00",
+  "runtime_source_head": "28d155566b50297b65933757294d5ff8bfb442d3",
+  "candidate_version": "0.13.904",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10210",
+  "production_selected": false,
+  "production_changed": false,
+  "implemented": [
+    "source-pinned actual B0 Lua audit and fresh canonical/Redis fixed-selector configuration target",
+    "Redis pending witness before durable publishing phase; no projection effect before that commit",
+    "one Redis EVAL performs unmodified B0 conservation audit, exact shared route/selector/zero-inflight checks and prior-byte CAS",
+    "one MSET publishes ordinary projection and joint witness together; acknowledged SAVE and atomic readback before published",
+    "atomic exact ordinary owner/journal activation after fresh published profile/B0 readback",
+    "SAVE denial and post-SAVE SQL failure retain inspectable publishing phase for exact retry; missing witness contained without reconstruction",
+    "successor binds exact active plan/epoch/target release, retains superseded history and refuses stale B0 epoch"
+  ],
+  "local": {
+    "ordinary-publication-proof.json": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 1.141,
+          "log": "ordinary-publication-migration-upgrade-head.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "downgrade",
+            "0038"
+          ],
+          "exit_code": 0,
+          "seconds": 0.553,
+          "log": "ordinary-publication-migration-downgrade-0038.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.553,
+          "log": "ordinary-publication-migration-upgrade-head.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 30.145,
+          "log": "ordinary-publication-queue-race.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "pytest",
+            "tests/test_ordinary_ownership.py",
+            "tests/test_lightpanda_activation.py",
+            "tests/test_redis_queue.py",
+            "tests/test_pipeline.py",
+            "tests/test_rich_monitor_contract.py",
+            "-q"
+          ],
+          "exit_code": 0,
+          "seconds": 7.964,
+          "log": "ordinary-publication-legacy-contracts.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 43.047,
+          "log": "ordinary-publication-worker-race.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "ordinary-publication-final-proof.json": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "-run",
+            "^Test(RealColdPublication|ColdPublication|ColdB0)",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 7.4,
+          "log": "ordinary-publication-final.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    }
+  },
+  "local_checks": {
+    "full_queue_race_seconds": 30.145,
+    "full_worker_race_seconds": 43.047,
+    "final_publication_race_seconds": 7.4,
+    "mandatory_legacy_tests": 290,
+    "skips": 0,
+    "repository_node_tests": 130,
+    "go_vet": "pass",
+    "ruff": "pass",
+    "pyright": "0 errors/warnings/information",
+    "metadata_duplicate_and_depth_tests": "pass",
+    "private_cleanup": true
+  },
+  "observed_contracts": [
+    "real private Redis no-save shutdown and fresh process load the acknowledged RDB with projection/witness and B0 records/guards",
+    "SAVE ACL denial fails admission; restored permission permits exact retry; deletion of both routing witnesses is contained",
+    "private SQL constraint forces post-SAVE journal rollback; exact retry neither retransfers B0 nor mutates canonical data",
+    "private SQL constraint forces active-journal failure; ordinary activation rolls back to staged and exact retry succeeds",
+    "wrong B0 epoch/selectors/records, disabled canonical B0 board, Redis config drift and invalid routing types cause no publication effect",
+    "ordinary canonical rows/deadlines/receipts and every other Redis key remain unchanged"
+  ],
+  "previous_checkpoint": {
+    "head": "3da2d75dcb2083231b623ffe42d239ca0db2e204",
+    "linux": 36871349415,
+    "full_ci": 36871396549,
+    "both_installed_architectures": 36871400927,
+    "these_three": "success",
+    "whole_b0": {
+      "run": 36871349200,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "installed_proof": {
+      "amd64": {
+        "source": "3da2d75dcb2083231b623ffe42d239ca0db2e204",
+        "architecture": "amd64",
+        "image_id": "sha256:10878b2c4978a3dfd5c601eaefd7fb7e3961a476854136961ca2feb2a8f56ec8",
+        "binary_sha256": "652049956523133d29fdf27fc5769cb5a06826938dc09bb0d0bcbce182ffd1cb",
+        "asset_count": 34,
+        "tests": [
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership"
+        ],
+        "scope": "image-extracted native binary/assets on Linux/private PG17/Redis; no actual joint coordinator process or public fetch proof"
+      },
+      "arm64": {
+        "source": "3da2d75dcb2083231b623ffe42d239ca0db2e204",
+        "architecture": "arm64",
+        "image_id": "sha256:77fdb9496df877794d58d76fade18803f39d0ec6f0379399b8f32fb675c4d33a",
+        "binary_sha256": "27bb5f345b4cf7fda7f8a580d58cc69e170cc487128607a016010643c28bb302",
+        "asset_count": 34,
+        "tests": [
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership"
+        ],
+        "scope": "image-extracted native binary/assets on Linux/private PG17/Redis; no actual joint coordinator process or public fetch proof"
+      }
+    },
+    "actual_deploy_gate": "failure: draft",
+    "all_four": "success"
+  },
+  "limits": [
+    "internal library methods; no protected installed coordinator command or production selection path",
+    "configuration digests and zero inflight do not themselves prove host all-writer quiescence, complete runtime/image/data/rollback identities or readiness",
+    "does not perform PG-derived B0 task transfer or replace its complete transfer manifest/sentinel/receipt evidence",
+    "SQL failure/retry and Redis RDB restart do not prove actual coordinator-process SIGKILL/restart",
+    "supported host wrapper, interruption/recovery and full cold reversal remain unfinished",
+    "actual container/public verified fetch/effective settings and all enabled profile/runtime consumer coverage remain required",
+    "fleet output/publisher/freshness/queue conservation, comparable whole-service resources/cost and actual rollback-window retirement remain required"
+  ],
+  "next": "Expose protected compiled-source-bound native coordinator commands for target/intent/reservation/publication/activation, then integrate supported ADR006 host mutation lock, complete verified release/rollback/spec/env/image/data/receipt identities and all-writer/exporter/drain/one-off quiescence. Prove actual coordinator interruption and deterministic recovery, complete PG-derived B0 transfer and full cold reversal including changed/disabled cohort and conserved receipts/future deadlines. Actual container/public fetch/settings and every enabled profile/runtime consumer follow; preserve full fleet/cost/window/retirement goal."
+}

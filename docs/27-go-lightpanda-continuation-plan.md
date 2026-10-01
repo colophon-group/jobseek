@@ -1,32 +1,42 @@
 # Go and Lightpanda migration continuation plan
 
-Current verified checkpoint, October 1: `dec0e9103` passed Linux AMD64/ARM64
-PostgreSQL/Redis (36864418628), full CI (36864646193), actual image-extracted
-binary/assets/admin/process recovery on both architectures (36864650430), and
-whole B0 admission (36864418650). Downloaded installed artifacts bind exact
-source/image/binary plus matching 34 asset hashes; all three real executable
-fixtures passed on each architecture. Actual deploy gate refuses the draft.
-This remains component evidence, not full production-container/public-fetch or
-later-source admission. Production ordinary workers remain Python.
+Current verified journal checkpoint, October 1: `3da2d75dc` passed Linux AMD64/
+ARM64 PostgreSQL/Redis (36871349415), full CI (36871396549) and actual image-
+extracted binary/assets/admin/process recovery on both architectures (36871400927).
+Both downloaded artifacts passed all three executable fixtures and bind exact
+source/image/binary plus matching 34 asset hashes. Whole B0 admission 36871349200 also passed. All four exact-head workflows passed.
+Actual deploy gate refuses the draft. These are component/source results, not
+full production-container/public-fetch or later-source admission.
 
-Latest runtime source `d880692fca5bb57ac7a7bcf29fe9bd3152a762cf` adds the native
-joint-transition intent and epoch reservation journal. Real database tests prove
-old-owner retirement/new staging in one reservation, fresh canonical cohort
-checks, recovery after a rolled-back sequence allocation burns an epoch, exact
-uncertain-commit retry and preservation of complete rows/deadlines/receipts/Redis.
-The B0-only allocator rejects unfinished joint journals before allocation, and
-actual schema downgrade refuses retained history. Full private queue/worker
-races, 290 legacy tests without skips, final journal/history proof and 130
-repository checks passed. Fresh pushed-source checks remain required. See
-[cold journal evidence](evidence/go-ordinary-cold-journal-2026-10-01.json).
+Latest runtime source `28d155566b50297b65933757294d5ff8bfb442d3` adds native
+shared-epoch publication/activation through migration 0039. A fresh canonical/
+Redis B0 target binds fixed selectors and exact configuration hashes. Redis
+pending witness precedes committed `publishing`; only then can the unmodified,
+SHA256-pinned actual B0 conservation audit and prior-byte CAS publish ordinary
+projection plus joint witness in one MSET. SAVE acknowledgement and exact atomic
+readback precede `published`; exact ordinary DB owner and journal become active
+in one subsequent transaction. Missing witnesses cause containment, not repair.
+A successor binds the exact active generation and refuses an old B0 epoch.
 
-Native staging/inspection and installed process/crash proofs are completed;
-do not repeat them as new implementation. Next, finish shared cross-store
-publication/activation, the supported all-writer host wrapper and full reversal.
-The internal journal has no production CLI or selection path yet. The full
-migration goal remains active. Running B0 and installed-image measurements
-finish while the newest pending candidate waits; each source needs its own
-report and admission.
+Real private full queue/worker races passed (30.145s/43.047s), 290 mandatory
+legacy tests passed without skips, final publication races passed (7.400s), and
+130 repository checks plus vet/ruff/pyright passed. SAVE denial, post-SAVE SQL
+failure and activation rollback/retry conserve canonical rows/deadlines/receipts
+and every other Redis key. A no-save Redis shutdown and fresh process load prove
+durable RDB witness/projection/B0 records/guards. See
+[publication evidence](evidence/go-ordinary-cold-publication-2026-10-01.json).
+Fresh pushed-source Linux/full CI/installed-image/B0 checks remain required.
+
+The methods remain internal: no protected installed coordinator command or
+production selection path exists yet. They do not replace complete PG-derived
+B0 task-transfer/sentinel/receipt evidence or attest all-writer host quiescence,
+release/rollback identities and readiness. Next expose the compiled-source-bound
+native coordinator, integrate the supported host wrapper, and prove actual
+process interruption/recovery and full cold reversal. Do not redo completed
+native staging, process/crash, reservation or publication implementation.
+Production ordinary remains Python and the full migration goal is active.
+Running B0 and installed-image measurements finish while the newest pending
+candidate waits; each source needs its own report and admission.
 
 The next delivery sequence is:
 
@@ -79,6 +89,20 @@ refuses unfinished journal phases, and rollback cannot delete retained history.
 These are internal database primitives. They have no production CLI/activation
 path; input evidence digests do not prove host quiescence or release identity.
 Cross-store phases, process interruption and full cold reversal remain to prove.
+
+Shared publication now captures exact canonical/Redis B0 board configurations
+and fixed producer selectors without adopting an epoch. Redis pending witness
+commits before journal `publishing`. One EVAL uses the actual source-pinned B0
+conservation audit to guard exact new shared route/selectors, conserved nonempty
+records and zero inflight/dead work, then uses one MSET for ordinary projection
+and joint witness. Acknowledged SAVE and exact readback precede `published`;
+subsequent exact owner/active-journal installation is atomic. SQL/Save failures
+retain inspectable recovery phases. Lost/expired/partial witnesses are contained.
+An exact active predecessor can be retained as superseded; its release/plan/epoch
+and prior projection/witness must match. A stale B0 route prevents publication.
+These are internal primitives, not an installed coordinator or host readiness
+proof. They do not transfer B0 tasks or supply its complete PG-derived manifest.
+Actual coordinator interruption, supported wrapper and full cold reversal remain.
 
 Bind one protected transition to the exact active and candidate release generation,
 immutable crawler/browser/renderer image identities, installed binary sources,
