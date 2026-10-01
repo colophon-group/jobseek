@@ -19,6 +19,8 @@ func ColdAdminOperation(argument string) string {
 	switch argument {
 	case "--cold-b0-target", "--cold-begin", "--cold-reserve", "--cold-inspect", "--cold-prepare", "--cold-publish", "--cold-activate", "--cold-reversal-begin", "--cold-reversal-reserve", "--cold-reversal-inspect":
 		return strings.TrimPrefix(argument, "--")
+	case "--cold-forward-prepare", "--cold-forward-publish", "--cold-forward-activate":
+		return strings.TrimPrefix(argument, "--")
 	case "--cold-b0-forward-plan", "--cold-b0-forward-retain", "--cold-b0-forward-apply", "--cold-b0-forward-inspect":
 		return strings.TrimPrefix(argument, "--")
 	case "--cold-b0-rollback-plan", "--cold-b0-rollback-retain", "--cold-b0-rollback-restore", "--cold-b0-rollback-inspect":
@@ -35,8 +37,12 @@ func coldB0RestorationOperation(operation string) bool {
 	return operation == "cold-b0-rollback-plan" || operation == "cold-b0-rollback-retain" || operation == "cold-b0-rollback-restore" || operation == "cold-b0-rollback-inspect"
 }
 
+func coldForwardPublicationOperation(operation string) bool {
+	return operation == "cold-forward-prepare" || operation == "cold-forward-publish" || operation == "cold-forward-activate"
+}
+
 func coldB0ForwardOperation(operation string) bool {
-	return operation == "cold-b0-forward-plan" || operation == "cold-b0-forward-retain" || operation == "cold-b0-forward-apply" || operation == "cold-b0-forward-inspect"
+	return coldForwardPublicationOperation(operation) || operation == "cold-b0-forward-plan" || operation == "cold-b0-forward-retain" || operation == "cold-b0-forward-apply" || operation == "cold-b0-forward-inspect"
 }
 
 type ColdAdminConfig struct {
@@ -47,6 +53,7 @@ type ColdAdminConfig struct {
 	reversalFile, reversalSHA                             string
 	restoreRequestFile, restoreRequestSHA, restorePlanSHA string
 	forwardRequestFile, forwardRequestSHA, forwardPlanSHA string
+	forwardReceiptSHA                                     string
 }
 
 // ColdAdminIdentity reports the completed primitive, not host release readiness
@@ -103,6 +110,10 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 	c.reversalFile, c.reversalSHA = getenv("ORDINARY_COLD_REVERSAL_FILE"), getenv("ORDINARY_COLD_REVERSAL_SHA256")
 	c.restoreRequestFile, c.restoreRequestSHA, c.restorePlanSHA = getenv("ORDINARY_COLD_B0_RESTORE_REQUEST_FILE"), getenv("ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256"), getenv("ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256")
 	c.forwardRequestFile, c.forwardRequestSHA, c.forwardPlanSHA = getenv("ORDINARY_COLD_B0_FORWARD_REQUEST_FILE"), getenv("ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256"), getenv("ORDINARY_COLD_B0_FORWARD_PLAN_SHA256")
+	c.forwardReceiptSHA = getenv("ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256")
+	if !coldForwardPublicationOperation(operation) && c.forwardReceiptSHA != "" {
+		return ColdAdminConfig{}, ErrStartup
+	}
 	path := func(p string) bool { return filepath.IsAbs(p) && !strings.ContainsRune(p, 0) }
 	if !coldReversalOperation(operation) && (c.reversalFile != "" || c.reversalSHA != "") {
 		return ColdAdminConfig{}, ErrStartup
@@ -123,6 +134,9 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 		return ColdAdminConfig{}, ErrStartup
 	}
 	if coldB0ForwardOperation(operation) {
+		if coldForwardPublicationOperation(operation) && !planPattern.MatchString(c.forwardReceiptSHA) {
+			return ColdAdminConfig{}, ErrStartup
+		}
 		if c.epoch <= 1 || !path(c.forwardRequestFile) || !planPattern.MatchString(c.forwardRequestSHA) || !planPattern.MatchString(c.planSHA) {
 			return ColdAdminConfig{}, ErrStartup
 		}
@@ -292,7 +306,7 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 	var plan *queue.OwnershipPlan
 	// The immutable journal binds the explicit new epoch/plan BEFORE effects.
 	// The primitive then re-attests that journal and allocator under its locks.
-	if c.operation == "cold-prepare" || c.operation == "cold-publish" || c.operation == "cold-activate" {
+	if coldForwardPublicationOperation(c.operation) || c.operation == "cold-prepare" || c.operation == "cold-publish" || c.operation == "cold-activate" {
 		var exact bool
 		err = pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.crawler_ownership_transition
  WHERE intent_sha256=$1 AND source_revision=$2 AND routing_epoch=$3 AND reserved_plan_sha256=$4)`, c.intentSHA, c.source, c.epoch, c.planSHA).Scan(&exact)
@@ -301,6 +315,24 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 		}
 	}
 	switch c.operation {
+	case "cold-forward-prepare", "cold-forward-publish", "cold-forward-activate":
+		application, observedErr := queue.InspectColdB0ForwardApplication(ctx, pool, c.forwardPlanSHA, c.source)
+		if observedErr != nil || application.Plan().Request() != forwardRequest || application.Phase() != "redis-transferred" || application.ReceiptSHA256() != c.forwardReceiptSHA {
+			return nil, ErrStartup
+		}
+		binding := queue.ColdB0ForwardCompletionBinding{PlanSHA256: c.forwardPlanSHA, ReceiptSHA256: c.forwardReceiptSHA}
+		control := b0producer.NewClient()
+		switch c.operation {
+		case "cold-forward-prepare":
+			err = queue.PrepareColdForwardOwnershipPublication(ctx, pool, client, control, c.intentSHA, c.source, target, binding)
+		case "cold-forward-publish":
+			plan, err = queue.PublishColdForwardOwnership(ctx, pool, client, control, c.intentSHA, c.source, target, binding)
+		case "cold-forward-activate":
+			plan, err = queue.ActivateColdForwardOwnership(ctx, pool, client, control, c.intentSHA, c.source, target, binding)
+		}
+		result.B0ForwardPlanSHA256, result.B0ForwardReceiptSHA256, result.B0ForwardPhase = c.forwardPlanSHA, c.forwardReceiptSHA, application.Phase()
+		result.B0ForwardPlan = json.RawMessage(application.Plan().Payload())
+		result.RoutingEpoch, result.PlanSHA256 = c.epoch, c.planSHA
 	case "cold-b0-forward-plan", "cold-b0-forward-retain", "cold-b0-forward-apply", "cold-b0-forward-inspect":
 		var forward *queue.ColdB0ForwardPlan
 		var application *queue.ColdB0ForwardApplication

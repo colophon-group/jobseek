@@ -158,12 +158,19 @@ func coldPublicationRedis(ctx context.Context, c *Client, digest string, p *cold
 // effects. An unfinished attempt with a missing witness is contained, not repaired.
 // This cannot attest host quiescence, transfer B0 tasks, or release services.
 func PrepareColdOwnershipPublication(ctx context.Context, pool *pgxpool.Pool, c *Client, digest, revision string, t *ColdB0Target) error {
+	return prepareColdOwnershipPublication(ctx, pool, c, digest, revision, t, nil)
+}
+
+func prepareColdOwnershipPublication(ctx context.Context, pool *pgxpool.Pool, c *Client, digest, revision string, t *ColdB0Target, approval *coldForwardPublicationApproval) error {
 	if c == nil || t == nil || !ownershipSHA256.MatchString(digest) || !ownershipRevision.MatchString(revision) {
 		return ErrConfiguration
 	}
 	return coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
 		p, err := loadColdPublication(ctx, tx, c, digest, revision, t)
 		if err != nil {
+			return err
+		}
+		if err := attestColdForwardPublication(ctx, tx, c, digest, p, t, approval); err != nil {
 			return err
 		}
 		if p.phase == "reserved" {
@@ -204,13 +211,20 @@ func PrepareColdOwnershipPublication(ctx context.Context, pool *pgxpool.Pool, c 
 // atomic readback precede durable 'published'. Lost SAVE/DB replies retain an
 // inspectable 'publishing' journal; retry cannot reconstruct lost Redis evidence.
 func PublishColdOwnership(ctx context.Context, pool *pgxpool.Pool, c *Client, digest, revision string, t *ColdB0Target) (*OwnershipPlan, error) {
-	if err := PrepareColdOwnershipPublication(ctx, pool, c, digest, revision, t); err != nil {
+	return publishColdOwnership(ctx, pool, c, digest, revision, t, nil)
+}
+
+func publishColdOwnership(ctx context.Context, pool *pgxpool.Pool, c *Client, digest, revision string, t *ColdB0Target, approval *coldForwardPublicationApproval) (*OwnershipPlan, error) {
+	if err := prepareColdOwnershipPublication(ctx, pool, c, digest, revision, t, approval); err != nil {
 		return nil, err
 	}
 	var result *OwnershipPlan
 	err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
 		p, err := loadColdPublication(ctx, tx, c, digest, revision, t)
 		if err != nil {
+			return err
+		}
+		if err := attestColdForwardPublication(ctx, tx, c, digest, p, t, approval); err != nil {
 			return err
 		}
 		if p.phase != "publishing" && p.phase != "published" && p.phase != "active" {
@@ -248,6 +262,10 @@ func PublishColdOwnership(ctx context.Context, pool *pgxpool.Pool, c *Client, di
 // publication and fresh shared-epoch B0/profile readback. The protected host must
 // still publish verified release/receipt identities and gate complete readiness.
 func ActivateColdOwnership(ctx context.Context, pool *pgxpool.Pool, c *Client, digest, revision string, t *ColdB0Target) (*OwnershipPlan, error) {
+	return activateColdOwnership(ctx, pool, c, digest, revision, t, nil)
+}
+
+func activateColdOwnership(ctx context.Context, pool *pgxpool.Pool, c *Client, digest, revision string, t *ColdB0Target, approval *coldForwardPublicationApproval) (*OwnershipPlan, error) {
 	if c == nil || t == nil || !ownershipSHA256.MatchString(digest) || !ownershipRevision.MatchString(revision) {
 		return nil, ErrConfiguration
 	}
@@ -255,6 +273,9 @@ func ActivateColdOwnership(ctx context.Context, pool *pgxpool.Pool, c *Client, d
 	err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
 		p, err := loadColdPublication(ctx, tx, c, digest, revision, t)
 		if err != nil {
+			return err
+		}
+		if err := attestColdForwardPublication(ctx, tx, c, digest, p, t, approval); err != nil {
 			return err
 		}
 		if p.phase != "published" && p.phase != "active" {

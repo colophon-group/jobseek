@@ -373,6 +373,28 @@ func TestInstalledNativeColdB0ForwardPreparesAndRetainsExactManifest(t *testing.
 	if observed := call("cold-b0-forward-inspect", true); observed.Phase != "redis-transferred" || observed.ReceiptSHA256 != finished.ReceiptSHA256 {
 		t.Fatal("read-only completion inspection lost receipt")
 	}
+	if _, err := lock.Exec(ctx, "SELECT pg_advisory_unlock($1)", OrdinaryLeaseBarrier); err != nil {
+		t.Fatal(err)
+	}
+	env["REDIS_URL"] = "unix://" + socket
+	env["ORDINARY_COLD_B0_TARGET_FILE"], env["ORDINARY_COLD_B0_TARGET_SHA256"], env["ORDINARY_COLD_B0_LUA_FILE"] = write("target.json", p.target.body), p.target.digest, write("queue.lua", p.target.lua)
+	env["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = strings.Repeat("f", 64)
+	call("cold-forward-prepare", false)
+	if publicationPhase(t, p) != "reserved" {
+		t.Fatal("wrong completion selected publication")
+	}
+	env["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = finished.ReceiptSHA256
+	for _, operation := range []string{"cold-forward-prepare", "cold-forward-publish", "cold-forward-activate", "cold-forward-activate"} {
+		if observed := call(operation, true); observed.ReceiptSHA256 != finished.ReceiptSHA256 {
+			t.Fatal("joint publication lost exact durable transfer identity")
+		}
+	}
+	publishedSnapshot := forwardRedisSnapshot(t, p.f.client)
+	delete(publishedSnapshot, ownershipProjectionKey)
+	delete(publishedSnapshot, coldPublicationKey)
+	if publicationPhase(t, p) != "active" || !reflect.DeepEqual(fullyTransferred, publishedSnapshot) || canonical != coldB0CanonicalSnapshot(t, p) {
+		t.Fatal("completed native publication changed transferred tasks/canonical rows")
+	}
 }
 
 func mustColdSpec(t *testing.T, spec ColdTransitionSpec) string {

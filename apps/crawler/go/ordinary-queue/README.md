@@ -524,3 +524,24 @@ at its fsynced sentinel. Fresh execution must pass on both architectures.
 Completion remains confined to a reserved joint journal. It does not publish
 ownership, select releases, start services or attest full host readiness. The
 supported host workflow must require this receipt before releasing claims.
+
+## Completion-bound joint publication
+
+`PrepareColdForwardOwnershipPublication`, `PublishColdForwardOwnership` and
+`ActivateColdForwardOwnership` require exact retained forward plan and completion
+digests plus the fixed authenticated producer. Each effect rechecks completion
+under the same exclusive transaction barriers. Before activation, canonical rows
+and the entire transferred Redis snapshot must still match the immutable receipt.
+Wrong, missing or merely prepared completion cannot publish an ordinary owner.
+
+Only exact known prior/pending/published projection and witness pairs are accepted
+at each SQL phase, including Redis effects preceding SQL commit. Missing or
+partial witnesses are never reconstructed. Once active, legitimate canonical
+schedule progression does not invalidate historical completion identity; existing
+fresh routing, target and owner audits still apply. An intent with retained
+forward approval cannot use the older component publication surface, regardless
+of whether application has completed.
+
+These primitives establish queue/database ordering. Independent immutable release
+selection, all-writer host quiescence, durable sentinel/host receipts and full
+readiness remain responsibilities of the supported ADR006 host workflow.

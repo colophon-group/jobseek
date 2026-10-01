@@ -6,13 +6,16 @@ import (
 )
 
 func TestColdB0ForwardAdminRequiresProtectedSourceAndExactApproval(t *testing.T) {
-	for _, operation := range []string{"cold-b0-forward-plan", "cold-b0-forward-retain", "cold-b0-forward-apply", "cold-b0-forward-inspect"} {
+	for _, operation := range []string{"cold-b0-forward-plan", "cold-b0-forward-retain", "cold-b0-forward-apply", "cold-b0-forward-inspect", "cold-forward-prepare", "cold-forward-publish", "cold-forward-activate"} {
 		base := map[string]string{"ORDINARY_GO_WORKER_MODE": operation, "ORDINARY_OWNERSHIP_SOURCE_REVISION": strings.Repeat("a", 40), "ORDINARY_COLD_ROUTING_EPOCH": "146", "LOCAL_DATABASE_URL": "postgresql://private:secret@localhost/fixture", "REDIS_URL": "unix:///private/redis.sock", "ORDINARY_COLD_INTENT_FILE": "/private/intent.json", "ORDINARY_COLD_INTENT_SHA256": strings.Repeat("b", 64), "ORDINARY_COLD_PLAN_SHA256": strings.Repeat("c", 64), "ORDINARY_COLD_B0_FORWARD_REQUEST_FILE": "/private/request.json", "ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256": strings.Repeat("d", 64)}
 		if operation != "cold-b0-forward-plan" {
 			base["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = strings.Repeat("e", 64)
 		}
 		if operation != "cold-b0-forward-inspect" {
 			base["ORDINARY_COLD_B0_TARGET_FILE"], base["ORDINARY_COLD_B0_TARGET_SHA256"], base["ORDINARY_COLD_B0_LUA_FILE"] = "/private/target.json", strings.Repeat("f", 64), "/private/queue.lua"
+		}
+		if coldForwardPublicationOperation(operation) {
+			base["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = strings.Repeat("a", 64)
 		}
 		getenv := func(key string) string { return base[key] }
 		if ColdAdminOperation("--"+operation) != operation {
@@ -28,6 +31,21 @@ func TestColdB0ForwardAdminRequiresProtectedSourceAndExactApproval(t *testing.T)
 				t.Fatal("ambiguous forward authority admitted or exposed", key)
 			}
 			base[key] = old
+		}
+		if coldForwardPublicationOperation(operation) {
+			for _, receipt := range []string{"", "latest", strings.Repeat("A", 64)} {
+				base["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = receipt
+				if _, err := ReadColdAdminConfig(getenv, strings.Repeat("a", 40), operation); err != ErrStartup {
+					t.Fatal("publication admitted missing/ambiguous completion")
+				}
+			}
+			base["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = strings.Repeat("a", 64)
+		} else {
+			base["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = strings.Repeat("a", 64)
+			if _, err := ReadColdAdminConfig(getenv, strings.Repeat("a", 40), operation); err != ErrStartup {
+				t.Fatal("unrelated forward operation admitted completion selector")
+			}
+			delete(base, "ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256")
 		}
 		old := base["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"]
 		if operation == "cold-b0-forward-plan" {

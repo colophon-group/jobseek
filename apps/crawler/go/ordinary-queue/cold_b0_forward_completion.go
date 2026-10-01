@@ -141,7 +141,7 @@ func applyRetainedColdB0Forward(ctx context.Context, pool *pgxpool.Pool, c *Clie
 			return err
 		}
 		hash := coldB0ForwardHash(snapshot)
-		if _, err := c.redis.Save(ctx).Result(); err != nil {
+		if reply, err := c.redis.Save(ctx).Result(); err != nil || reply != "OK" {
 			return ErrObservation
 		}
 		_, readback, err := observeColdForwardApplication(ctx, tx, c, control, state.plan, target)

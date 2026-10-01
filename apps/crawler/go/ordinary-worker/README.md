@@ -396,3 +396,24 @@ These commands grant no release selection or service startup authority. The real
 Linux root fixture combines private PG/Redis, the UID-10001 producer and
 source-bound CLI with actual lost replies, SIGKILL and RDB recovery; it must pass
 on both architectures before claiming this operational contract verified.
+
+### Completion-bound joint publication commands
+
+| Argument / protected mode | Effect |
+| --- | --- |
+| `--cold-forward-prepare` / `cold-forward-prepare` | Verify exact durable transfer completion before retaining the joint pending witness. |
+| `--cold-forward-publish` / `cold-forward-publish` | Publish and persist the joint projection/witness only with exact completed transfer evidence. |
+| `--cold-forward-activate` / `cold-forward-activate` | Install the exact ordinary database owner after completion-bound publication. |
+
+All three require the protected forward request, approval selector, target/Lua,
+original joint intent and reserved epoch/ordinary plan fields described above,
+plus `ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256`. Other operations reject this
+completion selector. Output preserves the exact approval and receipt identities.
+The fixed producer and complete transferred state are re-attested under the
+publication transaction barriers before activation. Retained forward approval
+also prevents the older publication commands from bypassing this path.
+
+The actual root producer/PG/CLI fixture covers application recovery followed by
+these three commands and exact activation retry. Fresh execution on both Linux
+architectures is required before admitting this extension. Full host quiescence,
+release selection, receipts and readiness are still required before service start.
