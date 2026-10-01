@@ -36,6 +36,7 @@ func TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain(t *test
 	httpClient := &http.Client{Timeout: time.Second}
 	defer httpClient.CloseIdleConnections()
 	deadline := time.Now().Add(20 * time.Second)
+	expectedMetrics := []string{`crawler_tasks_total{kind="monitor",status="tdm_reserved"} 1`, `crawler_runtime_origin_attempts_total{stage="monitor",execution_class="http",egress="direct"} 0`, `jobseek_ordinary_go_active_claims 0`}
 	settled := false
 	for time.Now().Before(deadline) {
 		select {
@@ -51,8 +52,19 @@ func TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain(t *test
 			healthy := response.StatusCode == http.StatusNoContent
 			_ = response.Body.Close()
 			if healthy && state == "completed" && f.r.ZCard(ctx, "inflight:simple").Val() == 0 {
-				settled = true
-				break
+				// DB completion and Redis ACK precede outcome accounting and
+				// active-claim release. Observe the whole settled contract.
+				metrics, err := httpClient.Get("http://" + address + "/metrics")
+				if err == nil {
+					body := readFixtureBody(t, metrics)
+					settled = true
+					for _, expected := range expectedMetrics {
+						settled = settled && strings.Contains(body, expected)
+					}
+					if settled {
+						break
+					}
+				}
 			}
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -70,7 +82,7 @@ func TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain(t *test
 		t.Fatal(err)
 	}
 	body := readFixtureBody(t, response)
-	for _, expected := range []string{`crawler_tasks_total{kind="monitor",status="tdm_reserved"} 1`, `crawler_runtime_origin_attempts_total{stage="monitor",execution_class="http",egress="direct"} 0`, `jobseek_ordinary_go_active_claims 0`} {
+	for _, expected := range expectedMetrics {
 		if !strings.Contains(body, expected) {
 			t.Fatal("native process did not expose policy/queue/network conservation", expected)
 		}

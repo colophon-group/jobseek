@@ -782,8 +782,11 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 		t.Fatal("actual restart failed exact tombstone recovery")
 	}
 	call("cold-b0-rollback-restore", restoreEnv, true)
-	if !reflect.DeepEqual(postRestoreCrash, fullColdExecutableRedisSnapshot(t, f)) || restoreCanonical != coldExecutableCanonicalSnapshot(t, f) {
-		t.Fatal("actual SIGKILL/restart replayed canonical/receipt/future/queue effects")
+	if observed := fullColdExecutableRedisSnapshot(t, f); !reflect.DeepEqual(postRestoreCrash, observed) {
+		t.Fatal("actual restoration SIGKILL/restart changed Redis value/type/expiry classes: " + coldSnapshotChangedKeys(postRestoreCrash, observed))
+	}
+	if restoreCanonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("actual restoration SIGKILL/restart changed canonical/receipt/future-due effects")
 	}
 	if err := f.pg.QueryRow(ctx, "SELECT count(*) FROM lightpanda_b0_write_fence WHERE job_posting_id=$1::uuid", b0Claim[3]).Scan(&b0Fences); err != nil || b0Fences != 0 {
 		t.Fatal("exact historical source fence not cleared")

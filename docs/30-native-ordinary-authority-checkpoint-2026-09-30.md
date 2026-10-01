@@ -974,3 +974,26 @@ No production runtime change accompanied this evidence correction.
 Previous planner de9fc4f52 whole B0 run36908705415 completed successfully, completing
 its four-workflow admission. Its downloaded installed-image evidence remains bound
 to that historical source. Later restoration source still needs its own admission.
+
+## Native producer control client, October 1
+
+Source `8d2874e6b0bd311c9deb491163cd50cdc2f3b46d` supplies the fixed authenticated
+Go control client for manifest, preparation, approved activation and enqueue.
+The producer shares the same wire types and retains payload/assignment/queue
+authority. Socket metadata/kernel credentials, canonical bounded frames, exact
+EOF, deadline/cancellation and uncertain one-attempt activation are tested.
+The actual installed UID-10001 producer fixture uses the client for source-score
+transfer, exact approved retry, wrong-digest refusal, conservation and terminal
+reactivation. Local Python corpus/races/static checks and both Linux fixture
+compilations pass; actual Linux and installed execution remain required.
+See [client evidence](evidence/go-b0-native-producer-client-2026-10-01.json).
+
+Restoration checkpoint `387ccaa56` has green Linux/full CI and ARM64 installed
+execution, but AMD64 installed conservation failed. Diagnostic `55adcb527` then
+failed at a later conservation seam and caught an early metrics observation.
+The fixture waits for DB completion, ACK, outcome metrics and released claims
+within its original deadline; both conservation seams now separate Redis from
+canonical observations. Three local repetitions of both actual fixtures passed
+(27.508s). Fresh Linux evidence must resolve conservation before admission.
+The full migration goal remains active; this client does not retain cutover
+intent, SAVE Redis, select ownership or prove host/full rollback readiness.

@@ -1,5 +1,28 @@
 # Go and Lightpanda migration continuation plan
 
+Latest native client source `8d2874e6b0bd311c9deb491163cd50cdc2f3b46d` adds the
+authenticated Go producer control client and shared installed wire types.
+Manifest, prepare, approved activation and enqueue use the fixed UID-10001 socket,
+Linux kernel peer credentials, exact canonical bounded framing and one attempt
+per mutation. The actual installed producer/private Redis fixture now exercises
+this client, including exact operator retry, wrong-digest rejection and terminal
+reactivation. Actual Python wire captures and private socket fault/deadline race
+tests pass locally; both Linux architectures compile the installed fixture.
+Fresh Linux and actual installed producer execution remain required. See
+[native client evidence](evidence/go-b0-native-producer-client-2026-10-01.json).
+
+Restoration checkpoint `387ccaa56` passed Linux PG17/Redis on both architectures
+and full CI. Installed-image ARM64 passed; AMD64 conservation failed, so that
+checkpoint is not admitted. Diagnostic source `55adcb527` reproduced a failure
+at a later conservation seam and exposed a separate metrics-observation race:
+database completion/Redis ACK precede outcome accounting and claim release.
+The fixture now waits for the whole settled metrics contract within the same
+bounded readiness window. Both conservation seams separately identify Redis
+and canonical effects. Three local repetitions of both actual executable
+fixtures passed (27.508s); the Linux conservation finding remains unresolved
+until fresh evidence identifies or clears it. Initial restoration checkpoint
+`8bdb17832` whole B0 36913625698 has now passed; this is historical source evidence.
+
 Latest native runtime source `9d252deccfbe031ea1c4dbffee05996261b68db2` adds durable B0 restoration and
 exact historical fence cleanup through migration 0042. Approved manifest bytes
 commit before Redis effects. Fresh PG-derived plan and atomic source-pinned actual
