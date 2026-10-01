@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "apps/crawler/go/ordinary-queue/**"
+      - "apps/crawler/go/ordinary-worker/**"
+      - "apps/crawler/go/greenhouse-monitor/**"
       - "apps/crawler/go/lightpanda-b0-executor/**"
       - "apps/crawler/go/job-enrichment/**"
       - "apps/crawler/go/dom-detail/**"
@@ -19,7 +21,9 @@ on:
       - "apps/crawler/src/processing/cpu.py"
       - "apps/crawler/src/processing/scrape.py"
       - "apps/crawler/src/core/job_content.py"
+      - "apps/crawler/src/core/monitor.py"
       - "apps/crawler/src/core/monitors/greenhouse.py"
+      - "apps/crawler/src/shared/truncation.py"
       - "apps/crawler/src/lua/claim_work.lua"
       - "apps/crawler/src/lua/heartbeat_task.lua"
       - "apps/crawler/src/lua/complete_task.lua"
@@ -133,6 +137,22 @@ jobs:
           go test -race -count=1 -timeout=90s -run '^TestLeaseReaper' ./...
           go vet ./...
           go mod tidy -diff
+
+      - name: Regenerate ordinary inventory and URL captures from Python
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen python go/ordinary-worker/testdata/collect_inventory.py
+          git diff --exit-code -- go/ordinary-worker/testdata/python_inventory.json go/ordinary-worker/testdata/python_urls.json
+
+      - name: Verify assembled native inventory and owned processing pipeline
+        working-directory: apps/crawler/go/ordinary-worker
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout=90s ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
 
       - name: Verify the rich oracle still matches the actual Python writer
         working-directory: apps/crawler

@@ -57,6 +57,21 @@ type GreenhouseCycleResult struct {
 	EnteredQuarantine   bool
 }
 
+// InvalidateInventory rejects later success/absence finalization after a
+// fetch/normalization/preparation failure outside a posting transaction. It
+// performs no database/queue mutation and leaves failure/reservation handling
+// or lease recovery available, including after context cancellation.
+func (c *GreenhouseCycle) InvalidateInventory() {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.done {
+		c.failed = true
+	}
+}
+
 func (a *Authority) BeginGreenhouseCycle(ctx context.Context, claim *Claim) (*GreenhouseCycle, error) {
 	if a == nil || !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || claim.recovered != nil {
 		return nil, ErrConfiguration

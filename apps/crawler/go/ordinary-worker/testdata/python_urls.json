@@ -1,0 +1,202 @@
+[
+  {
+    "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+    "canonical": "https://job-boards.greenhouse.io/fixture/jobs/1",
+    "reason": ""
+  },
+  {
+    "url": "https://job-boards.greenhouse.io/fixture/",
+    "canonical": "https://job-boards.greenhouse.io/fixture/",
+    "reason": "board_homepage"
+  },
+  {
+    "url": "https://job-boards.greenhouse.io/fixture#0",
+    "canonical": "https://job-boards.greenhouse.io/fixture#0",
+    "reason": "board_homepage"
+  },
+  {
+    "url": "https://job-boards.greenhouse.io/fixture?id=1",
+    "canonical": "https://job-boards.greenhouse.io/fixture?id=1",
+    "reason": ""
+  },
+  {
+    "url": "https://example.com",
+    "canonical": "https://example.com",
+    "reason": "bare_host"
+  },
+  {
+    "url": "https://example.com/?id=1",
+    "canonical": "https://example.com/?id=1",
+    "reason": "bare_host"
+  },
+  {
+    "url": "/relative/jobs/1",
+    "canonical": "/relative/jobs/1",
+    "reason": "invalid"
+  },
+  {
+    "url": "https:///missing/jobs/1",
+    "canonical": "https:///missing/jobs/1",
+    "reason": "invalid"
+  },
+  {
+    "url": "mailto:job@example.com",
+    "canonical": "mailto:job@example.com",
+    "reason": "invalid"
+  },
+  {
+    "url": "ftp://example.com/jobs/1",
+    "canonical": "ftp://example.com/jobs/1",
+    "reason": ""
+  },
+  {
+    "url": "https://[bad]/jobs/1",
+    "canonical": "https://[bad]/jobs/1",
+    "reason": "invalid"
+  },
+  {
+    "url": "https://[::1]/jobs/1",
+    "canonical": "https://[::1]/jobs/1",
+    "reason": ""
+  },
+  {
+    "url": "https://[v1.future]/jobs/1",
+    "canonical": "https://[v1.future]/jobs/1",
+    "reason": ""
+  },
+  {
+    "url": "HTTPS://EXAMPLE.COM/jobs/1",
+    "canonical": "HTTPS://EXAMPLE.COM/jobs/1",
+    "reason": ""
+  },
+  {
+    "url": "https://example.com/jobs/%zz",
+    "canonical": "https://example.com/jobs/%zz",
+    "reason": ""
+  },
+  {
+    "url": "https://example.com/jobs/1;session=x",
+    "canonical": "https://example.com/jobs/1;session=x",
+    "reason": ""
+  },
+  {
+    "url": "https://example.com/;session=x",
+    "canonical": "https://example.com/;session=x",
+    "reason": "bare_host"
+  },
+  {
+    "url": " \t\nhttps://example.com/jobs/1\r",
+    "canonical": " \t\nhttps://example.com/jobs/1\r",
+    "reason": ""
+  },
+  {
+    "url": "https://example.com／bad/jobs/1",
+    "canonical": "https://example.com／bad/jobs/1",
+    "reason": "invalid"
+  },
+  {
+    "url": "https://[127.0.0.1]/jobs/1",
+    "canonical": "https://[127.0.0.1]/jobs/1",
+    "reason": "invalid"
+  },
+  {
+    "url": "https://example.com:bad/jobs/1",
+    "canonical": "https://example.com:bad/jobs/1",
+    "reason": ""
+  },
+  {
+    "url": "https://career.successfactors.eu/career?company=x&_s.crb=abc&jobAlertController_jobAlertName=name&browserTimeZone=x&career_job_req_id=1#job",
+    "canonical": "https://career.successfactors.eu/career?company=x&career_job_req_id=1#job",
+    "reason": ""
+  },
+  {
+    "url": "https://career.successfactors.eu/career?_S.CRB=keep&blank=&_s.crb=drop&dup=1&dup=2",
+    "canonical": "https://career.successfactors.eu/career?_S.CRB=keep&blank=&dup=1&dup=2",
+    "reason": ""
+  },
+  {
+    "url": "https://jobs.sapsf.com/jobs/1?_s.crb=x&a=%zz&b=%FF&c=hello+world",
+    "canonical": "https://jobs.sapsf.com/jobs/1?a=%25zz&b=%EF%BF%BD&c=hello+world",
+    "reason": ""
+  },
+  {
+    "url": "https://careers.overwolf.com/jobs/1?src=x&t=123&id=1",
+    "canonical": "https://careers.overwolf.com/jobs/1?id=1",
+    "reason": ""
+  },
+  {
+    "url": "https://careers.overwolf.com/jobs/1?SRC=x&T=١٢٣&id=1",
+    "canonical": "https://careers.overwolf.com/jobs/1?id=1",
+    "reason": ""
+  },
+  {
+    "url": "https://careers.overwolf.com/jobs/1?t=not-numeric&src=x",
+    "canonical": "https://careers.overwolf.com/jobs/1?t=not-numeric",
+    "reason": ""
+  },
+  {
+    "url": "https://careers.overwolf.com/jobs/1?t=&blank=&src=x",
+    "canonical": "https://careers.overwolf.com/jobs/1?t=&blank=",
+    "reason": ""
+  },
+  {
+    "url": "https://careers.overwolf.com:443/jobs/1?src=keep&t=123",
+    "canonical": "https://careers.overwolf.com:443/jobs/1?src=keep&t=123",
+    "reason": ""
+  },
+  {
+    "url": "https://careers.overwolf.com/jobs/1?ｓｒｃ=keep&src=x",
+    "canonical": "https://careers.overwolf.com/jobs/1?%EF%BD%93%EF%BD%92%EF%BD%83=keep",
+    "reason": ""
+  },
+  {
+    "url": "https://careers.overwolf.com/jobs/1?src=x&t=²",
+    "canonical": "https://careers.overwolf.com/jobs/1?t=%C2%B2",
+    "reason": ""
+  },
+  {
+    "url": "https://foo.tal.net/brand-6/xf-767829ced96c/candidate/opp/1/en-GB",
+    "canonical": "https://foo.tal.net/brand-6/candidate/opp/1/en-GB",
+    "reason": ""
+  },
+  {
+    "url": "https://tal.net/xf-abcd/xf-123/opp/1;session=x?a=1#fragment",
+    "canonical": "https://tal.net/opp/1;session=x?a=1#fragment",
+    "reason": ""
+  },
+  {
+    "url": "https://foo.tal.net/xf-ABCD/opp/1",
+    "canonical": "https://foo.tal.net/xf-ABCD/opp/1",
+    "reason": ""
+  },
+  {
+    "url": "https://foo.tal.net/opp/1/xf-abcd",
+    "canonical": "https://foo.tal.net/opp/1/xf-abcd",
+    "reason": ""
+  },
+  {
+    "url": "https://[::ffff:127.0.0.1]/jobs/1",
+    "canonical": "https://[::ffff:127.0.0.1]/jobs/1",
+    "reason": ""
+  },
+  {
+    "url": "https://prefix[::1]/jobs/1",
+    "canonical": "https://prefix[::1]/jobs/1",
+    "reason": "invalid"
+  },
+  {
+    "url": "https://[::1]suffix/jobs/1",
+    "canonical": "https://[::1]suffix/jobs/1",
+    "reason": "invalid"
+  },
+  {
+    "url": "https://[fe80::1%zone]/jobs/1",
+    "canonical": "https://[fe80::1%zone]/jobs/1",
+    "reason": ""
+  },
+  {
+    "url": "https://jobs.sapsf.com/jobs/1?_s.crb=x&a=%F0%9F&b=%E1%80%FF&c=%E0%80",
+    "canonical": "https://jobs.sapsf.com/jobs/1?a=%EF%BF%BD&b=%EF%BF%BD%EF%BF%BD&c=%EF%BF%BD%EF%BF%BD",
+    "reason": ""
+  }
+]
