@@ -1284,3 +1284,25 @@ retirement remain full-goal requirements. Keep useful offline Python isolated an
 preserve every enabled board. Production is unchanged; the full goal stays active.
 
 This checkpoint supersedes older implementation/pending-status observations below.
+
+## Raw Redis score proof correction, October 2
+
+Score assertion correction `6c9df26bef1ee1e319a70dedb5198e1b6c979344` compares
+reactivation guards with posting-matched raw `Snapshot.Legacy` source bytes.
+The producer request's `LegacyScheduleScore` field is normalized and therefore
+cannot prove exact Redis decimal spelling. Run 36941143947 on checkpoint
+`cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2` caught this distinction on both
+architectures and skipped root execution. Focused real PG/Redis races now pass
+(10.785s); empty migration downgrade/re-upgrade and fixture cleanup pass.
+Fresh Linux execution must admit the correction and actual root/producer CLI
+fixture before that operational contract can be claimed verified.
+
+Preceding whole B0 36936491185 finished without cancellation. Its downloaded
+report SHA256 is `9efeb8f53adba7309accf805eac4a604942ca1b3a5c3e6d4332c5a9835dd8826`.
+The verdict recomputes exactly, all 16 arms/8 pairs admit, and merge parents bind
+base `86813918a20a499c5d59a39ca8c33797161f8743` and checkpoint
+`de3ee9b689d1fd4b23a2e822db5961c1d7370d2f`. Density is 7.060704–14.300277 for
+the generated B0 workload with production startup cardinality; this does not
+prove all-profile or whole-production-service cost parity. See
+[updated CLI evidence](evidence/go-b0-reactivation-cli-2026-10-02.json).
+The full migration goal remains active and production is unchanged.
