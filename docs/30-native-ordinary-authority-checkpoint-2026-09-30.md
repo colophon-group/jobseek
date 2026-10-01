@@ -1038,3 +1038,39 @@ and metrics-observation findings are resolved on that source. This is historical
 component evidence; the new forward source needs fresh checks. The actual deploy
 gate continues to refuse draft. Production ownership remains unchanged.
 
+## Native retained forward application, October 1
+
+Native forward-application source `da579a54bbad0014dd5cb494a79409d4231cb552`
+now applies only immutable retained B0 approval through the authenticated producer.
+It classifies every task as exact original source or exact pinned Lua effect and
+skips completed transfers after uncertain replies. Migration 0044 commits immutable
+completion only after acknowledged SAVE and full source/target/canonical/producer
+readback. Completed retries verify the retained snapshot without activation or
+SAVE; lost or changed evidence refuses repair. Inspection remains read-only.
+
+Full real PG/Redis queue/worker/exporter races pass (55.469s/32.063s/4.839s),
+all 295 legacy tests pass without skips, and focused application/retention races
+pass (13.056s). Empty 0044 downgrade/re-upgrade and retained-history refusal pass.
+Tests cover uncertain effects, SAVE denial, SQL failure after SAVE, actual RDB
+reload, partial recovery and source/canonical/target drift. Both Linux
+architectures cross-compile and integration vet pass. The expanded actual root
+fixture additionally loses a real producer reply, SIGKILLs the CLI after SAVE
+before SQL commit, reloads the RDB and restarts the UID-10001 producer at its
+fsynced sentinel; fresh execution is still required. See
+[application evidence](evidence/go-b0-native-forward-application-2026-10-01.json).
+
+Preceding checkpoint `450dedda27478771a6d5c07ee367ec427f3ce09a` passes Linux
+PG17/Redis 36927121073, full CI 36927195353, both installed images 36927199598
+and whole B0 36927121161. Both actual root preparation fixture logs and both
+image artifacts were downloaded and verified: exact source/CA, all four executable
+fixtures and 34 asset hashes. ARM64's first image build hit a Go dependency proxy
+stream error; its failed-only exact-source rerun passed. Dormant renderer
+36927120998 passes with publication/deployment skipped. This is preceding-source
+evidence; the new application source needs fresh admission. The actual deploy
+gate refuses draft. Production ownership remains unchanged and the full goal
+remains active.
+
+The next ownership slice requires verified completion before joint publication,
+then connects supported full cold cutover/reversal and host readiness. All enabled
+profile/runtime coverage, output/freshness/queue parity, resource/cost admission,
+production rollback window and Python runtime retirement remain delivery gates.

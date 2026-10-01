@@ -1,5 +1,40 @@
 # Go and Lightpanda migration continuation plan
 
+Native forward-application source `da579a54bbad0014dd5cb494a79409d4231cb552`
+now applies only immutable retained B0 approval through the authenticated producer.
+It classifies every task as exact original source or exact pinned Lua effect and
+skips completed transfers after uncertain replies. Migration 0044 commits immutable
+completion only after acknowledged SAVE and full source/target/canonical/producer
+readback. Completed retries verify the retained snapshot without activation or
+SAVE; lost or changed evidence refuses repair. Inspection remains read-only.
+
+Full real PG/Redis queue/worker/exporter races pass (55.469s/32.063s/4.839s),
+all 295 legacy tests pass without skips, and focused application/retention races
+pass (13.056s). Empty 0044 downgrade/re-upgrade and retained-history refusal pass.
+Tests cover uncertain effects, SAVE denial, SQL failure after SAVE, actual RDB
+reload, partial recovery and source/canonical/target drift. Both Linux
+architectures cross-compile and integration vet pass. The expanded actual root
+fixture additionally loses a real producer reply, SIGKILLs the CLI after SAVE
+before SQL commit, reloads the RDB and restarts the UID-10001 producer at its
+fsynced sentinel; fresh execution is still required. See
+[application evidence](evidence/go-b0-native-forward-application-2026-10-01.json).
+
+Preceding checkpoint `450dedda27478771a6d5c07ee367ec427f3ce09a` passes Linux
+PG17/Redis 36927121073, full CI 36927195353, both installed images 36927199598
+and whole B0 36927121161. Both actual root preparation fixture logs and both
+image artifacts were downloaded and verified: exact source/CA, all four executable
+fixtures and 34 asset hashes. ARM64's first image build hit a Go dependency proxy
+stream error; its failed-only exact-source rerun passed. Dormant renderer
+36927120998 passes with publication/deployment skipped. This is preceding-source
+evidence; the new application source needs fresh admission. The actual deploy
+gate refuses draft. Production ownership remains unchanged and the full goal
+remains active.
+
+The next ownership slice requires verified completion before joint publication,
+then connects supported full cold cutover/reversal and host readiness. All enabled
+profile/runtime coverage, output/freshness/queue parity, resource/cost admission,
+production rollback window and Python runtime retirement remain delivery gates.
+
 Native forward-preparation source `4adab07e19245c9cd54f94660aca752cacd28604`
 now derives complete B0 transfer manifests from canonical PostgreSQL schedules,
 atomic source/legacy Redis observations and the authenticated producer. Migration
@@ -302,14 +337,12 @@ description/upload continuity, due times and remaining-owner freshness.
 
 ### Remaining ownership and host work in dependency order
 
-1. Native PG-derived forward planning and immutable full approval retention are
-   implemented by migration 0043. Verify the combined actual producer/PG/CLI
-   fixture, then replace Python forward application with native B0 task transfer
-   from that exact retained manifest at the reserved shared epoch. Preserve existing producer
-   UDS preparation/activation digests, actual Lua transfers, legacy schedule intent,
-   completed terminal records and bounded lifetime capacity; refuse inflight/suffix
-   authority. Retain a durable complete manifest before the first per-task effect,
-   then prove partial transfer/SAVE/restart without replay or lost schedules.
+1. Native PG-derived planning/immutable approval and retained application are
+   implemented by migrations 0043/0044. Verify fresh actual producer/PG/CLI
+   lost-reply/SIGKILL/RDB recovery on both architectures, then require exact
+   completion before joint publication in the supported host workflow. Preserve
+   full retained manifests, legacy intent, terminal history and bounded capacity;
+   no completed work may replay or disappear during recovery.
 2. Restore both supported rollback targets: a legacy ordinary owner and a prior
    native ordinary owner. The native target needs a fresh plan at the retained
    retirement epoch bound to the rollback binary's source and freshly validated

@@ -1,0 +1,262 @@
+{
+  "checkpoint": "native retained B0 forward application and immutable SAVE/readback completion",
+  "date": "2026-10-01",
+  "runtime_source_revision": "da579a54bbad0014dd5cb494a79409d4231cb552",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "migration": "0044",
+  "operations": [
+    "cold-b0-forward-apply",
+    "cold-b0-forward-inspect"
+  ],
+  "authority": {
+    "phase": "reserved joint journal only",
+    "mutation": "exact approved producer activation; acknowledged Redis SAVE/full readback; immutable SQL completion",
+    "inspect": "read-only PG without allocation/lease barriers or Redis/producer observation",
+    "completion": "redis-transferred does not publish ownership/select releases/start services"
+  },
+  "recovery": {
+    "retained_manifest_only": true,
+    "per_mutation_attempts": 1,
+    "partial_states": "each record/guard/cache/membership must match exact original evidence or exact pinned Lua transition",
+    "completed_retry": "fresh context/source/target/canonical/producer observation must match immutable completion; no activation/SAVE",
+    "lost_or_changed_evidence": "refuse repair/replay"
+  },
+  "local_validation": {
+    "platform": "Darwin ARM64",
+    "full_real_postgres_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 55.469,
+          "log": "ordinary-b0-forward-application-final-queue-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 32.063,
+          "log": "ordinary-b0-forward-application-final-worker-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 4.839,
+          "log": "ordinary-b0-forward-application-final-exporter-race.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "pytest",
+            "-q",
+            "tests/test_ordinary_ownership.py",
+            "tests/test_lightpanda_activation.py",
+            "tests/test_redis_queue.py",
+            "tests/test_pipeline.py",
+            "tests/test_rich_monitor_contract.py"
+          ],
+          "exit_code": 0,
+          "seconds": 6.131,
+          "log": "ordinary-b0-forward-application-final-legacy.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "focused_real_postgres_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.542,
+          "log": "ordinary-b0-forward-application-migration-upgrade.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "downgrade",
+            "0043"
+          ],
+          "exit_code": 0,
+          "seconds": 0.313,
+          "log": "ordinary-b0-forward-application-migration-downgrade-0043.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.271,
+          "log": "ordinary-b0-forward-application-migration-upgrade-head.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "-run",
+            "^Test(RealColdB0Forward|ColdB0Forward)",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 13.056,
+          "log": "ordinary-b0-forward-application-executable-race.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "legacy_tests": {
+      "passed": 295,
+      "skipped": 0
+    },
+    "faults": [
+      "uncertain actual Lua reply",
+      "SAVE denial",
+      "SQL insertion failure after SAVE",
+      "real saved RDB reload",
+      "wrong digest/source/target",
+      "advanced allocator",
+      "canonical due/live lease drift",
+      "target Redis config drift",
+      "lost/foreign record",
+      "late cached source hash drift",
+      "completed receipt source drift",
+      "immutable history and retained downgrade refusal"
+    ],
+    "linux_combined_fixture": "both architectures cross-compile and integration vet passed; actual execution pending fresh CI",
+    "local_fixture_control_limit": "opaque synthetic preparation adapter with actual frozen Lua; not producer assignment authority"
+  },
+  "previous_checkpoint": {
+    "source_revision": "450dedda27478771a6d5c07ee367ec427f3ce09a",
+    "linux_pg17_redis": {
+      "run": 36927121073,
+      "result": "success both architectures; actual UID10001 producer/PG/native CLI preparation fixture logs verified"
+    },
+    "full_ci": {
+      "run": 36927195353,
+      "result": "success"
+    },
+    "installed_images": {
+      "run": 36927199598,
+      "attempt": 2,
+      "result": "success; both downloaded artifacts verified",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:b7b7a6fdefc13c91f8c4f8cc3fc7b2b700dac87b95c62cabba700e987827e24a",
+          "binary_sha256": "e9fee0e71ef11446a3ed3d0ea8f257580c99d9521249a8b4db8d2079f033b878",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:06eb9253be5d7f5b6d54e65078a511abf9a317e1991fceebce3ef15dff66a2b0",
+          "binary_sha256": "5596b5db245dc155c0f992076a191be3d566968f6589b78c421058c277e158b3",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ],
+      "first_attempt_arm64_failure": "Go proxy dependency HTTP2 stream error; failed-only exact-source rerun passed"
+    },
+    "whole_b0": {
+      "run": 36927121161,
+      "result": "success"
+    },
+    "dormant_renderer": {
+      "run": 36927120998,
+      "result": "success; publish/deploy skipped"
+    },
+    "actual_deploy_gate": "draft refuses merge authority"
+  },
+  "fresh_ci_required": [
+    "combined actual producer/CLI lost reply, SIGKILL after SAVE before SQL completion, RDB reload and producer sentinel restart on Linux AMD64/ARM64",
+    "full current-source CI",
+    "both installed images/executable fixtures",
+    "whole current-source B0 admission"
+  ],
+  "next": [
+    "require verified completion before joint publication in supported host workflow",
+    "fresh legacy/prior-native rollback ownership and full host/release/sentinel readiness",
+    "all enabled profiles/runtime consumers; canonical/publisher/freshness/queue parity; comparable CPU/RAM/density/cost; exact gates; actual rollback window; production Python/Playwright/Chromium retirement"
+  ],
+  "private_log_sha256": {
+    "ordinary-b0-forward-application-final-queue-race.log": "3446811532a9e3a19230bdf65e1d33b1ba83d691c25a3249784da632e20cb9bd",
+    "ordinary-b0-forward-application-final-worker-race.log": "83ca675853aa7372e3cc5240b5003af9436a99cff1af2af7f6cb6f614220a6a1",
+    "ordinary-b0-forward-application-final-exporter-race.log": "3e5edaeb598a3c9a52c6b48103052ff621e4f13aa565c27f4c8c36bea5eea737",
+    "ordinary-b0-forward-application-final-legacy.log": "f0e352c5e8a29417d20f5aa733f2088abaa7d1843b36c275a730e19507589f8e",
+    "ordinary-b0-forward-application-migration-upgrade.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-forward-application-migration-downgrade-0043.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-forward-application-migration-upgrade-head.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-forward-application-executable-race.log": "9b7b5499269177c00cc75d49423d175c370b4dd27aedb0eefde239c5235639d0"
+  }
+}
