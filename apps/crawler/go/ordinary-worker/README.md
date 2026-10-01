@@ -361,3 +361,30 @@ checks run inside the fourth installed executable fixture on both architectures.
 The supported all-writer wrapper, complete PG-derived B0 transfer, full cold reversal,
 remaining interruption seams and real production container/public-fetch proof
 also remain before ordinary native selection. Full migration scope is unchanged.
+
+### Native B0 forward preparation commands
+
+| Argument / protected mode | Effect |
+| --- | --- |
+| `--cold-b0-forward-plan` / `cold-b0-forward-plan` | Derive the complete PG/source-bound manifest through the fixed authenticated producer. |
+| `--cold-b0-forward-retain` / `cold-b0-forward-retain` | Freshly re-derive and retain approved bytes before activation. |
+| `--cold-b0-forward-inspect` / `cold-b0-forward-inspect` | Read immutable forward history without allocator locks or Redis/producer observation. |
+
+These require the original protected intent file/hash, exact reserved
+`ORDINARY_COLD_ROUTING_EPOCH`/`ORDINARY_COLD_PLAN_SHA256` and canonical
+`ORDINARY_COLD_B0_FORWARD_REQUEST_FILE`/`ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256`
+(at most 4 KiB). The request binds intent SHA256, compiled source revision,
+routing epoch and ordinary plan SHA256. Preview and retention also require the
+exact target file/hash and reviewed lifecycle Lua. Preview rejects an approval
+selector; retention and inspection require `ORDINARY_COLD_B0_FORWARD_PLAN_SHA256`.
+Inspection rejects unused target/Lua fields and never observes Redis or the
+producer socket. All unrelated operations reject forward request/approval fields.
+
+Output includes `b0_forward_plan_sha256` and the complete exact `b0_forward_plan`
+object, bounded to 32 MiB. It includes task source URLs and queue/canonical source
+evidence; the host must retain output privately and durably. Preview and retention
+use the fixed authenticated producer client, with no socket/UID/route override.
+Retention commits immutable PostgreSQL history; these commands grant no transfer,
+SAVE, release selection or service startup authority. The real Linux root fixture
+combines private PG/Redis, the UID-10001 producer and source-bound CLI; it must pass
+on both architectures before claiming this operational contract verified.

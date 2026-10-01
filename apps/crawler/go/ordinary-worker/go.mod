@@ -10,6 +10,7 @@ require (
 replace github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor => ../greenhouse-monitor
 
 require (
+	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue v0.0.0
@@ -22,7 +23,6 @@ require (
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy v0.0.0 // indirect

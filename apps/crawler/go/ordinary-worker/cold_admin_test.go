@@ -5,6 +5,54 @@ import (
 	"testing"
 )
 
+func TestColdB0ForwardAdminRequiresProtectedSourceAndExactApproval(t *testing.T) {
+	for _, operation := range []string{"cold-b0-forward-plan", "cold-b0-forward-retain", "cold-b0-forward-inspect"} {
+		base := map[string]string{"ORDINARY_GO_WORKER_MODE": operation, "ORDINARY_OWNERSHIP_SOURCE_REVISION": strings.Repeat("a", 40), "ORDINARY_COLD_ROUTING_EPOCH": "146", "LOCAL_DATABASE_URL": "postgresql://private:secret@localhost/fixture", "REDIS_URL": "unix:///private/redis.sock", "ORDINARY_COLD_INTENT_FILE": "/private/intent.json", "ORDINARY_COLD_INTENT_SHA256": strings.Repeat("b", 64), "ORDINARY_COLD_PLAN_SHA256": strings.Repeat("c", 64), "ORDINARY_COLD_B0_FORWARD_REQUEST_FILE": "/private/request.json", "ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256": strings.Repeat("d", 64)}
+		if operation != "cold-b0-forward-plan" {
+			base["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = strings.Repeat("e", 64)
+		}
+		if operation != "cold-b0-forward-inspect" {
+			base["ORDINARY_COLD_B0_TARGET_FILE"], base["ORDINARY_COLD_B0_TARGET_SHA256"], base["ORDINARY_COLD_B0_LUA_FILE"] = "/private/target.json", strings.Repeat("f", 64), "/private/queue.lua"
+		}
+		getenv := func(key string) string { return base[key] }
+		if ColdAdminOperation("--"+operation) != operation {
+			t.Fatal("explicit native forward command missing")
+		}
+		if _, err := ReadColdAdminConfig(getenv, strings.Repeat("a", 40), operation); err != nil {
+			t.Fatal("exact protected native forward config rejected", err)
+		}
+		for key, value := range map[string]string{"ORDINARY_GO_WORKER_MODE": "enabled", "ORDINARY_OWNERSHIP_SOURCE_REVISION": strings.Repeat("f", 40), "ORDINARY_COLD_ROUTING_EPOCH": "0146", "ORDINARY_COLD_PLAN_SHA256": "", "ORDINARY_COLD_INTENT_FILE": "relative", "ORDINARY_COLD_B0_FORWARD_REQUEST_FILE": "relative", "ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256": "latest", "ORDINARY_COLD_REVERSAL_FILE": "/private/unused.json", "ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256": strings.Repeat("f", 64), "ORDINARY_OWNERSHIP_ROUTING_EPOCH": "146", "ORDINARY_COLD_B0_NAMESPACE": "adopt-latest"} {
+			old := base[key]
+			base[key] = value
+			if _, err := ReadColdAdminConfig(getenv, strings.Repeat("a", 40), operation); err != ErrStartup || strings.Contains(err.Error(), "secret") {
+				t.Fatal("ambiguous forward authority admitted or exposed", key)
+			}
+			base[key] = old
+		}
+		old := base["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"]
+		if operation == "cold-b0-forward-plan" {
+			base["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = strings.Repeat("e", 64)
+		} else {
+			base["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = ""
+		}
+		if _, err := ReadColdAdminConfig(getenv, strings.Repeat("a", 40), operation); err != ErrStartup {
+			t.Fatal("preview/recovery approval was ambiguous")
+		}
+		base["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = old
+		if operation == "cold-b0-forward-inspect" {
+			base["ORDINARY_COLD_B0_LUA_FILE"] = "/private/unused.lua"
+			if _, err := ReadColdAdminConfig(getenv, strings.Repeat("a", 40), operation); err != ErrStartup {
+				t.Fatal("read-only inspection admitted unused script")
+			}
+			delete(base, "ORDINARY_COLD_B0_LUA_FILE")
+		}
+		base["ORDINARY_GO_WORKER_MODE"] = "cold-inspect"
+		if _, err := ReadColdAdminConfig(getenv, strings.Repeat("a", 40), "cold-inspect"); err != ErrStartup {
+			t.Fatal("unrelated operation admitted forward fields")
+		}
+	}
+}
+
 func TestColdAdminRequiresProtectedOperationSourceEpochAndExactFiles(t *testing.T) {
 	base := map[string]string{"ORDINARY_GO_WORKER_MODE": "cold-publish", "ORDINARY_OWNERSHIP_SOURCE_REVISION": strings.Repeat("a", 40), "ORDINARY_COLD_ROUTING_EPOCH": "146", "LOCAL_DATABASE_URL": "postgresql://private:secret@localhost/fixture", "REDIS_URL": "unix:///private/redis.sock", "ORDINARY_COLD_INTENT_FILE": "/private/intent.json", "ORDINARY_COLD_INTENT_SHA256": strings.Repeat("b", 64), "ORDINARY_COLD_B0_TARGET_FILE": "/private/target.json", "ORDINARY_COLD_B0_TARGET_SHA256": strings.Repeat("c", 64), "ORDINARY_COLD_B0_LUA_FILE": "/private/queue.lua", "ORDINARY_COLD_PLAN_SHA256": strings.Repeat("d", 64)}
 	getenv := func(k string) string { return base[k] }

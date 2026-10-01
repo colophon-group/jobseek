@@ -432,6 +432,9 @@ requires complete ordinary/B0 ownership and supported host/release readiness.
 
 ## Durable native B0 restoration
 
+See the forward preparation contract below for approved source retention before
+task activation. Restoration and forward manifests remain separate history.
+
 Migration 0042 retains immutable approved manifest bytes and exact reversal/source/
 retirement/target identities before the first Redis mutation. It permits only
 `prepared → redis-restored → fences-cleared`; delete, rewrite and phase skipping
@@ -460,3 +463,36 @@ This primitive leaves the forward journal reversing, ordinary projection and
 joint witness in place, and ordinary claims blocked. Sentinel/host receipt recovery,
 fresh ordinary/B0 restored owners, the ADR006 all-writer host wrapper and complete
 release readiness remain required before production selection.
+
+## Native B0 forward preparation and retention
+
+Migration 0043 retains the complete approved forward manifest before activation,
+bound to the exact reserved joint intent, compiled source, ordinary plan, target
+and current allocator. The same intent cannot replace approved bytes. UPDATE,
+DELETE and downgrade with any retained history are refused.
+
+`BuildColdB0ForwardPlan` reads canonical active PostgreSQL schedules and the
+atomic actual Lua/legacy queue snapshot while holding both existing exclusive
+mutation barriers. The authenticated fixed UID-10001 producer supplies cohort,
+lifetime capacity and exact preparation/payload digests. Fresh PG/Redis target
+and ordinary configurations, previous projection/witness and a second complete
+source observation must agree. Live PG leases, inflight/dead B0 work and suffix
+legacy authority reject preparation. Lifetime capacity remains 2048; projected
+pilot occupancy is at most 1600. No enabled work is discarded to meet a bound.
+
+The manifest includes complete canonical rows, target and source snapshot,
+per-task requests and preparation digests, pruned unqueued IDs and retained
+unscheduled terminal IDs. Existing legacy first-time intent, exact fractional
+source score, future canonical due times, rational millisecond ceiling and cached
+int64 hash hints are preserved separately from PostgreSQL hash truth. Pruned
+unqueued work is not recreated. Retained decoding re-derives request fields from
+the included source evidence. Manifest size is bounded to 32 MiB.
+
+`RetainColdB0ForwardPlan` freshly re-derives the approved digest and commits
+immutable exact bytes before any activation. After effects begin, recovery must
+inspect these bytes rather than rebuild approval from a partial queue.
+`InspectColdB0ForwardPlan` is read-only and takes no allocation/lease barriers,
+producer or Redis observation; it preserves historical identity after allocator
+advancement. These primitives do not activate tasks, SAVE Redis, publish
+ownership, start services or attest host/release readiness. Application,
+partial-transfer persistence and exact restart remain the next implementation.

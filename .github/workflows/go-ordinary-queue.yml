@@ -135,6 +135,33 @@ jobs:
           go mod tidy -diff
           test -z "$(gofmt -l .)"
 
+      - name: Verify native forward planning with the installed UID 10001 producer
+        run: |
+          set -euo pipefail
+          fixture_prefix="/tmp/jobseek-b0-forward-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          producer_binary="${fixture_prefix}-producer"
+          worker_binary="${fixture_prefix}-worker"
+          integration_binary="${fixture_prefix}.test"
+          lua_fixture="${fixture_prefix}.lua"
+          (cd ../lightpanda-b0-supervisor && go build -o "$producer_binary" .)
+          (cd ../ordinary-worker && go build -buildvcs=false -ldflags="-X main.sourceRevision=${GITHUB_SHA}" -o "$worker_binary" ./cmd/live)
+          go test -race -c -tags=integration -o "$integration_binary" .
+          chmod 0755 "$producer_binary" "$worker_binary" "$integration_binary"
+          install -m 0644 ../../src/lua/lightpanda_b0_queue.lua "$lua_fixture"
+          sudo install -d -m 0700 -o 10001 -g 10001 /run/jobseek-lightpanda-producer
+          trap 'sudo rmdir /run/jobseek-lightpanda-producer; rm -f "$producer_binary" "$worker_binary" "$integration_binary" "$lua_fixture"' EXIT
+          sudo env \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS=1 \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES=1 \
+            JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL="$JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL" \
+            JOBSEEK_B0_FORWARD_PRODUCER_BINARY="$producer_binary" \
+            JOBSEEK_B0_FORWARD_WORKER_BINARY="$worker_binary" \
+            JOBSEEK_B0_FORWARD_SOURCE_REVISION="$GITHUB_SHA" \
+            JOBSEEK_B0_FORWARD_LUA_FILE="$lua_fixture" \
+            "$integration_binary" \
+            -test.run '^TestInstalledNativeColdB0ForwardPreparesAndRetainsExactManifest$' \
+            -test.count=1 -test.timeout=90s -test.v
+
       - name: Verify the production Go reaper participates in database retirement
         working-directory: apps/crawler/go/typesense-exporter
         run: |

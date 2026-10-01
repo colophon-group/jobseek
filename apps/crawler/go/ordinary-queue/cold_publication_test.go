@@ -49,18 +49,30 @@ type publicationFixture struct {
 }
 
 func realPublication(t *testing.T) publicationFixture {
+	return realPublicationMetadata(t, "{}")
+}
+
+func realPublicationMetadata(t *testing.T, metadata string) publicationFixture {
+	return realPublicationSource(t, metadata, strings.Repeat("a", 40))
+}
+
+func realPublicationSource(t *testing.T, metadata, source string) publicationFixture {
+	return realPublicationSeed(t, metadata, source, true)
+}
+
+func realPublicationSeed(t *testing.T, metadata, source string, seed bool) publicationFixture {
 	t.Helper()
 	f := greenhouseAuthorityFixture(t)
 	ctx := context.Background()
 	id := ordinaryID(t)
 	_, err := f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,
  throttle_key,monitor_needs_browser,scraper_needs_browser)
- VALUES($1::uuid,$2::uuid,'browser-use-careers','https://jobs.example.test/careers','api_sniffer','{}',60,24,'',false,true)`, id, f.company)
+ VALUES($1::uuid,$2::uuid,'browser-use-careers','https://jobs.example.test/careers','api_sniffer',$3::jsonb,60,24,'',false,true)`, id, f.company, metadata)
 	if err != nil {
 		t.Fatal("private B0 canonical board unavailable")
 	}
 	t.Cleanup(func() { _, _ = f.observer.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", id) })
-	config := map[string]string{"board_slug": "browser-use-careers", "board_url": "https://jobs.example.test/careers", "crawler_type": "api_sniffer", "company_id": f.company, "metadata": "{}", "check_interval_minutes": "60", "scrape_interval_hours": "24", "throttle_key": "", "domain": "jobs.example.test", "monitor_needs_browser": "0", "scraper_needs_browser": "1"}
+	config := map[string]string{"board_slug": "browser-use-careers", "board_url": "https://jobs.example.test/careers", "crawler_type": "api_sniffer", "company_id": f.company, "metadata": metadata, "check_interval_minutes": "60", "scrape_interval_hours": "24", "throttle_key": "", "domain": "jobs.example.test", "monitor_needs_browser": "0", "scraper_needs_browser": "1"}
 	if err := f.client.redis.HSet(ctx, "board:"+id, config).Err(); err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +84,7 @@ func realPublication(t *testing.T) publicationFixture {
 	if err != nil {
 		t.Fatalf("capture: %v", err)
 	}
-	prepared := stageFixturePlan(t, f, strings.Repeat("a", 40))
+	prepared := stageFixturePlan(t, f, source)
 	s := coldSpec(t, f, nil, prepared)
 	s.TargetB0ManifestSHA256 = target.digest
 	intent, err := BeginColdOwnershipTransition(ctx, f.observer, f.client, s)
@@ -86,7 +98,9 @@ func realPublication(t *testing.T) publicationFixture {
 	t.Cleanup(func() {
 		_, _ = f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", plan.digest)
 	})
-	seedPublicationB0(t, f.client, target, plan.Epoch())
+	if seed {
+		seedPublicationB0(t, f.client, target, plan.Epoch())
+	}
 	return publicationFixture{f, target, s, intent, plan}
 }
 
