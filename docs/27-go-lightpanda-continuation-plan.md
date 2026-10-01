@@ -1,14 +1,27 @@
 # Go and Lightpanda migration continuation plan
 
-Current verified native joint checkpoint, October 1: `8768e48e9` passed Linux
-AMD64/ARM64 PostgreSQL/Redis (36894194063), full CI (36894242440), both installed
-images (36894248042) and whole B0 (36894194188). Both downloaded artifacts bind
-source/image/binary and pass all four executable fixtures, including native joint
-startup/witness-loss containment and coordinator SIGKILL/recovery, with matching
-34 asset hashes. The older `79da5b27a` checkpoint also passed all four workflows.
-Actual deploy gate refuses draft. These results do not admit later source.
+Current verified joint checkpoint, October 1: `f2b82c73d` passed Linux AMD64/ARM64
+PostgreSQL/Redis (36899324776), full CI (36899366997), both installed images
+(36899371310) and whole B0 (36899324501). Both downloaded artifacts bind exact
+source/image/binary and all four executable fixtures with matching 34 asset
+hashes. Dormant renderer 36899324562 passed build-only; publish/deploy skipped.
+The actual deploy gate refuses draft. These results do not admit later source.
 
-Latest runtime source `aab47b5e8857e6521a7bfb38f8cc174391988e52` completes legacy
+Latest runtime source `c0f46f848db6862f185a548b183a87b615aeb6eb` adds migration 0041 and three protected
+native reversal commands: begin, reserve and retained-history inspection. Exact
+reversal intent commits before allocation, contains the forward owner and binds
+source/rollback identities. Fresh retirement survives disabled/changed candidates
+and lost Redis evidence. Actual SIGKILL after nextval/owner retirement leaves SQL
+rolled back and intent pending; recovery allocates another fresh epoch. Independent
+read-only inspection observes pending state while allocation is paused. Canonical
+rows, receipts, future deadlines and Redis values/expiry classes remain unchanged.
+Full private queue/worker races and 295 legacy tests passed; migration downgrade/
+re-upgrade and 132 repository checks passed. See
+[retirement evidence](evidence/go-ordinary-cold-retirement-2026-10-01.json).
+Claims remain blocked: retirement does not complete restoration or host readiness.
+Current-source Linux/full CI/both installed-image/B0 checks are required after push.
+
+Previous runtime source `aab47b5e8857e6521a7bfb38f8cc174391988e52` completes legacy
 ordinary startup/claim joint admission. Every claim, including an unselected
 worker, holds existing DB lease/epoch barriers and refuses unfinished joint
 intent. A journalled owner requires protected installed actual B0 Lua and exact
@@ -71,12 +84,11 @@ Fresh pushed-source Linux/full CI/installed-image/B0 checks remain required.
 Protected commands now expose the completed native primitives; no supported
 production selection wrapper exists yet. They do not replace complete PG-derived
 B0 task-transfer/sentinel/receipt evidence or attest all-writer host quiescence,
-release/rollback identities and readiness. Next complete the supported host
-wrapper, prove all remaining
-interruption seams and full cold reversal (including changed/disabled cohorts).
+release/rollback identities and readiness. Next complete restoration using the retained retirement intent/epoch and the
+supported host wrapper; prove all remaining interruption seams and full cold reversal (including changed/disabled cohorts).
 Do not redo completed staging, worker process/crash, intent/reservation,
 publication/activation, protected coordinator commands or completed native/legacy
-joint admission guards.
+joint admission guards or completed cold-retirement intent/SIGKILL recovery.
 Production ordinary remains Python and the full migration goal is active.
 Running B0 and installed-image measurements finish while the newest pending
 candidate waits; each source needs its own report and admission.

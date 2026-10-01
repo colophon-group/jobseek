@@ -831,3 +831,46 @@ fetch/settings, every enabled effective profile/runtime consumer, fleet canonica
 publisher/freshness/queue parity, comparable whole-service CPU/RAM/density/cost,
 actual rollback window and Python/Playwright/Chromium retirement remain in the
 active full migration goal.
+
+
+## Retained native cold retirement, October 1
+
+Runtime source `c0f46f848db6862f185a548b183a87b615aeb6eb` adds migration 0041, immutable reversal
+history and protected begin/reserve/inspect commands. Exact source intent/phase/
+epoch/plan and prior rollback release/ordinary plan/B0 receipt bind the reversal.
+Begin commits intent and contains the forward journal before nextval. Reservation
+allocates a fresh retirement epoch and retires an active ordinary owner; it does
+not depend on candidate eligibility or surviving Redis evidence. Every supported
+claim stays blocked until complete restoration evidence exists.
+
+Real tests cover all four source phases, disabled/changed configurations, missing
+witnesses, complete private Redis loss, seven invalid rollback/source bindings,
+lease-barrier contention and allocator burns. The actual executable is killed
+with SIGKILL after nextval/owner retirement before commit. SQL rolls back while
+pending intent survives. A separate actual CLI inspection reads pending history
+while allocation is paused, without mutation barriers/high-water adoption. Exact
+restart reserves burned epoch + 1 and retry allocates nothing. Every Redis value/
+expiry class and canonical receipt/future deadline remains unchanged. Retirement
+alone cannot mark the forward journal reversed.
+
+Final owned PostgreSQL18.6 upgrade/downgrade-0040/re-upgrade passed. Full queue
+races passed (38.378s), worker races with actual executable faults (30.697s), all
+295 mandatory legacy tests without skips, 132 repository checks and vet/ruff/
+pyright. Fixtures stopped; production unchanged. See
+[portable retirement evidence](evidence/go-ordinary-cold-retirement-2026-10-01.json).
+
+Previous exact `f2b82c73d` completed all four workflows successfully: Linux
+36899324776, full CI 36899366997, installed images 36899371310 and whole B0
+36899324501. Both artifacts verify all four executable fixtures and exact source/
+image/binary identities with matching 34 asset hashes. Dormant renderer built
+without publication/deployment. Those results do not admit this retirement source;
+fresh exact-source checks are required. Actual deploy gate remains draft-refused.
+
+Next complete native restoration and the ADR006 all-writer host wrapper with
+PG-derived B0 task transfer, independently verified immutable active/target/
+rollback release/data/spec/env/image/sentinel/receipt identities, durable
+cross-store readback and full readiness. Prove changed/disabled-cohort restoration
+and remaining actual crash seams. All enabled effective profiles/runtime consumers,
+canonical/publisher/freshness/queue parity, comparable whole-service resource/cost,
+production rollout, actual rollback window and Python/Playwright/Chromium retirement
+remain required by the active full migration goal.
