@@ -19,7 +19,7 @@ func ColdAdminOperation(argument string) string {
 	switch argument {
 	case "--cold-b0-target", "--cold-begin", "--cold-reserve", "--cold-inspect", "--cold-prepare", "--cold-publish", "--cold-activate", "--cold-reversal-begin", "--cold-reversal-reserve", "--cold-reversal-inspect":
 		return strings.TrimPrefix(argument, "--")
-	case "--cold-b0-forward-plan", "--cold-b0-forward-retain", "--cold-b0-forward-inspect":
+	case "--cold-b0-forward-plan", "--cold-b0-forward-retain", "--cold-b0-forward-apply", "--cold-b0-forward-inspect":
 		return strings.TrimPrefix(argument, "--")
 	case "--cold-b0-rollback-plan", "--cold-b0-rollback-retain", "--cold-b0-rollback-restore", "--cold-b0-rollback-inspect":
 		return strings.TrimPrefix(argument, "--")
@@ -36,7 +36,7 @@ func coldB0RestorationOperation(operation string) bool {
 }
 
 func coldB0ForwardOperation(operation string) bool {
-	return operation == "cold-b0-forward-plan" || operation == "cold-b0-forward-retain" || operation == "cold-b0-forward-inspect"
+	return operation == "cold-b0-forward-plan" || operation == "cold-b0-forward-retain" || operation == "cold-b0-forward-apply" || operation == "cold-b0-forward-inspect"
 }
 
 type ColdAdminConfig struct {
@@ -53,25 +53,27 @@ type ColdAdminConfig struct {
 // or a grant to start services. Target contains only bounded board identities and
 // configuration digests; the host must durably retain its exact canonical bytes.
 type ColdAdminIdentity struct {
-	Version              string          `json:"version"`
-	Operation            string          `json:"operation"`
-	SourceRevision       string          `json:"source_revision"`
-	IntentSHA256         string          `json:"intent_sha256,omitempty"`
-	RoutingEpoch         int64           `json:"routing_epoch,omitempty"`
-	PlanSHA256           string          `json:"plan_sha256,omitempty"`
-	ProjectionSHA1       string          `json:"projection_sha1,omitempty"`
-	Members              int             `json:"members,omitempty"`
-	B0TargetSHA256       string          `json:"b0_target_sha256,omitempty"`
-	Target               json.RawMessage `json:"target,omitempty"`
-	RetainedPhase        string          `json:"retained_phase,omitempty"`
-	ReversalSHA256       string          `json:"reversal_sha256,omitempty"`
-	ReversalPhase        string          `json:"reversal_phase,omitempty"`
-	RetirementEpoch      int64           `json:"retirement_routing_epoch,omitempty"`
-	B0RollbackPlanSHA256 string          `json:"b0_rollback_plan_sha256,omitempty"`
-	B0RollbackPlan       json.RawMessage `json:"b0_rollback_plan,omitempty"`
-	B0ForwardPlanSHA256  string          `json:"b0_forward_plan_sha256,omitempty"`
-	B0ForwardPlan        json.RawMessage `json:"b0_forward_plan,omitempty"`
-	B0RestorationPhase   string          `json:"b0_restoration_phase,omitempty"`
+	Version                string          `json:"version"`
+	Operation              string          `json:"operation"`
+	SourceRevision         string          `json:"source_revision"`
+	IntentSHA256           string          `json:"intent_sha256,omitempty"`
+	RoutingEpoch           int64           `json:"routing_epoch,omitempty"`
+	PlanSHA256             string          `json:"plan_sha256,omitempty"`
+	ProjectionSHA1         string          `json:"projection_sha1,omitempty"`
+	Members                int             `json:"members,omitempty"`
+	B0TargetSHA256         string          `json:"b0_target_sha256,omitempty"`
+	Target                 json.RawMessage `json:"target,omitempty"`
+	RetainedPhase          string          `json:"retained_phase,omitempty"`
+	ReversalSHA256         string          `json:"reversal_sha256,omitempty"`
+	ReversalPhase          string          `json:"reversal_phase,omitempty"`
+	RetirementEpoch        int64           `json:"retirement_routing_epoch,omitempty"`
+	B0RollbackPlanSHA256   string          `json:"b0_rollback_plan_sha256,omitempty"`
+	B0RollbackPlan         json.RawMessage `json:"b0_rollback_plan,omitempty"`
+	B0ForwardPhase         string          `json:"b0_forward_phase,omitempty"`
+	B0ForwardReceiptSHA256 string          `json:"b0_forward_receipt_sha256,omitempty"`
+	B0ForwardPlanSHA256    string          `json:"b0_forward_plan_sha256,omitempty"`
+	B0ForwardPlan          json.RawMessage `json:"b0_forward_plan,omitempty"`
+	B0RestorationPhase     string          `json:"b0_restoration_phase,omitempty"`
 }
 
 // ReadColdAdminConfig requires a distinct protected mode, compiled source,
@@ -299,17 +301,30 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 		}
 	}
 	switch c.operation {
-	case "cold-b0-forward-plan", "cold-b0-forward-retain", "cold-b0-forward-inspect":
+	case "cold-b0-forward-plan", "cold-b0-forward-retain", "cold-b0-forward-apply", "cold-b0-forward-inspect":
 		var forward *queue.ColdB0ForwardPlan
+		var application *queue.ColdB0ForwardApplication
 		switch c.operation {
 		case "cold-b0-forward-plan":
 			forward, err = queue.BuildColdB0ForwardPlan(ctx, pool, client, b0producer.NewClient(), forwardRequest, target)
 		case "cold-b0-forward-retain":
 			forward, err = queue.RetainColdB0ForwardPlan(ctx, pool, client, b0producer.NewClient(), forwardRequest, target, c.forwardPlanSHA)
+		case "cold-b0-forward-apply":
+			application, err = queue.InspectColdB0ForwardApplication(ctx, pool, c.forwardPlanSHA, c.source)
+			if err == nil && application.Plan().Request() != forwardRequest {
+				return nil, ErrStartup
+			}
+			if err == nil {
+				application, err = queue.ApplyColdB0ForwardPlan(ctx, pool, client, b0producer.NewClient(), c.forwardPlanSHA, c.source, target)
+			}
 		case "cold-b0-forward-inspect":
-			forward, err = queue.InspectColdB0ForwardPlan(ctx, pool, c.forwardPlanSHA, c.source)
+			application, err = queue.InspectColdB0ForwardApplication(ctx, pool, c.forwardPlanSHA, c.source)
 		}
 		if err == nil {
+			if application != nil {
+				forward = application.Plan()
+				result.B0ForwardPhase, result.B0ForwardReceiptSHA256 = application.Phase(), application.ReceiptSHA256()
+			}
 			if forward.Request() != forwardRequest {
 				return nil, ErrStartup
 			}

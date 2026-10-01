@@ -49,7 +49,7 @@ func coldSpec(t *testing.T, f authorityFixture, before, prepared *OwnershipPlan)
 	// Only this isolated *_ordinary_worker_test database may discard fixture
 	// journals. The production trigger deliberately retains every intent.
 	t.Cleanup(func() {
-		if _, err := f.observer.Exec(context.Background(), "TRUNCATE public.crawler_ownership_b0_forward,public.crawler_ownership_b0_restoration,public.crawler_ownership_reversal,public.crawler_ownership_transition,public.crawler_ownership_b0_target"); err != nil {
+		if _, err := f.observer.Exec(context.Background(), "TRUNCATE public.crawler_ownership_b0_forward_completion,public.crawler_ownership_b0_forward,public.crawler_ownership_b0_restoration,public.crawler_ownership_reversal,public.crawler_ownership_transition,public.crawler_ownership_b0_target"); err != nil {
 			t.Error("private journal cleanup failed")
 		}
 	})

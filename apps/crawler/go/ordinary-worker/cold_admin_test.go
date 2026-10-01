@@ -6,7 +6,7 @@ import (
 )
 
 func TestColdB0ForwardAdminRequiresProtectedSourceAndExactApproval(t *testing.T) {
-	for _, operation := range []string{"cold-b0-forward-plan", "cold-b0-forward-retain", "cold-b0-forward-inspect"} {
+	for _, operation := range []string{"cold-b0-forward-plan", "cold-b0-forward-retain", "cold-b0-forward-apply", "cold-b0-forward-inspect"} {
 		base := map[string]string{"ORDINARY_GO_WORKER_MODE": operation, "ORDINARY_OWNERSHIP_SOURCE_REVISION": strings.Repeat("a", 40), "ORDINARY_COLD_ROUTING_EPOCH": "146", "LOCAL_DATABASE_URL": "postgresql://private:secret@localhost/fixture", "REDIS_URL": "unix:///private/redis.sock", "ORDINARY_COLD_INTENT_FILE": "/private/intent.json", "ORDINARY_COLD_INTENT_SHA256": strings.Repeat("b", 64), "ORDINARY_COLD_PLAN_SHA256": strings.Repeat("c", 64), "ORDINARY_COLD_B0_FORWARD_REQUEST_FILE": "/private/request.json", "ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256": strings.Repeat("d", 64)}
 		if operation != "cold-b0-forward-plan" {
 			base["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = strings.Repeat("e", 64)

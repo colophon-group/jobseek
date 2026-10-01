@@ -493,6 +493,34 @@ immutable exact bytes before any activation. After effects begin, recovery must
 inspect these bytes rather than rebuild approval from a partial queue.
 `InspectColdB0ForwardPlan` is read-only and takes no allocation/lease barriers,
 producer or Redis observation; it preserves historical identity after allocator
-advancement. These primitives do not activate tasks, SAVE Redis, publish
-ownership, start services or attest host/release readiness. Application,
-partial-transfer persistence and exact restart remain the next implementation.
+advancement. Preparation and retention do not activate tasks or SAVE Redis.
+
+## Native retained B0 forward application
+
+`ApplyColdB0ForwardPlan` accepts only immutable retained approval and the fixed
+authenticated producer client. Under both exclusive barriers it rechecks the
+reserved joint journal, allocator, fresh canonical rows, target and complete
+queue state. Every task must match either its exact original source or the exact
+pinned Lua transition. It skips observed completed effects, preserving fractional
+guards, cached hash hints, first-time intent and existing ready/terminal history.
+A mutation receives one attempt; an uncertain reply returns contained so a later
+explicit invocation can classify the actual effect without replay.
+
+Migration 0044 retains an immutable completion receipt only after acknowledged
+Redis SAVE and full source/target/canonical/producer readback. SQL failure after
+SAVE leaves the approval prepared; recovery observes persisted effects before
+continuing. A completed retry verifies the exact retained snapshot and returns
+the same receipt without activation or SAVE. Changed or lost evidence refuses
+repair. UPDATE, DELETE and downgrade with completion history are refused.
+
+`InspectColdB0ForwardApplication` reads approval and completion history without
+allocator/lease barriers or Redis/producer observation. The bounded local
+PG/Redis suite covers uncertain replies, SAVE denial, SQL failure after SAVE,
+RDB reload and drift refusals. The combined Linux root fixture additionally
+closes an actual producer reply without reading it, kills the actual CLI after
+SAVE before receipt commit, reloads the RDB and restarts the UID-10001 producer
+at its fsynced sentinel. Fresh execution must pass on both architectures.
+
+Completion remains confined to a reserved joint journal. It does not publish
+ownership, select releases, start services or attest full host readiness. The
+supported host workflow must require this receipt before releasing claims.

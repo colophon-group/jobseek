@@ -116,7 +116,7 @@ func TestRealJointAdmissionFaultsRejectBeforePopAndConserveState(t *testing.T) {
 			case "redis_config":
 				err = r.HSet(ctx, "board:"+p.target.document.Boards[0].ID, "check_interval_minutes", "61").Err()
 			case "target_missing":
-				_, err = p.f.observer.Exec(ctx, "TRUNCATE crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_b0_target")
+				_, err = p.f.observer.Exec(ctx, "TRUNCATE crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_b0_target")
 			case "journal_phase":
 				_, err = p.f.observer.Exec(ctx, "UPDATE crawler_ownership_transition SET phase='superseded' WHERE intent_sha256=$1", p.intent)
 			}
