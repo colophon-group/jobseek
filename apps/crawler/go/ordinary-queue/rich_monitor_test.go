@@ -353,3 +353,23 @@ CREATE TRIGGER %s BEFORE INSERT ON job_posting FOR EACH ROW EXECUTE FUNCTION %s(
 		})
 	}
 }
+
+func TestRealOwnedRichMonitorRejectsReservationAcquiredDuringPreparation(t *testing.T) {
+	f, a, claim := richClaimFixture(t)
+	ctx := context.Background()
+	posting := richPosting(t, "https://fixture.invalid/jobs/"+ordinaryID(t), "Prepared title", "<p>Prepared body</p>")
+	if _, err := f.observer.Exec(ctx, "UPDATE job_board SET tdm_reserved=true WHERE id=$1::uuid", f.task.ID); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := a.WriteGreenhouseRichBatch(ctx, claim, []GreenhouseRichPosting{posting}); result != nil || !errors.Is(err, ErrPublisherReserved) {
+		t.Fatal("new publisher reservation retained rich posting write authority")
+	}
+	var count int
+	if err := f.observer.QueryRow(ctx, "SELECT count(*) FROM job_posting WHERE source_url=$1", posting.URL).Scan(&count); err != nil || count != 0 {
+		t.Fatal("reserved prepared posting escaped into canonical storage")
+	}
+	var state string
+	if err := f.observer.QueryRow(ctx, "SELECT state FROM ordinary_worker_write_fence WHERE task_id=$1::uuid", f.task.ID).Scan(&state); err != nil || state != "active" {
+		t.Fatal("publisher reservation incorrectly completed the partial board cycle")
+	}
+}

@@ -27,6 +27,8 @@ var richMonitorInsertSQL string
 //go:embed rich_monitor_description.sql
 var richMonitorDescriptionSQL string
 
+var ErrPublisherReserved = errors.New("ordinary board publisher reservation")
+
 // These detached nullable values form the queue writer's persistence boundary.
 // The native processor remains outside this package so sharing queue/reaper
 // authority does not link enrichment models into maintenance/export services.
@@ -93,6 +95,15 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	for attempt := 1; attempt <= 3; attempt++ {
 		result := &GreenhouseRichBatchResult{}
 		_, err = a.Write(ctx, claim, false, func(ctx context.Context, tx pgx.Tx) error {
+			// The board may have acquired a publisher reservation during fetch
+			// or CPU preparation. require() already holds its canonical row lock.
+			var reserved bool
+			if err := tx.QueryRow(ctx, "SELECT tdm_reserved FROM public.job_board WHERE id=$1::uuid", profile.BoardID).Scan(&reserved); err != nil {
+				return err
+			}
+			if reserved {
+				return ErrPublisherReserved
+			}
 			rows, err := tx.Query(ctx, richMonitorDiffSQL, urls, profile.BoardID, true)
 			if err != nil {
 				return err
