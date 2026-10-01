@@ -184,6 +184,9 @@ func normalizeColdNumber(raw string) (json.Number, error) {
 		return json.Number("0"), nil
 	}
 	exponent += int64(len(digits)) - 1
+	if exponent < -1000000 || exponent > 1000000 {
+		return "", ErrAuthorityLost
+	}
 	digits = strings.TrimRight(digits, "0")
 	var body string
 	if exponent >= -6 && exponent < 21 {

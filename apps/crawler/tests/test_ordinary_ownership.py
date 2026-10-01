@@ -91,11 +91,12 @@ def test_exact_cross_runtime_metadata_corpus():
         ).read_text()
     )
     assert len(corpus["cases"]) == 15
-    assert len(corpus["invalid"]) == 12
+    assert len(corpus["invalid"]) == 14
     for case in corpus["cases"]:
         actual = canonical_metadata(case["raw"])
         assert actual == case["canonical"]
         assert hashlib.sha256(actual.encode()).hexdigest() == case["sha256"]
+        assert canonical_metadata(actual) == actual
     for raw in corpus["invalid"]:
         with pytest.raises(ValueError):
             canonical_metadata(raw)

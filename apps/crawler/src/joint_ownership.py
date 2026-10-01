@@ -97,6 +97,8 @@ def _normalize_number(raw: str) -> str:
     if not coefficient:
         return "0"
     exponent += len(coefficient) - 1
+    if not -1000000 <= exponent <= 1000000:
+        _reject()
     coefficient = coefficient.rstrip("0")
     if -6 <= exponent < 21:
         position = exponent + 1

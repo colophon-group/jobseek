@@ -17,7 +17,7 @@ func TestColdMetadataExactCrossRuntimeCorpus(t *testing.T) {
 		Cases   []struct{ Raw, Canonical, SHA256 string }
 		Invalid []string
 	}
-	if json.Unmarshal(body, &corpus) != nil || len(corpus.Cases) != 15 || len(corpus.Invalid) != 12 {
+	if json.Unmarshal(body, &corpus) != nil || len(corpus.Cases) != 15 || len(corpus.Invalid) != 14 {
 		t.Fatal("shared numeric corpus missing")
 	}
 	for i, fixture := range corpus.Cases {
@@ -25,6 +25,9 @@ func TestColdMetadataExactCrossRuntimeCorpus(t *testing.T) {
 		hash := sha256.Sum256([]byte(actual))
 		if err != nil || actual != fixture.Canonical || hex.EncodeToString(hash[:]) != fixture.SHA256 {
 			t.Fatalf("exact cross-runtime metadata failed case %d", i)
+		}
+		if repeat, err := coldMetadata(actual); err != nil || repeat != actual {
+			t.Fatalf("canonical metadata not idempotent case %d", i)
 		}
 	}
 	for i, raw := range corpus.Invalid {
