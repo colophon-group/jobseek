@@ -1,0 +1,445 @@
+{
+  "window": {
+    "start": "2026-09-30T20:00:00Z",
+    "end": "2026-10-01T08:00:00Z"
+  },
+  "capturedBeforeSyntheticChecks": true,
+  "source": "Authenticated dashboard request-logs endpoint, observed working; no documented all-traffic or sampling contract established",
+  "uniqueRequests": 45,
+  "firstRequest": "2026-10-01T07:07:54.711Z",
+  "lastRequest": "2026-10-01T07:59:35.651Z",
+  "sourceIncludesAllTraffic": false,
+  "samplingRatePct": null,
+  "botUserAgentClaims": {
+    "PetalBot": 8,
+    "Amazonbot": 1,
+    "bingbot": 1,
+    "ClaudeBot": 1
+  },
+  "recognizedBotRequests": 11,
+  "platformVerifiedBotIdentityAvailable": false,
+  "longTailUniqueKeys": 13,
+  "statusCounts": {
+    "200": 41,
+    "307": 1,
+    "404": 1,
+    "202": 1,
+    "400": 1
+  },
+  "companyRequests": [
+    {
+      "timestamp": "2026-10-01T07:59:35.651Z",
+      "path": "/de/company/greystar",
+      "method": "POST",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:58:12.041Z",
+      "path": "/en/company/stantec",
+      "method": "GET",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:56:49.080Z",
+      "path": "/it/company/dicks-sporting-goods",
+      "method": "POST",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:55:23.021Z",
+      "path": "/it/company/patientpoint",
+      "method": "POST",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "other/non-bot-claim",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:48:42.049Z",
+      "path": "/en/company/cravath",
+      "method": "POST",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "other/non-bot-claim",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:35:52.559Z",
+      "path": "/fr/company/abb",
+      "method": "GET",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:34:48.752Z",
+      "path": "/de/company/sentara-health",
+      "method": "GET",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:33:05.997Z",
+      "path": "/en/company/kaiser-permanente",
+      "method": "GET",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:27:49.292Z",
+      "path": "/en/company/asml",
+      "method": "GET",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "other/non-bot-claim",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:19:56.702Z",
+      "path": "/en/company/real",
+      "method": "POST",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "other/non-bot-claim",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:14:49.128Z",
+      "path": "/fr/company/eli-lilly",
+      "method": "POST",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "other/non-bot-claim",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:11:16.145Z",
+      "path": "/en/company/oreilly-auto-parts",
+      "method": "POST",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-10-01T07:09:53.280Z",
+      "path": "/en/company/pwc",
+      "method": "POST",
+      "status": 200,
+      "cache": "PRERENDER",
+      "cacheReason": "",
+      "pprState": "resuming",
+      "userAgentFamily": "PetalBot",
+      "events": [
+        {
+          "source": "serverless",
+          "pathType": "partial_prerender",
+          "httpStatus": 200
+        },
+        {
+          "source": "serverless",
+          "pathType": "background_func",
+          "httpStatus": 200
+        },
+        {
+          "source": "static",
+          "pathType": "partial_prerender",
+          "httpStatus": 200,
+          "cache": "PRERENDER",
+          "cacheAge": 0,
+          "cacheTTL": 86400,
+          "cacheReason": ""
+        }
+      ]
+    }
+  ],
+  "companySummary": {
+    "requests": 13,
+    "GET": 5,
+    "POST": 8,
+    "staticOnlyHits": 0,
+    "prerenderResumes": 13,
+    "timeExpired": 0,
+    "deleteTag": 0
+  },
+  "slicedReread": "Five-minute slices from 07:15 through 08:00 UTC added no request IDs; no slice claimed more rows. This does not prove full-window completeness.",
+  "privacy": "Raw client/session/query fields, full user agents, request IDs and private watchlist paths remain outside Git."
+}

@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 2,
+  "deployment": {
+    "id": "dpl_FiG83oGn5uQfAZjBV6kjSjWLu6sJ",
+    "sha": "dae3f51fa96804c0a8cca0c4e1a3f52bc289f386",
+    "readyAt": "2026-09-30T18:21:50.332Z",
+    "promotionVerifiedAt": "2026-09-30T18:23:19.5684284Z",
+    "ownedWorkflow": 36757707441,
+    "stagedCompanyHitFunctionInvocations": [
+      0,
+      0
+    ]
+  },
+  "window": {
+    "start": "2026-09-30T20:00:00Z",
+    "end": "2026-10-01T08:00:00Z"
+  },
+  "totals": {
+    "invocations": 1315,
+    "visibleActiveCpuSeconds": 171.513,
+    "activeCpuP75Ms": 273,
+    "cpuThrottleP75Pct": 13.7,
+    "errorRatePct": 0.1,
+    "timeoutRatePct": 0,
+    "typesenseCalls": null,
+    "upstashCalls": null
+  },
+  "errorRateMeasurement": {
+    "label": "<0.1%",
+    "operator": "lt",
+    "valuePct": 0.1,
+    "gateInputMeaning": "Conservative upper bound for threshold evaluation, not an exact observed rate."
+  },
+  "routes": {
+    "companyOg": {
+      "invocations": 0,
+      "activeCpuSeconds": 0
+    },
+    "companyPages": {
+      "invocations": 352,
+      "activeCpuSeconds": 86.0
+    },
+    "watchlistRoutes": {
+      "invocations": 179,
+      "activeCpuSeconds": 11.38
+    },
+    "explore": {
+      "invocations": 91,
+      "activeCpuSeconds": 10.0
+    },
+    "other": {
+      "invocations": 693,
+      "activeCpuSeconds": 64.133
+    }
+  },
+  "cache": {
+    "pprShellHits": 214,
+    "pprShellMisses": 541
+  },
+  "traffic": {
+    "recognizedBotRequests": 11,
+    "longTailUniqueKeys": 13,
+    "sourceIncludesAllTraffic": false,
+    "source": "Authenticated dashboard request-logs endpoint, observed working; no documented all-traffic or sampling contract established",
+    "samplingRatePct": null
+  },
+  "functionality": {
+    "home": true,
+    "explore": true,
+    "companyPage": true,
+    "companyOgDirect": true,
+    "companyOgLegacyRedirect": true,
+    "ownedWatchlist": true,
+    "sharedWatchlist": true,
+    "privateWatchlistAnonymousDenied": true,
+    "privateWatchlistCrossOwnerDenied": true,
+    "legacyWatchlistAnonymousDenied": true,
+    "legacyWatchlistCrossOwnerDenied": true,
+    "legacyWatchlistOwnerRedirects": true,
+    "authentication": true
+  },
+  "unavailableFields": [
+    "Displayed billing and route CPU labels are rounded; all 45 route rows are captured on page 1 of 1.",
+    "Billed Functions CPU exceeds visible routes by 51.487s; the difference is unresolved.",
+    "September 23 baseline route data has expired from Hobby retention; no substituted Last hour view is used.",
+    "Typesense 6.2K and Upstash 2K are rounded labels, so exact counts remain null.",
+    "Retained natural logs cover only 07:07:54.711\u201307:59:35.651 UTC; source completeness and sampling are unverified.",
+    "PPR overall dynamic count 469 differs from zero in every route row.",
+    "The global error label is <0.1%; 0.1 is used only as a conservative upper bound, not an exact count/rate.",
+    "No complete current-deployment 24-hour billing window exists yet."
+  ]
+}
