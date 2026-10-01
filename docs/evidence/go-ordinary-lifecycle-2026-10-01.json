@@ -46,7 +46,6 @@
   ],
   "intentional_difference": "Reservation skips persist a future canonical PostgreSQL deadline with the terminal receipt, closing the legacy Redis-only skip deadline gap.",
   "not_verified": [
-    "current lifecycle Linux/full required/installed/admission checks",
     "complete inventory normalization/URL sanity/canonical dedup/filter pipeline integrated with native rich preparer and writer",
     "native HTTP client/retry/provider circuits/deferrals/response publisher checks",
     "native ordinary executable with embedded revision and installed startup/heartbeat/shutdown/fault/crash proof",
@@ -54,5 +53,13 @@
     "actual fleet canonical output/freshness/queue conservation/resources/whole-service cost",
     "all enabled profiles/runtime consumers/rollback window and Python/Playwright/Chromium retirement"
   ],
-  "next": "Implement native full-inventory normalization and exact-revision ordinary executable using completed ownership, rich preparation/batch and lifecycle APIs; prove transport/circuits/deferrals and installed fault/cutover/reversal before selecting the first cohort. Continue every enabled profile and consumer through cost/window/retirement; full goal remains active."
+  "next": "Continue from later processing assembly and evidence/go-ordinary-pipeline-2026-10-01.json; this lifecycle source is historical and remains unselected.",
+  "checkpoint_ci": {
+    "head": "7e10947339c5de95329f45dcbbc3f61b1ee0d2b6",
+    "linux_run": 36800629362,
+    "full_ci_run": 36800624392,
+    "b0_admission_run": 36800629213,
+    "conclusion": "all success",
+    "actual_deploy_gate": "failure while draft; no final merge authority"
+  }
 }

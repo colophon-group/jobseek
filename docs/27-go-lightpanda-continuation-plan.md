@@ -54,13 +54,26 @@ and confirmation state. Local real database/queue proof includes 41 actual
 Python decision cases, 10 lifecycle integration groups and commit-before-ack
 recovery in changed board states. See the
 [portable lifecycle evidence](evidence/go-ordinary-lifecycle-2026-10-01.json).
-Fresh current-head Linux/full/installed/admission checks remain required.
-Production ordinary workers remain Python.
+Checkpoint `7e1094733` passed both Linux architectures in run 36800629362,
+full CI in run 36800624392 and B0 admission in run 36800629213. The actual
+deploy gate still rejects the draft; earlier-head greens grant no later-head
+merge authority. Production ordinary workers remain Python.
+
+Latest processing assembly `9d7a8f5a8` adds the
+[native ordinary package](../apps/crawler/go/ordinary-worker/README.md).
+Forty URL and six full-inventory captures match the actual default Python rich
+monitor's dictionary, sanity/canonicalization and alias content rules, including
+interleaved duplicates. Native normalization keeps every collected job above
+the 50,000-job flag. A real owned PostgreSQL/Redis fixture now connects native
+models, lookup/currency snapshots, SQLite locations, three 500/500/1 posting
+batches, terminal disappearance and canonical receipt settlement for 1,001
+postings. Preparation failure after a committed prefix invalidates later
+success/absence authority. Current source remains unselected and needs fresh
+checks; see [portable pipeline evidence](evidence/go-ordinary-pipeline-2026-10-01.json).
 See the
 [ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
-It selects no ordinary worker in production. Next, normalize/deduplicate the full
-Greenhouse inventory and connect native rich preparation, owned batch writes
-and the terminal cycle into the native executable. Complete shared HTTP transport,
+It selects no ordinary worker in production. Next, connect the completed full
+inventory/preparation/batch/cycle assembly to the native executable. Complete shared HTTP transport,
 retry/circuit/deferral behavior, startup/shutdown/heartbeat and typed provider/
 publisher response handling. Preserve the full Redis claim snapshot through
 settlement and recovery; terminal lifecycle metadata is read from PostgreSQL.

@@ -281,6 +281,37 @@ and ordinary production workers remain Python.
 
 ## Next delivery and completion gates
 
+Processing assembly `9d7a8f5a80b528597c0a1bcf3eeb593f5b24fa8b` now connects
+the default non-streaming Greenhouse inventory to native preparation, owned
+batches and terminal lifecycle in
+[`go/ordinary-worker`](../apps/crawler/go/ordinary-worker/README.md).
+It is a library, not the installed ordinary process. Forty URL and six inventory
+cases are regenerated from Python's actual normalization/processing functions.
+Raw duplicate content and first dictionary position are preserved before
+canonical aliases choose the last raw dictionary entry; invalid/navigation
+URLs are counted; truncation never slices collected postings.
+
+The assembly validates inventory accounting and prepares each entire 500-row
+chunk before SQL. Any failed or canceled preparation/persistence invalidates
+success/absence authority on the opaque cycle, including failures outside the
+posting callback. Real owned PostgreSQL/Redis assembly proof loads a private
+reference snapshot and the native SQLite location index, derives fields for
+1,001 postings across three batches, checks last-duplicate titles and exact
+pending description/R2 bytes, guards removal of the unseen original, and
+settles the canonical receipt deadline. A second real fixture fails preparation
+after 500 committed rows, retains that prefix and original liveness, rejects
+success/absence, and completes canonical failure scheduling.
+
+Actual PostgreSQL18.6 migration reversal, full queue races (22.939 seconds),
+assembled native processing races (13.268 seconds), production reaper races
+(3.320 seconds), 12 ownership/SQL Python tests, native rich preparation races,
+Go vet/tidy/format, Ruff, workflow lint and 130 repository checks passed locally.
+Fixtures shut down. The [portable pipeline evidence](evidence/go-ordinary-pipeline-2026-10-01.json)
+separates this source from earlier green checks. Previous lifecycle checkpoint
+`7e1094733` passed Linux run 36800629362, full CI 36800624392 and B0 admission
+36800629213; it remains draft and those checks do not cover later code.
+Production is unchanged and ordinary workers remain Python.
+
 At 20:15:09 UTC, a read-only production census recorded 8,019 boards: 7,885
 enabled and 134 disabled. Of enabled boards, 522 had stored browser requirements
 (419 monitor, 264 scraper, overlapping); Greenhouse accounted for 2,280 boards,
@@ -289,8 +320,8 @@ Stored family/browser flags do not establish effective profile or native coverag
 
 Prioritize a bounded standard Greenhouse HTTP/API cohort after effective
 configuration validation. Ownership/selection and rich batch persistence are
-prepared, including terminal board lifecycle. Normalize/deduplicate the full
-inventory and connect preparation/batches/cycle to the native executable and
+prepared, including full default inventory and terminal board lifecycle. Connect
+that assembly to the native executable and
 supported all-writer startup/projection/cutover while
 preserving unselected ready work, producer/repair/deferred/never-successful
 behavior and the shared B0 epoch. Implement native monitor/detail fetch,
