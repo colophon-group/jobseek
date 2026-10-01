@@ -8,7 +8,11 @@ per mutation. The actual installed producer/private Redis fixture now exercises
 this client, including exact operator retry, wrong-digest rejection and terminal
 reactivation. Actual Python wire captures and private socket fault/deadline race
 tests pass locally; both Linux architectures compile the installed fixture.
-Fresh Linux and actual installed producer execution remain required. See
+Linux native socket/capture steps passed on both architectures in 36919506114.
+The actual UID-10001 producer/private Redis test and hard restart passed in
+full-CI job 110563817514 at `94979ef6c`: exact approved operator retry,
+wrong-digest rejection, occupancy conservation and terminal reactivation.
+This verifies the client component; full current-source admission remains required. See
 [native client evidence](evidence/go-b0-native-producer-client-2026-10-01.json).
 
 Restoration checkpoint `387ccaa56` passed Linux PG17/Redis on both architectures
@@ -18,9 +22,13 @@ at a later conservation seam and exposed a separate metrics-observation race:
 database completion/Redis ACK precede outcome accounting and claim release.
 The fixture now waits for the whole settled metrics contract within the same
 bounded readiness window. Both conservation seams separately identify Redis
-and canonical effects. Three local repetitions of both actual executable
-fixtures passed (27.508s); the Linux conservation finding remains unresolved
-until fresh evidence identifies or clears it. Initial restoration checkpoint
+and canonical effects. Linux 36919506114 identified the changed key as the real
+source claim's three-second `ratelimit:jobs.example.test` bucket. The fixture
+now verifies that actual expiry, then makes only the private source bucket
+permanent before all conservation baselines. Its exact value remains included
+in strict snapshots; no production rate-limit behavior changes. Three local
+repetitions of both actual executable fixtures passed after this fix (26.846s).
+Fresh Linux and installed checks must resolve the finding. Initial restoration checkpoint
 `8bdb17832` whole B0 36913625698 has now passed; this is historical source evidence.
 
 Latest native runtime source `9d252deccfbe031ea1c4dbffee05996261b68db2` adds durable B0 restoration and

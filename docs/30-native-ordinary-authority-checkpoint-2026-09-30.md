@@ -997,3 +997,13 @@ canonical observations. Three local repetitions of both actual fixtures passed
 (27.508s). Fresh Linux evidence must resolve conservation before admission.
 The full migration goal remains active; this client does not retain cutover
 intent, SAVE Redis, select ownership or prove host/full rollback readiness.
+
+Native client/capture Linux steps passed on both architectures in 36919506114.
+Actual installed producer/private Redis and hard restart passed in full-CI job
+110563817514 at `94979ef6c`, including approved operator retry and digest refusal.
+The AMD64 conservation diagnostic identified a naturally expiring three-second
+source rate bucket. The fixture verifies its actual expiry then PERSISTs only
+that private bucket before any baseline, preserving its exact value in strict
+snapshots. Production rate limiting is unchanged. Three local repetitions of
+crash/recovery and full metrics settlement pass after correction (26.846s).
+Fresh Linux/full CI/both installed images/whole B0 remain required for admission.

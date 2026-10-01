@@ -432,6 +432,17 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	if err != nil || len(b0Claim) != 12 || b0Claim[0] != "accepted" || f.r.ZCard(ctx, b0Keys[3]).Val() != 1 {
 		t.Fatal("actual legacy runtime B0 inflight fixture failed")
 	}
+	// The actual claim creates a three-second rate bucket. This cold fixture
+	// performs no further source claims: freeze only that private bucket's
+	// expiry before any conservation baseline. Its exact value remains part
+	// of every strict snapshot, without clock expiry masquerading as replay.
+	rateKey := "ratelimit:jobs.example.test"
+	if ttl, err := f.r.PTTL(ctx, rateKey).Result(); err != nil || ttl <= 0 {
+		t.Fatal("actual source claim rate bucket was not expiring")
+	}
+	if persisted, err := f.r.Persist(ctx, rateKey).Result(); err != nil || !persisted {
+		t.Fatal("private source claim rate bucket expiry could not be frozen")
+	}
 	if _, err := f.pg.Exec(ctx, "SELECT public.jobseek_lightpanda_b0_activate_write_fence($1::uuid,$2,$3,'go',$4,$5,$6)", b0Claim[3], "lightpanda-b0", reserved.RoutingEpoch, int64(3), b0Claim[7], b0Claim[4]); err != nil {
 		t.Fatal("actual native B0 fence unavailable", err)
 	}
