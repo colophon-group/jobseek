@@ -7,6 +7,8 @@
 -- ARGV[4] = task_type ("monitor" or "scrape")
 -- ARGV[5] = next_due (float timestamp)
 -- ARGV[6] = optional claim token returned by tokenized claim
+-- ARGV[7] = optional failure-associated host from a native committed receipt
+--           Published atomically after lease retirement; legacy calls omit it.
 --
 -- Returns: 1 if rescheduled, 0 if guarded or a stale tokenized attempt
 --
@@ -35,6 +37,17 @@ end
 if supplied_token ~= "" and (#supplied_token ~= 32 or
     string.find(supplied_token, "[^0-9a-f]") ~= nil) then
     return redis.error_reply("ordinary claim token is invalid")
+end
+local learned_host = ARGV[7] or ""
+if learned_host ~= "" then
+    if wtype ~= "simple" or task_type ~= "monitor" or supplied_token == "" or
+        #learned_host > 253 or string.find(learned_host, "[%c|]") ~= nil then
+        return redis.error_reply("ordinary receipt host is invalid")
+    end
+    -- Preflight every optional write before touching queue or inflight state.
+    if redis.call("TYPE", "board:" .. task_id)["ok"] ~= "hash" then
+        return redis.error_reply("ordinary receipt board is unavailable")
+    end
 end
 local current_token = redis.call("HGET", token_key, inflight_member)
 -- Legacy callers cannot mutate a tokenized lease; a tokenized caller cannot
@@ -171,4 +184,7 @@ else
     end
 end
 
+if learned_host ~= "" then
+    redis.call("HSET", "board:" .. task_id, "egress_host", learned_host)
+end
 return 1

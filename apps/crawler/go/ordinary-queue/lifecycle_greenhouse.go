@@ -55,6 +55,7 @@ type GreenhouseCycleResult struct {
 	Gone                int
 	RecoveredFrom       *string
 	EnteredQuarantine   bool
+	HostCircuit         *HostCircuitOutcome
 }
 
 // InvalidateInventory rejects later success/absence finalization after a
@@ -177,11 +178,26 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 	if err != nil {
 		return nil, err
 	}
+	receipt.terminalOutcome = "succeeded"
 	c.done, result.Receipt = true, receipt
 	return result, nil
 }
 
 func (c *GreenhouseCycle) FinishFailure(ctx context.Context, message string) (*GreenhouseCycleResult, error) {
+	return c.finishFailure(ctx, message, nil, GreenhouseHostObservation{})
+}
+
+// FinishFailureWithHostCircuit advances the shared circuit once for this actual
+// board run, then commits its lower bound and learned host with canonical
+// backoff. Protective Redis trouble still permits normal failure scheduling.
+func (c *GreenhouseCycle) FinishFailureWithHostCircuit(ctx context.Context, message string, run *GreenhouseHostRun, observation GreenhouseHostObservation) (*GreenhouseCycleResult, error) {
+	if c == nil || !run.valid(c) {
+		return nil, ErrConfiguration
+	}
+	return c.finishFailure(ctx, message, run, observation)
+}
+
+func (c *GreenhouseCycle) finishFailure(ctx context.Context, message string, run *GreenhouseHostRun, observation GreenhouseHostObservation) (*GreenhouseCycleResult, error) {
 	if c == nil || c.authority == nil || message == "" || len(message) > 4096 || !utf8.ValidString(message) || strings.ContainsRune(message, 0) {
 		return nil, ErrConfiguration
 	}
@@ -190,19 +206,38 @@ func (c *GreenhouseCycle) FinishFailure(ctx context.Context, message string) (*G
 	if c.done {
 		return nil, ErrConfiguration
 	}
+	c.failed = true
 	result := &GreenhouseCycleResult{Status: "failed"}
-	receipt, err := c.authority.Write(ctx, c.claim, true, func(ctx context.Context, tx pgx.Tx) error {
+	var learned *string
+	receipt, err := c.authority.write(ctx, c.claim, true, &learned, func(ctx context.Context, tx pgx.Tx) error {
 		if _, err := c.metadata(ctx, tx, true); err != nil {
 			return err
 		}
 		var enabled bool
 		var success, quarantined *time.Time
 		var status string
-		return tx.QueryRow(ctx, lifecycleQuery("failure"), c.claim.task.ID, message).Scan(&enabled, &success, &status, &quarantined, &result.EnteredQuarantine)
+		if run != nil {
+			var err error
+			result.HostCircuit, err = run.failureOutcome(ctx, observation)
+			if err != nil {
+				return err
+			}
+			host := result.HostCircuit.Host
+			learned = &host
+		}
+		if err := tx.QueryRow(ctx, lifecycleQuery("failure"), c.claim.task.ID, message).Scan(&enabled, &success, &status, &quarantined, &result.EnteredQuarantine); err != nil {
+			return err
+		}
+		if result.HostCircuit != nil && result.HostCircuit.OpenUntil != nil {
+			_, err := tx.Exec(ctx, "UPDATE public.job_board SET next_check_at=GREATEST(next_check_at,$2::timestamptz) WHERE id=$1::uuid", c.claim.task.ID, *result.HostCircuit.OpenUntil)
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+	receipt.terminalOutcome = "failed"
 	c.done, result.Receipt = true, receipt
 	return result, nil
 }

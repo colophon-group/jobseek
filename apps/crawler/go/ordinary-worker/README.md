@@ -3,7 +3,7 @@
 This package connects the standard Greenhouse token/skip inventory to the
 existing native enrichment, owned rich batches and terminal board lifecycle.
 It is an assembly library; the native process executable, protected transport
-startup and circuit integration are still required before production selection.
+startup and installed circuit integration are still required before production selection.
 
 `DiscoverGreenhouse` performs one logical GET through a caller-owned persistent
 HTTP client. It checks only the final fully read response's resource headers,
@@ -79,8 +79,11 @@ wrapped direct transport limits: the pinned httpx0.28.1/httpcore1.0.9 inner pool
 has 100 connections, 20 keepalive connections and a five-second keepalive expiry.
 It uses HTTP/1.1, 20 redirects and separate 30-second connect/read/write/pool
 timeouts. Match or explicitly prove changes against that effective baseline.
-Integrate these native snapshots with shared host circuits, canonical deferrals,
-fenced learned-egress publication, exact-source startup,
+The prepared ordinary queue circuit path now supplies shared host preflight,
+canonical deferrals/backoff lower bounds and durable learned-host settlement.
+The native TLS pipeline fixture recovers its observed API circuit; a failed
+preparation fixture publishes its fallback failure host after settlement.
+Integrate these prepared paths with exact-source startup,
 heartbeat and bounded shutdown into the native executable. Prove the installed
 process and supported all-writer cutover/cold reversal with B0's shared epoch
 before selection. The [continuation plan](../../../../docs/27-go-lightpanda-continuation-plan.md)

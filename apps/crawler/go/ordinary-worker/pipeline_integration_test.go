@@ -240,6 +240,14 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 	if err != nil || claim == nil {
 		t.Fatal("owned pipeline claim unavailable")
 	}
+	circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
+	if err != nil {
+		t.Fatal(err)
+	}
+	preflight, err := f.a.PreflightGreenhouseHost(ctx, claim, circuits)
+	if err != nil || preflight.Receipt != nil {
+		t.Fatal("native pipeline circuit preflight failed", err)
+	}
 	cycle, err := f.a.BeginGreenhouseCycle(ctx, claim)
 	if err != nil {
 		t.Fatal(err)
@@ -285,6 +293,16 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 		// DNS guard, TLS verification, request/body accounting and parsing run.
 		return (&net.Dialer{}).DialContext(ctx, network, strings.TrimPrefix(server.URL, "https://"))
 	}
+	now, err := f.r.Time(ctx).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.r.Set(ctx, "host_open:boards-api.greenhouse.io", fmt.Sprintf("%.6f", float64(now.Unix())-1), time.Hour).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.r.Set(ctx, "host_fail:boards-api.greenhouse.io", "2", time.Hour).Err(); err != nil {
+		t.Fatal(err)
+	}
 	ctx, observation := ObserveHTTP(ctx)
 	discovered, err := DiscoverGreenhouse(ctx, client, "fixture")
 	if err != nil || requests != 1 || discovered.Response.Status() != 202 {
@@ -317,6 +335,12 @@ func TestRealOwnedPipelineNativePreparationChunksLifecycleAndReceipt(t *testing.
 	if err := f.pg.QueryRow(ctx, "SELECT titles FROM job_posting WHERE source_url=$1", duplicate.URL).Scan(&titles); err != nil || len(titles) != 1 || titles[0] != last {
 		t.Fatal("global duplicate content winner changed")
 	}
+	if err := f.a.RecordGreenhouseHostSuccess(ctx, preflight.Run, result.Cycle.Receipt, queue.GreenhouseHostObservation{Hosts: traffic.Hosts, LastHost: traffic.LastHost}); err != nil {
+		t.Fatal(err)
+	}
+	if f.r.Exists(ctx, "host_open:boards-api.greenhouse.io", "host_fail:boards-api.greenhouse.io").Val() != 0 {
+		t.Fatal("native HTTP success did not recover its observed API circuit")
+	}
 	if err := f.a.Settle(ctx, claim, result.Cycle.Receipt); err != nil {
 		t.Fatal(err)
 	}
@@ -346,6 +370,14 @@ func TestRealOwnedPipelinePreparationFailureRetainsPrefixAndRejectsAbsence(t *te
 	if err != nil || claim == nil {
 		t.Fatal("owned pipeline claim unavailable")
 	}
+	circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
+	if err != nil {
+		t.Fatal(err)
+	}
+	preflight, err := f.a.PreflightGreenhouseHost(ctx, claim, circuits)
+	if err != nil || preflight.Receipt != nil {
+		t.Fatal("native pipeline circuit preflight failed", err)
+	}
 	cycle, err := f.a.BeginGreenhouseCycle(ctx, claim)
 	if err != nil {
 		t.Fatal(err)
@@ -372,12 +404,15 @@ func TestRealOwnedPipelinePreparationFailureRetainsPrefixAndRejectsAbsence(t *te
 	if err := f.pg.QueryRow(ctx, "SELECT is_active FROM job_posting WHERE id=$1::uuid", f.original).Scan(&active); err != nil || !active {
 		t.Fatal("failed inventory removed unseen original")
 	}
-	terminal, err := cycle.FinishFailure(ctx, "native rich preparation failed")
+	terminal, err := cycle.FinishFailureWithHostCircuit(ctx, "native rich preparation failed", preflight.Run, queue.GreenhouseHostObservation{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := f.a.Settle(ctx, claim, terminal.Receipt); err != nil {
 		t.Fatal(err)
+	}
+	if f.r.HGet(ctx, "board:"+f.board, "egress_host").Val() != "job-boards.greenhouse.io" || f.r.Get(ctx, "host_fail:job-boards.greenhouse.io").Val() != "1" {
+		t.Fatal("preparation failure lost fallback host routing/circuit accounting")
 	}
 	var strikes int
 	var hasHistory bool

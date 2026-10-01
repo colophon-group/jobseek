@@ -211,6 +211,27 @@ ordinary recovery cannot strand selected members excluded from legacy. Actual re
 route membership, active-plan ownership and fresh canonical state still must be
 checked at selection; this observation grants no later authority.
 
+`NewHostCircuits` freezes trusted startup settings on the same ordinary Redis
+client. Its failure/success scripts are byte-identical to the production Python
+scripts. `PreflightGreenhouseHost` checks the installed claim before discovery:
+learned failure host first, configured board hostname otherwise. Open circuits
+and occupied half-open probe leases produce committed PostgreSQL deferrals and
+opaque receipts without spending the board failure budget. Redis circuit trouble
+fails open with bounded diagnostics; it cannot override attempt authority.
+
+`FinishFailureWithHostCircuit` advances the shared host once per actual run,
+caches ambiguous outcomes across SQL retries, and commits the circuit lower
+bound alongside normal board backoff. Deadlines round upward to PostgreSQL
+microsecond precision. Migration0037 retains the learned failure host with the
+terminal receipt. Token-guarded rescheduling publishes it atomically after lease
+retirement so the inflight snapshot stays unchanged and future claims see the
+new routing. Commit-before-ack recovery retains that host without another
+circuit increment. Stale leases, changed receipt host or retired epochs reject
+publication. `RecordGreenhouseHostSuccess` requires the native success receipt,
+resets actual observed hosts and never replays completed protective updates.
+Provider404 and publisher outcomes remain separate from generic host failures.
+The native worker executable must integrate this prepared path before selection.
+
 The durable document and native/legacy selection library are prepared. An
 active document or a passing source fixture is insufficient to select a
 production owner. Install and prove the exact processing executable, both
