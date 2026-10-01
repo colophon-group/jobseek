@@ -1,5 +1,88 @@
 # Go and Lightpanda migration continuation plan
 
+Current resumption checkpoint, October 1: native process source
+`2b775782f275a48b6a5890463bbfc9ac96b37d17` and its portable checkpoint
+`c32640c66eb06e49831ab3c6d9912b75907b00e4` passed Linux AMD64/ARM64
+PostgreSQL/Redis (36856484383), full CI (36856561101) and installed source/CA
+identity (36856620870). Its B0 run 36856484342 is still measuring. Actual deploy
+gate remains failed while draft. Later source
+`ad8cc268f9a02ca72b646fb1fa1d3ad296991601` adds real executable SIGKILL/restart
+receipt proof and Linux image-extracted binary/asset admission. Local full native
+worker races passed in 36.973 seconds; new exact-head CI remains required.
+See [process crash evidence](evidence/go-ordinary-process-crash-2026-10-01.json).
+Production ordinary workers remain Python; the full migration goal is active.
+
+The next delivery sequence is:
+
+1. Execute the prepared Linux image binary/asset tests, retaining exact source,
+   image ID, binary/asset hashes and result logs. Prove the deployed container's
+   effective settings and full public fetch/processing before selecting a cohort.
+   The no-fetch crash fixture does not supply public TLS/profile admission.
+2. Add the coordinated ownership protocol described below, then prove its real
+   all-writer cutover, interrupted-publication containment and cold reversal on
+   private PostgreSQL/Redis and installed containers before production selection.
+3. Promote the queue foundation and ordinary runtime through current exact-head
+   Required CI and Crawler Deploy Gate. Recheck source/base/draft/holds/operator
+   state immediately before each merge; rebuild/retest after any changed head.
+4. Refresh the canonical census of every enabled effective configuration. Admit
+   strict Greenhouse first; extend the assembled worker to the remaining native
+   HTTP/API monitors, detail extraction and Lightpanda profiles in bounded slices.
+   Preserve enabled suspect/quarantined/gone_pending/gone rows and unsupported
+   configurations in the remaining owner until their replacements are proven.
+5. Replace remaining runtime scheduling, reconciliation, maintenance, publication
+   and deployment consumers. For each slice, compare actual canonical output,
+   database effects, publisher policy, due times and queue/freshness conservation.
+6. Run comparable whole-service output and CPU/RAM/density/attributable-cost
+   measurements with recorded images, settings, inputs and windows. Exercise the
+   supported full cold reversal and complete the actual rollback window. Remove
+   production Python, Playwright, Chromium and legacy runtime-only assets only
+   after replacement coverage and operational authority are established; retain
+   useful isolated offline Python tooling.
+
+## Coordinated ordinary and B0 ownership protocol to implement
+
+Ordinary ownership and B0 use the same PostgreSQL routing-epoch allocator. An
+ordinary transition cannot advance it while B0 continues claiming, and a later
+B0-only reversal cannot silently retire an active ordinary owner. Extend the
+supported deployment/ownership protocol under ADR006; the existing B0 active
+receipt intentionally prevents an ordinary image release until cold reversal.
+Do not bypass that receipt or patch a running environment to activate Go.
+Until the joint path is implemented, B0-only epoch allocation/reversal must refuse
+an active ordinary plan before burning a new epoch. Cover legacy databases where
+the optional ordinary schema is absent as well as staged, active and retired plans.
+
+Bind one protected transition to the exact active and candidate release generation,
+immutable crawler/browser/renderer image identities, installed binary sources,
+canonical data/runtime contracts, ordinary cohort configuration digests and B0
+selectors. Use native one-shot staging/readback for the ordinary plan; staging
+must never activate ownership or adopt an allocator epoch. A changed board or
+projection invalidates the proposed transition and requires fresh preparation.
+
+Under the host mutation lock, stop and attest every claimant/writer, exporter,
+description drain and competing Compose one-off. Preserve complete rollback
+spec/env/image/data/receipt evidence before mutation. Allocate one fresh epoch
+while the lane is cold, stage and validate the new ordinary plan against fresh
+canonical configurations, and install both ordinary and B0 ownership at that
+same epoch. Record a durable pending transition before any cross-store mutation.
+Only exact installed plan/epoch/source/projection readback and persisted Redis
+state may advance the transition to active and release the complete stack.
+Native and remaining Python workers must bind the same ordinary projection;
+startup/config drift or lost projection must contain the lane.
+
+Cold reversal must retire both old owners while all writers are stopped, allocate
+a new epoch, restore the exact rollback release and data tree, rebuild its supported
+queue projections and resync canonical future deadlines before any Python worker
+restarts. Keep committed ordinary receipts and learned-host evidence recoverable;
+never replay completed network/persistence work or invent an empty inventory.
+Interrupted activation/reversal retains its journal/receipts and stopped writers
+until deterministic recovery completes. Cover faults at database transition,
+Redis publication/persistence, receipt publication, startup and readiness boundaries.
+A failed reversal must leave the affected lane stopped, with its recovery authority
+intact. Then verify one naturally due owned cycle, old-owner exclusion, posting/
+description/upload continuity, due times and remaining-owner freshness.
+
+## Historical delivery record
+
 Reviewed 2026-09-30 against `origin/main`
 `c571568167b7abf7dfa80a7f9c73bcbb29d49cb2` and current GitHub PR/check state.
 This is the forward plan for completing the crawler service migration. Start

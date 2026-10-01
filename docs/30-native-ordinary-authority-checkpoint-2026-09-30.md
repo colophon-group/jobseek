@@ -536,8 +536,8 @@ build/CA/profile identity, health, signal drain and rejection of a wrong project
 Real TLS token loss cancels a blocked fetch without canonical failure or fabricated
 terminal receipt. Deadline/drain/heartbeat/acknowledgement/watchdog/uncooperative-task
 race cases passed along with the existing1,001-posting rich/description/absence and
-recovery fixtures. Queue races passed in21.292 seconds, process/assembly in42.679 and
-reader/preparation in15.437; these include parallel cross-build load, not comparative
+recovery fixtures. Queue races passed in 21.292 seconds, process/assembly in 42.679 and
+reader/preparation in 15.437; these include parallel cross-build load, not comparative
 performance. All185 mandatory legacy tests without skips,96 image/deployment tests,
 130 repository checks, vet/tidy/format/actionlint and Linux AMD64/ARM64 cross-builds
 passed. Private fixtures shut down; production is unchanged. See
@@ -551,3 +551,38 @@ projection installation, shared B0 epoch cutover/cold reversal and effective pro
 admission before native selection. Every enabled profile/runtime consumer, fleet/
 freshness/queue/cost and actual rollback-window retirement remain required. Ordinary
 production workers remain Python and the full migration goal remains active.
+
+### Executable SIGKILL and installed-component admission, October 1
+
+Source `ad8cc268f9a02ca72b646fb1fa1d3ad296991601` adds a real child-process
+SIGKILL after terminal PostgreSQL commit and failed queue acknowledgement.
+A private board-scoped trigger/advisory lock pauses the terminal transaction;
+the fixture corrupts only its disposable ready index after claim and releases
+commit. Guarded acknowledgement retains the lease token and board snapshot.
+The fixture verifies the committed future due, completed receipt and unchanged
+failure budget before attesting actual SIGKILL termination.
+
+Production guarded reaping revokes the killed generation, and the same binary/
+source/plan/epoch restarts with a new token. Its recovered receipt settles without
+HTTP or native extraction, preserves complete canonical board/posting rows,
+retained receipt contents, future due and failure budget, and leaves an unrelated
+later host-circuit failure intact. Redis scheduling equals the canonical
+microsecond deadline; identity health and final signal drain pass. Local full
+worker races passed in 36.973 seconds, with 35 runtime/version repository checks,
+vet/tidy/format/actionlint and private fixture cleanup. Production is unchanged.
+
+The protected installed-image workflow now extracts the built binary and actual
+model assets, checks the binary hash against the image, makes extracted assets
+read-only and executes both native process fixtures against mandatory private
+PostgreSQL17/Redis on Linux. It saves exact source, image ID, binary/asset hashes
+and test logs. Execution is pending; this is installed-component proof on Linux,
+not complete production-container/public-network admission. See
+[portable crash evidence](evidence/go-ordinary-process-crash-2026-10-01.json).
+
+Previous process checkpoint `c32640c66` passed Linux 36856484383, full CI 36856561101
+and installed identity 36856620870. Its B0 run 36856484342 remains measuring;
+actual deploy gate still refuses the draft. New-head checks remain required.
+Continue with installed proof and the coordinated all-writer ordinary/B0
+ownership protocol in the [continuation plan](27-go-lightpanda-continuation-plan.md),
+then all enabled profiles/consumers, fleet/freshness/queue/cost and actual
+rollback-window retirement. The full migration goal remains active.
