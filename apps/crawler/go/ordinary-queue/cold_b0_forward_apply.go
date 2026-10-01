@@ -216,6 +216,10 @@ func applyColdB0Forward(ctx context.Context, tx pgx.Tx, c *Client, control coldB
 	if err != nil {
 		return nil, err
 	}
+	return applyObservedColdB0Forward(ctx, tx, c, control, plan, target, p)
+}
+
+func applyObservedColdB0Forward(ctx context.Context, tx pgx.Tx, c *Client, control coldB0ForwardActivationControl, plan *ColdB0ForwardPlan, target *ColdB0Target, p *coldPublication) (*coldB0ForwardSnapshot, error) {
 	rows, hash, err := coldB0ForwardRows(ctx, tx, target)
 	if err != nil {
 		return nil, err

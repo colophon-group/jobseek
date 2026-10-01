@@ -158,10 +158,10 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	// DB can truncate fixtures, after retiring the activated test plan.
 	t.Cleanup(func() {
 		_, _ = f.pg.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE state='active'")
-		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_ordinary_restoration,crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_reversal,crawler_ownership_transition"); err != nil {
+		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_reactivation_completion,crawler_ownership_b0_reactivation,crawler_ownership_ordinary_restoration,crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_reversal,crawler_ownership_transition"); err != nil {
 			t.Error("private journal cleanup failed")
 		}
-		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_ordinary_restoration,crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_b0_target"); err != nil {
+		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_reactivation_completion,crawler_ownership_b0_reactivation,crawler_ownership_ordinary_restoration,crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_b0_target"); err != nil {
 			t.Error("private target cleanup failed")
 		}
 	})

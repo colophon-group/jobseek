@@ -574,3 +574,37 @@ closes the reversal, saves Redis, selects releases or starts services.
 Actual ownership restoration, compatible joint authority for any prior native
 ordinary/Go B0 owner, full host receipts and readiness remain required before
 releasing writers. B0 fence cleanup alone is insufficient to restore that authority.
+
+## Retained prior Go B0 reactivation
+
+`BuildColdB0ReactivationPlan`, `RetainColdB0ReactivationPlan` and
+`ApplyColdB0ReactivationPlan` preserve a prior Go B0 owner at the already reserved
+retirement R. They require the exact immutable ordinary restoration decision,
+reserved reversal and completed B0 fence cleanup. The prior host receipt is
+strictly parsed as bounded ASCII data and must match its retained byte hash,
+cohort, namespace, shard and previous epoch. A native ordinary predecessor also
+requires the receipt's release revision to match its freshly staged R plan.
+
+The public API accepts the fixed authenticated producer client. Shared forward
+transfer decoding and classification recheck canonical rows, source queues,
+producer manifest, fresh ordinary profile/lease state and exact retained historical
+witness bytes under both ownership barriers. A task receives one activation attempt;
+an uncertain reply returns contained. Explicit recovery skips exact completed
+effects without rescheduling fractional source guards. Completion is retained only
+after acknowledged SAVE and full readback. Completed retries verify the persisted
+snapshot and return the same receipt without activation or SAVE. Lost or changed
+evidence refuses repair.
+
+Migration 0046 retains immutable approval and completion, bound to the ordinary
+restoration history, original reversing journal, current R, target and absence of
+an active ordinary owner. Historical inspection needs neither Redis nor allocator
+barriers; retained history prevents downgrade. Real PostgreSQL/Redis tests execute
+the unchanged queue Lua, fractional recurring transfer, uncertain replies, SAVE
+denial, SQL failure after SAVE, RDB restart, drift refusals and immutable history
+for both legacy and native ordinary predecessors.
+
+These tests use a private producer control adapter. Protected CLI commands and
+actual root/UID-10001 producer execution remain required. The host must reuse the
+existing Go sentinel/tombstone clearing and producer initialization workflow before
+planning. This API does not clear the sentinel, publish ordinary ownership, close
+the reversal, select releases, start services or attest host readiness.

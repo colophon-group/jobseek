@@ -416,6 +416,11 @@ func deriveColdB0ForwardPlan(ctx context.Context, tx pgx.Tx, c *Client, control 
 	if err != nil {
 		return nil, err
 	}
+	return deriveObservedColdB0ForwardPlan(ctx, tx, c, control, r, target, p)
+}
+
+// Shared transfer codec; callers retain their own exact ownership context.
+func deriveObservedColdB0ForwardPlan(ctx context.Context, tx pgx.Tx, c *Client, control coldB0ForwardControl, r ColdB0ForwardRequest, target *ColdB0Target, p *coldPublication) (*ColdB0ForwardPlan, error) {
 	manifest, err := control.Manifest(ctx, target.document.Cohort)
 	slugs := []string{}
 	boardIDs := map[string]bool{}
