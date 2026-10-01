@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"syscall"
 	"testing"
@@ -608,8 +609,11 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 		t.Fatal("retained inspection lost exact committed retirement")
 	}
 	legacyProbe(false)
-	if !reflect.DeepEqual(retireBaseline, fullColdExecutableRedisSnapshot(t, f)) || retireCanonical != coldExecutableCanonicalSnapshot(t, f) {
-		t.Fatal("actual retirement SIGKILL/restart replayed Redis/canonical/future-due effects")
+	if observed := fullColdExecutableRedisSnapshot(t, f); !reflect.DeepEqual(retireBaseline, observed) {
+		t.Fatal("actual retirement SIGKILL/restart changed Redis value/type/expiry classes: " + coldSnapshotChangedKeys(retireBaseline, observed))
+	}
+	if retireCanonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("actual retirement SIGKILL/restart changed canonical/receipt/future-due effects")
 	}
 	if _, err := f.pg.Exec(ctx, "UPDATE crawler_ownership_transition SET phase='reversed' WHERE intent_sha256=$1", intent); err == nil {
 		t.Fatal("retirement alone released authority before complete restoration")
@@ -823,6 +827,72 @@ func runLegacyJointProbe(t *testing.T, f nativePipelineFixture, source, plan, pr
 	}
 }
 
+func TestRealColdExecutableSnapshotConservesValuesAndDetectsDrift(t *testing.T) {
+	f := privatePipelineFixture(t)
+	ctx := context.Background()
+	hashKey, scoreKey := "private:snapshot:hash", "private:snapshot:score"
+	// Oversized values force an actual Redis hash table. Reinsert the same
+	// values in another order to exercise representation-independent evidence.
+	fields := []string{"a", "b", "c", "d", "e", "f", "g", "h"}
+	seed := func(reverse bool) {
+		t.Helper()
+		if err := f.r.Del(ctx, hashKey).Err(); err != nil {
+			t.Fatal(err)
+		}
+		for i := range fields {
+			index := i
+			if reverse {
+				index = len(fields) - 1 - i
+			}
+			if err := f.r.HSet(ctx, hashKey, fields[index], strings.Repeat(fields[index], 128)).Err(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := f.r.ZAdd(ctx, scoreKey, redis.Z{Member: "task", Score: 1925089445.100001}).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	seed(false)
+	before := fullColdExecutableRedisSnapshot(t, f)
+	seed(true)
+	if !reflect.DeepEqual(before, fullColdExecutableRedisSnapshot(t, f)) {
+		t.Fatal("equal logical Redis values failed conservation after reinsertion")
+	}
+	for _, fault := range []string{"hash_value", "queue_score", "type", "expiry_class"} {
+		seed(false)
+		var err error
+		switch fault {
+		case "hash_value":
+			err = f.r.HSet(ctx, hashKey, "a", strings.Repeat("a", 127)).Err()
+		case "queue_score":
+			err = f.r.ZAdd(ctx, scoreKey, redis.Z{Member: "task", Score: 1925089445.100002}).Err()
+		case "type":
+			if err = f.r.Del(ctx, hashKey).Err(); err == nil {
+				err = f.r.Set(ctx, hashKey, "changed type", 0).Err()
+			}
+		case "expiry_class":
+			err = f.r.Expire(ctx, hashKey, time.Hour).Err()
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if reflect.DeepEqual(before, fullColdExecutableRedisSnapshot(t, f)) {
+			t.Fatal("conservation evidence missed actual Redis drift: " + fault)
+		}
+	}
+	seed(false)
+	if err := f.r.HSet(ctx, hashKey, "a", string([]byte{0xff})).Err(); err != nil {
+		t.Fatal(err)
+	}
+	binaryBefore := fullColdExecutableRedisSnapshot(t, f)
+	if err := f.r.HSet(ctx, hashKey, "a", string([]byte{0xfe})).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if reflect.DeepEqual(binaryBefore, fullColdExecutableRedisSnapshot(t, f)) {
+		t.Fatal("conservation evidence normalized different non-UTF8 Redis bytes")
+	}
+}
+
 func fullColdExecutableRedisSnapshot(t *testing.T, f nativePipelineFixture) map[string]string {
 	t.Helper()
 	ctx := context.Background()
@@ -832,18 +902,93 @@ func fullColdExecutableRedisSnapshot(t *testing.T, f nativePipelineFixture) map[
 	}
 	state := map[string]string{}
 	for _, key := range keys {
-		body, err := f.r.Dump(ctx, key).Result()
+		kind, err := f.r.Type(ctx, key).Result()
 		if err != nil {
-			t.Fatal("private full Redis observation failed")
+			t.Fatal("private full Redis type observation failed")
+		}
+		// DUMP encodes internal hash/set iteration order and representation.
+		// Compare exact logical values, scores and types instead: read-only
+		// access/rehashing must not masquerade as a runtime queue mutation.
+		var value any
+		switch kind {
+		case "string":
+			var raw string
+			raw, err = f.r.Get(ctx, key).Result()
+			value = []byte(raw)
+		case "hash":
+			var raw map[string]string
+			raw, err = f.r.HGetAll(ctx, key).Result()
+			fields := map[string][]byte{}
+			for field, bytes := range raw {
+				fields[hex.EncodeToString([]byte(field))] = []byte(bytes)
+			}
+			value = fields
+		case "zset":
+			var raw []redis.Z
+			raw, err = f.r.ZRangeWithScores(ctx, key, 0, -1).Result()
+			for i := range raw {
+				member, ok := raw[i].Member.(string)
+				if !ok {
+					t.Fatal("private Redis sorted member observation failed")
+				}
+				raw[i].Member = []byte(member)
+			}
+			value = raw
+		case "list":
+			var raw []string
+			raw, err = f.r.LRange(ctx, key, 0, -1).Result()
+			members := [][]byte{}
+			for _, member := range raw {
+				members = append(members, []byte(member))
+			}
+			value = members
+		case "set":
+			var members []string
+			members, err = f.r.SMembers(ctx, key).Result()
+			sort.Strings(members)
+			bytes := [][]byte{}
+			for _, member := range members {
+				bytes = append(bytes, []byte(member))
+			}
+			value = bytes
+		default:
+			t.Fatal("unsupported private Redis observation type")
+		}
+		if err != nil {
+			t.Fatal("private full Redis value observation failed")
+		}
+		body, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal("private full Redis canonical observation failed")
 		}
 		ttl, err := f.r.PTTL(ctx, key).Result()
 		if err != nil {
 			t.Fatal("private full Redis expiry observation failed")
 		}
 		// Wall-clock countdown is not drift, while expiry removal/addition is.
-		state[key] = fmt.Sprint(ttl > 0) + ":" + body
+		state[key] = kind + ":" + fmt.Sprint(ttl > 0) + ":" + string(body)
 	}
 	return state
+}
+
+func coldSnapshotChangedKeys(before, after map[string]string) string {
+	changed := map[string]bool{}
+	for key, value := range before {
+		if got, ok := after[key]; !ok || got != value {
+			changed[key] = true
+		}
+	}
+	for key, value := range after {
+		if got, ok := before[key]; !ok || got != value {
+			changed[key] = true
+		}
+	}
+	keys := []string{}
+	for key := range changed {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, ",")
 }
 
 func seedExecutableColdB0(t *testing.T, f nativePipelineFixture, board string, epoch int64, lua []byte) {
@@ -892,22 +1037,9 @@ func seedExecutableColdB0(t *testing.T, f nativePipelineFixture, board string, e
 
 func coldExecutableRedisSnapshot(t *testing.T, f nativePipelineFixture) map[string]string {
 	t.Helper()
-	ctx := context.Background()
-	keys, err := f.r.Keys(ctx, "*").Result()
-	if err != nil {
-		t.Fatal(err)
-	}
-	snapshot := map[string]string{}
-	for _, key := range keys {
-		if key == "ordinary:ownership:active" || key == "crawler:ownership:transition" {
-			continue
-		}
-		body, err := f.r.Dump(ctx, key).Result()
-		if err != nil {
-			t.Fatal(err)
-		}
-		snapshot[key] = body
-	}
+	snapshot := fullColdExecutableRedisSnapshot(t, f)
+	delete(snapshot, "ordinary:ownership:active")
+	delete(snapshot, "crawler:ownership:transition")
 	return snapshot
 }
 func coldExecutableCanonicalSnapshot(t *testing.T, f nativePipelineFixture) string {
