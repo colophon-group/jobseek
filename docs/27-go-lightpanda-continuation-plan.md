@@ -110,6 +110,10 @@ across three hash seeds, and private fixtures shut down. See the
 [portable direct transport evidence](evidence/go-ordinary-direct-http-2026-10-01.json).
 This is prepared transport; ordinary production workers remain Python.
 
+Transport checkpoint `8001134bc` passed both Linux architectures (36842233353),
+full CI (36842225559) and B0 admission (36842233274). Its actual deploy gate
+still rejects the draft; these checks do not cover the later circuit source.
+
 Latest runtime source `8a84d82ca` prepares the shared host circuit path on the
 existing Redis keys and byte-identical production Lua. Native preflight uses
 the learned failure host, then configured board hostname; open and occupied

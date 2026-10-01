@@ -82,5 +82,24 @@
     "supported all-writer ownership/projection cutover/cold reversal with shared B0 epoch",
     "production network/fleet admission including64MiB bounds, every enabled effective profile/runtime consumer, fleet output/freshness/queue/cost and rollback window before production Python/Playwright/Chromium retirement"
   ],
-  "next": "Reuse the completed native transport, discovery, inventory, preparation, batches and lifecycle. Bind final-resource provider/publisher outcomes to the exact owned claim; complete shared host circuits, canonical deferrals and safely fenced learned-egress publication. Package protected CA/internal-host startup inputs and implement the exact-source/plan/epoch ordinary executable with concurrency, heartbeat and bounded drain. Prove installed cancellation/crash/claim-loss and all-writer ownership/projection cutover/cold reversal with the shared B0 epoch before selection. Complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/cost and rollback window before retiring production Python/Playwright/Chromium. The full migration goal remains active."
+  "next": "Reuse the completed native transport, discovery, inventory, preparation, batches and lifecycle. Bind final-resource provider/publisher outcomes to the exact owned claim; complete shared host circuits, canonical deferrals and safely fenced learned-egress publication. Package protected CA/internal-host startup inputs and implement the exact-source/plan/epoch ordinary executable with concurrency, heartbeat and bounded drain. Prove installed cancellation/crash/claim-loss and all-writer ownership/projection cutover/cold reversal with the shared B0 epoch before selection. Complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/cost and rollback window before retiring production Python/Playwright/Chromium. The full migration goal remains active.",
+  "checkpoint_checks": {
+    "head": "8001134bcc9be266a991296f83c92c70bbe0950d",
+    "linux": {
+      "run": 36842233353,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36842225559,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36842233274,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "earlier head success does not cover later circuit source or authorize merging a draft"
+  },
+  "continued_by_runtime_source_head": "8a84d82ca06597a254d675acf979a1bbe0bf500b"
 }

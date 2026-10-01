@@ -62,5 +62,23 @@
     "supported all-writer ownership/projection cutover/cold reversal with shared B0 epoch",
     "production effective-profile/network admission, every enabled profile/runtime consumer, fleet output/freshness/queue/cost and rollback window before production Python/Playwright/Chromium retirement"
   ],
-  "next": "Bind final-resource provider/publisher observations to the exact opaque claim and verified native fetch lineage. Package protected CA/internal-host assets and implement the exact-source/plan/epoch ordinary executable with bounded task concurrency, metrics, heartbeat, cancellation and drain using the completed native transport/discovery/inventory/preparation/batches/lifecycle/host-circuit/receipt assembly. Prove installed crash/cancel/claim-loss and all-writer ownership/projection cutover/cold reversal with shared B0 epoch before selection. Complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/attributable cost and rollback window before retiring production Python/Playwright/Chromium. Full migration goal remains active."
+  "next": "Bind final-resource provider/publisher observations to the exact opaque claim and verified native fetch lineage. Package protected CA/internal-host assets and implement the exact-source/plan/epoch ordinary executable with bounded task concurrency, metrics, heartbeat, cancellation and drain using the completed native transport/discovery/inventory/preparation/batches/lifecycle/host-circuit/receipt assembly. Prove installed crash/cancel/claim-loss and all-writer ownership/projection cutover/cold reversal with shared B0 epoch before selection. Complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/attributable cost and rollback window before retiring production Python/Playwright/Chromium. Full migration goal remains active.",
+  "previous_direct_http_checkpoint": {
+    "head": "8001134bcc9be266a991296f83c92c70bbe0950d",
+    "linux": {
+      "run": 36842233353,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36842225559,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36842233274,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "earlier head success does not cover later circuit source or authorize merging a draft"
+  }
 }
