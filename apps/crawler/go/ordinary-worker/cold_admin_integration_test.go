@@ -158,10 +158,10 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	// DB can truncate fixtures, after retiring the activated test plan.
 	t.Cleanup(func() {
 		_, _ = f.pg.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE state='active'")
-		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_reversal,crawler_ownership_transition"); err != nil {
+		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_ordinary_restoration,crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_reversal,crawler_ownership_transition"); err != nil {
 			t.Error("private journal cleanup failed")
 		}
-		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_b0_target"); err != nil {
+		if _, err := f.pg.Exec(context.Background(), "TRUNCATE crawler_ownership_ordinary_restoration,crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,crawler_ownership_b0_restoration,crawler_ownership_b0_target"); err != nil {
 			t.Error("private target cleanup failed")
 		}
 	})
@@ -811,6 +811,48 @@ func TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent(t *testin
 	}
 	if config := f.r.HGet(ctx, "scrape:"+b0Claim[3].(string), "description_r2_hash").Val(); config != "-9223372036854775808" {
 		t.Fatal("actual restore lost canonical bigint hash")
+	}
+	// Ordinary restoration is a retained cold decision only. Exercise the
+	// actual compiled operator surface and inspect it without live Redis.
+	ordinaryRequest := queue.ColdOrdinaryRestorationRequest{ReversalSHA256: reversalSHA, SourceRevision: source, RetirementEpoch: retired.RetirementEpoch, B0RestorationPlanSHA256: preparedRestore.B0RollbackPlanSHA256}
+	ordinaryBody, _ := json.Marshal(ordinaryRequest)
+	ordinaryHash := sha256.Sum256(ordinaryBody)
+	ordinaryFile := filepath.Join(e.directory, "ordinary-restoration-request.json")
+	if err := os.WriteFile(ordinaryFile, ordinaryBody, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ordinaryEnv := map[string]string{}
+	for k, v := range restoreEnv {
+		if k != "ORDINARY_COLD_B0_RESTORE_REQUEST_FILE" && k != "ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256" {
+			ordinaryEnv[k] = v
+		}
+	}
+	ordinaryEnv["ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_FILE"], ordinaryEnv["ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_SHA256"] = ordinaryFile, hex.EncodeToString(ordinaryHash[:])
+	preparedOrdinary := call("cold-ordinary-rollback-plan", ordinaryEnv, true)
+	if !planPattern.MatchString(preparedOrdinary.OrdinaryRestorationPlanSHA256) || preparedOrdinary.OrdinaryRestorationMode != "legacy" || preparedOrdinary.RetirementEpoch != retired.RetirementEpoch {
+		t.Fatal("ordinary cold preview lost exact legacy decision")
+	}
+	ordinaryEnv["ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256"] = strings.Repeat("0", 64)
+	call("cold-ordinary-rollback-retain", ordinaryEnv, false)
+	ordinaryEnv["ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256"] = preparedOrdinary.OrdinaryRestorationPlanSHA256
+	for i := 0; i < 2; i++ {
+		retained := call("cold-ordinary-rollback-retain", ordinaryEnv, true)
+		if string(retained.OrdinaryRestorationPlan) != string(preparedOrdinary.OrdinaryRestorationPlan) {
+			t.Fatal("exact decision retry changed bytes")
+		}
+	}
+	inspectOrdinaryEnv := map[string]string{}
+	for k, v := range ordinaryEnv {
+		if k != "ORDINARY_COLD_B0_TARGET_FILE" && k != "ORDINARY_COLD_B0_TARGET_SHA256" && k != "ORDINARY_COLD_B0_LUA_FILE" {
+			inspectOrdinaryEnv[k] = v
+		}
+	}
+	inspectOrdinaryEnv["REDIS_URL"] = "unix://" + filepath.Join(e.directory, "unavailable-redis.sock")
+	if retained := call("cold-ordinary-rollback-inspect", inspectOrdinaryEnv, true); string(retained.OrdinaryRestorationPlan) != string(preparedOrdinary.OrdinaryRestorationPlan) {
+		t.Fatal("historical inspection required Redis or changed decision")
+	}
+	if !reflect.DeepEqual(postRestoreCrash, fullColdExecutableRedisSnapshot(t, f)) || restoreCanonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("ordinary preparation changed queue/canonical effects")
 	}
 	legacyProbe(false)
 	if _, err := f.pg.Exec(ctx, "UPDATE crawler_ownership_transition SET phase='reversed' WHERE intent_sha256=$1", intent); err == nil {

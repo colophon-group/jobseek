@@ -545,3 +545,32 @@ of whether application has completed.
 These primitives establish queue/database ordering. Independent immutable release
 selection, all-writer host quiescence, durable sentinel/host receipts and full
 readiness remain responsibilities of the supported ADR006 host workflow.
+
+## Retained ordinary rollback preparation
+
+`BuildColdOrdinaryRestorationPlan`, `RetainColdOrdinaryRestorationPlan` and
+`InspectColdOrdinaryRestorationPlan` preserve the ordinary rollback decision
+at the already reserved retirement epoch. Preparation requires the exact reserved
+reversal and B0 restoration in `fences-cleared`, its current durable rollback
+tombstone and absence of B0 namespace/legacy guards. It grants no active ownership.
+
+A legacy predecessor retains an explicit decision with no native ordinary plan.
+A native predecessor retains its retired immutable document and a freshly observed
+plan at retirement R, bound to the predecessor's binary source revision. The
+board/company/kind/worker/profile cohort is conserved; each enabled recoverable
+Greenhouse profile must match canonical PostgreSQL and current Redis configuration.
+A second full-cohort observation refuses late profile drift and live canonical
+monitor/posting leases. The retired plan stays retired. Fresh staging and immutable
+history commit in one transaction, and a conflicting approval leaves no new stage.
+
+Migration 0045 binds the complete decision, exact reversal/B0 restoration and
+fresh staged owner. Its SQL trigger also conserves cohort identity, checks the
+current allocator and absence of an active ordinary owner, and refuses history
+mutation or downgrade with retained decisions. Documents are canonical and bounded
+at 64 MiB. Inspection reads historical bytes without allocator/lease barriers or
+Redis observations. No preparation allocates another epoch, publishes a projection,
+closes the reversal, saves Redis, selects releases or starts services.
+
+Actual ownership restoration, compatible joint authority for any prior native
+ordinary/Go B0 owner, full host receipts and readiness remain required before
+releasing writers. B0 fence cleanup alone is insufficient to restore that authority.

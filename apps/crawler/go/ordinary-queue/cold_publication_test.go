@@ -61,6 +61,10 @@ func realPublicationSource(t *testing.T, metadata, source string) publicationFix
 }
 
 func realPublicationSeed(t *testing.T, metadata, source string, seed bool) publicationFixture {
+	return realPublicationSeedWithPrior(t, metadata, source, seed, false)
+}
+
+func realPublicationSeedWithPrior(t *testing.T, metadata, source string, seed, priorNative bool) publicationFixture {
 	t.Helper()
 	f := greenhouseAuthorityFixture(t)
 	ctx := context.Background()
@@ -84,8 +88,16 @@ func realPublicationSeed(t *testing.T, metadata, source string, seed bool) publi
 	if err != nil {
 		t.Fatalf("capture: %v", err)
 	}
+	var previous *OwnershipPlan
+	if priorNative {
+		previous = stageFixturePlan(t, f, strings.Repeat("b", 40))
+		activateFixturePlan(t, f, previous)
+		if err := f.client.redis.Set(ctx, ownershipProjectionKey, previous.body, 0).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
 	prepared := stageFixturePlan(t, f, source)
-	s := coldSpec(t, f, nil, prepared)
+	s := coldSpec(t, f, previous, prepared)
 	s.TargetB0ManifestSHA256 = target.digest
 	intent, err := BeginColdOwnershipTransition(ctx, f.observer, f.client, s)
 	if err != nil {

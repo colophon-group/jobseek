@@ -417,3 +417,29 @@ The actual root producer/PG/CLI fixture covers application recovery followed by
 these three commands and exact activation retry. Fresh execution on both Linux
 architectures is required before admitting this extension. Full host quiescence,
 release selection, receipts and readiness are still required before service start.
+
+### Ordinary rollback preparation commands
+
+| Argument / protected mode | Effect |
+| --- | --- |
+| `--cold-ordinary-rollback-plan` / `cold-ordinary-rollback-plan` | Preview the exact legacy or fresh native rollback decision. |
+| `--cold-ordinary-rollback-retain` / `cold-ordinary-rollback-retain` | Atomically retain approved history and any fresh staged ordinary plan. |
+| `--cold-ordinary-rollback-inspect` / `cold-ordinary-rollback-inspect` | Read immutable decision history without Redis or ownership barriers. |
+
+All require the protected original forward intent, reversal, source epoch/plan,
+compiled coordinator source, exact `ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256`,
+and `ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_FILE` plus its exact
+`ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_SHA256`. The canonical request contains
+`reversal_sha256`, `source_revision`, `retirement_epoch`,
+`b0_restoration_plan_sha256` and `rollback_source_revision`. The last field is
+empty for a legacy ordinary predecessor or the exact prior native binary revision.
+The retirement epoch must be the reversal's reserved R; no new epoch is allocated.
+
+Preview/retention require protected B0 target and pinned Lua. Retention/inspection
+add `ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256`; preview rejects that selector.
+Inspection rejects target/Lua inputs and needs only parseable Redis configuration,
+which may point to an unavailable socket. Other operations reject these new fields.
+Output reports `ordinary_restoration_plan_sha256`, the full bounded canonical
+`ordinary_restoration_plan` and `ordinary_restoration_mode`. Retain it privately
+and durably with release evidence. These commands do not publish ownership, complete
+a joint reversal, select a release or grant permission to start services.
