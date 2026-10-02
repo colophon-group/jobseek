@@ -1,5 +1,32 @@
 # Go and Lightpanda migration continuation plan
 
+The connected native `--host-preflight` entrypoint now holds the shared host
+mutation lock across requested active/incoming/rollback file/image observations,
+complete inventory and declared execution, optional bound installed-file requests,
+and exact spec capture. It fsyncs immutable intent before the spec archive and
+an immutable receipt before returning; retries reobserve and reject request/spec
+substitution. Local Go 1.26 races include actual SIGKILL, contention, aliases,
+inode replacement and unexplained-link refusal; Linux vet/workflow checks pass.
+Fresh actual installed command execution is required. Its receipts explicitly
+report `runtime_admission:false`; full selection/authentication, runtime fidelity,
+writer containment/SQL barriers and connected cold recovery/readiness remain open.
+See [host preflight evidence](evidence/go-ordinary-native-host-preflight-2026-10-02.json).
+
+Source `62c23ada87e3a08254545a89891ede04f35c0114` full CI37057487103, Linux37057439527,
+installed37057490728 and historical native/legacy37057439528/37057439566 are now
+independently verified on both architectures and exact source/merge association.
+The NEW actual legacy file observer verifies interpreter/system-CA/CLI/source/
+installed package/assets and exact eight declared drift refusals. Native file
+observation and all six worker fixtures/source/pinned CA/34 assets also pass.
+Beb whole37055617495 independently admits 16arms/8pairs, density
+6.145383195–14.664204101; preserve current62c whole37057439521. This generated
+startup-cardinality evidence does not establish complete-service/profile parity
+or cost. Keep the full host coordinator/profile/consumer/parity/resources/cost/
+cutover/reversal/readiness/gates/rollout/window/retirement goal active. PR#10210
+remains draft; production unchanged.
+
+Earlier checkpoint entries retain their source-scoped evidence.
+
 The installed-file observer now requires the legacy runtime's complete installed
 Python 3.13 package and CLI entrypoint, separately from `/app/src`, alongside the
 interpreter/system-CA/assets. The unchanged historical legacy-image job now

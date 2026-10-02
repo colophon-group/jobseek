@@ -212,6 +212,31 @@ See [the installed-byte contract](../evidence/go-ordinary-native-installed-file-
 
 ## Protected host envelope
 
+The new installed `--host-preflight` entrypoint now connects the existing file/
+image/inventory/declared-execution libraries and optional installed-file requests
+under the shared mutation lock. It binds exactly requested active/incoming/
+rollback roles, rejects unattached installed source/service/container identities,
+retains immutable fsynced intent before the exact spec archive, and retains a
+content-addressed receipt before returning. Retry reobserves the host; changed
+request/spec bytes cannot replace rollback intent. Private ownership/mode checks,
+lock/state inode readback and exact interrupted hard-link recovery are enforced.
+No Python, Docker mutation, SQL/Redis primitive, spec selection or restart runs.
+
+Its receipts report `runtime_admission:false`; requested role labels and hashes
+are not authenticated build or selected-pointer evidence. An empty installed
+request set is an explicit early-preflight scope, never full provenance. Local
+native races include actual SIGKILL/lock/retention refusal cases; fresh installed
+Linux command verification is now required on both architectures with synthetic
+generations and a public infrastructure image. Actual installed-file joins and
+selected production generation scope still need their own proof.
+
+Continue the connected coordinator beyond this preflight: authenticated selection,
+complete runtime fidelity, actual global/host/maintenance writer containment and
+SQL barriers, durable fixed native forward/reversal phases, staged spec restore,
+real complete host crash recovery/readiness and supported cold admission. Keep
+the B0 guard and ADR006 intact; no preflight receipt can start writers.
+See [the native host preflight evidence](../evidence/go-ordinary-native-host-preflight-2026-10-02.json).
+
 The deployed coordinator must run under the existing operator deployment identity,
 with the shared `/run/lock/jobseek-crawler-mutation.lock`. Agents never receive the
 Docker socket. The wrapper observes Docker itself through fixed, bounded commands;

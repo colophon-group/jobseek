@@ -841,3 +841,50 @@ separate artifact. Both fixtures need fresh exact-source execution. Historical
 rebuild evidence does not select or authenticate production's rollback image;
 Python dependencies, interpreter links and complete process/import configuration
 still require their independent runtime fidelity and provenance checks.
+
+## Connected native host preflight
+
+The worker's explicit `--host-preflight` command now connects release-generation
+file verification, cleared-environment Compose/image observation, complete daemon
+inventory, declared execution settings, optional exact installed-container file
+requests and active-spec capture under the existing shared host mutation lock.
+Installed requests must match their requested role's source and service image
+and the inventory's exact project/service/non-one-off container. It observes
+every requested generation again before retaining its results.
+
+The command requires `ORDINARY_GO_WORKER_MODE=host-preflight`, the exact compiled
+`ORDINARY_HOST_COORDINATOR_SOURCE_REVISION`, an operator-owned mode-0700 canonical
+`ORDINARY_HOST_REQUEST_DIRECTORY` and the explicit `ORDINARY_HOST_REQUEST_SHA256`.
+Its `request.json` must be an owned mode-0600 regular file containing canonical
+`jobseek.crawler-host-preflight-request/v1` JSON: exactly ordered active/incoming/
+rollback directories and file-evidence hashes, owner/project/host architecture,
+protected deployment base and an explicit installed request array. Empty installed
+requests are valid for an early preflight; they establish no installed provenance.
+Protected request hashes and role names do not authenticate builds or actual
+selected release pointers. No caller can supply command text or a lock override.
+
+The Linux command holds `/run/lock/jobseek-crawler-mutation.lock` across observation
+and retention, detects lock/state inode replacement and never inherits the lock
+into Docker children. It fsyncs immutable bound `intent.json` before publishing
+`deploy-specs.tar`, then fsyncs a content-addressed preflight receipt before printing
+completion. Different request/spec bytes cannot overwrite retained rollback intent.
+Exact retry reobserves the host; it cannot adopt a cached inventory as current
+truth. Interrupted exclusive hard-link publication recovers only its matching
+private temporary inode; unexplained links refuse. The archive stays outside
+all requested generation trees.
+
+This is the preflight phase before stopping writers. It invokes no Docker
+mutation, Python, SQL/Redis primitive, selection or restart. Every receipt reports
+`runtime_admission:false`. Build/selected-generation authentication, complete file/
+process/dependency/link/import/mount/security fidelity, all-writer/exporter/host
+maintenance exclusion and SQL barriers, phased spec restoration, actual complete
+host crash recovery/readiness and cold forward/reversal still gate cutover.
+
+Focused native races include real SIGKILL at synced-temp and linked-publication
+seams, contention, aliases/inode replacement and immutable drift refusal. The
+existing installed-image Actions jobs now require the actual installed command
+on Linux with a public infrastructure image and synthetic requested generations:
+connected observations, exact receipt/archive retention, retry and spec/data drift
+refusal. Its separate log must be verified on both architectures. That fixture
+does not prove a selected production generation, installed-file request joins or
+complete host admission. Agents never run it locally or receive Docker access.

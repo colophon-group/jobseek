@@ -1,0 +1,416 @@
+{
+  "version": "jobseek.migration.native-host-preflight/v1",
+  "date": "2026-10-02",
+  "preceding_verified": {
+    "source": "62c23ada87e3a08254545a89891ede04f35c0114",
+    "full_ci": {
+      "run": 37057487103,
+      "conclusion": "success"
+    },
+    "linux": {
+      "source": "62c23ada87e3a08254545a89891ede04f35c0114",
+      "run": 37057439527,
+      "tested_merge": "480dbcf620f7f1710807998da0e4e2100177790e",
+      "parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "62c23ada87e3a08254545a89891ede04f35c0114"
+      ],
+      "log_sha256": "d045ccba6940cef741a4182f99971825c39bfd217ce8877e00a87dfc5003c108",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+          "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+          "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+        },
+        {
+          "architecture": "arm64",
+          "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+          "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+          "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+        }
+      ],
+      "no_failed_or_skipped_tests": true,
+      "production_changed": false,
+      "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+    },
+    "installed": {
+      "source_revision": "62c23ada87e3a08254545a89891ede04f35c0114",
+      "run": 37057490728,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:d7b89c7cbbfb34975f420733eeb13006f7df80025a44367ca1ebf78365cbdc04",
+          "binary_sha256": "f328f97e67cf8ab0f5938cec259a707ad10f301dd790864e5cec10a16928e151",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+            "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+            "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+          ],
+          "asset_hashes_verified": 34,
+          "actual_installed_file_observation_pass": true,
+          "system_ca_sha256": "714d457d580922dbf1d0be8bd35ba236a842b50b0072ae791582a19adef772a5",
+          "file_observation_log_sha256": "26ff78cd1634330c9d2df15c0386459e389d4203195b4c92f7a49c95c9ae0135"
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:daa2137d5ded25a2e909a9c2424c6eccda0c7cff32a7bd501937d0190c17bf60",
+          "binary_sha256": "1ea6459b06dfef8f63c13165a2e7ffe8d62b2131029d21d014ae1001e0bf7c9e",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+            "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+            "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+          ],
+          "asset_hashes_verified": 34,
+          "actual_installed_file_observation_pass": true,
+          "system_ca_sha256": "714d457d580922dbf1d0be8bd35ba236a842b50b0072ae791582a19adef772a5",
+          "file_observation_log_sha256": "7d383356595374d732e7641130ca52973e14832d0d0dadcca6a52699ed3664c9"
+        }
+      ],
+      "installed_asset_sha256": {
+        "README.md": "f4449496c21178aa003e28a17a7135f207d848aa74421eeb46abff9c1370fd26",
+        "boards.csv": "416c5939d22faa9ee928155d20a1c3ee294f26b3c496ed93637eae13e8b492e1",
+        "companies.csv": "a15ccf834c0e0d3e11c7a0c8cea5aa7df5930b085264683689e2cef4eee04c65",
+        "company_descriptions.csv": "99c016c51713bb5937593ad1267c596f7cf208c4424a5f17c83410761f10dde7",
+        "images/avera-icon.png": "94225e0ecf08cdbf6eff0d197030e27d60c1bcd28d410f584e589dec867ac393",
+        "images/avera-logo.png": "6c1d3514864d40cbd8d51661b6b2aa905f40bfc57cff84b1f68cb12f668a9b1e",
+        "images/bae-systems-icon.png": "d4b21210623413bf11e723e19336ac41043bae110237513e220e479998b4d8e6",
+        "images/bae-systems-logo.svg": "36a6c9e949fa4b9d913ffed811e4b88515deee4af4eaf2de720d09a8516f58dc",
+        "images/banner-health-icon.png": "4a95ca7481e999700637cf3b58705c249c15bba3acbfc8839d928f0a33b40e20",
+        "images/banner-health-logo.svg": "b97938bf23013ffc64f20118f42f09481c30e6b6a920202028633ddb7cabb1d1",
+        "images/capgemini-icon.png": "b764b1abe10194e9370b69528933762fa502dfa454932c80b9c6eafdac60e05e",
+        "images/capgemini.png": "3e4b021ad539b695290353a9811f02c13933c65716fd710a55ead1a055c6b9fc",
+        "images/drees-sommer-icon.png": "e804fe381612328706a9ec314545a66b74eea36a831576340ad080c4ba3ca0e5",
+        "images/drees-sommer-logo.svg": "ab80c4e211746308c0952f64614a4220b61af0acbedc86a24c98f10e752988e6",
+        "images/epfl/icon.png": "9af4578f7f87fabea840044b4a9fe388dc2847f5e301317944eaf1255d7000bc",
+        "images/epfl/logo.png": "f9f64c61b3e52eb82d4b6144d85843c0001201cd2d75f1128fa34642e4f8983a",
+        "images/fulenwider-enterprises-icon.png": "2862579dd64d28782e8deeec0095264fc91d50cc21911f0ed00b24ddacd531a8",
+        "images/fulenwider-enterprises-logo.png": "326a67f1d0faddf840345d22873ff732d7b71e386c22d096740689f776802ed0",
+        "images/mediamarktsaturn-icon.webp": "37fa4d863ef3d13f87b7be4590f8d41f0cddec282db557aec4db30df9a14de39",
+        "images/mediamarktsaturn-logo.svg": "47f1f499c28f30c96cae0d428ae13eef36df923feaf6d9e07a48bc209f5f5cfc",
+        "images/singapore-public-service-icon.png": "23fa7bf3fd10506cc3679f70e2aaa7f52ed684b46055d75fcb67335334c4518c",
+        "images/singapore-public-service-logo.svg": "dbd644d3eb74771e725aeed2e6686feddd5e6fd6517920c79cbd5733aa844537",
+        "images/swiss-post-icon.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+        "images/swiss-post-logo.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+        "industries.csv": "3fae2b061b36e907b83fc03648aa4df512df01d7fc324b5b83bf11bb1e8f25b3",
+        "industries.svg": "163aaa518b8d11b3b0d24905e053c8fc249894681784b7bd00b0eae8a3562c09",
+        "labeller_optout.txt": "c802b5e4878133598994cbc7cbdd432fc6cfeff7e4608d7e94f7d3bb879b09ff",
+        "occupation_domains.csv": "6d2458a0ce106da21ee6898a66896f18d774a65c72d476969be4394a47461d9b",
+        "occupations.csv": "97ce6fa825130597639bf2c3cd2e19f114610cc5de3006d69c31c07018397d01",
+        "occupations.svg": "d1e399827f71d3558712746b636e13c3c7d859d6c5d7dfdb75195dd40a861c78",
+        "seniority.csv": "a00c21d795baff88e7c0e4733922eff26f24fb0d24251f7ae1fb0db20ecb5004",
+        "seniority.svg": "549e9c57dc14e0195eb3263c288afa3f48280d7715ce37c375db9fd97974feb5",
+        "technologies.csv": "6894e31c7e854d5efddf3a57b52cd83ed7326ac5753a12ee7c743c02721d9bde",
+        "technologies.svg": "935a8307c03617ed1532ccf1c9f445a440f4ac95118e4e5a673b77a4f6fc0374"
+      }
+    },
+    "prior_native": {
+      "candidate_source": "62c23ada87e3a08254545a89891ede04f35c0114",
+      "run": 37057439528,
+      "tested_merge": "480dbcf620f7f1710807998da0e4e2100177790e",
+      "parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "62c23ada87e3a08254545a89891ede04f35c0114"
+      ],
+      "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:e59e815c952f82c6b6a2726c6cb009a921a3ca3c0ae60bafd173ff8506750182",
+          "binary_sha256": "bec52d4c71e7494fd234f30bea7323d29689b2b2636ed23632d4cbd0c0a9bfc8",
+          "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+          "proof_sha256": "9ab6bb6f85c1f5a1a81805fdcd55fbf86839a16efef0980bef58991582237603",
+          "assets": 34,
+          "actual_prior_installed_restored_R_pass": true
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:ea3070cd7487f980e5eefe31e1f7d7d478a9759e5bea5257df88816e2eaaa11d",
+          "binary_sha256": "9590b7eb7e0b67a66f88dcd4babf515847f2437db1a4e2fdc5254e9c1aa1e463",
+          "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+          "proof_sha256": "9b62a7bce17bb865636db285849dc452292d1b52e42dc6c2da21a96a53be9f1c",
+          "assets": 34,
+          "actual_prior_installed_restored_R_pass": true
+        }
+      ],
+      "log_sha256": "c90051c10c586548855110bb7d85ebc2383f9c4da17e785a03e3fe877bba3b2a",
+      "installed_asset_sha256": {
+        "README.md": "f4449496c21178aa003e28a17a7135f207d848aa74421eeb46abff9c1370fd26",
+        "boards.csv": "416c5939d22faa9ee928155d20a1c3ee294f26b3c496ed93637eae13e8b492e1",
+        "companies.csv": "a15ccf834c0e0d3e11c7a0c8cea5aa7df5930b085264683689e2cef4eee04c65",
+        "company_descriptions.csv": "99c016c51713bb5937593ad1267c596f7cf208c4424a5f17c83410761f10dde7",
+        "images/avera-icon.png": "94225e0ecf08cdbf6eff0d197030e27d60c1bcd28d410f584e589dec867ac393",
+        "images/avera-logo.png": "6c1d3514864d40cbd8d51661b6b2aa905f40bfc57cff84b1f68cb12f668a9b1e",
+        "images/bae-systems-icon.png": "d4b21210623413bf11e723e19336ac41043bae110237513e220e479998b4d8e6",
+        "images/bae-systems-logo.svg": "36a6c9e949fa4b9d913ffed811e4b88515deee4af4eaf2de720d09a8516f58dc",
+        "images/banner-health-icon.png": "4a95ca7481e999700637cf3b58705c249c15bba3acbfc8839d928f0a33b40e20",
+        "images/banner-health-logo.svg": "b97938bf23013ffc64f20118f42f09481c30e6b6a920202028633ddb7cabb1d1",
+        "images/capgemini-icon.png": "b764b1abe10194e9370b69528933762fa502dfa454932c80b9c6eafdac60e05e",
+        "images/capgemini.png": "3e4b021ad539b695290353a9811f02c13933c65716fd710a55ead1a055c6b9fc",
+        "images/drees-sommer-icon.png": "e804fe381612328706a9ec314545a66b74eea36a831576340ad080c4ba3ca0e5",
+        "images/drees-sommer-logo.svg": "ab80c4e211746308c0952f64614a4220b61af0acbedc86a24c98f10e752988e6",
+        "images/epfl/icon.png": "9af4578f7f87fabea840044b4a9fe388dc2847f5e301317944eaf1255d7000bc",
+        "images/epfl/logo.png": "f9f64c61b3e52eb82d4b6144d85843c0001201cd2d75f1128fa34642e4f8983a",
+        "images/fulenwider-enterprises-icon.png": "2862579dd64d28782e8deeec0095264fc91d50cc21911f0ed00b24ddacd531a8",
+        "images/fulenwider-enterprises-logo.png": "326a67f1d0faddf840345d22873ff732d7b71e386c22d096740689f776802ed0",
+        "images/mediamarktsaturn-icon.webp": "37fa4d863ef3d13f87b7be4590f8d41f0cddec282db557aec4db30df9a14de39",
+        "images/mediamarktsaturn-logo.svg": "47f1f499c28f30c96cae0d428ae13eef36df923feaf6d9e07a48bc209f5f5cfc",
+        "images/singapore-public-service-icon.png": "23fa7bf3fd10506cc3679f70e2aaa7f52ed684b46055d75fcb67335334c4518c",
+        "images/singapore-public-service-logo.svg": "dbd644d3eb74771e725aeed2e6686feddd5e6fd6517920c79cbd5733aa844537",
+        "images/swiss-post-icon.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+        "images/swiss-post-logo.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+        "industries.csv": "3fae2b061b36e907b83fc03648aa4df512df01d7fc324b5b83bf11bb1e8f25b3",
+        "industries.svg": "163aaa518b8d11b3b0d24905e053c8fc249894681784b7bd00b0eae8a3562c09",
+        "labeller_optout.txt": "c802b5e4878133598994cbc7cbdd432fc6cfeff7e4608d7e94f7d3bb879b09ff",
+        "occupation_domains.csv": "6d2458a0ce106da21ee6898a66896f18d774a65c72d476969be4394a47461d9b",
+        "occupations.csv": "97ce6fa825130597639bf2c3cd2e19f114610cc5de3006d69c31c07018397d01",
+        "occupations.svg": "d1e399827f71d3558712746b636e13c3c7d859d6c5d7dfdb75195dd40a861c78",
+        "seniority.csv": "a00c21d795baff88e7c0e4733922eff26f24fb0d24251f7ae1fb0db20ecb5004",
+        "seniority.svg": "549e9c57dc14e0195eb3263c288afa3f48280d7715ce37c375db9fd97974feb5",
+        "technologies.csv": "6894e31c7e854d5efddf3a57b52cd83ed7326ac5753a12ee7c743c02721d9bde",
+        "technologies.svg": "935a8307c03617ed1532ccf1c9f445a440f4ac95118e4e5a673b77a4f6fc0374"
+      },
+      "production_changed": false,
+      "scope": "actual historical candidate image-extracted runtime at restored R; not previously selected production ordinary release or complete host admission"
+    },
+    "prior_legacy": {
+      "candidate_source": "62c23ada87e3a08254545a89891ede04f35c0114",
+      "run": 37057439566,
+      "tested_merge": "480dbcf620f7f1710807998da0e4e2100177790e",
+      "parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "62c23ada87e3a08254545a89891ede04f35c0114"
+      ],
+      "prior_source": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:635939bd369b2dbd823c0a7e4ee4226f857c0f976a27bc27768fb19d99b496c8",
+          "python_version": "3.13.15",
+          "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+          "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+          "source_files": 599,
+          "assets": 34,
+          "proof_sha256": "0f7ce349aae9dc93d22c73dc59e18005cb2c4c3f0651320345cbdc0ac59e9805",
+          "actual_historical_legacy_container_at_R_pass": true,
+          "actual_legacy_installed_file_observation_pass": true,
+          "python_binary_sha256": "73efccb6aa17a74869ef6f11e0a0118b0f27693ea85f36c7a3758c307fd8914f",
+          "system_ca_sha256": "714d457d580922dbf1d0be8bd35ba236a842b50b0072ae791582a19adef772a5",
+          "file_proof_sha256": "5db8481240d08ecac3c4f9c561c73113964df05d6f43b2b5d88d7007019dddb6",
+          "installed_files_log_sha256": "f7d408fcbb57eeac8cf13ae7e2c96829cf1b879be1e7c637f2b1aa186e8d44aa"
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:4918f33350eb97d9b56ce5f93da0897974ca22fafd5f5b1ab23ddb72e034a526",
+          "python_version": "3.13.15",
+          "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+          "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+          "source_files": 599,
+          "assets": 34,
+          "proof_sha256": "a9946368900ecbc9e5fb5a60a9ad2d1be638dd36438fe3ed45219ab30594b41f",
+          "actual_historical_legacy_container_at_R_pass": true,
+          "actual_legacy_installed_file_observation_pass": true,
+          "python_binary_sha256": "037790041b8d9793336e9c1884b85cf3252bd3f41e06b040e222f52fedcae65c",
+          "system_ca_sha256": "714d457d580922dbf1d0be8bd35ba236a842b50b0072ae791582a19adef772a5",
+          "file_proof_sha256": "cd9adde75bdc8d81bcfeb842b697eae370bbec341cdf8f72a74af40483d57a1d",
+          "installed_files_log_sha256": "aa096ff5c97598f88803d5c503b22c0e6d526eb0d4f704db2e04131f8dbddced"
+        }
+      ],
+      "log_sha256": "2f2436926c5b876cf9e51af0f17a07f09ee6f0fee048b94ac159ac16840a063f",
+      "production_changed": false,
+      "scope": "rebuilt unchanged last-recorded production source image; completed synthetic host-label legacy restoration and no-fetch policy cycle at R; not selected production image digest, all-profile parity or complete host admission"
+    },
+    "actual_legacy_installed_observer": "both architectures independently verified; interpreter/systemCA/CLI/complete source and installed package/assets plus exact eight declared content/membership refusals; no source/process/full-host admission",
+    "production_changed": false
+  },
+  "preceding_beb_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "beb51fed7fa797251a494620cc103a3409d0a12c",
+    "tested_merge_checkout": "5ef1a1ed2abe121a581653e95a3ea4bbe9fde77d",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "beb51fed7fa797251a494620cc103a3409d0a12c"
+    ],
+    "run": 37055617495,
+    "report_sha256": "0c4199aa5d5287af5d95d01036ffb7336e760f355a96348e80dd277858114cd3",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      6.145383194829414,
+      14.664204101452231
+    ],
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        6.163015956635509,
+        7.456597163761111,
+        6.145383194829414,
+        14.355149083672114,
+        14.419569979849607,
+        14.664204101452231,
+        14.155734582106424,
+        14.169847436819724
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 6.163015956635509,
+          "elapsed_ratio": 1.4546726483843782,
+          "p99_ratio": 0.6835111560005175,
+          "peak_rss_ratio": 0.23603259485612427,
+          "cpu_seconds_candidate": 1.697331,
+          "cpu_seconds_control": 2.565057,
+          "lifetime_cpu_seconds_candidate": 3.9836799999999997,
+          "lifetime_cpu_seconds_control": 6.039261
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 7.456597163761111,
+          "elapsed_ratio": 1.8961679369970394,
+          "p99_ratio": 0.515095588358494,
+          "peak_rss_ratio": 0.25429400239191835,
+          "cpu_seconds_candidate": 1.6881059999999999,
+          "cpu_seconds_control": 2.63069,
+          "lifetime_cpu_seconds_candidate": 3.972038,
+          "lifetime_cpu_seconds_control": 6.236653
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 6.145383194829414,
+          "elapsed_ratio": 1.5259038662684625,
+          "p99_ratio": 0.6605292818719257,
+          "peak_rss_ratio": 0.2483008492541724,
+          "cpu_seconds_candidate": 1.674656,
+          "cpu_seconds_control": 2.658381,
+          "lifetime_cpu_seconds_candidate": 3.9764690000000003,
+          "lifetime_cpu_seconds_control": 6.375778
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 14.355149083672114,
+          "elapsed_ratio": 1.6194506580891825,
+          "p99_ratio": 0.6157662352564837,
+          "peak_rss_ratio": 0.11281322462413045,
+          "cpu_seconds_candidate": 2.434137,
+          "cpu_seconds_control": 6.573165,
+          "lifetime_cpu_seconds_candidate": 4.771755,
+          "lifetime_cpu_seconds_control": 11.364748
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 14.419569979849607,
+          "elapsed_ratio": 1.6138965543902704,
+          "p99_ratio": 0.6200245351966304,
+          "peak_rss_ratio": 0.11192404188513137,
+          "cpu_seconds_candidate": 2.4591269999999996,
+          "cpu_seconds_control": 6.583614,
+          "lifetime_cpu_seconds_candidate": 4.785821,
+          "lifetime_cpu_seconds_control": 11.394013
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 14.664204101452231,
+          "elapsed_ratio": 1.5992576526437394,
+          "p99_ratio": 0.6236654950534558,
+          "peak_rss_ratio": 0.10905860567539162,
+          "cpu_seconds_candidate": 2.4650090000000002,
+          "cpu_seconds_control": 6.319344,
+          "lifetime_cpu_seconds_candidate": 4.776397,
+          "lifetime_cpu_seconds_control": 11.04417
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 14.155734582106424,
+          "elapsed_ratio": 1.6404363018774062,
+          "p99_ratio": 0.6047323102739046,
+          "peak_rss_ratio": 0.1158849293452423,
+          "cpu_seconds_candidate": 2.393892,
+          "cpu_seconds_control": 6.408739,
+          "lifetime_cpu_seconds_candidate": 4.694528,
+          "lifetime_cpu_seconds_control": 11.24392
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 14.169847436819724,
+          "elapsed_ratio": 1.5794622730681003,
+          "p99_ratio": 0.6321652078045659,
+          "peak_rss_ratio": 0.11146642757521419,
+          "cpu_seconds_candidate": 2.3574059999999997,
+          "cpu_seconds_control": 6.298148,
+          "lifetime_cpu_seconds_candidate": 4.648864,
+          "lifetime_cpu_seconds_control": 10.843233
+        }
+      ]
+    },
+    "images": {
+      "browser": "sha256:d2f4aecf38cbc59fb54ef90ff14175beb63836fcf26c4aff7ab9b0f5a1463436",
+      "candidate": "sha256:a846193589adeb13c26214f0ee0c872177abbf5001992bdca086f43d9643122b",
+      "renderer": "sha256:68b81d1c826e97fb2fc69cb2c8cc5e4c92ae5c4ca555bd5f85e036acffb2e900"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "5ef1a1ed2abe121a581653e95a3ea4bbe9fde77d",
+      "postflight_clean": true,
+      "postflight_head": "5ef1a1ed2abe121a581653e95a3ea4bbe9fde77d"
+    },
+    "production_changed": false,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "command": "--host-preflight",
+  "operation": "host-preflight",
+  "request_version": "jobseek.crawler-host-preflight-request/v1",
+  "result_version": "jobseek.crawler-host-preflight-result/v1",
+  "runtime_admission": false,
+  "contract": [
+    "Explicit compiled source/mode, private operator-owned canonical request and exact request SHA; three ordered requested release generations and explicit installed array",
+    "Fixed shared mutation flock, protected state ownership/modes, lock/state inode readback; no lock override or inherited child lock",
+    "Connected generation/image/inventory/declared-execution observations; optional installed requests must join exact requested source/service image and global project/service/non-oneoff container; complete final readback",
+    "Fsync immutable bound intent before exact retained spec archive, then immutable content-addressed receipt before completion; exact retry reobserves host",
+    "Actual synced-temp/linked-publication SIGKILL recovery, matching private temporary inode only; no overwrite on request/spec drift or unexplained links",
+    "No Docker mutation, Python, SQL/Redis primitive, spec selection or restart; early-preflight observations never provide cold/runtime grant"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "focused_host_races": "pass",
+    "package_seconds": 1.978,
+    "race_log_sha256": "28ed2c120b52965789d55c7744d913cccf753dbfad9da34717d52c0babd194c9",
+    "linux_amd64_arm64_integration_tag_vet": "pass",
+    "go_mod_tidy_diff": "pass",
+    "actionlint": "1.7.12 pass",
+    "zizmor": "1.26.1 offline pass",
+    "repository_script_tests": 188,
+    "repository_log_sha256": "c3369999951f40974341c38bf1c3d3b093a44a04948b33b8c96b8b2d54767d5b"
+  },
+  "actual_fixture": {
+    "name": "TestActualInstalledNativeHostPreflightRetainsBoundObservations",
+    "status": "fresh exact-source execution required",
+    "job": "existing installed native image AMD64/ARM64 Actions harness",
+    "required_artifact": "ordinary-host-preflight-tests.log",
+    "scope": "Actual image-installed command holds shared Linux lock, observes public PostgreSQL image and synthetic requested generation roles, retains intent/archive/receipt, retries exactly and refuses spec/data drift; no complete-host or selected production grant",
+    "installed_request_join_scope": "still requires actual positive and negative joined installed-file requests; this infrastructure fixture supplies an explicit empty request array"
+  },
+  "open_work": [
+    "Independently authenticate build/image and actual selected active/incoming/rollback generation/pointer/specs",
+    "Complete installed request joins and full file/process/dependency/link/import/mount/network/namespace/security/resource fidelity",
+    "Actual global/all-writer/exporter/oneoff/host-maintenance containment, restart disablement and SQL leases/barriers under shared lock",
+    "Connect durable fixed native cold phases; staged spec restore/final absence; actual complete host SIGKILL recovery, full readiness/cold cutover/reversal",
+    "Every enabled profile/runtime consumer, full canonical/database/publisher/freshness/queue parity and comparable complete-service resources/cost",
+    "Exact actual required gates/merge/deploy, actual production rollback window and production Python/Playwright/Chromium retirement"
+  ],
+  "production_changed": false,
+  "full_goal_active": true
+}
