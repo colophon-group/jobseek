@@ -148,6 +148,9 @@ func runInstalledProducerLifecycle(t *testing.T, scraperType string) {
 	t.Cleanup(func() {
 		_ = client.FlushDB(context.Background()).Err()
 		_ = os.Remove(producerSentinelPath)
+		// All fixture children stop before this cleanup; the persistent lock file
+		// contains no authority and must not strand the owned runner directory.
+		_ = os.Remove(filepath.Join(filepath.Dir(producerSocketPath), ".lifecycle-v1.lock"))
 	})
 
 	luaPath := os.Getenv("LIGHTPANDA_B0_INTEGRATION_LUA_PATH")

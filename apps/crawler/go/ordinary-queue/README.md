@@ -611,3 +611,42 @@ required before admitting that operational contract. The host must reuse the
 existing Go sentinel/tombstone clearing and producer initialization workflow before
 planning. This API does not clear the sentinel, publish ordinary ownership, close
 the reversal, select releases, start services or attest host readiness.
+
+## Completed B0-bound ordinary restoration finalization
+
+Migration 0047 and the `BuildColdOrdinaryFinalizationPlan`,
+`RetainColdOrdinaryFinalizationPlan`, `PrepareColdOrdinaryFinalization`,
+`PublishColdOrdinaryFinalization` and `CompleteColdOrdinaryFinalization` APIs restore
+ordinary ownership at the already reserved retirement R. They require the immutable
+0045 decision and completed 0046 prior Go B0 reactivation receipt. A merely prepared
+B0 application cannot authorize ordinary publication. The fixed authenticated
+producer client, canonical B0 rows and complete queue snapshot are reobserved before
+each effect; fresh ordinary profiles and live leases are checked again.
+
+Publication retains approval separately from pending/published routing bytes.
+Native restoration publishes the fresh R projection and a compatible existing v1
+joint witness in one MSET. Legacy restoration removes the old native projection
+and retains a distinct persistent legacy witness. A partial Lua command failure
+remains contained by the reversing SQL journal and cannot be silently repaired.
+Publication completion requires acknowledged SAVE and full readback. Exact retries
+classify only retained prior/pending/published pairs; lost or changed evidence refuses.
+
+One SQL transaction completes the reversal, closes the original journal, activates
+only the fresh native R plan when present, inserts its compatible v1 active journal,
+and retains the final completion receipt. Immediate binding checks and deferred
+constraint triggers prevent those authority changes from committing independently.
+The old retired plan stays retired; no R+1 is allocated. Exact completed retries
+reobserve cold authority without Redis mutation, SAVE or B0 activation. After writers
+resume, use historical inspection rather than treating cold completion retry as a
+new grant. `InspectColdOrdinaryFinalizationApplication` needs neither current allocator
+nor Redis/producer access or ownership barriers. All retained history prevents downgrade.
+
+Real PostgreSQL/Redis races cover native and legacy decisions, denied SAVE, failed
+pending/published/completion SQL, no-save RDB recovery, exact retries, direct SQL
+partial-authority refusal, lost witnesses, configuration/lease/canonical/epoch/producer
+drift, partial legacy Lua failure, downgrade refusal and read-only history. The v1
+reader compatibility test uses the current source; it does not prove a previously
+installed immutable worker image. This slice exposes library APIs. Protected CLI
+commands, actual Linux producer/CLI finalization crash recovery, independently
+verified prior binary capability, and the full ADR006 host integration remain required
+before release selection, readiness or production ownership is admitted.

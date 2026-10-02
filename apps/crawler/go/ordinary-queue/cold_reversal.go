@@ -111,7 +111,7 @@ func loadColdReversal(ctx context.Context, tx pgx.Tx, digest, revision string) (
 		return nil, err
 	}
 	s, err := decodeColdReversal(body, digest)
-	if err != nil || s.SourceRevision != revision || (phase == "pending" && epoch != nil) || (phase == "reserved" && (epoch == nil || *epoch <= s.SourceEpoch || *epoch > 9999999999999)) || (phase != "pending" && phase != "reserved") {
+	if err != nil || s.SourceRevision != revision || (phase == "pending" && epoch != nil) || ((phase == "reserved" || phase == "complete") && (epoch == nil || *epoch <= s.SourceEpoch || *epoch > 9999999999999)) || (phase != "pending" && phase != "reserved" && phase != "complete") {
 		return nil, ErrAuthorityLost
 	}
 	state := &ColdReversalState{spec: s, digest: digest, phase: phase}

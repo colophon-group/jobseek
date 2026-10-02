@@ -1,0 +1,358 @@
+{
+  "schema": "jobseek.migration.ordinary-finalization-evidence/v1",
+  "candidate_parent": "8d14150acdca72dc86984a6247821373b04b806c",
+  "scope": "native queue APIs and migration 0047; protected finalizer CLI and actual prior immutable worker proof remain required",
+  "runtime_file_sha256": {
+    "cold_ordinary_finalization.go": "ecb8a7dcd21ec73da79053496e126209d4ffadeaf1e650c2b7fefd2534727cd8",
+    "cold_ordinary_finalization_apply.go": "6a1b67250a2122af9a8a540371ddaf8228c4247477b8b9bc9353c68ba935f5f6",
+    "cold_ordinary_finalization.lua": "4d6b0ba82952e90646646fb5d73423327bdbd140c62358b3ae027e905e2621a0",
+    "cold_ordinary_finalization.sql": "ce0f782e9ec067c05ce318e8a59f238a27eeda1e50ad788943deb4d8c1f27741",
+    "cold_ordinary_finalization_test.go": "55997ddad00d2da71e985159b829bec085d088fbca19215fe7a43f355bf6e83c"
+  },
+  "focused": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "cleanup": true,
+    "production_changed": false,
+    "tests": "real PostgreSQL/Redis finalization race tests, empty downgrade/re-upgrade, retained-history refusal",
+    "passed": true
+  },
+  "full": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=180s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 77.839,
+        "log": "ordinary-finalization-final-queue-race.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=180s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 33.635,
+        "log": "ordinary-finalization-final-worker-race.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=180s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 4.895,
+        "log": "ordinary-finalization-final-exporter-race.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "tests/test_ordinary_ownership.py",
+          "tests/test_lightpanda_activation.py",
+          "tests/test_redis_queue.py",
+          "tests/test_pipeline.py",
+          "tests/test_rich_monitor_contract.py"
+        ],
+        "exit_code": 0,
+        "seconds": 6.075,
+        "log": "ordinary-finalization-final-legacy.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "repository_contract_tests": 128,
+  "legacy_tests": 295,
+  "vet": true,
+  "supervisor_races": true,
+  "linux_queue_compilation": [
+    "amd64",
+    "arm64"
+  ],
+  "preceding_native_cold_initializer_linux": {
+    "run": 36944918706,
+    "pr_head": "8d14150acdca72dc86984a6247821373b04b806c",
+    "event": "pull_request",
+    "runtime_source": "faba3427cac82d1bfa1c759d2725f38f6ae358d2",
+    "fixture_source": "2b3466b3df62ae73c99c48dc1af8850a948c5ea6",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "job": 110644714502,
+        "tests": [
+          "TestInstalledNativeColdB0ForwardPreparesAndRetainsExactManifest",
+          "TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR"
+        ],
+        "passed": true,
+        "log": "ordinary-cold-initialization-ci-8d14150ac-amd64.log",
+        "log_sha256": "3d189cded5ae46f551a87fdcaf8808cac833f9671cad303c19523d401176825f",
+        "tested_merge_checkout": "e66771f6af9c32951bedee7cec6e0711225f833c",
+        "verified_merge_parents": [
+          "86813918a20a499c5d59a39ca8c33797161f8743",
+          "8d14150acdca72dc86984a6247821373b04b806c"
+        ],
+        "compiled_fixture_source": "workflow explicitly links the checkout GITHUB_SHA into producer and worker, and fixture binds every CLI result to that exact source"
+      },
+      {
+        "architecture": "arm64",
+        "job": 110644714848,
+        "tests": [
+          "TestInstalledNativeColdB0ForwardPreparesAndRetainsExactManifest",
+          "TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR"
+        ],
+        "passed": true,
+        "log": "ordinary-cold-initialization-ci-8d14150ac-arm64.log",
+        "log_sha256": "5d54266f96d1ed882a642463099034fc72bc27355298e363000fcc4fe4a6c38e",
+        "tested_merge_checkout": "e66771f6af9c32951bedee7cec6e0711225f833c",
+        "verified_merge_parents": [
+          "86813918a20a499c5d59a39ca8c33797161f8743",
+          "8d14150acdca72dc86984a6247821373b04b806c"
+        ],
+        "compiled_fixture_source": "workflow explicitly links the checkout GITHUB_SHA into producer and worker, and fixture binds every CLI result to that exact source"
+      }
+    ],
+    "production_changed": false,
+    "full_migration_complete": false,
+    "scope": "actual installed compiled Linux UID-10001 producer cold initialization and protected reactivation CLI, real PG/Redis/RDB, post-SAVE SQL SIGKILL recovery, exact retry and read-only history; synthetic prior host receipt/release labels, no production host admission"
+  },
+  "preceding_installed_image": {
+    "source_revision": "8d14150acdca72dc86984a6247821373b04b806c",
+    "run": 36944956151,
+    "production_changed": false,
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:4fdf798de7af4254201c1cc902864c38b1de2297749c6f958343050b5c090e05",
+        "binary_sha256": "1077ef6e49288eb4f72eb48172a6f38feb1d3c252b8d730e2b96627253f27e48",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+        ],
+        "asset_hashes_verified": 34
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:961112c15d673eb6e13ca372d240ebc8e06cba6fc5082ae64a43880d00ffbe40",
+        "binary_sha256": "d68dbcf034c534c7807969d3ca88d67324db97fd25f925f27a33dc035b1603ee",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+        ],
+        "asset_hashes_verified": 34
+      }
+    ],
+    "installed_asset_sha256": {
+      "README.md": "f4449496c21178aa003e28a17a7135f207d848aa74421eeb46abff9c1370fd26",
+      "boards.csv": "416c5939d22faa9ee928155d20a1c3ee294f26b3c496ed93637eae13e8b492e1",
+      "companies.csv": "a15ccf834c0e0d3e11c7a0c8cea5aa7df5930b085264683689e2cef4eee04c65",
+      "company_descriptions.csv": "99c016c51713bb5937593ad1267c596f7cf208c4424a5f17c83410761f10dde7",
+      "images/avera-icon.png": "94225e0ecf08cdbf6eff0d197030e27d60c1bcd28d410f584e589dec867ac393",
+      "images/avera-logo.png": "6c1d3514864d40cbd8d51661b6b2aa905f40bfc57cff84b1f68cb12f668a9b1e",
+      "images/bae-systems-icon.png": "d4b21210623413bf11e723e19336ac41043bae110237513e220e479998b4d8e6",
+      "images/bae-systems-logo.svg": "36a6c9e949fa4b9d913ffed811e4b88515deee4af4eaf2de720d09a8516f58dc",
+      "images/banner-health-icon.png": "4a95ca7481e999700637cf3b58705c249c15bba3acbfc8839d928f0a33b40e20",
+      "images/banner-health-logo.svg": "b97938bf23013ffc64f20118f42f09481c30e6b6a920202028633ddb7cabb1d1",
+      "images/capgemini-icon.png": "b764b1abe10194e9370b69528933762fa502dfa454932c80b9c6eafdac60e05e",
+      "images/capgemini.png": "3e4b021ad539b695290353a9811f02c13933c65716fd710a55ead1a055c6b9fc",
+      "images/drees-sommer-icon.png": "e804fe381612328706a9ec314545a66b74eea36a831576340ad080c4ba3ca0e5",
+      "images/drees-sommer-logo.svg": "ab80c4e211746308c0952f64614a4220b61af0acbedc86a24c98f10e752988e6",
+      "images/epfl/icon.png": "9af4578f7f87fabea840044b4a9fe388dc2847f5e301317944eaf1255d7000bc",
+      "images/epfl/logo.png": "f9f64c61b3e52eb82d4b6144d85843c0001201cd2d75f1128fa34642e4f8983a",
+      "images/fulenwider-enterprises-icon.png": "2862579dd64d28782e8deeec0095264fc91d50cc21911f0ed00b24ddacd531a8",
+      "images/fulenwider-enterprises-logo.png": "326a67f1d0faddf840345d22873ff732d7b71e386c22d096740689f776802ed0",
+      "images/mediamarktsaturn-icon.webp": "37fa4d863ef3d13f87b7be4590f8d41f0cddec282db557aec4db30df9a14de39",
+      "images/mediamarktsaturn-logo.svg": "47f1f499c28f30c96cae0d428ae13eef36df923feaf6d9e07a48bc209f5f5cfc",
+      "images/singapore-public-service-icon.png": "23fa7bf3fd10506cc3679f70e2aaa7f52ed684b46055d75fcb67335334c4518c",
+      "images/singapore-public-service-logo.svg": "dbd644d3eb74771e725aeed2e6686feddd5e6fd6517920c79cbd5733aa844537",
+      "images/swiss-post-icon.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+      "images/swiss-post-logo.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+      "industries.csv": "3fae2b061b36e907b83fc03648aa4df512df01d7fc324b5b83bf11bb1e8f25b3",
+      "industries.svg": "163aaa518b8d11b3b0d24905e053c8fc249894681784b7bd00b0eae8a3562c09",
+      "labeller_optout.txt": "c802b5e4878133598994cbc7cbdd432fc6cfeff7e4608d7e94f7d3bb879b09ff",
+      "occupation_domains.csv": "6d2458a0ce106da21ee6898a66896f18d774a65c72d476969be4394a47461d9b",
+      "occupations.csv": "97ce6fa825130597639bf2c3cd2e19f114610cc5de3006d69c31c07018397d01",
+      "occupations.svg": "d1e399827f71d3558712746b636e13c3c7d859d6c5d7dfdb75195dd40a861c78",
+      "seniority.csv": "a00c21d795baff88e7c0e4733922eff26f24fb0d24251f7ae1fb0db20ecb5004",
+      "seniority.svg": "549e9c57dc14e0195eb3263c288afa3f48280d7715ce37c375db9fd97974feb5",
+      "technologies.csv": "6894e31c7e854d5efddf3a57b52cd83ed7326ac5753a12ee7c743c02721d9bde",
+      "technologies.svg": "935a8307c03617ed1532ccf1c9f445a440f4ac95118e4e5a673b77a4f6fc0374"
+    },
+    "scope": "image-installed ordinary executable fixtures; new finalization APIs not yet in this source"
+  },
+  "preceding_required_ci": {
+    "run": 36944953091,
+    "source_revision": "8d14150acdca72dc86984a6247821373b04b806c",
+    "conclusion": "failure",
+    "cause": "private installed producer fixture lifecycle lock prevented empty directory cleanup",
+    "correction": "remove fixture lifecycle lock after all fixture children stop; fresh CI required"
+  },
+  "preceding_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "tested_merge_checkout": "8b8433c779ad8ab94ad3740fffee1a14c1ab6eb7",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4"
+    ],
+    "run": 36941887541,
+    "report_sha256": "265d1d4e12896848f33fecbf9636a2953d204ce435cf8373b36788b825c28890",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "images": {
+      "browser": "sha256:16414c12aa7283c4fb0b42d0b62a2272889ade024314b2a8cd2413784771bf08",
+      "candidate": "sha256:78ae6f498726357c9f6e4e6744675c55b3452938c3f77c73675389852c9aba87",
+      "renderer": "sha256:2d568804bddd89ff554fe4cbac479117a706a0eff4d560f22fcc254f8ab8728e"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "8b8433c779ad8ab94ad3740fffee1a14c1ab6eb7",
+      "postflight_clean": true,
+      "postflight_head": "8b8433c779ad8ab94ad3740fffee1a14c1ab6eb7"
+    },
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        5.478028364185987,
+        5.797086589490089,
+        5.54203377889929,
+        11.035245504143752,
+        11.172204389201664,
+        11.286164196026064,
+        13.748197124780638,
+        13.393128951291827
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 5.478028364185987,
+          "elapsed_ratio": 1.4740516686235383,
+          "p99_ratio": 0.6840271475864524,
+          "peak_rss_ratio": 0.26908434396954356,
+          "cpu_seconds_candidate": 1.7074479999999999,
+          "cpu_seconds_control": 2.442827,
+          "lifetime_cpu_seconds_candidate": 4.017385,
+          "lifetime_cpu_seconds_control": 5.960926
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 5.797086589490089,
+          "elapsed_ratio": 1.4619093322452816,
+          "p99_ratio": 0.6928862826302267,
+          "peak_rss_ratio": 0.2521800062285892,
+          "cpu_seconds_candidate": 1.664787,
+          "cpu_seconds_control": 2.453975,
+          "lifetime_cpu_seconds_candidate": 3.966679,
+          "lifetime_cpu_seconds_control": 5.939629
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.54203377889929,
+          "elapsed_ratio": 1.4459115506269014,
+          "p99_ratio": 0.6874142392403396,
+          "peak_rss_ratio": 0.26089908656494615,
+          "cpu_seconds_candidate": 1.684959,
+          "cpu_seconds_control": 2.449335,
+          "lifetime_cpu_seconds_candidate": 3.9799919999999998,
+          "lifetime_cpu_seconds_control": 5.959549
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 11.035245504143752,
+          "elapsed_ratio": 1.3116448560736695,
+          "p99_ratio": 0.7636126322902841,
+          "peak_rss_ratio": 0.11885959905297484,
+          "cpu_seconds_candidate": 2.360395,
+          "cpu_seconds_control": 5.794811,
+          "lifetime_cpu_seconds_candidate": 4.658203,
+          "lifetime_cpu_seconds_control": 10.357876
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 11.172204389201664,
+          "elapsed_ratio": 1.28479984692498,
+          "p99_ratio": 0.7711003158383678,
+          "peak_rss_ratio": 0.11499967259521184,
+          "cpu_seconds_candidate": 2.426946,
+          "cpu_seconds_control": 5.812865,
+          "lifetime_cpu_seconds_candidate": 4.715615,
+          "lifetime_cpu_seconds_control": 10.3084
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 11.286164196026064,
+          "elapsed_ratio": 1.3100138478864005,
+          "p99_ratio": 0.7680056911180009,
+          "peak_rss_ratio": 0.11607254910819616,
+          "cpu_seconds_candidate": 2.317789,
+          "cpu_seconds_control": 5.797993,
+          "lifetime_cpu_seconds_candidate": 4.586304,
+          "lifetime_cpu_seconds_control": 10.315842
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 13.748197124780638,
+          "elapsed_ratio": 1.55849980058134,
+          "p99_ratio": 0.6387332626029559,
+          "peak_rss_ratio": 0.11336030364099153,
+          "cpu_seconds_candidate": 2.490871,
+          "cpu_seconds_control": 6.19997,
+          "lifetime_cpu_seconds_candidate": 4.805793,
+          "lifetime_cpu_seconds_control": 10.73972
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 13.393128951291827,
+          "elapsed_ratio": 1.5413195849230672,
+          "p99_ratio": 0.6380033435514205,
+          "peak_rss_ratio": 0.11508286006418238,
+          "cpu_seconds_candidate": 2.379079,
+          "cpu_seconds_control": 5.839332,
+          "lifetime_cpu_seconds_candidate": 4.703553,
+          "lifetime_cpu_seconds_control": 10.349126
+        }
+      ]
+    },
+    "production_changed": false,
+    "scope": "generated B0 workload with production startup cardinality; not all-profile or whole production-service performance proof"
+  },
+  "production_changed": false,
+  "full_migration_complete": false,
+  "log_sha256": {
+    "ordinary-finalization-final-exporter-race.log": "31f37b97752693f53970eb6129384703159fcfef6a5183d0fe7c59797ad75167",
+    "ordinary-finalization-final-queue-race.log": "a579a179f7e5ecbe65ab0924cf24277a6369333fbb1d110849bb138d1d5df27d",
+    "ordinary-finalization-final-worker-race.log": "f8b50ab16a28a5b72bb91a7acad6fb02fc752e64f4a863c000e02bc266e6cc69",
+    "ordinary-finalization-final-legacy.log": "82a7def18d1aaa11560b901cb6c62bb2c7d7fe5167859059d0ace8a315e8671e"
+  }
+}

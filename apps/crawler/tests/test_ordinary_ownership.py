@@ -523,7 +523,9 @@ async def test_real_b0_only_epoch_reservation_preserves_pending_joint_journal(mo
         finally:
             # Only the independently validated private fixture may discard history.
             await pool.execute(
-                "TRUNCATE crawler_ownership_b0_reactivation_completion,"
+                "TRUNCATE crawler_ownership_restoration_completion,"
+                "crawler_ownership_restoration_publication,crawler_ownership_restoration_finalization,"
+                "crawler_ownership_b0_reactivation_completion,"
                 "crawler_ownership_b0_reactivation,crawler_ownership_ordinary_restoration,"
                 "crawler_ownership_b0_forward_completion,crawler_ownership_b0_forward,"
                 "crawler_ownership_b0_restoration,"

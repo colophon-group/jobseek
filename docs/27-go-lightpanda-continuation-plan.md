@@ -1,5 +1,50 @@
 # Go and Lightpanda migration continuation plan
 
+This checkpoint adds completed-B0-bound ordinary restoration finalization at the
+already reserved retirement R (migration 0047 and native queue APIs). Approval,
+pending/published routing bytes, SAVE/readback and atomic SQL completion are distinct.
+The final transaction closes the original reversal/journal, activates only a freshly
+staged native R plan when present, retains a compatible existing v1 joint journal,
+and writes immutable completion. Deferred SQL constraints prevent a partial authority
+commit. Legacy restoration retains a distinct durable witness and clears the native
+projection. Retired plans remain retired; no R+1 is allocated.
+
+Real PG/Redis queue/worker/exporter races pass (77.839s/33.635s/4.895s), including
+native/legacy finalization, SAVE and SQL failure recovery, real RDB reload, drift and
+partial Lua refusal, direct SQL containment, retained-history downgrade refusal and
+inspection while both barriers are held. All 295 legacy and 128 repository contract
+tests pass; Go vet, supervisor races and Linux AMD64/ARM64 queue compilation pass.
+See [finalization evidence](evidence/go-ordinary-finalization-2026-10-02.json) and
+[native authority contract](../apps/crawler/go/ordinary-queue/README.md).
+
+Preceding checkpoint `8d14150acdca72dc86984a6247821373b04b806c` completed Linux root
+run 36944918706 successfully on both architectures at tested merge
+`e66771f6af9c32951bedee7cec6e0711225f833c`, whose exact base/head parents were verified.
+That execution proves native cold initialization and protected B0 reactivation CLI
+through actual SIGKILL, RDB/producer restart and exact recovery. Installed image run
+36944956151 also passes both architectures; source/CA, four actual executable
+fixtures and all 34 installed asset hashes are independently verified. Required CI
+36944953091 failed only its installed-producer fixture cleanup: `.lifecycle-v1.lock`
+remained after children stopped. This checkpoint removes that private fixture lock
+at cleanup; fresh required CI must verify the correction. The earlier root failure
+and pending observations below are historical and superseded by these results.
+
+Whole B0 run 36941887541 on source `3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4`
+now completes and its report/verdict are independently verified: SHA256
+`265d1d4e12896848f33fecbf9636a2953d204ce435cf8373b36788b825c28890`,
+16 arms/8 pairs admit, density 5.478028–13.748197. Tested merge
+`8b8433c779ad8ab94ad3740fffee1a14c1ab6eb7` has verified base/head parents.
+This generated B0 workload does not prove all-profile or whole-service performance.
+Preserve the current 8d whole-B0 run while new-source CI is dispatched once.
+
+Next: protect the finalizer CLI inputs and receipts; extend actual Linux root
+producer/CLI recovery through final publication and atomic completion; prove admission
+with an independently source-pinned immutable prior worker. Then complete ADR006
+all-writer host cutover/readiness/full reversal before expanding enabled profiles and
+consumers. The full migration, whole-service resource/cost parity, required exact-source
+gates, actual rollback window and production Python/Playwright/Chromium retirement
+remain the goal. PR #10210 stays draft and production is unchanged.
+
 Repeated private Redis reload correction `2b3466b3df62ae73c99c48dc1af8850a948c5ea6`
 gives each restart its own exclusive private log, preserving earlier logs. Linux
 run 36944444318 on checkpoint `1bc63f1995c7ab2135ef3189279d810cd1cff23d`
