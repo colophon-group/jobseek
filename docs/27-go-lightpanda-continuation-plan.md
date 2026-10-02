@@ -1,45 +1,43 @@
 # Go and Lightpanda migration continuation plan
 
-Current runtime checkpoint: source `ecb21d62c4bd9939f417f8c71feea273c1c0765c`.
-Full CI 37029119184, Linux 37029126684, installed contracts 37029123534,
-historical native image 37029126597 and historical Python image 37029126654
-pass. Both-architecture Linux/installed/image artifacts, exact merge parents and
-all installed source/Lua/data bytes are independently verified. The installed
-release-file verifier adds the fifth actual executable fixture. The unchanged `b75ccb9` image consumes completed legacy
-restoration at reserved R after a real RDB reload; policy/queue/health/drain and
-canonical content/database conservation pass. Its 599 source files, 34 assets,
-Python 3.13.15 and immutable image IDs are recorded in
-[portable evidence](evidence/go-ordinary-prior-legacy-image-verified-2026-10-02.json).
-This proves rebuilt historical-source capability; selected production image
-identity and full host reversal remain required.
+Verified runtime checkpoint: `ad39c519d27dcbba1eb936b157639f9a1a92daa5` passes
+full CI 37033309829, Linux 37033316023, installed 37033313737 and actual historical
+native/legacy image runs 37033315966/37033316594. Both-architecture artifacts and
+exact merge parents are independently verified. The corrected native Compose/
+image observer passes its actual cleared-environment fixture on both architectures;
+version-only probes confirm the old root-home command fails on those runners.
+See [portable observation evidence](evidence/go-ordinary-native-release-image-observation-verified-2026-10-02.json).
+Historical Python restoration at R preserves all 599 installed source/Lua files,
+34 assets and policy/queue/health/drain/content/database effects. Selected
+production image identity and complete host restoration remain required.
 
-The installed Go `--verify-release-files` primitive is published and verifies
-format-v3 and initial/transitive legacy bridges without Python runtime execution.
-The next native library slice observes Compose and installed Linux image identities
-under a cleared environment, binds the exact file-evidence hash and rechecks all
-observations/files. Focused Go 1.26 race tests and both Linux integration-tag vet
-checks pass. Actual Docker observation is restricted to the trusted deployment
-identity and existing disposable CI harness; agents never receive its socket.
-Fresh CI execution and production coordinator wiring remain required.
+The next installed native operation, `--capture-deploy-specs`, preserves the exact
+ADR006 nine-spec presence/absence/mode/hash contract, substitutes the committed
+Compose snapshot, and privately retains an immutable fsynced USTAR archive.
+Canonical metadata binds compiled source and preceding file evidence. Exact
+retries preserve the archive; drift and generation-internal destinations or
+aliases refuse. Go 1.26 library/actual executable races and both Linux vet checks
+pass; actual deployed writer/extractor interoperability is verified offline.
+Fresh installed-image checks must include the sixth executable fixture. See
+[the archive contract](evidence/go-ordinary-native-deploy-spec-capture-2026-10-02.json).
+This operation does not arm rollback, select/restore specs or grant cold authority.
 
-Whole-B0 run 37021649241 at source `eb804cf56` is independently verified: all
-16 arms/8 pairs admit, density 5.439250756–14.319845649. This establishes the
-B0 startup-cardinality comparison only. Preserve preceding live 37025887572 and
-pending ecb 37029126420; source-specific admission is still required. Earlier
-86cf run 37019476070 failed its one-shot schedule criterion; precise bounded
-failure/backoff counters were added without changing acceptance.
+Ecb whole-B0 run 37029126420 independently admits 16 arms/8 pairs with density
+7.200530254–14.414637683. This is startup-cardinality evidence, not all-profile or
+whole-service cost parity. Preserve current ad39 whole-B0 37033316042 and retain
+source-specific admission for each newer runtime.
 
-Continue through [the host integration plan](plans/go-ordinary-host-integration.md):
-independent selected generations/specs/source/image admission, every writer plus
-exporter/one-offs excluded, durable cutover/reversal phases, full readiness and
-actual prior runtime restoration. Keep the existing B0 deploy guard. Then complete
+Continue [the host plan](plans/go-ordinary-host-integration.md): selected release/
+spec/source/binary/mount/user evidence, every writer plus exporter/one-offs excluded,
+disabled restarts, bound durable intent and spec selection/restoration, full cold
+cutover/reversal/readiness. Keep the existing B0 deployment guard. Then complete
 every enabled profile and runtime consumer, output/database/publisher/freshness/
 queue parity, comparable whole-service CPU/RAM/density/cost, exact required gates
-and supported rollout, a real rollback window, and production Python/Playwright/
-Chromium retirement while preserving isolated useful offline Python. PR #10210
-remains draft; production is unchanged; the full goal remains active.
+and supported rollout, an actual rollback window, and production Python/Playwright/
+Chromium retirement while preserving useful isolated offline Python and every
+board. PR #10210 remains draft; production unchanged; the full goal remains active.
 
-Earlier checkpoint entries below describe evidence available at their timestamp.
+Earlier checkpoint entries below describe their timestamped evidence.
 
 Prior-image run 37019475580 builds and identifies the historical image on both
 architectures, then rejects its nested installed asset paths before restoration.

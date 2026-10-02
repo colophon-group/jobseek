@@ -17,13 +17,14 @@ func main() {
 	identity := len(os.Args) == 2 && os.Args[1] == "--identity"
 	health := len(os.Args) == 2 && os.Args[1] == "--health"
 	releaseFiles := len(os.Args) == 2 && os.Args[1] == "--verify-release-files"
+	releaseSpecs := len(os.Args) == 2 && os.Args[1] == "--capture-deploy-specs"
 	stage := len(os.Args) == 2 && os.Args[1] == "--stage-ownership"
 	inspect := len(os.Args) == 2 && os.Args[1] == "--inspect-ownership"
 	cold := ""
 	if len(os.Args) == 2 {
 		cold = worker.ColdAdminOperation(os.Args[1])
 	}
-	if len(os.Args) != 1 && !identity && !health && !releaseFiles && !stage && !inspect && cold == "" {
+	if len(os.Args) != 1 && !identity && !health && !releaseFiles && !releaseSpecs && !stage && !inspect && cold == "" {
 		fmt.Fprintln(os.Stderr, "ordinary worker argument rejected")
 		os.Exit(2)
 	}
@@ -45,6 +46,22 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if releaseSpecs {
+		config, err := worker.ReadReleaseSpecsConfig(os.Getenv, revision)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ordinary release spec environment rejected")
+			os.Exit(1)
+		}
+		result, err := worker.RunReleaseSpecs(ctx, config)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ordinary release spec capture rejected")
+			os.Exit(1)
+		}
+		if json.NewEncoder(os.Stdout).Encode(result) != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	if releaseFiles {
 		config, err := worker.ReadReleaseFilesConfig(os.Getenv, revision)
 		if err != nil {

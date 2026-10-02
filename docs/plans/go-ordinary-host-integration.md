@@ -56,7 +56,8 @@ file-evidence digest binds a retry. The native library verifies generic v3,
 initial format-1/2 bridges and transitive bridge attachments, exact CSV trees,
 identity/hash pairs, override presence and supported bootstrap residue. Go 1.26
 real-file and executable tests pass; offline Python is retained as a test oracle.
-Fresh Linux/installed-image verification remains required.
+Both-architecture Linux/installed file verification is independently verified
+at ad39 runs 37033316023/37033313737; fresh sources need their own checks.
 
 This primitive reports only `files_verified`. The protected coordinator must
 independently authenticate selected generations and observe cleared-environment
@@ -80,17 +81,43 @@ JSON can contain secrets and stay in memory. It performs no pull or mutation.
 Go 1.26 race tests and both Linux integration-tag vet checks pass. The existing
 disposable Linux CI harness now requires an actual cleared-environment Compose
 and image-inspect fixture using its already-pulled public PostgreSQL image; fresh
-execution is required. Initial run 37032223264 rejects its first Compose
+execution is now verified at ad39 run 37033316023 on both architectures. Initial
+run 37032223264 rejected its first Compose
 observation on both architectures after the database/queue suite passes. The
 observer now uses HOME=/ and an isolated fixed Docker config path, with separate
 command/JSON refusal labels; safe version-only probes test the root-home boundary.
-The underlying cause remains unproven until fresh execution. That fixture has
+Version-only probes show the old root-home command fails on both runners while
+the corrected actual observation passes. That fixture has
 synthetic crawler/browser identities
 and proves the command boundary only. This library is not yet wired into a
 production coordinator or a new installed-worker CLI command. It does not prove
 image source/binary identity, selected generations/specs, mounts, numeric users,
 complete writer exclusion or readiness. Those remain required before release
 or cold admission; the caller must hold the shared host mutation lock.
+
+## Native deployment-spec capture and retention
+
+`--capture-deploy-specs` now provides native capture/retention of the deployed
+ADR006 nine-spec archive. Explicit active generation/owner/file-evidence hash,
+deployment directory and private archive path are required; optional archive and
+capture hashes bind a retry. The canonical receipt binds the compiled source and
+file-evidence hash. The primitive captures exact presence/absence and modes,
+substitutes verified committed Compose for mutable live Compose, and rejects
+closed-set/USTAR/hash/mode/path/framing drift. It retains one immutable mode-0600
+archive under a private directory with file fsync, exclusive hard-link publication
+and directory fsync, including exact retry. Archive destinations within the
+committed generation, including aliases, refuse before publication.
+
+Go 1.26 real-file races and actual executable tests pass. Actual deployed Python
+writer/extractor code is used only as an isolated offline oracle; the installed
+operation executes no Python, database, Redis or Docker command. Fresh installed
+image validation must include the sixth actual executable fixture. This primitive
+requires the caller's shared host mutation lock and reports only
+`spec_archive_retained`. The host coordinator still must independently bind and
+fsync intent/receipt before incoming spec selection, implement phased restoration
+and final absent-file removal after bridge/data verification, and prove recovery
+at real process-crash and readiness seams. No live specs are selected or restored
+by the primitive.
 
 ## Protected host envelope
 

@@ -727,3 +727,15 @@ The existing disposable Actions fixture requires real Compose/image observations
 on both architectures. Its public PostgreSQL image and synthetic runtime labels
 prove only the command boundary. Production coordinator wiring, source/binary and
 mount/user verification, all-writer exclusion and full readiness remain open.
+
+## Native deployment-spec rollback archive
+
+`CaptureSpecs`, `DecodeSpecArchive` and `RetainSpecArchive` preserve the deployed
+ADR006 nine-spec present/absent/mode/hash contract and committed Compose snapshot.
+They validate bounded regular USTAR archives without executing script contents,
+retain immutable private archive bytes with fsync and exclusive publication, and
+support exact retries. Actual deployed Python writer/extractor code is retained
+only as an offline test oracle. The installed worker exposes `--capture-deploy-specs`
+with explicit inputs and canonical `spec_archive_retained` metadata; the caller
+must hold the shared mutation lock and durably bind the receipt before any spec
+selection. Archive capture is not host admission, armed rollback or live restore.

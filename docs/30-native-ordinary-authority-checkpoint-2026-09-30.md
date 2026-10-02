@@ -1,5 +1,40 @@
 # Native ordinary worker authority checkpoint
 
+## 2026-10-02: actual image observations verified; native spec archive executable implemented
+
+Source `ad39c519d27dcbba1eb936b157639f9a1a92daa5` passes full CI 37033309829,
+Linux 37033316023, installed 37033313737 and historical native/legacy image runs
+37033315966/37033316594. Both-architecture Linux/installed/image artifacts are
+independently verified. Exact merge `f9dd47c484be1e9fb03fafdda51a63fcd515df33`
+parents are base `86813918a20a499c5d59a39ca8c33797161f8743` and the candidate.
+Actual cleared Compose/local image observation now passes on both architectures;
+version-only probes confirm the old /root-home path fails on both runners.
+See [closed command-boundary evidence](evidence/go-ordinary-native-release-image-observation-verified-2026-10-02.json).
+
+The next installed operation, `--capture-deploy-specs`, captures the exact deployed
+nine-file spec set with modes and explicit absence, substitutes the verified
+committed Compose snapshot, and privately retains an immutable USTAR archive with
+file/directory fsync and exclusive publication. Canonical metadata binds the
+compiled source and preceding file-evidence hash. Expected archive/capture hashes
+bind retries; drift and destinations inside the generation (including aliases)
+refuse. It emits no spec contents and opens no database, Redis or Docker connection.
+The operation requires the host mutation lock from its trusted caller; it does not
+arm rollback, select/restore specs, exclude writers or admit production ownership.
+
+Go 1.26 library races (2.284s) and actual file/spec executable fixtures (4.200s),
+both Linux integration-tag vet and tidy checks pass. The actual deployed Python
+USTAR writer and extractor serve as isolated offline interoperability oracles.
+The existing installed-image selector includes a sixth actual executable test;
+fresh image execution is required. See [archive contract/evidence](evidence/go-ordinary-native-deploy-spec-capture-2026-10-02.json).
+
+Ecb whole-B0 run 37029126420 independently admits all 16 arms/8 pairs, density
+7.200530254–14.414637683. Its startup-cardinality scope is not whole-service cost
+or all-profile parity. Preserve running ad39 whole-B0 37033316042. The full goal
+remains active; PR #10210 is draft and production unchanged. Continue the
+[host delivery plan](plans/go-ordinary-host-integration.md).
+
+Earlier entries below describe their timestamped evidence.
+
 ## 2026-10-02: contain the first actual Compose-observation failure
 
 Observer source `597f0e839` run 37032223264 passes the real database/queue suite
