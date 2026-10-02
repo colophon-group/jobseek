@@ -1,0 +1,145 @@
+# Native ordinary host integration delivery plan
+
+Status: proposed implementation; no host admission or production ownership change.
+Updated: 2026-10-02. Continue the full goal from
+[the migration plan](../27-go-lightpanda-continuation-plan.md) and
+[the source-bound checkpoint](../30-native-ordinary-authority-checkpoint-2026-09-30.md).
+[ADR006](../adr/006-crawler-deploy-quiescence-and-rollback.md) remains authoritative.
+
+## Starting evidence and gaps
+
+Source `097027ac43481456efe810b683858fd66970060a` passes actual prior-source
+ordinary execution at restored R and native/legacy root producer/finalizer
+recovery on AMD64 and ARM64 (Linux run 37018098304). Its checked merge parents
+and each prior binary hash are independently verified. Source `86cfb44f3` adds
+separate actual prior image jobs using the unchanged pinned historical Dockerfile;
+execution, installed bytes/assets and source identity must be verified before
+claiming image capability. Fixture labels and startup reference rows remain
+synthetic. Neither test establishes a real production release generation.
+
+The historical native image source `3cccd9f` was never selected as production's
+ordinary owner. The last recorded production runtime `b75ccb9456bf29c9477f9747c0c2cc3908ad79bb`
+lacks `ordinary_ownership.py` and `joint_ownership.py`. Therefore its actual
+legacy worker must be exercised separately after legacy restoration. Its lack of
+joint readers makes host exclusion, disabled automatic restarts and a completed
+restoration mandatory; a current Python reader cannot stand in for that old image.
+Obtain fresh production release/census evidence before selecting a rollout.
+
+`apps/crawler/scripts/lightpanda-b0-cutover.sh` stops a B0-specific service list
+that omits the exporter. It cannot provide the full joint cold attestation.
+`apps/crawler/deploy.sh` intentionally refuses ordinary deploy while the active
+B0 receipt exists. Keep that guard until a supported joint path is implemented,
+verified and deployed. Do not route around it with a partial restart or receipt
+removal.
+
+## Ordered delivery slices
+
+| Slice | Concrete result | Evidence required to advance |
+| --- | --- | --- |
+| Prior runtimes | Actual immutable historical native image and actual selected legacy image consume their final restored authority | Independent image IDs, source/CA/binary/assets, real RDB reload, policy/fence/queue/health/drain; synthetic fixture scope explicit |
+| Release evidence | Native verifier and protected host request bind active, incoming and rollback release generations | Existing format-v3 Compose/env/success/data/runtime contracts and any transitive legacy bridge; exact deploy-spec presence/archive and images; negative drift/symlink/extra-file cases |
+| Host exclusion | Supported coordinator holds the shared mutation lock and independently stops every writer plus exporter | Actual Compose service/container/restart identities, no running one-offs, no unaccounted writer, SQL lease/barrier checks; all observed without disclosing credentials |
+| Durable coordinator | Fixed commands drive native CLI primitives and preserve exact outputs across crashes | Fsync before effects, exclusive producer lifecycle, canonical requests/receipts, phase-specific recovery and containment tests with real Linux executables |
+| Full reversal | Original source E is retired once and the independently verified prior runtime returns at reserved R | Full spec/env/data/image restoration, B0/native or legacy authority, unchanged retired plan, no R+1, full-stack readiness and naturally due work |
+| Production selection | Exact approved source/image generation is merged and deployed through supported workflows | Required CI and actual green Crawler Deploy Gate, no hold, fresh exact head/base/draft/merge checks, complete host receipts and rollback evidence |
+
+Implement these as connected changes in the migration worktree; split a new
+independent task into an isolated worktree. Preserve running evidence jobs;
+new sources need their own admission. Do not repeatedly dispatch unchanged runs.
+
+## Protected host envelope
+
+The deployed coordinator must run under the existing operator deployment identity,
+with the shared `/run/lock/jobseek-crawler-mutation.lock`. Agents never receive the
+Docker socket. The wrapper observes Docker itself through fixed, bounded commands;
+file contents, labels and probe output are data, never commands or environment to
+source. An operator-owned regular file carries canonical intent and explicit hashes.
+An immutable release digest must represent verified evidence, not caller-provided
+labels or a convenient hash of an unverified directory.
+
+Before any reserve, publication, producer reset, migration, sync or reversal:
+
+1. Verify the exact active format-v3 generation and independently stage incoming
+   and rollback generations. Bind source revisions, immutable image digests,
+   Compose and env bytes, success markers, runtime contracts, exact CSV manifests
+   and any legacy bridge transitively. Keep credentials in protected files.
+2. Archive the exact active deploy-spec set with present/absent entries, arm the
+   rollback journal and fsync its request and parent directory before selecting
+   incoming specs. Preserve the verifier needed to restore a bridged generation.
+3. Disable restart policies for all candidate/old writer services, then stop all
+   ordinary/browser workers, native ordinary workers, B0 claimant/executor/producer,
+   drain and exporter. Include any maintenance/sync one-offs. Check actual Compose
+   service membership and each immutable container identity, not only process names.
+4. Refuse unaccounted running one-offs or writers. Independently prove stopped
+   containers and applicable database lease/barrier state. Bind the resulting
+   canonical cold attestation to the exact release set and intent.
+5. Keep the lane contained until retained authority and the complete selected
+   generation agree. Failure to verify anything preserves stopped services and
+   recovery evidence. Read-only historical inspection must remain available.
+
+Compose resolution must use the selected protected env and immutable snapshot
+set under a cleared process environment. Do not print resolved Compose or full
+environment output: it may contain credentials. Reobserve image identities,
+source, mounts, numeric users, restart policies and health before admission.
+
+## Forward and reversal state machine
+
+A wrapper checkpoint may report completion only after durably retaining and
+validating the matching native CLI result. It must never choose the latest plan,
+read the allocator as an implicit epoch, or infer success from a running process.
+
+| Host phase | Native primitive / required evidence | Crash recovery |
+| --- | --- | --- |
+| Quiesced and bound | Verified releases/spec archive/all-writer attestation; staged ordinary plan and exact B0 target | Reobserve identical evidence under the lock; drift refuses |
+| Intent retained | `--cold-begin` with canonical transition hashes | Inspect exact intent; no new transition ID |
+| E reserved | `--cold-reserve`, immutable source E and ordinary plan | Reuse exact reservation; a nontransactional sequence gap is not a grant |
+| B0 forward prepared/applied | `--cold-b0-forward-plan/retain/apply/inspect`, actual producer manifest and acknowledged SAVE/readback | Recover retained phase without duplicate transfer or queue loss |
+| Ordinary published/active | `--cold-forward-prepare/publish/activate`, immutable approval and B0 completion | Recover exact routing bytes and SQL phase; no writer starts before joint active authority |
+| Candidate release selected | Complete committed release generation, authenticated receipts and all identity readiness | Start the full stack once; failed readiness returns to contained reversal |
+| Reversal retained / R reserved | `--cold-reversal-begin/reserve/inspect` with exact original E/plan and verified rollback release | Reuse R; never allocate R+1 as a retry |
+| Source queues/fences restored | `--cold-b0-rollback-plan/retain/restore/inspect` | Reobserve full conserved source manifest and retired E; keep all writers stopped |
+| Ordinary restoration retained | `--cold-ordinary-rollback-plan/retain/inspect`, explicit legacy or fresh prior-source native decision | No ordinary publication or B0 grant yet |
+| Prior B0 reactivated | Protected initializer plus `--cold-b0-reactivation-plan/retain/apply/inspect` | Clear/reinitialize only with the exact decision and lifecycle lock; recover SAVE and completion |
+| Ordinary finalization | `--cold-ordinary-finalization-plan/retain/prepare/publish/complete/inspect` | Recover acknowledged SAVE and atomic SQL closure; fresh native R only, or explicit legacy witness |
+| Prior release selected and ready | Full prior spec/env/data/image selection, actual prior runtime, all service readiness and naturally due work | Retain failure containment if restore/readiness cannot be proven; historical inspect is not a new grant |
+
+The coordinator must persist CLI results atomically with fsync and strict
+source/intent/E/plan/reversal/R binding. Produce a canonical completion receipt
+for consumers; do not scrape ad hoc log strings. Mount the exact selected CSV
+tree read-only for required resync in its corresponding immutable image. Restore
+previously absent specs to absence only after required bridge verification and
+rollback finish, following ADR006.
+
+## Verification and rollout pacing
+
+First prove non-mutating release verification and host exclusion against actual
+Linux fixture files and controlled Compose processes. Then exercise forward,
+reversal and exact recovery with actual UID-10001 producer and coordinator
+executables, real PostgreSQL and RDB reloads. Kill processes at host journal/spec
+selection, reservation, producer reset, SAVE, publication SQL, atomic completion,
+release-pointer selection and readiness seams. Check all task families, source
+queues, due times, failure budgets, canonical content, old-plan retirement and
+recovery after source/asset/receipt drift. A mock-only test does not admit the
+operational contract.
+
+After passing exact-source checks, review and merge the preparatory stack with
+fresh merge authority and required gates. Obtain current release/image/data and
+board/profile census, preflight disk/connection/CPU/RAM capacity, then use the
+supported deploy/coordinator path for a bounded first ordinary cohort. Exercise
+full cold reversal before expanding ownership. Reconfirm every enabled board is
+owned exactly once and naturally due work settles at the correct epoch.
+
+Continue by effective profile, preserving a frozen inventory and concrete oracle
+samples. Replace each remaining monitor, detail/browser path and runtime consumer
+with Go plus self-hosted Lightpanda or verified Go HTTP/API. Measure comparable
+whole-service CPU/RAM, density and attributable cost, including sidecars,
+references, queues, database/export/drain, failed work and redirects. The current
+generated B0 benchmark alone cannot satisfy that acceptance.
+
+Keep the full migration goal active until all enabled coverage, canonical and
+publisher-policy parity, freshness/conservation, production deployment and the
+schedule-dependent rollback window are proven. Then remove production Python
+execution, Playwright, Chromium and runtime-only assets and remeasure the final
+service. Preserve useful isolated offline Python tooling and every enabled board.
+Use Hetzner Codex scheduling if recurring work is needed; this plan creates no
+new schedules or notification routes.

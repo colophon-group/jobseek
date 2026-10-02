@@ -1,5 +1,12 @@
 # Go and Lightpanda migration continuation plan
 
+The supported host delivery is sequenced in the
+[host integration plan](plans/go-ordinary-host-integration.md): independently
+verify generations, exclude every writer plus exporter/one-offs, retain durable
+coordinator phases, and prove full release/data/image reversal and actual prior
+runtime readiness. The last recorded production Python source lacks the new
+ownership readers, so its restored legacy process needs separate proof.
+
 Corrected prior executable source `097027ac43481456efe810b683858fd66970060a`
 passes Linux 37018098304 on both architectures. Exact merge
 `43cd31c696af86addbf5aa73d48d93ce65447ff7` parents are verified, with no failed or
