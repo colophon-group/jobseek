@@ -1,5 +1,25 @@
 # Go and Lightpanda migration continuation plan
 
+Execution-settings source `d1a4b5bdd411628561e85d098fb74d7da63532be`
+failed Linux queue run 37048510734 on both architectures: its mode-drift unit
+fixture changed an already-0755 directory to 0755. The correction explicitly
+starts the fixture at 0700, making the injected change deterministic. The
+production predicate is unchanged; focused Go 1.26 races pass. Actual execution
+settings are still unverified until fresh exact-source Linux checks pass. See
+[the failure and correction evidence](evidence/go-ordinary-execution-fixture-mode-correction-2026-10-02.json).
+
+Preceding source `771c576a157c5736e5732ca14e2ec8da586dabbc` whole-B0
+37041380157 now independently admits all 16 arms/8 pairs, density
+7.018678972–13.740068173, with exact source/merge/image identity and recomputed
+verdict. This proves generated startup-cardinality behavior; complete-service
+and all-profile parity/cost remain open. Keep PR #10210 draft and complete
+[the host delivery plan](plans/go-ordinary-host-integration.md), every enabled
+profile/consumer, full cutover/reversal and readiness, exact gates and rollout,
+the actual rollback window and production Python retirement. Production is
+unchanged and the full goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
 Latest verified runtime `771c576a157c5736e5732ca14e2ec8da586dabbc` passes full CI
 37041370630, Linux 37041380087, installed 37041375022 and historical native/legacy
 image runs 37041380211/37041380109. Exact merge parents and both-architecture

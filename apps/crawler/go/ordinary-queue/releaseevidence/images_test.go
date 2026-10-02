@@ -97,6 +97,11 @@ func TestImageObservationPreservesProtectedDeploymentBaseSeparatelyFromSnapshot(
 		t.Run(fault, func(t *testing.T) {
 			f := imageSetup(t, false)
 			f.c.ProjectDirectory = t.TempDir()
+			// TempDir permissions vary across test hosts. Start explicitly so the
+			// later 0755 change is a real drift on both Linux and macOS.
+			if err := os.Chmod(f.c.ProjectDirectory, 0700); err != nil {
+				t.Fatal(err)
+			}
 			switch fault {
 			case "relative":
 				f.c.ProjectDirectory = "relative"
