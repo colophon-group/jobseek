@@ -221,7 +221,10 @@ func TestRealColdPublicationPersistenceActivationAndExactRetry(t *testing.T) {
 	}
 	// A no-save Redis shutdown and fresh owned process prove that the actual
 	// RDB contains BOTH routing bytes and the audited B0 records/guards.
-	restartPublicationRedisWithoutSave(t, p.f.client)
+	for reload := 0; reload < 2; reload++ {
+		restartPublicationRedisWithoutSave(t, p.f.client)
+		unchangedPublicationData(t, p, before, canonical)
+	}
 	for i := 0; i < 2; i++ {
 		plan, err := ActivateColdOwnership(ctx, p.f.observer, p.f.client, p.intent, p.spec.SourceRevision, p.target)
 		if err != nil || plan.digest != p.plan.digest {
@@ -261,7 +264,7 @@ func restartPublicationRedisWithoutSave(t *testing.T, c *Client) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	log, err := os.OpenFile(filepath.Join(root, "restart.log"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	log, err := os.CreateTemp(root, "restart-*.log")
 	if err != nil {
 		t.Fatal(err)
 	}
