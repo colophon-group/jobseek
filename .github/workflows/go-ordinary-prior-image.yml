@@ -121,7 +121,7 @@ jobs:
           assert len(assets) == 34
           proof = {'version': 'jobseek.migration.prior-ordinary-installed/v1', 'source_revision': sys.argv[2],
                    'image_id': sys.argv[3], 'architecture': architecture, 'binary_sha256': binary_hash,
-                   'dockerfile_sha256': sha(pathlib.Path(sys.argv[5])), 'installed_asset_sha256': assets}
+                   'dockerfile_sha256': sha(pathlib.Path(sys.argv[5])), 'installed_asset_sha256': dict(sorted(assets.items()))}
           (root / 'proof.json').write_bytes(json.dumps(proof, separators=(',', ':'), ensure_ascii=False).encode())
           PY
           export JOBSEEK_ORDINARY_PRIOR_IMAGE_REQUIRE=1
@@ -138,6 +138,7 @@ jobs:
             | tee "$fixture/restored-R-tests.log"
 
       - name: Save prior immutable image capability evidence
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ordinary-prior-image-${{ matrix.arch }}-${{ github.sha }}

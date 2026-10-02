@@ -1,5 +1,24 @@
 # Go and Lightpanda migration continuation plan
 
+Prior-image run 37019475580 builds and identifies the historical image on both
+architectures, then rejects its nested installed asset paths before restoration.
+The proof decoder now accepts safe relative paths such as `images/epfl/icon.png`
+while refusing traversal, absolute/dot/repeated-separator/backslash paths. Exact
+34-asset count, Git bytes, image/source/binary/platform and canonical proof hashes
+remain mandatory. Map keys are explicitly sorted; failed runs retain safe evidence.
+Regression and actual prior executable races pass locally (3.506s), all 188
+repository checks, both Linux integration-tag vet and workflow security pass.
+Fresh actual prior-image execution remains required.
+
+Preceding source `86cfb44f3` passes full CI 37019495975, Linux 37019475876 and
+installed-image 37019499992; exact parents, actual prior process/root recovery,
+source/CA, four installed process tests and 34 assets are independently verified.
+7da whole-B0 37016270437 admits all 16 arms/8 pairs after recomputation, density
+5.505171–13.911950. Preserve the running 86cf whole measurement. The full goal
+remains active, production unchanged, and the supported host path is sequenced in
+[the host integration plan](plans/go-ordinary-host-integration.md). See
+[path correction evidence](evidence/go-ordinary-prior-image-path-correction-2026-10-02.json).
+
 The supported host delivery is sequenced in the
 [host integration plan](plans/go-ordinary-host-integration.md): independently
 verify generations, exclude every writer plus exporter/one-offs, retain durable

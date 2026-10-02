@@ -53,7 +53,7 @@ func decodePriorInstalledImageEvidence(body []byte, digest, binaryHash, architec
 		return evidence, false
 	}
 	for name, hash := range evidence.InstalledAssetSHA256 {
-		if name == "" || filepath.Base(name) != name || strings.ContainsAny(name, "\\\x00") || !ownershipSHA256.MatchString(hash) {
+		if name == "." || !fs.ValidPath(name) || strings.ContainsAny(name, "\\\x00") || !ownershipSHA256.MatchString(hash) {
 			return evidence, false
 		}
 	}
@@ -126,6 +126,12 @@ func TestPriorInstalledImageEvidenceRejectsDrift(t *testing.T) {
 	for i := byte('A'); i < 'A'+34; i++ {
 		assets[fmt.Sprintf("asset-%02d.csv", i)] = strings.Repeat("a", 64)
 	}
+	// Actual installed data includes nested images/epfl/icon.png and logo.png,
+	// not only flat CSV names. Safe relative trees must retain every asset.
+	delete(assets, "asset-65.csv")
+	delete(assets, "asset-66.csv")
+	assets["images/epfl/icon.png"] = strings.Repeat("a", 64)
+	assets["images/epfl/logo.png"] = strings.Repeat("a", 64)
 	valid := priorInstalledImageEvidence{"jobseek.migration.prior-ordinary-installed/v1", priorOrdinaryExecutableSource, "sha256:" + strings.Repeat("b", 64), "amd64", strings.Repeat("c", 64), strings.Repeat("d", 64), assets}
 	marshal := func(v priorInstalledImageEvidence) ([]byte, string) {
 		b, err := json.Marshal(v)
@@ -162,5 +168,18 @@ func TestPriorInstalledImageEvidenceRejectsDrift(t *testing.T) {
 	}
 	if _, ok := decodePriorInstalledImageEvidence(body, strings.Repeat("f", 64), valid.BinarySHA256, "amd64"); ok {
 		t.Fatal("wrong prior image evidence hash admitted")
+	}
+	for _, name := range []string{"/escape", ".", "images/../escape", "images//escape", "images\\escape", "images/./escape"} {
+		candidate := valid
+		candidate.InstalledAssetSHA256 = map[string]string{}
+		for key, value := range valid.InstalledAssetSHA256 {
+			candidate.InstalledAssetSHA256[key] = value
+		}
+		delete(candidate.InstalledAssetSHA256, "images/epfl/icon.png")
+		candidate.InstalledAssetSHA256[name] = strings.Repeat("a", 64)
+		body, digest := marshal(candidate)
+		if _, ok := decodePriorInstalledImageEvidence(body, digest, valid.BinarySHA256, "amd64"); ok {
+			t.Fatal("unsafe installed asset path admitted")
+		}
 	}
 }
