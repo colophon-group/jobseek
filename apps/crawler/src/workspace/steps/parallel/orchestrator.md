@@ -203,13 +203,8 @@ ws submit {{ slug }} [--summary "..."]
 
 ### Advance through final steps
 
-After submit succeeds, advance to the reflect step:
-
-```bash
-ws task next --notes "<difficulties, key decisions, or 'none'>"
-```
-
-During reflection, contribute to the knowledge base:
+Successful `ws submit` already advances the workflow to `reflect`. Before
+finalizing, contribute any reusable lessons to the knowledge base:
 
 - **Non-obvious problem solved?** Record it so future agents can find it:
   `ws task learn --step <step> --symptom "..." --solution "..." --tags "..."`
@@ -217,14 +212,19 @@ During reflection, contribute to the knowledge base:
   `ws task casestudy --company {{ slug }} --monitor <type> --scraper <type> --tags "..." --summary "..."`
 - Nothing noteworthy? Skip this — only record genuinely reusable lessons.
 
-Then complete the workflow:
+After all KB and case-study edits are finished, complete the workflow once:
 
 ```bash
 ws task complete
 ```
 
-**Do NOT call `ws task complete` directly after `ws submit`.** The sequence
-is: `ws submit` → `ws task next` (enters reflect) → `ws task complete`.
+The sequence is: `ws submit` → optional KB/case-study edits → `ws task complete`.
+If there are no reusable lessons, call `ws task complete` directly after submit.
+Do not call `ws task next` here: from `reflect` it finalizes the workflow and
+journals PR readiness, so later KB edits contradict the recorded working tree.
+After successful completion, stop without more edits or another completion call.
+If a head, draft, review, or ownership check fails, preserve the PR and follow
+the reported failure; do not rewrite provenance or restore ready state.
 
 ## If something goes wrong
 
