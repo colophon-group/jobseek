@@ -287,6 +287,7 @@ jobs:
           fixture_container="$(docker create jobseek-crawler:runtime-v1)"
           trap 'docker rm "$fixture_container" >/dev/null' EXIT
           docker cp "$fixture_container:/usr/local/bin/go-ordinary-worker" "$fixture_directory/ordinary-worker"
+          docker cp "$fixture_container:/etc/ssl/certs/ca-certificates.crt" "$fixture_directory/system-ca.pem"
           docker cp "$fixture_container:/app/data" "$fixture_directory/data"
           chmod -R a-w "$fixture_directory/data"
           export JOBSEEK_ORDINARY_IMAGE_BINARY="$fixture_directory/ordinary-worker"
@@ -307,13 +308,25 @@ jobs:
                     for path in sorted((root / "data").rglob("*")) if path.is_file()}
           assert assets
           proof = {"source_revision": sys.argv[2], "image_id": (root / "image-id").read_text().strip(), "architecture": architecture,
-                   "binary_sha256": binary_sha, "installed_asset_sha256": assets,
+                   "binary_sha256": binary_sha, "system_ca_sha256": hashlib.sha256((root / "system-ca.pem").read_bytes()).hexdigest(),
+                   "installed_asset_sha256": assets,
                    "scope": "image-extracted native binary and assets on Linux; private PostgreSQL/Redis",
                    "production_changed": False}
           pathlib.Path(sys.argv[3]).write_text(json.dumps(proof, indent=2) + "\n")
           PY
           go test -race -count=1 -timeout=90s -v -run '^TestRealNativeExecutable' ./... \
             | tee "$RUNNER_TEMP/ordinary-image-process-tests.log"
+          # Read the already-owned, never-started container through the native
+          # host evidence library. Do not create or mutate containers here.
+          # Expected source/build authentication remains a separate host gate.
+          (
+            cd ../ordinary-queue
+            JOBSEEK_CRAWLER_RELEASE_REQUIRE_INSTALLED_FILES=1 \
+            JOBSEEK_CRAWLER_RELEASE_IMAGE_FILE_PROOF="$RUNNER_TEMP/ordinary-image-proof.json" \
+            JOBSEEK_CRAWLER_RELEASE_IMAGE_CONTAINER="$fixture_container" \
+              go test -race -tags=integration -count=1 -timeout=180s -v \
+                -run '^TestActualInstalledContainerFilesRequireExactRetainedManifest$' ./releaseevidence
+          ) | tee "$RUNNER_TEMP/ordinary-installed-files-tests.log"
 
       - name: Save installed native process identities and test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -323,6 +336,7 @@ jobs:
             ${{ runner.temp }}/ordinary-identity.json
             ${{ runner.temp }}/ordinary-image-proof.json
             ${{ runner.temp }}/ordinary-image-process-tests.log
+            ${{ runner.temp }}/ordinary-installed-files-tests.log
           if-no-files-found: error
 
       - name: Import the installed contract surface from the image

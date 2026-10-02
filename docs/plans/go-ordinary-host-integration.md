@@ -180,6 +180,30 @@ settings verifier does not provide all of those, a host coordinator, SQL barrier
 complete writer exclusion or readiness. Continue these gates before any supported
 cutover/reversal; do not promote a settings hash into full release admission.
 
+## Retained-manifest installed bytes
+
+`DecodeInstalledExpectation` validates a canonical digest-bound host expectation
+for exact image ID/platform/runtime kind and binary/system-CA/assets, plus a
+complete source tree for legacy Python. The expected digest and source/image
+association must originate in independently authenticated build evidence and
+protected retained host intent; this decoder does not establish that trust root.
+
+`ObserveInstalledContainerFiles` uses cleared-environment fixed image-inspect and
+container-cp commands for an already-existing exact container. It hashes and
+discards two complete streamed archives, verifies exact file membership and
+protected regular members, and rechecks the complete daemon inventory. Links,
+devices, ambiguous/extra/missing paths, unsupported metadata, unsafe modes,
+malformed framing and content/image/platform/readback drift refuse. It creates,
+executes, removes and extracts nothing. Raw bytes/paths remain private.
+
+The receipt reports `runtime_admission:false`. Its declared file hashes are not
+source authentication, effective process identity, mounted-data provenance or
+full root filesystem/security/readiness proof. Actual native observation is now
+required in both existing installed-image jobs; its additional artifact must be
+independently verified. Legacy-kind unit coverage does not replace an actual
+selected legacy runtime observation. Continue the complete host gates below.
+See [the installed-byte contract](../evidence/go-ordinary-native-installed-file-observation-2026-10-02.json).
+
 ## Protected host envelope
 
 The deployed coordinator must run under the existing operator deployment identity,

@@ -802,3 +802,32 @@ mounted-content fidelity, namespaces/networks/security options, lock-spanning
 reobservation, SQL barriers, complete cold exclusion and readiness are still
 mandatory. The disposable Linux fixture now tests actual settings and rejects
 command/environment/user/relative-bind/access drift. Fresh execution is required.
+
+## Retained-manifest installed container bytes
+
+`DecodeInstalledExpectation` verifies a canonical host-retained manifest digest
+for exact image/platform/runtime kind and binary/system-CA/assets. Legacy Python
+also requires a complete source-file set. Expected hashes and the source/image
+association must come from independently authenticated build evidence and the
+protected host intent. Matching a caller-provided hash does not establish that
+trust root; container labels cannot supply it.
+
+`ObserveInstalledContainerFiles` uses fixed cleared-environment image inspect and
+container cp commands for an existing exact container ID. It hashes and discards
+two streamed archives, requires exact regular-file membership and known parent
+directories, checks protected minimum modes, and rechecks the entire inventory.
+Links, devices, unsupported extensions/xattrs, unknown/missing/aliased/duplicate
+members, unsafe modes, malformed end blocks/trailers and byte/image/platform
+changes refuse. No files are extracted, binaries executed or containers changed.
+The parser supports bounded PAX path/time metadata; it does not attest exact file
+ownership/permissions or effective runtime trust policy. Docker's streaming
+interface is documented in [container cp](https://docs.docker.com/reference/cli/docker/container/cp/).
+
+Receipts bind the expectation, inventory, exact container/image and image-inspect
+hashes, expected source and counts, and report `runtime_admission:false`. They do
+not establish source authentication, effective process identity, mounted-content
+provenance, full root filesystem/security fidelity or cold host admission. Hold
+the shared mutation lock and complete those independent gates before cutover.
+The existing installed-image Actions job now requires real binary/system-CA/asset
+observation and declared drift refusal on both architectures. Agents never run
+this Docker fixture locally; an actual legacy counterpart remains required.

@@ -1,5 +1,34 @@
 # Native ordinary worker authority checkpoint
 
+## 2026-10-02: actual execution verified; retained-manifest installed-byte observer implemented
+
+Verified source `2320553ac663c97e9c114d850242e3bb7e10806b` passes full CI
+37051180960, Linux 37051186913, installed 37051184881 and historical native/legacy
+image runs 37051186992/37051187352. Exact merge/source and both architectures are
+independently verified. Actual declared settings, relative binds and drift checks
+now pass with complete inventory v2; all six installed executable tests, source/CA
+and 34 assets pass. See [closed execution evidence](evidence/go-ordinary-native-container-execution-verified-2026-10-02.json).
+
+The next read-only library slice binds binary/system-CA/exact assets and optional
+legacy source-file hashes to a retained canonical expectation and exact existing
+container/image/platform. Two streamed archives and final complete inventory
+readback refuse content/membership drift and unsafe links/modes/metadata. Nothing is extracted
+or executed. Expected hashes and source/build association need independent host
+authentication; the receipt reports `runtime_admission:false`. Local races/vet
+and all 188 required script checks pass; fresh native actual observation and an
+actual legacy counterpart remain required. See [the installed-byte contract](evidence/go-ordinary-native-installed-file-observation-2026-10-02.json).
+
+D1 whole-B0 37048510704 independently admits 16 arms/8 pairs, density
+5.339661589–14.129990056; preserve current232 whole-B0 37051186981 in progress.
+This is startup-cardinality evidence, not full-service/profile parity or cost.
+Continue the full [host plan](plans/go-ordinary-host-integration.md), every enabled
+profile/consumer, canonical/database/publisher/freshness/queue parity, full-service
+resources/cost, supported cold cutover/reversal/readiness and exact gates/rollout,
+actual rollback window and production Python retirement. PR#10210 remains draft;
+production unchanged; the full migration goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
 ## 2026-10-02: complete mount-set canonicalization; fresh actual verification required
 
 Source `fccd0db5ff97d64c2f836134d0c824b9b8805076` passes the corrected
