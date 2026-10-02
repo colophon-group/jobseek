@@ -1,5 +1,25 @@
 # Go and Lightpanda migration continuation plan
 
+The bounded suite correction passes Linux queue races in run 36952124481.
+Actual root finalizer recovery then fails its full saved-snapshot comparison after
+publication SIGKILL and RDB reload, for native and legacy decisions. This checkpoint
+splits the comparison before producer startup and after startup and reports only
+changed key names/presence/hashes. Exact conservation remains mandatory; no reload
+or finalizer admission is claimed. Fresh diagnostic execution is required.
+
+Preceding CLI source `21f8cee232b9d4d02397d236d8e14fa7dfa15368` now passes
+full CI 36951102837 and installed contracts 36951105023; downloaded source/CA,
+four executable fixtures and all 34 assets are verified on both architectures.
+Earlier whole-B0 36949023109 fails candidate c4-p3 because Docker refuses the
+renderer network allocation with `Address already in use`; that run is unadmitted.
+Preserve newer running/pending benchmarks while investigating network allocation.
+
+A separately isolated clean prior source `3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4`
+now builds an actual local ARM64 executable whose linked identity and Git VCS
+revision/clean flag match. Restored-R runtime admission and immutable Linux image
+capability still require proof. See [reload investigation evidence](evidence/go-ordinary-finalizer-reload-investigation-2026-10-02.json).
+The full migration goal stays active; production remains unchanged.
+
 Linux finalizer checkpoint `21f8cee232b9d4d02397d236d8e14fa7dfa15368`
 failed run 36951034703 on both architectures at the aggregate 120-second queue
 race-suite limit, before root finalizer execution. Both then-current subtests had

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -181,10 +182,9 @@ func installedColdOrdinaryFinalizationCLI(t *testing.T, p publicationFixture, or
 	if err := os.Chown(p.f.client.redis.Options().Addr, 10001, 10001); err != nil {
 		t.Fatal(err)
 	}
+	assertFinalizationReloadSnapshot(t, saved, forwardRedisSnapshot(t, p.f.client), "RDB reload before producer startup")
 	start()
-	if !reflect.DeepEqual(saved, forwardRedisSnapshot(t, p.f.client)) {
-		t.Fatal("saved ordinary publication lost after RDB restart")
-	}
+	assertFinalizationReloadSnapshot(t, saved, forwardRedisSnapshot(t, p.f.client), "producer startup after RDB reload")
 	published := call("cold-ordinary-finalization-publish", true)
 	if published.Phase != "published" || !ownershipSHA256.MatchString(published.PublicationSHA) || published.ReceiptSHA != "" {
 		t.Fatal("CLI did not durably publish ordinary restoration")
@@ -241,4 +241,36 @@ func installedColdOrdinaryFinalizationCLI(t *testing.T, p publicationFixture, or
 	if observed.ReceiptSHA != finished.ReceiptSHA || observed.Phase != "complete" || string(observed.Receipt) != string(finished.Receipt) {
 		t.Fatal("historical CLI inspection lost finalization")
 	}
+}
+
+// Report only key names and digests when the private reload proof differs. This
+// distinguishes persistence loss from producer startup effects without exposing
+// connection inputs or relaxing exact full-state conservation.
+func assertFinalizationReloadSnapshot(t *testing.T, before, after map[string]string, stage string) {
+	t.Helper()
+	if reflect.DeepEqual(before, after) {
+		return
+	}
+	keys := map[string]bool{}
+	for key := range before {
+		keys[key] = true
+	}
+	for key := range after {
+		keys[key] = true
+	}
+	var changed []string
+	for key := range keys {
+		old, existed := before[key]
+		current, exists := after[key]
+		if existed != exists || old != current {
+			changed = append(changed, key)
+		}
+	}
+	sort.Strings(changed)
+	for _, key := range changed {
+		_, existed := before[key]
+		_, exists := after[key]
+		t.Logf("reload drift key=%q before_present=%t before_sha256=%s after_present=%t after_sha256=%s", key, existed, coldForwardBytesDigest(before[key]), exists, coldForwardBytesDigest(after[key]))
+	}
+	t.Fatal("saved ordinary publication differs at", stage)
 }

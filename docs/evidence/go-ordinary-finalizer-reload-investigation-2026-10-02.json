@@ -1,0 +1,39 @@
+{
+  "schema": "jobseek.migration.ordinary-finalizer-reload-investigation/v1",
+  "candidate_parent": "db65e398bbb532354dd96f092194fe85c6378587",
+  "file_sha256": {
+    "apps/crawler/go/ordinary-queue/cold_ordinary_finalization_linux_integration_test.go": "86bbbad9bb2d528ea96154d332205ad1845c65e11fbc1aff4fbde85466711692"
+  },
+  "linux_run": 36952124481,
+  "result": "failure: aggregate queue suite now passes; actual native and legacy finalizer root fixture fails exact saved snapshot after publication crash/RDB reload",
+  "next_diagnostic": "compare exact snapshot before producer startup and again afterward; emit only changed key names, presence and SHA256 values",
+  "authority_check_relaxed": false,
+  "local_validation": [
+    "Linux ARM64 integration test executable compiled",
+    "Linux AMD64 integration-tag go vet passed"
+  ],
+  "preceding_cli_source": "21f8cee232b9d4d02397d236d8e14fa7dfa15368",
+  "preceding_cli_full_ci": 36951102837,
+  "preceding_cli_installed": {
+    "run": 36951105023,
+    "both_architectures": true,
+    "source_ca_four_executable_fixtures_34_assets_verified": true
+  },
+  "whole_b0_failure": {
+    "run": 36949023109,
+    "source": "86fa1a61a3c92177bbddda1dafd63f1fdda48451",
+    "candidate_arm": "c4-p3",
+    "cause": "renderer container Docker network allocation: Address already in use",
+    "admitted": false
+  },
+  "prior_worker_build": {
+    "source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "actual_clean_detached_checkout": true,
+    "compiled_linked_vcs_revision_and_modified_false_verified": true,
+    "platform": "darwin arm64",
+    "restored_R_admission": false,
+    "immutable_linux_image_admission": false
+  },
+  "full_goal": "active; progress; full objective unchanged",
+  "production_changed": false
+}
