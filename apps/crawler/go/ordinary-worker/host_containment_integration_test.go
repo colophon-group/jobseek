@@ -95,6 +95,7 @@ func TestActualInstalledNativeHostContainmentStopsAllWritersAndRecoversSIGKILL(t
 		out, err := command(state, body, "host-preflight", "").CombinedOutput()
 		var result HostPreflightResult
 		if err != nil || json.Unmarshal(out, &result) != nil || result.RuntimeAdmission || result.SourceRevision != source || result.ReceiptSHA256 != hostDigest(result.Receipt) {
+			hostContainmentFixtureDiagnostic(t, ctx, r)
 			t.Fatal("actual containment preflight", err)
 		}
 		return &result
@@ -233,4 +234,60 @@ func TestActualInstalledNativeHostContainmentStopsAllWritersAndRecoversSIGKILL(t
 		t.Fatal("archive restore fixture")
 	}
 	t.Log("actual installed native host containment retained exact writer/exporter IDs and rollback intent before effects; disabled restarts durably before stopping; full daemon readback kept matched Postgres live; uncovered exporter and changed rollback archive refused; two kernel SIGKILL phases and exact retry recovered; sleeping writer stand-ins only; SQL barriers and runtime admission false")
+}
+
+// These observer errors contain only library-owned closed phase labels. Never
+// print raw inspect/Compose/env bytes or the installed command's arbitrary output.
+func hostContainmentFixtureDiagnostic(t *testing.T, ctx context.Context, r HostPreflightRequest) {
+	t.Helper()
+	selection, err := release.ObserveSelectedActiveFiles(ctx, release.ActiveSelectionConfig{DeploymentDirectory: r.DeploymentDirectory, GenerationDirectory: r.Releases[0].Directory, Owner: r.Owner, FileEvidenceSHA256: r.Releases[0].FileEvidenceSHA256})
+	if err != nil || selection == nil {
+		t.Log("containment fixture selected observation refused", err)
+		return
+	}
+	images := []*release.Images{}
+	seen := map[string]bool{}
+	for _, g := range r.Releases {
+		f, err := release.VerifyFiles(ctx, g.Directory, r.Owner)
+		if err != nil || f.SHA256() != g.FileEvidenceSHA256 {
+			t.Log("containment fixture generation refused", g.Role, err)
+			return
+		}
+		i, err := release.ObserveImages(ctx, release.ImageObservationConfig{Directory: g.Directory, Owner: r.Owner, Project: r.Project, FileEvidenceSHA256: g.FileEvidenceSHA256, Architecture: r.Architecture, ProjectDirectory: r.DeploymentDirectory})
+		if err != nil {
+			t.Log("containment fixture image observation refused", g.Role, err)
+			return
+		}
+		if !seen[i.SHA256()] {
+			images = append(images, i)
+			seen[i.SHA256()] = true
+		}
+	}
+	inventory, err := release.ObserveContainers(ctx)
+	if err != nil {
+		t.Log("containment fixture inventory refused", err)
+		return
+	}
+	if _, err := release.RequireContainerExecution(ctx, inventory, images); err != nil {
+		t.Log("containment fixture declared execution refused", err)
+		return
+	}
+	for _, item := range r.Installed {
+		b, _ := json.Marshal(item.Expectation)
+		expected, err := release.DecodeInstalledExpectation(b, hostDigest(b))
+		if err != nil {
+			t.Log("containment fixture expected files refused", err)
+			return
+		}
+		if _, err := release.ObserveInstalledContainerFiles(ctx, inventory, expected, item.ContainerID); err != nil {
+			t.Log("containment fixture installed files refused", item.Service, err)
+			return
+		}
+	}
+	_, err = release.CaptureSpecs(ctx, release.SpecCaptureConfig{DeploymentDirectory: r.DeploymentDirectory, GenerationDirectory: r.Releases[0].Directory, Owner: r.Owner, FileEvidenceSHA256: r.Releases[0].FileEvidenceSHA256})
+	if err != nil {
+		t.Log("containment fixture specs refused", err)
+		return
+	}
+	t.Log("containment fixture independent bounded observers pass; connected installed preflight refusal remains")
 }
