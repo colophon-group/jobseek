@@ -1356,3 +1356,31 @@ publisher/freshness/queue conservation, comparable whole-service CPU/RAM/density
 required exact-source gates, actual rollback window and production Python/Playwright/
 Chromium/runtime-only retirement remain required. The full migration goal is active;
 production is unchanged. This update supersedes earlier pending observations below.
+
+## Repeated RDB reload fixture and numeric proof, October 2
+
+Repeated private Redis reload correction `2b3466b3df62ae73c99c48dc1af8850a948c5ea6`
+gives each restart its own exclusive private log, preserving earlier logs. Linux
+run 36944444318 on checkpoint `1bc63f1995c7ab2135ef3189279d810cd1cff23d`
+executed the actual native initializer, wrong/rehashed approval refusals, completed
+retry, initial RDB reload, serving exclusion and CLI application through the
+post-SAVE/pre-SQL-commit SIGKILL seam on both architectures. Both then failed at the
+second Redis reload because the fixture reused `restart.log`. Overall root
+reactivation remains unadmitted until the corrected source completes. The focused
+real PG/Redis publication race now proves two no-save RDB reloads, unchanged canonical
+data and exact activation retry (5.449s); owned fixtures are cleaned up.
+
+Completed whole B0 run 36941143997 is downloaded and independently recomputed:
+report SHA256 `513f5961406ccad75bb271750e4eb71059fd10d133530b6f6141a057a8b0b849`,
+all 16 arms/8 pairs admit, tested merge `1cd7c11fa6c18e9876a04a7bf191ddbe51dd5144`
+has verified parents base `86813918a20a499c5d59a39ca8c33797161f8743` and checkpoint
+`cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2`. Density is 5.685842–14.304343
+for the generated B0 workload with production startup cardinality. This does not
+prove every profile or whole-production-service performance. Preserve running whole
+B0 3cc source and installed 1bc source; dispatch new-source contracts once.
+
+Next is actual corrected Linux root execution, exact-source full CI/installed/image
+and numeric admission, compatible ordinary finalization at R and complete ADR006
+host restoration/cutover/reversal, then full profile migration and retirement as
+specified below. Production is unchanged and the full goal stays active. This
+supersedes earlier pending observations in this checkpoint.

@@ -154,5 +154,176 @@
   },
   "runtime_source_revision": "faba3427cac82d1bfa1c759d2725f38f6ae358d2",
   "scope": "native cold bootstrap and local contract proof; new-source actual Linux UID-10001 execution required",
-  "remaining": "all-writer host integration, compatible ordinary finalization at R, independent prior-release proof, full enabled profile migration and final retirement"
+  "remaining": "all-writer host integration, compatible ordinary finalization at R, independent prior-release proof, full enabled profile migration and final retirement",
+  "repeated_reload_test_source": "2b3466b3df62ae73c99c48dc1af8850a948c5ea6",
+  "linux_observed_boundary": {
+    "source_revision": "1bc63f1995c7ab2135ef3189279d810cd1cff23d",
+    "run": 36944444318,
+    "jobs": [
+      110643171761,
+      110643171888
+    ],
+    "initializer_and_first_rdb_reload": "executed successfully both architectures",
+    "post_save_pre_sql_commit_sigkill": "reached both architectures",
+    "overall_reactivation": "not admitted; fixture second reload refused existing restart.log",
+    "failed_log_sha256": "062254a26d86812c479527744b101f16bf8961e9d05ed4b4badc0dbaa29d7c54"
+  },
+  "repeated_reload_local": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=120s",
+          "-run",
+          "^TestRealColdPublicationPersistenceActivationAndExactRetry$",
+          "-v",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 5.449,
+        "log": "ordinary-cold-initialization-repeated-reload-queue-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "preceding_whole_b0_verified": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2",
+    "tested_merge_checkout": "1cd7c11fa6c18e9876a04a7bf191ddbe51dd5144",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2"
+    ],
+    "run": 36941143997,
+    "report_sha256": "513f5961406ccad75bb271750e4eb71059fd10d133530b6f6141a057a8b0b849",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "images": {
+      "browser": "sha256:a8bd41ce10ec078f95e0630dad87d5f75911c6c3402fb0b603f579fe30ae4355",
+      "candidate": "sha256:ffd78ca33e8976a4a0c1e954d78bab30d4b696291dcc30a693a29c5ae592d4aa",
+      "renderer": "sha256:58b4a7d3f93c7fb9e5d4c36f36c8d480c3c3fe46023e913b8927e26bae3bfc76"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "1cd7c11fa6c18e9876a04a7bf191ddbe51dd5144",
+      "postflight_clean": true,
+      "postflight_head": "1cd7c11fa6c18e9876a04a7bf191ddbe51dd5144"
+    },
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        7.741488656934969,
+        5.685842294937997,
+        5.9893860868544655,
+        12.971609330153726,
+        13.857927303669161,
+        14.23350159180542,
+        14.079562741407086,
+        14.30434264308192
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 7.741488656934969,
+          "elapsed_ratio": 1.8913369899864765,
+          "p99_ratio": 0.5278029004626705,
+          "peak_rss_ratio": 0.24431179503081515,
+          "cpu_seconds_candidate": 1.690159,
+          "cpu_seconds_control": 2.523726,
+          "lifetime_cpu_seconds_candidate": 3.943671,
+          "lifetime_cpu_seconds_control": 6.029814
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 5.685842294937997,
+          "elapsed_ratio": 1.447042344314268,
+          "p99_ratio": 0.6912091178031046,
+          "peak_rss_ratio": 0.2544992050874404,
+          "cpu_seconds_candidate": 1.67906,
+          "cpu_seconds_control": 2.48142,
+          "lifetime_cpu_seconds_candidate": 3.945901,
+          "lifetime_cpu_seconds_control": 5.989495
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.9893860868544655,
+          "elapsed_ratio": 1.446031044951452,
+          "p99_ratio": 0.6897461618900965,
+          "peak_rss_ratio": 0.24143226433927978,
+          "cpu_seconds_candidate": 1.679228,
+          "cpu_seconds_control": 2.501316,
+          "lifetime_cpu_seconds_candidate": 3.965237,
+          "lifetime_cpu_seconds_control": 5.997806
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 12.971609330153726,
+          "elapsed_ratio": 1.5521171377540894,
+          "p99_ratio": 0.6386990070163238,
+          "peak_rss_ratio": 0.11965494012728607,
+          "cpu_seconds_candidate": 2.408999,
+          "cpu_seconds_control": 5.936901,
+          "lifetime_cpu_seconds_candidate": 4.697861,
+          "lifetime_cpu_seconds_control": 10.479256
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 13.857927303669161,
+          "elapsed_ratio": 1.593387263108106,
+          "p99_ratio": 0.6291205652292142,
+          "peak_rss_ratio": 0.11498020073219933,
+          "cpu_seconds_candidate": 2.382051,
+          "cpu_seconds_control": 5.971452,
+          "lifetime_cpu_seconds_candidate": 4.674282,
+          "lifetime_cpu_seconds_control": 10.583421
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 14.23350159180542,
+          "elapsed_ratio": 1.5765312060619179,
+          "p99_ratio": 0.6352142696296477,
+          "peak_rss_ratio": 0.11076200721890993,
+          "cpu_seconds_candidate": 2.380934,
+          "cpu_seconds_control": 6.14151,
+          "lifetime_cpu_seconds_candidate": 4.683505,
+          "lifetime_cpu_seconds_control": 10.72881
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 14.079562741407086,
+          "elapsed_ratio": 1.6114462419100888,
+          "p99_ratio": 0.6233740965602608,
+          "peak_rss_ratio": 0.11445286132153304,
+          "cpu_seconds_candidate": 2.415624,
+          "cpu_seconds_control": 6.002241,
+          "lifetime_cpu_seconds_candidate": 4.715444,
+          "lifetime_cpu_seconds_control": 10.638194
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 14.30434264308192,
+          "elapsed_ratio": 1.6093549855413511,
+          "p99_ratio": 0.6248569518181738,
+          "peak_rss_ratio": 0.11250814005910935,
+          "cpu_seconds_candidate": 2.402634,
+          "cpu_seconds_control": 6.382162,
+          "lifetime_cpu_seconds_candidate": 4.714679,
+          "lifetime_cpu_seconds_control": 11.14223
+        }
+      ]
+    },
+    "production_changed": false,
+    "scope": "generated B0 workload with production startup cardinality; not all-profile or whole production-service performance proof"
+  }
 }
