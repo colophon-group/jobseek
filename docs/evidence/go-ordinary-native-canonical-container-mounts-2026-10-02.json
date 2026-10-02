@@ -1,0 +1,154 @@
+{
+  "version": "jobseek.migration.canonical-container-mounts/v1",
+  "date": "2026-10-02",
+  "failed_source_revision": "fccd0db5ff97d64c2f836134d0c824b9b8805076",
+  "failed_linux_run": 37049300117,
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "actual_failure": "Both architectures pass database/queue/library unit races, then actual container inventory readback differs; arm64 first created-state check, amd64 stopped-state check. Actual cleared Compose/image fixture passes.",
+  "failure_log_sha256": "eda42f3579b206a1c09fa1485e4d9d0c1515fde1575c8892a1cb8c2e46a451e4",
+  "diagnosis": "Two-mount unordered inspect permutation is locally reproduced as an incorrect drift refusal. Engine GetMountPoints at v28.5.1 enumerates its mount map without sorting. Both runner daemon APIs are1.48. This is a supported candidate cause; fresh exact-source actual execution must close the failure.",
+  "reproduction_log_sha256": "dc94c76801fb03df0f2861f45c13044a166ebfde2e6a889fada7050716f33fea",
+  "inventory_version": "jobseek.crawler-container-inventory/v2",
+  "change": [
+    "Canonical complete mount JSON sorted by unique absolute clean destination; no fields removed",
+    "Unknown fields, exact large JSON numbers and nested ordered arrays retain their identity",
+    "Duplicate/ambiguous/missing destinations, field aliases and malformed framing refuse",
+    "Real source/access/propagation/driver/name/future-field drift still refuses complete readback",
+    "Errors report closed identity/config/host-config/mount/state diagnostic classes without IDs, values or paths"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "releaseevidence_races": "pass",
+    "package_seconds": 3.197,
+    "log_sha256": "c6f1d0e9b6d642894fbf9b9fd1d52c6b9d1d0d74b2ed4d92c8a44c3aac00058d",
+    "linux_integration_tag_vet": "both modules AMD64 and ARM64 pass",
+    "go_mod_tidy_diff": "both modules pass",
+    "repository_script_tests": 188,
+    "repository_log_sha256": "e3aca057d97a3eb2dc92799b6e32c2452ea17440edb02ab2b1e7e90a1635003d"
+  },
+  "verified_d1_installed_and_historical_images": {
+    "installed": {
+      "source_revision": "d1a4b5bdd411628561e85d098fb74d7da63532be",
+      "run": 37048508111,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:f984c3d0af841244479cf592c05d0230988d47b414ff421b946aed3ea1939ab6",
+          "binary_sha256": "ba79de1a4d0a205b77dcbc9d2203174811fd7442ef5988f0bf39f005c620d658",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+            "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+            "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:a78e33300ddf7b0873bea82d05170aec250fcc4287b2a6ed618838be60e40339",
+          "binary_sha256": "683a5d17fa40d7b398ba571b19dc8950f9d03405a636742834308eea8b163116",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+            "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+            "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ]
+    },
+    "historical_native_image": {
+      "candidate_source": "d1a4b5bdd411628561e85d098fb74d7da63532be",
+      "run": 37048510670,
+      "tested_merge": "f223e5bde569ebcd8b4eee0497ef313d142abc9e",
+      "parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "d1a4b5bdd411628561e85d098fb74d7da63532be"
+      ],
+      "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:d4fe5c0b9231afd6bcc9dd9b80b7c4790d87d2a70b984c000b4634df3f3da37b",
+          "binary_sha256": "bec52d4c71e7494fd234f30bea7323d29689b2b2636ed23632d4cbd0c0a9bfc8",
+          "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+          "proof_sha256": "eb5a675a2c4c3aed18787975111741821b87091d63e0a01e6fd2e02c1e290142",
+          "assets": 34,
+          "actual_prior_installed_restored_R_pass": true
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:22acad493b565e708f09cb6e8c332ceb2f6f5cffac29fadab980b7b15dfa199d",
+          "binary_sha256": "9590b7eb7e0b67a66f88dcd4babf515847f2437db1a4e2fdc5254e9c1aa1e463",
+          "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+          "proof_sha256": "7e14cd5c3555d5104553e7bcb571e6ade86fda4829b9d20595058a87fe8a4c7b",
+          "assets": 34,
+          "actual_prior_installed_restored_R_pass": true
+        }
+      ],
+      "log_sha256": "252ef94c9998603bd679a9ea892f644ec45f071c663318f58304589489ad2509",
+      "production_changed": false,
+      "scope": "actual historical candidate image-extracted runtime at restored R; not previously selected production ordinary release or complete host admission"
+    },
+    "historical_legacy_image": {
+      "candidate_source": "d1a4b5bdd411628561e85d098fb74d7da63532be",
+      "run": 37048510695,
+      "tested_merge": "f223e5bde569ebcd8b4eee0497ef313d142abc9e",
+      "parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "d1a4b5bdd411628561e85d098fb74d7da63532be"
+      ],
+      "prior_source": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:4dd06ed9863c82fa157fd61cafc1bd1f04aca7d2f90f8c785d5acfe3317e581b",
+          "python_version": "3.13.15",
+          "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+          "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+          "source_files": 599,
+          "assets": 34,
+          "proof_sha256": "fafe8650207e93b7c7aaa0262a387f47765bdedb545a3b9e4c0554d346a0eaa1",
+          "actual_historical_legacy_container_at_R_pass": true
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:f6cc43b956149f29dbf106148c08e06ffe815569bac5fd3c50466b2bc5a82fbd",
+          "python_version": "3.13.15",
+          "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+          "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+          "source_files": 599,
+          "assets": 34,
+          "proof_sha256": "2093fcbb9d30798be0dfe31de143b3f43abc8e354608eda903f53286ad6d2fa5",
+          "actual_historical_legacy_container_at_R_pass": true
+        }
+      ],
+      "log_sha256": "2a936c7a32d516df4b0ba853426c48952193d71d0af41348b369717e910845d9",
+      "production_changed": false,
+      "scope": "rebuilt unchanged last-recorded production source image; completed synthetic host-label legacy restoration and no-fetch policy cycle at R; not selected production image digest, all-profile parity or complete host admission"
+    }
+  },
+  "source_scope": "d1 installed and historical image evidence only; d1 unit-mode fixture and fccd actual-observer failures retained; no whole-source or actual execution admission claimed",
+  "fresh_exact_source_linux_required": true,
+  "reference": "https://github.com/moby/moby/blob/v28.5.1/container/container_unix.go",
+  "runtime_admission": false,
+  "production_changed": false,
+  "full_goal_active": true,
+  "open_work": [
+    "Selected release/source/binary/effective-process/content/network/security contracts",
+    "Complete writer/exporter/oneoff exclusion and SQL leases/barriers under the shared host lock",
+    "Durable native coordinator, phased spec restore, actual host crash recovery, full readiness/cold cutover/reversal",
+    "Every enabled profile/consumer and canonical/database/publisher/freshness/queue parity",
+    "Comparable full-service resources/cost, exact actual gates/rollout, production rollback window and Python retirement"
+  ]
+}

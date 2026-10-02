@@ -162,6 +162,13 @@ The observer's optional protected `ProjectDirectory` preserves the actual
 deployment base separately from verified generation Compose/env/override bytes.
 Relative mounts must not resolve accidentally inside a rollback snapshot.
 Directory mode/inode readback and a credential-free base digest bind this context.
+Inventory v2 binds the full mount set in unique-destination order, preserving all
+fields and exact JSON numbers. Older Engine mount-array permutations are not
+identity changes; content/access/driver/unknown-field drift still refuses. Actual
+fccd Linux readback failed on both architectures; the unordered two-mount issue
+is reproduced locally, and fresh exact-source execution must verify the fix.
+The source-scoped [mount evidence](../evidence/go-ordinary-native-canonical-container-mounts-2026-10-02.json)
+retains both the failure and local checks. Do not waive full readback or admission.
 The existing disposable Actions fixture now requires actual execution settings
 and relative-bind/user/environment/command/access drift rejection; fresh actual
 execution is required. Local Go races and both modules' Linux vet pass.

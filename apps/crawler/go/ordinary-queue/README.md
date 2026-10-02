@@ -749,6 +749,14 @@ Compose/one-off identities, process flags/PIDs, restart policies and configurati
 mount hashes; credential-bearing inspection bytes stay in memory. Missing state,
 duplicate identities, incomplete inspection and readback drift refuse.
 
+Inventory v2 hashes the complete mount set sorted by unique destination. Every
+member field, including future metadata and exact JSON numbers, remains bound;
+nested ordered values remain ordered. Duplicate/ambiguous destinations and field
+aliases refuse. Older Engine versions enumerate mounts from a map, so an array
+permutation alone is not mount drift. Source/access/propagation/driver/name or
+unknown-field changes still refuse readback. Diagnostic errors expose only fixed
+identity/config/host-config/mount/state classes, never private values.
+
 `RequireColdContainers` binds that inventory to explicit observed release image
 evidence. Every service is a writer by default, including exporter, browser,
 maintenance one-offs and future consumers. Writers and globally unaccounted

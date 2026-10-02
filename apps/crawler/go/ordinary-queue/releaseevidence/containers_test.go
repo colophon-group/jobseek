@@ -103,6 +103,84 @@ func TestContainerInventoryIncludesWholeDaemonAndBoundsInspection(t *testing.T) 
 	}
 }
 
+func TestContainerInventoryMountOrderIsNotMountDrift(t *testing.T) {
+	c := containerFixture(1, "jobseek", "exporter")
+	first := map[string]any{"Type": "bind", "Source": "/private/fixture-sensitive-value", "Destination": "/app/data", "RW": false, "Propagation": "rprivate"}
+	second := map[string]any{"Type": "volume", "Source": "/private/volume", "Destination": "/var/lib/data", "Name": "anonymous", "Driver": "local", "RW": true, "FutureField": "retained"}
+	c["Mounts"] = []any{first, second}
+	r := containerReader(t, c)
+	calls := 0
+	got, err := observeContainers(context.Background(), func(ctx context.Context, args []string) ([]byte, error) {
+		calls++
+		if calls == 5 {
+			c["Mounts"] = []any{second, first}
+		}
+		return r(ctx, args)
+	})
+	if err != nil || got == nil || len(got.rows) != 1 || calls != 6 {
+		t.Fatal("equivalent unordered mount set falsely rejected", err)
+	}
+	if !strings.Contains(got.Body(), `"version":"jobseek.crawler-container-inventory/v2"`) {
+		t.Fatal("canonical mount hash semantics must use the new inventory version")
+	}
+	if strings.Contains(got.Body(), "fixture-sensitive-value") || strings.Contains(got.Body(), "FutureField") {
+		t.Fatal("mount values disclosed")
+	}
+	if digest(got.commands[got.rows[0].ID].mounts) != got.rows[0].MountsSHA256 {
+		t.Fatal("private canonical mounts lost evidence binding")
+	}
+	for _, field := range []string{"Source", "RW", "Propagation", "Driver", "Name", "FutureField"} {
+		t.Run(field, func(t *testing.T) {
+			c := containerFixture(1, "jobseek", "exporter")
+			mount := map[string]any{"Type": "bind", "Source": "/private/fixture-sensitive-value", "Destination": "/app/data", "RW": false, "Propagation": "rprivate", "Driver": "local", "Name": "a", "FutureField": "retained"}
+			c["Mounts"] = []any{mount}
+			r := containerReader(t, c)
+			calls := 0
+			_, err := observeContainers(context.Background(), func(ctx context.Context, args []string) ([]byte, error) {
+				calls++
+				if calls == 5 {
+					if field == "RW" {
+						mount[field] = true
+					} else {
+						mount[field] = "changed"
+					}
+				}
+				return r(ctx, args)
+			})
+			if !errors.Is(err, ErrInvalid) || strings.Contains(err.Error(), "fixture-sensitive-value") || strings.Contains(err.Error(), "FutureField") {
+				t.Fatal("actual mount-field drift admitted/disclosed", err)
+			}
+		})
+	}
+}
+
+func TestCanonicalContainerMountsPreservesAllFieldsAndRefusesAmbiguity(t *testing.T) {
+	raw := json.RawMessage(`[{"Destination":"/z","Future":{"Integer":9007199254740993,"Array":[2,1]}},{"Source":"private","Destination":"/a","RW":false}]`)
+	got, err := canonicalContainerMounts(raw)
+	if err != nil || string(got) != `[{"Destination":"/a","RW":false,"Source":"private"},{"Destination":"/z","Future":{"Array":[2,1],"Integer":9007199254740993}}]` {
+		t.Fatal("canonical mount set dropped fields, precision or ordered values", err)
+	}
+	if empty, err := canonicalContainerMounts(json.RawMessage(`[]`)); err != nil || string(empty) != `[]` {
+		t.Fatal("empty mount set differs", err)
+	}
+	for _, bad := range []string{
+		`null`, `{}`, `[null]`, `[{}]`, `[{"Destination":null}]`,
+		`[{"Destination":"relative"}]`, `[{"Destination":"/a/../b"}]`, `[{"Destination":"/a\u0000b"}]`,
+		`[{"Destination":"/a"},{"Destination":"/a"}]`,
+		`[{"Destination":"/a","Destination":"/b"}]`,
+		`[{"Destination":"/a","destination":"/b"}]`,
+		`[{"Destination":"/a","SOURCE":"private"}]`,
+		`[{"Destination":"/a","rw":true}]`,
+		`[{"Destination":"/a","Future":{"a":1,"a":2}}]`,
+		`[] {}`, `[{"Destination":"/a"}] trailing`,
+	} {
+		_, err := canonicalContainerMounts(json.RawMessage(bad))
+		if !errors.Is(err, ErrInvalid) || strings.Contains(err.Error(), "private") || strings.Contains(err.Error(), "/a") {
+			t.Fatal("ambiguous mount evidence admitted/disclosed", err)
+		}
+	}
+}
+
 func TestContainerInventoryRejectsIncompleteOrMalformedObservations(t *testing.T) {
 	changes := map[string]func(map[string]any){
 		"image tag":          func(c map[string]any) { c["Image"] = "crawler:latest" },

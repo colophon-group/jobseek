@@ -1,5 +1,28 @@
 # Native ordinary worker authority checkpoint
 
+## 2026-10-02: complete mount-set canonicalization; fresh actual verification required
+
+Source `fccd0db5ff97d64c2f836134d0c824b9b8805076` passes the corrected
+unit fixture on both architectures, then fails actual Linux inventory readback
+in run 37049300117. An unordered two-mount permutation reproduces a false refusal
+locally. Inventory v2 now sorts the complete mount set by unique destination,
+retains all fields/numeric precision and refuses actual field drift or ambiguous
+members. Closed diagnostic classes disclose no private values. Fresh actual
+Linux execution must still close the failure; the suspected cause is not yet a
+verified fix. See [canonical mount evidence](evidence/go-ordinary-native-canonical-container-mounts-2026-10-02.json).
+
+D1 source `d1a4b5bdd411628561e85d098fb74d7da63532be` installed run
+37048508111 and historical native/legacy image runs 37048510670/37048510695
+are independently verified on both architectures, with exact source/merge
+parents, all six installed executable tests, source/CA and 34 assets. Those
+proofs do not waive the separate observer failures. Continue the complete
+[host delivery plan](plans/go-ordinary-host-integration.md), every enabled
+profile/consumer, full parity/resources/cost, cutover/reversal/readiness, exact
+gates/rollout, actual rollback window and production Python retirement. PR#10210
+stays draft; production unchanged; full migration goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
 ## 2026-10-02: deterministic Linux fixture correction; preceding whole-B0 verified
 
 Execution-settings source `d1a4b5bdd411628561e85d098fb74d7da63532be`

@@ -1,8 +1,10 @@
 package releaseevidence
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -73,6 +75,49 @@ type inspectHostConfig struct {
 var containerIDPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 var localImageIDPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
+const containerInventoryVersion = "jobseek.crawler-container-inventory/v2"
+
+// Engine versions before sorted GetMountPoints enumerate a Go map. Mount array
+// order is not identity. Preserve every member field and canonicalize only the
+// set order by its unique destination; command and other ordered arrays retain
+// their order. Never print the private JSON or destination values.
+// https://github.com/moby/moby/blob/v28.5.1/container/container_unix.go
+func canonicalContainerMounts(raw json.RawMessage) (json.RawMessage, error) {
+	if uniqueJSON(raw) != nil {
+		return nil, reject("complete mount JSON")
+	}
+	d := json.NewDecoder(bytes.NewReader(raw))
+	d.UseNumber() // unknown fields must not lose integer precision
+	var mounts []map[string]any
+	if d.Decode(&mounts) != nil || mounts == nil || len(mounts) > 256 {
+		return nil, reject("bounded mount objects")
+	}
+	seen := map[string]bool{}
+	for _, mount := range mounts {
+		if mount == nil {
+			return nil, reject("complete mount object")
+		}
+		for key := range mount {
+			for _, name := range []string{"Type", "Name", "Source", "Destination", "Driver", "Mode", "RW", "Propagation"} {
+				if key != name && strings.EqualFold(key, name) {
+					return nil, reject("ambiguous mount field casing")
+				}
+			}
+		}
+		destination, ok := mount["Destination"].(string)
+		if !ok || len(destination) > 4096 || !strings.HasPrefix(destination, "/") || strings.ContainsRune(destination, '\x00') || path.Clean(destination) != destination || seen[destination] {
+			return nil, reject("unique complete mount destinations")
+		}
+		seen[destination] = true
+	}
+	sort.Slice(mounts, func(i, j int) bool { return mounts[i]["Destination"].(string) < mounts[j]["Destination"].(string) })
+	canonical, err := json.Marshal(mounts)
+	if err != nil {
+		return nil, reject("canonical complete mount set")
+	}
+	return canonical, nil
+}
+
 // ObserveContainers uses fixed read-only commands against the deployment
 // identity's local daemon. Agents must never invoke it with a host Docker socket.
 // Enumerating the entire daemon prevents project-filtered one-offs or orphaned
@@ -142,6 +187,11 @@ func containerSnapshot(ctx context.Context, run dockerRead) (*Containers, error)
 			if json.Unmarshal(c.Config, &config) != nil || json.Unmarshal(c.HostConfig, &host) != nil || json.Unmarshal(c.Mounts, &mounts) != nil || len(mounts) > 256 || len(config.Cmd) > 256 || len(config.Entrypoint) > 64 || host.RestartPolicy == nil || host.RestartPolicy.MaximumRetryCount == nil || *host.RestartPolicy.MaximumRetryCount < 0 || *host.RestartPolicy.MaximumRetryCount > 100000 {
 				return nil, reject("complete container configuration")
 			}
+			canonicalMounts, err := canonicalContainerMounts(c.Mounts)
+			if err != nil {
+				return nil, err
+			}
+			c.Mounts = canonicalMounts
 			restart := host.RestartPolicy.Name
 			switch restart {
 			case "no", "always", "unless-stopped", "on-failure":
@@ -167,7 +217,7 @@ func containerSnapshot(ctx context.Context, run dockerRead) (*Containers, error)
 	body, err := json.Marshal(struct {
 		Version    string         `json:"version"`
 		Containers []containerRow `json:"containers"`
-	}{"jobseek.crawler-container-inventory/v1", rows})
+	}{containerInventoryVersion, rows})
 	if err != nil {
 		return nil, reject("canonical container inventory")
 	}
@@ -185,7 +235,31 @@ func observeContainers(ctx context.Context, run dockerRead) (*Containers, error)
 		return nil, err
 	}
 	second, err := containerSnapshot(bounded, run)
-	if err != nil || first.SHA256() != second.SHA256() || bounded.Err() != nil {
+	if err != nil || bounded.Err() != nil {
+		return nil, reject("container inventory readback differs")
+	}
+	if first.SHA256() != second.SHA256() {
+		// Closed diagnostic classes disclose neither field values nor identity.
+		if len(first.rows) == len(second.rows) {
+			for n, row := range first.rows {
+				other := second.rows[n]
+				if row.ID != other.ID || row.ImageID != other.ImageID {
+					return nil, reject("container identity readback differs")
+				}
+				if row.ConfigSHA256 != other.ConfigSHA256 {
+					return nil, reject("container config readback differs")
+				}
+				if row.HostConfigSHA256 != other.HostConfigSHA256 {
+					return nil, reject("container host config readback differs")
+				}
+				if row.MountsSHA256 != other.MountsSHA256 {
+					return nil, reject("container mount readback differs")
+				}
+				if row != other {
+					return nil, reject("container state readback differs")
+				}
+			}
+		}
 		return nil, reject("container inventory readback differs")
 	}
 	return first, nil
