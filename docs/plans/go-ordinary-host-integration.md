@@ -95,6 +95,25 @@ image source/binary identity, selected generations/specs, mounts, numeric users,
 complete writer exclusion or readiness. Those remain required before release
 or cold admission; the caller must hold the shared host mutation lock.
 
+## Actual installed host-request joins
+
+The required installed-image harness now adds a positive request joining the
+actual native image's independently retained binary/system-CA/34 assets to a
+scoped, never-started service container and three distinct requested generation
+directories. A disposable loopback registry provides a real immutable repository
+digest without publishing an external release; the raw manifest is retained and
+its content hash/config image ID are independently checked. Source, image,
+service, missing/unscoped container, binary, CA and asset/membership substitutions
+must refuse before retaining unverified intent/archive, with the context alive.
+
+Local Linux compilation and workflow/repository checks pass. Fresh actual
+AMD64/ARM64 execution and independent artifacts remain required. This replaces
+no selection/provenance gate: generation roles/labels are synthetic and do not
+authenticate production builds or selected pointers. Complete effective
+permissions/process/dependency/mount/network/security/resource fidelity and all
+subsequent exclusion/SQL/cold/readiness/rollout gates remain open. See
+[the source-scoped join fixture](../evidence/go-ordinary-native-host-installed-join-2026-10-02.json).
+
 ## Native deployment-spec capture and retention
 
 `--capture-deploy-specs` now provides native capture/retention of the deployed

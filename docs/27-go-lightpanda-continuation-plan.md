@@ -1,5 +1,28 @@
 # Go and Lightpanda migration continuation plan
 
+The installed host-preflight harness now requires a positive native installed-runtime
+join and ten substitution refusals before intent/archive retention. A disposable
+loopback registry binds the exact built native image to a retained immutable
+manifest/config digest; a never-started scoped service container and three distinct
+synthetic release directories exercise the actual installed command. Source,
+image, service, missing/unscoped container and binary/CA/asset substitutions must
+refuse with a live context. The required artifact includes the raw manifest for
+independent digest/config verification. Linux Go 1.26 vet and workflow checks plus
+all 188 repository checks pass; fresh actual execution remains required.
+See [installed host-join evidence](evidence/go-ordinary-native-host-installed-join-2026-10-02.json).
+
+Prior62c whole-B0 37057439521 is now independently verified: 16arms/8pairs,
+density5.859682829–13.250151409, exact source/image/clean checkout and recomputed
+verdict. Startup-cardinality scope remains distinct from complete-service/profile
+parity and cost. Source1c87 Linux37064122898 is independently verified on both
+architectures; its actual installed preflight/CI/image jobs remain in progress.
+All receipts still report `runtime_admission:false`; production selection, full
+runtime fidelity, writer/SQL exclusion, connected cold recovery/readiness,
+profile/consumer coverage, full parity/cost, gates/rollout/window/retirement remain
+required. PR#10210 remains draft; full goal active; production unchanged.
+
+Earlier entries below retain their source-scoped evidence.
+
 The connected native `--host-preflight` entrypoint now holds the shared host
 mutation lock across requested active/incoming/rollback file/image observations,
 complete inventory and declared execution, optional bound installed-file requests,

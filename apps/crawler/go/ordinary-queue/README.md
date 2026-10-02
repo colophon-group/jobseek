@@ -888,3 +888,17 @@ connected observations, exact receipt/archive retention, retry and spec/data dri
 refusal. Its separate log must be verified on both architectures. That fixture
 does not prove a selected production generation, installed-file request joins or
 complete host admission. Agents never run it locally or receive Docker access.
+
+The disposable installed-image CI harness also requires
+`TestActualInstalledNativeHostPreflightJoinsExactRuntimeAndRejectsSubstitution`.
+It publishes the exact built native image only to a pinned loopback registry,
+retains its raw immutable manifest and checks the manifest digest/config image
+ID, and creates a never-started scoped worker with explicit numeric user. The
+installed host command observes three distinct synthetic requested generations
+and joins a complete binary/system-CA/34-asset expectation to that exact scoped
+container/service/source/image. Ten substitutions must refuse before any
+intent/archive retention with a live context; earlier retained evidence stays
+exact. The raw manifest and join proof are required artifacts on both
+architectures. The host command/tests perform read-only Docker observations;
+fixture mutation belongs solely to the disposable harness. No local agent
+Docker access, production provenance/selection or cold/runtime grant follows.

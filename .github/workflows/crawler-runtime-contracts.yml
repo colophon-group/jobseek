@@ -285,7 +285,14 @@ jobs:
           fixture_directory="$(mktemp -d "$RUNNER_TEMP/ordinary-image.XXXXXX")"
           chmod 0700 "$fixture_directory"
           fixture_container="$(docker create jobseek-crawler:runtime-v1)"
-          trap 'docker rm "$fixture_container" >/dev/null' EXIT
+          join_container=''
+          fixture_registry=''
+          cleanup_image_fixtures() {
+            if [ -n "$join_container" ]; then docker rm "$join_container" >/dev/null; fi
+            if [ -n "$fixture_registry" ]; then docker rm -f -v "$fixture_registry" >/dev/null; fi
+            docker rm "$fixture_container" >/dev/null
+          }
+          trap cleanup_image_fixtures EXIT
           docker cp "$fixture_container:/usr/local/bin/go-ordinary-worker" "$fixture_directory/ordinary-worker"
           docker cp "$fixture_container:/etc/ssl/certs/ca-certificates.crt" "$fixture_directory/system-ca.pem"
           docker cp "$fixture_container:/app/data" "$fixture_directory/data"
@@ -327,12 +334,57 @@ jobs:
               go test -race -tags=integration -count=1 -timeout=180s -v \
                 -run '^TestActualInstalledContainerFilesRequireExactRetainedManifest$' ./releaseevidence
           ) | tee "$RUNNER_TEMP/ordinary-installed-files-tests.log"
+          # Only this disposable harness publishes to a loopback registry and
+          # creates the scoped, never-started native container. The installed
+          # coordinator observes it read-only; no agent receives Docker access.
+          fixture_registry="$(docker run -d --restart=no -p 127.0.0.1:15000:5000 \
+            registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373)"
+          curl --fail --silent --retry 12 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:15000/v2/ >/dev/null
+          docker tag jobseek-crawler:runtime-v1 localhost:15000/native:fixture
+          docker push localhost:15000/native:fixture
+          docker image inspect --format '{{json .RepoDigests}}' jobseek-crawler:runtime-v1 \
+            > "$fixture_directory/repository-digests.json"
+          python3 - "$fixture_directory/repository-digests.json" "$RUNNER_TEMP/ordinary-image-proof.json" \
+            "$RUNNER_TEMP/ordinary-host-installed-join-proof.json" "$fixture_directory/immutable-reference" \
+            "$RUNNER_TEMP/ordinary-host-installed-manifest.json" <<'PY'
+          import hashlib, json, pathlib, re, sys, urllib.request
+          refs = [ref for ref in json.loads(pathlib.Path(sys.argv[1]).read_text())
+                  if re.fullmatch(r'localhost:15000/native@sha256:[0-9a-f]{64}', ref)]
+          assert len(refs) == 1
+          ref = refs[0]
+          digest = ref.split('@', 1)[1]
+          request = urllib.request.Request('http://127.0.0.1:15000/v2/native/manifests/' + digest,
+              headers={'Accept': 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json'})
+          with urllib.request.urlopen(request, timeout=20) as response:
+              raw = response.read(1 << 20)
+              assert response.headers['Docker-Content-Digest'] == digest
+          assert 'sha256:' + hashlib.sha256(raw).hexdigest() == digest
+          manifest = json.loads(raw)
+          original = json.loads(pathlib.Path(sys.argv[2]).read_text())
+          assert manifest['config']['digest'] == original['image_id']
+          proof = dict(original, immutable_reference=ref, registry_manifest_sha256=digest.split(':', 1)[1],
+                       manifest_config_image_id=manifest['config']['digest'],
+                       scope='disposable loopback publication of exact native image; synthetic release roles; no production build/selection admission')
+          pathlib.Path(sys.argv[3]).write_text(json.dumps(proof, indent=2) + '\n')
+          pathlib.Path(sys.argv[4]).write_text(ref + '\n')
+          pathlib.Path(sys.argv[5]).write_bytes(raw)
+          PY
+          join_container="$(docker create --user 10001:10001 \
+            --label com.docker.compose.project=jobseek-native-installed-join \
+            --label com.docker.compose.service=worker \
+            --label com.docker.compose.oneoff=False \
+            "$(cat "$fixture_directory/immutable-reference")")"
           # Execute the connected preflight on this disposable Linux host,
           # using the independently image-installed binary. It retains only
           # fixture evidence and grants no cold or runtime admission.
           JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_PREFLIGHT=1 \
+          JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_INSTALLED_JOIN=1 \
+          JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+          JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_CONTAINER="$join_container" \
+          JOBSEEK_CRAWLER_RELEASE_HOST_UNSCOPED_CONTAINER="$fixture_container" \
             go test -race -tags=integration -count=1 -timeout=180s -v \
-              -run '^TestActualInstalledNativeHostPreflightRetainsBoundObservations$' ./... \
+              -run '^TestActualInstalledNativeHostPreflight' ./... \
             | tee "$RUNNER_TEMP/ordinary-host-preflight-tests.log"
 
       - name: Save installed native process identities and test results
@@ -345,6 +397,8 @@ jobs:
             ${{ runner.temp }}/ordinary-image-process-tests.log
             ${{ runner.temp }}/ordinary-installed-files-tests.log
             ${{ runner.temp }}/ordinary-host-preflight-tests.log
+            ${{ runner.temp }}/ordinary-host-installed-join-proof.json
+            ${{ runner.temp }}/ordinary-host-installed-manifest.json
           if-no-files-found: error
 
       - name: Import the installed contract surface from the image
