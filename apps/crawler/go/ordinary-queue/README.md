@@ -660,3 +660,8 @@ queue ACK/due/failure budget, health and signal drain. Linux CI builds the exact
 prior source separately and requires this test. Local fixture labels and small
 startup reference rows do not establish a production prior release or host
 readiness; immutable image and complete ADR006 verification remain separate.
+
+CI uses a standalone temporary `.git`-directory checkout of that exact prior
+source with explicit `-buildvcs=true`: its Go 1.26 compiler omits VCS stamping
+for linked worktrees (Go #58218). Missing or dirty metadata still refuses; no
+identity check is relaxed and the prior runtime source remains unchanged.

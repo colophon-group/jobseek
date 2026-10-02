@@ -1558,3 +1558,16 @@ complete ADR006 host cutover/readiness/full reversal, then finish all profiles a
 consumers, comparable whole-service performance/cost, required exact-source gates,
 deployment, rollback window and production Python/browser retirement. The full
 goal stays active, PR #10210 remains draft and production unchanged.
+
+## Prior compiler metadata correction — 2026-10-02
+
+Linux prior-executable run 37016271209 rejects missing VCS metadata on both
+architectures before restoration. Go 1.26.0 reproduces this locally in linked
+worktrees, even with explicit `-buildvcs=true` ([Go #58218](https://github.com/golang/go/issues/58218)).
+CI now fetches the exact pinned source into a clean standalone temporary checkout
+with a `.git` directory and retains the same compiler and strict source/hash/VCS
+checks. That Go 1.26.0 actual prior binary passes the real PG/Redis restored-R test
+locally (3.63s; package 5.299s), including RDB reload and publisher/queue conservation.
+Full CI 37016312827 passes preceding source `7da02ee71`; fresh corrected Linux
+execution remains required. No immutable prior image, host or production admission
+is claimed. See [build correction evidence](evidence/go-ordinary-prior-build-metadata-correction-2026-10-02.json).

@@ -1,5 +1,16 @@
 # Go and Lightpanda migration continuation plan
 
+Linux prior-executable run 37016271209 rejects missing VCS metadata on both
+architectures before restoration. Go 1.26.0 reproduces this locally in linked
+worktrees, even with explicit `-buildvcs=true` ([Go #58218](https://github.com/golang/go/issues/58218)).
+CI now fetches the exact pinned source into a clean standalone temporary checkout
+with a `.git` directory and retains the same compiler and strict source/hash/VCS
+checks. That Go 1.26.0 actual prior binary passes the real PG/Redis restored-R test
+locally (3.63s; package 5.299s), including RDB reload and publisher/queue conservation.
+Full CI 37016312827 passes preceding source `7da02ee71`; fresh corrected Linux
+execution remains required. No immutable prior image, host or production admission
+is claimed. See [build correction evidence](evidence/go-ordinary-prior-build-metadata-correction-2026-10-02.json).
+
 An actual executable from pinned clean prior source
 `3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4` now passes the restored-R capability
 fixture locally (6.393s). Build VCS/linked source, binary hash and prior taxonomy

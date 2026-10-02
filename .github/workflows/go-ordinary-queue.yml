@@ -146,11 +146,15 @@ jobs:
           prior_checkout="${RUNNER_TEMP}/ordinary-prior-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           prior_binary="${RUNNER_TEMP}/ordinary-prior-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.bin"
           git fetch --no-tags origin "$prior_source"
-          git worktree add --detach "$prior_checkout" "$prior_source"
-          trap 'rm -f "$prior_binary"; git worktree remove "$prior_checkout"' EXIT
+          # Go 1.26 does not stamp VCS metadata in linked worktrees (Go #58218).
+          # Use an independent .git-directory checkout with the same compiler.
+          git init --quiet "$prior_checkout"
+          trap 'rm -f "$prior_binary"; rm -rf "$prior_checkout"' EXIT
+          git -C "$prior_checkout" fetch --quiet --depth=1 --no-tags "$GITHUB_WORKSPACE" "$prior_source"
+          git -C "$prior_checkout" checkout --detach FETCH_HEAD
           test "$(git -C "$prior_checkout" rev-parse HEAD)" = "$prior_source"
           test -z "$(git -C "$prior_checkout" status --porcelain)"
-          (cd "$prior_checkout/apps/crawler/go/ordinary-worker" && go build -trimpath -ldflags="-X main.sourceRevision=${prior_source}" -o "$prior_binary" ./cmd/live)
+          (cd "$prior_checkout/apps/crawler/go/ordinary-worker" && go build -buildvcs=true -trimpath -ldflags="-X main.sourceRevision=${prior_source}" -o "$prior_binary" ./cmd/live)
           test -z "$(git -C "$prior_checkout" status --porcelain)"
           prior_hash="$(sha256sum "$prior_binary" | cut -d ' ' -f1)"
           JOBSEEK_ORDINARY_PRIOR_REQUIRE=1 \

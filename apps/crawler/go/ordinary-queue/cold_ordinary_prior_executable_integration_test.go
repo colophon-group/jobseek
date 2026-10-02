@@ -58,10 +58,11 @@ func TestPriorNativeExecutableConsumesRestoredV1AuthorityAtR(t *testing.T) {
 			settings[setting.Key] = setting.Value
 		}
 		if settings["vcs.revision"] != priorOrdinaryExecutableSource || settings["vcs.modified"] != "false" {
-			t.Fatal("prior executable is not built from the pinned clean checkout")
+			t.Fatalf("prior executable is not built from the pinned clean checkout: vcs.revision=%q vcs.modified=%q compiler=%q", settings["vcs.revision"], settings["vcs.modified"], metadata.GoVersion)
 		}
 	}
 	checkBinary()
+	t.Logf("verified prior source=%s binary_sha256=%s", priorOrdinaryExecutableSource, expectedHash)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	identityOutput, err := exec.CommandContext(ctx, binary, "--identity").Output()
