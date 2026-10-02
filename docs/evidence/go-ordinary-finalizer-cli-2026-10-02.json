@@ -1,0 +1,354 @@
+{
+  "schema": "jobseek.migration.ordinary-finalizer-cli-evidence/v1",
+  "candidate_parent": "86fa1a61a3c92177bbddda1dafd63f1fdda48451",
+  "runtime_file_sha256": {
+    "apps/crawler/go/ordinary-worker/cold_ordinary_finalization_admin.go": "2bc9cdb69146aee6f8e50d68022c57a3ee8f3f2ddbdb839040d05838417e982a",
+    "apps/crawler/go/ordinary-worker/cold_ordinary_finalization_admin_test.go": "2fa962fa4676e46b82ac85fa3c0d8abdb431b881fd7a4899c2f3e37dfa1b7cf2",
+    "apps/crawler/go/ordinary-worker/cold_admin.go": "1be07d616ecc9053ac5f9d91c88d677d7698d66b61221db2b280932efbedbb38",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_finalization.go": "c31f6540c077249cf468e8a9a9eda67c9395cbf93370fb78fd9ff1987ee979ee",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_finalization_executable_test.go": "311e0b95139acf6f945fee36717ac9c120f4d129c42c79f4184b4d472dd96574",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_finalization_linux_integration_test.go": "d9c88dbcac13048e2ceef98bb1b3b78af9a69d37bcf8208c7a8b23137c2dc062",
+    "apps/crawler/go/ordinary-queue/cold_b0_reactivation_linux_integration_test.go": "5f0d37b3e2aa79c39884e0c419fce03dfc2a5fea9c360994a8d9d95755989f32"
+  },
+  "scope": "protected native finalizer CLI and actual Linux root crash fixture; actual Linux execution and independent prior immutable worker admission still required",
+  "operations": [
+    "cold-ordinary-finalization-plan",
+    "cold-ordinary-finalization-retain",
+    "cold-ordinary-finalization-prepare",
+    "cold-ordinary-finalization-publish",
+    "cold-ordinary-finalization-complete",
+    "cold-ordinary-finalization-inspect"
+  ],
+  "contract": {
+    "input": "protected original intent/reversal/E/source plan, explicit reserved R, exact retained ordinary restoration and completed B0 reactivation, closed canonical request/hash, compiled candidate source",
+    "operational": "fixed authenticated producer and protected target/pinned Lua; retained approval request verified before effect",
+    "inspection": "no Redis URL needed; no Redis/producer opening or current epoch/barrier grant",
+    "output": "canonical approval, phase, publication/completion SHA256s, canonical completion receipt, any fresh prior-source ordinary identity",
+    "host_evidence": "identities only; host independently verifies full ADR006 release/quiescence/readiness"
+  },
+  "full": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=180s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 84.334,
+        "log": "ordinary-finalizer-cli-final-queue-race.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=180s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 30.61,
+        "log": "ordinary-finalizer-cli-final-worker-race.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=180s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 4.964,
+        "log": "ordinary-finalizer-cli-final-exporter-race.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "pytest",
+          "-q",
+          "tests/test_ordinary_ownership.py",
+          "tests/test_lightpanda_activation.py",
+          "tests/test_redis_queue.py",
+          "tests/test_pipeline.py",
+          "tests/test_rich_monitor_contract.py"
+        ],
+        "exit_code": 0,
+        "seconds": 6.289,
+        "log": "ordinary-finalizer-cli-final-legacy.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "focused_seconds": 17.273,
+  "legacy_tests": 295,
+  "repository_contract_tests": 128,
+  "config_races": true,
+  "vet": true,
+  "linux_integration_tag_vet_and_compile": [
+    "amd64",
+    "arm64"
+  ],
+  "actual_local_executable_proof": "exact historical prepared/complete inspection with no Redis URL or producer, config/hash/source/epoch/live-input refusals, canonical receipt and prior-source identity, both barriers held after allocator advance; linked source labels are synthetic local fixture identities",
+  "linux_fixture_implemented": [
+    "native and legacy ordinary predecessors",
+    "actual UID-10001 cold initialization and B0 reactivation",
+    "actual finalizer preview/retain/prepare/publish/complete/inspect",
+    "SIGKILL after SAVE before publication SQL commit, actual RDB/producer reload, exact recovery",
+    "SIGKILL during final SQL completion, no partial committed authority, exact retry",
+    "current-source v1 reader and unselected legacy SQL admission, historical CLI with producer stopped and no Redis URL"
+  ],
+  "linux_fixture_execution": "required on this new source; cross-compilation is not execution",
+  "preceding_api_linux_and_full_ci": {
+    "source": "86fa1a61a3c92177bbddda1dafd63f1fdda48451",
+    "run": 36949023175,
+    "tested_merge": "eff051c1d302cbe71d1aef8b1167e1b35ce3e759",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "86fa1a61a3c92177bbddda1dafd63f1fdda48451"
+    ],
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "job": 110657569851,
+        "passed": true,
+        "log_sha256": "f7bcd67ec2c2e1543f33b935c8557cba6e3bb2d5dcdb6cc366c4be99d266ffdf"
+      },
+      {
+        "architecture": "arm64",
+        "job": 110657570164,
+        "passed": true,
+        "log_sha256": "27236301d4dcc7c51302274e8221d2b9ae92b531c7f392303d82f99a89da5329"
+      }
+    ],
+    "full_ci": {
+      "run": 36949046237,
+      "conclusion": "success"
+    },
+    "scope": "existing actual native cold initialization/reactivation fixtures plus real finalization API queue races; new finalizer CLI absent",
+    "production_changed": false
+  },
+  "preceding_installed_images": {
+    "source_revision": "86fa1a61a3c92177bbddda1dafd63f1fdda48451",
+    "run": 36949048752,
+    "production_changed": false,
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:c9948a6b4069ec960dc4947a0596c0a56021b5c83d936e0b19eb07267746adde",
+        "binary_sha256": "3ef80817f91b53a038f3f322e1dc64cddd6e107e3dcebd75a95a1ebdd89f0abe",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+        ],
+        "asset_hashes_verified": 34
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:c89bb1464a1c5036cded1fdb7115345badbdd726cde112fddcfd2f9378cd94b5",
+        "binary_sha256": "9743b7c1537ee1f2a1c186c692e1f5778da7e767f3d831c79586bce9edb46caa",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+        ],
+        "asset_hashes_verified": 34
+      }
+    ],
+    "installed_asset_sha256": {
+      "README.md": "f4449496c21178aa003e28a17a7135f207d848aa74421eeb46abff9c1370fd26",
+      "boards.csv": "416c5939d22faa9ee928155d20a1c3ee294f26b3c496ed93637eae13e8b492e1",
+      "companies.csv": "a15ccf834c0e0d3e11c7a0c8cea5aa7df5930b085264683689e2cef4eee04c65",
+      "company_descriptions.csv": "99c016c51713bb5937593ad1267c596f7cf208c4424a5f17c83410761f10dde7",
+      "images/avera-icon.png": "94225e0ecf08cdbf6eff0d197030e27d60c1bcd28d410f584e589dec867ac393",
+      "images/avera-logo.png": "6c1d3514864d40cbd8d51661b6b2aa905f40bfc57cff84b1f68cb12f668a9b1e",
+      "images/bae-systems-icon.png": "d4b21210623413bf11e723e19336ac41043bae110237513e220e479998b4d8e6",
+      "images/bae-systems-logo.svg": "36a6c9e949fa4b9d913ffed811e4b88515deee4af4eaf2de720d09a8516f58dc",
+      "images/banner-health-icon.png": "4a95ca7481e999700637cf3b58705c249c15bba3acbfc8839d928f0a33b40e20",
+      "images/banner-health-logo.svg": "b97938bf23013ffc64f20118f42f09481c30e6b6a920202028633ddb7cabb1d1",
+      "images/capgemini-icon.png": "b764b1abe10194e9370b69528933762fa502dfa454932c80b9c6eafdac60e05e",
+      "images/capgemini.png": "3e4b021ad539b695290353a9811f02c13933c65716fd710a55ead1a055c6b9fc",
+      "images/drees-sommer-icon.png": "e804fe381612328706a9ec314545a66b74eea36a831576340ad080c4ba3ca0e5",
+      "images/drees-sommer-logo.svg": "ab80c4e211746308c0952f64614a4220b61af0acbedc86a24c98f10e752988e6",
+      "images/epfl/icon.png": "9af4578f7f87fabea840044b4a9fe388dc2847f5e301317944eaf1255d7000bc",
+      "images/epfl/logo.png": "f9f64c61b3e52eb82d4b6144d85843c0001201cd2d75f1128fa34642e4f8983a",
+      "images/fulenwider-enterprises-icon.png": "2862579dd64d28782e8deeec0095264fc91d50cc21911f0ed00b24ddacd531a8",
+      "images/fulenwider-enterprises-logo.png": "326a67f1d0faddf840345d22873ff732d7b71e386c22d096740689f776802ed0",
+      "images/mediamarktsaturn-icon.webp": "37fa4d863ef3d13f87b7be4590f8d41f0cddec282db557aec4db30df9a14de39",
+      "images/mediamarktsaturn-logo.svg": "47f1f499c28f30c96cae0d428ae13eef36df923feaf6d9e07a48bc209f5f5cfc",
+      "images/singapore-public-service-icon.png": "23fa7bf3fd10506cc3679f70e2aaa7f52ed684b46055d75fcb67335334c4518c",
+      "images/singapore-public-service-logo.svg": "dbd644d3eb74771e725aeed2e6686feddd5e6fd6517920c79cbd5733aa844537",
+      "images/swiss-post-icon.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+      "images/swiss-post-logo.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+      "industries.csv": "3fae2b061b36e907b83fc03648aa4df512df01d7fc324b5b83bf11bb1e8f25b3",
+      "industries.svg": "163aaa518b8d11b3b0d24905e053c8fc249894681784b7bd00b0eae8a3562c09",
+      "labeller_optout.txt": "c802b5e4878133598994cbc7cbdd432fc6cfeff7e4608d7e94f7d3bb879b09ff",
+      "occupation_domains.csv": "6d2458a0ce106da21ee6898a66896f18d774a65c72d476969be4394a47461d9b",
+      "occupations.csv": "97ce6fa825130597639bf2c3cd2e19f114610cc5de3006d69c31c07018397d01",
+      "occupations.svg": "d1e399827f71d3558712746b636e13c3c7d859d6c5d7dfdb75195dd40a861c78",
+      "seniority.csv": "a00c21d795baff88e7c0e4733922eff26f24fb0d24251f7ae1fb0db20ecb5004",
+      "seniority.svg": "549e9c57dc14e0195eb3263c288afa3f48280d7715ce37c375db9fd97974feb5",
+      "technologies.csv": "6894e31c7e854d5efddf3a57b52cd83ed7326ac5753a12ee7c743c02721d9bde",
+      "technologies.svg": "935a8307c03617ed1532ccf1c9f445a440f4ac95118e4e5a673b77a4f6fc0374"
+    },
+    "scope": "image-installed ordinary executable fixtures; new finalizer CLI not yet in this source"
+  },
+  "preceding_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "8d14150acdca72dc86984a6247821373b04b806c",
+    "tested_merge_checkout": "e66771f6af9c32951bedee7cec6e0711225f833c",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "8d14150acdca72dc86984a6247821373b04b806c"
+    ],
+    "run": 36944918711,
+    "report_sha256": "4e09dd5cb1b144fa1274558cd50f614b122b40809c7f9798ed22a45fbd2d5ba1",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "images": {
+      "browser": "sha256:f46b5a5aaad5150787e3d66625b7aa7c4c335bbd8c27449fc55aa6912bda6e87",
+      "candidate": "sha256:780e1378b2152413b5b87b0ca7d022ebb5d4981fe59c89de3c84dff89fac7e45",
+      "renderer": "sha256:1ab9ac7ea968b951baf7bb6f0f9563b3dadcf9fa2191ec0b7cba585d52cedece"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "e66771f6af9c32951bedee7cec6e0711225f833c",
+      "postflight_clean": true,
+      "postflight_head": "e66771f6af9c32951bedee7cec6e0711225f833c"
+    },
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        5.7005111828156,
+        5.717888245625772,
+        5.3808814566409175,
+        11.530533145450345,
+        11.275996934087328,
+        11.16507172014267,
+        11.668165730086217,
+        11.280613929451887
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 5.7005111828156,
+          "elapsed_ratio": 1.442223031007761,
+          "p99_ratio": 0.6926761436978492,
+          "peak_rss_ratio": 0.25299889514389434,
+          "cpu_seconds_candidate": 1.6694689999999999,
+          "cpu_seconds_control": 2.478354,
+          "lifetime_cpu_seconds_candidate": 3.9699809999999998,
+          "lifetime_cpu_seconds_control": 5.960976
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 5.717888245625772,
+          "elapsed_ratio": 1.4577710264850872,
+          "p99_ratio": 0.6966436470382884,
+          "peak_rss_ratio": 0.25494919870116267,
+          "cpu_seconds_candidate": 1.693916,
+          "cpu_seconds_control": 2.462755,
+          "lifetime_cpu_seconds_candidate": 3.993435,
+          "lifetime_cpu_seconds_control": 5.931093
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.3808814566409175,
+          "elapsed_ratio": 1.4221889641167789,
+          "p99_ratio": 0.6935793526430959,
+          "peak_rss_ratio": 0.2643040876437739,
+          "cpu_seconds_candidate": 1.688345,
+          "cpu_seconds_control": 2.422997,
+          "lifetime_cpu_seconds_candidate": 3.98986,
+          "lifetime_cpu_seconds_control": 5.928828
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 11.530533145450345,
+          "elapsed_ratio": 1.3058858630827477,
+          "p99_ratio": 0.7641132611732921,
+          "peak_rss_ratio": 0.11325459513535305,
+          "cpu_seconds_candidate": 2.309454,
+          "cpu_seconds_control": 5.75604,
+          "lifetime_cpu_seconds_candidate": 4.553184,
+          "lifetime_cpu_seconds_control": 10.188879
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 11.275996934087328,
+          "elapsed_ratio": 1.2968353473576124,
+          "p99_ratio": 0.7681621433032052,
+          "peak_rss_ratio": 0.1150084870489172,
+          "cpu_seconds_candidate": 2.3536,
+          "cpu_seconds_control": 5.752466,
+          "lifetime_cpu_seconds_candidate": 4.638034,
+          "lifetime_cpu_seconds_control": 10.265051
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 11.16507172014267,
+          "elapsed_ratio": 1.2927989907224002,
+          "p99_ratio": 0.7694814187889513,
+          "peak_rss_ratio": 0.11578958229082298,
+          "cpu_seconds_candidate": 2.375016,
+          "cpu_seconds_control": 5.844001,
+          "lifetime_cpu_seconds_candidate": 4.654749,
+          "lifetime_cpu_seconds_control": 10.347798
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 11.668165730086217,
+          "elapsed_ratio": 1.3188665796561116,
+          "p99_ratio": 0.7620081308120391,
+          "peak_rss_ratio": 0.11303118332090799,
+          "cpu_seconds_candidate": 2.3454040000000003,
+          "cpu_seconds_control": 5.852539,
+          "lifetime_cpu_seconds_candidate": 4.611353,
+          "lifetime_cpu_seconds_control": 10.341657
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 11.280613929451887,
+          "elapsed_ratio": 1.3093828186364735,
+          "p99_ratio": 0.7675417510480423,
+          "peak_rss_ratio": 0.11607371964196767,
+          "cpu_seconds_candidate": 2.343318,
+          "cpu_seconds_control": 5.780445,
+          "lifetime_cpu_seconds_candidate": 4.627447,
+          "lifetime_cpu_seconds_control": 10.268925
+        }
+      ]
+    },
+    "production_changed": false,
+    "scope": "generated B0 workload with production startup cardinality; not all-profile or whole production-service performance proof"
+  },
+  "production_changed": false,
+  "full_migration_complete": false,
+  "log_sha256": {
+    "ordinary-finalizer-cli-final-queue-race.log": "0a882a6424b10000ddfaed47208922ba4337b1c7156f9fbc0a456b650ff03de1",
+    "ordinary-finalizer-cli-final-legacy.log": "74eb4650e854b08a80c12461b545051a0e065e95755b38d45842249f93164bfc",
+    "ordinary-finalizer-cli-final-worker-race.log": "919fc77a4d25d09a9a665f34b3155ebdacd8e4d7d7a44896454a36b9153108eb",
+    "ordinary-finalizer-cli-final-exporter-race.log": "a997093edd7f45697ec5c138d8c4baad66b0e6bad2ecb8f8f51263e5518a8024"
+  }
+}

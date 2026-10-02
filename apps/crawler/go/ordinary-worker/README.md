@@ -485,3 +485,47 @@ pass on both architectures. Its controlled prior receipt and Lua restoration do
 not prove independent immutable production releases or full sentinel clearing.
 These commands publish no ordinary owner, close no reversal and grant no release
 selection, service start or full host readiness.
+
+## Protected ordinary restoration finalizer
+
+The executable recognizes only these explicit one-shot commands:
+`--cold-ordinary-finalization-plan`, `--cold-ordinary-finalization-retain`,
+`--cold-ordinary-finalization-prepare`, `--cold-ordinary-finalization-publish`,
+`--cold-ordinary-finalization-complete` and `--cold-ordinary-finalization-inspect`.
+Set `ORDINARY_GO_WORKER_MODE` to the same command name without `--` and bind
+`ORDINARY_OWNERSHIP_SOURCE_REVISION` to the compiled candidate source.
+
+All commands require protected original intent/reversal files and their SHA256s,
+`ORDINARY_COLD_ROUTING_EPOCH` for the original source E, `ORDINARY_COLD_PLAN_SHA256`
+for its exact source plan, explicit `ORDINARY_COLD_RETIREMENT_EPOCH` R,
+`ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256` for the retained 0045 decision,
+and `ORDINARY_COLD_B0_REACTIVATION_PLAN_SHA256` for completed 0046 reactivation.
+`ORDINARY_COLD_FINALIZATION_REQUEST_FILE` and its `_SHA256` bind the closed canonical
+request: restoration/reactivation plan SHA256s, compiled source, a new transition
+UUID, active release SHA256 and independently verified all-writer cold attestation
+SHA256. Evidence hashes are identities; the ADR006 host verifies the underlying
+release/quiescence evidence independently.
+
+Preview rejects `ORDINARY_COLD_FINALIZATION_PLAN_SHA256`; all other commands require
+the exact approved digest. Operational commands require protected B0 target file/hash,
+reviewed Lua and Redis configuration, and use the fixed authenticated producer client.
+The completed B0 receipt already binds prior release history, so prior B0 receipt
+files and unrelated restore/forward inputs are rejected. A changed protected request
+cannot drive a retained approval. No command adopts a latest epoch, allocates R+1,
+selects a release or starts services.
+
+Inspection rejects live target/Lua inputs and needs no `REDIS_URL`; it opens neither
+Redis nor producer and acquires no ownership/allocator barrier. Output includes the
+exact canonical approval, retained phase, publication/completion digests and canonical
+completion receipt when present, plus the fresh prior-source ordinary identity when
+native. Prepared output is not a service startup or readiness grant.
+
+Real PG/Redis executable tests verify historical inspection without live inputs,
+source/hash/epoch/input refusals, exact receipt retention and inspection under both
+barriers after allocator advancement. The Linux root fixture uses the actual
+UID-10001 producer and actual compiled CLI for both native and legacy decisions. It
+kills the CLI after SAVE before publication SQL commit and during atomic completion,
+reloads the actual RDB and producer, and verifies exact recovery and claim containment.
+Fresh source-bound Linux execution is required before admitting these seams. Synthetic
+prior release labels and a current-source v1 reader do not prove an independently
+pinned prior immutable worker image.

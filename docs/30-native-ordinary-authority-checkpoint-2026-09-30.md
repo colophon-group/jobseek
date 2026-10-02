@@ -1431,3 +1431,54 @@ all-writer host cutover/readiness/full reversal before expanding enabled profile
 consumers. The full migration, whole-service resource/cost parity, required exact-source
 gates, actual rollback window and production Python/Playwright/Chromium retirement
 remain the goal. PR #10210 stays draft and production is unchanged.
+
+## Protected ordinary finalizer CLI, October 2
+
+The protected finalizer CLI now exposes preview, retain, prepare, publish,
+complete and inspect commands bound to original intent/reversal, source E/plan,
+explicit reserved R, retained 0045 decision, completed 0046 reactivation and a
+closed canonical request/hash. Operational calls use the fixed authenticated
+producer; inspection rejects live target/Lua inputs and requires no Redis URL.
+Output retains exact approval and publication/completion identities, canonical
+completion bytes and any fresh prior-source ordinary identity.
+
+The actual Linux root/UID-10001 producer fixture now covers native and legacy
+ordinary decisions through finalization. It kills the real CLI after SAVE before
+publication SQL commit and during atomic completion, reloads the real RDB/producer,
+recovers exact receipts, and checks owner containment and historical inspection.
+The fixture compiles/vets for AMD64 and ARM64; fresh execution is required.
+Current-source v1 reader checks and synthetic prior release labels do not admit an
+independently pinned prior immutable worker. That capability proof and the complete
+ADR006 host integration remain next after actual Linux finalizer execution.
+
+Local full real PG/Redis queue/worker/exporter races pass
+(84.334s/30.610s/4.964s), including actual executable history inspection without
+Redis/producer access under both barriers after allocator advancement. All 295
+legacy and 128 repository contract tests pass; configuration races, Go vet and
+both Linux integration-tag compilations pass. See
+[CLI evidence](evidence/go-ordinary-finalizer-cli-2026-10-02.json) and
+[protected CLI contract](../apps/crawler/go/ordinary-worker/README.md).
+
+Preceding API checkpoint `86fa1a61a3c92177bbddda1dafd63f1fdda48451` passes full
+CI 36949046237, Linux queue/root contracts 36949023175 and installed image
+contracts 36949048752. Downloaded Linux logs verify tested merge
+`eff051c1d302cbe71d1aef8b1167e1b35ce3e759` and exact base/head parents;
+installed source/CA, four actual executable fixtures and 34 asset hashes match
+both architectures. This verifies the earlier private producer cleanup correction.
+These results precede the new finalizer CLI and do not admit its crash seams.
+
+Whole B0 8d run 36944918711 is downloaded and its verdict recomputed: report
+SHA256 `4e09dd5cb1b144fa1274558cd50f614b122b40809c7f9798ed22a45fbd2d5ba1`,
+16 arms/8 pairs admit, density 5.380881–11.668166; tested merge
+`e66771f6af9c32951bedee7cec6e0711225f833c` has verified base/8d parents.
+This generated B0 workload does not establish all-profile or whole-service cost
+parity. Preserve running 86fa whole B0 36949023109 while the newest source waits.
+
+Next: verify new-source actual Linux finalizer recovery and installed/full CI;
+prove an independently pinned prior immutable worker consumes the restored R v1
+journal/projection/witness; then deliver supported ADR006 all-writer cutover,
+readiness and full cold reversal. Every enabled profile/consumer, canonical and
+publisher/freshness/queue parity, whole-service CPU/RAM/density/cost, exact required
+gates, actual rollback window and production Python/Playwright/Chromium retirement
+remain required. The full goal stays active, PR #10210 stays draft, and production
+is unchanged. Earlier pending observations below are historical and superseded.

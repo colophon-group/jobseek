@@ -23,6 +23,8 @@ func ColdAdminOperation(argument string) string {
 		return strings.TrimPrefix(argument, "--")
 	case "--cold-b0-reactivation-plan", "--cold-b0-reactivation-retain", "--cold-b0-reactivation-apply", "--cold-b0-reactivation-inspect":
 		return strings.TrimPrefix(argument, "--")
+	case "--cold-ordinary-finalization-plan", "--cold-ordinary-finalization-retain", "--cold-ordinary-finalization-prepare", "--cold-ordinary-finalization-publish", "--cold-ordinary-finalization-complete", "--cold-ordinary-finalization-inspect":
+		return strings.TrimPrefix(argument, "--")
 	case "--cold-forward-prepare", "--cold-forward-publish", "--cold-forward-activate":
 		return strings.TrimPrefix(argument, "--")
 	case "--cold-b0-forward-plan", "--cold-b0-forward-retain", "--cold-b0-forward-apply", "--cold-b0-forward-inspect":
@@ -54,51 +56,61 @@ func coldB0ForwardOperation(operation string) bool {
 }
 
 type ColdAdminConfig struct {
-	database, redis, source, operation                              string
-	intentFile, intentSHA, targetFile, targetSHA, luaFile           string
-	planSHA, namespace, shard, cohort                               string
-	epoch                                                           int64
-	reversalFile, reversalSHA                                       string
-	restoreRequestFile, restoreRequestSHA, restorePlanSHA           string
-	forwardRequestFile, forwardRequestSHA, forwardPlanSHA           string
-	forwardReceiptSHA                                               string
-	ordinaryRequestFile, ordinaryRequestSHA, ordinaryRestorationSHA string
-	priorB0ReceiptFile, priorB0ReceiptSHA, reactivationPlanSHA      string
-	retirementEpoch                                                 int64
+	database, redis, source, operation                                   string
+	intentFile, intentSHA, targetFile, targetSHA, luaFile                string
+	planSHA, namespace, shard, cohort                                    string
+	epoch                                                                int64
+	reversalFile, reversalSHA                                            string
+	restoreRequestFile, restoreRequestSHA, restorePlanSHA                string
+	forwardRequestFile, forwardRequestSHA, forwardPlanSHA                string
+	forwardReceiptSHA                                                    string
+	ordinaryRequestFile, ordinaryRequestSHA, ordinaryRestorationSHA      string
+	priorB0ReceiptFile, priorB0ReceiptSHA, reactivationPlanSHA           string
+	retirementEpoch                                                      int64
+	finalizationRequestFile, finalizationRequestSHA, finalizationPlanSHA string
 }
 
 // ColdAdminIdentity reports the completed primitive, not host release readiness
 // or a grant to start services. Target contains only bounded board identities and
 // configuration digests; the host must durably retain its exact canonical bytes.
 type ColdAdminIdentity struct {
-	Version                       string          `json:"version"`
-	Operation                     string          `json:"operation"`
-	SourceRevision                string          `json:"source_revision"`
-	IntentSHA256                  string          `json:"intent_sha256,omitempty"`
-	RoutingEpoch                  int64           `json:"routing_epoch,omitempty"`
-	PlanSHA256                    string          `json:"plan_sha256,omitempty"`
-	ProjectionSHA1                string          `json:"projection_sha1,omitempty"`
-	Members                       int             `json:"members,omitempty"`
-	B0TargetSHA256                string          `json:"b0_target_sha256,omitempty"`
-	Target                        json.RawMessage `json:"target,omitempty"`
-	RetainedPhase                 string          `json:"retained_phase,omitempty"`
-	ReversalSHA256                string          `json:"reversal_sha256,omitempty"`
-	ReversalPhase                 string          `json:"reversal_phase,omitempty"`
-	RetirementEpoch               int64           `json:"retirement_routing_epoch,omitempty"`
-	B0RollbackPlanSHA256          string          `json:"b0_rollback_plan_sha256,omitempty"`
-	B0RollbackPlan                json.RawMessage `json:"b0_rollback_plan,omitempty"`
-	B0ForwardPhase                string          `json:"b0_forward_phase,omitempty"`
-	B0ForwardReceiptSHA256        string          `json:"b0_forward_receipt_sha256,omitempty"`
-	B0ForwardPlanSHA256           string          `json:"b0_forward_plan_sha256,omitempty"`
-	B0ForwardPlan                 json.RawMessage `json:"b0_forward_plan,omitempty"`
-	OrdinaryRestorationPlanSHA256 string          `json:"ordinary_restoration_plan_sha256,omitempty"`
-	OrdinaryRestorationPlan       json.RawMessage `json:"ordinary_restoration_plan,omitempty"`
-	OrdinaryRestorationMode       string          `json:"ordinary_restoration_mode,omitempty"`
-	B0RestorationPhase            string          `json:"b0_restoration_phase,omitempty"`
-	B0ReactivationPlanSHA256      string          `json:"b0_reactivation_plan_sha256,omitempty"`
-	B0ReactivationPlan            json.RawMessage `json:"b0_reactivation_plan,omitempty"`
-	B0ReactivationPhase           string          `json:"b0_reactivation_phase,omitempty"`
-	B0ReactivationReceiptSHA256   string          `json:"b0_reactivation_receipt_sha256,omitempty"`
+	Version                           string          `json:"version"`
+	Operation                         string          `json:"operation"`
+	SourceRevision                    string          `json:"source_revision"`
+	IntentSHA256                      string          `json:"intent_sha256,omitempty"`
+	RoutingEpoch                      int64           `json:"routing_epoch,omitempty"`
+	PlanSHA256                        string          `json:"plan_sha256,omitempty"`
+	ProjectionSHA1                    string          `json:"projection_sha1,omitempty"`
+	Members                           int             `json:"members,omitempty"`
+	B0TargetSHA256                    string          `json:"b0_target_sha256,omitempty"`
+	Target                            json.RawMessage `json:"target,omitempty"`
+	RetainedPhase                     string          `json:"retained_phase,omitempty"`
+	ReversalSHA256                    string          `json:"reversal_sha256,omitempty"`
+	ReversalPhase                     string          `json:"reversal_phase,omitempty"`
+	RetirementEpoch                   int64           `json:"retirement_routing_epoch,omitempty"`
+	B0RollbackPlanSHA256              string          `json:"b0_rollback_plan_sha256,omitempty"`
+	B0RollbackPlan                    json.RawMessage `json:"b0_rollback_plan,omitempty"`
+	B0ForwardPhase                    string          `json:"b0_forward_phase,omitempty"`
+	B0ForwardReceiptSHA256            string          `json:"b0_forward_receipt_sha256,omitempty"`
+	B0ForwardPlanSHA256               string          `json:"b0_forward_plan_sha256,omitempty"`
+	B0ForwardPlan                     json.RawMessage `json:"b0_forward_plan,omitempty"`
+	OrdinaryRestorationPlanSHA256     string          `json:"ordinary_restoration_plan_sha256,omitempty"`
+	OrdinaryRestorationPlan           json.RawMessage `json:"ordinary_restoration_plan,omitempty"`
+	OrdinaryRestorationMode           string          `json:"ordinary_restoration_mode,omitempty"`
+	B0RestorationPhase                string          `json:"b0_restoration_phase,omitempty"`
+	B0ReactivationPlanSHA256          string          `json:"b0_reactivation_plan_sha256,omitempty"`
+	B0ReactivationPlan                json.RawMessage `json:"b0_reactivation_plan,omitempty"`
+	B0ReactivationPhase               string          `json:"b0_reactivation_phase,omitempty"`
+	B0ReactivationReceiptSHA256       string          `json:"b0_reactivation_receipt_sha256,omitempty"`
+	OrdinaryFinalizationPlanSHA256    string          `json:"ordinary_finalization_plan_sha256,omitempty"`
+	OrdinaryFinalizationPlan          json.RawMessage `json:"ordinary_finalization_plan,omitempty"`
+	OrdinaryFinalizationPhase         string          `json:"ordinary_finalization_phase,omitempty"`
+	OrdinaryPublicationReceiptSHA256  string          `json:"ordinary_publication_receipt_sha256,omitempty"`
+	OrdinaryFinalizationReceiptSHA256 string          `json:"ordinary_finalization_receipt_sha256,omitempty"`
+	OrdinaryFinalizationReceipt       json.RawMessage `json:"ordinary_finalization_receipt,omitempty"`
+	RestoredOrdinaryPlanSHA256        string          `json:"restored_ordinary_plan_sha256,omitempty"`
+	RestoredOrdinaryProjectionSHA1    string          `json:"restored_ordinary_projection_sha1,omitempty"`
+	RestoredOrdinarySourceRevision    string          `json:"restored_ordinary_source_revision,omitempty"`
 }
 
 // ReadColdAdminConfig requires a distinct protected mode, compiled source,
@@ -112,6 +124,14 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 	for _, key := range []string{"ORDINARY_OWNERSHIP_ROUTING_EPOCH", "ORDINARY_OWNERSHIP_PLAN_SHA256", "ORDINARY_OWNERSHIP_PROJECTION_SHA1", "ORDINARY_GO_COHORT_FILE"} {
 		if getenv(key) != "" {
 			return c, ErrStartup
+		}
+	}
+	if coldOrdinaryFinalizationOperation(operation) {
+		return readColdOrdinaryFinalizationConfig(getenv, installed, operation)
+	}
+	for _, key := range []string{"ORDINARY_COLD_FINALIZATION_REQUEST_FILE", "ORDINARY_COLD_FINALIZATION_REQUEST_SHA256", "ORDINARY_COLD_FINALIZATION_PLAN_SHA256"} {
+		if getenv(key) != "" {
+			return ColdAdminConfig{}, ErrStartup
 		}
 	}
 	if coldB0ReactivationOperation(operation) {
@@ -254,8 +274,11 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 // must independently verify all-writer quiescence and release/rollback evidence,
 // transfer real B0 tasks and persist output. This does not deploy or start owners.
 func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, error) {
-	if ColdAdminOperation("--"+c.operation) != c.operation || c.operation == "" || !sourcePattern.MatchString(c.source) || c.database == "" || c.redis == "" || c.epoch < 1 || c.epoch > 9999999999999 {
+	if ColdAdminOperation("--"+c.operation) != c.operation || c.operation == "" || !sourcePattern.MatchString(c.source) || c.database == "" || (c.redis == "" && c.operation != "cold-ordinary-finalization-inspect") || c.epoch < 1 || c.epoch > 9999999999999 {
 		return nil, ErrStartup
+	}
+	if coldOrdinaryFinalizationOperation(c.operation) {
+		return runColdOrdinaryFinalizationAdmin(ctx, c)
 	}
 	if coldB0ReactivationOperation(c.operation) {
 		return runColdB0ReactivationAdmin(ctx, c)

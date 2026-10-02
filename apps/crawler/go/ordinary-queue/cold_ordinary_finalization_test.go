@@ -428,3 +428,19 @@ func TestRealColdOrdinaryFinalizationRetainsHistoryAndInspectsWithoutAuthority(t
 		t.Fatal("historical inspection required current authority or barriers", err)
 	}
 }
+
+func TestColdOrdinaryFinalizationProtectedRequestRejectsAmbiguousBytes(t *testing.T) {
+	r := ColdOrdinaryFinalizationRequest{strings.Repeat("1", 64), strings.Repeat("2", 64), strings.Repeat("a", 40), "00000000-0000-4000-8000-000000000001", strings.Repeat("3", 64), strings.Repeat("4", 64)}
+	body, _ := json.Marshal(r)
+	if decoded, err := DecodeColdOrdinaryFinalizationRequest(string(body), coldForwardBytesDigest(string(body))); err != nil || decoded != r {
+		t.Fatal("canonical protected request refused", err)
+	}
+	for _, bad := range []string{string(body) + "\n", strings.Replace(string(body), `"source_revision":`, `"unknown":"secret","source_revision":`, 1), strings.Replace(string(body), `"source_revision":`, `"source_revision":"invalid","source_revision":`, 1), strings.Replace(string(body), r.TransitionID, "latest", 1), strings.Replace(string(body), r.ActiveReleaseSHA256, "", 1), strings.Repeat("x", 4097)} {
+		if _, err := DecodeColdOrdinaryFinalizationRequest(bad, coldForwardBytesDigest(bad)); !errors.Is(err, ErrAuthorityLost) || strings.Contains(err.Error(), "secret") {
+			t.Fatal("rehashed ambiguous request admitted or leaked")
+		}
+	}
+	if _, err := DecodeColdOrdinaryFinalizationRequest(string(body), strings.Repeat("f", 64)); !errors.Is(err, ErrAuthorityLost) {
+		t.Fatal("wrong request digest admitted")
+	}
+}

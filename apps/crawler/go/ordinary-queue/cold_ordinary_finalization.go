@@ -36,6 +36,24 @@ func (r ColdOrdinaryFinalizationRequest) valid() bool {
 	return ownershipSHA256.MatchString(r.OrdinaryRestorationPlanSHA256) && ownershipSHA256.MatchString(r.B0ReactivationPlanSHA256) && ownershipRevision.MatchString(r.SourceRevision) && canonicalUUID.MatchString(r.TransitionID) && ownershipSHA256.MatchString(r.ActiveReleaseSHA256) && ownershipSHA256.MatchString(r.ColdAttestationSHA256)
 }
 
+// DecodeColdOrdinaryFinalizationRequest binds a protected closed canonical request.
+func DecodeColdOrdinaryFinalizationRequest(body, digest string) (ColdOrdinaryFinalizationRequest, error) {
+	var r ColdOrdinaryFinalizationRequest
+	if len(body) < 1 || len(body) > 4096 || !ownershipSHA256.MatchString(digest) || coldForwardBytesDigest(body) != digest {
+		return r, ErrAuthorityLost
+	}
+	d := json.NewDecoder(strings.NewReader(body))
+	d.DisallowUnknownFields()
+	if d.Decode(&r) != nil || d.Decode(new(any)) != io.EOF || !r.valid() {
+		return ColdOrdinaryFinalizationRequest{}, ErrAuthorityLost
+	}
+	canonical, err := json.Marshal(r)
+	if err != nil || !bytes.Equal(canonical, []byte(body)) {
+		return ColdOrdinaryFinalizationRequest{}, ErrAuthorityLost
+	}
+	return r, nil
+}
+
 type coldOrdinaryFinalizationDocument struct {
 	Version                 string                          `json:"version"`
 	Request                 ColdOrdinaryFinalizationRequest `json:"request"`

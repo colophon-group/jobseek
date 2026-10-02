@@ -646,7 +646,8 @@ pending/published/completion SQL, no-save RDB recovery, exact retries, direct SQ
 partial-authority refusal, lost witnesses, configuration/lease/canonical/epoch/producer
 drift, partial legacy Lua failure, downgrade refusal and read-only history. The v1
 reader compatibility test uses the current source; it does not prove a previously
-installed immutable worker image. This slice exposes library APIs. Protected CLI
-commands, actual Linux producer/CLI finalization crash recovery, independently
-verified prior binary capability, and the full ADR006 host integration remain required
+installed immutable worker image. The protected finalizer CLI is implemented; its Linux root fixture extends the
+actual producer/CLI through post-SAVE and atomic-completion SIGKILL for native and
+legacy decisions. Fresh source-bound Linux execution, independently verified prior
+binary capability, and the full ADR006 host integration remain required
 before release selection, readiness or production ownership is admitted.

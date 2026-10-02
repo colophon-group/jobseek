@@ -23,6 +23,14 @@ import (
 // queue Lua; reactivation uses the real UID-10001 producer and compiled CLI.
 // This is not evidence of independently verified production rollback releases.
 func TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR(t *testing.T) {
+	for _, native := range []bool{true, false} {
+		t.Run(strconv.FormatBool(native), func(t *testing.T) {
+			installedNativeColdB0ReactivationAndFinalization(t, native)
+		})
+	}
+}
+
+func installedNativeColdB0ReactivationAndFinalization(t *testing.T, native bool) {
 	producerBinary, workerBinary := os.Getenv("JOBSEEK_B0_FORWARD_PRODUCER_BINARY"), os.Getenv("JOBSEEK_B0_FORWARD_WORKER_BINARY")
 	source, luaPath := os.Getenv("JOBSEEK_B0_FORWARD_SOURCE_REVISION"), os.Getenv("JOBSEEK_B0_FORWARD_LUA_FILE")
 	if os.Geteuid() != 0 || !ownershipRevision.MatchString(source) || !filepath.IsAbs(producerBinary) || !filepath.IsAbs(workerBinary) || !filepath.IsAbs(luaPath) {
@@ -35,7 +43,7 @@ func TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR(t *testing.T) 
 		}
 	}
 	metadata := `{"scraper_type":"json-ld","scraper_config":{"browser_backend":"lightpanda","render":true,"routing_revision":"go-b0-1","timeout":5000,"wait":"load","wait_fallback":null}}`
-	p, request, _, receipt := reactivationFixtureBootstrap(t, true, metadata, source, false)
+	p, request, _, receipt := reactivationFixtureBootstrap(t, native, metadata, source, false)
 	ctx := context.Background()
 	ordinary, err := InspectColdOrdinaryRestorationPlan(ctx, p.f.observer, request.OrdinaryRestorationPlanSHA256, source)
 	if err != nil {
@@ -364,4 +372,12 @@ func TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR(t *testing.T) 
 	if !reflect.DeepEqual(transferred, forwardRedisSnapshot(t, p.f.client)) || canonical != coldB0CanonicalSnapshot(t, p) || publicationPhase(t, p) != "reversing" {
 		t.Fatal("actual CLI replayed R effects or published ordinary ownership")
 	}
+	// Restore only the operational files needed by finalization; retained B0
+	// completion binds the prior receipt, so finalization refuses a receipt file.
+	for _, key := range []string{"ORDINARY_COLD_PRIOR_B0_RECEIPT_FILE", "ORDINARY_COLD_PRIOR_B0_RECEIPT_SHA256"} {
+		delete(env, key)
+	}
+	env["REDIS_URL"] = "unix://" + socket
+	env["ORDINARY_COLD_B0_TARGET_FILE"], env["ORDINARY_COLD_B0_TARGET_SHA256"], env["ORDINARY_COLD_B0_LUA_FILE"] = write("final-target.json", p.target.body), p.target.digest, write("final-queue.lua", p.target.lua)
+	installedColdOrdinaryFinalizationCLI(t, p, ordinary, plan, control, source, env, command, write, stop, start)
 }
