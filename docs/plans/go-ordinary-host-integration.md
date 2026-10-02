@@ -110,14 +110,41 @@ committed generation, including aliases, refuse before publication.
 
 Go 1.26 real-file races and actual executable tests pass. Actual deployed Python
 writer/extractor code is used only as an isolated offline oracle; the installed
-operation executes no Python, database, Redis or Docker command. Fresh installed
-image validation must include the sixth actual executable fixture. This primitive
+operation executes no Python, database, Redis or Docker command. Installed run
+37037813202 at `b852b59bd4c946e32c593358056e38dd0d9334c6` independently verifies
+all six actual executable fixtures on both architectures, plus source/CA and all
+34 assets. This primitive
 requires the caller's shared host mutation lock and reports only
 `spec_archive_retained`. The host coordinator still must independently bind and
 fsync intent/receipt before incoming spec selection, implement phased restoration
 and final absent-file removal after bridge/data verification, and prove recovery
 at real process-crash and readiness seams. No live specs are selected or restored
 by the primitive.
+
+## Native container inventory and Docker state predicate
+
+`ObserveContainers` now reads the entire deployment daemon, including stopped
+containers and foreign-project one-offs. Fixed cleared-environment commands,
+bounded sorted inspection batches, duplicate-safe JSON, complete process/restart
+fields and full readback bind a credential-free inventory. Configuration and
+mount contents remain private; their hashes bind the observations.
+
+`RequireColdContainers` joins exact project/service/local image IDs to explicit
+release image evidence. All services are writers by default, including exporter
+and new consumers. Writers, all one-offs and unaccounted global containers require
+stopped flags/PID and restart=no/zero retries. Known-project unbound services or
+images refuse. Only matched, explicitly non-one-off Redis/Postgres/Alloy daemon
+commands may remain live; complete runtime/config/mount/user fidelity is a separate
+mandatory check. Staged old/new image bindings share one host architecture.
+
+Local Go races and both Linux integration-tag vet checks pass. The existing
+Actions harness now requires actual whole-daemon observation of a synthetic
+exporter before/after start, stop and restart-policy removal. Its independent live
+PostgreSQL prevents a cold receipt. Fresh execution is required; this fixture
+does not prove positive complete-host exclusion. The library is not yet a host
+coordinator consumer. SQL barriers/leases, source/binary/mount/users, lock-spanning
+reobservation, durable intent/receipt and readiness must still be implemented and
+independently proved before complete admission.
 
 ## Protected host envelope
 

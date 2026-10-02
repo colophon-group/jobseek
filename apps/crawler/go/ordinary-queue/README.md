@@ -739,3 +739,31 @@ only as an offline test oracle. The installed worker exposes `--capture-deploy-s
 with explicit inputs and canonical `spec_archive_retained` metadata; the caller
 must hold the shared mutation lock and durably bind the receipt before any spec
 selection. Archive capture is not host admission, armed rollback or live restore.
+
+## Native whole-daemon container evidence
+
+`ObserveContainers` enumerates every running and stopped container on the trusted
+deployment daemon, with no Compose project filter. Fixed bounded commands inspect
+sorted batches and reobserve the full inventory. Receipts retain exact image IDs,
+Compose/one-off identities, process flags/PIDs, restart policies and configuration/
+mount hashes; credential-bearing inspection bytes stay in memory. Missing state,
+duplicate identities, incomplete inspection and readback drift refuse.
+
+`RequireColdContainers` binds that inventory to explicit observed release image
+evidence. Every service is a writer by default, including exporter, browser,
+maintenance one-offs and future consumers. Writers and globally unaccounted
+containers must be fully stopped with restart policy `no` and zero retries. Known
+projects with unbound services/images refuse even when stopped. Redis/Postgres/
+Alloy may remain live only with matched immutable image identities, explicit
+non-one-off labels and matching daemon commands; their source/config/mount/user
+fidelity still requires independent verification. Old and incoming image bindings
+may coexist during staging, but must share the host architecture.
+
+The result is only a Docker state predicate. It neither stops containers nor
+grants complete host authority: shared mutation lock, selected release/specs,
+runtime fidelity, SQL leases/barriers, durable intent and readiness remain required.
+Agents must never invoke the daemon observer locally. The existing disposable
+Linux Actions fixture inspects a controlled synthetic exporter across created/
+running/stopped/restart-disabled states. The job's independent live PostgreSQL
+must prevent a cold receipt. Unit tests prove the complete predicate; actual
+complete host exclusion and positive full-host admission remain open.

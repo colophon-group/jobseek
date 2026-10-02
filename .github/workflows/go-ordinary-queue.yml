@@ -141,7 +141,7 @@ jobs:
           go mod tidy -diff
           test -z "$(gofmt -l .)"
 
-      - name: Verify actual cleared Compose and local immutable image observations
+      - name: Verify actual Compose image and whole-daemon container observations
         run: |
           set -euo pipefail
           # Version-only probe uses no release environment and prints no
@@ -157,10 +157,12 @@ jobs:
             DOCKER_CONFIG=/var/empty/jobseek-docker-read \
             DOCKER_HOST=unix:///var/run/docker.sock \
             /usr/bin/docker compose version --short
-          # Read-only commands against this disposable runner's already-pulled
-          # PostgreSQL service image. Agents never receive a host Docker socket.
-          go test -race -tags=integration -count=1 -timeout=120s -v \
-            -run '^TestActualClearedComposeAndLocalImageObservation$' ./releaseevidence
+          # The image observer is read-only. The container fixture creates and
+          # contains only its own bounded synthetic exporter on this disposable
+          # runner; its independent PostgreSQL must prevent a cold receipt.
+          # Agents never receive a host Docker socket.
+          go test -race -tags=integration -count=1 -timeout=180s -v \
+            -run '^TestActual(ClearedComposeAndLocalImageObservation|WholeDaemonContainerStateAndRestartObservation)$' ./releaseevidence
 
       - name: Verify independently pinned prior executable at restored R
         run: |

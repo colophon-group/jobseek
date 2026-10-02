@@ -1,5 +1,34 @@
 # Go and Lightpanda migration continuation plan
 
+Latest verified runtime: `b852b59bd4c946e32c593358056e38dd0d9334c6` passes
+full CI 37037807350, Linux 37037814524, installed 37037813202 and historical
+native/legacy image runs 37037814605/37037814647. Exact merge parents and both
+architecture artifacts are independently verified. All six actual installed
+executable fixtures pass, including native deployment-spec archive retention,
+with source/CA identity and 34 assets. See
+[installed archive evidence](evidence/go-ordinary-native-deploy-spec-capture-verified-2026-10-02.json).
+
+The next native library slice observes every daemon container and requires all
+writers/exporter/one-offs and unaccounted containers stopped with automatic
+restarts disabled. Exact release-image bindings, full inventory readback and
+credential-free process/restart/config/mount evidence are implemented. Known
+project or image drift refuses. Local Go races and Linux vet pass; fresh actual
+Actions execution is required. Its synthetic exporter fixture preserves the
+independent live PostgreSQL in the global inventory and must refuse a cold receipt.
+See [container predicate evidence](evidence/go-ordinary-native-container-observation-2026-10-02.json).
+This Docker state predicate still needs complete runtime/source/mount/user checks,
+SQL barriers/leases and integration into the locked durable host coordinator.
+
+Ad39 whole-B0 37033316042 independently admits 16 arms/8 pairs, density
+5.796526675–14.091574076. Preserve latest b852 whole-B0 37037814550 in progress.
+The full [host delivery plan](plans/go-ordinary-host-integration.md), every enabled
+profile/runtime consumer, canonical parity/freshness/queue/publisher, comparable
+whole-service resources/cost, exact required gates and supported rollout, actual
+rollback window and production Python/Playwright/Chromium retirement remain
+required. PR #10210 stays draft; production unchanged; the full goal is active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
 Verified runtime checkpoint: `ad39c519d27dcbba1eb936b157639f9a1a92daa5` passes
 full CI 37033309829, Linux 37033316023, installed 37033313737 and actual historical
 native/legacy image runs 37033315966/37033316594. Both-architecture artifacts and

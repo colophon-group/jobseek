@@ -1,5 +1,38 @@
 # Native ordinary worker authority checkpoint
 
+## 2026-10-02: installed spec archive verified; whole-daemon inventory implemented
+
+Source `b852b59bd4c946e32c593358056e38dd0d9334c6` passes full CI 37037807350,
+Linux 37037814524, installed 37037813202 and historical native/legacy image runs
+37037814605/37037814647. Both-architecture logs/artifacts and exact merge
+`f870c1d3c5bddf1a3d62b527b286048383fba48d` parents (base
+`86813918a20a499c5d59a39ca8c33797161f8743`, candidate) are independently verified.
+All six actual installed executable fixtures pass, including native deployment
+spec capture/retention, with exact source/CA and all 34 assets verified. See
+[portable installed archive evidence](evidence/go-ordinary-native-deploy-spec-capture-verified-2026-10-02.json).
+
+The next native slice inventories every daemon container, with no project filter,
+and binds image IDs, process/PID/one-off state, restart policies and private config/
+mount hashes to explicit image evidence. Every service defaults to writer; stopped
+exporter/one-offs must also have automatic restarts disabled. Unknown globally live
+or restartable containers, known-project unbound images/services, incomplete state
+and readback drift refuse. Only matched Redis/Postgres/Alloy daemon roles can stay
+live, pending independent runtime fidelity. Go races and Linux integration-tag vet
+pass. The existing disposable Actions fixture now requires created/running/stopped/
+restart-disabled exporter observations and refuses a cold receipt while the job's
+independent PostgreSQL is live. Fresh actual execution is required. See
+[container predicate contract](evidence/go-ordinary-native-container-observation-2026-10-02.json).
+
+Ad39 whole-B0 37033316042 independently admits 16 arms/8 pairs, density
+5.796526675–14.091574076; latest b852 whole-B0 37037814550 remains in progress.
+Startup-cardinality evidence is not complete profile/service parity or cost.
+The complete [host plan](plans/go-ordinary-host-integration.md) still requires
+runtime/source/mount/user fidelity, SQL leases/barriers, durable bound phases,
+spec restoration, actual complete cold cutover/reversal and readiness. PR #10210
+remains draft; production unchanged; the full migration goal is active.
+
+Earlier entries below describe their timestamped evidence.
+
 ## 2026-10-02: actual image observations verified; native spec archive executable implemented
 
 Source `ad39c519d27dcbba1eb936b157639f9a1a92daa5` passes full CI 37033309829,
