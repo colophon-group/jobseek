@@ -32,6 +32,7 @@ var csvPattern = regexp.MustCompile(`^[A-Za-z0-9._/-]+\.csv$`)
 type Files struct {
 	body   string
 	digest string
+	images map[string]string
 }
 
 func (f *Files) Body() string   { return f.body }
@@ -331,5 +332,15 @@ func VerifyFiles(ctx context.Context, directory, owner string) (*Files, error) {
 	if err != nil {
 		return nil, reject("canonical evidence")
 	}
-	return &Files{string(b), digest(b)}, nil
+	images := map[string]string{
+		"ghcr.io/" + owner + "/jobseek-crawler":         ids["CRAWLER_IMAGE_REF"],
+		"ghcr.io/" + owner + "/jobseek-crawler-browser": ids["BROWSER_IMAGE_REF"],
+	}
+	if kind == "bridge" {
+		// verifyBridge has already authenticated this current shim pair against
+		// the transitive legacy evidence. Keep it for Compose observation too.
+		shim, _ := exact(el, "SHIM_IMAGE_REF")
+		images["ghcr.io/"+owner+"/jobseek-murmur-shim"] = shim
+	}
+	return &Files{string(b), digest(b), images}, nil
 }

@@ -1,5 +1,40 @@
 # Native ordinary worker authority checkpoint
 
+## 2026-10-02: historical legacy image verified; native image observations implemented
+
+Candidate runtime source `ecb21d62c4bd9939f417f8c71feea273c1c0765c`: full CI 37029119184, Linux 37029126684, installed 37029123534, historical
+native image 37029126597 and legacy image 37029126654 pass. Both-architecture
+Linux/installed/native-image/legacy-image artifacts are independently verified;
+the installed verifier now has five actual executable tests.
+Exact merge `04d7bb54381fcb9ed8902b33d12f79e83f81fce4` parents (base
+`86813918a20a499c5d59a39ca8c33797161f8743` and candidate) are independently
+verified. The rebuilt unchanged `b75ccb9` Python image executes at reserved R
+only after completed legacy restoration and real RDB reload. Every installed
+source/Lua file (599) and asset (34), Python version, immutable image ID, source
+and Dockerfile match. Queue/publisher/fence/health/drain and content/database
+conservation checks pass. See [closed evidence](evidence/go-ordinary-prior-legacy-image-verified-2026-10-02.json).
+This is rebuilt historical-source capability, not the selected production digest
+or complete host admission. The old image still needs host exclusion throughout
+restoration; its historical queue interval remains distinct from native due.
+
+The next native library slice implements cleared-environment Compose and local
+immutable image observations bound to the exact file-evidence hash. Fixed commands
+are read-only, credential-bearing JSON stays in memory, and platform/digest/file
+readback drift refuses. Go 1.26 race and both Linux vet checks pass; the existing
+Actions harness now requires real observations using its public PostgreSQL service
+image. Fresh execution is required; see [the observer contract](evidence/go-ordinary-native-release-image-observation-2026-10-02.json). The library is not yet a production coordinator
+or installed-worker CLI operation. Source/binary/mount/user checks, complete
+all-writer/exporter/one-off exclusion, durable host phases and full readiness are
+still open in [the host plan](plans/go-ordinary-host-integration.md).
+
+Whole-B0 source `eb804cf56` run 37021649241 is independently recomputed: 16 arms,
+8 admitted pairs, density 5.439250756–14.319845649. Its B0 startup-cardinality
+scope does not establish all-profile parity or whole-service cost. Preserve
+preceding live 37025887572 and pending ecb 37029126420. PR #10210 remains draft;
+production is unchanged and the full migration goal remains active.
+
+Earlier checkpoint entries below describe evidence available at their timestamp.
+
 The full [Go and Lightpanda migration plan](27-go-lightpanda-continuation-plan.md)
 remains active. This checkpoint continues draft
 [PR #10207](https://github.com/colophon-group/jobseek/pull/10207). It began as an

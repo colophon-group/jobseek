@@ -1,0 +1,63 @@
+{
+  "version": "jobseek.migration.native-release-image-observation/v1",
+  "date": "2026-10-02",
+  "preceding_runtime_source": "ecb21d62c4bd9939f417f8c71feea273c1c0765c",
+  "contract": [
+    "Exact explicit generation/owner/project/architecture and preceding native file evidence hash",
+    "Read-only fixed absolute Docker CLI, cleared Docker/Compose/interpolation environment, fixed local Unix daemon and bounded output/time/wait",
+    "Exact verified Compose/env/override paths; every configured image pinned; build definitions refused",
+    "Crawler/browser and bridged current shim references agree with verified generation",
+    "Each repository digest matches a local Linux image ID on the explicit architecture; distinct references ordered and mapped exactly",
+    "Duplicate JSON keys, oversized/deep/invalid observations, mutable/missing/wrong-platform images and command errors refuse without credential output",
+    "Complete command and file readback; shared host mutation lock remains mandatory",
+    "Canonical credential-free jobseek.crawler-release-images/v1 document; raw credential-bearing JSON stays in memory"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "races_passed": true,
+    "linux_integration_tag_vet": [
+      "amd64",
+      "arm64"
+    ],
+    "repository_checks": 188,
+    "actionlint": "1.7.12 pass",
+    "zizmor": "1.26.1 pass",
+    "actual_installed_file_executable": "preceding ecb source independently verified on both architectures; five actual native executable tests",
+    "tests_log_sha256": "4c4318da332646489187bc9fa9d655f798b57b4bbe85d6caf9d4cd712bd6e91c"
+  },
+  "required_actual_fixture": {
+    "workflow": ".github/workflows/go-ordinary-queue.yml",
+    "test": "TestActualClearedComposeAndLocalImageObservation",
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "explicit_required": true,
+    "image": "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
+    "scope": "existing disposable Actions daemon; public infrastructure image already pulled by the job; synthetic crawler/browser labels; command seam only",
+    "status": "fresh execution required"
+  },
+  "preceding_verified": {
+    "source": "ecb21d62c4bd9939f417f8c71feea273c1c0765c",
+    "full_ci": 37029119184,
+    "linux": 37029126684,
+    "installed": 37029123534,
+    "historical_native_image": 37029126597,
+    "historical_legacy_image": 37029126654,
+    "independently_verified": [
+      "linux",
+      "installed",
+      "historical_native_image",
+      "historical_legacy_image"
+    ]
+  },
+  "open_work": [
+    "Production coordinator/host executable consumer",
+    "Actual selected generation/spec archive and image source/binary/mount/numeric-user identity",
+    "All-writer/exporter/one-off exclusion, disabled restarts, database leases/barriers",
+    "Durable cutover/reversal and full-stack readiness",
+    "Full migration coverage/parity/resources/cost, exact production gates and rollout, real rollback window and runtime retirement"
+  ],
+  "production_changed": false,
+  "full_goal_active": true
+}

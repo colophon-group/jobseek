@@ -711,3 +711,19 @@ exclusion, deploy-spec archives and readiness remain separate required host
 checks. This read-only operation has a 15-second bound and opens no database,
 Redis or Docker connection. It does not replace the existing production path
 until the complete supported native host coordinator is implemented and verified.
+
+## Native release image observations
+
+`releaseevidence.ObserveImages` performs fixed read-only Docker Compose and local
+image-inspect observations for the trusted Linux deployment identity under the
+shared mutation lock. It requires the exact preceding file-evidence hash and
+explicit generation/owner/project/architecture; clears caller Docker/Compose
+variables; binds resolved digest-pinned services to installed Linux image IDs;
+and rechecks observations plus the complete file generation. It returns canonical
+credential-free `jobseek.crawler-release-images/v1` evidence. Commands never pull,
+run, stop or select anything; agents must never invoke it against a host socket.
+
+The existing disposable Actions fixture requires real Compose/image observations
+on both architectures. Its public PostgreSQL image and synthetic runtime labels
+prove only the command boundary. Production coordinator wiring, source/binary and
+mount/user verification, all-writer exclusion and full readiness remain open.

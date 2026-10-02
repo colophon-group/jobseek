@@ -66,6 +66,27 @@ file verification and selection; the primitive reobserves every hashed file but
 cannot substitute for the lock or a complete host receipt. Existing production
 consumers still use their supported verification path.
 
+The native `releaseevidence.ObserveImages` library now binds an explicitly
+expected file-evidence hash to fixed, read-only `/usr/bin/docker` observations.
+It clears caller Docker/Compose/interpolation variables, selects the protected
+env and exact verified Compose/override paths, rejects builds/mutable images,
+and requires every resolved repository digest to match a locally installed Linux
+image ID on the requested architecture. Crawler/browser repository references
+must match the verified env identities. Duplicate JSON keys, missing images,
+platform drift and observation/file readback drift refuse. Output includes only
+project/service/image identities and evidence hashes; raw Compose and inspect
+JSON can contain secrets and stay in memory. It performs no pull or mutation.
+
+Go 1.26 race tests and both Linux integration-tag vet checks pass. The existing
+disposable Linux CI harness now requires an actual cleared-environment Compose
+and image-inspect fixture using its already-pulled public PostgreSQL image; fresh
+execution is required. That fixture has synthetic crawler/browser identities
+and proves the command boundary only. This library is not yet wired into a
+production coordinator or a new installed-worker CLI command. It does not prove
+image source/binary identity, selected generations/specs, mounts, numeric users,
+complete writer exclusion or readiness. Those remain required before release
+or cold admission; the caller must hold the shared host mutation lock.
+
 ## Protected host envelope
 
 The deployed coordinator must run under the existing operator deployment identity,

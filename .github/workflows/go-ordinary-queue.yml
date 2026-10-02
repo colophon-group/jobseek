@@ -90,6 +90,7 @@ jobs:
     env:
       JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
       JOBSEEK_CRAWLER_RELEASE_REQUIRE_PYTHON: "1"
+      JOBSEEK_CRAWLER_RELEASE_REQUIRE_DOCKER_OBSERVATION: "1"
       JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
       LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
       JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
@@ -139,6 +140,14 @@ jobs:
           go vet ./...
           go mod tidy -diff
           test -z "$(gofmt -l .)"
+
+      - name: Verify actual cleared Compose and local immutable image observations
+        run: |
+          set -euo pipefail
+          # Read-only commands against this disposable runner's already-pulled
+          # PostgreSQL service image. Agents never receive a host Docker socket.
+          go test -race -tags=integration -count=1 -timeout=120s -v \
+            -run '^TestActualClearedComposeAndLocalImageObservation$' ./releaseevidence
 
       - name: Verify independently pinned prior executable at restored R
         run: |
