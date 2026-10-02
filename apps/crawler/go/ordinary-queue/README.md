@@ -665,3 +665,13 @@ CI uses a standalone temporary `.git`-directory checkout of that exact prior
 source with explicit `-buildvcs=true`: its Go 1.26 compiler omits VCS stamping
 for linked worktrees (Go #58218). Missing or dirty metadata still refuses; no
 identity check is relaxed and the prior runtime source remains unchanged.
+
+The separate `TestPriorImageExecutableConsumesRestoredV1AuthorityAtR` fixture
+requires explicit `JOBSEEK_ORDINARY_PRIOR_IMAGE_{BINARY,BINARY_SHA256,DATA_DIRECTORY,
+PROOF_FILE,PROOF_SHA256,REQUIRE}` inputs. Disposable Linux CI builds the unchanged
+historical Dockerfile and observes the immutable image ID and installed bytes.
+The closed canonical proof binds source, image, binary, architecture, Dockerfile
+and all 34 assets to Git bytes before running the extracted process through the
+same restored-R test. Dockerfile image builds omit VCS metadata, so this is a
+distinct image-evidence path; the independently compiled prior fixture retains
+its strict VCS requirement. Neither fixture grants production host authority.

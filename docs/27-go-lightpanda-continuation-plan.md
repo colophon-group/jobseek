@@ -1,5 +1,21 @@
 # Go and Lightpanda migration continuation plan
 
+Corrected prior executable source `097027ac43481456efe810b683858fd66970060a`
+passes Linux 37018098304 on both architectures. Exact merge
+`43cd31c696af86addbf5aa73d48d93ce65447ff7` parents are verified, with no failed or
+skipped tests. Actual pinned prior source, binary hashes, restored-R admission and
+native/legacy root finalizer recovery pass. Preceding 7da installed-image artifacts
+37016317006 also verify both source/CA identities, four process tests and 34 assets.
+
+A separate AMD64/ARM64 CI fixture now builds the unchanged historical Dockerfile,
+inspects its immutable image ID, and exercises the extracted actual prior binary
+at restored R. Closed source/image/binary/platform/Dockerfile/asset evidence and
+negative decoder checks are implemented; fresh actual image execution remains
+required. Local original prior-source capability and decoder races pass (3.394s),
+both Linux integration-tag vet checks and workflow security checks pass. Host
+release/readiness/full reversal and the complete migration remain outstanding.
+See [prior image fixture evidence](evidence/go-ordinary-prior-image-capability-fixture-2026-10-02.json).
+
 Linux prior-executable run 37016271209 rejects missing VCS metadata on both
 architectures before restoration. Go 1.26.0 reproduces this locally in linked
 worktrees, even with explicit `-buildvcs=true` ([Go #58218](https://github.com/golang/go/issues/58218)).

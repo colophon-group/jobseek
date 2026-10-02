@@ -1,0 +1,149 @@
+name: Prior ordinary image restoration capability
+
+on:
+  pull_request:
+    paths:
+      - 'apps/crawler/go/**'
+      - 'apps/crawler/contracts/**'
+      - 'apps/crawler/src/migrations/**'
+      - '.github/workflows/go-ordinary-prior-image.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ordinary-prior-image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  restored-prior-image:
+    name: Prior installed worker at restored R (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_ordinary_worker_test
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_ordinary_worker_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+      JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: '1'
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/ordinary-queue/go.mod
+          cache-dependency-path: apps/crawler/go/ordinary-queue/go.sum
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13.15'
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: '0.12.3'
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
+      - name: Prepare disposable migrated PostgreSQL and private Redis fixtures
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends redis-server
+          uv sync --frozen --group dev
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
+
+      - name: Build exact historical image and exercise its installed worker at restored R
+        run: |
+          set -euo pipefail
+          umask 077
+          prior_source=3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4
+          prior_checkout="${RUNNER_TEMP}/ordinary-prior-image-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          fixture="${RUNNER_TEMP}/ordinary-prior-image-evidence"
+          mkdir -m 0700 "$fixture"
+          git fetch --depth=1 --no-tags origin "$prior_source"
+          git init --quiet "$prior_checkout"
+          git -C "$prior_checkout" fetch --quiet --depth=1 --no-tags "$GITHUB_WORKSPACE" "$prior_source"
+          git -C "$prior_checkout" checkout --detach FETCH_HEAD
+          test "$(git -C "$prior_checkout" rev-parse HEAD)" = "$prior_source"
+          test -z "$(git -C "$prior_checkout" status --porcelain)"
+          docker build --target slim --build-arg "CRAWLER_SOURCE_REVISION=$prior_source" \
+            --tag jobseek-crawler:ordinary-prior-fixture "$prior_checkout/apps/crawler"
+          test -z "$(git -C "$prior_checkout" status --porcelain)"
+          image_id="$(docker image inspect --format '{{.Id}}' jobseek-crawler:ordinary-prior-fixture)"
+          [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+          fixture_container="$(docker create "$image_id")"
+          trap 'docker rm "$fixture_container" >/dev/null; rm -rf "$prior_checkout"' EXIT
+          docker cp "$fixture_container:/usr/local/bin/go-ordinary-worker" "$fixture/ordinary-worker"
+          docker cp "$fixture_container:/app/data" "$fixture/data"
+          chmod -R a-w "$fixture/data"
+          docker image inspect --format '{{.Architecture}}' "$image_id" > "$fixture/image-architecture"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --entrypoint go-ordinary-worker "$image_id" --identity > "$fixture/identity.json"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --entrypoint sha256sum "$image_id" /usr/local/bin/go-ordinary-worker > "$fixture/installed-binary-sha256"
+          python3 - "$fixture" "$prior_source" "$image_id" "${{ matrix.arch }}" "$prior_checkout/apps/crawler/Dockerfile" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+          identity = json.loads((root / 'identity.json').read_text())
+          assert identity == {'source_revision': sys.argv[2], 'ca_sha256': 'fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28', 'profile': 'greenhouse.token-skip/v1'}
+          architecture = (root / 'image-architecture').read_text().strip()
+          assert architecture == sys.argv[4]
+          binary_hash = sha(root / 'ordinary-worker')
+          assert binary_hash == (root / 'installed-binary-sha256').read_text().split()[0]
+          assets = {str(p.relative_to(root / 'data')): sha(p) for p in sorted((root / 'data').rglob('*')) if p.is_file()}
+          assert len(assets) == 34
+          proof = {'version': 'jobseek.migration.prior-ordinary-installed/v1', 'source_revision': sys.argv[2],
+                   'image_id': sys.argv[3], 'architecture': architecture, 'binary_sha256': binary_hash,
+                   'dockerfile_sha256': sha(pathlib.Path(sys.argv[5])), 'installed_asset_sha256': assets}
+          (root / 'proof.json').write_bytes(json.dumps(proof, separators=(',', ':'), ensure_ascii=False).encode())
+          PY
+          export JOBSEEK_ORDINARY_PRIOR_IMAGE_REQUIRE=1
+          export JOBSEEK_ORDINARY_PRIOR_IMAGE_BINARY="$fixture/ordinary-worker"
+          prior_binary_hash="$(sha256sum "$fixture/ordinary-worker" | cut -d ' ' -f1)"
+          export JOBSEEK_ORDINARY_PRIOR_IMAGE_BINARY_SHA256="$prior_binary_hash"
+          export JOBSEEK_ORDINARY_PRIOR_IMAGE_DATA_DIRECTORY="$fixture/data"
+          export JOBSEEK_ORDINARY_PRIOR_IMAGE_PROOF_FILE="$fixture/proof.json"
+          prior_proof_hash="$(sha256sum "$fixture/proof.json" | cut -d ' ' -f1)"
+          export JOBSEEK_ORDINARY_PRIOR_IMAGE_PROOF_SHA256="$prior_proof_hash"
+          cd apps/crawler/go/ordinary-queue
+          go test -race -tags=integration -count=1 -timeout=60s -v \
+            -run '^TestPrior(ImageExecutableConsumesRestoredV1AuthorityAtR|InstalledImageEvidenceRejectsDrift)$' ./... \
+            | tee "$fixture/restored-R-tests.log"
+
+      - name: Save prior immutable image capability evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ordinary-prior-image-${{ matrix.arch }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/ordinary-prior-image-evidence/proof.json
+            ${{ runner.temp }}/ordinary-prior-image-evidence/identity.json
+            ${{ runner.temp }}/ordinary-prior-image-evidence/installed-binary-sha256
+            ${{ runner.temp }}/ordinary-prior-image-evidence/restored-R-tests.log
+          if-no-files-found: error

@@ -1,0 +1,70 @@
+{
+  "schema": "jobseek.migration.prior-ordinary-image-capability-fixture/v1",
+  "candidate_parent": "097027ac43481456efe810b683858fd66970060a",
+  "preceding_actual_prior_linux": {
+    "source": "097027ac43481456efe810b683858fd66970060a",
+    "run": 37018098304,
+    "tested_merge": "43cd31c696af86addbf5aa73d48d93ce65447ff7",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "097027ac43481456efe810b683858fd66970060a"
+    ],
+    "log_sha256": "3bbadced766e20d5a881e6fee308fe088c63e7904eb4da346e46b20d6ce857c3",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  },
+  "preceding_installed_current": {
+    "source": "7da02ee71cc5cc5eaabee5a04a4331cbe7e7339e",
+    "run": 37016317006,
+    "source_ca_four_process_fixtures_and_34_assets_both_architectures_verified": true
+  },
+  "implemented": "Independent disposable AMD64/ARM64 image jobs build the pinned historical source with its unchanged Dockerfile, inspect the immutable image ID and architecture, verify actual in-image identity and installed binary hash, and extract the old runtime and all 34 assets. A distinct closed canonical image proof binds exact source/image/binary/platform/Dockerfile/assets; the image-extracted process must pass the same real RDB-restored R authority/publisher/fence/queue/health/drain test. VCS-built and image-installed proof paths remain separate.",
+  "local_validation": {
+    "compiler": "go1.26.0",
+    "actual_prior_source_fixture_and_closed_image_decoder_negative_tests": true,
+    "package_seconds": 3.394,
+    "total_command_seconds": 6.48,
+    "log_sha256": "5c615a23c3b5c395753c8dd1e3cc61bb6e53d146dc87b19f9d92b8c79f45d859",
+    "owned_fixture_cleanup": true,
+    "integration_tag_vet": [
+      "linux-amd64",
+      "linux-arm64"
+    ],
+    "workflow_actionlint": "v1.7.12 pass",
+    "workflow_zizmor": "v1.26.1 pass",
+    "required_repository_checks": {
+      "passed": 188,
+      "failed": 0,
+      "log_sha256": "a3f1f31bbcc0f179b4e8c575b8b353b7da94249ac9dd18e31e0b5ebf6463a05c"
+    }
+  },
+  "actual_image_execution": "required; not run locally; only isolated CI owns Docker",
+  "scope_limits": [
+    "historical candidate image is not a previously selected production native ordinary release",
+    "fixture startup references and host/release labels remain synthetic",
+    "independent ADR006 host release selection/readiness/full rollback remain unproven",
+    "all enabled profiles/consumers, whole-production cost, deployment/window/retirement remain"
+  ],
+  "production_changed": false,
+  "full_goal": "active",
+  "changed_file_sha256": {
+    ".github/workflows/go-ordinary-prior-image.yml": "689a42e22772c4f2bb81caa56aaca0f34453139cab5e42ea3ff08bfc3bf7010e",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_prior_executable_integration_test.go": "ef6bd3556bffbf982ed121e043b8d526151a02f8903db94b693e0127526306e4",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_prior_image_integration_test.go": "b52217db2d95ac85d9c587c7a9bf4b5fd94423590008edc6571da0b28b362cdd"
+  }
+}

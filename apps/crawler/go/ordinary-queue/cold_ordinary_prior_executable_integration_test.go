@@ -30,11 +30,23 @@ import (
 const priorOrdinaryExecutableSource = "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4"
 
 func TestPriorNativeExecutableConsumesRestoredV1AuthorityAtR(t *testing.T) {
-	binary := os.Getenv("JOBSEEK_ORDINARY_PRIOR_BINARY")
-	data := os.Getenv("JOBSEEK_ORDINARY_PRIOR_DATA_DIRECTORY")
-	expectedHash := os.Getenv("JOBSEEK_ORDINARY_PRIOR_BINARY_SHA256")
+	testPriorExecutableConsumesRestoredV1AuthorityAtR(t, false)
+}
+
+func TestPriorImageExecutableConsumesRestoredV1AuthorityAtR(t *testing.T) {
+	testPriorExecutableConsumesRestoredV1AuthorityAtR(t, true)
+}
+
+func testPriorExecutableConsumesRestoredV1AuthorityAtR(t *testing.T, installedImage bool) {
+	prefix := "JOBSEEK_ORDINARY_PRIOR_"
+	if installedImage {
+		prefix += "IMAGE_"
+	}
+	binary := os.Getenv(prefix + "BINARY")
+	data := os.Getenv(prefix + "DATA_DIRECTORY")
+	expectedHash := os.Getenv(prefix + "BINARY_SHA256")
 	if binary == "" && data == "" && expectedHash == "" {
-		if os.Getenv("JOBSEEK_ORDINARY_PRIOR_REQUIRE") == "1" {
+		if os.Getenv(prefix+"REQUIRE") == "1" || os.Getenv(prefix+"PROOF_FILE") != "" || os.Getenv(prefix+"PROOF_SHA256") != "" {
 			t.Fatal("required independent prior executable unavailable")
 		}
 		t.Skip("explicit independently built prior executable required")
@@ -48,6 +60,10 @@ func TestPriorNativeExecutableConsumesRestoredV1AuthorityAtR(t *testing.T) {
 		digest := sha256.Sum256(body)
 		if err != nil || hex.EncodeToString(digest[:]) != expectedHash {
 			t.Fatal("prior executable bytes drifted")
+		}
+		if installedImage {
+			verifyPriorInstalledImageEvidence(t, binary, data, expectedHash)
+			return
 		}
 		metadata, err := buildinfo.ReadFile(binary)
 		if err != nil {

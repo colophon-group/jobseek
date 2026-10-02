@@ -1571,3 +1571,21 @@ locally (3.63s; package 5.299s), including RDB reload and publisher/queue conser
 Full CI 37016312827 passes preceding source `7da02ee71`; fresh corrected Linux
 execution remains required. No immutable prior image, host or production admission
 is claimed. See [build correction evidence](evidence/go-ordinary-prior-build-metadata-correction-2026-10-02.json).
+
+## Actual prior Linux admission and image fixture — 2026-10-02
+
+Corrected prior executable source `097027ac43481456efe810b683858fd66970060a`
+passes Linux 37018098304 on both architectures. Exact merge
+`43cd31c696af86addbf5aa73d48d93ce65447ff7` parents are verified, with no failed or
+skipped tests. Actual pinned prior source, binary hashes, restored-R admission and
+native/legacy root finalizer recovery pass. Preceding 7da installed-image artifacts
+37016317006 also verify both source/CA identities, four process tests and 34 assets.
+
+A separate AMD64/ARM64 CI fixture now builds the unchanged historical Dockerfile,
+inspects its immutable image ID, and exercises the extracted actual prior binary
+at restored R. Closed source/image/binary/platform/Dockerfile/asset evidence and
+negative decoder checks are implemented; fresh actual image execution remains
+required. Local original prior-source capability and decoder races pass (3.394s),
+both Linux integration-tag vet checks and workflow security checks pass. Host
+release/readiness/full reversal and the complete migration remain outstanding.
+See [prior image fixture evidence](evidence/go-ordinary-prior-image-capability-fixture-2026-10-02.json).
