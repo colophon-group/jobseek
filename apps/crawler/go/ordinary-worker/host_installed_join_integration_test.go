@@ -69,6 +69,9 @@ func TestActualInstalledNativeHostPreflightJoinsExactRuntimeAndRejectsSubstituti
 	r := HostPreflightRequest{Version: "jobseek.crawler-host-preflight-request/v1", CoordinatorSource: source, Owner: "colophon-group", Project: "jobseek-native-installed-join", Architecture: runtime.GOARCH, DeploymentDirectory: deployment}
 	for _, role := range []string{"active", "incoming", "rollback"} {
 		g, files := releaseExecutableGeneration(t, source)
+		if role == "active" {
+			g = hostSelectActiveFixture(t, deployment, g)
+		}
 		compose := []byte("services:\n  worker:\n    image: " + proof.Reference + "\n    user: '10001:10001'\n")
 		old := hostDigest([]byte(files["docker-compose.yml"]))
 		for name, b := range map[string][]byte{"docker-compose.yml": compose, "docker-compose.sha256": []byte(hostDigest(compose) + "\n"), "release.manifest": []byte(strings.ReplaceAll(files["release.manifest"], old, hostDigest(compose)))} {
@@ -170,9 +173,42 @@ func TestActualInstalledNativeHostPreflightJoinsExactRuntimeAndRejectsSubstituti
 			call(t, x, false)
 		})
 	}
+	for _, fault := range []string{"unselected active generation", "active pointer substitution", "live success marker substitution"} {
+		t.Run(fault, func(t *testing.T) {
+			x := r
+			switch fault {
+			case "unselected active generation":
+				x.Releases = append([]HostReleaseRequest{}, r.Releases...)
+				x.Releases[0].Directory = r.Releases[1].Directory
+			case "active pointer substitution", "live success marker substitution":
+				name := ".crawler-active-release"
+				if fault == "live success marker substitution" {
+					name = ".crawler-deploy-success.env"
+				}
+				path := filepath.Join(deployment, name)
+				if os.Rename(path, path+"-previous") != nil {
+					t.Fatal("actual selected fault fixture")
+				}
+				defer func() {
+					if os.Remove(path) != nil || os.Rename(path+"-previous", path) != nil {
+						t.Fatal("actual selected fault fixture restore")
+					}
+				}()
+				if fault == "active pointer substitution" {
+					if os.Symlink(r.Releases[2].Directory, path) != nil {
+						t.Fatal("actual pointer substitution fixture")
+					}
+				} else if os.WriteFile(path, []byte("PRIVATE_VALUE=fixture-sensitive-value\n"), 0600) != nil {
+					t.Fatal("actual marker substitution fixture")
+				}
+			}
+			call(t, x, false)
+		})
+	}
 	retained, err := os.ReadFile(filepath.Join(state, "preflight-"+got.ReceiptSHA256+".json"))
 	if err != nil || !bytes.Equal(retained, got.Receipt) {
 		t.Fatal("host installed join refusals changed earlier retained evidence")
 	}
 	t.Log("actual installed native host preflight joined independently retained binary/system-CA/34 assets to three requested immutable native image generations and exact scoped service/container/source; ten substitutions refused before intent/archive retention; disposable loopback registry/synthetic selected roles; runtime admission false")
+	t.Log("actual installed host preflight refused unselected active generation, changed active pointer and substituted live success marker before intent/archive retention; fixture selection only; runtime admission false")
 }

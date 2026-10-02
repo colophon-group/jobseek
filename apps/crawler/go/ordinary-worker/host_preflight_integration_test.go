@@ -31,6 +31,8 @@ func TestActualInstalledNativeHostPreflightRetainsBoundObservations(t *testing.T
 	defer cancel()
 	source := ordinaryFixtureSourceRevision(t)
 	g, files := releaseExecutableGeneration(t, source)
+	deployment := hostPrivateDirectory(t)
+	g = hostSelectActiveFixture(t, deployment, g)
 	const ref = "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
 	compose := []byte("services:\n  postgres:\n    image: " + ref + "\n    environment:\n      PRIVATE_VALUE: ${OPAQUE_OPERATOR_VALUE}\n")
 	old := hostDigest([]byte(files["docker-compose.yml"]))
@@ -43,7 +45,6 @@ func TestActualInstalledNativeHostPreflightRetainsBoundObservations(t *testing.T
 	if err != nil {
 		t.Fatal("host generation validation", err)
 	}
-	deployment := hostPrivateDirectory(t)
 	state := hostPrivateDirectory(t)
 	for name, body := range map[string]string{"docker-compose.yml": "services: {}\n", "deploy.sh": "#!/usr/bin/env bash\nexit 0\n", "alloy.river": "fixture-only\n"} {
 		if os.WriteFile(filepath.Join(deployment, name), []byte(body), 0600) != nil {
@@ -83,6 +84,16 @@ func TestActualInstalledNativeHostPreflightRetainsBoundObservations(t *testing.T
 		return &got
 	}
 	first := call(true)
+	var receipt struct {
+		Selection struct {
+			FilesSHA         string `json:"file_evidence_sha256"`
+			Source           string `json:"selected_deploy_revision"`
+			RuntimeAdmission bool   `json:"runtime_admission"`
+		} `json:"selected_active"`
+	}
+	if json.Unmarshal(first.Receipt, &receipt) != nil || receipt.Selection.FilesSHA != f.SHA256() || receipt.Selection.Source != source || receipt.Selection.RuntimeAdmission {
+		t.Fatal("host preflight lost actual selected active file binding")
+	}
 	retry := call(true)
 	if first.IntentSHA256 != retry.IntentSHA256 || first.ReceiptSHA256 != retry.ReceiptSHA256 {
 		t.Fatal("exact actual host retry adopted different evidence")
@@ -90,6 +101,15 @@ func TestActualInstalledNativeHostPreflightRetainsBoundObservations(t *testing.T
 	intent, err := os.ReadFile(filepath.Join(state, "intent.json"))
 	if err != nil || hostDigest(intent) != first.IntentSHA256 {
 		t.Fatal("host intent binding")
+	}
+	var boundIntent struct {
+		SelectionSHA string `json:"selected_active_sha256"`
+	}
+	var rawReceipt struct {
+		Selection json.RawMessage `json:"selected_active"`
+	}
+	if json.Unmarshal(intent, &boundIntent) != nil || json.Unmarshal(first.Receipt, &rawReceipt) != nil || boundIntent.SelectionSHA != hostDigest(rawReceipt.Selection) {
+		t.Fatal("host intent did not retain the exact selected active observation")
 	}
 	archive, err := os.ReadFile(filepath.Join(state, "deploy-specs.tar"))
 	if err != nil {
@@ -116,4 +136,15 @@ func TestActualInstalledNativeHostPreflightRetainsBoundObservations(t *testing.T
 		}
 	}
 	t.Log("actual installed native host preflight held shared mutation lock, joined three requested file/image generations and complete inventory/declared execution, retained bound intent before exact spec archive and immutable receipt, recovered exact retry and refused spec/data drift; public infrastructure/synthetic release fixture; runtime admission false")
+	t.Log("actual installed host preflight bound selected active pointer/live success marker and complete selection readback to retained intent/receipt; fixture selection only; runtime admission false")
+}
+
+func hostSelectActiveFixture(t *testing.T, deployment, g string) string {
+	t.Helper()
+	root := filepath.Join(deployment, ".crawler-release-generations")
+	target := filepath.Join(root, "release-active")
+	if os.Mkdir(root, 0700) != nil || os.Rename(g, target) != nil || os.Symlink(target, filepath.Join(deployment, ".crawler-active-release")) != nil || os.Link(filepath.Join(target, "success.env"), filepath.Join(deployment, ".crawler-deploy-success.env")) != nil {
+		t.Fatal("actual selected generation/pointer/success fixture")
+	}
+	return target
 }

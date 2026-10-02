@@ -229,6 +229,25 @@ authenticated selected production image. Python dependency/link/import fidelity
 also remains separate. Continue the complete host gates below.
 See [the installed-byte contract](../evidence/go-ordinary-native-installed-file-observation-2026-10-02.json).
 
+## Selected active files
+
+`ObserveSelectedActiveFiles` now binds the explicitly requested active generation
+to the deployed fixed pointer/root and regular live success marker. Canonical
+physical trusted-owned protected directories, the exact absolute flat-generation
+target, complete file evidence and matching marker bytes are required. Anchored
+reads and full path/pointer/marker inode, ownership, mode, target and content
+readback refuse aliases, unselected generations and same-byte replacements.
+The connected preflight observes and reobserves this selection under the shared
+lock and fsyncs the selected identity into intent and receipt.
+
+Local Go1.26 races include the actual deployed file-only loader as an offline
+oracle and substitution at both observation seams. Linux vet passes; fresh
+actual installed selected-command/three selection-fault execution is required
+on both architectures. This proves the selected active file boundary only.
+Production build/image provenance, incoming/rollback selection, effective runtime
+fidelity and every exclusion/SQL/cold/readiness/rollout gate remain mandatory.
+See [the source-scoped selection evidence](../evidence/go-ordinary-native-selected-active-files-2026-10-02.json).
+
 ## Protected host envelope
 
 The new installed `--host-preflight` entrypoint now connects the existing file/

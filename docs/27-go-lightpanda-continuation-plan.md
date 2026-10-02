@@ -1,5 +1,34 @@
 # Go and Lightpanda migration continuation plan
 
+The native host preflight now requires its requested active generation to match
+the deployment's actual `.crawler-active-release` pointer under the fixed
+`.crawler-release-generations` root and the live success marker. Protected
+physical paths, trusted ownership/modes, exact selected file/marker hashes and
+complete inode/target/content readback refuse arbitrary active labels, aliases
+and replacement. The shared-lock preflight reobserves selection after every
+image/container/installed/spec observation and binds it into the fsynced intent
+and receipt. Local Go1.26 races and the actual deployed file-only loader oracle
+pass; actual selected-command/three selection-fault fixtures are required on
+both architectures. See [selected active-file evidence](evidence/go-ordinary-native-selected-active-files-2026-10-02.json).
+
+Sourcea63 fullCI37065508982, Linux37065462569, installed37065512469 and historical
+native/legacy37065462544/37065462624 now independently pass on both architectures.
+The actual installed native image/service/container/source join and all ten
+substitution refusals pass; raw loopback manifests independently match digest/
+config image ID and retained source/binary/CA/34 Git assets. Original connected
+preflight and all six worker fixtures also pass. Keep running1c87 whole37064123025;
+newer pending whole sources follow the workflow's newest-pending policy. Startup
+fixture admission cannot replace complete-service/profile/cost evidence.
+
+Selected active files still do not authenticate production build provenance or
+incoming/rollback selection, prove full effective runtime fidelity, exclude every
+writer/maintenance process and SQL lease, or complete cold recovery/readiness.
+Continue those connected gates and every profile/consumer/parity/resources/cost/
+cutover/reversal/production gate/rollout/window/retirement requirement. PR#10210
+remains draft; full goal active; production unchanged.
+
+Earlier entries below retain their source-scoped evidence.
+
 The installed host-preflight harness now requires a positive native installed-runtime
 join and ten substitution refusals before intent/archive retention. A disposable
 loopback registry binds the exact built native image to a retained immutable

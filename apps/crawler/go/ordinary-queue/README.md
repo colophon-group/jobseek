@@ -902,3 +902,19 @@ exact. The raw manifest and join proof are required artifacts on both
 architectures. The host command/tests perform read-only Docker observations;
 fixture mutation belongs solely to the disposable harness. No local agent
 Docker access, production provenance/selection or cold/runtime grant follows.
+
+The connected host preflight now requires `ObserveSelectedActiveFiles`: the
+requested active directory must be the exact target of the deployment's fixed
+`.crawler-active-release` symlink, a direct generation under
+`.crawler-release-generations`, and its verified success bytes must match the
+regular protected live `.crawler-deploy-success.env` marker. Physical canonical
+paths, trusted root/current ownership, protected modes and complete pointer/
+marker/path inode/target/content readback are required. The coordinator observes
+selection before and after image/container/installed/spec work under the shared
+lock, then binds the selection hash into immutable intent and receipt. Same-byte
+pointer/marker replacement invalidates retry; retain old evidence for recovery.
+Local races compare the exact deployed file-only pointer loader on private
+fixtures. The installed harness additionally requires actual selected intent/
+receipt binding and unselected-generation/pointer/marker substitution refusal
+before intent/archive effects. These receipts still grant no runtime/cold
+admission or authenticated production build/incoming/rollback selection.

@@ -117,6 +117,7 @@ type hostReleaseObservation struct {
 }
 
 type hostObservations struct {
+	Selection *release.ActiveSelection
 	Releases  []hostReleaseObservation
 	Inventory *release.Containers
 	Execution *release.Execution
@@ -129,6 +130,13 @@ type hostObservations struct {
 // generation source, rather than becoming unattached image-file receipts.
 func observeHostPreflight(ctx context.Context, r HostPreflightRequest) (*hostObservations, error) {
 	o := &hostObservations{Installed: []*release.InstalledFiles{}}
+	a := r.Releases[0]
+	selectionConfig := release.ActiveSelectionConfig{DeploymentDirectory: r.DeploymentDirectory, GenerationDirectory: a.Directory, Owner: r.Owner, FileEvidenceSHA256: a.FileEvidenceSHA256}
+	var err error
+	o.Selection, err = release.ObserveSelectedActiveFiles(ctx, selectionConfig)
+	if err != nil {
+		return nil, errHostPreflight
+	}
 	images := []*release.Images{}
 	byRole := map[string]*release.Images{}
 	sources := map[string]string{}
@@ -155,7 +163,6 @@ func observeHostPreflight(ctx context.Context, r HostPreflightRequest) (*hostObs
 		}
 		o.Releases = append(o.Releases, hostReleaseObservation{g.Role, json.RawMessage(f.Body()), f.SHA256(), json.RawMessage(i.Body()), i.SHA256()})
 	}
-	var err error
 	o.Inventory, err = release.ObserveContainers(ctx)
 	if err != nil {
 		return nil, errHostPreflight
@@ -203,7 +210,6 @@ func observeHostPreflight(ctx context.Context, r HostPreflightRequest) (*hostObs
 		}
 		o.Installed = append(o.Installed, files)
 	}
-	a := r.Releases[0]
 	o.Specs, err = release.CaptureSpecs(ctx, release.SpecCaptureConfig{DeploymentDirectory: r.DeploymentDirectory, GenerationDirectory: a.Directory, Owner: r.Owner, FileEvidenceSHA256: a.FileEvidenceSHA256})
 	if err != nil {
 		return nil, errHostPreflight
@@ -218,6 +224,10 @@ func observeHostPreflight(ctx context.Context, r HostPreflightRequest) (*hostObs
 	}
 	again, err := release.ObserveContainers(ctx)
 	if err != nil || again.SHA256() != o.Inventory.SHA256() || ctx.Err() != nil {
+		return nil, errHostPreflight
+	}
+	selectedAgain, err := release.ObserveSelectedActiveFiles(ctx, selectionConfig)
+	if err != nil || selectedAgain.SHA256() != o.Selection.SHA256() {
 		return nil, errHostPreflight
 	}
 	return o, nil
@@ -273,16 +283,17 @@ func runHostPreflight(ctx context.Context, c HostPreflightConfig, lockPath strin
 		}
 	}
 	o, err := observe(ctx, r)
-	if err != nil || o == nil || o.Specs == nil || o.Inventory == nil || o.Execution == nil || len(o.Releases) != 3 || len(o.Installed) != len(r.Installed) || ctx.Err() != nil {
+	if err != nil || o == nil || o.Selection == nil || o.Specs == nil || o.Inventory == nil || o.Execution == nil || len(o.Releases) != 3 || len(o.Installed) != len(r.Installed) || ctx.Err() != nil {
 		return nil, errHostPreflight
 	}
 	intent, err := json.Marshal(struct {
-		Version        string `json:"version"`
-		SourceRevision string `json:"source_revision"`
-		RequestSHA256  string `json:"request_sha256"`
-		ArchiveSHA256  string `json:"archive_sha256"`
-		CaptureSHA256  string `json:"capture_sha256"`
-	}{"jobseek.crawler-host-preflight-intent/v1", c.source, c.expected, o.Specs.ArchiveSHA256(), o.Specs.SHA256()})
+		Version         string `json:"version"`
+		SourceRevision  string `json:"source_revision"`
+		RequestSHA256   string `json:"request_sha256"`
+		ArchiveSHA256   string `json:"archive_sha256"`
+		CaptureSHA256   string `json:"capture_sha256"`
+		SelectionSHA256 string `json:"selected_active_sha256"`
+	}{"jobseek.crawler-host-preflight-intent/v1", c.source, c.expected, o.Specs.ArchiveSHA256(), o.Specs.SHA256(), o.Selection.SHA256()})
 	if err != nil || lock.verify() != nil || store.verify() != nil || store.retain("intent.json", intent, hook) != nil {
 		return nil, errHostPreflight
 	}
@@ -310,11 +321,12 @@ func runHostPreflight(ctx context.Context, c HostPreflightConfig, lockPath strin
 		RequestSHA256    string                   `json:"request_sha256"`
 		IntentSHA256     string                   `json:"intent_sha256"`
 		Releases         []hostReleaseObservation `json:"requested_releases"`
+		Selection        json.RawMessage          `json:"selected_active"`
 		Inventory        json.RawMessage          `json:"inventory"`
 		Execution        json.RawMessage          `json:"declared_execution"`
 		Installed        []json.RawMessage        `json:"installed_container_files"`
 		Specs            json.RawMessage          `json:"deploy_specs"`
-	}{"jobseek.crawler-host-preflight-observation/v1", false, c.expected, hostDigest(intent), o.Releases, json.RawMessage(o.Inventory.Body()), json.RawMessage(o.Execution.Body()), installed, json.RawMessage(o.Specs.Body())})
+	}{"jobseek.crawler-host-preflight-observation/v1", false, c.expected, hostDigest(intent), o.Releases, json.RawMessage(o.Selection.Body()), json.RawMessage(o.Inventory.Body()), json.RawMessage(o.Execution.Body()), installed, json.RawMessage(o.Specs.Body())})
 	if err != nil || ctx.Err() != nil || lock.verify() != nil || store.verify() != nil {
 		return nil, errHostPreflight
 	}
