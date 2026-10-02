@@ -1306,3 +1306,53 @@ the generated B0 workload with production startup cardinality; this does not
 prove all-profile or whole-production-service cost parity. See
 [updated CLI evidence](evidence/go-b0-reactivation-cli-2026-10-02.json).
 The full migration goal remains active and production is unchanged.
+
+## Native cold initialization, October 2
+
+Native cold initialization source `faba3427cac82d1bfa1c759d2725f38f6ae358d2`
+adds a protected producer one-shot command that establishes only the empty native
+sentinel/Redis pair at explicit reserved R. The caller independently verifies the
+retained 0045 decision, reversal, all-writer quiescence and immutable release; the
+producer receives no database credentials. A canonical root-owned decision binds
+those evidence identities, compiled producer source, pinned image label, reviewed
+Lua and fixed cohort/namespace/shard/R. Request history is fsynced before normal
+native bootstrap; completion follows acknowledged SAVE and full empty-authority
+readback. Exact retry performs no initialization or SAVE. A lifecycle flock excludes
+native serving and initialization; missing/changed history or an orphan pair fail
+closed. This grants no task transfer, ordinary ownership, journal closure or host
+readiness. See [producer contract](../apps/crawler/go/lightpanda-b0-supervisor/README.md).
+
+This fixes the actual startup gap caught by Linux run 36941887568 on checkpoint
+`3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4`: full queue races and the prior root
+forward fixture passed on both architectures, while reactivation startup refused
+fixture-initialized Redis without a native sentinel. The updated Linux fixture
+omits manual R initialization and runs the real UID-10001 initializer, exact retry,
+rehashed source/cohort/epoch/Lua/image refusals, RDB reload and serving exclusion
+before native task application and CLI SIGKILL recovery. Fresh execution on both
+architectures is required; synthetic host labels do not prove production evidence.
+
+Full real PG/Redis queue/worker/exporter races pass (67.729s/31.204s/3.527s),
+295 legacy tests and 104 workflow contract tests pass without skips. Supervisor
+races and real Redis native initialization/SAVE-denial/recovery/no-task/orphan checks
+pass. Linux integration-tag queue/supervisor vet and AMD64/ARM64 queue compilation
+pass. VERSION remains 0.13.904 within this stacked PR. No production deployment
+or ready/merge authority is claimed. See [cold initialization evidence](evidence/go-b0-cold-initialization-2026-10-02.json).
+
+Preceding checkpoint 3cc passed full CI 36941991786 and installed contracts
+36941995477; downloaded source/CA, all four actual executable fixtures and all 34
+asset hashes were verified on both architectures. The earlier cfe installed run
+36941158368 is verified to the same scope. These installed proofs do not exercise
+the new initializer. Whole B0 cfe run 36941143997 has now completed successfully;
+download/recompute its report next. Whole B0 3cc run 36941887541 is running and must
+finish without cancellation. These generated workload results are separate from
+all-profile and whole-production-service performance proof.
+
+Continue by verifying the new-source actual Linux root execution, full CI, installed
+image source/CA/assets and numeric B0 evidence. Then complete compatible ordinary
+joint authority at R with persisted projection/witness and atomic reversal closure,
+followed by the supported ADR006 all-writer host integration and independently
+verified immutable prior release. Every enabled profile/consumer, canonical output,
+publisher/freshness/queue conservation, comparable whole-service CPU/RAM/density/cost,
+required exact-source gates, actual rollback window and production Python/Playwright/
+Chromium/runtime-only retirement remain required. The full migration goal is active;
+production is unchanged. This update supersedes earlier pending observations below.

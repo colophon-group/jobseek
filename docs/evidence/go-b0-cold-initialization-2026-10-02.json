@@ -1,0 +1,158 @@
+{
+  "database": "owned fully migrated PostgreSQL18.6",
+  "redis": "private per-test Redis UDS",
+  "results": [
+    {
+      "command": [
+        "go",
+        "test",
+        "-race",
+        "-count=1",
+        "-timeout=120s",
+        "./..."
+      ],
+      "exit_code": 0,
+      "seconds": 67.729,
+      "log": "ordinary-cold-initialization-final-queue-race.log"
+    },
+    {
+      "command": [
+        "go",
+        "test",
+        "-race",
+        "-count=1",
+        "-timeout=120s",
+        "./..."
+      ],
+      "exit_code": 0,
+      "seconds": 31.204,
+      "log": "ordinary-cold-initialization-final-worker-race.log"
+    },
+    {
+      "command": [
+        "go",
+        "test",
+        "-race",
+        "-count=1",
+        "-timeout=120s",
+        "./..."
+      ],
+      "exit_code": 0,
+      "seconds": 3.527,
+      "log": "ordinary-cold-initialization-final-exporter-race.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "--no-sync",
+        "pytest",
+        "-q",
+        "tests/test_ordinary_ownership.py",
+        "tests/test_lightpanda_activation.py",
+        "tests/test_redis_queue.py",
+        "tests/test_pipeline.py",
+        "tests/test_rich_monitor_contract.py"
+      ],
+      "exit_code": 0,
+      "seconds": 6.183,
+      "log": "ordinary-cold-initialization-final-legacy.log"
+    }
+  ],
+  "cleanup": true,
+  "production_changed": false,
+  "supervisor_race": "passed",
+  "real_redis_initializer": "passed; SAVE denial, exact pair recovery, no task activation, exact retry, orphan refusal",
+  "workflow_contract_tests": 104,
+  "legacy_tests": 295,
+  "linux_queue_vet_crosscompile": "amd64 and arm64 passed; actual UID-10001 root execution pending new-source CI",
+  "previous_linux_root_failure": {
+    "source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "run": 36941887568,
+    "scope": "full queue and prior forward fixture pass; reactivation startup fails with fixture Redis initialization without sentinel"
+  },
+  "previous_installed_verification": [
+    {
+      "source_revision": "cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2",
+      "run": 36941158368,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:7a61c1faa0e4632756314720abdc283930213d1e545693cd3e79a5931e795019",
+          "binary_sha256": "f0ac1e1aefc346edaa3720ac0083c2af76c7af53a8df189c2317ab8c9d73b1dc",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:6ee65715b1007007964c3d1447d89ae8bffc4e8e543d0bd461901b66208b0ffc",
+          "binary_sha256": "cbca72885c1fd553206505edfb65134ef72646c64418d1476872ce4ee5c2f2d9",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ],
+      "scope": "prior installed ordinary worker fixtures; does not verify new native cold initializer"
+    },
+    {
+      "source_revision": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+      "run": 36941995477,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:4f523577e0239b7431d759ffa994885a1cdb8e8370fb30939ddcb2537c11f406",
+          "binary_sha256": "bec52d4c71e7494fd234f30bea7323d29689b2b2636ed23632d4cbd0c0a9bfc8",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:3f36693dba87d1aa64c4c60e1297d91eadb810cf48497bea651ca8ca7cf328b4",
+          "binary_sha256": "9590b7eb7e0b67a66f88dcd4babf515847f2437db1a4e2fdc5254e9c1aa1e463",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ],
+      "scope": "prior installed ordinary worker fixtures; does not verify new native cold initializer"
+    }
+  ],
+  "full_migration_complete": false,
+  "log_sha256": {
+    "ordinary-cold-initialization-node.log": "5db3cb1cf57be72361bb3b1f8b718474a4b8b480f87132719c7d0216211742cc",
+    "ordinary-cold-initialization-redis.log": "1b7cac856a23d5162e9f05c42aeb0fcaedd1681baa8431483d234a36cf36f524",
+    "ordinary-cold-initialization-supervisor-race.log": "5c5de3557e8c370af927414dfe7da32aec0ad98584446d45d1307d166d25f597",
+    "ordinary-cold-initialization-final-queue-race.log": "1b7197429f8597bbefbcbb6d21fb849d8e759bd8ef405de25dce32b9308b9e08",
+    "ordinary-cold-initialization-final-exporter-race.log": "d450d7537d8181b54e214ea747d67e51154ccc8a607cf3566f2dd5f741544d5b",
+    "ordinary-cold-initialization-final-legacy.log": "25e28b82270811643e876d852131eee2dec25be121bfe062a6f2b91b91fdb486",
+    "ordinary-cold-initialization-final-worker-race.log": "a987a3816d79357999e9a236ddde038804472ab7dcb47451c6e3acd94a52b6d2"
+  },
+  "runtime_source_revision": "faba3427cac82d1bfa1c759d2725f38f6ae358d2",
+  "scope": "native cold bootstrap and local contract proof; new-source actual Linux UID-10001 execution required",
+  "remaining": "all-writer host integration, compatible ordinary finalization at R, independent prior-release proof, full enabled profile migration and final retirement"
+}
