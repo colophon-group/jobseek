@@ -11,6 +11,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
+import asyncpg
 import pytest
 import yaml
 from redis.asyncio import Redis
@@ -22,6 +23,44 @@ import fixture_server  # noqa: E402
 
 from src.lightpanda import admission  # noqa: E402
 from src.lightpanda.producer_client import ProducerResult  # noqa: E402
+
+
+@pytest.mark.parametrize("failures", [0, 1])
+def test_terminal_schedule_rejection_distinguishes_failure_backoff(failures: int) -> None:
+    class PoolFixture:
+        async def fetch(self, _query: str, _ids: list[str]) -> list[dict[str, Any]]:
+            return [
+                {
+                    "last_scraped_at": 1,
+                    "next_scrape_at": 2,
+                    "scrape_failures": failures,
+                    "is_active": True,
+                    "source_url": "https://private.invalid/content",
+                    "titles": ["private"],
+                }
+            ]
+
+    with pytest.raises(admission.AdmissionDriverError) as error:
+        asyncio.run(admission._wait(cast(asyncpg.Pool, PoolFixture()), ["private-id"], 1))
+    prefix, state = str(error.value).split(": ", 1)
+    assert prefix == "one-shot terminal schedule rejected"
+    assert json.loads(state) == {
+        "scheduled_rows": 1,
+        "failure_rows": failures,
+        "inactive_rows": 0,
+        "max_failures": failures,
+    }
+    assert "private" not in state
+
+
+def test_terminal_schedule_admits_exact_unscheduled_rows() -> None:
+    rows = [{"last_scraped_at": 1, "next_scrape_at": None, "scrape_failures": 0, "is_active": True}]
+
+    class PoolFixture:
+        async def fetch(self, _query: str, _ids: list[str]) -> list[dict[str, Any]]:
+            return rows
+
+    assert asyncio.run(admission._wait(cast(asyncpg.Pool, PoolFixture()), ["id"], 1)) == rows
 
 
 def test_frozen_fixture_matches_fixed_go_cohorts() -> None:
@@ -181,6 +220,8 @@ def test_admission_dynamic_addresses_cannot_take_fixed_endpoints() -> None:
         allocation = network["ipam"]["config"][0]
         subnet = ipaddress.ip_network(allocation["subnet"])
         dynamic = ipaddress.ip_network(allocation["ip_range"])
+        assert isinstance(subnet, ipaddress.IPv4Network)
+        assert isinstance(dynamic, ipaddress.IPv4Network)
         assert dynamic.subnet_of(subnet)
         assert dynamic.num_addresses >= len(compose["services"])
         fixed = []

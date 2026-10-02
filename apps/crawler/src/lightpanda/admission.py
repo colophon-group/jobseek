@@ -287,7 +287,21 @@ async def _wait(pool: asyncpg.Pool, ids: list[str], timeout: float) -> list[asyn
         )
         if len(rows) == len(ids) and all(row["last_scraped_at"] is not None for row in rows):
             if any(row["next_scrape_at"] is not None for row in rows):
-                raise AdmissionDriverError("completed one-shot posting was rescheduled")
+                # last_scraped_at also records failed attempts. A committed
+                # executor receipt is not evidence of successful content, so
+                # retain numeric state to distinguish backoff from a success
+                # that violated the one-shot schedule. Never include content,
+                # identifiers, URLs or connection inputs in this error.
+                terminal_state = {
+                    "scheduled_rows": sum(row["next_scrape_at"] is not None for row in rows),
+                    "failure_rows": sum(row["scrape_failures"] > 0 for row in rows),
+                    "inactive_rows": sum(not row["is_active"] for row in rows),
+                    "max_failures": max(row["scrape_failures"] for row in rows),
+                }
+                raise AdmissionDriverError(
+                    "one-shot terminal schedule rejected: "
+                    + json.dumps(terminal_state, sort_keys=True, separators=(",", ":"))
+                )
             return rows
         await asyncio.sleep(0.1)
     raise AdmissionDriverError("terminal persistence convergence timed out")

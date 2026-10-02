@@ -1,5 +1,31 @@
 # Go and Lightpanda migration continuation plan
 
+Source `eb804cf56aa89761f5df195f75e9e333a799ffb0` now passes full CI
+37021699860, Linux/root recovery 37021649476, installed contracts 37021705356
+and actual historical image execution 37021649337 on both architectures. Exact
+merge parents, source/CA/binary/image identity and all 34 assets are independently
+verified in [portable evidence](evidence/go-ordinary-prior-image-verified-2026-10-02.json).
+
+The separate prior-production Python image slice is published as source
+`54168170562c65d77fb65343e5b76da7d12f874b`. AMD64/ARM64 run 37024367636
+builds the unchanged `b75ccb9` Dockerfile and verifies the complete installed
+wheel/source/Lua/data tree before its actual CLI can consume completed legacy
+restoration at R. Execution remains pending. Local proof negatives, Linux vet,
+workflow audits and 188 repository checks pass. Its historical reserved-board
+queue interval differs from native canonical due; keep host exclusion until
+complete restoration because the old image lacks joint readers.
+
+Preceding whole-B0 run 37019476070 rejects `c4-p2/candidate` with a one-shot
+schedule violation after ten arms. Retained supervisor logs report committed
+receipts, which can represent either content success or recorded failure. The
+driver now retains only numeric scheduled/failure/inactive/max-failure counts
+on rejection to distinguish backoff from success schedule drift. Its admission
+criteria remain unchanged; 27 focused tests and required static checks pass.
+Preserve running latest B0 37021649241 and pending 37024366210; no successful
+partial ratio admits the rejected run. Full host integration, all enabled
+coverage/consumers, complete parity/cost and production retirement remain open.
+The full goal is active and production unchanged.
+
 Prior-image run 37019475580 builds and identifies the historical image on both
 architectures, then rejects its nested installed asset paths before restoration.
 The proof decoder now accepts safe relative paths such as `images/epfl/icon.png`

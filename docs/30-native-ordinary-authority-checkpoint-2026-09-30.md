@@ -1637,3 +1637,12 @@ The old reserved-board path preserves SQL due and schedules a future queue
 interval, so that historical behavior is explicit. Full host verification and
 all-writer exclusion remain necessary: the old worker has no joint reader.
 No production ownership, deployment or retirement changes are admitted here.
+
+The rejected whole-B0 arm's retained supervisor diagnostics show committed
+executor receipts for all sixteen fixture IDs. Those receipts can also record
+failures; without the final SQL failure counters the underlying cause is not
+proved. Admission rejection now includes only numeric scheduled-row, failure-row,
+inactive-row and maximum-failure counts. No acceptance rule, retry, threshold
+or queue requirement changes. The diagnostic regression and all admission
+checks pass (27 tests); Ruff and required Pyright pass. Preserve original failure
+evidence and the active source-bound measurements.
