@@ -50,7 +50,7 @@ func TestActualInstalledNativeHostContainmentStopsAllWritersAndRecoversSIGKILL(t
 		t.Fatal("private spec fixture")
 	}
 	r := HostPreflightRequest{Version: "jobseek.crawler-host-preflight-request/v1", CoordinatorSource: source, Owner: "colophon-group", Project: "jobseek-native-host-contain", Architecture: runtime.GOARCH, DeploymentDirectory: deployment, Installed: []HostInstalledRequest{}}
-	compose := "services:\n  postgres:\n    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193\n    environment:\n      POSTGRES_USER: crawler\n      POSTGRES_PASSWORD: crawler\n      POSTGRES_DB: jobseek_ordinary_worker_test\n"
+	compose := "services:\n  postgres:\n    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193\n    environment:\n      POSTGRES_USER: crawler\n      POSTGRES_PASSWORD: crawler\n      POSTGRES_DB: jobseek_ordinary_worker_test\n      GITHUB_ACTIONS: 'true'\n      CI: 'true'\n"
 	for _, service := range []string{"worker", "exporter"} {
 		compose += "  " + service + ":\n    image: " + proof.Reference + "\n    user: '10001:10001'\n    entrypoint: ['/bin/sleep']\n    command: ['600']\n"
 	}

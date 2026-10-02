@@ -11,7 +11,9 @@ import (
 	"runtime"
 	"time"
 
+	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	release "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue/releaseevidence"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type HostContainmentConfig struct {
@@ -83,6 +85,10 @@ func RunHostContainment(ctx context.Context, c HostContainmentConfig) (*HostCont
 type hostContainEffect func(context.Context, *release.WriterContainmentPlan, []*release.Images, bool, func() error, func() error) (*release.ColdContainers, error)
 
 func runHostContainment(ctx context.Context, c HostContainmentConfig, lockPath string, observe func(context.Context, HostPreflightRequest) (*hostObservations, error), contain hostContainEffect, hook func(string) error) (*HostContainmentResult, error) {
+	return runHostContainmentPhase(ctx, c, lockPath, observe, contain, hook, false)
+}
+
+func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockPath string, observe func(context.Context, HostPreflightRequest) (*hostObservations, error), contain hostContainEffect, hook func(string) error, withSQL bool) (*HostContainmentResult, error) {
 	p := c.preflight
 	if ctx == nil || ctx.Err() != nil || !planPattern.MatchString(c.intentSHA) || !cleanHostPath(p.directory) || !planPattern.MatchString(p.expected) || !sourcePattern.MatchString(p.source) || observe == nil || contain == nil {
 		return nil, errHostPreflight
@@ -132,6 +138,22 @@ func runHostContainment(ctx context.Context, c HostContainmentConfig, lockPath s
 	if err != nil || !bound(o) {
 		return nil, errHostPreflight
 	}
+	var pool *pgxpool.Pool
+	if withSQL {
+		active := r.Releases[0]
+		config, err := release.VerifiedDatabaseConfig(ctx, active.Directory, r.Owner, active.FileEvidenceSHA256)
+		if err != nil {
+			return nil, errHostPreflight
+		}
+		pool, err = pgxpool.NewWithConfig(ctx, config)
+		if err != nil {
+			return nil, errHostPreflight
+		}
+		defer pool.Close()
+		if pool.Ping(ctx) != nil {
+			return nil, errHostPreflight
+		}
+	}
 	intentBytes, err := store.read("containment-intent.json", true)
 	var intent hostContainmentIntent
 	var plan *release.WriterContainmentPlan
@@ -180,6 +202,7 @@ func runHostContainment(ctx context.Context, c HostContainmentConfig, lockPath s
 	}
 	// Fresh selected files/specs/images/installed bytes are reobserved before
 	// every effect. Repeated whole observation never executes SQL or Redis.
+	var guarded *hostObservations
 	guard := func() error {
 		if ctx.Err() != nil || lock.verify() != nil || store.verify() != nil {
 			return errHostPreflight
@@ -203,6 +226,7 @@ func runHostContainment(ctx context.Context, c HostContainmentConfig, lockPath s
 				return errHostPreflight
 			}
 		}
+		guarded = fresh
 		return lock.verify()
 	}
 	barrier, _ := json.Marshal(struct {
@@ -242,18 +266,65 @@ func runHostContainment(ctx context.Context, c HostContainmentConfig, lockPath s
 	if err != nil || actual.SHA256() != cold.SHA256() {
 		return nil, errHostPreflight
 	}
-	receipt, err := json.Marshal(struct {
-		Version              string          `json:"version"`
-		RuntimeAdmission     bool            `json:"runtime_admission"`
-		SQLBarriersObserved  bool            `json:"sql_barriers_observed"`
-		RequestSHA256        string          `json:"request_sha256"`
-		IntentSHA256         string          `json:"intent_sha256"`
-		RestartBarrierSHA256 string          `json:"restart_barrier_sha256"`
-		ColdDocker           json.RawMessage `json:"cold_docker"`
-		Inventory            json.RawMessage `json:"inventory"`
-	}{"jobseek.crawler-host-containment-observation/v1", false, false, p.expected, hostDigest(intentBytes), hostDigest(barrier), json.RawMessage(actual.Body()), json.RawMessage(fresh.Inventory.Body())})
-	if err != nil || guard() != nil || store.retain("containment-"+hostDigest(receipt)+".json", receipt, hook) != nil || guard() != nil {
+	// Acquiring SQL can wait for an existing writer. Recheck actual cold daemon
+	// state inside that live session and on both sides of receipt publication;
+	// a previously observed cold inventory cannot authorize the later overlap.
+	coldGuard := func() error {
+		if guard() != nil {
+			return errHostPreflight
+		}
+		current, err := release.RequireColdContainers(ctx, guarded.Inventory, guarded.Images)
+		if err != nil || current.SHA256() != actual.SHA256() {
+			return errHostPreflight
+		}
+		return nil
+	}
+	finish := func(sqlCtx context.Context, sql *queue.HostColdSQL) (*HostContainmentResult, error) {
+		operation, phase, prefix := "host-contain", "docker_writers_contained", "containment-"
+		var sqlBody json.RawMessage
+		if sql != nil {
+			if sql.Check(sqlCtx) != nil {
+				return nil, errHostPreflight
+			}
+			operation, phase, prefix = "host-quiesce", "docker_and_sql_quiescence_observed", "quiescence-"
+			sqlBody = json.RawMessage(sql.Body())
+		}
+		receipt, err := json.Marshal(struct {
+			Version              string          `json:"version"`
+			RuntimeAdmission     bool            `json:"runtime_admission"`
+			SQLBarriersObserved  bool            `json:"sql_barriers_observed"`
+			RequestSHA256        string          `json:"request_sha256"`
+			IntentSHA256         string          `json:"intent_sha256"`
+			RestartBarrierSHA256 string          `json:"restart_barrier_sha256"`
+			ColdDocker           json.RawMessage `json:"cold_docker"`
+			Inventory            json.RawMessage `json:"inventory"`
+			SQL                  json.RawMessage `json:"sql_exclusion,omitempty"`
+		}{"jobseek.crawler-host-containment-observation/v1", false, sql != nil, p.expected, hostDigest(intentBytes), hostDigest(barrier), json.RawMessage(actual.Body()), json.RawMessage(fresh.Inventory.Body()), sqlBody})
+		if err != nil || coldGuard() != nil || store.retain(prefix+hostDigest(receipt)+".json", receipt, hook) != nil || coldGuard() != nil {
+			return nil, errHostPreflight
+		}
+		if sql != nil && sql.Check(sqlCtx) != nil {
+			return nil, errHostPreflight
+		}
+		return &HostContainmentResult{"jobseek.crawler-host-containment-result/v1", operation, p.source, phase, false, sql != nil, p.expected, hostDigest(intentBytes), hostDigest(receipt), receipt}, nil
+	}
+	if !withSQL {
+		return finish(ctx, nil)
+	}
+	var result *HostContainmentResult
+	err = queue.WithHostColdSQL(ctx, pool, queue.HostColdSQLBinding{SourceRevision: p.source, RequestSHA256: p.expected, ContainmentIntentSHA256: hostDigest(intentBytes)}, func(sqlCtx context.Context, sql *queue.HostColdSQL) error {
+		if guard() != nil {
+			return errHostPreflight
+		}
+		if hook != nil && hook("sql_barriers_held") != nil {
+			return errHostPreflight
+		}
+		var err error
+		result, err = finish(sqlCtx, sql)
+		return err
+	})
+	if err != nil {
 		return nil, errHostPreflight
 	}
-	return &HostContainmentResult{"jobseek.crawler-host-containment-result/v1", "host-contain", p.source, "docker_writers_contained", false, false, p.expected, hostDigest(intentBytes), hostDigest(receipt), receipt}, nil
+	return result, nil
 }

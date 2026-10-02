@@ -415,6 +415,13 @@ jobs:
             go test -race -tags=integration -count=1 -timeout=600s -v \
               -run '^TestActualInstalledNativeHostContainment' ./... \
             | tee "$RUNNER_TEMP/ordinary-host-containment-tests.log"
+          JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_QUIESCENCE=1 \
+          JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+          JOBSEEK_CRAWLER_RELEASE_CONTAINMENT_WORKER="$containment_worker" \
+          JOBSEEK_CRAWLER_RELEASE_CONTAINMENT_EXPORTER="$containment_exporter" \
+            go test -race -tags=integration -count=1 -timeout=600s -v \
+              -run '^TestActualInstalledNativeHostQuiescence' ./... \
+            | tee "$RUNNER_TEMP/ordinary-host-quiescence-tests.log"
 
       - name: Save installed native process identities and test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -429,6 +436,7 @@ jobs:
             ${{ runner.temp }}/ordinary-host-installed-join-proof.json
             ${{ runner.temp }}/ordinary-host-installed-manifest.json
             ${{ runner.temp }}/ordinary-host-containment-tests.log
+            ${{ runner.temp }}/ordinary-host-quiescence-tests.log
           if-no-files-found: error
 
       - name: Import the installed contract surface from the image

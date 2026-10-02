@@ -1,0 +1,109 @@
+{
+  "version": "jobseek.migration.native-host-quiescence/v1",
+  "date": "2026-10-03",
+  "implementation_source": "commit containing this evidence; fresh exact-source installed checks required",
+  "preceding_verified_source": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+  "preceding_whole_b0": {
+    "pr_head": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+    "tested_merge_checkout": "7cbae7a687dbd8cb4ef4be624e0f9960dcf56b44",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "351629ae0b1cb6f5747039e02123fcdff060dc6e"
+    ],
+    "run": 37067928269,
+    "report_sha256": "8f30904847b75948320bc58ec1b2f07602d2da1b8ac0d921d07b22fd07296aba",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      5.779994308910641,
+      13.250103908015054
+    ]
+  },
+  "preceding_containment_failures": [
+    {
+      "source": "7e0869412c0dce789e286ccf78636d80092f210b",
+      "run": 37072555329,
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "phase": "preflight before stops",
+      "conclusion": "failure"
+    },
+    {
+      "source": "3bc98daabd781acc80e7efd5ce77d226c62e030e",
+      "run": 37073839735,
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "phase": "preflight before stops",
+      "conclusion": "failure",
+      "diagnostic": "strict declared container command/user/directory/environment drift",
+      "diagnostic_log_sha256": "4db31e9b48543e2d5e9eaa8fd17f7d9467871ec01b50b446105c2f7f1e9363bb"
+    }
+  ],
+  "fixture_correction": {
+    "service": "postgres",
+    "explicit_expected_environment": {
+      "GITHUB_ACTIONS": "true",
+      "CI": "true"
+    },
+    "runner_source": "https://raw.githubusercontent.com/actions/runner/main/src/Runner.Worker/Container/DockerCommandManager.cs",
+    "runtime_predicate_weakened": false
+  },
+  "contract": [
+    "Explicit host-quiesce mode, compiled source, exact canonical protected request and retained preflight intent/spec archive; fixed shared host mutation lock",
+    "Read verified selected active environment URL in memory; reject ambient PG settings and external service/password/client-key parameters; no credential disclosure",
+    "Existing exact-ID installed-covered writer/exporter containment and durable restart barrier before stop; failure never restarts",
+    "Private pinned PostgreSQL session, exact ordinary/routing/CDC exclusive barriers; release partial acquisition before retry; SQL-clock zero live board/posting leases without clearing",
+    "Cold transactions share this backend and commit independently; session barriers survive commits/rollbacks so durable intent precedes sequence/Redis effects",
+    "Fresh cold daemon predicate and live SQL checks on both sides of immutable receipt fsync while shared host lock remains held",
+    "Private backend destroyed on every exit; returned receipt is past observation, not authority for future commands; no runtime admission"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "actual_database": "owned loopback PostgreSQL 18.6 fully migrated; no production or Docker access",
+    "SQL_races_seconds": 1.645,
+    "selected_database_races_seconds": 1.346,
+    "host_races_seconds": 2.192,
+    "linux_amd64_arm64_integration_tag_vet": "pass",
+    "actionlint": "1.7.12 pass",
+    "zizmor": "1.26.1 offline pass",
+    "repository_checks": 188,
+    "logs": {
+      "ordinary-host-cold-sql-tests.log": "3ed2361ce0ab85179b49e2f82a43d6afb473189fc12818008e84098a55150436",
+      "ordinary-selected-database-tests.log": "de7cd4ab6b0e81253dec361ee7f349cc1f50e8c5c6d3c54f8199a33f2618e668",
+      "ordinary-host-quiescence-focused-tests.log": "0383c48960e99fe56621d20ec222219636236fe96e1301b095682e2eae1a531a",
+      "ordinary-host-quiescence-release-tests.log": "63a8cdd6a083a1f2a5a02ab5a128b96e389e8f6d23a996ebdba687547cf97b4e",
+      "ordinary-host-quiescence-repository-tests.log": "91b32fbdd5b2186e7966aa43f120d43adc603424700f8e47ebfa930fd53aa319",
+      "ordinary-host-quiescence-actionlint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-host-quiescence-zizmor.log": "a3df149351dc40d795c81b6bf0dde8219a80273aa4f7598a80d13c79e40f52a5"
+    }
+  },
+  "actual_installed_execution": {
+    "status": "fresh exact-source AMD64/ARM64 execution required",
+    "fixture": "actual installed native image and migrated private PostgreSQL; two sleeping writer/exporter stand-ins; disposable Actions only",
+    "requires": [
+      "all prior containment fixtures and two publication SIGKILL seams",
+      "actual selected protected database URL despite caller PG/LOCAL_DATABASE_URL poisoning",
+      "live SQL lease refusal without clearing; exact expired retry",
+      "observed shared writer barrier prevents completion then resumes",
+      "actual held SQL backend SIGKILL releases locks and exact containment intent retry",
+      "receipt fsynced during live lock/barrier overlap; returned receipt is past observation"
+    ]
+  },
+  "runtime_admission": false,
+  "returned_SQL_receipt_is_past_observation": true,
+  "production_changed": false,
+  "full_goal_active": true,
+  "remaining": [
+    "Connected full cold coordinator inside live SQL/host scope; Redis and host timer/maintenance exclusion",
+    "Full effective runtime/build/selection authentication and complete spec/environment/data restoration; actual full-stack SIGKILL/readiness/forward/reversal",
+    "Every enabled profile/runtime consumer; full canonical/database/publisher/freshness/queue parity; complete-service resources and attributable cost",
+    "Exact required gates/merge/deploy, production rollback window, then runtime Python/Playwright/Chromium retirement; preserve offline tools and every board"
+  ]
+}

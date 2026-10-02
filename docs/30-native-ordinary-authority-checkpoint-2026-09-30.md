@@ -1,5 +1,50 @@
 # Native ordinary worker authority checkpoint
 
+The connected native `--host-quiesce` phase now joins writer containment to
+SQL exclusion. It uses the exact protected selected generation's database URL,
+clears caller PG settings, and holds ordinary, routing and CDC exclusive session
+barriers with zero live board/posting leases. Cold transactions commit separately
+on that same backend, preserving durable intent before nontransactional effects.
+The shared host lock and fresh cold Docker checks cover receipt publication.
+Failure closes the private session and releases its locks; live leases refuse
+without being cleared. A returned receipt is a past observation and explicitly
+reports `runtime_admission:false`. Further cold phases must execute inside the
+live SQL scope rather than use this receipt as continuing authority.
+
+Real PostgreSQL 18 tests pass against a fully migrated private loopback fixture,
+including independent commits, rollback after a consumed sequence reservation,
+all three writer barriers, live board/posting lease refusal and session release.
+Selected credential/config tests, host race tests, Linux AMD64/ARM64 integration
+vet, workflow lint and all 188 repository checks pass. The installed-image harness
+now requires actual selected-database quiescence, shared-writer waiting, kernel
+SQL-session SIGKILL release and exact intent recovery on both architectures.
+Fresh exact-source installed execution remains required.
+
+Installed containment runs 37072555329 (source `7e0869412`) and 37073839735
+(source `3bc98daab`) refused preflight on both architectures before stopping.
+Bounded diagnostics identify strict declared environment drift. GitHub adds
+`GITHUB_ACTIONS=true` and `CI=true` to its PostgreSQL service container; the fixture
+now explicitly declares these two fields. The runtime predicate remains strict.
+See [connected SQL quiescence evidence](evidence/go-ordinary-native-host-quiescence-2026-10-03.json).
+
+Preceding source `351629ae0b1cb6f5747039e02123fcdff060dc6e` is independently
+verified for full CI, both-architecture Linux/installed/native and legacy image
+checks, and whole-B0 run 37067928269. The whole fixture admits 16 arms/8 pairs,
+with density 5.779994309–13.250103908; a63 whole 37065462529 is also independently
+verified. These generated startup fixtures do not establish full-service profile
+parity or attributable cost. Preserve running evidence and verify every new source.
+
+Next retain this live SQL scope through the complete cold forward/reversal state
+machine and spec/environment/data restoration, then prove full-stack recovery and
+readiness. Full build/selection authenticity, effective runtime/maintenance
+exclusion, every enabled profile/consumer, canonical/database/publisher/freshness/
+queue parity and complete-service resources/cost remain required before production
+rollout, the rollback window and Python/Playwright/Chromium retirement. Preserve
+useful offline Python and every enabled board. Keep the deployment guard; PR #10210
+remains draft, production unchanged and the full migration goal active.
+
+Earlier entries below retain their source-scoped evidence.
+
 The connected native `--host-contain` phase now retains exact container IDs,
 configuration hashes and original restart policies before any Docker effect.
 It requires the bound preflight intent/spec archive and installed-file coverage

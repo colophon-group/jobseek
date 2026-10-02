@@ -91,6 +91,9 @@ func coldTransitionTransaction(ctx context.Context, pool *pgxpool.Pool, fn func(
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
+	if scoped, err := hostColdSQLTransaction(ctx, pool, fn); scoped {
+		return err
+	}
 	return authorityError(pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout='10s'"); err != nil {
 			return err

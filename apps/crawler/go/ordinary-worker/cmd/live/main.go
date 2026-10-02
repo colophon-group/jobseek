@@ -20,13 +20,14 @@ func main() {
 	releaseSpecs := len(os.Args) == 2 && os.Args[1] == "--capture-deploy-specs"
 	hostPreflight := len(os.Args) == 2 && os.Args[1] == "--host-preflight"
 	hostContain := len(os.Args) == 2 && os.Args[1] == "--host-contain"
+	hostQuiesce := len(os.Args) == 2 && os.Args[1] == "--host-quiesce"
 	stage := len(os.Args) == 2 && os.Args[1] == "--stage-ownership"
 	inspect := len(os.Args) == 2 && os.Args[1] == "--inspect-ownership"
 	cold := ""
 	if len(os.Args) == 2 {
 		cold = worker.ColdAdminOperation(os.Args[1])
 	}
-	if len(os.Args) != 1 && !identity && !health && !releaseFiles && !releaseSpecs && !hostPreflight && !hostContain && !stage && !inspect && cold == "" {
+	if len(os.Args) != 1 && !identity && !health && !releaseFiles && !releaseSpecs && !hostPreflight && !hostContain && !hostQuiesce && !stage && !inspect && cold == "" {
 		fmt.Fprintln(os.Stderr, "ordinary worker argument rejected")
 		os.Exit(2)
 	}
@@ -48,6 +49,26 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if hostQuiesce {
+		if worker.ClearHostDatabaseEnvironment() != nil {
+			fmt.Fprintln(os.Stderr, "ordinary host quiescence environment rejected")
+			os.Exit(1)
+		}
+		config, err := worker.ReadHostQuiescenceConfig(os.Getenv, revision)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ordinary host quiescence environment rejected")
+			os.Exit(1)
+		}
+		result, err := worker.RunHostQuiescence(ctx, config)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "ordinary host quiescence rejected")
+			os.Exit(1)
+		}
+		if json.NewEncoder(os.Stdout).Encode(result) != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	if hostContain {
 		config, err := worker.ReadHostContainmentConfig(os.Getenv, revision)
 		if err != nil {

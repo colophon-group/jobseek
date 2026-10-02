@@ -1,6 +1,6 @@
 # Native ordinary host integration delivery plan
 
-Status: proposed implementation; no host admission or production ownership change.
+Status: connected containment and scoped SQL quiescence implemented; full host admission and production ownership change remain unproven.
 Updated: 2026-10-03. Continue the full goal from
 [the migration plan](../27-go-lightpanda-continuation-plan.md) and
 [the source-bound checkpoint](../30-native-ordinary-authority-checkpoint-2026-09-30.md).
@@ -410,3 +410,41 @@ operation, not a real worker workload or production host/SQL admission. Fresh
 source-scoped artifacts must be independently verified. Next join this phase to
 actual SQL barriers/leases and the full cold state machine, maintaining exclusion
 across all phases, then prove restoration and readiness before production use.
+
+## Connected SQL quiescence scope
+
+`--host-quiesce` requires its own explicit mode and the same compiled source,
+protected request and retained preflight intent. It verifies and parses the exact
+selected generation's protected `LOCAL_DATABASE_URL` before new containment effects;
+no shell, caller PG settings, service/password/client-key file or ambient database
+URL supplies credentials. Credentials remain in memory and never appear in receipts
+or diagnostic output. Exact regular writer IDs are contained through the existing
+retained restart/stop sequence under the shared mutation lock.
+
+The private PostgreSQL backend then holds the ordinary, routing and CDC exclusive
+session barriers, observes all legacy board/posting lease columns with the database
+clock, and refuses any live lease without clearing it. An unavailable barrier causes
+the complete acquired prefix to be released before retry, avoiding a wait with
+partial exclusion. All cold SQL transactions in this callback use the same backend
+and commit independently; session locks survive commits/rollbacks. Closing that
+private connection on every exit releases its locks rather than returning a locked
+session to the pool. The callback is bounded; backend PID, exact lock set, idle state
+and zero leases are reobserved.
+
+Fresh cold Docker predicates before and after immutable quiescence receipt fsync
+run while both the host lock and SQL session are held. The returned receipt records
+that overlap; the CLI then closes its scope. It cannot grant admission or authority
+to a later separate command. Connect the complete cold state machine inside this
+live callback, including Redis lease/producer lifecycle and all original intent,
+epoch, staged restore, data/spec absence, full-stack readiness and recovery gates.
+Nonparticipating SQL clients and host timers require their own verified exclusion.
+
+Local actual fully migrated PostgreSQL tests verify durable commit/sequence rollback,
+shared writer exclusion, board/posting lease refusal and lock release. The disposable
+installed harness requires actual selected-database parsing despite poisoned caller
+PG settings, observed shared-writer waiting, SIGKILL backend lock release and exact
+retained intent retry. Both writer processes remain sleeping fixture stand-ins.
+The PostgreSQL fixture declares GitHub's injected GITHUB_ACTIONS/CI environment
+rather than weakening the execution predicate. Sources 7e/3bc failed strict
+preflight before stops; fresh installed artifacts must pass independent verification.
+See [portable SQL evidence](../evidence/go-ordinary-native-host-quiescence-2026-10-03.json).
