@@ -226,6 +226,9 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+          --label com.docker.compose.project=jobseek-native-host-contain
+          --label com.docker.compose.service=postgres
+          --label com.docker.compose.oneoff=False
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -287,7 +290,11 @@ jobs:
           fixture_container="$(docker create jobseek-crawler:runtime-v1)"
           join_container=''
           fixture_registry=''
+          containment_worker=''
+          containment_exporter=''
           cleanup_image_fixtures() {
+            if [ -n "$containment_worker" ]; then docker rm -f "$containment_worker" >/dev/null; fi
+            if [ -n "$containment_exporter" ]; then docker rm -f "$containment_exporter" >/dev/null; fi
             if [ -n "$join_container" ]; then docker rm "$join_container" >/dev/null; fi
             if [ -n "$fixture_registry" ]; then docker rm -f -v "$fixture_registry" >/dev/null; fi
             docker rm "$fixture_container" >/dev/null
@@ -386,6 +393,28 @@ jobs:
             go test -race -tags=integration -count=1 -timeout=180s -v \
               -run '^TestActualInstalledNativeHostPreflight' ./... \
             | tee "$RUNNER_TEMP/ordinary-host-preflight-tests.log"
+          # The installed coordinator's only effects in this fixture disable
+          # restarts and stop these two disposable sleeping writer stand-ins.
+          # This does not grant SQL, full runtime fidelity or rollout admission.
+          # Remove the foreign live registry before whole-daemon containment;
+          # immutable image inspection uses already installed local identities.
+          docker rm -f -v "$fixture_registry" >/dev/null
+          fixture_registry=''
+          containment_worker="$(docker run -d --restart=always --user 10001:10001 \
+            --label com.docker.compose.project=jobseek-native-host-contain \
+            --label com.docker.compose.service=worker --label com.docker.compose.oneoff=False \
+            --entrypoint /bin/sleep "$(cat "$fixture_directory/immutable-reference")" 600)"
+          containment_exporter="$(docker run -d --restart=always --user 10001:10001 \
+            --label com.docker.compose.project=jobseek-native-host-contain \
+            --label com.docker.compose.service=exporter --label com.docker.compose.oneoff=False \
+            --entrypoint /bin/sleep "$(cat "$fixture_directory/immutable-reference")" 600)"
+          JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_CONTAINMENT=1 \
+          JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+          JOBSEEK_CRAWLER_RELEASE_CONTAINMENT_WORKER="$containment_worker" \
+          JOBSEEK_CRAWLER_RELEASE_CONTAINMENT_EXPORTER="$containment_exporter" \
+            go test -race -tags=integration -count=1 -timeout=600s -v \
+              -run '^TestActualInstalledNativeHostContainment' ./... \
+            | tee "$RUNNER_TEMP/ordinary-host-containment-tests.log"
 
       - name: Save installed native process identities and test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -399,6 +428,7 @@ jobs:
             ${{ runner.temp }}/ordinary-host-preflight-tests.log
             ${{ runner.temp }}/ordinary-host-installed-join-proof.json
             ${{ runner.temp }}/ordinary-host-installed-manifest.json
+            ${{ runner.temp }}/ordinary-host-containment-tests.log
           if-no-files-found: error
 
       - name: Import the installed contract surface from the image

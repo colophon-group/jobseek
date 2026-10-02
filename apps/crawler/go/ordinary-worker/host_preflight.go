@@ -123,6 +123,7 @@ type hostObservations struct {
 	Execution *release.Execution
 	Installed []*release.InstalledFiles
 	Specs     *release.Specs
+	Images    []*release.Images
 }
 
 // Observe every requested generation under one lock and one daemon inventory.
@@ -164,6 +165,7 @@ func observeHostPreflight(ctx context.Context, r HostPreflightRequest) (*hostObs
 		o.Releases = append(o.Releases, hostReleaseObservation{g.Role, json.RawMessage(f.Body()), f.SHA256(), json.RawMessage(i.Body()), i.SHA256()})
 	}
 	o.Inventory, err = release.ObserveContainers(ctx)
+	o.Images = images
 	if err != nil {
 		return nil, errHostPreflight
 	}
@@ -245,6 +247,15 @@ type HostPreflightResult struct {
 	Receipt          json.RawMessage `json:"receipt"`
 }
 
+type hostPreflightIntent struct {
+	Version         string `json:"version"`
+	SourceRevision  string `json:"source_revision"`
+	RequestSHA256   string `json:"request_sha256"`
+	ArchiveSHA256   string `json:"archive_sha256"`
+	CaptureSHA256   string `json:"capture_sha256"`
+	SelectionSHA256 string `json:"selected_active_sha256"`
+}
+
 func RunHostPreflight(ctx context.Context, c HostPreflightConfig) (*HostPreflightResult, error) {
 	if runtime.GOOS != "linux" {
 		return nil, errHostPreflight
@@ -286,14 +297,7 @@ func runHostPreflight(ctx context.Context, c HostPreflightConfig, lockPath strin
 	if err != nil || o == nil || o.Selection == nil || o.Specs == nil || o.Inventory == nil || o.Execution == nil || len(o.Releases) != 3 || len(o.Installed) != len(r.Installed) || ctx.Err() != nil {
 		return nil, errHostPreflight
 	}
-	intent, err := json.Marshal(struct {
-		Version         string `json:"version"`
-		SourceRevision  string `json:"source_revision"`
-		RequestSHA256   string `json:"request_sha256"`
-		ArchiveSHA256   string `json:"archive_sha256"`
-		CaptureSHA256   string `json:"capture_sha256"`
-		SelectionSHA256 string `json:"selected_active_sha256"`
-	}{"jobseek.crawler-host-preflight-intent/v1", c.source, c.expected, o.Specs.ArchiveSHA256(), o.Specs.SHA256(), o.Selection.SHA256()})
+	intent, err := json.Marshal(hostPreflightIntent{"jobseek.crawler-host-preflight-intent/v1", c.source, c.expected, o.Specs.ArchiveSHA256(), o.Specs.SHA256(), o.Selection.SHA256()})
 	if err != nil || lock.verify() != nil || store.verify() != nil || store.retain("intent.json", intent, hook) != nil {
 		return nil, errHostPreflight
 	}

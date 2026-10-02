@@ -139,7 +139,11 @@ func (s *hostStore) sync() error {
 }
 
 func (s *hostStore) read(name string, pendingLink bool) ([]byte, error) {
-	if filepath.Base(name) != name || name == "." || name == ".." || s.verify() != nil {
+	return s.readLimit(name, pendingLink, 8<<20)
+}
+
+func (s *hostStore) readLimit(name string, pendingLink bool, limit int64) ([]byte, error) {
+	if limit < 1 || limit > 48<<20 || filepath.Base(name) != name || name == "." || name == ".." || s.verify() != nil {
 		return nil, errHostPreflight
 	}
 	before, err := s.root.Lstat(name)
@@ -147,7 +151,7 @@ func (s *hostStore) read(name string, pendingLink bool) ([]byte, error) {
 		return nil, err
 	}
 	links := hostLinks(before)
-	if before.Mode() != 0600 || !hostOwner(before, false) || before.Size() < 1 || before.Size() > 8<<20 || (links != 1 && !(pendingLink && links == 2)) {
+	if before.Mode() != 0600 || !hostOwner(before, false) || before.Size() < 1 || before.Size() > limit || (links != 1 && !(pendingLink && links == 2)) {
 		return nil, errHostPreflight
 	}
 	f, err := s.root.OpenFile(name, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
@@ -159,7 +163,7 @@ func (s *hostStore) read(name string, pendingLink bool) ([]byte, error) {
 	if err != nil || !os.SameFile(before, opened) || opened.Mode() != before.Mode() {
 		return nil, errHostPreflight
 	}
-	body, err := io.ReadAll(io.LimitReader(f, (8<<20)+1))
+	body, err := io.ReadAll(io.LimitReader(f, limit+1))
 	after, e := s.root.Lstat(name)
 	if err != nil || e != nil || len(body) != int(before.Size()) || !os.SameFile(before, after) || before.Mode() != after.Mode() || hostLinks(before) != hostLinks(after) || !before.ModTime().Equal(after.ModTime()) || s.verify() != nil {
 		return nil, errHostPreflight

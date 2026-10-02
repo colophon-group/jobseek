@@ -1,7 +1,7 @@
 # Native ordinary host integration delivery plan
 
 Status: proposed implementation; no host admission or production ownership change.
-Updated: 2026-10-02. Continue the full goal from
+Updated: 2026-10-03. Continue the full goal from
 [the migration plan](../27-go-lightpanda-continuation-plan.md) and
 [the source-bound checkpoint](../30-native-ordinary-authority-checkpoint-2026-09-30.md).
 [ADR006](../adr/006-crawler-deploy-quiescence-and-rollback.md) remains authoritative.
@@ -369,3 +369,44 @@ execution, Playwright, Chromium and runtime-only assets and remeasure the final
 service. Preserve useful isolated offline Python tooling and every enabled board.
 Use Hetzner Codex scheduling if recurring work is needed; this plan creates no
 new schedules or notification routes.
+
+## Connected writer containment phase
+
+`--host-contain` requires explicit `ORDINARY_GO_WORKER_MODE=host-contain`, the
+compiled coordinator source, protected request directory/SHA and exact
+`ORDINARY_HOST_PREFLIGHT_INTENT_SHA256`. It reacquires the fixed mutation lock,
+verifies the original immutable preflight intent and private spec archive,
+reobserves active selection, all three file/image roles, installed-file joins,
+complete inventory and declared execution, and retains `containment-intent.json`
+before effects. This phase permits only fixed restart disabling and stopping
+exact retained regular-service container IDs. Every such writer needs joined
+installed-file coverage; exporter and new services are writers by default.
+
+The plan retains the full prior daemon identity set, original restart policy,
+config/mount hashes and a complete host-config hash excluding only RestartPolicy.
+Foreign live/restartable objects and unknown project services/images refuse;
+maintenance one-offs must already be cold and never acquire stop authority.
+Matched Redis/Postgres/Alloy daemon roles remain live. Repeated pre-effect guards
+validate the lock, retained bytes and fresh selected/file/image/spec/installed
+observations. New/missing/replaced container IDs or unrelated configuration drift
+refuse. Linux CLI children die with the coordinator; already accepted daemon
+requests may finish and require reconciliation before any future restoration.
+
+`restarts-disabled.json` is fsynced only after all target restart policies are
+observed no/zero, before the fixed stop command. A retry with this barrier refuses
+a regained restart policy. A partial pre-barrier restart update resumes only
+the exact original IDs; no failure restarts a service. The post-effect full daemon
+inventory must pass `RequireColdContainers` before an immutable content-addressed
+receipt and result report `docker_writers_contained`. Both
+`runtime_admission` and `sql_barriers_observed` remain false.
+
+Local race tests, Linux compilation and required repository checks pass. The
+installed-image CI harness owns two sleeping stand-in service containers with
+restart=always, including exporter, plus a matched live PostgreSQL service. It
+requires real installed CLI preflight/containment, uncovered-exporter refusal,
+retained-file SIGKILL recovery, exact retry, rollback-archive substitution refusal
+and complete actual Docker readback on both architectures. It proves the stop
+operation, not a real worker workload or production host/SQL admission. Fresh
+source-scoped artifacts must be independently verified. Next join this phase to
+actual SQL barriers/leases and the full cold state machine, maintaining exclusion
+across all phases, then prove restoration and readiness before production use.

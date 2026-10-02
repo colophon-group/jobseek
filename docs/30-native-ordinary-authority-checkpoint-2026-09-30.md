@@ -1,5 +1,43 @@
 # Native ordinary worker authority checkpoint
 
+The connected native `--host-contain` phase now retains exact container IDs,
+configuration hashes and original restart policies before any Docker effect.
+It requires the bound preflight intent/spec archive and installed-file coverage
+for every regular writer, including exporter, and holds the shared mutation
+lock. Fixed commands disable restarts; an immutable fsynced barrier precedes
+stopping. Complete fresh daemon readback must satisfy the existing cold Docker
+predicate. Unknown live containers, unbound services, uncovered writers and
+request/selection/image/spec/config/mount drift refuse. Already cold maintenance
+one-offs remain unchanged. Failure never starts a container; exact retries use
+the retained IDs. SQL barriers and runtime admission remain explicitly false.
+
+Go 1.26 race tests and Linux AMD64/ARM64 integration-tag vet pass, along with
+workflow lint and all 188 repository checks. The disposable installed-image
+harness now requires actual writer/exporter stop commands, matched live Postgres,
+uncovered-exporter/archive refusal, two SIGKILL publication seams and exact retry.
+The writer processes are sleeping stand-ins. Fresh execution on both architectures
+is required before claiming this operational contract passes.
+See [writer containment evidence](evidence/go-ordinary-native-host-containment-2026-10-03.json).
+
+Preceding source `351629ae0b1cb6f5747039e02123fcdff060dc6e` now independently
+passes Linux 37067928233, installed 37068013054 and historical native/legacy
+37067928300/37067928232 on both architectures; full CI 37068009987 also passes.
+Selected active pointer/marker binding and all three selection substitutions
+are verified in the actual installed command. Whole-B0 1c87 run 37064123025
+independently admits 16 arms/8 pairs (density 5.959525103–13.685961051), within
+its synthetic startup-cardinality scope. a63 whole 37065462529 has succeeded
+and awaits independent artifact verification; 3516 whole 37067928269 is running.
+Preserve running evidence under the newest-pending policy.
+
+Next connect actual SQL writer lease/barrier checks, full effective runtime and
+build/selection authentication, and durable cold forward/reversal/spec restoration
+through readiness. Finish every enabled profile/consumer and complete-service
+parity/resource/cost gate, then authorized production rollout, rollback window
+and Python/Playwright/Chromium retirement. The deployment guard remains in place;
+PR #10210 remains draft and the full migration goal active.
+
+Earlier entries below retain their source-scoped evidence.
+
 The native host preflight now requires its requested active generation to match
 the deployment's actual `.crawler-active-release` pointer under the fixed
 `.crawler-release-generations` root and the live success marker. Protected
