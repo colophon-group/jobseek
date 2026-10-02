@@ -89,6 +89,7 @@ jobs:
         working-directory: apps/crawler/go/ordinary-queue
     env:
       JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
+      JOBSEEK_CRAWLER_RELEASE_REQUIRE_PYTHON: "1"
       JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
       LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
       JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test

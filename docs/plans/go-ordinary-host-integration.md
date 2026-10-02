@@ -47,6 +47,25 @@ Implement these as connected changes in the migration worktree; split a new
 independent task into an isolated worktree. Preserve running evidence jobs;
 new sources need their own admission. Do not repeatedly dispatch unchanged runs.
 
+## Native file-verification primitive
+
+The installed worker now provides `--verify-release-files`; its canonical result
+binds the compiled source and credential-free `jobseek.crawler-release-files/v1`
+evidence. Explicit generation directory/owner inputs are required; an optional
+file-evidence digest binds a retry. The native library verifies generic v3,
+initial format-1/2 bridges and transitive bridge attachments, exact CSV trees,
+identity/hash pairs, override presence and supported bootstrap residue. Go 1.26
+real-file and executable tests pass; offline Python is retained as a test oracle.
+Fresh Linux/installed-image verification remains required.
+
+This primitive reports only `files_verified`. The protected coordinator must
+independently authenticate selected generations and observe cleared-environment
+Compose/image resolution, exact deploy specs and complete writer quiescence
+before constructing release/cold authority. Keep the shared mutation lock across
+file verification and selection; the primitive reobserves every hashed file but
+cannot substitute for the lock or a complete host receipt. Existing production
+consumers still use their supported verification path.
+
 ## Protected host envelope
 
 The deployed coordinator must run under the existing operator deployment identity,

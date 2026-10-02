@@ -1,0 +1,215 @@
+{
+  "date": "2026-10-02",
+  "scope": "native read-only format-v3 filesystem/bridge verifier and executable fixture; no host/Docker/quiescence/deployment admission",
+  "runtime_parent": "062f4eb3aa9ee00938619f99eb4faeeffcb764cf",
+  "operation": "--verify-release-files",
+  "result_phase": "files_verified",
+  "native_contract": [
+    "anchored private generation root and regular bounded files",
+    "Compose/env/success/data manifest hashes and runtime/image identity pairs",
+    "exact canonical CSV tree including nested paths; no missing/extra/symlink files",
+    "explicit override present/absent and format-v3 BOOTSTRAP_LEGACY=0 compatibility",
+    "initial format-1/2 and transitive legacy bridge source files/runtime epoch attestation",
+    "closed canonical credential-free file identity with source revision and optional expected digest",
+    "full hashed-file readback, cancellation and fixed 15-second operation bound",
+    "no shell/env sourcing or DB/Redis/Docker operation"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "native_file_tree_tests_and_existing_python_bridge_oracle": "PASS generic, initial/transitive, semantic drift, symlink, privacy, cancellation and size bound",
+    "actual_native_executable_fixture": "PASS observe, digest-bound retry, wrong digest and CSV drift rejection, read-only and no runtime authorities; synthetic local linked source",
+    "linux_vet": [
+      "amd64",
+      "arm64"
+    ],
+    "workflow_security": "actionlint1.7.12 + zizmor1.26.1 PASS",
+    "repository_tests": 188,
+    "file_tests_log_sha256": "0dba3a60851f79fb99dddc868c4cc841d85ed972c462bd7725cdce5182415b7d"
+  },
+  "previous_full_ci": {
+    "source": "062f4eb3aa9ee00938619f99eb4faeeffcb764cf",
+    "run": 37025880983,
+    "conclusion": "success"
+  },
+  "previous_linux_recovery": {
+    "source": "062f4eb3aa9ee00938619f99eb4faeeffcb764cf",
+    "run": 37025887193,
+    "tested_merge": "5789f7b2f1b9e8ac06484d08b6187b10c864350c",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "062f4eb3aa9ee00938619f99eb4faeeffcb764cf"
+    ],
+    "log_sha256": "787b66501d6d8333075ad63292d7486315e63421b306e844fd642095645fbc78",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  },
+  "previous_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "eb804cf56aa89761f5df195f75e9e333a799ffb0",
+    "tested_merge_checkout": "60f1e21fabb3fa407326c5bda54d864245039adb",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "eb804cf56aa89761f5df195f75e9e333a799ffb0"
+    ],
+    "run": 37021649241,
+    "report_sha256": "e219c486208fbb83d9d77f35ff761ebad1220cae9a2945a1bae1fd6b0acf0af2",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      5.4392507560963095,
+      14.319845648852587
+    ],
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        5.694336483980752,
+        5.4392507560963095,
+        5.907795406921951,
+        14.028390144509661,
+        14.199892555743434,
+        14.319845648852587,
+        13.583397137739704,
+        13.893123114422501
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 5.694336483980752,
+          "elapsed_ratio": 1.4574729012233631,
+          "p99_ratio": 0.6892105356307873,
+          "peak_rss_ratio": 0.2559513132607303,
+          "cpu_seconds_candidate": 1.707198,
+          "cpu_seconds_control": 2.504493,
+          "lifetime_cpu_seconds_candidate": 4.012421,
+          "lifetime_cpu_seconds_control": 6.049369
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 5.4392507560963095,
+          "elapsed_ratio": 1.4515447362417189,
+          "p99_ratio": 0.6880120514874415,
+          "peak_rss_ratio": 0.26686483145032946,
+          "cpu_seconds_candidate": 1.694218,
+          "cpu_seconds_control": 2.473704,
+          "lifetime_cpu_seconds_candidate": 4.006457,
+          "lifetime_cpu_seconds_control": 5.993714
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.907795406921951,
+          "elapsed_ratio": 1.4899588091226763,
+          "p99_ratio": 0.6719033811055092,
+          "peak_rss_ratio": 0.2522021678978499,
+          "cpu_seconds_candidate": 1.750743,
+          "cpu_seconds_control": 2.576554,
+          "lifetime_cpu_seconds_candidate": 4.067008,
+          "lifetime_cpu_seconds_control": 6.190979
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 14.028390144509661,
+          "elapsed_ratio": 1.594914858395269,
+          "p99_ratio": 0.6226081290232947,
+          "peak_rss_ratio": 0.11369193770387662,
+          "cpu_seconds_candidate": 2.416098,
+          "cpu_seconds_control": 6.432522,
+          "lifetime_cpu_seconds_candidate": 4.743721,
+          "lifetime_cpu_seconds_control": 11.078798
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 14.199892555743434,
+          "elapsed_ratio": 1.6428258117915713,
+          "p99_ratio": 0.6123613358999185,
+          "peak_rss_ratio": 0.11569283396634555,
+          "cpu_seconds_candidate": 2.434188,
+          "cpu_seconds_control": 6.065181,
+          "lifetime_cpu_seconds_candidate": 4.7496089999999995,
+          "lifetime_cpu_seconds_control": 10.893721
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 14.319845648852587,
+          "elapsed_ratio": 1.623500115940051,
+          "p99_ratio": 0.6080707584456073,
+          "peak_rss_ratio": 0.11337413515138957,
+          "cpu_seconds_candidate": 2.484946,
+          "cpu_seconds_control": 6.538437,
+          "lifetime_cpu_seconds_candidate": 4.805339,
+          "lifetime_cpu_seconds_control": 11.359263
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 13.583397137739704,
+          "elapsed_ratio": 1.5829261708356692,
+          "p99_ratio": 0.6283138713270591,
+          "peak_rss_ratio": 0.11653389463506994,
+          "cpu_seconds_candidate": 2.409268,
+          "cpu_seconds_control": 5.913688,
+          "lifetime_cpu_seconds_candidate": 4.714273,
+          "lifetime_cpu_seconds_control": 10.513768
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 13.893123114422501,
+          "elapsed_ratio": 1.599195926354482,
+          "p99_ratio": 0.6190380631400082,
+          "peak_rss_ratio": 0.1151070146851539,
+          "cpu_seconds_candidate": 2.379713,
+          "cpu_seconds_control": 6.387121,
+          "lifetime_cpu_seconds_candidate": 4.6839249999999995,
+          "lifetime_cpu_seconds_control": 11.033851
+        }
+      ]
+    },
+    "images": {
+      "browser": "sha256:215978f40be51260167c6a997b2c20d2198990fb8d202cd2b4713d4112df4f96",
+      "candidate": "sha256:ce921fd0630d70ad5cafa975d647e12df4c8bc2e091da390129283dc2bab4ad3",
+      "renderer": "sha256:e715321b57e7dba90a9e1e61df1210b195b28032b56f733b760ecc4dd8da8b69"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "60f1e21fabb3fa407326c5bda54d864245039adb",
+      "postflight_clean": true,
+      "postflight_head": "60f1e21fabb3fa407326c5bda54d864245039adb"
+    },
+    "production_changed": false,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "legacy_image_correction": {
+    "failed_run": 37025887221,
+    "failed_before_restoration": "git ls-tree pathspec was relative to the ordinary-queue module",
+    "corrected_command": "git ls-tree --full-tree -r --name-only",
+    "actual_historical_src_count": 599,
+    "strict_source_byte_and_tree_checks_preserved": true,
+    "corrected_actual_image_execution_required": true
+  },
+  "remaining_host_contract": [
+    "independent selected production generation/image/source admission",
+    "cleared-environment Compose immutable-image resolution",
+    "exact active deploy-spec present/absent archive",
+    "all-writer/exporter/one-off exclusion with restart policies disabled",
+    "durable native coordinator/full release selection/cutover/reversal/readiness"
+  ],
+  "production_changed": false
+}

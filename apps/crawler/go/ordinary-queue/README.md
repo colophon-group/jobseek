@@ -690,3 +690,24 @@ so it remains stopped until both restoration journals close. Its reserved-board
 queue interval differs from the native canonical-due rule; this fixture verifies
 that historical behavior and cannot claim full migration parity, every old
 profile, the currently selected production image digest, or host admission.
+
+The `releaseevidence` package verifies one explicit committed format-v3 file
+generation through an anchored filesystem root. It checks Compose/env/success
+hashes, the exact nested CSV manifest/tree, runtime and immutable crawler/browser
+identity pairs, override presence, and all initial/transitive legacy bridge
+attachments and runtime-epoch bindings. Safe diagnostics and canonical evidence
+contain only hashes/identities; protected environment contents never appear.
+Its Go tests exercise real regular/symlinked files, semantic drift and bounds,
+and compare bridges with the existing offline Python verifier. Linux CI requires
+that offline oracle. Files are fully reobserved before return; the host mutation
+lock must still span verification and selection.
+
+The installed worker exposes `--verify-release-files` with explicit
+`ORDINARY_RELEASE_GENERATION_DIRECTORY` and `ORDINARY_RELEASE_OWNER`. Optional
+`ORDINARY_RELEASE_FILES_SHA256` binds an exact observation retry. The compiled
+source is retained in the result. Its phase is only `files_verified`: Compose
+image resolution, independent selected-release admission, complete writer/exporter
+exclusion, deploy-spec archives and readiness remain separate required host
+checks. This read-only operation has a 15-second bound and opens no database,
+Redis or Docker connection. It does not replace the existing production path
+until the complete supported native host coordinator is implemented and verified.

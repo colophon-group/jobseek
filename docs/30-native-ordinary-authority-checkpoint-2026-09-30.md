@@ -1654,3 +1654,34 @@ a namespace package with no `__file__`. The inspector now requires exactly one
 Complete installed source/Lua/data Git checks and the runtime test remain
 mandatory; no prior runtime source or authority requirement changes. Fresh
 corrected image execution is required.
+
+## Native committed-release file verifier — 2026-10-02
+
+The next host slice adds a native format-v3 filesystem verifier and installed
+`--verify-release-files` command. It preserves exact CSV/hash/runtime identity
+and initial/transitive legacy bridge binding, requires a private anchored
+generation and protected env mode, rejects drift/symlinks/unknown fields/files,
+and returns only canonical hashes/identities with compiled source. It reobserves
+every hashed file and supports an explicit expected-digest retry. No runtime
+authority is opened. The complete host coordinator and release/Compose/writer
+admission remain required.
+
+Go 1.26 real-file/oracle race tests and actual local executable tests pass, with
+both Linux vet, workflow audits and 188 repository checks. Linux CI requires
+the existing offline Python bridge oracle; installed-image CI's existing actual
+executable selector also requires the new release-file fixture.
+[Portable verification](evidence/go-ordinary-native-release-files-2026-10-02.json)
+records scope and remaining host contracts.
+
+Preceding source `062f4eb3a` full CI 37025880983 and Linux/root recovery
+37025887193 pass; checked merge parents and actual prior source/runtime/recovery
+are independently verified. Earlier source `eb804cf56` whole-B0 37021649241
+admits all 16 arms/eight pairs after independent recomputation, density
+5.439251–14.319846; the generated workload is not all-production parity/cost.
+
+The corrected namespace inspector passes complete historical installed-tree
+checks in legacy-image run 37025887221. The Go fixture then refuses before
+restoration because Git interpreted its tree path relative to the module.
+`--full-tree` corrects that listing; all 599 source files are observed from the
+module locally and every strict source/tree/byte check remains required. Fresh
+actual legacy-image execution is still required. Production remains unchanged.

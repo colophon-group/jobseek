@@ -129,7 +129,7 @@ func TestPriorLegacyImageConsumesCompletedRestorationAtR(t *testing.T) {
 	defer cancel()
 	for base, m := range map[string]map[string]string{"src": e.InstalledSourceSHA256, "data": e.InstalledAssetSHA256} {
 		// Assert the exact installed tree, including Lua and non-Python assets.
-		listing, err := exec.CommandContext(ctx, "git", "ls-tree", "-r", "--name-only", priorLegacyImageSource, "apps/crawler/"+base+"/").Output()
+		listing, err := exec.CommandContext(ctx, "git", "ls-tree", "--full-tree", "-r", "--name-only", priorLegacyImageSource, "apps/crawler/"+base+"/").Output()
 		if err != nil {
 			t.Fatal("immutable prior tree unavailable")
 		}
