@@ -1,5 +1,20 @@
 # Go and Lightpanda migration continuation plan
 
+Actual reload diagnostics for run 36952683732 isolate one expired key:
+`ratelimit:jobs.example.test`, before producer startup, in both ordinary decisions.
+The private root fixture now freezes that existing bucket before any SAVE/reload
+baseline and verifies its value is unchanged. Full-state snapshot comparisons and
+publication conservation remain strict; runtime rate expiry is unchanged.
+
+Earlier whole-B0 candidate c4-p3 failed Docker renderer endpoint allocation.
+The benchmark networks now allocate dynamic endpoints from the upper /25 of each
+existing /24, disjoint from fixed renderer/DB/fixture addresses. All 24 focused
+admission checks and Ruff pass, including address separation regression coverage.
+Linux integration compilation/vet pass; corrected root execution and whole-B0
+measurement are still required. Preceding af9 required CI 36952698999 and installed
+contracts 36952701423 pass. The full goal remains active and production unchanged.
+See [fixture correction evidence](evidence/go-ordinary-recovery-fixture-correction-2026-10-02.json).
+
 The bounded suite correction passes Linux queue races in run 36952124481.
 Actual root finalizer recovery then fails its full saved-snapshot comparison after
 publication SIGKILL and RDB reload, for native and legacy decisions. This checkpoint

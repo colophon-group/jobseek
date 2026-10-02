@@ -45,6 +45,20 @@ func installedNativeColdB0ReactivationAndFinalization(t *testing.T, native bool)
 	metadata := `{"scraper_type":"json-ld","scraper_config":{"browser_backend":"lightpanda","render":true,"routing_revision":"go-b0-1","timeout":5000,"wait":"load","wait_fallback":null}}`
 	p, request, _, receipt := reactivationFixtureBootstrap(t, native, metadata, source, false)
 	ctx := context.Background()
+	// The actual claim leaves a short-lived rate bucket. Freeze this private
+	// baseline before any SAVE/reload observations so elapsed fixture time cannot
+	// masquerade as lost publication. Runtime rate expiry remains unchanged.
+	rateKey := "ratelimit:jobs.example.test"
+	rate, err := p.f.client.redis.Get(ctx, rateKey).Result()
+	if err != nil {
+		t.Fatal("private source rate bucket unavailable")
+	}
+	if frozen, err := p.f.client.redis.Persist(ctx, rateKey).Result(); err != nil || !frozen {
+		t.Fatal("private source rate baseline not frozen")
+	}
+	if current, err := p.f.client.redis.Get(ctx, rateKey).Result(); err != nil || current != rate {
+		t.Fatal("private source rate value changed while freezing expiry")
+	}
 	ordinary, err := InspectColdOrdinaryRestorationPlan(ctx, p.f.observer, request.OrdinaryRestorationPlanSHA256, source)
 	if err != nil {
 		t.Fatal(err)

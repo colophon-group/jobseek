@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import ipaddress
 import json
 import sys
 from pathlib import Path
@@ -172,6 +173,25 @@ def test_compose_counts_real_producer_inside_equal_lane() -> None:
     assert "mem_limit: 1g" in compose
     assert "mem_limit: 1536m" in compose
     assert controller.evaluate({"failure": "unmeasured", "mode": "synthetic"})["admitted"] is False
+
+
+def test_admission_dynamic_addresses_cannot_take_fixed_endpoints() -> None:
+    compose = yaml.safe_load((HERE / "compose.yml").read_text())
+    for name, network in compose["networks"].items():
+        allocation = network["ipam"]["config"][0]
+        subnet = ipaddress.ip_network(allocation["subnet"])
+        dynamic = ipaddress.ip_network(allocation["ip_range"])
+        assert dynamic.subnet_of(subnet)
+        assert dynamic.num_addresses >= len(compose["services"])
+        fixed = []
+        for service in compose["services"].values():
+            attachments = service.get("networks", {})
+            if isinstance(attachments, dict) and name in attachments:
+                address = attachments[name].get("ipv4_address")
+                if address:
+                    fixed.append(ipaddress.ip_address(address))
+        assert len(fixed) == len(set(fixed))
+        assert all(address in subnet and address not in dynamic for address in fixed)
 
 
 def test_controller_rejects_unmeasured_or_changed_workload(tmp_path: Path) -> None:

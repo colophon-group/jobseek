@@ -1514,3 +1514,18 @@ now builds an actual local ARM64 executable whose linked identity and Git VCS
 revision/clean flag match. Restored-R runtime admission and immutable Linux image
 capability still require proof. See [reload investigation evidence](evidence/go-ordinary-finalizer-reload-investigation-2026-10-02.json).
 The full migration goal stays active; production remains unchanged.
+
+Actual reload diagnostics for run 36952683732 isolate one expired key:
+`ratelimit:jobs.example.test`, before producer startup, in both ordinary decisions.
+The private root fixture now freezes that existing bucket before any SAVE/reload
+baseline and verifies its value is unchanged. Full-state snapshot comparisons and
+publication conservation remain strict; runtime rate expiry is unchanged.
+
+Earlier whole-B0 candidate c4-p3 failed Docker renderer endpoint allocation.
+The benchmark networks now allocate dynamic endpoints from the upper /25 of each
+existing /24, disjoint from fixed renderer/DB/fixture addresses. All 24 focused
+admission checks and Ruff pass, including address separation regression coverage.
+Linux integration compilation/vet pass; corrected root execution and whole-B0
+measurement are still required. Preceding af9 required CI 36952698999 and installed
+contracts 36952701423 pass. The full goal remains active and production unchanged.
+See [fixture correction evidence](evidence/go-ordinary-recovery-fixture-correction-2026-10-02.json).
