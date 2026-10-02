@@ -85,12 +85,12 @@ func RunHostContainment(ctx context.Context, c HostContainmentConfig) (*HostCont
 type hostContainEffect func(context.Context, *release.WriterContainmentPlan, []*release.Images, bool, func() error, func() error) (*release.ColdContainers, error)
 
 func runHostContainment(ctx context.Context, c HostContainmentConfig, lockPath string, observe func(context.Context, HostPreflightRequest) (*hostObservations, error), contain hostContainEffect, hook func(string) error) (*HostContainmentResult, error) {
-	return runHostContainmentPhase(ctx, c, lockPath, observe, contain, hook, false)
+	return runHostContainmentPhase(ctx, c, lockPath, observe, contain, hook, false, nil)
 }
 
-func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockPath string, observe func(context.Context, HostPreflightRequest) (*hostObservations, error), contain hostContainEffect, hook func(string) error, withSQL bool) (*HostContainmentResult, error) {
+func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockPath string, observe func(context.Context, HostPreflightRequest) (*hostObservations, error), contain hostContainEffect, hook func(string) error, withSQL bool, driveCold func(context.Context, *pgxpool.Pool, *queue.HostColdSQL) error) (*HostContainmentResult, error) {
 	p := c.preflight
-	if ctx == nil || ctx.Err() != nil || !planPattern.MatchString(c.intentSHA) || !cleanHostPath(p.directory) || !planPattern.MatchString(p.expected) || !sourcePattern.MatchString(p.source) || observe == nil || contain == nil {
+	if ctx == nil || ctx.Err() != nil || !planPattern.MatchString(c.intentSHA) || !cleanHostPath(p.directory) || !planPattern.MatchString(p.expected) || !sourcePattern.MatchString(p.source) || observe == nil || contain == nil || driveCold != nil && !withSQL {
 		return nil, errHostPreflight
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
@@ -318,6 +318,14 @@ func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockP
 		}
 		if hook != nil && hook("sql_barriers_held") != nil {
 			return errHostPreflight
+		}
+		if driveCold != nil {
+			if coldGuard() != nil || sql.Check(sqlCtx) != nil {
+				return errHostPreflight
+			}
+			if driveCold(sqlCtx, pool, sql) != nil || coldGuard() != nil || sql.Check(sqlCtx) != nil {
+				return errHostPreflight
+			}
 		}
 		var err error
 		result, err = finish(sqlCtx, sql)

@@ -10,8 +10,6 @@ import (
 
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0producer"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func coldOrdinaryFinalizationOperation(operation string) bool {
@@ -77,7 +75,7 @@ func readColdOrdinaryFinalizationConfig(getenv func(string) string, source, oper
 	return c, nil
 }
 
-func runColdOrdinaryFinalizationAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, error) {
+func runColdOrdinaryFinalizationAdmin(ctx context.Context, c ColdAdminConfig, borrowed *coldAdminConnections) (*ColdAdminIdentity, error) {
 	if ctx == nil || c.retirementEpoch <= c.epoch || c.retirementEpoch > 9999999999999 {
 		return nil, ErrStartup
 	}
@@ -122,21 +120,12 @@ func runColdOrdinaryFinalizationAdmin(ctx context.Context, c ColdAdminConfig) (*
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	config, err := pgxpool.ParseConfig(c.database)
+	connections, close, err := acquireColdAdminConnections(ctx, c, borrowed, c.operation != "cold-ordinary-finalization-inspect")
 	if err != nil {
 		return nil, ErrStartup
 	}
-	config.MinConns, config.MaxConns = 0, 1
-	config.ConnConfig.ConnectTimeout = 3 * time.Second
-	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeDescribeExec
-	config.ConnConfig.RuntimeParams["application_name"] = "jobseek:crawler:ordinary-cold-coordinator:local"
-	config.ConnConfig.RuntimeParams["statement_timeout"] = "10s"
-	config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "15s"
-	pool, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		return nil, ErrStartup
-	}
-	defer pool.Close()
+	defer close()
+	pool, client := connections.pool, connections.client
 	ordinary, err := queue.InspectColdOrdinaryRestorationPlan(ctx, pool, c.ordinaryRestorationSHA, c.source)
 	if err != nil || ordinary.Request().ReversalSHA256 != c.reversalSHA || ordinary.Request().RetirementEpoch != c.retirementEpoch {
 		return nil, ErrStartup
@@ -157,11 +146,6 @@ func runColdOrdinaryFinalizationAdmin(ctx context.Context, c ColdAdminConfig) (*
 				return nil, ErrStartup
 			}
 		}
-		client, openErr := queue.Open(c.redis, queue.Settings{LeaseTTL: 600 * time.Second, MaxDomains: 10})
-		if openErr != nil {
-			return nil, ErrStartup
-		}
-		defer client.Close()
 		control := b0producer.NewClient()
 		switch c.operation {
 		case "cold-ordinary-finalization-plan":

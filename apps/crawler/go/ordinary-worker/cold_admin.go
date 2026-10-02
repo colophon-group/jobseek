@@ -10,8 +10,6 @@ import (
 
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0producer"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // ColdAdminOperation recognizes only explicit one-shot coordinator arguments.
@@ -274,14 +272,21 @@ func ReadColdAdminConfig(getenv func(string) string, installed, operation string
 // must independently verify all-writer quiescence and release/rollback evidence,
 // transfer real B0 tasks and persist output. This does not deploy or start owners.
 func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, error) {
+	return runColdAdmin(ctx, c, nil)
+}
+
+func runColdAdmin(ctx context.Context, c ColdAdminConfig, borrowed *coldAdminConnections) (*ColdAdminIdentity, error) {
+	if ctx == nil || ctx.Err() != nil {
+		return nil, ErrStartup
+	}
 	if ColdAdminOperation("--"+c.operation) != c.operation || c.operation == "" || !sourcePattern.MatchString(c.source) || c.database == "" || (c.redis == "" && c.operation != "cold-ordinary-finalization-inspect") || c.epoch < 1 || c.epoch > 9999999999999 {
 		return nil, ErrStartup
 	}
 	if coldOrdinaryFinalizationOperation(c.operation) {
-		return runColdOrdinaryFinalizationAdmin(ctx, c)
+		return runColdOrdinaryFinalizationAdmin(ctx, c, borrowed)
 	}
 	if coldB0ReactivationOperation(c.operation) {
-		return runColdB0ReactivationAdmin(ctx, c)
+		return runColdB0ReactivationAdmin(ctx, c, borrowed)
 	}
 	var spec queue.ColdTransitionSpec
 	var reversal queue.ColdReversalSpec
@@ -378,27 +383,12 @@ func RunColdAdmin(ctx context.Context, c ColdAdminConfig) (*ColdAdminIdentity, e
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	client, err := queue.Open(c.redis, queue.Settings{LeaseTTL: 600 * time.Second, MaxDomains: 10})
+	connections, close, err := acquireColdAdminConnections(ctx, c, borrowed, true)
 	if err != nil {
 		return nil, ErrStartup
 	}
-	defer client.Close()
-	config, err := pgxpool.ParseConfig(c.database)
-	if err != nil {
-		return nil, ErrStartup
-	}
-	config.MinConns, config.MaxConns = 0, 1
-	config.MaxConnIdleTime = time.Minute
-	config.ConnConfig.ConnectTimeout = 3 * time.Second
-	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeDescribeExec
-	config.ConnConfig.RuntimeParams["application_name"] = "jobseek:crawler:ordinary-cold-coordinator:local"
-	config.ConnConfig.RuntimeParams["statement_timeout"] = "10s"
-	config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "15s"
-	pool, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		return nil, ErrStartup
-	}
-	defer pool.Close()
+	defer close()
+	pool, client := connections.pool, connections.client
 	result := &ColdAdminIdentity{Version: "jobseek.ordinary.cold-identity/v1", Operation: c.operation, SourceRevision: c.source, IntentSHA256: c.intentSHA, B0TargetSHA256: c.targetSHA}
 	var plan *queue.OwnershipPlan
 	// The immutable journal binds the explicit new epoch/plan BEFORE effects.

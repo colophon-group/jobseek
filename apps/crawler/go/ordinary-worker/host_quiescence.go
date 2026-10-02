@@ -6,7 +6,9 @@ import (
 	"runtime"
 	"strings"
 
+	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	release "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue/releaseevidence"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type HostQuiescenceConfig struct{ containment HostContainmentConfig }
@@ -43,5 +45,16 @@ func RunHostQuiescence(ctx context.Context, c HostQuiescenceConfig) (*HostContai
 	if runtime.GOOS != "linux" {
 		return nil, errHostPreflight
 	}
-	return runHostContainmentPhase(ctx, c.containment, hostMutationLock, observeHostPreflight, release.ContainWriters, nil, true)
+	return runHostContainmentPhase(ctx, c.containment, hostMutationLock, observeHostPreflight, release.ContainWriters, nil, true, nil)
+}
+
+// WithHostQuiescence keeps the shared host lock, contained writer IDs and live
+// SQL session across the in-process cold driver. The driver must validate its
+// exact release/intent/epoch requests and retain every phase output before the
+// next effect. The returned observation is not full migration/runtime admission.
+func WithHostQuiescence(ctx context.Context, c HostQuiescenceConfig, cold func(context.Context, *pgxpool.Pool, *queue.HostColdSQL) error) (*HostContainmentResult, error) {
+	if cold == nil || runtime.GOOS != "linux" {
+		return nil, errHostPreflight
+	}
+	return runHostContainmentPhase(ctx, c.containment, hostMutationLock, observeHostPreflight, release.ContainWriters, nil, true, cold)
 }

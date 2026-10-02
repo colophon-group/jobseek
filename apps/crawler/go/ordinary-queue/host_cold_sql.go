@@ -119,6 +119,20 @@ func (s *HostColdSQL) Check(ctx context.Context) error {
 	return s.observe(ctx)
 }
 
+// CheckHostColdSQLScope lets the in-process cold coordinator borrow the pool
+// without exposing the locked connection or accepting a serialized receipt.
+// Both the source binding and the exact live context/pool must match.
+func CheckHostColdSQLScope(ctx context.Context, pool *pgxpool.Pool, source string) error {
+	if ctx == nil || ctx.Err() != nil || pool == nil || !ownershipRevision.MatchString(source) {
+		return ErrAuthorityLost
+	}
+	s, ok := ctx.Value(hostColdSQLKey{}).(*HostColdSQL)
+	if !ok || s == nil || s.pool != pool || s.binding.SourceRevision != source {
+		return ErrAuthorityLost
+	}
+	return s.Check(ctx)
+}
+
 func (s *HostColdSQL) observe(ctx context.Context) error {
 	if !s.active || s.conn == nil || s.conn.IsClosed() || s.conn.PgConn().TxStatus() != 'I' {
 		return ErrAuthorityLost

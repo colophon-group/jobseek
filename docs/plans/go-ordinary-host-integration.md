@@ -448,3 +448,48 @@ The PostgreSQL fixture declares GitHub's injected GITHUB_ACTIONS/CI environment
 rather than weakening the execution predicate. Sources 7e/3bc failed strict
 preflight before stops; fresh installed artifacts must pass independent verification.
 See [portable SQL evidence](../evidence/go-ordinary-native-host-quiescence-2026-10-03.json).
+
+## Cold driver inside the live host session
+
+Use `WithHostQuiescence` to execute the driver before closing the host/SQL scope.
+The callback receives its exact live context and selected pool. Cold admin uses
+`RunColdAdminInHostScope`, which checks source/context/pool identity before and
+after execution and borrows its Redis client. Every branch, including B0
+reactivation and ordinary finalization, uses this connection path. Separate child
+cold commands or a new database pool would contend with the held barriers and
+cannot replace this driver. Standalone historical commands retain their own
+connection lifecycle; historical inspection remains available without live authority.
+
+Actual private PostgreSQL/Redis tests capture a B0 target, retain the transition
+intent, reserve an epoch, inspect the committed phase and repeat the exact
+reservation while all three writer barriers remain excluded. Independent observers
+see the pending intent before reservation; complete Redis/canonical snapshots stay
+unchanged and no extra epoch is consumed. Different sources/pools refuse and borrowed
+resources remain usable after the scope. The actual existing cold-publication
+SIGKILL executable regression also passes with the unified connection helper.
+
+The disposable installed test now additionally runs the library callback against
+real Linux Docker/PostgreSQL. It must observe the actual shared host flock and all
+SQL barriers held inside both successful and rejected callbacks, backend release,
+and exact cold containment after failure. This tests the in-process host boundary;
+it does not prove a complete installed CLI phase driver, real worker readiness or
+production authentication. Fresh exact-source artifacts must pass before claiming
+this callback contract is verified.
+
+Next define and validate the protected canonical host phase request, derive all
+release/intent/E/plan/reversal/R bindings from retained evidence, and privately fsync
+each exact result before its next effect. Bind Redis to verified effective selected
+execution instead of caller URL fields. Drive the entire existing native forward/
+reversal/finalization sequence inside the callback, preserve producer lifecycle
+exclusion, and stage present-spec/env/data restoration before final absence. Then
+exercise full host SIGKILL/readiness/naturally due work on both architectures and
+finish the profile/consumer/parity/resources/cost/production gates in the full plan.
+
+The current quiescence guard deliberately requires the original selected pointer,
+live marker, request, files and spec archive throughout this scope. A complete host
+coordinator must authorize each intentional spec/selection change from exact durable
+phase evidence; it cannot weaken that guard or treat changed files as unexplained
+success. Keep the outer host lock across selection, SQL-scope release, full-stack
+startup and readiness. Running workers need SQL barriers released before startup,
+so startup/readiness belongs after the cold SQL callback under the same outer host
+transaction. The current one-shot quiescence wrapper does not implement that handoff.

@@ -11,9 +11,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
+	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	release "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue/releaseevidence"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -172,6 +174,61 @@ func TestActualInstalledNativeHostQuiescenceJoinsSQLExclusionAndRecoversSIGKILL(
 		}
 	}
 	assertReleased(receipt.SQL.PID)
+	t.Run("in process host callback and failure containment", func(t *testing.T) {
+		if ClearHostDatabaseEnvironment() != nil {
+			t.Fatal("explicit library coordinator PG environment")
+		}
+		env := map[string]string{"ORDINARY_GO_WORKER_MODE": "host-quiesce", "ORDINARY_HOST_COORDINATOR_SOURCE_REVISION": source, "ORDINARY_HOST_REQUEST_DIRECTORY": state, "ORDINARY_HOST_REQUEST_SHA256": hostDigest(body), "ORDINARY_HOST_PREFLIGHT_INTENT_SHA256": preflight.IntentSHA256}
+		config, err := ReadHostQuiescenceConfig(func(key string) string { return env[key] }, source)
+		if err != nil {
+			t.Fatal("explicit in-process host request")
+		}
+		for _, reject := range []bool{false, true} {
+			var pid int32
+			result, err := WithHostQuiescence(ctx, config, func(scoped context.Context, pool *pgxpool.Pool, sql *queue.HostColdSQL) error {
+				if queue.CheckHostColdSQLScope(scoped, pool, source) != nil {
+					t.Fatal("callback lost bound SQL scope")
+				}
+				var observed struct {
+					PID  int32   `json:"backend_pid"`
+					Keys []int64 `json:"exclusive_barriers"`
+				}
+				if json.Unmarshal([]byte(sql.Body()), &observed) != nil || len(observed.Keys) != 3 {
+					t.Fatal("callback SQL observation")
+				}
+				pid = observed.PID
+				for _, key := range observed.Keys {
+					var entered bool
+					if observer.QueryRow(scoped, "SELECT pg_try_advisory_xact_lock_shared($1)", key).Scan(&entered) != nil || entered {
+						t.Fatal("writer entered live host callback")
+					}
+				}
+				lock, err := os.OpenFile(hostMutationLock, os.O_RDWR, 0)
+				if err != nil {
+					t.Fatal("actual shared host lock observation")
+				}
+				defer lock.Close()
+				if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != syscall.EWOULDBLOCK {
+					if err == nil {
+						_ = syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+					}
+					t.Fatal("host callback did not hold shared mutation lock")
+				}
+				if reject {
+					return queue.ErrAuthorityLost
+				}
+				return nil
+			})
+			if pid <= 0 || reject && (err == nil || result != nil) || !reject && (err != nil || result == nil || !result.SQLBarriersObserved || result.RuntimeAdmission) {
+				t.Fatal("in-process callback completion/failure changed contract", err)
+			}
+			assertReleased(pid)
+		}
+		if retry := call(true); retry.IntentSHA256 != first.IntentSHA256 {
+			t.Fatal("failed callback changed retained containment identity")
+		}
+		t.Log("actual in-process host callback held the shared mutation flock and all three SQL writer barriers; successful and rejected callbacks released their private SQL backend; callback failure retained cold exact-ID writer containment; returned observation grants no runtime admission")
+	})
 	// A current shared writer barrier prevents completion until its transaction
 	// exits. No runtime fault environment or unsafe direct Docker mutation.
 	blocker, err := observer.Acquire(ctx)
