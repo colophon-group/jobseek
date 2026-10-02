@@ -22,9 +22,12 @@ func TestColdOrdinaryFinalizationSchemaMatchesAppliedMigration(t *testing.T) {
 	}
 }
 func finalizationFixture(t *testing.T, native, priorProjection bool) (publicationFixture, *ColdOrdinaryFinalizationPlan, *forwardLuaControl) {
+	return finalizationFixtureWithPriorSource(t, native, priorProjection, strings.Repeat("b", 40))
+}
+func finalizationFixtureWithPriorSource(t *testing.T, native, priorProjection bool, priorSource string) (publicationFixture, *ColdOrdinaryFinalizationPlan, *forwardLuaControl) {
 	t.Helper()
 	ctx := context.Background()
-	p, r, control, receipt := reactivationFixture(t, native)
+	p, r, control, receipt := reactivationFixtureBootstrapWithPriorSource(t, native, "{}", strings.Repeat("a", 40), true, priorSource)
 	if priorProjection {
 		if err := p.f.client.redis.MSet(ctx, ownershipProjectionKey, p.plan.body, coldPublicationKey, publicationMarker(p.intent, p.spec, p.plan, "published")).Err(); err != nil {
 			t.Fatal(err)

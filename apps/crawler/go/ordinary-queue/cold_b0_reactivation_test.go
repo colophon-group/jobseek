@@ -22,7 +22,10 @@ func TestColdB0ReactivationSchemaMatchesAppliedMigration(t *testing.T) {
 	}
 }
 func reactivationHostReceipt(epoch int64) string {
-	return fmt.Sprintf("schema=jobseek.lightpanda-b0-active/v1\nstate=active\ncohort=c1\nnamespace=ordinary-joint-fixture\nshard_id=lightpanda-b0\nrouting_epoch=%d\nplan_digest=%s\ncompose_digest=%s\ncrawler_image_ref=ghcr.io/colophon-group/jobseek-crawler@sha256:%s\ndeploy_revision=%s\nactivated_at_epoch=1790812800\n", epoch, strings.Repeat("1", 64), strings.Repeat("2", 64), strings.Repeat("3", 64), strings.Repeat("b", 40))
+	return reactivationHostReceiptWithSource(epoch, strings.Repeat("b", 40))
+}
+func reactivationHostReceiptWithSource(epoch int64, priorSource string) string {
+	return fmt.Sprintf("schema=jobseek.lightpanda-b0-active/v1\nstate=active\ncohort=c1\nnamespace=ordinary-joint-fixture\nshard_id=lightpanda-b0\nrouting_epoch=%d\nplan_digest=%s\ncompose_digest=%s\ncrawler_image_ref=ghcr.io/colophon-group/jobseek-crawler@sha256:%s\ndeploy_revision=%s\nactivated_at_epoch=1790812800\n", epoch, strings.Repeat("1", 64), strings.Repeat("2", 64), strings.Repeat("3", 64), priorSource)
 }
 
 func TestColdB0ReactivationReceiptRejectsMalformedHashedHostData(t *testing.T) {
@@ -60,11 +63,14 @@ func reactivationFixtureWithSource(t *testing.T, native bool, metadata, source s
 }
 
 func reactivationFixtureBootstrap(t *testing.T, native bool, metadata, source string, initialize bool) (publicationFixture, ColdB0ReactivationRequest, *forwardLuaControl, string) {
+	return reactivationFixtureBootstrapWithPriorSource(t, native, metadata, source, initialize, strings.Repeat("b", 40))
+}
+func reactivationFixtureBootstrapWithPriorSource(t *testing.T, native bool, metadata, source string, initialize bool, priorSource string) (publicationFixture, ColdB0ReactivationRequest, *forwardLuaControl, string) {
 	t.Helper()
 	ctx := context.Background()
 	receipt := ""
-	p := realPublicationSeedWithPriorSpec(t, metadata, source, true, native, func(s *ColdTransitionSpec) {
-		receipt = reactivationHostReceipt(s.PreviousEpoch)
+	p := realPublicationSeedWithPriorSource(t, metadata, source, true, native, priorSource, func(s *ColdTransitionSpec) {
+		receipt = reactivationHostReceiptWithSource(s.PreviousEpoch, priorSource)
 		s.PreviousB0ReceiptSHA256 = coldForwardBytesDigest(receipt)
 	})
 	rollbackFixturePosting(t, p)
@@ -84,7 +90,7 @@ func reactivationFixtureBootstrap(t *testing.T, native bool, metadata, source st
 	}
 	ordinaryRequest := ColdOrdinaryRestorationRequest{ReversalSHA256: request.ReversalSHA256, SourceRevision: request.SourceRevision, RetirementEpoch: request.RetirementEpoch, B0RestorationPlanSHA256: b0.digest}
 	if native {
-		ordinaryRequest.RollbackSourceRevision = strings.Repeat("b", 40)
+		ordinaryRequest.RollbackSourceRevision = priorSource
 	}
 	ordinary, err := BuildColdOrdinaryRestorationPlan(ctx, p.f.observer, p.f.client, ordinaryRequest, p.target)
 	if err != nil {

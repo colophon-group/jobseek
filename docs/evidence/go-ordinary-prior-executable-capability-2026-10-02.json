@@ -1,0 +1,113 @@
+{
+  "schema": "jobseek.migration.prior-ordinary-executable-capability/v1",
+  "candidate_parent": "ab1f5308e34a76aee54449a62731ab7d391533bd",
+  "changed_file_sha256": {
+    ".github/workflows/go-ordinary-queue.yml": "04660cf5189cd98b96d6c8ae50ffdadb71995dcc976bc1ec753314ab06facda5",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_prior_executable_integration_test.go": "15c1fde2a4107ac137f5815be502380f6a830b2f5e62649634ab462d742ead1e",
+    "apps/crawler/go/ordinary-queue/cold_publication_test.go": "b261e7809e39d36d978740e5198377953f4c945d67492c5af37e9c7811f0c67d",
+    "apps/crawler/go/ordinary-queue/cold_b0_reactivation_test.go": "4c0fe69d2decb55252365209d6a33edbd2458fedcaad24bb56f0178103dbf1af",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_finalization_test.go": "9906a76c8543d17113985ae41a314b82a00b12cd1bec62ef88dd696cef5dffd1"
+  },
+  "prior_executable": {
+    "source_revision": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "git_tree": "4e986e2d53d797646a6a3b0333bfbd2ad7792be9",
+    "clean_checkout": true,
+    "linked_and_vcs_source_verified": true,
+    "binary_sha256": "c46be228f91e4dbcad0929d7b91d4b6e273b8ccfbf2e0ae4c3c65ed41505ed89",
+    "identity": {
+      "source_revision": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+      "ca_sha256": "fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28",
+      "profile": "greenhouse.token-skip/v1"
+    },
+    "platform": "local darwin arm64"
+  },
+  "local_real_pg_redis_proof": {
+    "command": "go test -race -tags=integration -count=1 -timeout=60s -v -run ^TestPriorNativeExecutableConsumesRestoredV1AuthorityAtR$ ./...",
+    "seconds": 6.393,
+    "log_sha256": "67fb305d7b87cf0fda3a8664c6fd2c3e767a152dc08ce0f5484efb578c1ef199",
+    "passed": true,
+    "owned_fixture_cleanup": true,
+    "contract": [
+      "actual pinned clean prior binary and matching prior taxonomy",
+      "original prior plan, historical receipt and fresh restoration source parameterized together",
+      "actual prior startup rejects staged and saved-projection-only authority without queue effect",
+      "real no-save RDB reload preserves all published state",
+      "actual prior runtime consumes existing v1 restored journal/projection/witness at reserved R",
+      "source/projection drift rejected",
+      "reserved publisher cycle has no origin attempt, completed R fence and queue ACK",
+      "identity health, signal drain, canonical due and failure-budget preservation",
+      "old plan remains retired, fresh restored plan active, no R+1, canonical content unchanged"
+    ]
+  },
+  "local_full_queue_race_seconds": 72.178,
+  "required_repository_scripts": 188,
+  "integration_tag_vet_and_compile": [
+    "linux-amd64",
+    "linux-arm64"
+  ],
+  "linux_ci_added": "independent exact-source detached worktree, clean before/after build, real VCS metadata retained; actual prior executable test required on both architectures",
+  "scope_limits": [
+    "prior source is a historical candidate, not a previously selected production native ordinary release",
+    "host receipt/release labels and startup reference fixture remain synthetic",
+    "no immutable Linux image or complete ADR006 host admission",
+    "fresh new-source Linux execution required"
+  ],
+  "preceding_finalizer_linux": {
+    "source": "ab1f5308e34a76aee54449a62731ab7d391533bd",
+    "run": 37005707852,
+    "tested_merge": "e3919a3f645b032b0c94a4d566c4c116e221e84b",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "ab1f5308e34a76aee54449a62731ab7d391533bd"
+    ],
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "full_queue_and_worker_contracts_pass": true,
+    "actual_root_native_and_legacy_finalizer_recovery_pass": true,
+    "log_sha256": "c9c37c8fdc3dccf950221d4ee690ef916fb4bce5b93fea8f8af1ee87f6bacc6d",
+    "scope": "actual initializer/reactivation/finalizer CLI, post-SAVE/pre-SQL and atomic completion SIGKILL, RDB/producer restarts, exact retries and historical inspection; prior releases/receipts synthetic; no prior executable or complete host admission",
+    "production_changed": false
+  },
+  "preceding_full_ci": 37005764219,
+  "preceding_installed_ci": {
+    "run": 37005767743,
+    "source": "ab1f5308e34a76aee54449a62731ab7d391533bd",
+    "both_architectures_source_ca_four_executable_fixtures_34_assets_verified": true
+  },
+  "preceding_whole_b0": {
+    "pr_head": "ab1f5308e34a76aee54449a62731ab7d391533bd",
+    "run": 37005707818,
+    "report_sha256": "1ebfe376abd6f646a03b58ed3adf1928a63a1097d819f709ccb37f40fa0b486f",
+    "tested_merge_checkout": "e3919a3f645b032b0c94a4d566c4c116e221e84b",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "ab1f5308e34a76aee54449a62731ab7d391533bd"
+    ],
+    "density_range": [
+      7.053746713978843,
+      13.83589900277439
+    ],
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "earlier_cli_whole_b0": {
+    "pr_head": "21f8cee232b9d4d02397d236d8e14fa7dfa15368",
+    "run": 36951034708,
+    "report_sha256": "b1aef3aac6d2303210b1f1738e051642532ce4dcfd4e9b746011c40e67ab2c9c",
+    "tested_merge_checkout": "9dba51fc46b897602c0de9a6d1351e7ac5598ae4",
+    "density_range": [
+      7.228687161664687,
+      14.341509399806819
+    ],
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "production_changed": false,
+  "full_goal": "active; all profile/consumer/host/parity/cost/gate/deploy/window/retirement requirements remain"
+}

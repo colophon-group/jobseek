@@ -1,5 +1,34 @@
 # Go and Lightpanda migration continuation plan
 
+An actual executable from pinned clean prior source
+`3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4` now passes the restored-R capability
+fixture locally (6.393s). Build VCS/linked source, binary hash and prior taxonomy
+match. The original prior plan, receipt and fresh R restoration bind that source.
+The actual prior process rejects staged and saved-projection-only authority, then
+consumes the existing v1 journal/witness after a real RDB reload and atomic
+completion. Its reserved-publisher cycle proves no origin attempt, R fence/ACK,
+health, signal drain, canonical due, failure-budget/content preservation and no
+retired-plan reactivation or R+1. Linux CI now requires this independently built
+prior executable on both architectures. Fresh Linux execution remains required;
+synthetic prior host/release labels and small startup reference rows are no complete
+host or immutable image admission.
+
+Corrected source `ab1f5308e34a76aee54449a62731ab7d391533bd` passes full CI
+37005764219, Linux contracts 37005707852 and installed contracts 37005767743.
+Actual native/legacy finalizer recovery, publication and atomic-completion SIGKILL,
+RDB/producer restarts and exact inspection/retries pass both architectures; exact
+merge parents are verified. Installed source/CA, four executable fixtures and all
+34 asset hashes match. Whole-B0 37005707818 is independently recomputed: 16 arms/
+8 pairs admit, density 7.053747–13.835899. Generated B0 evidence does not prove all
+profiles or whole-production cost. Full queue races pass in 72.178s and all 188
+required repository script checks pass. See
+[prior executable evidence](evidence/go-ordinary-prior-executable-capability-2026-10-02.json).
+Next: verify actual Linux prior executable capability and immutable prior image,
+complete ADR006 host cutover/readiness/full reversal, then finish all profiles and
+consumers, comparable whole-service performance/cost, required exact-source gates,
+deployment, rollback window and production Python/browser retirement. The full
+goal stays active, PR #10210 remains draft and production unchanged.
+
 Actual reload diagnostics for run 36952683732 isolate one expired key:
 `ratelimit:jobs.example.test`, before producer startup, in both ordinary decisions.
 The private root fixture now freezes that existing bucket before any SAVE/reload

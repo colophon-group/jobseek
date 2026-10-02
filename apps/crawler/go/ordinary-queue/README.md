@@ -651,3 +651,12 @@ actual producer/CLI through post-SAVE and atomic-completion SIGKILL for native a
 legacy decisions. Fresh source-bound Linux execution, independently verified prior
 binary capability, and the full ADR006 host integration remain required
 before release selection, readiness or production ownership is admitted.
+
+The optional integration-tag prior executable capability fixture binds a real
+clean historical source `3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4`, verifies its
+VCS/linked identity, binary hash and taxonomy, and runs that actual worker at
+restored R after RDB reload. It checks startup containment, publisher reservation,
+queue ACK/due/failure budget, health and signal drain. Linux CI builds the exact
+prior source separately and requires this test. Local fixture labels and small
+startup reference rows do not establish a production prior release or host
+readiness; immutable image and complete ADR006 verification remain separate.

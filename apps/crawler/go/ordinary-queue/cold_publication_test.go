@@ -68,6 +68,9 @@ func realPublicationSeedWithPrior(t *testing.T, metadata, source string, seed, p
 	return realPublicationSeedWithPriorSpec(t, metadata, source, seed, priorNative, nil)
 }
 func realPublicationSeedWithPriorSpec(t *testing.T, metadata, source string, seed, priorNative bool, decorate func(*ColdTransitionSpec)) publicationFixture {
+	return realPublicationSeedWithPriorSource(t, metadata, source, seed, priorNative, strings.Repeat("b", 40), decorate)
+}
+func realPublicationSeedWithPriorSource(t *testing.T, metadata, source string, seed, priorNative bool, priorSource string, decorate func(*ColdTransitionSpec)) publicationFixture {
 	t.Helper()
 	f := greenhouseAuthorityFixture(t)
 	ctx := context.Background()
@@ -93,7 +96,7 @@ func realPublicationSeedWithPriorSpec(t *testing.T, metadata, source string, see
 	}
 	var previous *OwnershipPlan
 	if priorNative {
-		previous = stageFixturePlan(t, f, strings.Repeat("b", 40))
+		previous = stageFixturePlan(t, f, priorSource)
 		activateFixturePlan(t, f, previous)
 		if err := f.client.redis.Set(ctx, ownershipProjectionKey, previous.body, 0).Err(); err != nil {
 			t.Fatal(err)

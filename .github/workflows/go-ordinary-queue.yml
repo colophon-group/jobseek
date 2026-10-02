@@ -139,6 +139,28 @@ jobs:
           go mod tidy -diff
           test -z "$(gofmt -l .)"
 
+      - name: Verify independently pinned prior executable at restored R
+        run: |
+          set -euo pipefail
+          prior_source="3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4"
+          prior_checkout="${RUNNER_TEMP}/ordinary-prior-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          prior_binary="${RUNNER_TEMP}/ordinary-prior-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.bin"
+          git fetch --no-tags origin "$prior_source"
+          git worktree add --detach "$prior_checkout" "$prior_source"
+          trap 'rm -f "$prior_binary"; git worktree remove "$prior_checkout"' EXIT
+          test "$(git -C "$prior_checkout" rev-parse HEAD)" = "$prior_source"
+          test -z "$(git -C "$prior_checkout" status --porcelain)"
+          (cd "$prior_checkout/apps/crawler/go/ordinary-worker" && go build -trimpath -ldflags="-X main.sourceRevision=${prior_source}" -o "$prior_binary" ./cmd/live)
+          test -z "$(git -C "$prior_checkout" status --porcelain)"
+          prior_hash="$(sha256sum "$prior_binary" | cut -d ' ' -f1)"
+          JOBSEEK_ORDINARY_PRIOR_REQUIRE=1 \
+          JOBSEEK_ORDINARY_PRIOR_BINARY="$prior_binary" \
+          JOBSEEK_ORDINARY_PRIOR_BINARY_SHA256="$prior_hash" \
+          JOBSEEK_ORDINARY_PRIOR_DATA_DIRECTORY="$prior_checkout/apps/crawler/data" \
+            go test -race -tags=integration -count=1 -timeout=60s -v \
+            -run '^TestPriorNativeExecutableConsumesRestoredV1AuthorityAtR$' ./...
+          printf 'prior_source=%s\nprior_binary_sha256=%s\n' "$prior_source" "$prior_hash"
+
       - name: Verify native forward planning with the installed UID 10001 producer
         run: |
           set -euo pipefail
