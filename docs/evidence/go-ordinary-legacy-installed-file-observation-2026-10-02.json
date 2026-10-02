@@ -1,0 +1,252 @@
+{
+  "version": "jobseek.migration.legacy-installed-file-observation/v1",
+  "date": "2026-10-02",
+  "preceding_source": "beb51fed7fa797251a494620cc103a3409d0a12c",
+  "preceding_linux": {
+    "source": "beb51fed7fa797251a494620cc103a3409d0a12c",
+    "run": 37055617472,
+    "tested_merge": "5ef1a1ed2abe121a581653e95a3ea4bbe9fde77d",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "beb51fed7fa797251a494620cc103a3409d0a12c"
+    ],
+    "log_sha256": "a9921e88b843f314f02b0f1c7906a574d6ca19dd923ae10c04c5535962983087",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  },
+  "preceding_232_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "2320553ac663c97e9c114d850242e3bb7e10806b",
+    "tested_merge_checkout": "a0a56362588063dc1cc4578f89f3fe6971b09e3c",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "2320553ac663c97e9c114d850242e3bb7e10806b"
+    ],
+    "run": 37051186981,
+    "report_sha256": "1efc26edd1a19cc23a397c7f08949fc9be1413c298bf68c35cc242840b2906de",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      5.759805212803506,
+      13.667405928760783
+    ],
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        9.165357863270586,
+        5.807296439410056,
+        5.759805212803506,
+        11.393263427006376,
+        11.454292982146077,
+        13.667405928760783,
+        11.978838450957584,
+        13.459838328485537
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 9.165357863270586,
+          "elapsed_ratio": 2.008849817363197,
+          "p99_ratio": 0.49687026370913945,
+          "peak_rss_ratio": 0.21917854679886492,
+          "cpu_seconds_candidate": 1.670165,
+          "cpu_seconds_control": 2.497351,
+          "lifetime_cpu_seconds_candidate": 3.904374,
+          "lifetime_cpu_seconds_control": 6.047034
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 5.807296439410056,
+          "elapsed_ratio": 1.4502599020097717,
+          "p99_ratio": 0.6945876372401592,
+          "peak_rss_ratio": 0.2497306478394788,
+          "cpu_seconds_candidate": 1.640348,
+          "cpu_seconds_control": 2.405438,
+          "lifetime_cpu_seconds_candidate": 3.9155640000000003,
+          "lifetime_cpu_seconds_control": 5.845789
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.759805212803506,
+          "elapsed_ratio": 1.424395178663814,
+          "p99_ratio": 0.69370676570724,
+          "peak_rss_ratio": 0.24729919260073538,
+          "cpu_seconds_candidate": 1.672631,
+          "cpu_seconds_control": 2.435775,
+          "lifetime_cpu_seconds_candidate": 3.92168,
+          "lifetime_cpu_seconds_control": 5.884829
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 11.393263427006376,
+          "elapsed_ratio": 1.3111350048503598,
+          "p99_ratio": 0.764895508270624,
+          "peak_rss_ratio": 0.1150798463715383,
+          "cpu_seconds_candidate": 2.3240350000000003,
+          "cpu_seconds_control": 5.702084,
+          "lifetime_cpu_seconds_candidate": 4.5914660000000005,
+          "lifetime_cpu_seconds_control": 10.190288
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 11.454292982146077,
+          "elapsed_ratio": 1.2757424656782204,
+          "p99_ratio": 0.7783844186415094,
+          "peak_rss_ratio": 0.11137679712460063,
+          "cpu_seconds_candidate": 2.327544,
+          "cpu_seconds_control": 5.624944,
+          "lifetime_cpu_seconds_candidate": 4.604778,
+          "lifetime_cpu_seconds_control": 10.112378
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 13.667405928760783,
+          "elapsed_ratio": 1.5516596868531718,
+          "p99_ratio": 0.6395397462971576,
+          "peak_rss_ratio": 0.11352993354707949,
+          "cpu_seconds_candidate": 2.333845,
+          "cpu_seconds_control": 5.827182,
+          "lifetime_cpu_seconds_candidate": 4.615546,
+          "lifetime_cpu_seconds_control": 10.377273
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 11.978838450957584,
+          "elapsed_ratio": 1.3155495566094635,
+          "p99_ratio": 0.7623446948436741,
+          "peak_rss_ratio": 0.10982279809477678,
+          "cpu_seconds_candidate": 2.376449,
+          "cpu_seconds_control": 5.940639,
+          "lifetime_cpu_seconds_candidate": 4.647598,
+          "lifetime_cpu_seconds_control": 10.519546
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 13.459838328485537,
+          "elapsed_ratio": 1.5698916211725773,
+          "p99_ratio": 0.6427630402384501,
+          "peak_rss_ratio": 0.11663525094875468,
+          "cpu_seconds_candidate": 2.355747,
+          "cpu_seconds_control": 5.732289,
+          "lifetime_cpu_seconds_candidate": 4.646101,
+          "lifetime_cpu_seconds_control": 10.234621
+        }
+      ]
+    },
+    "images": {
+      "browser": "sha256:da746f4e16f0cf31ebbaffb23de79ecc5fb24ccd62666fef2326b42d69c793d8",
+      "candidate": "sha256:a375dc5930c9e635a14681c86b5020351fff08a2159d8697df037e535de4e054",
+      "renderer": "sha256:edecc20ccd9273726aa3cbbe0ef1f3e8384e08bf2ed09a30026291801afd5fdd"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "a0a56362588063dc1cc4578f89f3fe6971b09e3c",
+      "postflight_clean": true,
+      "postflight_head": "a0a56362588063dc1cc4578f89f3fe6971b09e3c"
+    },
+    "production_changed": false,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "contract": [
+    "Legacy expectation requires interpreter/system-CA/CLI, exact raw source tree, exact installed Python 3.13 wheel package and assets",
+    "No /app/src substitution for the installed package; separate fixed read-only archives from existing container",
+    "Native expectations forbid all legacy-only fields; closed canonical hash and complete combined file bound unchanged",
+    "Private streamed bytes, two observations and full inventory readback; minimum modes only, no exact ownership or process/admission grant"
+  ],
+  "runtime_admission": false,
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "releaseevidence_races": "pass",
+    "package_seconds": 3.281,
+    "race_log_sha256": "73149ca354a6798d627954470eed64f51e04fed7f35b7f81d6c49bed2be9135f",
+    "linux_amd64_arm64_integration_tag_vet": "pass",
+    "actionlint": "1.7.12 pass",
+    "zizmor": "1.26.1 offline pass",
+    "repository_script_tests": 188,
+    "repository_log_sha256": "d3afd7dbbfaed450a786383831fd8c9f57bc026f0ec9f206136684e4034d7b40"
+  },
+  "actual_fixture": {
+    "name": "TestActualLegacyInstalledContainerFilesRequirePackageAndEntrypoint",
+    "status": "fresh exact-source execution required",
+    "job": "existing AMD64/ARM64 historical legacy image workflow",
+    "historical_source": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+    "scope": "Never-started owned container using unchanged pinned historical Dockerfile; expected source/package/assets independently compared to Git by existing proof; interpreter/CA/CLI hashes separately observed; declared drift refused; restoration runtime fixture remains independent",
+    "required_artifacts": [
+      "file-proof.json",
+      "installed-files-tests.log"
+    ],
+    "production_image_selection": false,
+    "negative_assertions": "Eight declared drift cases require their exact content or membership parser refusal with live context; root-registry omission is deterministic and does not remove an expected parent directory"
+  },
+  "open_work": [
+    "Independent authenticated production image/build/generation/spec association and complete Python dependency/link/import/effective ownership/process fidelity",
+    "Fresh actual native and legacy file-observer execution on both architectures; do not replace failed or missing evidence with unit tests",
+    "Complete locked host coordinator, all-writer/exporter/maintenance exclusion, SQL barriers, durable intent/archive/results, phased spec restoration and actual crash/readiness/cold cutover/reversal",
+    "All enabled profiles and runtime consumers; complete output/database/publisher/freshness/queue parity and whole-service resources/cost",
+    "Exact required gates/merge/deploy, actual rollback window and production Python/Playwright/Chromium retirement"
+  ],
+  "production_changed": false,
+  "full_goal_active": true,
+  "preceding_full_ci": {
+    "run": 37055610215,
+    "conclusion": "success",
+    "source": "beb51fed7fa797251a494620cc103a3409d0a12c"
+  },
+  "preceding_historical_legacy": {
+    "candidate_source": "beb51fed7fa797251a494620cc103a3409d0a12c",
+    "run": 37055617444,
+    "tested_merge": "5ef1a1ed2abe121a581653e95a3ea4bbe9fde77d",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "beb51fed7fa797251a494620cc103a3409d0a12c"
+    ],
+    "prior_source": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:3a99bf09fa654f9ca862b195c1d8cf1cd0d42db3aa8377d516671fc1b6da2d97",
+        "python_version": "3.13.15",
+        "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+        "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+        "source_files": 599,
+        "assets": 34,
+        "proof_sha256": "2fca967a418295806286d74c9fda9306c7babb67176f6ca286732892e6425b1a",
+        "actual_historical_legacy_container_at_R_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:334a6fb3eb3a2b920cfc115766602c55c21cf4bca7c171a9f3a7acb13aed7b29",
+        "python_version": "3.13.15",
+        "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+        "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+        "source_files": 599,
+        "assets": 34,
+        "proof_sha256": "d42757bcdbede9fa6ed0d6fb29c226aa2886a7c1ec162fb74333fe3a6489874d",
+        "actual_historical_legacy_container_at_R_pass": true
+      }
+    ],
+    "log_sha256": "8fd109c331a03124c5d7a7cf2cd2ddf79853eddfc8e9a4d5cd2cb4f373a6cbad",
+    "production_changed": false,
+    "scope": "rebuilt unchanged last-recorded production source image; completed synthetic host-label legacy restoration and no-fetch policy cycle at R; not selected production image digest, all-profile parity or complete host admission"
+  }
+}

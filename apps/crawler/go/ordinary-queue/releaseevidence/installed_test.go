@@ -19,7 +19,10 @@ func installedFixture(t *testing.T, legacy bool) (*InstalledExpectation, map[str
 	if legacy {
 		s.Kind = "legacy-python"
 		s.SourceFiles = map[string]string{"__init__.py": digest([]byte("source"))}
+		s.PackageFiles = map[string]string{"__init__.py": digest([]byte("source"))}
+		s.EntrypointSHA256 = digest([]byte("entrypoint"))
 		contents["python3.13"] = []byte("binary")
+		contents["crawler"] = []byte("entrypoint")
 		contents["src/__init__.py"] = []byte("source")
 	}
 	b, err := json.Marshal(s)
@@ -31,6 +34,38 @@ func installedFixture(t *testing.T, legacy bool) (*InstalledExpectation, map[str
 		t.Fatal(err)
 	}
 	return e, contents
+}
+
+func TestInstalledLegacyExpectationRequiresInstalledPackageAndEntrypoint(t *testing.T) {
+	e, _ := installedFixture(t, true)
+	for _, fault := range []string{"source missing", "package missing", "entrypoint missing", "entrypoint malformed", "package path", "package file parent", "native package", "native entrypoint"} {
+		t.Run(fault, func(t *testing.T) {
+			s := e.spec
+			s.PackageFiles = map[string]string{"__init__.py": digest([]byte("source"))}
+			switch fault {
+			case "source missing":
+				s.SourceFiles = nil
+			case "package missing":
+				s.PackageFiles = nil
+			case "entrypoint missing":
+				s.EntrypointSHA256 = ""
+			case "entrypoint malformed":
+				s.EntrypointSHA256 = "label"
+			case "package path":
+				s.PackageFiles["../private"] = s.BinarySHA256
+			case "package file parent":
+				s.PackageFiles["__init__.py/child"] = s.BinarySHA256
+			case "native package":
+				s.Kind, s.SourceFiles, s.EntrypointSHA256 = "native-ordinary", nil, ""
+			case "native entrypoint":
+				s.Kind, s.SourceFiles, s.PackageFiles = "native-ordinary", nil, nil
+			}
+			b, _ := json.Marshal(s)
+			if _, err := DecodeInstalledExpectation(b, digest(b)); !errors.Is(err, ErrInvalid) {
+				t.Fatal("incomplete or misplaced installed legacy authority admitted", err)
+			}
+		})
+	}
 }
 
 func installedArchive(t *testing.T, group installedGroup, contents map[string][]byte, change func(*tar.Header)) []byte {

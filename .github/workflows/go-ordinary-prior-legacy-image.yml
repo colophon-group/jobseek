@@ -90,7 +90,12 @@ jobs:
           git init --quiet "$prior_checkout"
           git -C "$prior_checkout" fetch --quiet --depth=1 --no-tags "$GITHUB_WORKSPACE" "$prior_source"
           git -C "$prior_checkout" checkout --detach FETCH_HEAD
-          trap 'rm -rf "$prior_checkout"' EXIT
+          observed_container=''
+          cleanup() {
+            if [ -n "$observed_container" ]; then docker rm --force "$observed_container" >/dev/null; fi
+            rm -rf "$prior_checkout"
+          }
+          trap cleanup EXIT
           test "$(git -C "$prior_checkout" rev-parse HEAD)" = "$prior_source"
           test -z "$(git -C "$prior_checkout" status --porcelain)"
           docker build --target slim --tag jobseek-crawler:ordinary-prior-legacy-fixture "$prior_checkout/apps/crawler"
@@ -134,6 +139,23 @@ jobs:
               'installed_source_sha256':installed['installed_source_sha256'],'installed_asset_sha256':installed['installed_asset_sha256']}
           (root/'proof.json').write_bytes(json.dumps(proof,separators=(',',':'),ensure_ascii=False).encode())
           PY
+          # Read the real archive surface in a never-started fixture container.
+          # This is separate from the historical runtime restoration exercise.
+          observed_container="$(docker create --network none --read-only --cap-drop ALL \
+            --entrypoint /usr/local/bin/python3.13 "$image_id")"
+          [[ "$observed_container" =~ ^[0-9a-f]{64}$ ]]
+          docker cp "$observed_container:/usr/local/bin/python3.13" "$fixture/python3.13"
+          docker cp "$observed_container:/etc/ssl/certs/ca-certificates.crt" "$fixture/system-ca.pem"
+          python3 - "$fixture" <<'PY'
+          import hashlib,json,pathlib,sys
+          root=pathlib.Path(sys.argv[1]); proof=json.loads((root/'proof.json').read_bytes())
+          proof['binary_sha256']=hashlib.sha256((root/'python3.13').read_bytes()).hexdigest()
+          proof['system_ca_sha256']=hashlib.sha256((root/'system-ca.pem').read_bytes()).hexdigest()
+          # Existing proof independently compares the wheel against pinned Git.
+          # The raw /app/src tree must also exactly match those same source bytes.
+          proof['source_file_sha256']=proof['installed_source_sha256']
+          (root/'file-proof.json').write_bytes(json.dumps(proof,separators=(',',':'),ensure_ascii=False).encode())
+          PY
           export JOBSEEK_ORDINARY_PRIOR_LEGACY_IMAGE_REQUIRE=1
           export JOBSEEK_ORDINARY_PRIOR_LEGACY_IMAGE_ID="$image_id"
           export JOBSEEK_ORDINARY_PRIOR_LEGACY_IMAGE_PROOF_FILE="$fixture/proof.json"
@@ -142,6 +164,12 @@ jobs:
           cd apps/crawler/go/ordinary-queue
           go test -race -count=1 -tags integration -run '^(TestPriorLegacyImageConsumesCompletedRestorationAtR|TestPriorLegacyImageEvidenceRejectsDrift)$' -v ./... \
             2>&1 | tee "$fixture/restored-R-tests.log"
+          JOBSEEK_CRAWLER_RELEASE_REQUIRE_LEGACY_FILES=1 \
+            JOBSEEK_CRAWLER_RELEASE_LEGACY_CONTAINER="$observed_container" \
+            JOBSEEK_CRAWLER_RELEASE_LEGACY_FILE_PROOF="$fixture/file-proof.json" \
+            go test -race -count=1 -tags integration -timeout=180s \
+              -run '^TestActualLegacyInstalledContainerFilesRequirePackageAndEntrypoint$' -v ./releaseevidence \
+            2>&1 | tee "$fixture/installed-files-tests.log"
 
       - name: Save prior legacy image capability evidence
         if: always()
@@ -152,5 +180,7 @@ jobs:
             ${{ runner.temp }}/ordinary-prior-legacy-evidence/proof.json
             ${{ runner.temp }}/ordinary-prior-legacy-evidence/installed.json
             ${{ runner.temp }}/ordinary-prior-legacy-evidence/restored-R-tests.log
+            ${{ runner.temp }}/ordinary-prior-legacy-evidence/file-proof.json
+            ${{ runner.temp }}/ordinary-prior-legacy-evidence/installed-files-tests.log
           if-no-files-found: error
           retention-days: 7

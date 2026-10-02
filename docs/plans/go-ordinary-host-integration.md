@@ -184,7 +184,9 @@ cutover/reversal; do not promote a settings hash into full release admission.
 
 `DecodeInstalledExpectation` validates a canonical digest-bound host expectation
 for exact image ID/platform/runtime kind and binary/system-CA/assets, plus a
-complete source tree for legacy Python. The expected digest and source/image
+complete source tree, installed Python 3.13 wheel package and CLI entrypoint for
+legacy Python. The real wheel is observed separately from repository fallback.
+The expected digest and source/image
 association must originate in independently authenticated build evidence and
 protected retained host intent; this decoder does not establish that trust root.
 
@@ -200,8 +202,12 @@ The receipt reports `runtime_admission:false`. Its declared file hashes are not
 source authentication, effective process identity, mounted-data provenance or
 full root filesystem/security/readiness proof. Actual native observation is now
 required in both existing installed-image jobs; its additional artifact must be
-independently verified. Legacy-kind unit coverage does not replace an actual
-selected legacy runtime observation. Continue the complete host gates below.
+independently verified. The historical legacy-image job now requires the same
+observer against its unchanged pinned image, with interpreter/system-CA/CLI/
+source/package/assets and independent declared drift refusal. Fresh actual
+execution is required, and historical rebuild coverage does not replace an
+authenticated selected production image. Python dependency/link/import fidelity
+also remains separate. Continue the complete host gates below.
 See [the installed-byte contract](../evidence/go-ordinary-native-installed-file-observation-2026-10-02.json).
 
 ## Protected host envelope

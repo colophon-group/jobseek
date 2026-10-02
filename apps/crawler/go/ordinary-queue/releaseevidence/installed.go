@@ -19,15 +19,17 @@ import (
 // protected host intent and selected release admission, never container labels.
 // This verifier checks the declared bytes; it cannot authenticate that trust root.
 type InstalledExpectationSpec struct {
-	Version        string            `json:"version"`
-	SourceRevision string            `json:"source_revision"`
-	ImageID        string            `json:"image_id"`
-	Architecture   string            `json:"architecture"`
-	Kind           string            `json:"kind"`
-	BinarySHA256   string            `json:"binary_sha256"`
-	CASHA256       string            `json:"ca_sha256"`
-	Assets         map[string]string `json:"asset_sha256"`
-	SourceFiles    map[string]string `json:"source_file_sha256,omitempty"`
+	Version          string            `json:"version"`
+	SourceRevision   string            `json:"source_revision"`
+	ImageID          string            `json:"image_id"`
+	Architecture     string            `json:"architecture"`
+	Kind             string            `json:"kind"`
+	BinarySHA256     string            `json:"binary_sha256"`
+	CASHA256         string            `json:"ca_sha256"`
+	Assets           map[string]string `json:"asset_sha256"`
+	SourceFiles      map[string]string `json:"source_file_sha256,omitempty"`
+	PackageFiles     map[string]string `json:"python_package_file_sha256,omitempty"`
+	EntrypointSHA256 string            `json:"python_entrypoint_sha256,omitempty"`
 }
 
 type InstalledExpectation struct {
@@ -51,13 +53,13 @@ func DecodeInstalledExpectation(body []byte, expectedSHA256 string) (*InstalledE
 	var s InstalledExpectationSpec
 	d := json.NewDecoder(bytes.NewReader(body))
 	d.DisallowUnknownFields()
-	if d.Decode(&s) != nil || d.Decode(new(any)) != io.EOF || s.Version != "jobseek.crawler-installed-expectation/v1" || !revisionPattern.MatchString(s.SourceRevision) || !localImageIDPattern.MatchString(s.ImageID) || (s.Architecture != "amd64" && s.Architecture != "arm64") || !shaPattern.MatchString(s.BinarySHA256) || !shaPattern.MatchString(s.CASHA256) || len(s.Assets) == 0 || len(s.Assets)+len(s.SourceFiles) > 4096 {
+	if d.Decode(&s) != nil || d.Decode(new(any)) != io.EOF || s.Version != "jobseek.crawler-installed-expectation/v1" || !revisionPattern.MatchString(s.SourceRevision) || !localImageIDPattern.MatchString(s.ImageID) || (s.Architecture != "amd64" && s.Architecture != "arm64") || !shaPattern.MatchString(s.BinarySHA256) || !shaPattern.MatchString(s.CASHA256) || len(s.Assets) == 0 || len(s.Assets)+len(s.SourceFiles)+len(s.PackageFiles) > 4096 {
 		return nil, reject("complete installed expectation")
 	}
-	if (s.Kind != "native-ordinary" && s.Kind != "legacy-python") || (s.Kind == "native-ordinary" && len(s.SourceFiles) != 0) || (s.Kind == "legacy-python" && len(s.SourceFiles) == 0) {
+	if (s.Kind != "native-ordinary" && s.Kind != "legacy-python") || (s.Kind == "native-ordinary" && (len(s.SourceFiles) != 0 || len(s.PackageFiles) != 0 || s.EntrypointSHA256 != "")) || (s.Kind == "legacy-python" && (len(s.SourceFiles) == 0 || len(s.PackageFiles) == 0 || !shaPattern.MatchString(s.EntrypointSHA256))) {
 		return nil, reject("explicit installed runtime kind")
 	}
-	for _, files := range []map[string]string{s.Assets, s.SourceFiles} {
+	for _, files := range []map[string]string{s.Assets, s.SourceFiles, s.PackageFiles} {
 		directories := map[string]bool{}
 		for name, hash := range files {
 			if !validInstalledPath(name) || !shaPattern.MatchString(hash) {
@@ -101,6 +103,9 @@ func installedGroups(s InstalledExpectationSpec) []installedGroup {
 		{binary, map[string]string{path.Base(binary): s.BinarySHA256}, true},
 		{"/etc/ssl/certs/ca-certificates.crt", map[string]string{"ca-certificates.crt": s.CASHA256}, false},
 	}
+	if s.Kind == "legacy-python" {
+		groups = append(groups, installedGroup{"/app/.venv/bin/crawler", map[string]string{"crawler": s.EntrypointSHA256}, true})
+	}
 	for _, tree := range []struct {
 		name  string
 		files map[string]string
@@ -113,6 +118,15 @@ func installedGroups(s InstalledExpectationSpec) []installedGroup {
 			files[tree.name+"/"+name] = hash
 		}
 		groups = append(groups, installedGroup{"/app/" + tree.name, files, false})
+	}
+	if s.Kind == "legacy-python" {
+		files := map[string]string{}
+		for name, hash := range s.PackageFiles {
+			files["src/"+name] = hash
+		}
+		// The historical Python 3.13 wheel is the import authority exercised by
+		// the real prior-image fixture. Do not replace it with /app/src fallback.
+		groups = append(groups, installedGroup{"/app/.venv/lib/python3.13/site-packages/src", files, false})
 	}
 	return groups
 }
@@ -306,7 +320,8 @@ func observeInstalledContainerFiles(ctx context.Context, inventory *Containers, 
 		Kind               string `json:"kind"`
 		AssetFiles         int    `json:"asset_files"`
 		SourceFiles        int    `json:"source_files"`
-	}{"jobseek.crawler-installed-container-files/v1", "expected binary/CA/exact asset and optional legacy source file hashes; source association comes from retained host request", false, expected.SHA256(), inventory.SHA256(), id, s.ImageID, imageHash, s.SourceRevision, s.Kind, len(s.Assets), len(s.SourceFiles)})
+		PackageFiles       int    `json:"python_package_files"`
+	}{"jobseek.crawler-installed-container-files/v1", "expected binary/CA/exact assets; legacy source, installed Python package and CLI entrypoint; source association comes from retained host request", false, expected.SHA256(), inventory.SHA256(), id, s.ImageID, imageHash, s.SourceRevision, s.Kind, len(s.Assets), len(s.SourceFiles), len(s.PackageFiles)})
 	if err != nil {
 		return nil, reject("canonical installed file evidence")
 	}

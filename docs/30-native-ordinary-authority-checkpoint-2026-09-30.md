@@ -1,5 +1,28 @@
 # Native ordinary worker authority checkpoint
 
+The installed-file observer now requires the legacy runtime's complete installed
+Python 3.13 package and CLI entrypoint, separately from `/app/src`, alongside the
+interpreter/system-CA/assets. The unchanged historical legacy-image job now
+requires actual read-only observation and declared byte/membership drift refusal
+on both architectures; fresh execution is required. Local Go 1.26 races, Linux
+vet and workflow checks pass. Neither expected hashes nor rebuilt historical
+images authenticate selected production provenance or provide full host admission.
+See [legacy installed-file evidence](evidence/go-ordinary-legacy-installed-file-observation-2026-10-02.json).
+
+Source `beb51fed7fa797251a494620cc103a3409d0a12c` Linux 37055617472 is independently
+verified on both architectures, including actual Compose/container/execution
+contracts. Its new native installed-file checks and other source-scoped image/CI
+jobs remain live. Whole-B0 37051186981 for prior `2320553ac` now independently
+admits all 16 arms/8 pairs, density 5.759805213–13.667405929; startup-cardinality
+scope remains distinct from complete-service/profile parity and cost.
+
+Continue the complete host coordinator and every profile/runtime consumer through
+full parity, resources/cost, supported cutover/reversal/readiness, exact gates,
+production rollout and actual rollback window, then production Python retirement.
+PR#10210 remains draft; production unchanged; the full migration goal stays active.
+
+Earlier entries below retain their source-scoped evidence.
+
 ## 2026-10-02: actual execution verified; retained-manifest installed-byte observer implemented
 
 Verified source `2320553ac663c97e9c114d850242e3bb7e10806b` passes full CI

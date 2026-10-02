@@ -807,7 +807,11 @@ command/environment/user/relative-bind/access drift. Fresh execution is required
 
 `DecodeInstalledExpectation` verifies a canonical host-retained manifest digest
 for exact image/platform/runtime kind and binary/system-CA/assets. Legacy Python
-also requires a complete source-file set. Expected hashes and the source/image
+also requires complete source and installed Python 3.13 package sets and the
+installed `/app/.venv/bin/crawler` entrypoint hash. Both `/app/src` and the real
+wheel at `/app/.venv/lib/python3.13/site-packages/src` are observed separately;
+repository source fallback cannot stand in for the package actually imported.
+Expected hashes and the source/image
 association must come from independently authenticated build evidence and the
 protected host intent. Matching a caller-provided hash does not establish that
 trust root; container labels cannot supply it.
@@ -830,4 +834,10 @@ provenance, full root filesystem/security fidelity or cold host admission. Hold
 the shared mutation lock and complete those independent gates before cutover.
 The existing installed-image Actions job now requires real binary/system-CA/asset
 observation and declared drift refusal on both architectures. Agents never run
-this Docker fixture locally; an actual legacy counterpart remains required.
+this Docker fixture locally. The historical legacy-image Actions job now also
+requires the real observer against its unchanged pinned image in a never-started
+container, with interpreter/CA/CLI/source/package/asset drift refusal and a
+separate artifact. Both fixtures need fresh exact-source execution. Historical
+rebuild evidence does not select or authenticate production's rollback image;
+Python dependencies, interpreter links and complete process/import configuration
+still require their independent runtime fidelity and provenance checks.
