@@ -1482,3 +1482,15 @@ publisher/freshness/queue parity, whole-service CPU/RAM/density/cost, exact requ
 gates, actual rollback window and production Python/Playwright/Chromium retirement
 remain required. The full goal stays active, PR #10210 stays draft, and production
 is unchanged. Earlier pending observations below are historical and superseded.
+
+Linux finalizer checkpoint `21f8cee232b9d4d02397d236d8e14fa7dfa15368`
+failed run 36951034703 on both architectures at the aggregate 120-second queue
+race-suite limit, before root finalizer execution. Both then-current subtests had
+run for less than one second; the preceding successful suites took 104.331s and
+109.841s. The executable inspection fixture now shares one build, bounded to 60s,
+before opening either database fixture. CI gives the full suite 180s and emits
+per-test timings. Local full queue races pass in 89.468s, queue vet passes and
+all 188 exact CI repository script checks pass. Owned fixtures are stopped.
+See [suite evidence](evidence/go-ordinary-finalizer-suite-budget-2026-10-02.json).
+Fresh Linux root execution remains required; this is no deployment admission.
+The full migration goal remains active and production is unchanged.

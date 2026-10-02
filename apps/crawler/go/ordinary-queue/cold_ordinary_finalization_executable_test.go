@@ -14,17 +14,23 @@ import (
 )
 
 func TestRealColdOrdinaryFinalizationExecutableInspectsExactHistoryWithoutLiveInputs(t *testing.T) {
+	binary := filepath.Join(t.TempDir(), "ordinary-go-worker")
+	fixtureSource := strings.Repeat("a", 40)
+	// Build once before opening either fixture. Local source labels are synthetic;
+	// Linux release fixtures bind identity to the independently checked Git source.
+	buildContext, cancelBuild := context.WithTimeout(context.Background(), time.Minute)
+	defer cancelBuild()
+	build := exec.CommandContext(buildContext, "go", "build", "-buildvcs=false", "-trimpath", "-ldflags=-X main.sourceRevision="+fixtureSource, "-o", binary, "./cmd/live")
+	build.Dir = "../ordinary-worker"
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatal("actual finalizer executable build failed", err, string(output))
+	}
 	for _, native := range []bool{false, true} {
 		t.Run(strconv.FormatBool(native), func(t *testing.T) {
 			ctx := context.Background()
 			p, plan, control := finalizationFixture(t, native, false)
-			binary := filepath.Join(t.TempDir(), "ordinary-go-worker")
-			// Local fixture source labels are synthetic; Linux release fixtures bind
-			// both linked identity and clean Git checkout to the real tested source.
-			build := exec.Command("go", "build", "-buildvcs=false", "-trimpath", "-ldflags=-X main.sourceRevision="+p.spec.SourceRevision, "-o", binary, "./cmd/live")
-			build.Dir = "../ordinary-worker"
-			if output, err := build.CombinedOutput(); err != nil {
-				t.Fatal("actual finalizer executable build failed", string(output))
+			if p.spec.SourceRevision != fixtureSource {
+				t.Fatal("actual executable source differs from fixture")
 			}
 			write := func(name, body string) string {
 				t.Helper()
