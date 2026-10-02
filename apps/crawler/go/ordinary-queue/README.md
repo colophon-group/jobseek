@@ -767,3 +767,30 @@ Linux Actions fixture inspects a controlled synthetic exporter across created/
 running/stopped/restart-disabled states. The job's independent live PostgreSQL
 must prevent a cold receipt. Unit tests prove the complete predicate; actual
 complete host exclusion and positive full-host admission remain open.
+
+## Release-bound container execution settings
+
+`RequireContainerExecution` joins each known project's regular container to
+reobserved Compose settings and local image defaults. It verifies exact command/
+entrypoint inheritance and clearing, the complete configured environment,
+configured numeric UID/GID, working directory, bind sources/access/propagation,
+named local-volume identities, image-declared anonymous volumes and tmpfs options.
+Unknown/extra/missing/substituted mounts and unresolved/duplicate environment
+values refuse. Nonempty configs/secrets/volumes_from, custom volume drivers and
+unsupported mount options require additional provider verification and refuse.
+Contained one-offs remain counted without a runtime grant; foreign containers
+remain counted and require the separate complete cold-state predicate.
+
+Image observation can take an explicit protected `ProjectDirectory` distinct
+from the verified generation directory. This preserves deployed relative mount
+semantics while Compose/env/override bytes remain anchored to the snapshot. The
+base directory is reobserved and hash-bound without exposing its path. Private
+Compose/image/container JSON never appears in the canonical execution receipt.
+Command inheritance follows [Docker's Compose entrypoint contract](https://docs.docker.com/reference/compose-file/services/#entrypoint).
+
+The receipt explicitly reports `runtime_admission:false`. It verifies declared
+settings; image/source/binary provenance, effective process credentials,
+mounted-content fidelity, namespaces/networks/security options, lock-spanning
+reobservation, SQL barriers, complete cold exclusion and readiness are still
+mandatory. The disposable Linux fixture now tests actual settings and rejects
+command/environment/user/relative-bind/access drift. Fresh execution is required.

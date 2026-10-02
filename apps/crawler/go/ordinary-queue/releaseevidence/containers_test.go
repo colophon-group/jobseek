@@ -67,11 +67,11 @@ func observeFixtureContainers(t *testing.T, containers ...map[string]any) *Conta
 
 func fixtureContainerImages(t *testing.T, services map[string]serviceImage) *Images {
 	t.Helper()
-	b, err := json.Marshal(imageDocument{"jobseek.crawler-release-images/v1", strings.Repeat("a", 64), strings.Repeat("b", 64), "jobseek", "amd64", services})
+	b, err := json.Marshal(imageDocument{Version: "jobseek.crawler-release-images/v1", FileEvidenceSHA256: strings.Repeat("a", 64), ComposeSHA256: strings.Repeat("b", 64), Project: "jobseek", Architecture: "amd64", Services: services})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &Images{string(b), digest(b)}
+	return &Images{body: string(b), digest: digest(b)}
 }
 
 func crawlerContainerImage() serviceImage {
@@ -332,7 +332,7 @@ func TestColdContainerPredicateAuthenticatesInfrastructureAndStagedImages(t *tes
 func TestColdContainerPredicateRequiresOpaqueBoundEvidenceAndLiveContext(t *testing.T) {
 	inventory := observeFixtureContainers(t)
 	image := fixtureContainerImages(t, map[string]serviceImage{"worker": crawlerContainerImage()})
-	for _, proofs := range [][]*Images{nil, {nil}, {image, image}, make([]*Images, 13), {&Images{}}, {&Images{image.Body(), strings.Repeat("a", 64)}}} {
+	for _, proofs := range [][]*Images{nil, {nil}, {image, image}, make([]*Images, 13), {&Images{}}, {&Images{body: image.Body(), digest: strings.Repeat("a", 64)}}} {
 		if _, err := RequireColdContainers(context.Background(), inventory, proofs); !errors.Is(err, ErrInvalid) {
 			t.Fatal("incomplete evidence admitted", err)
 		}
@@ -372,7 +372,7 @@ func TestColdContainerPredicateRequiresOpaqueBoundEvidenceAndLiveContext(t *test
 		_ = json.Unmarshal([]byte(image.Body()), &d)
 		change(&d)
 		body, _ := json.Marshal(d)
-		bad := &Images{string(body), digest(body)}
+		bad := &Images{body: string(body), digest: digest(body)}
 		if _, err := RequireColdContainers(context.Background(), inventory, []*Images{bad}); !errors.Is(err, ErrInvalid) {
 			t.Fatal("malformed bound image evidence admitted", err)
 		}
@@ -381,7 +381,7 @@ func TestColdContainerPredicateRequiresOpaqueBoundEvidenceAndLiveContext(t *test
 	_ = json.Unmarshal([]byte(image.Body()), &differentArch)
 	differentArch.Architecture = "arm64"
 	body, _ := json.Marshal(differentArch)
-	if _, err := RequireColdContainers(context.Background(), inventory, []*Images{image, {string(body), digest(body)}}); !errors.Is(err, ErrInvalid) {
+	if _, err := RequireColdContainers(context.Background(), inventory, []*Images{image, {body: string(body), digest: digest(body)}}); !errors.Is(err, ErrInvalid) {
 		t.Fatal("different host architecture evidence admitted", err)
 	}
 }

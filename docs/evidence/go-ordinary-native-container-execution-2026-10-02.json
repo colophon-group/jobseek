@@ -1,0 +1,57 @@
+{
+  "version": "jobseek.migration.native-container-execution/v1",
+  "date": "2026-10-02",
+  "preceding_verified_source": "771c576a157c5736e5732ca14e2ec8da586dabbc",
+  "api": "RequireContainerExecution",
+  "receipt_version": "jobseek.crawler-container-execution/v1",
+  "runtime_admission": false,
+  "contract": [
+    "Opaque image observations retain private resolved Compose and image-default bytes; complete inventory retains private Config/HostConfig/Mount bytes bound to canonical hashes",
+    "Exact command/entrypoint inheritance and clearing, complete configured environment, numeric configured UID/GID and working directory compared against declared release settings",
+    "Bind source/access/propagation, named local-volume identities, image-declared anonymous volumes and tmpfs options/access checked; missing/extra/duplicate/substituted mounts refused",
+    "Unknown services/images, unresolved/duplicate environment, active/restartable oneoffs and unsupported configs/secrets/volumes_from/volume drivers/options refuse",
+    "Protected explicit ProjectDirectory preserves deployed relative mount semantics separately from verified Compose/env/override snapshot; directory mode/inode readback and credential-free base digest bind context",
+    "Equivalent staged release input ordering produces stable receipts; private values/paths are never emitted; oneoffs/foreign containers remain counted without admission",
+    "Stable Engine Config/host fields must be present, explicit null strings and case aliases refuse; documented optional OCI image defaults remain supported"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "races": "pass",
+    "linux_integration_tag_vet_modules": [
+      "ordinary-queue",
+      "ordinary-worker"
+    ],
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "go_mod_tidy_diff": "pass",
+    "race_package_seconds": 3.085,
+    "race_log_sha256": "fd90cdb3e17e45083734d53cb2b66e9a457c62aaee82047f5d23b1906ab98383",
+    "repository_contract_tests": 188,
+    "repository_log_sha256": "fe5697f162a2af963f370df2442131f20c56d6596815dd75068047b080671302",
+    "actionlint": "1.7.12 pass",
+    "zizmor": "1.26.1 pass"
+  },
+  "actual_fixture": {
+    "name": "TestActualWholeDaemonContainerStateAndRestartObservation",
+    "status": "fresh exact-source execution required",
+    "scope": "Disposable Linux Actions only, already-pulled public image, configured sleep exporter, private relative bind, exact settings and declared user/environment/command/bind/access drift rejection; no local agent Docker access"
+  },
+  "references": [
+    "https://docs.docker.com/reference/compose-file/services/#entrypoint",
+    "https://github.com/moby/moby/blob/master/api/types/container/config.go",
+    "https://github.com/moby/moby/blob/master/api/types/container/hostconfig.go",
+    "https://github.com/moby/moby/blob/master/api/types/image/image_inspect.go"
+  ],
+  "production_changed": false,
+  "full_goal_active": true,
+  "open_work": [
+    "Independent installed source/image/binary provenance, effective process credentials and mounted-content fidelity",
+    "Complete namespaces/networks/security/resource/runtime contracts and selected generations/specs",
+    "Locked durable native host consumer, SQL leases/barriers and actual positive complete-host writer/exclusion proof",
+    "Phased spec restore and actual host crash recovery, full readiness/cold cutover/reversal",
+    "Every enabled profile/consumer, canonical output/database/publisher/freshness/queue parity and comparable complete-service resources/cost",
+    "Exact actual gates/merge/deploy, actual rollback window and production Python/Playwright/Chromium retirement while useful offline Python remains isolated and every board is preserved"
+  ]
+}

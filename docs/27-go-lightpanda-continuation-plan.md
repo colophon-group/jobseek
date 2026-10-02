@@ -1,5 +1,33 @@
 # Go and Lightpanda migration continuation plan
 
+Latest verified runtime `771c576a157c5736e5732ca14e2ec8da586dabbc` passes full CI
+37041370630, Linux 37041380087, installed 37041375022 and historical native/legacy
+image runs 37041380211/37041380109. Exact merge parents and both-architecture
+artifacts are independently verified. Actual whole-daemon created/running/stopped/
+restart-policy observations pass; global live PostgreSQL correctly prevents a
+cold receipt. All six actual installed executable tests, source/CA and 34 assets
+pass. See [verified container evidence](evidence/go-ordinary-native-container-observation-verified-2026-10-02.json).
+
+The next library slice verifies release-bound command/entrypoint, complete
+configured environment, configured numeric UID/GID, working directory and mount
+identities. An explicit protected deployment base preserves relative mount
+semantics independently of the verified snapshot. Local races/Linux vet pass;
+fresh actual execution is required. Its receipt reports `runtime_admission:false`;
+effective process identities, installed source/binary provenance, mounted-content
+fidelity and complete namespaces/networks/security settings still need their
+own checks. See [execution evidence](evidence/go-ordinary-native-container-execution-2026-10-02.json).
+
+B852 whole-B0 37037814550 independently admits 16 arms/8 pairs, density
+5.305001770–14.338742900. Preserve current 771 whole-B0 37041380157 in progress.
+The complete [host delivery plan](plans/go-ordinary-host-integration.md), every
+enabled profile/consumer, canonical output/database/publisher/freshness/queue
+parity, comparable complete-service CPU/RAM/density/cost, exact actual gates and
+supported rollout, actual rollback window and production Python/Playwright/
+Chromium retirement remain required. Draft PR #10210; production unchanged;
+full migration goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
 Latest verified runtime: `b852b59bd4c946e32c593358056e38dd0d9334c6` passes
 full CI 37037807350, Linux 37037814524, installed 37037813202 and historical
 native/legacy image runs 37037814605/37037814647. Exact merge parents and both

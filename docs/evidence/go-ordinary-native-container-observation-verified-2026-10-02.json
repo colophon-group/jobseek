@@ -1,0 +1,177 @@
+{
+  "version": "jobseek.migration.native-container-observation-verified/v1",
+  "date": "2026-10-02",
+  "source_revision": "771c576a157c5736e5732ca14e2ec8da586dabbc",
+  "full_ci": 37041370630,
+  "linux": {
+    "source": "771c576a157c5736e5732ca14e2ec8da586dabbc",
+    "run": 37041380087,
+    "tested_merge": "bb0e5fc726030e05192ec6674eaa1e24b772a601",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "771c576a157c5736e5732ca14e2ec8da586dabbc"
+    ],
+    "log_sha256": "dd1eef15165c230afc46d39d4727508ee71f48939e647dcbd3aaf354fd016e9e",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  },
+  "actual_container_fixture": {
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "created_running_stopped_restart_disabled": true,
+    "entire_daemon_enumerated": true,
+    "independent_live_postgres_prevents_cold_receipt": true,
+    "scope": "Public image with synthetic exporter command, actual engine state; no positive complete-host exclusion or source/content/provenance grant"
+  },
+  "installed": {
+    "source_revision": "771c576a157c5736e5732ca14e2ec8da586dabbc",
+    "run": 37041375022,
+    "production_changed": false,
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:a04b7206b6edd7924bcc3b6882e0911b47399c3924a1e9ce5c4f91d7abd3a5d8",
+        "binary_sha256": "60c28d8d2bcc7fd93c4efc1d379d538f68f284b84b0bbf6e0d7a7b5abfc8898c",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+          "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+        ],
+        "asset_hashes_verified": 34
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:9a5b7eafad58bc5b3713ee9aa0dae54c0f50bb093dc459312396b1863b1672d5",
+        "binary_sha256": "0859cedccba309a947709b8b870474099506e39aa62c7d010bf31a47d7ae9375",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+          "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+        ],
+        "asset_hashes_verified": 34
+      }
+    ]
+  },
+  "historical_native_image": {
+    "candidate_source": "771c576a157c5736e5732ca14e2ec8da586dabbc",
+    "run": 37041380211,
+    "tested_merge": "bb0e5fc726030e05192ec6674eaa1e24b772a601",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "771c576a157c5736e5732ca14e2ec8da586dabbc"
+    ],
+    "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:8eda6e8969a2c8444138bf9397b0cb1abd0c33573f9d0da6e182daeda2d1c884",
+        "binary_sha256": "bec52d4c71e7494fd234f30bea7323d29689b2b2636ed23632d4cbd0c0a9bfc8",
+        "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+        "proof_sha256": "94418bbd77e556759c4663b1660b5f2d24a960840b840372125a390094f94502",
+        "assets": 34,
+        "actual_prior_installed_restored_R_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:615248f0dffb70103722d08e58fb49844d16b602a391bf200949ab2d4f1018a1",
+        "binary_sha256": "9590b7eb7e0b67a66f88dcd4babf515847f2437db1a4e2fdc5254e9c1aa1e463",
+        "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+        "proof_sha256": "fe75100f0b0d54018a8c46975e6799630d17451335deefbcb98336a5eb3fa3a1",
+        "assets": 34,
+        "actual_prior_installed_restored_R_pass": true
+      }
+    ],
+    "log_sha256": "a59e879f9e0f44aeeb7b96655924af57eb2f753c9559648c2e3da0a92016dfaf",
+    "production_changed": false,
+    "scope": "actual historical candidate image-extracted runtime at restored R; not previously selected production ordinary release or complete host admission"
+  },
+  "historical_legacy_image": {
+    "candidate_source": "771c576a157c5736e5732ca14e2ec8da586dabbc",
+    "run": 37041380109,
+    "tested_merge": "bb0e5fc726030e05192ec6674eaa1e24b772a601",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "771c576a157c5736e5732ca14e2ec8da586dabbc"
+    ],
+    "prior_source": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:9ee102bf87f1aeac4401338e2788f627451283a4c79a7ea04c2b5b6d64c115cf",
+        "python_version": "3.13.15",
+        "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+        "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+        "source_files": 599,
+        "assets": 34,
+        "proof_sha256": "662faac241888d09788aee6bc414fa842fb5e0329af0f335aa12d702f2e0358a",
+        "actual_historical_legacy_container_at_R_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:6108e29a54b37687583ad13e9f9cd9b6593c699fa9e317f381fda6ee53908a52",
+        "python_version": "3.13.15",
+        "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+        "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+        "source_files": 599,
+        "assets": 34,
+        "proof_sha256": "163f2133f6497dc8716231e7935cbe30f08de1da7b78cb7983dc5c71320c130b",
+        "actual_historical_legacy_container_at_R_pass": true
+      }
+    ],
+    "log_sha256": "1898d3f64ca615e71ccb641c6e1e432893ae1b75428b3c91aab71e8ac1057076",
+    "production_changed": false,
+    "scope": "rebuilt unchanged last-recorded production source image; completed synthetic host-label legacy restoration and no-fetch policy cycle at R; not selected production image digest, all-profile parity or complete host admission"
+  },
+  "preceding_whole_b0": {
+    "pr_head": "b852b59bd4c946e32c593358056e38dd0d9334c6",
+    "tested_merge_checkout": "f870c1d3c5bddf1a3d62b527b286048383fba48d",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "b852b59bd4c946e32c593358056e38dd0d9334c6"
+    ],
+    "run": 37037814550,
+    "report_sha256": "0f237828662ac6dbc9df819d43d90a1d8c840866bb14b69b92ffc0f9d598af20",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      5.305001770393119,
+      14.338742900012898
+    ],
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "current_whole_b0": {
+    "source": "771c576a157c5736e5732ca14e2ec8da586dabbc",
+    "run": 37041380157,
+    "status": "in_progress"
+  },
+  "production_changed": false,
+  "full_goal_active": true,
+  "complete_host_admission": false
+}

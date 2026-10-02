@@ -146,6 +146,33 @@ coordinator consumer. SQL barriers/leases, source/binary/mount/users, lock-spann
 reobservation, durable intent/receipt and readiness must still be implemented and
 independently proved before complete admission.
 
+## Release-bound execution and mount settings
+
+`RequireContainerExecution` now compares known-project regular containers with
+the reobserved Compose settings and installed image defaults: exact command and
+entrypoint inheritance/clearing, complete configured environment, configured
+numeric UID/GID, working directory, bind sources/access/propagation, named local
+volumes, image-declared anonymous volumes and tmpfs options. Missing, duplicate,
+extra or substituted mounts, unresolved/duplicate environment values, unknown
+service/image bindings and active/restartable one-offs refuse. Unsupported mount
+providers/options refuse until separately verified. Foreign identities remain
+counted; the complete cold-state predicate still gates them independently.
+
+The observer's optional protected `ProjectDirectory` preserves the actual
+deployment base separately from verified generation Compose/env/override bytes.
+Relative mounts must not resolve accidentally inside a rollback snapshot.
+Directory mode/inode readback and a credential-free base digest bind this context.
+The existing disposable Actions fixture now requires actual execution settings
+and relative-bind/user/environment/command/access drift rejection; fresh actual
+execution is required. Local Go races and both modules' Linux vet pass.
+
+The receipt reports `runtime_admission:false`. Effective process UID/GID,
+installed image/source/binary provenance, mounted-content fidelity and complete
+namespace/network/security settings remain mandatory independent checks. This
+settings verifier does not provide all of those, a host coordinator, SQL barriers,
+complete writer exclusion or readiness. Continue these gates before any supported
+cutover/reversal; do not promote a settings hash into full release admission.
+
 ## Protected host envelope
 
 The deployed coordinator must run under the existing operator deployment identity,

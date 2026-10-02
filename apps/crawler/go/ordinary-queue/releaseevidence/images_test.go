@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -27,7 +28,7 @@ func imageSetup(t *testing.T, override bool) imageFixture {
 		g = bridgeFixture(t, "2", true)
 	}
 	f := verify(t, g)
-	c := ImageObservationConfig{g.directory, fixtureOwner, "jobseek", f.SHA256(), "amd64"}
+	c := ImageObservationConfig{Directory: g.directory, Owner: fixtureOwner, Project: "jobseek", FileEvidenceSHA256: f.SHA256(), Architecture: "amd64"}
 	ref := "ghcr.io/colophon-group/jobseek-crawler@sha256:" + strings.Repeat("c", 64)
 	compose := []byte(`{"name":"jobseek","services":{"worker-1":{"image":"` + ref + `","environment":{"LOCAL_DATABASE_URL":"fixture-sensitive-value"}},"exporter":{"image":"` + ref + `"}}}`)
 	inspect := []byte(`[{"Id":"` + fixtureImageID + `","RepoDigests":["` + ref + `"],"Architecture":"amd64","Os":"linux","Config":{"Env":["PASSWORD=fixture-sensitive-value"]}}]`)
@@ -41,7 +42,11 @@ func (f imageFixture) reader(t *testing.T) dockerRead {
 		if _, ok := ctx.Deadline(); !ok {
 			t.Fatal("unbounded command context")
 		}
-		expected := []string{"compose", "--project-name", "jobseek", "--project-directory", f.g.directory, "--env-file", filepath.Join(f.g.directory, "environment.env"), "-f", filepath.Join(f.g.directory, "docker-compose.yml")}
+		projectDirectory := f.c.ProjectDirectory
+		if projectDirectory == "" {
+			projectDirectory = f.g.directory
+		}
+		expected := []string{"compose", "--project-name", "jobseek", "--project-directory", projectDirectory, "--env-file", filepath.Join(f.g.directory, "environment.env"), "-f", filepath.Join(f.g.directory, "docker-compose.yml")}
 		if f.g.fields["HAS_IMAGE_OVERRIDE"] == "1" {
 			expected = append(expected, "-f", filepath.Join(f.g.directory, "rollback-images.override.yml"))
 		}
@@ -74,6 +79,63 @@ func TestImageObservationsBindFilesAndExcludeCredentialOutput(t *testing.T) {
 		if json.Unmarshal([]byte(got.Body()), &d) != nil || len(d.Services) != 2 || d.Services["exporter"].ImageID != fixtureImageID {
 			t.Fatal("service inventory omitted exporter")
 		}
+	}
+}
+
+func TestImageObservationPreservesProtectedDeploymentBaseSeparatelyFromSnapshot(t *testing.T) {
+	f := imageSetup(t, false)
+	f.c.ProjectDirectory = t.TempDir()
+	got, err := observeImages(context.Background(), f.c, f.reader(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var d imageDocument
+	if json.Unmarshal([]byte(got.Body()), &d) != nil || d.ComposeBaseSHA256 != digest([]byte(f.c.ProjectDirectory)) || strings.Contains(got.Body(), f.c.ProjectDirectory) || verify(t, f.g).SHA256() != f.c.FileEvidenceSHA256 {
+		t.Fatal("deployment base and verified snapshot became conflated")
+	}
+	for _, fault := range []string{"relative", "writable", "symlink", "replaced", "mode drift"} {
+		t.Run(fault, func(t *testing.T) {
+			f := imageSetup(t, false)
+			f.c.ProjectDirectory = t.TempDir()
+			switch fault {
+			case "relative":
+				f.c.ProjectDirectory = "relative"
+			case "writable":
+				if err := os.Chmod(f.c.ProjectDirectory, 0777); err != nil {
+					t.Fatal(err)
+				}
+			case "symlink":
+				alias := filepath.Join(t.TempDir(), "alias")
+				if err := os.Symlink(f.c.ProjectDirectory, alias); err != nil {
+					t.Fatal(err)
+				}
+				f.c.ProjectDirectory = alias
+			}
+			read := f.reader(t)
+			calls := 0
+			_, err := observeImages(context.Background(), f.c, func(ctx context.Context, args []string) ([]byte, error) {
+				calls++
+				b, err := read(ctx, args)
+				if calls == 4 && fault == "replaced" {
+					if err := os.Rename(f.c.ProjectDirectory, f.c.ProjectDirectory+"-old"); err != nil {
+						t.Fatal(err)
+					}
+					t.Cleanup(func() { _ = os.RemoveAll(f.c.ProjectDirectory + "-old") })
+					if err := os.Mkdir(f.c.ProjectDirectory, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if calls == 4 && fault == "mode drift" {
+					if err := os.Chmod(f.c.ProjectDirectory, 0755); err != nil {
+						t.Fatal(err)
+					}
+				}
+				return b, err
+			})
+			if !errors.Is(err, ErrInvalid) || strings.Contains(err.Error(), f.c.ProjectDirectory) {
+				t.Fatal("unsafe or drifting deployment base admitted/disclosed", err)
+			}
+		})
 	}
 }
 

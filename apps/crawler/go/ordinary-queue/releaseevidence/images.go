@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -17,19 +18,27 @@ import (
 // Images is a credential-free observation, not a cold cutover permission. It
 // binds file evidence, resolved service images and local Linux image identities.
 // Source/binary identity, mounts, users, exclusion and readiness remain required.
-type Images struct{ body, digest string }
+type Images struct {
+	body, digest          string
+	compose, imageInspect []byte // credential-bearing defaults remain private
+}
 
 func (i *Images) Body() string   { return i.body }
 func (i *Images) SHA256() string { return i.digest }
 
 type ImageObservationConfig struct {
 	Directory, Owner, Project, FileEvidenceSHA256, Architecture string
+	// ProjectDirectory preserves deployed relative mount/config semantics while
+	// Compose/env/override bytes still come from the verified generation. Empty
+	// retains generation-directory semantics for existing image-only callers.
+	ProjectDirectory string
 }
 
 type imageDocument struct {
 	Version            string                  `json:"version"`
 	FileEvidenceSHA256 string                  `json:"file_evidence_sha256"`
 	ComposeSHA256      string                  `json:"resolved_compose_sha256"`
+	ComposeBaseSHA256  string                  `json:"compose_base_directory_sha256,omitempty"`
 	Project            string                  `json:"project"`
 	Architecture       string                  `json:"architecture"`
 	Services           map[string]serviceImage `json:"services"`
@@ -175,6 +184,26 @@ func observeImages(ctx context.Context, c ImageObservationConfig, run dockerRead
 	}
 	bounded, cancel := context.WithTimeout(ctx, 75*time.Second)
 	defer cancel()
+	projectDirectory := c.ProjectDirectory
+	if projectDirectory == "" {
+		projectDirectory = c.Directory
+	}
+	if !filepath.IsAbs(projectDirectory) || filepath.Clean(projectDirectory) != projectDirectory {
+		return nil, reject("explicit Compose base directory")
+	}
+	before, err := os.Lstat(projectDirectory)
+	if err != nil || !before.IsDir() || before.Mode().Perm()&0022 != 0 {
+		return nil, reject("protected regular Compose base directory")
+	}
+	baseRoot, err := os.OpenRoot(projectDirectory)
+	if err != nil {
+		return nil, reject("Compose base directory open")
+	}
+	defer baseRoot.Close()
+	opened, err := baseRoot.Stat(".")
+	if err != nil || !os.SameFile(before, opened) {
+		return nil, reject("Compose base directory replaced")
+	}
 	f, err := VerifyFiles(bounded, c.Directory, c.Owner)
 	if err != nil || f.SHA256() != c.FileEvidenceSHA256 {
 		return nil, reject("image observation file binding")
@@ -183,7 +212,7 @@ func observeImages(ctx context.Context, c ImageObservationConfig, run dockerRead
 	if err := json.Unmarshal([]byte(f.Body()), &file); err != nil {
 		return nil, reject("verified file evidence")
 	}
-	args := []string{"compose", "--project-name", c.Project, "--project-directory", c.Directory, "--env-file", filepath.Join(c.Directory, "environment.env"), "-f", filepath.Join(c.Directory, "docker-compose.yml")}
+	args := []string{"compose", "--project-name", c.Project, "--project-directory", projectDirectory, "--env-file", filepath.Join(c.Directory, "environment.env"), "-f", filepath.Join(c.Directory, "docker-compose.yml")}
 	if file.FileSHA256["rollback-images.override.yml"] != "" {
 		args = append(args, "-f", filepath.Join(c.Directory, "rollback-images.override.yml"))
 	}
@@ -257,13 +286,17 @@ func observeImages(ctx context.Context, c ImageObservationConfig, run dockerRead
 	if err != nil || bounded.Err() != nil || againFiles.SHA256() != f.SHA256() {
 		return nil, reject("release file readback differs")
 	}
+	after, err := os.Lstat(projectDirectory)
+	if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() || bounded.Err() != nil {
+		return nil, reject("Compose base directory readback")
+	}
 	services := map[string]serviceImage{}
 	for name, service := range resolved.Services {
 		services[name] = serviceImage{service.Image, byReference[service.Image]}
 	}
-	body, err := json.Marshal(imageDocument{"jobseek.crawler-release-images/v1", f.SHA256(), digest(compose), c.Project, c.Architecture, services})
+	body, err := json.Marshal(imageDocument{Version: "jobseek.crawler-release-images/v1", FileEvidenceSHA256: f.SHA256(), ComposeSHA256: digest(compose), ComposeBaseSHA256: digest([]byte(projectDirectory)), Project: c.Project, Architecture: c.Architecture, Services: services})
 	if err != nil {
 		return nil, reject("canonical image evidence")
 	}
-	return &Images{string(body), digest(body)}, nil
+	return &Images{body: string(body), digest: digest(body), compose: bytes.Clone(compose), imageInspect: bytes.Clone(observed)}, nil
 }

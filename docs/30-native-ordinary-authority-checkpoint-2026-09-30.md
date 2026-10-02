@@ -1,5 +1,35 @@
 # Native ordinary worker authority checkpoint
 
+## 2026-10-02: actual global container fixture verified; execution settings implemented
+
+Source `771c576a157c5736e5732ca14e2ec8da586dabbc` passes full CI 37041370630,
+Linux 37041380087, installed 37041375022 and historical native/legacy image runs
+37041380211/37041380109. Both-architecture artifacts and exact merge
+`bb0e5fc726030e05192ec6674eaa1e24b772a601` parents (base
+`86813918a20a499c5d59a39ca8c33797161f8743`, candidate) are independently verified.
+The actual whole-daemon fixture includes created/running/stopped exporters and
+restart-policy removal, preserves the independent live PostgreSQL in inventory,
+and correctly refuses a cold receipt. All six installed executable fixtures and
+source/CA/34 assets pass. See [closed observation evidence](evidence/go-ordinary-native-container-observation-verified-2026-10-02.json).
+
+The next slice binds container commands, complete configured environment,
+configured numeric users, working directories and mount identities to the verified
+release Compose and observed image defaults. An explicit protected deployment base
+keeps relative mount semantics separate from rollback snapshots. The receipt
+reports `runtime_admission:false`; source/binary provenance, effective process
+credentials, mounted contents and full security/network/namespace fidelity remain
+independent required gates. Local races and Linux vet pass. The existing real
+fixture now checks those declared settings and drift; fresh execution is required.
+See [the execution contract](evidence/go-ordinary-native-container-execution-2026-10-02.json).
+
+B852 whole-B0 37037814550 independently admits 16 arms/8 pairs, density
+5.305001770–14.338742900; preserve current 771 whole-B0 37041380157 in progress.
+Startup-cardinality evidence does not establish complete service/profile parity
+or attributable cost. The full [host plan](plans/go-ordinary-host-integration.md)
+remains required; PR #10210 stays draft and production unchanged. Full goal active.
+
+Earlier entries below describe their timestamped evidence.
+
 ## 2026-10-02: installed spec archive verified; whole-daemon inventory implemented
 
 Source `b852b59bd4c946e32c593358056e38dd0d9334c6` passes full CI 37037807350,

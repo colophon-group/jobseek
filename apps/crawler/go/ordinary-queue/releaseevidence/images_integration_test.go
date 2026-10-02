@@ -34,7 +34,7 @@ func TestActualClearedComposeAndLocalImageObservation(t *testing.T) {
 	t.Setenv("COMPOSE_PROJECT_NAME", "caller-project-drift")
 	t.Setenv("COMPOSE_FILE", "/nonexistent-compose-file")
 	t.Setenv("OPAQUE_OPERATOR_VALUE", "caller-sensitive-value")
-	c := ImageObservationConfig{g.directory, fixtureOwner, "jobseek-release-observation", f.SHA256(), runtime.GOARCH}
+	c := ImageObservationConfig{Directory: g.directory, Owner: fixtureOwner, Project: "jobseek-release-observation", FileEvidenceSHA256: f.SHA256(), Architecture: runtime.GOARCH}
 	observed, err := ObserveImages(context.Background(), c)
 	if err != nil {
 		t.Fatal(err)

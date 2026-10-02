@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -28,16 +29,22 @@ func TestActualWholeDaemonContainerStateAndRestartObservation(t *testing.T) {
 	const ref = "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
 	project := fmt.Sprintf("jobseek-container-observation-%d", os.Getpid())
 	g := fixture(t)
-	write(t, g, "docker-compose.yml", []byte("services:\n  exporter:\n    image: "+ref+"\n"))
+	deploymentDir := t.TempDir()
+	mountDir := filepath.Join(deploymentDir, "fixture-config")
+	if err := os.Mkdir(mountDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	compose := "services:\n  exporter:\n    image: " + ref + "\n    user: '0:0'\n    working_dir: /tmp\n    entrypoint: ['/bin/sleep']\n    command: ['75']\n    environment:\n      PRIVATE_VALUE: fixture-sensitive-value\n    volumes:\n      - type: bind\n        source: ./fixture-config\n        target: /fixture-config\n        read_only: true\n"
+	write(t, g, "docker-compose.yml", []byte(compose))
 	refresh(t, g)
 	f := verify(t, g)
-	proof, err := ObserveImages(ctx, ImageObservationConfig{g.directory, fixtureOwner, project, f.SHA256(), runtime.GOARCH})
+	proof, err := ObserveImages(ctx, ImageObservationConfig{Directory: g.directory, Owner: fixtureOwner, Project: project, FileEvidenceSHA256: f.SHA256(), Architecture: runtime.GOARCH, ProjectDirectory: deploymentDir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Fixed commands affect only a newly created disposable fixture. No pull,
 	// production access, arbitrary shell or daemon-wide mutation is permitted.
-	b, err := readDocker(ctx, []string{"create", "--pull=never", "--restart=always", "--label", "com.docker.compose.project=" + project, "--label", "com.docker.compose.service=exporter", "--label", "com.docker.compose.oneoff=False", "--env", "PRIVATE_VALUE=fixture-sensitive-value", "--entrypoint", "/bin/sleep", ref, "75"})
+	b, err := readDocker(ctx, []string{"create", "--pull=never", "--restart=always", "--label", "com.docker.compose.project=" + project, "--label", "com.docker.compose.service=exporter", "--label", "com.docker.compose.oneoff=False", "--user", "0:0", "--workdir", "/tmp", "--mount", "type=bind,source=" + mountDir + ",target=/fixture-config,readonly", "--env", "PRIVATE_VALUE=fixture-sensitive-value", "--entrypoint", "/bin/sleep", ref, "75"})
 	if err != nil {
 		t.Fatal("create disposable exporter fixture", err)
 	}
@@ -78,6 +85,13 @@ func TestActualWholeDaemonContainerStateAndRestartObservation(t *testing.T) {
 		if _, err := RequireColdContainers(ctx, inventory, []*Images{proof}); !errors.Is(err, ErrInvalid) {
 			t.Fatal("unaccounted globally live service falsely admitted as cold", err)
 		}
+		execution, err := RequireContainerExecution(ctx, inventory, []*Images{proof})
+		if err != nil {
+			t.Fatal("actual release execution settings differ", err)
+		}
+		if strings.Contains(execution.Body(), "fixture-sensitive-value") || strings.Contains(execution.Body(), mountDir) {
+			t.Fatal("execution receipt disclosed private inputs")
+		}
 	}
 	check(false, "always")
 	if _, err := readDocker(ctx, []string{"start", id}); err != nil {
@@ -92,5 +106,35 @@ func TestActualWholeDaemonContainerStateAndRestartObservation(t *testing.T) {
 		t.Fatal("disable only fixture restart policy", err)
 	}
 	check(false, "no")
+	inventory, err := ObserveContainers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, drift := range []string{"user", "environment", "command", "bind source", "bind access"} {
+		changed := compose
+		switch drift {
+		case "user":
+			changed = strings.Replace(changed, "'0:0'", "'10001:10001'", 1)
+		case "environment":
+			changed = strings.Replace(changed, "PRIVATE_VALUE: fixture-sensitive-value", "PRIVATE_VALUE: changed-fixture-value", 1)
+		case "command":
+			changed = strings.Replace(changed, "command: ['75']", "command: ['74']", 1)
+		case "bind source":
+			changed = strings.Replace(changed, "source: ./fixture-config", "source: ./other-fixture", 1)
+		case "bind access":
+			changed = strings.Replace(changed, "read_only: true", "read_only: false", 1)
+		}
+		write(t, g, "docker-compose.yml", []byte(changed))
+		refresh(t, g)
+		f := verify(t, g)
+		mismatch, err := ObserveImages(ctx, ImageObservationConfig{Directory: g.directory, Owner: fixtureOwner, Project: project, FileEvidenceSHA256: f.SHA256(), Architecture: runtime.GOARCH, ProjectDirectory: deploymentDir})
+		if err != nil {
+			t.Fatal("observe declared drift", err)
+		}
+		if _, err := RequireContainerExecution(ctx, inventory, []*Images{mismatch}); !errors.Is(err, ErrInvalid) {
+			t.Fatal("actual execution drift admitted", drift, err)
+		}
+	}
+	t.Log("actual release-bound command/environment/numeric configured user/bind/image-volume execution verified; declared drift refused; no source/content/process-identity admission")
 	t.Log("actual whole-daemon inventory verified created/running/stopped exporter and automatic restart exclusion; independent live PostgreSQL prevents cold receipt; synthetic commands, no complete host admission")
 }

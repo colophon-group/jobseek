@@ -40,7 +40,10 @@ type containerRow struct {
 	HostConfigSHA256  string `json:"host_config_sha256"`
 	MountsSHA256      string `json:"mounts_sha256"`
 }
-type containerCommand struct{ cmd, entrypoint []string }
+type containerCommand struct {
+	cmd, entrypoint      []string
+	config, host, mounts json.RawMessage
+}
 type inspectContainer struct {
 	ID    string `json:"Id"`
 	Image string `json:"Image"`
@@ -154,7 +157,7 @@ func containerSnapshot(ctx context.Context, run dockerRead) (*Containers, error)
 				return nil, reject("explicit one-off label")
 			}
 			rows = append(rows, containerRow{c.ID, c.Image, project, service, strings.EqualFold(oneoff, "true"), oneoff != "", *c.State.Running, *c.State.Paused, *c.State.Restarting, *c.State.PID, status, restart, *host.RestartPolicy.MaximumRetryCount, digest(c.Config), digest(c.HostConfig), digest(c.Mounts)})
-			commands[c.ID] = containerCommand{append([]string{}, config.Cmd...), append([]string{}, config.Entrypoint...)}
+			commands[c.ID] = containerCommand{cmd: append([]string{}, config.Cmd...), entrypoint: append([]string{}, config.Entrypoint...), config: append(json.RawMessage{}, c.Config...), host: append(json.RawMessage{}, c.HostConfig...), mounts: append(json.RawMessage{}, c.Mounts...)}
 		}
 	}
 	readback, err := daemonIDs(ctx, run)
