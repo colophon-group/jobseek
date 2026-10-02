@@ -675,3 +675,18 @@ and all 34 assets to Git bytes before running the extracted process through the
 same restored-R test. Dockerfile image builds omit VCS metadata, so this is a
 distinct image-evidence path; the independently compiled prior fixture retains
 its strict VCS requirement. Neither fixture grants production host authority.
+
+The separate `TestPriorLegacyImageConsumesCompletedRestorationAtR` fixture uses
+the last recorded production Python source `b75ccb9456bf29c9477f9747c0c2cc3908ad79bb`.
+Disposable GitHub CI builds its unchanged slim Dockerfile, verifies the installed
+wheel's complete source/Lua tree and all data against Git, binds its immutable
+image ID, architecture, Python version and installed entrypoint hash, then runs
+its actual `crawler run` CLI after legacy finalization and real RDB reload.
+Explicit `JOBSEEK_ORDINARY_PRIOR_LEGACY_IMAGE_{ID,PROOF_FILE,PROOF_SHA256,REQUIRE}`
+inputs are required. It checks zero origin attempts, publisher reservation,
+queue ACK, unchanged canonical content/due/failure budget, historical queue
+interval and SIGTERM drain at reserved R. The old worker lacks joint readers,
+so it remains stopped until both restoration journals close. Its reserved-board
+queue interval differs from the native canonical-due rule; this fixture verifies
+that historical behavior and cannot claim full migration parity, every old
+profile, the currently selected production image digest, or host admission.

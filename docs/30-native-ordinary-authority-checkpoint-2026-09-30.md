@@ -1610,3 +1610,30 @@ source/CA, four installed process tests and 34 assets are independently verified
 remains active, production unchanged, and the supported host path is sequenced in
 [the host integration plan](plans/go-ordinary-host-integration.md). See
 [path correction evidence](evidence/go-ordinary-prior-image-path-correction-2026-10-02.json).
+
+## Verified historical image and legacy-image continuation — 2026-10-02
+
+Source `eb804cf56aa89761f5df195f75e9e333a799ffb0` now passes full CI
+37021699860, installed contracts 37021705356, Linux/root recovery 37021649476
+and historical image capability 37021649337. Both architectures' exact checkout
+parents, independent prior source/binary/image identities and all 34 assets
+were independently verified. The prior native source is historical candidate
+`3cccd9f`, which was never production's ordinary owner.
+[Portable evidence](evidence/go-ordinary-prior-image-verified-2026-10-02.json)
+records the precise scope and identities.
+
+Preceding source `86cfb44f3` whole-B0 run 37019476070 failed at
+`c4-p2/candidate`: the driver observed a completed one-shot posting rescheduled.
+It retained ten arms and refused admission; the failure remains under
+investigation. Latest source-bound B0 run 37021649241 continues; do not replace
+the rejected report with its successful partial resource ratios.
+
+The new separate legacy-image fixture targets the last recorded production
+Python source `b75ccb9`, verifies the actual installed source/Lua/data tree and
+runs the old immutable image only after completed legacy restoration at R.
+Local closed-proof negative tests, Linux vet, workflow audits and 188 repository
+checks pass; the actual AMD64/ARM64 container execution is still required.
+The old reserved-board path preserves SQL due and schedules a future queue
+interval, so that historical behavior is explicit. Full host verification and
+all-writer exclusion remain necessary: the old worker has no joint reader.
+No production ownership, deployment or retirement changes are admitted here.

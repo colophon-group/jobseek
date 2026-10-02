@@ -13,8 +13,8 @@ ordinary execution at restored R and native/legacy root producer/finalizer
 recovery on AMD64 and ARM64 (Linux run 37018098304). Its checked merge parents
 and each prior binary hash are independently verified. Source `86cfb44f3` adds
 separate actual prior image jobs using the unchanged pinned historical Dockerfile;
-execution, installed bytes/assets and source identity must be verified before
-claiming image capability. Fixture labels and startup reference rows remain
+Source `eb804cf56` completes both architecture image jobs (37021649337), with
+independently verified installed bytes/assets and source/image identity. Fixture labels and startup reference rows remain
 synthetic. Neither test establishes a real production release generation.
 
 The historical native image source `3cccd9f` was never selected as production's

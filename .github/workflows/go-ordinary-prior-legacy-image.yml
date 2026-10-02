@@ -1,0 +1,153 @@
+name: Prior legacy ordinary image restoration capability
+
+on:
+  pull_request:
+    paths:
+      - 'apps/crawler/go/**'
+      - 'apps/crawler/contracts/**'
+      - 'apps/crawler/src/migrations/**'
+      - '.github/workflows/go-ordinary-prior-legacy-image.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ordinary-prior-legacy-image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  restored-prior-image:
+    name: Prior legacy Python worker at restored R (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_ordinary_worker_test
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_ordinary_worker_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+      JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: '1'
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/ordinary-queue/go.mod
+          cache-dependency-path: apps/crawler/go/ordinary-queue/go.sum
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13.15'
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: '0.12.3'
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
+      - name: Prepare disposable migrated PostgreSQL and private Redis fixtures
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends redis-server
+          uv sync --frozen --group dev
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
+
+      - name: Build unchanged historical Python image and execute its installed CLI at restored R
+        run: |
+          set -euo pipefail
+          umask 077
+          prior_source=b75ccb9456bf29c9477f9747c0c2cc3908ad79bb
+          prior_checkout="${RUNNER_TEMP}/ordinary-prior-legacy-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          fixture="${RUNNER_TEMP}/ordinary-prior-legacy-evidence"
+          mkdir -m 0700 "$fixture"
+          git fetch --depth=1 --no-tags origin "$prior_source"
+          git init --quiet "$prior_checkout"
+          git -C "$prior_checkout" fetch --quiet --depth=1 --no-tags "$GITHUB_WORKSPACE" "$prior_source"
+          git -C "$prior_checkout" checkout --detach FETCH_HEAD
+          trap 'rm -rf "$prior_checkout"' EXIT
+          test "$(git -C "$prior_checkout" rev-parse HEAD)" = "$prior_source"
+          test -z "$(git -C "$prior_checkout" status --porcelain)"
+          docker build --target slim --tag jobseek-crawler:ordinary-prior-legacy-fixture "$prior_checkout/apps/crawler"
+          test -z "$(git -C "$prior_checkout" status --porcelain)"
+          image_id="$(docker image inspect --format '{{.Id}}' jobseek-crawler:ordinary-prior-legacy-fixture)"
+          [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+          architecture="$(docker image inspect --format '{{.Architecture}}' "$image_id")"
+          test "$architecture" = "${{ matrix.arch }}"
+          # -I observes the installed wheel, excluding /app source fallback.
+          docker run --rm --network none --read-only --cap-drop ALL --workdir /tmp \
+            --entrypoint /app/.venv/bin/python "$image_id" -I -c '
+          import hashlib,json,pathlib,platform,src
+          root=pathlib.Path(src.__file__).parent
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          def tree(root):
+              paths=[p for p in root.rglob("*") if not p.is_dir() and "__pycache__" not in p.parts and p.suffix!=".pyc"]
+              assert all(p.is_file() and not p.is_symlink() for p in paths)
+              return dict(sorted((p.relative_to(root).as_posix(),sha(p)) for p in paths))
+          print(json.dumps({"python_version":platform.python_version(),"package_directory":str(root),
+              "entrypoint_sha256":sha(pathlib.Path("/app/.venv/bin/crawler")),
+              "installed_source_sha256":tree(root),"installed_asset_sha256":tree(pathlib.Path("/app/data"))},separators=(",",":")))
+          ' > "$fixture/installed.json"
+          python3 - "$fixture" "$prior_source" "$image_id" "$architecture" "$prior_checkout" <<'PY'
+          import hashlib,json,pathlib,subprocess,sys
+          root=pathlib.Path(sys.argv[1]); checkout=pathlib.Path(sys.argv[5])
+          installed=json.loads((root/'installed.json').read_text())
+          assert installed['python_version']=='3.13.15'
+          assert installed['package_directory']=='/app/.venv/lib/python3.13/site-packages/src'
+          for base,key in [('src','installed_source_sha256'),('data','installed_asset_sha256')]:
+              names=subprocess.check_output(['git','-C',str(checkout),'ls-tree','-r','--name-only','HEAD','apps/crawler/'+base+'/'],text=True).splitlines()
+              expected={str(pathlib.PurePosixPath(n).relative_to('apps/crawler/'+base)):hashlib.sha256((checkout/n).read_bytes()).hexdigest() for n in names}
+              assert installed[key]==expected, 'installed tree differs from historical source: '+base
+          proof={'version':'jobseek.migration.prior-legacy-installed/v1','source_revision':sys.argv[2],
+              'image_id':sys.argv[3],'architecture':sys.argv[4],
+              'python_version':installed['python_version'],'package_directory':installed['package_directory'],
+              'entrypoint_sha256':installed['entrypoint_sha256'],
+              'dockerfile_sha256':hashlib.sha256((checkout/'apps/crawler/Dockerfile').read_bytes()).hexdigest(),
+              'installed_source_sha256':installed['installed_source_sha256'],'installed_asset_sha256':installed['installed_asset_sha256']}
+          (root/'proof.json').write_bytes(json.dumps(proof,separators=(',',':'),ensure_ascii=False).encode())
+          PY
+          export JOBSEEK_ORDINARY_PRIOR_LEGACY_IMAGE_REQUIRE=1
+          export JOBSEEK_ORDINARY_PRIOR_LEGACY_IMAGE_ID="$image_id"
+          export JOBSEEK_ORDINARY_PRIOR_LEGACY_IMAGE_PROOF_FILE="$fixture/proof.json"
+          proof_hash="$(sha256sum "$fixture/proof.json" | cut -d ' ' -f 1)"
+          export JOBSEEK_ORDINARY_PRIOR_LEGACY_IMAGE_PROOF_SHA256="$proof_hash"
+          cd apps/crawler/go/ordinary-queue
+          go test -race -count=1 -tags integration -run '^(TestPriorLegacyImageConsumesCompletedRestorationAtR|TestPriorLegacyImageEvidenceRejectsDrift)$' -v ./... \
+            2>&1 | tee "$fixture/restored-R-tests.log"
+
+      - name: Save prior legacy image capability evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ordinary-prior-legacy-image-${{ matrix.arch }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/ordinary-prior-legacy-evidence/proof.json
+            ${{ runner.temp }}/ordinary-prior-legacy-evidence/installed.json
+            ${{ runner.temp }}/ordinary-prior-legacy-evidence/restored-R-tests.log
+          if-no-files-found: error
+          retention-days: 7
