@@ -1646,3 +1646,11 @@ inactive-row and maximum-failure counts. No acceptance rule, retry, threshold
 or queue requirement changes. The diagnostic regression and all admission
 checks pass (27 tests); Ruff and required Pyright pass. Preserve original failure
 evidence and the active source-bound measurements.
+
+Legacy-image run 37024367636 ARM64 successfully builds the unchanged historical
+image, then the inspector rejects before any restoration test because `src` is
+a namespace package with no `__file__`. The inspector now requires exactly one
+`src.__path__` entry equal to the installed wheel directory under Python `-I`.
+Complete installed source/Lua/data Git checks and the runtime test remain
+mandatory; no prior runtime source or authority requirement changes. Fresh
+corrected image execution is required.

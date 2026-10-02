@@ -103,7 +103,10 @@ jobs:
           docker run --rm --network none --read-only --cap-drop ALL --workdir /tmp \
             --entrypoint /app/.venv/bin/python "$image_id" -I -c '
           import hashlib,json,pathlib,platform,src
-          root=pathlib.Path(src.__file__).parent
+          package_paths=tuple(pathlib.Path(p) for p in src.__path__)
+          assert len(package_paths)==1
+          root=package_paths[0]
+          assert root==pathlib.Path("/app/.venv/lib/python3.13/site-packages/src")
           sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
           def tree(root):
               paths=[p for p in root.rglob("*") if not p.is_dir() and "__pycache__" not in p.parts and p.suffix!=".pyc"]
