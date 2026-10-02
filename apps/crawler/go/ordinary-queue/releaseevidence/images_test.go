@@ -242,7 +242,7 @@ func TestDockerReadCommandHasFixedDaemonEnvironmentAndBoundedWait(t *testing.T) 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	cmd := dockerReadCommand(ctx, []string{"image", "inspect", fixtureImageID})
-	if cmd.Path != "/usr/bin/docker" || cmd.Dir != "/" || cmd.WaitDelay == 0 || !reflect.DeepEqual(cmd.Env, []string{"PATH=/usr/local/bin:/usr/bin:/bin", "HOME=/root", "DOCKER_HOST=unix:///var/run/docker.sock"}) {
+	if cmd.Path != "/usr/bin/docker" || cmd.Dir != "/" || cmd.WaitDelay == 0 || !reflect.DeepEqual(cmd.Env, []string{"PATH=/usr/local/bin:/usr/bin:/bin", "HOME=/", "DOCKER_CONFIG=/var/empty/jobseek-docker-read", "DOCKER_HOST=unix:///var/run/docker.sock"}) {
 		t.Fatal("Docker command inherited caller authority")
 	}
 	// Deliberately never Run/Start: local agents must not access a Docker socket.

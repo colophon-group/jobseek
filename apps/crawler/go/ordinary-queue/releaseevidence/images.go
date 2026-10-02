@@ -82,7 +82,10 @@ func dockerReadCommand(ctx context.Context, args []string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "/usr/bin/docker", args...)
 	// Exclude caller DOCKER_HOST/CONTEXT/CONFIG and Compose interpolation vars.
 	// The system CLI/plugin and local daemon belong to the deployment identity.
-	cmd.Env = []string{"PATH=/usr/local/bin:/usr/bin:/bin", "HOME=/root", "DOCKER_HOST=unix:///var/run/docker.sock"}
+	// A runner or non-root deployment identity cannot traverse /root. Avoid
+	// loading an operator's Docker credentials/context/plugin configuration too;
+	// these read-only local commands need only the system CLI/plugin and daemon.
+	cmd.Env = []string{"PATH=/usr/local/bin:/usr/bin:/bin", "HOME=/", "DOCKER_CONFIG=/var/empty/jobseek-docker-read", "DOCKER_HOST=unix:///var/run/docker.sock"}
 	cmd.Dir = "/"
 	cmd.WaitDelay = time.Second
 	return cmd
@@ -186,8 +189,11 @@ func observeImages(ctx context.Context, c ImageObservationConfig, run dockerRead
 	}
 	args = append(args, "config", "--format", "json")
 	compose, err := run(bounded, args)
-	if err != nil || uniqueJSON(compose) != nil {
-		return nil, reject("Compose observation")
+	if err != nil {
+		return nil, reject("Compose command observation")
+	}
+	if err := uniqueJSON(compose); err != nil {
+		return nil, reject("Compose JSON observation")
 	}
 	var resolved composeImages
 	if json.Unmarshal(compose, &resolved) != nil || resolved.Name != c.Project || len(resolved.Services) == 0 || len(resolved.Services) > 128 {
@@ -211,8 +217,11 @@ func observeImages(ctx context.Context, c ImageObservationConfig, run dockerRead
 	sort.Strings(ordered)
 	inspectArgs := append([]string{"image", "inspect"}, ordered...)
 	observed, err := run(bounded, inspectArgs)
-	if err != nil || uniqueJSON(observed) != nil {
-		return nil, reject("image inspection")
+	if err != nil {
+		return nil, reject("image inspection command")
+	}
+	if err := uniqueJSON(observed); err != nil {
+		return nil, reject("image inspection JSON")
 	}
 	var installed []inspectImage
 	if json.Unmarshal(observed, &installed) != nil || len(installed) != len(ordered) {

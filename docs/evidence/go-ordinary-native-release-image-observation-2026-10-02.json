@@ -23,7 +23,13 @@
     "actionlint": "1.7.12 pass",
     "zizmor": "1.26.1 pass",
     "actual_installed_file_executable": "preceding ecb source independently verified on both architectures; five actual native executable tests",
-    "tests_log_sha256": "4c4318da332646489187bc9fa9d655f798b57b4bbe85d6caf9d4cd712bd6e91c"
+    "tests_log_sha256": "4c4318da332646489187bc9fa9d655f798b57b4bbe85d6caf9d4cd712bd6e91c",
+    "corrected_environment_races": "go1.26.0 1.899s PASS",
+    "corrected_environment_linux_vet": [
+      "amd64",
+      "arm64"
+    ],
+    "tests_log_sha256_scope": "preceding 597 environment tests; corrected environment result separately recorded"
   },
   "required_actual_fixture": {
     "workflow": ".github/workflows/go-ordinary-queue.yml",
@@ -59,5 +65,11 @@
     "Full migration coverage/parity/resources/cost, exact production gates and rollout, real rollback window and runtime retirement"
   ],
   "production_changed": false,
-  "full_goal_active": true
+  "full_goal_active": true,
+  "first_actual_run": {
+    "source": "597f0e83945bc1054d24189c69a62268ed228d32",
+    "run": 37032223264,
+    "result": "failure both architectures at first Compose observation; prior real database/queue suite passed",
+    "correction": "Use HOME=/ and isolated fixed DOCKER_CONFIG instead of /root; distinguish command and JSON refusal phases. Version-only CI probes test the root-home hypothesis without release credentials. Fresh actual execution required; cause not yet independently proven."
+  }
 }

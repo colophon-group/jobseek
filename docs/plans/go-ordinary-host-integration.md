@@ -80,7 +80,12 @@ JSON can contain secrets and stay in memory. It performs no pull or mutation.
 Go 1.26 race tests and both Linux integration-tag vet checks pass. The existing
 disposable Linux CI harness now requires an actual cleared-environment Compose
 and image-inspect fixture using its already-pulled public PostgreSQL image; fresh
-execution is required. That fixture has synthetic crawler/browser identities
+execution is required. Initial run 37032223264 rejects its first Compose
+observation on both architectures after the database/queue suite passes. The
+observer now uses HOME=/ and an isolated fixed Docker config path, with separate
+command/JSON refusal labels; safe version-only probes test the root-home boundary.
+The underlying cause remains unproven until fresh execution. That fixture has
+synthetic crawler/browser identities
 and proves the command boundary only. This library is not yet wired into a
 production coordinator or a new installed-worker CLI command. It does not prove
 image source/binary identity, selected generations/specs, mounts, numeric users,

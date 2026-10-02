@@ -1,5 +1,19 @@
 # Native ordinary worker authority checkpoint
 
+## 2026-10-02: contain the first actual Compose-observation failure
+
+Observer source `597f0e839` run 37032223264 passes the real database/queue suite
+but rejects the first Compose observation on both architectures. It does not
+produce image admission. The corrected fixed command uses HOME=/ and an isolated
+Docker config path instead of depending on traversal of /root; command failures
+and malformed JSON now have distinct safe phase labels. Version-only probes in
+the existing disposable CI harness test that boundary without release credentials.
+Go 1.26 races (1.899s), both Linux vet checks and workflow audits pass. Fresh
+actual execution is required; the failure cause is not yet independently proven.
+Historical ecb restored-image and installed-file proofs below remain valid for
+their exact source. Production is unchanged and the full migration goal is active.
+
+
 ## 2026-10-02: historical legacy image verified; native image observations implemented
 
 Candidate runtime source `ecb21d62c4bd9939f417f8c71feea273c1c0765c`: full CI 37029119184, Linux 37029126684, installed 37029123534, historical
