@@ -93,7 +93,11 @@ func TestInstalledNativeColdB0ForwardPreparesAndRetainsExactManifest(t *testing.
 		go func() { done <- command.Wait() }()
 	}
 	startProducer()
-	t.Cleanup(func() { stopProducer(); _ = os.Remove(sentinel) })
+	t.Cleanup(func() {
+		stopProducer()
+		_ = os.Remove(sentinel)
+		_ = os.Remove(filepath.Join(filepath.Dir(b0producer.SocketPath), ".lifecycle-v1.lock"))
+	})
 	control := b0producer.NewClient()
 	deadline := time.Now().Add(6 * time.Second)
 	for {

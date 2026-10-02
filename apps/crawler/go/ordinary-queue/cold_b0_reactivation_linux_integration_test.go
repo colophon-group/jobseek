@@ -35,7 +35,7 @@ func TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR(t *testing.T) 
 		}
 	}
 	metadata := `{"scraper_type":"json-ld","scraper_config":{"browser_backend":"lightpanda","render":true,"routing_revision":"go-b0-1","timeout":5000,"wait":"load","wait_fallback":null}}`
-	p, request, _, receipt := reactivationFixtureWithSource(t, true, metadata, source)
+	p, request, _, receipt := reactivationFixtureBootstrap(t, true, metadata, source, false)
 	ctx := context.Background()
 	ordinary, err := InspectColdOrdinaryRestorationPlan(ctx, p.f.observer, request.OrdinaryRestorationPlanSHA256, source)
 	if err != nil {
@@ -56,6 +56,104 @@ func TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR(t *testing.T) 
 		"REDIS_URL=unix://" + socket, "LIGHTPANDA_B0_ROLLBACK_PLAN_DIGEST=" + strings.Repeat("a", 64),
 		"LIGHTPANDA_B0_SOURCE_RECEIPT_SHA256=" + strings.Repeat("b", 64),
 	}
+	// This fixture's release/quiescence labels are synthetic. The host must
+	// independently verify its immutable release and actual ADR006 receipt.
+	directory, err := os.MkdirTemp("/tmp", "jobseek-b0-reactivation-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(directory) })
+	if err := os.Chmod(directory, 0750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(directory, 0, 10001); err != nil {
+		t.Fatal(err)
+	}
+	decision := map[string]any{
+		"all_writers_receipt_sha256": strings.Repeat("c", 64), "cohort": "c1",
+		"lua_sha256": coldForwardBytesDigest(p.target.lua), "namespace": p.target.document.Namespace,
+		"ordinary_restoration_plan_sha256": request.OrdinaryRestorationPlanSHA256,
+		"reversal_sha256":                  ordinary.Request().ReversalSHA256, "routing_epoch": r,
+		"runtime_image": "ghcr.io/colophon-group/jobseek-crawler@sha256:" + strings.Repeat("d", 64),
+		"schema":        "jobseek.lightpanda.producer-cold-initialization/v1", "shard_id": "lightpanda-b0",
+		"source_epoch": p.plan.Epoch(), "source_revision": source,
+	}
+	body, err := json.Marshal(decision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := coldForwardBytesDigest(string(body))
+	decisionPath := filepath.Join(directory, "decision.json")
+	if err := os.WriteFile(decisionPath, body, 0640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(decisionPath, 0, 10001); err != nil {
+		t.Fatal(err)
+	}
+	prefix := filepath.Join(filepath.Dir(b0producer.SocketPath), ".cold-initialization-v1-"+digest)
+	t.Cleanup(func() {
+		for _, path := range []string{prefix + ".request", prefix + ".complete", filepath.Join(filepath.Dir(b0producer.SocketPath), ".lifecycle-v1.lock")} {
+			_ = os.Remove(path)
+		}
+	})
+	initialize := func(sha string, accepted bool) {
+		t.Helper()
+		cmd := exec.Command(producerBinary, "producer", "--initialize-cold", decisionPath, sha)
+		cmd.Env = producerEnv
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 10001, Gid: 10001, NoSetGroups: true}}
+		output, err := cmd.CombinedOutput()
+		if accepted && (err != nil || len(output) != 0) {
+			t.Fatalf("actual cold initializer failed: %s", output)
+		}
+		if !accepted && err == nil {
+			t.Fatal("cold initializer accepted wrong decision")
+		}
+	}
+	beforeInit, canonicalInit := forwardRedisSnapshot(t, p.f.client), coldB0CanonicalSnapshot(t, p)
+	initialize(strings.Repeat("f", 64), false)
+	if !reflect.DeepEqual(beforeInit, forwardRedisSnapshot(t, p.f.client)) {
+		t.Fatal("wrong decision changed Redis")
+	}
+	for _, drift := range []struct {
+		key   string
+		value any
+	}{
+		{"source_revision", strings.Repeat("f", 40)}, {"cohort", "cdom"}, {"routing_epoch", r + 1},
+		{"lua_sha256", strings.Repeat("f", 64)}, {"runtime_image", "latest"},
+	} {
+		original := decision[drift.key]
+		decision[drift.key] = drift.value
+		changed, err := json.Marshal(decision)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(decisionPath, changed, 0640); err != nil {
+			t.Fatal(err)
+		}
+		initialize(coldForwardBytesDigest(string(changed)), false)
+		decision[drift.key] = original
+		if !reflect.DeepEqual(beforeInit, forwardRedisSnapshot(t, p.f.client)) {
+			t.Fatal("rehashed initializer drift changed Redis", drift.key)
+		}
+	}
+	if err := os.WriteFile(decisionPath, body, 0640); err != nil {
+		t.Fatal(err)
+	}
+	initialize(digest, true)
+	initialized := forwardRedisSnapshot(t, p.f.client)
+	initialize(digest, true)
+	if !reflect.DeepEqual(initialized, forwardRedisSnapshot(t, p.f.client)) || canonicalInit != coldB0CanonicalSnapshot(t, p) {
+		t.Fatal("initializer retry changed canonical data")
+	}
+	// Completion is saved before serving or task transfer. Reload actual RDB.
+	restartPublicationRedisWithoutSave(t, p.f.client)
+	if err := os.Chown(socket, 10001, 10001); err != nil {
+		t.Fatal(err)
+	}
+	initialize(digest, true)
+	if !reflect.DeepEqual(initialized, forwardRedisSnapshot(t, p.f.client)) {
+		t.Fatal("cold initialization lost after RDB reload")
+	}
 	var producer *exec.Cmd
 	var done chan error
 	stop := func() {
@@ -71,6 +169,13 @@ func TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR(t *testing.T) 
 		t.Helper()
 		producer = exec.Command(producerBinary, "producer")
 		producer.Env = producerEnv
+		logPath := filepath.Join(directory, "producer-stderr.log")
+		logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer logFile.Close()
+		producer.Stderr = logFile
 		producer.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 10001, Gid: 10001, NoSetGroups: true}}
 		if err := producer.Start(); err != nil {
 			producer = nil
@@ -84,13 +189,14 @@ func TestInstalledNativeColdB0ReactivationUsesRetainedRollbackAtR(t *testing.T) 
 				return
 			}
 			if time.Now().After(deadline) {
-				t.Fatal("actual R producer never became ready")
+				t.Fatal("actual R producer never became ready; private stderr retained at", logPath)
 			}
 			time.Sleep(25 * time.Millisecond)
 		}
 	}
 	t.Cleanup(func() { stop(); _ = os.Remove(sentinel) })
 	start()
+	initialize(digest, false) // serving and cold initialization cannot overlap.
 	plan, err := BuildColdB0ReactivationPlan(ctx, p.f.observer, p.f.client, control, request, p.target, receipt)
 	if err != nil {
 		t.Fatal("actual authenticated producer reactivation preview failed", err)

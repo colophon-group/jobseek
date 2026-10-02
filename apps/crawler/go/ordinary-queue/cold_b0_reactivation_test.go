@@ -56,6 +56,10 @@ func reactivationFixture(t *testing.T, native bool) (publicationFixture, ColdB0R
 }
 
 func reactivationFixtureWithSource(t *testing.T, native bool, metadata, source string) (publicationFixture, ColdB0ReactivationRequest, *forwardLuaControl, string) {
+	return reactivationFixtureBootstrap(t, native, metadata, source, true)
+}
+
+func reactivationFixtureBootstrap(t *testing.T, native bool, metadata, source string, initialize bool) (publicationFixture, ColdB0ReactivationRequest, *forwardLuaControl, string) {
 	t.Helper()
 	ctx := context.Background()
 	receipt := ""
@@ -97,11 +101,13 @@ func reactivationFixtureWithSource(t *testing.T, native bool, metadata, source s
 	if err != nil || len(reply) != 12 || reply[0] != "accepted" {
 		t.Fatal("actual tombstone clear rejected", err, reply)
 	}
-	args = p.target.auditArguments(request.RetirementEpoch)
-	args[0] = "initialize_producer"
-	reply, err = p.f.client.redis.Eval(ctx, p.target.lua, p.target.keys(), args...).Slice()
-	if err != nil || len(reply) != 12 || reply[0] != "accepted" {
-		t.Fatal("actual R initialization rejected", err, reply)
+	if initialize {
+		args = p.target.auditArguments(request.RetirementEpoch)
+		args[0] = "initialize_producer"
+		reply, err = p.f.client.redis.Eval(ctx, p.target.lua, p.target.keys(), args...).Slice()
+		if err != nil || len(reply) != 12 || reply[0] != "accepted" {
+			t.Fatal("actual R initialization rejected", err, reply)
+		}
 	}
 	current := p
 	current.plan = &OwnershipPlan{document: ownershipDocument{Epoch: request.RetirementEpoch}}

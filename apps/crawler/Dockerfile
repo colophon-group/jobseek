@@ -7,8 +7,12 @@ COPY src/lua/lightpanda_b0_queue.lua src/lua/lightpanda_b0_queue.lua
 COPY go/publisher-policy/ go/publisher-policy/
 COPY go/lightpanda-b0-supervisor/ go/lightpanda-b0-supervisor/
 WORKDIR /workspace/apps/crawler/go/lightpanda-b0-supervisor
-RUN go test ./... \
-    && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+ARG CRAWLER_SOURCE_REVISION
+RUN test "${#CRAWLER_SOURCE_REVISION}" -eq 40 \
+    && case "$CRAWLER_SOURCE_REVISION" in *[!0-9a-f]*) exit 1 ;; esac \
+    && go test ./... \
+    && CGO_ENABLED=0 GOOS=linux go build -buildvcs=false -trimpath \
+       -ldflags="-s -w -X main.sourceRevision=${CRAWLER_SOURCE_REVISION}" \
        -o /out/lightpanda-b0-supervisor .
 
 # ── Inactive native Go Lightpanda B0 database executor ──────────────

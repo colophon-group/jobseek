@@ -7,6 +7,7 @@ on:
       - "apps/crawler/go/ordinary-worker/**"
       - "apps/crawler/go/greenhouse-monitor/**"
       - "apps/crawler/go/lightpanda-b0-executor/**"
+      - "apps/crawler/go/lightpanda-b0-supervisor/**"
       - "apps/crawler/go/job-enrichment/**"
       - "apps/crawler/go/dom-detail/**"
       - "apps/crawler/go/jsonld-detail/**"
@@ -143,7 +144,7 @@ jobs:
           worker_binary="${fixture_prefix}-worker"
           integration_binary="${fixture_prefix}.test"
           lua_fixture="${fixture_prefix}.lua"
-          (cd ../lightpanda-b0-supervisor && go build -o "$producer_binary" .)
+          (cd ../lightpanda-b0-supervisor && go build -buildvcs=false -ldflags="-X main.sourceRevision=${GITHUB_SHA}" -o "$producer_binary" .)
           (cd ../ordinary-worker && go build -buildvcs=false -ldflags="-X main.sourceRevision=${GITHUB_SHA}" -o "$worker_binary" ./cmd/live)
           go test -race -c -tags=integration -o "$integration_binary" .
           chmod 0755 "$producer_binary" "$worker_binary" "$integration_binary"
