@@ -1,0 +1,95 @@
+{
+  "schema": "jobseek.migration.production-checkpoint/v1",
+  "observed_at": "2026-10-03T08:35:02.269646+00:00",
+  "crawler_version": "0.13.903",
+  "source_revision": "b026cc597486b4d39831b93a85e06bcda1d9f04c",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10220",
+  "deployment": {
+    "url": "https://github.com/colophon-group/jobseek/actions/runs/37108784568",
+    "conclusion": "success",
+    "promotion": "success"
+  },
+  "images": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:dc0e6b73c9dc278e776cc2902efb7211935aa1bd6a69912430b71d09fdf0ec7a",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:8a3fee63525d1d8cbbf6e41e8def284329c75a0987d745fb834c59729a8e47d9"
+  },
+  "change": [
+    "Forward deployment registry sync invokes Go directly",
+    "Compatible normal CSV publication invokes Go directly"
+  ],
+  "production_sync_events": [
+    {
+      "time": "2026-10-03T08:24:58.977990152Z",
+      "msg": "sync.registry.local_committed",
+      "engine": "go",
+      "boards": 7885,
+      "resolved_misses": 0
+    },
+    {
+      "time": "2026-10-03T08:25:01.095955174Z",
+      "msg": "sync.boards.redis_applied",
+      "engine": "go",
+      "redis_enqueued": 7885,
+      "redis_orphans_removed": 133
+    },
+    {
+      "time": "2026-10-03T08:25:51.365533672Z",
+      "msg": "sync.complete",
+      "engine": "go",
+      "companies": 6019,
+      "boards": 7885
+    }
+  ],
+  "supported_cold_rollback": {
+    "source_epoch": "145",
+    "ready_restored": 22,
+    "terminal_dropped": 1,
+    "write_fences_remaining": 0,
+    "exit_code": 0
+  },
+  "selector_change": {
+    "exact_selector_count": 25,
+    "clear_and_stage_under_mutation_lock": true,
+    "stage_bound_to_promoted_revision": true
+  },
+  "supported_reactivation": {
+    "cohort": "cdom",
+    "routing_epoch": "147",
+    "plan_digest": "d8325eb38fd651d10fff502027e4dd4ddd1e8407e491a30231bd5c95e8d93642",
+    "receipt_sha256": "729e180c037cd61f083e94734450a70d9970392cc90d6b5a7995d3657b53473c",
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204
+    },
+    "native_cohort_metrics": [
+      "jobseek_lightpanda_b0_queue_ready 22",
+      "jobseek_lightpanda_b0_queue_inflight 0",
+      "jobseek_lightpanda_b0_queue_dead 0",
+      "jobseek_lightpanda_b0_render_total{outcome=\"success\"} 0",
+      "jobseek_lightpanda_b0_render_total{outcome=\"failure\"} 0",
+      "jobseek_lightpanda_b0_executor_total{outcome=\"committed\"} 0",
+      "jobseek_lightpanda_b0_executor_total{outcome=\"failure\"} 0"
+    ]
+  },
+  "validation": {
+    "required_ci": 37107643691,
+    "crawler_deploy_gate": 37107643722,
+    "installed_runtime_contracts": 37107643660,
+    "focused_tests_passed": 62,
+    "private_registry_race_tests": "UTF-8 PostgreSQL and Unix Redis, actual repository CSVs; no skips"
+  },
+  "limits": [
+    "No ordinary native owners added by this slice",
+    "Normal data-only production publication not newly observed",
+    "Initial naturally scheduled native executor commit count was zero",
+    "Full enabled-profile execution, output/freshness/queue/cost parity and Python retirement remain incomplete",
+    "Historical image bootstrap/recovery/rollback retain their prior CLI"
+  ],
+  "next_delivery": "Connect and deploy the existing Greenhouse native worker using existing supported ownership, quiesced release and reversal code; defer unwired completion fixture expansion",
+  "full_migration_goal": "active"
+}

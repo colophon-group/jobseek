@@ -1,27 +1,65 @@
 # Go and Lightpanda migration continuation plan
 
-Current candidate (2026-10-03): forward deployment and compatible CSV
-publication call `go-typesense-exporter --sync-registry` directly, removing
-Python from these two operational entrypoints. They use the same existing Go
-transaction, queue publication and Typesense implementation, immutable image,
-committed environment and read-only data mount. The exact runtime-contract gate
-still precedes CSV publication. Historical-image bootstrap, publication recovery
-and full rollback retain their prior supported CLI until those rollback targets
-expire; this is a temporary runtime Python dependency, not completed retirement.
+## Current delivery and next work — 2026-10-03
 
-Local deployment/publication/rollback and registry bridge checks pass (62 tests).
-Private UTF-8 PostgreSQL/Unix Redis registry races pass, including actual repository
-CSV planning, durable identities, failed/ambiguous commit publication refusal and
-end-to-end queue effects. Installed CI now calls the native entrypoint for
-read-only mounted dry-run and missing-mount refusal. Production deployment and
-natural runtime execution of this candidate are not yet verified.
+Crawler v0.13.903, source `b026cc597486b4d39831b93a85e06bcda1d9f04c`,
+is promoted in production. [PR #10220](https://github.com/colophon-group/jobseek/pull/10220)
+removed the Python launcher from forward deployment registry sync and compatible
+normal CSV publication. Both now call `go-typesense-exporter --sync-registry`
+directly with the existing transaction, publication implementation, immutable
+image, committed environment and read-only data mount. The CSV runtime-contract
+gate remains. Historical bootstrap/recovery and full rollback retain their
+supported prior-image CLI until those rollback targets expire.
 
-Delivery priority remains native worker deployment and enabled-profile execution
-coverage, followed by removal of mandatory startup/deployment/maintenance Python
-consumers. Stop expanding recovery fixtures without a named production failure
-or missing acceptance check. Preserve exclusive ownership, complete quiesced
-rollback, deployment holds and the active-B0 guard. Existing ordinary-worker
-PR #10210 remains a separate draft; full migration remains active.
+[Deployment 37108784568](https://github.com/colophon-group/jobseek/actions/runs/37108784568)
+completed including promotion. Actual Go sync committed and scheduled all 7,885
+enabled boards and completed publication for 6,019 companies. Live source/image
+identities agree across the environment, selected release and success marker.
+Supported `cdom` rollback at epoch 145 restored 22 ready tasks, dropped one terminal
+task and left zero write fences. After clearing/restaging the 25 exact selectors
+under the mutation lock, supported activation restored `cdom` at epoch 147.
+Worker, browser, exporter, drain and native claimant HTTP health passed; the
+initial cohort snapshot had 22 ready, zero inflight/dead tasks and zero new native
+commits. This slice removes two Python launchers; it adds no ordinary native
+owners and does not establish full-service freshness or cost parity.
+See the [portable production evidence](evidence/go-registry-native-entrypoints-production-2026-10-03.json).
+
+Required CI and the actual Crawler Deploy Gate passed before exact-head merge.
+The changed deployment/publication/rollback contracts passed 62 focused tests;
+private UTF-8 PostgreSQL/Unix Redis registry races and installed mounted dry-run /
+missing-mount refusal also passed. Normal CSV publication has installed and host
+contract evidence; a separate natural production data-only publication has not
+yet been observed.
+
+Recovery fixture expansion has taken too much effort while production ordinary
+and browser workers remain Python. Deliver in this order:
+
+1. Connect and deploy the existing `greenhouse.token-skip/v1` native worker.
+   The missing production connection is the host driver around existing
+   `WithHostMutationScope`, `WithHostQuiescence`, selected Redis and cold ownership
+   operations, followed by release selection, native Compose startup/health and
+   complete supported reversal. Reuse that code and the deployed release
+   contract. Foundation PR #10207 and worker PR #10210 remain draft. Correct and
+   rerun the existing installed fixture's selected-client baseline failure;
+   the local correction is not installed evidence. Defer the unwired completion
+   fixture rather than extending its synthetic graph.
+2. Connect already implemented Go provider/enrichment routes to native
+   claim/fetch/enrich/persist/reschedule execution for remaining enabled effective
+   profiles. The fresh production inventory is 8,019 total / 7,885 enabled boards,
+   including 522 with browser flags; reconcile effective configs and queue routes
+   before claiming coverage. Preserve every enabled board throughout migration.
+3. Replace mandatory worker/browser startup, Python healthchecks, migration and
+   provider-repair commands, cutover and scheduled maintenance consumers. Remove
+   production Python/Playwright/Chromium after coverage, canonical effects,
+   publisher policy, freshness, queue conservation, comparable whole-service
+   cost, supported rollback and the observation window pass. Preserve useful
+   isolated offline Python tooling.
+
+Report deployed native owners, enabled profiles migrated and runtime Python
+consumers removed. Add a fixture only for a named production failure or missing
+acceptance check. Preserve exclusive ownership, deployment holds, the active-B0
+deployment guard and complete quiesced rollback. The full migration goal remains
+active; this current section supersedes historical next-action priorities below.
 
 
 Reviewed 2026-09-30 against `origin/main`
