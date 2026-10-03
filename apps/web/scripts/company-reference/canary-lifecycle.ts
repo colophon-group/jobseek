@@ -18,6 +18,28 @@ async function until(probe: () => Promise<boolean>, code: string) {
   throw Object.assign(new Error(code), { code });
 }
 
+/** Bounded diagnostic reads cancel the sibling SELECT on every error path. */
+export async function readCanaryReadinessState(ownerPage: Page, sql: Sql, userId: string, id: string, expectedTitle: string): Promise<CanaryReadinessState> {
+  const query = sql`SELECT (w.title=${expectedTitle}) AS title_matches,
+    (SELECT count(*)::integer FROM watchlist_company wc WHERE wc.watchlist_id=w.id) AS membership_count,
+    COALESCE(w.filters->>'anyCompany', 'false') AS any_company
+    FROM watchlist w WHERE w.id=${id} AND w.user_id=${userId}`;
+  const timer = setTimeout(() => { try { query.cancel(); } catch { /* Diagnostics cannot replace the original failure. */ } }, 1_800);
+  try {
+    const [rows, response] = await Promise.all([query, ownerPage.context().request.get("/api/auth/get-session", { maxRedirects: 0, timeout: 1_800 })]);
+    const text = await response.text();
+    const session = text.length <= 65_536 ? JSON.parse(text) as { user?: { id?: unknown } } : null;
+    return { persistedTitleMatches: rows[0]?.title_matches ?? null, companyMembershipCount: rows[0]?.membership_count ?? null,
+      anyCompany: rows[0]?.any_company === "true" ? true : rows[0]?.any_company === "false" ? false : null,
+      sessionStatus: response.status(), sessionIdentityMatches: session ? session.user?.id === userId : null };
+  } catch (error) {
+    // Promise.all does not cancel a SELECT when its sibling session GET fails.
+    // Release the sole diagnostic connection before cleanup uses it.
+    try { query.cancel(); } catch { /* Preserve the original diagnostic error. */ }
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+
 /** PPR may retain a hidden auth subtree: require one visible complete form, never an arbitrary first match. */
 export async function signInCanaryAccount(page: Page, email: string, password: string, onPhase?: (phase: string) => void) {
   onPhase?.("canary_clone_sign_in_form");

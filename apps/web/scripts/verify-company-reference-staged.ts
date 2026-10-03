@@ -4,10 +4,10 @@ import { parse } from "dotenv";
 import postgres from "postgres";
 import { Client } from "typesense";
 import { chromium, type Page } from "playwright";
-import { exerciseCanaryLifecycle, restoreCanaryStar, requireCanaryCleanup, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
+import { exerciseCanaryLifecycle, restoreCanaryStar, requireCanaryCleanup, readCanaryReadinessState, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
 import { openCanaryAccess, resolveCanaryTarget, reattestPublicCanaryIdentity, validateCanaryDeploymentIdentity, type CanaryDeploymentIdentity } from "./company-reference/canary-target";
 import { selectCanaryCompany, canaryFailureKind } from "./company-reference/canary-picker";
-import { navigateCanary, waitForCanaryOwnerShell, type CanaryOwnerEvidence, type CanaryReadinessState } from "./company-reference/canary-navigation";
+import { navigateCanary, waitForCanaryOwnerShell, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
 import { logExternalError } from "../src/lib/safe-external-error";
 
 let contract = "company_reference_staged_canary";
@@ -46,21 +46,7 @@ async function main() {
   let lifecycleState: CanaryLifecycleState | undefined;
   let lifecycleProof: Awaited<ReturnType<typeof exerciseCanaryLifecycle>> | undefined;
   const onEvidence = (evidence: CanaryOwnerEvidence) => console.log(JSON.stringify({ contract, outcome: "readiness", ...evidence }));
-  async function readReadinessState(ownerPage: Page, id: string, expectedTitle: string): Promise<CanaryReadinessState> {
-    const query = sql`SELECT (w.title=${expectedTitle}) AS title_matches,
-      (SELECT count(*)::integer FROM watchlist_company wc WHERE wc.watchlist_id=w.id) AS membership_count,
-      COALESCE(w.filters->>'anyCompany', 'false') AS any_company
-      FROM watchlist w WHERE w.id=${id} AND w.user_id=${userId}`;
-    const timer = setTimeout(() => { try { query.cancel(); } catch { /* Diagnostics cannot replace the original failure. */ } }, 1_800);
-    try {
-      const [rows, response] = await Promise.all([query, ownerPage.context().request.get("/api/auth/get-session", { maxRedirects: 0, timeout: 1_800 })]);
-      const text = await response.text();
-      const session = text.length <= 65_536 ? JSON.parse(text) as { user?: { id?: unknown } } : null;
-      return { persistedTitleMatches: rows[0]?.title_matches ?? null, companyMembershipCount: rows[0]?.membership_count ?? null,
-        anyCompany: rows[0]?.any_company === "true" ? true : rows[0]?.any_company === "false" ? false : null,
-        sessionStatus: response.status(), sessionIdentityMatches: session ? session.user?.id === userId : null };
-    } finally { clearTimeout(timer); }
-  }
+  const readReadinessState = (ownerPage: Page, id: string, expectedTitle: string) => readCanaryReadinessState(ownerPage, sql, userId, id, expectedTitle);
   const title = `company-reference-canary:${randomUUID()}`;
   let failure: unknown; let failurePhase: string | undefined;
   let sessionMayExist = false;

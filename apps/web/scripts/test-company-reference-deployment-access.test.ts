@@ -1,10 +1,11 @@
 import { createServer, type Server } from "node:http";
 import { once } from "node:events";
 import type { AddressInfo } from "node:net";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
+import type { Sql } from "postgres";
 import { expect, test } from "vitest";
 import { navigateCanary, waitForCanaryOwnerShell, diagnoseCanaryOwnerReload, canaryBrowserError, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
-import { signInCanaryAccount, requireCanaryCleanup } from "./company-reference/canary-lifecycle";
+import { signInCanaryAccount, requireCanaryCleanup, readCanaryReadinessState } from "./company-reference/canary-lifecycle";
 import { selectCanaryCompany, canaryCompanyRow } from "./company-reference/canary-picker";
 import { bootstrapDeploymentAccess } from "./company-reference/deployment-access";
 
@@ -261,4 +262,18 @@ test("passive request evidence is capped and flags truncation without changing r
     expect(evidence[0].requests).toHaveLength(8);expect(evidence[0].evidenceTruncated).toBe(true);expect(evidence[0].readiness).toBe('ready');
     expect(JSON.stringify(evidence)).not.toMatch(/PRIVATE_|11111111|127.0.0.1/);
   }finally{await browser.close();await close(server);}
+});
+
+
+test.each([false, true])("early session failure cancels pending SELECT and preserves the original error (cancel throws=%s)", async cancelThrows => {
+  let outstanding = true; let cancelled = 0; let rejectSelect!: (error: Error) => void;
+  const query = Object.assign(new Promise<never>((_, reject) => { rejectSelect = reject; }), {
+    cancel: () => { cancelled++; outstanding = false; rejectSelect(new Error("select_cancelled")); if (cancelThrows) throw new Error("cancel_transport_failure"); },
+  });
+  const sql = (() => query) as unknown as Sql;
+  const sessionFailure = new Error("session_transport_failed");
+  const page = { context: () => ({ request: { get: async () => { throw sessionFailure; } } }) } as unknown as Page;
+  await expect(readCanaryReadinessState(page, sql, "private-user", "private-watchlist", privateTitle)).rejects.toBe(sessionFailure);
+  expect(cancelled).toBe(1);
+  expect(outstanding).toBe(false);
 });
