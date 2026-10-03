@@ -525,3 +525,36 @@ func TestColdB0ForwardCanonicalRequestAndNumericBounds(t *testing.T) {
 		}
 	}
 }
+
+// A listening producer is not initialized Redis authority. Reproduce the
+// installed fixture's empty-source refusal with the exact reviewed scripts;
+// the opaque preparation control cannot supply or repair the missing owner.
+func TestRealColdB0ForwardEmptyAuthorityRequiresReviewedInitialization(t *testing.T) {
+	p := realPublicationSeed(t, "{}", strings.Repeat("a", 40), false)
+	r := ColdB0ForwardRequest{p.intent, p.spec.SourceRevision, p.plan.Epoch(), p.plan.digest}
+	control := &forwardFixtureControl{p: p}
+	forwardFixtureLegacyPosting(t, p, true, "350.0001", true)
+	forwardFixtureLegacyPosting(t, p, false, "1925089445.123001", true)
+	ctx := context.Background()
+	before, canonical := forwardRedisSnapshot(t, p.f.client), coldB0CanonicalSnapshot(t, p)
+	if plan, err := buildFixtureForward(t, p, r, control); !errors.Is(err, ErrAuthorityLost) || plan != nil || control.prepareCalls != 0 {
+		t.Fatal("uninitialized producer-owned queue granted forward preparation", err)
+	}
+	if !reflect.DeepEqual(before, forwardRedisSnapshot(t, p.f.client)) || canonical != coldB0CanonicalSnapshot(t, p) {
+		t.Fatal("missing owner refusal repaired queue or changed SQL")
+	}
+	args := p.target.auditArguments(p.plan.Epoch())
+	args[0] = "initialize_producer"
+	if reply, err := p.f.client.redis.Eval(ctx, p.target.lua, p.target.keys(), args...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" {
+		t.Fatal("reviewed empty queue initialization", err)
+	}
+	initialized := forwardRedisSnapshot(t, p.f.client)
+	plan, err := buildFixtureForward(t, p, r, control)
+	if err != nil || len(plan.document.Tasks) != 2 || plan.document.LifetimeOccupancy != 0 || plan.document.NewRecordCount != 2 || plan.document.ProjectedOccupancy != 2 {
+		t.Fatal("exact initialized empty source did not prepare", err)
+	}
+	if !reflect.DeepEqual(initialized, forwardRedisSnapshot(t, p.f.client)) || canonical != coldB0CanonicalSnapshot(t, p) {
+		t.Fatal("initialized read-only preparation changed queue or SQL")
+	}
+	t.Log("actual private PostgreSQL and reviewed B0 Lua refuse empty source without producer owner before preparation; exact reviewed initialization permits read-only two-task preview, canonical and complete Redis values conserved; opaque preparation control only, installed producer admission unproven")
+}

@@ -143,7 +143,16 @@ func (s *hostStore) read(name string, pendingLink bool) ([]byte, error) {
 }
 
 func (s *hostStore) readLimit(name string, pendingLink bool, limit int64) ([]byte, error) {
-	if limit < 1 || limit > 48<<20 || filepath.Base(name) != name || name == "." || name == ".." || s.verify() != nil {
+	if limit > 48<<20 {
+		return nil, errHostPreflight
+	}
+	return s.readColdPhaseLimit(name, pendingLink, limit)
+}
+
+// Reactivation embeds the supported 64 MiB native plan. Only cold phase
+// callers opt into the larger envelope; general evidence keeps its old cap.
+func (s *hostStore) readColdPhaseLimit(name string, pendingLink bool, limit int64) ([]byte, error) {
+	if limit < 1 || limit > 96<<20 || filepath.Base(name) != name || name == "." || name == ".." || s.verify() != nil {
 		return nil, errHostPreflight
 	}
 	before, err := s.root.Lstat(name)
@@ -183,9 +192,13 @@ func (s *hostStore) finishPublication(name string) error {
 		if err != nil {
 			return errHostPreflight
 		}
-		entries, err := dir.ReadDir(257)
+		// A supported 64-event cold history retains six journal objects per
+		// event plus plans and fixed release evidence. Keep recovery bounded,
+		// while allowing that history to exceed the former 256-file ceiling.
+		const publicationDirectoryLimit = 1024
+		entries, err := dir.ReadDir(publicationDirectoryLimit + 1)
 		dir.Close()
-		if (err != nil && err != io.EOF) || len(entries) > 256 {
+		if (err != nil && err != io.EOF) || len(entries) > publicationDirectoryLimit {
 			return errHostPreflight
 		}
 		found := ""
@@ -239,10 +252,17 @@ func (s *hostStore) retain(name string, body []byte, hook func(string) error) er
 // Only explicitly bounded journal result/plan callers need larger files. The
 // general host request and evidence store keeps its existing 8 MiB ceiling.
 func (s *hostStore) retainLimit(name string, body []byte, hook func(string) error, limit int64) error {
-	if limit < 1 || limit > 48<<20 || len(body) == 0 || int64(len(body)) > limit {
+	if limit > 48<<20 {
 		return errHostPreflight
 	}
-	if existing, err := s.readLimit(name, true, limit); err == nil {
+	return s.retainColdPhaseLimit(name, body, hook, limit)
+}
+
+func (s *hostStore) retainColdPhaseLimit(name string, body []byte, hook func(string) error, limit int64) error {
+	if limit < 1 || limit > 96<<20 || len(body) == 0 || int64(len(body)) > limit {
+		return errHostPreflight
+	}
+	if existing, err := s.readColdPhaseLimit(name, true, limit); err == nil {
 		if !bytes.Equal(existing, body) {
 			return errHostPreflight
 		}
@@ -271,7 +291,7 @@ func (s *hostStore) retainLimit(name string, body []byte, hook func(string) erro
 		if !errors.Is(err, fs.ErrExist) {
 			return errHostPreflight
 		}
-		existing, err := s.readLimit(name, true, limit)
+		existing, err := s.readColdPhaseLimit(name, true, limit)
 		if err != nil || !bytes.Equal(existing, body) {
 			return errHostPreflight
 		}

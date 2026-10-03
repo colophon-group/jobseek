@@ -43,6 +43,11 @@ type HostColdPhaseRequest struct {
 	B0RollbackPlanSHA256          string                   `json:"b0_rollback_plan_sha256,omitempty"`
 	OrdinaryRequestSHA256         string                   `json:"ordinary_request_sha256,omitempty"`
 	OrdinaryRestorationPlanSHA256 string                   `json:"ordinary_restoration_plan_sha256,omitempty"`
+	PriorB0ReceiptSHA256          string                   `json:"prior_b0_receipt_sha256,omitempty"`
+	B0ReactivationPlanSHA256      string                   `json:"b0_reactivation_plan_sha256,omitempty"`
+	B0ReactivationReceiptSHA256   string                   `json:"b0_reactivation_receipt_sha256,omitempty"`
+	FinalizationRequestSHA256     string                   `json:"finalization_request_sha256,omitempty"`
+	FinalizationPlanSHA256        string                   `json:"finalization_plan_sha256,omitempty"`
 }
 
 type HostColdPhaseResult struct {
@@ -168,7 +173,11 @@ func decodeHostColdPhase(body []byte, sha string, binding queue.HostColdSQLBindi
 			return r, errHostPreflight
 		}
 	default:
-		if hostColdRestorationOperation(r.Operation) {
+		if hostColdCompletionOperation(r.Operation) {
+			if validateHostColdCompletionRequest(r) != nil {
+				return r, errHostPreflight
+			}
+		} else if hostColdRestorationOperation(r.Operation) {
 			if validateHostColdRestorationRequest(r) != nil {
 				return r, errHostPreflight
 			}
@@ -183,7 +192,7 @@ func decodeHostColdPhase(body []byte, sha string, binding queue.HostColdSQLBindi
 	if !coldB0ForwardOperation(r.Operation) && !hostColdRetirementOperation(r.Operation) && (r.RoutingEpoch != 0 || r.PlanSHA256 != "" || r.ForwardRequestSHA256 != "" || r.ForwardPlanSHA256 != "" || r.ForwardReceiptSHA256 != "") {
 		return r, errHostPreflight
 	}
-	if !hostColdRetirementOperation(r.Operation) && (r.ReversalSHA256 != "" || r.RetirementEpoch != 0) || !hostColdRestorationOperation(r.Operation) && !hostColdRestorationInputsEmpty(r) {
+	if !hostColdRetirementOperation(r.Operation) && (r.ReversalSHA256 != "" || r.RetirementEpoch != 0) || !hostColdRestorationOperation(r.Operation) && !hostColdCompletionOperation(r.Operation) && !hostColdRestorationInputsEmpty(r) || !hostColdCompletionOperation(r.Operation) && !hostColdCompletionInputsEmpty(r) {
 		return r, errHostPreflight
 	}
 	return r, nil
@@ -197,7 +206,12 @@ type hostColdPhaseCompletion struct {
 }
 
 func (s *hostColdPhaseScope) readResult(requestSHA string, pending bool) (*HostColdPhaseResult, []byte, error) {
-	body, err := s.store.readLimit("cold-result-"+requestSHA+".json", pending, 48<<20)
+	request, err := s.store.read("cold-request-"+requestSHA+".json", false)
+	rq, decodeErr := decodeHostColdPhase(request, requestSHA, s.info.Binding)
+	if err != nil || decodeErr != nil {
+		return nil, nil, errHostPreflight
+	}
+	body, err := s.store.readColdPhaseLimit("cold-result-"+requestSHA+".json", pending, hostColdResultLimit(rq.Operation))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -230,7 +244,11 @@ func (s *hostColdPhaseScope) predecessor(r HostColdPhaseRequest) (*HostColdPhase
 			return nil, nil, errHostPreflight
 		}
 	default:
-		if hostColdRestorationOperation(r.Operation) {
+		if hostColdCompletionOperation(r.Operation) {
+			if checkHostColdCompletionLink(r, *prior, parent) != nil || s.retirementAncestry(r) != nil {
+				return nil, nil, errHostPreflight
+			}
+		} else if hostColdRestorationOperation(r.Operation) {
 			if s.restorationPredecessor(r, *prior, parent) != nil {
 				return nil, nil, errHostPreflight
 			}
@@ -306,6 +324,12 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		env["ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256"] = r.B0RollbackPlanSHA256
 		env["ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256"] = r.OrdinaryRestorationPlanSHA256
 	}
+	if hostColdCompletionOperation(r.Operation) {
+		env["ORDINARY_COLD_RETIREMENT_EPOCH"] = strconv.FormatInt(r.RetirementEpoch, 10)
+		env["ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256"] = r.OrdinaryRestorationPlanSHA256
+		env["ORDINARY_COLD_B0_REACTIVATION_PLAN_SHA256"] = r.B0ReactivationPlanSHA256
+		env["ORDINARY_COLD_FINALIZATION_PLAN_SHA256"] = r.FinalizationPlanSHA256
+	}
 	for _, input := range []struct {
 		hash, fileKey, hashKey string
 		limit                  int
@@ -317,6 +341,8 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		{r.ReversalSHA256, "ORDINARY_COLD_REVERSAL_FILE", "ORDINARY_COLD_REVERSAL_SHA256", 4096},
 		{r.RestoreRequestSHA256, "ORDINARY_COLD_B0_RESTORE_REQUEST_FILE", "ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256", 4096},
 		{r.OrdinaryRequestSHA256, "ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_FILE", "ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_SHA256", 4096},
+		{r.PriorB0ReceiptSHA256, "ORDINARY_COLD_PRIOR_B0_RECEIPT_FILE", "ORDINARY_COLD_PRIOR_B0_RECEIPT_SHA256", 4096},
+		{r.FinalizationRequestSHA256, "ORDINARY_COLD_FINALIZATION_REQUEST_FILE", "ORDINARY_COLD_FINALIZATION_REQUEST_SHA256", 4096},
 	} {
 		if input.hash == "" {
 			continue
@@ -348,6 +374,9 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 			return ColdAdminConfig{}, nil, errHostPreflight
 		}
 		if coldB0RestorationOperation(r.Operation) && s.checkRestorationSourceReceipt(r, spec, inputs) != nil {
+			return ColdAdminConfig{}, nil, errHostPreflight
+		}
+		if hostColdCompletionOperation(r.Operation) && s.checkCompletionInputs(r, spec, inputs) != nil {
 			return ColdAdminConfig{}, nil, errHostPreflight
 		}
 	}
@@ -386,6 +415,9 @@ func validateHostColdPhaseResult(r HostColdPhaseRequest, result *HostColdPhaseRe
 			return errHostPreflight
 		}
 	default:
+		if hostColdCompletionOperation(r.Operation) {
+			return validateHostColdCompletionResult(r, n, inputs, parent)
+		}
 		if hostColdRestorationOperation(r.Operation) {
 			return validateHostColdRestorationResult(r, n, inputs, parent)
 		}
@@ -520,8 +552,20 @@ func runHostColdPhase(ctx context.Context, pool *pgxpool.Pool, requestSHA string
 				return nil, errHostPreflight
 			}
 		}
+		for _, plan := range []struct {
+			sha   string
+			body  []byte
+			limit int64
+		}{
+			{result.Native.B0ReactivationPlanSHA256, result.Native.B0ReactivationPlan, 64 << 20},
+			{result.Native.OrdinaryFinalizationPlanSHA256, result.Native.OrdinaryFinalizationPlan, 32 << 20},
+		} {
+			if len(plan.body) != 0 && s.store.retainColdPhaseLimit("cold-input-"+plan.sha, plan.body, nil, plan.limit) != nil {
+				return nil, errHostPreflight
+			}
+		}
 	}
-	if guard() != nil || s.store.retainLimit("cold-result-"+requestSHA+".json", resultBody, hook, 48<<20) != nil || guard() != nil {
+	if guard() != nil || s.store.retainColdPhaseLimit("cold-result-"+requestSHA+".json", resultBody, hook, hostColdResultLimit(r.Operation)) != nil || guard() != nil {
 		return nil, errHostPreflight
 	}
 	if hook != nil && hook("phase_result_retained") != nil {

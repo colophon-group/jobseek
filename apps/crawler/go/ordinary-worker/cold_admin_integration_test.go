@@ -1051,9 +1051,12 @@ func coldSnapshotChangedKeys(before, after map[string]string) string {
 }
 
 func seedExecutableColdB0(t *testing.T, f nativePipelineFixture, board string, epoch int64, lua []byte) {
+	seedExecutableColdB0InNamespace(t, f, board, epoch, lua, "ordinary-executable-joint")
+}
+
+func seedExecutableColdB0InNamespace(t *testing.T, f nativePipelineFixture, board string, epoch int64, lua []byte, namespace string) string {
 	t.Helper()
 	ctx := context.Background()
-	namespace := "ordinary-executable-joint"
 	keys := []string{}
 	for _, suffix := range []string{"route", "records", "ready", "inflight", "dead", "terminal", "origin-holders"} {
 		keys = append(keys, "lightpanda-b0:{"+namespace+"}:"+suffix)
@@ -1092,6 +1095,7 @@ func seedExecutableColdB0(t *testing.T, f nativePipelineFixture, board string, e
  VALUES($1::uuid,$2::uuid,$3::uuid,$4,-9223372036854775808,'2031-01-02 03:04:05.100001+00')`, envelope["task_id"], f.company, board, envelope["source_url"]); err != nil {
 		t.Fatal("canonical native B0 posting unavailable", err)
 	}
+	return envelope["task_id"].(string)
 }
 
 func coldExecutableRedisSnapshot(t *testing.T, f nativePipelineFixture) map[string]string {

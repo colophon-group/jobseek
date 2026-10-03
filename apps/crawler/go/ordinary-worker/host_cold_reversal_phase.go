@@ -110,7 +110,11 @@ func (s *hostColdPhaseScope) retirementAncestry(r HostColdPhaseRequest) error {
 			return errHostPreflight
 		}
 		if result.Outcome == "completed" {
-			if hostColdRestorationOperation(prior.Operation) {
+			if hostColdCompletionOperation(prior.Operation) {
+				if checkHostColdCompletionLink(prior, *p, result) != nil {
+					return errHostPreflight
+				}
+			} else if hostColdRestorationOperation(prior.Operation) {
 				if checkHostColdRestorationLink(prior, *p, result) != nil {
 					return errHostPreflight
 				}

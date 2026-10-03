@@ -5,7 +5,9 @@ package worker
 import (
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"debug/buildinfo"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"os"
@@ -45,6 +47,7 @@ type hostForwardFixtureSeed struct {
 	Board    string                      `json:"board_id"`
 	Postings []hostForwardFixturePosting `json:"postings"`
 	Pruned   string                      `json:"pruned_posting_id"`
+	Terminal string                      `json:"terminal_posting_id"`
 }
 
 func seedHostForwardFixture(t *testing.T, ctx context.Context, f nativePipelineFixture) *hostForwardFixtureSeed {
@@ -59,12 +62,20 @@ func seedHostForwardFixture(t *testing.T, ctx context.Context, f nativePipelineF
 	}
 	s.Postings = []hostForwardFixturePosting{{fixtureID(t), true, "350.0001", 350001}, {fixtureID(t), false, "1925089445.123001", 1925089445124}}
 	s.Pruned = fixtureID(t)
-	for _, id := range []string{s.Postings[0].ID, s.Postings[1].ID, s.Pruned} {
+	s.Terminal = fixtureID(t)
+	for _, id := range []string{s.Postings[0].ID, s.Postings[1].ID, s.Pruned, s.Terminal} {
 		url := "https://jobs.example.test/é/" + id
 		if _, err := f.pg.Exec(ctx, `INSERT INTO job_posting(id,company_id,board_id,source_url,description_r2_hash,next_scrape_at) VALUES($1::uuid,$2::uuid,$3::uuid,$4,-9223372036854775808,'2031-01-02 03:04:05.100001+00')`, id, f.company, s.Board, url); err != nil {
 			t.Fatal("owned forward posting")
 		}
 		t.Cleanup(func() { _, _ = f.pg.Exec(context.Background(), "DELETE FROM job_posting WHERE id=$1::uuid", id) })
+	}
+	if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET is_active=false WHERE id=$1::uuid", s.Terminal); err != nil {
+		t.Fatal("owned inactive bootstrap posting")
+	}
+	config := hostForwardBootstrapConfig(s)
+	if f.r.HSet(ctx, "scrape:"+s.Terminal, config).Err() != nil || f.r.ZAdd(ctx, "ft_scrapes_browser:jobs.example.test", redis.Z{Member: s.Terminal, Score: 0}).Err() != nil {
+		t.Fatal("owned bootstrap legacy schedule")
 	}
 	for _, p := range s.Postings {
 		config := map[string]string{"domain": "jobs.example.test", "board_id": s.Board, "source_url": "https://jobs.example.test/é/" + p.ID, "description_r2_hash": "7", "scrape_step": "0"}
@@ -78,6 +89,61 @@ func seedHostForwardFixture(t *testing.T, ctx context.Context, f nativePipelineF
 		}
 	}
 	return s
+}
+
+func hostForwardBootstrapConfig(s *hostForwardFixtureSeed) map[string]string {
+	return map[string]string{"domain": "jobs.example.test", "board_id": s.Board, "source_url": "https://jobs.example.test/é/" + s.Terminal, "description_r2_hash": "7", "scrape_step": "0"}
+}
+
+// Opening the producer socket grants no queue authority. Bootstrap through its
+// actual preparation/activation path, then complete one owned inactive posting
+// using the reviewed lifecycle script. It remains terminal lifetime work while
+// the two active legacy postings enter the protected forward journal.
+func initializeHostForwardFixtureTerminal(t *testing.T, ctx context.Context, f nativePipelineFixture, seed *hostForwardFixtureSeed, epoch int64, lua []byte) map[string]any {
+	t.Helper()
+	control := b0producer.NewClient()
+	task := b0producer.Task{PostingID: seed.Terminal, Domain: "jobs.example.test", NextScrapeAtMS: 0, Config: hostForwardBootstrapConfig(seed), Browser: true, FirstTime: true, LegacyScheduleScore: "0"}
+	prepared, err := control.Prepare(ctx, task)
+	if err != nil || prepared.Outcome != "prepared" {
+		t.Fatal("actual native bootstrap preparation", err)
+	}
+	activated, err := control.Activate(ctx, task, prepared.PreparationDigest)
+	if err != nil || activated.Outcome != "activated" || !activated.Activated || activated.PayloadSHA256 != prepared.PayloadSHA256 {
+		t.Fatal("actual native bootstrap activation", err)
+	}
+	keys := []string{}
+	for _, suffix := range []string{"route", "records", "ready", "inflight", "dead", "terminal", "origin-holders"} {
+		keys = append(keys, "lightpanda-b0:{host-selected-redis}:"+suffix)
+	}
+	args := []any{"claim_next", "lightpanda-b0", strconv.FormatInt(epoch, 10), "go", "", "0", strconv.FormatInt(time.Now().UnixMilli(), 10), "600000", "0", "0", "", "", "", "64", "2.0", "", "0", "host-selected-redis", "", "0", "c1", 1, "0", "browser-use-careers"}
+	claim, err := f.r.Eval(ctx, string(lua), keys, args...).Slice()
+	if err != nil || len(claim) != 12 || claim[0] != "accepted" || claim[3] != seed.Terminal || claim[7] != prepared.PayloadSHA256 {
+		t.Fatal("owned activated bootstrap claim", err)
+	}
+	payload, ok := claim[8].(string)
+	if !ok || hostDigest([]byte(payload)) != prepared.PayloadSHA256 {
+		t.Fatal("owned bootstrap task bytes")
+	}
+	hash := sha1.Sum([]byte(payload))
+	args[0], args[4], args[5], args[6], args[11], args[12], args[16] = "complete", claim[3], claim[6], claim[4], claim[7], hex.EncodeToString(hash[:]), claim[5]
+	if reply, err := f.r.Eval(ctx, string(lua), keys, args...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" {
+		t.Fatal("owned bootstrap completion", err)
+	}
+	var active bool
+	if f.pg.QueryRow(ctx, "SELECT is_active FROM job_posting WHERE id=$1::uuid", seed.Terminal).Scan(&active) != nil || active {
+		t.Fatal("bootstrap posting must remain canonically inactive")
+	}
+	// The fixture owns this origin and has no other claimant. Remove its short
+	// bootstrap throttle before capturing the permanent forward source snapshot.
+	if f.r.HLen(ctx, keys[6]).Val() != 0 || f.r.ZCard(ctx, keys[3]).Val() != 0 || f.r.Del(ctx, "ratelimit:jobs.example.test").Err() != nil {
+		t.Fatal("owned bootstrap origin release")
+	}
+	record, err := f.r.HGet(ctx, keys[1], seed.Terminal).Result()
+	guard, e := f.r.HGet(ctx, "lightpanda-b0:legacy-guard", seed.Terminal).Result()
+	if err != nil || e != nil || !f.r.SIsMember(ctx, keys[5], seed.Terminal).Val() {
+		t.Fatal("owned terminal bootstrap retention")
+	}
+	return map[string]any{"posting_id": seed.Terminal, "preparation_sha256": prepared.PreparationDigest, "payload_sha256": prepared.PayloadSHA256, "terminal_record_json": record, "terminal_record_sha256": hostDigest([]byte(record)), "terminal_guard": guard, "actual_native_activation_and_reviewed_Lua_completion": true, "inactive_SQL_posting_and_canonical_rows_unchanged": true}
 }
 
 func startHostForwardInstalledProducer(t *testing.T, ctx context.Context, source, image, arch, selectedURL string, epoch int64, lua []byte) (map[string]any, func()) {
@@ -250,9 +316,13 @@ func validateHostForwardSeedPlan(t *testing.T, seed *hostForwardFixtureSeed, raw
 			Config map[string]string `json:"config"`
 			PGHash string            `json:"postgres_description_r2_hash"`
 		} `json:"tasks"`
-		Pruned []string `json:"unqueued_posting_ids"`
+		Pruned    []string `json:"unqueued_posting_ids"`
+		Terminal  []string `json:"retained_terminal_ids"`
+		Occupancy int64    `json:"lifetime_occupancy"`
+		New       int64    `json:"new_record_count"`
+		Projected int64    `json:"projected_lifetime_occupancy"`
 	}
-	if json.Unmarshal(raw, &plan) != nil || len(plan.Tasks) != 2 || !reflect.DeepEqual(plan.Pruned, []string{seed.Pruned}) {
+	if json.Unmarshal(raw, &plan) != nil || len(plan.Tasks) != 2 || !reflect.DeepEqual(plan.Pruned, []string{seed.Pruned}) || !reflect.DeepEqual(plan.Terminal, []string{seed.Terminal}) || plan.Occupancy != 1 || plan.New != 2 || plan.Projected != 3 {
 		t.Fatal("approved forward manifest cardinality/pruned work")
 	}
 	for _, expected := range seed.Postings {
@@ -280,14 +350,23 @@ func verifyHostForwardTransferredQueue(t *testing.T, ctx context.Context, f nati
 			SHA         string `json:"payload_sha256"`
 			Preparation string `json:"preparation_digest"`
 		} `json:"tasks"`
+		Snapshot struct {
+			B0 struct {
+				Records map[string]string `json:"records"`
+				Guards  map[string]string `json:"guards"`
+			} `json:"b0"`
+		} `json:"snapshot"`
 	}
 	if json.Unmarshal(raw, &plan) != nil {
 		t.Fatal("approved retained forward tasks")
 	}
 	base := "lightpanda-b0:{host-selected-redis}:"
 	records, err := f.r.HGetAll(ctx, base+"records").Result()
-	if err != nil || len(records) != 2 {
+	if err != nil || len(records) != 3 {
 		t.Fatal("transferred task record conservation", err)
+	}
+	if records[seed.Terminal] == "" || records[seed.Terminal] != plan.Snapshot.B0.Records[seed.Terminal] || f.r.HGet(ctx, "lightpanda-b0:legacy-guard", seed.Terminal).Val() != plan.Snapshot.B0.Guards[seed.Terminal] || !f.r.SIsMember(ctx, base+"terminal", seed.Terminal).Val() {
+		t.Fatal("forward transfer changed retained terminal authority")
 	}
 	for _, count := range []struct {
 		name    string
@@ -296,9 +375,9 @@ func verifyHostForwardTransferredQueue(t *testing.T, ctx context.Context, f nati
 	}{
 		{"ready", f.r.ZCard(ctx, base+"ready"), 2},
 		{"inflight", f.r.ZCard(ctx, base+"inflight"), 0},
-		{"legacy guard", f.r.HLen(ctx, "lightpanda-b0:legacy-guard"), 2},
+		{"legacy guard", f.r.HLen(ctx, "lightpanda-b0:legacy-guard"), 3},
 		{"dead", f.r.SCard(ctx, base+"dead"), 0},
-		{"terminal", f.r.SCard(ctx, base+"terminal"), 0},
+		{"terminal", f.r.SCard(ctx, base+"terminal"), 1},
 		{"origin holders", f.r.HLen(ctx, base+"origin-holders"), 0},
 	} {
 		got, err := count.command.Result()

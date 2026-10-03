@@ -12,7 +12,7 @@ func hostColdRestorationOperation(operation string) bool {
 }
 
 func hostColdRetirementOperation(operation string) bool {
-	return hostColdReversalOperation(operation) || hostColdRestorationOperation(operation)
+	return hostColdReversalOperation(operation) || hostColdRestorationOperation(operation) || hostColdCompletionOperation(operation)
 }
 
 func hostColdRestorationInputsEmpty(r HostColdPhaseRequest) bool {

@@ -1,5 +1,52 @@
 # Native ordinary worker authority checkpoint
 
+The protected journal now includes all ten B0 reactivation and ordinary
+finalization commands after restoration. Closed requests and immutable ancestry
+bind original E, forward N/plan, reversal, exact R, restored ordinary plan and
+canonical prior receipt. Finalization also binds the live selected release/cold
+attestation and exact reactivation/publication/final receipts. Rehashed foreign
+receipts, skipped stages and unresolved successors refuse. Reactivation plans
+have an explicit 64 MiB ceiling and envelopes 96 MiB; generic limits remain.
+Pending-link recovery now handles a bounded 1024-entry history, with actual 56 MiB
+plan and 320-entry interruption/recovery tests.
+
+Actual private PostgreSQL/Redis restoration now covers nonempty historical work:
+its recurring schedule is exactly `1925089445.100001`, SQL bigint hash
+`-9223372036854775808` and interval 24 hours. Queue/guard/write fences retire,
+canonical rows and unrelated Redis values are conserved, and fourteen historical
+retries retain R without replay or R+1. Missing fixed producer authority leaves
+reactivation unresolved and permits only exact retry. The full required worker
+race suite passes in 47.552 seconds, native/both Linux integration vets, format,
+tidy and 94 repository tests pass (three optional skips). Positive installed
+reactivation/finalization and real restoration/completion SIGKILL remain open.
+
+Installed run `37094394773` at `cd71940f0` fails both architectures at native
+forward planning after reaching the producer. Initial four-phase raw proofs are
+independently verified; full installed admission remains false. Source inspection
+and an exact private SQL/reviewed-Lua regression reproduce the missing producer
+owner initialization: a listening producer alone supplies no queue authority.
+The corrected disposable fixture uses actual native preparation/activation of
+one owned inactive posting, then reviewed claim/completion. Its source snapshot
+retains that terminal task; transfer must preserve its exact record/guard and
+lifetime occupancy `1 + 2 = 3`. Fresh installed proof is required; runtime
+predicates remain strict.
+
+Source `cd71940f0` full CI is green, and Linux plus both historical image artifacts
+are independently verified. Whole-B0 run `37094397554` is independently recomputed
+successful (16 arms/eight pairs, density 7.0337–13.8959); this generated startup
+workload does not establish whole-service cost or every-profile parity. See
+[completion checkpoint](evidence/go-ordinary-native-host-completion-journal-2026-10-03.json).
+
+Next collect fresh installed bootstrap/forward proof, complete positive installed
+reactivation/finalization and candidate-N nonempty reversal with real crash
+recovery, then authenticate intentional host changes and retain the outer lock
+through complete restoration, SQL release and full-stack startup/readiness.
+Every enabled profile/consumer/output/database/publisher/freshness/queue,
+whole-service resource/cost, exact gates, cutover/cold reversal and rollback
+window requirements remain active before runtime Python/Playwright/Chromium
+retirement. The full migration goal remains active, PR #10210 draft, production
+unchanged. Earlier entries retain their source-scoped observations.
+
 The protected journal now adds seven B0/ordinary restoration stages after the
 exact reversal reservation. Requests retain original E, forward N/ordinary plan,
 reversal, R and canonical typed inputs. Immutable ancestry binds target/Lua and

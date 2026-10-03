@@ -2,6 +2,8 @@ package worker
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,11 +16,20 @@ import (
 )
 
 func TestRealHostColdRestorationJournalKeepsExactRetirementAndRecoversEffects(t *testing.T) {
+	runHostColdRestorationJournalTest(t, false)
+}
+
+func TestRealHostColdRestorationNonemptyJournalRestoresCanonicalSchedule(t *testing.T) {
+	runHostColdRestorationJournalTest(t, true)
+}
+
+func runHostColdRestorationJournalTest(t *testing.T, nonempty bool) {
+	t.Helper()
 	f, d, state, previous, prepared, luaSHA := hostPhaseTestFixture(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
 	defer cancel()
-	// Seed only this private Redis through the reviewed Lua. This is an empty
-	// historical B0 queue with a synthetic prior receipt, not a live producer.
+	// Seed only this private Redis through the reviewed lifecycle Lua. The prior
+	// receipt and host labels remain synthetic; no producer runs on this host.
 	lua, err := os.ReadFile("../../src/lua/lightpanda_b0_queue.lua")
 	if err != nil {
 		t.Fatal(err)
@@ -27,9 +38,36 @@ func TestRealHostColdRestorationJournalKeepsExactRetirementAndRecoversEffects(t 
 	for _, suffix := range []string{"route", "records", "ready", "inflight", "dead", "terminal", "origin-holders"} {
 		keys = append(keys, "lightpanda-b0:{host-restoration}:"+suffix)
 	}
-	args := []any{"initialize_producer", "lightpanda-b0", fmt.Sprint(previous), "go", "", "0", "", "0", "0", "0", "", "", "", "64", "2.0", "", "0", "host-restoration", "", "0", "c1", 1, "0", "browser-use-careers"}
-	if reply, err := f.r.Eval(ctx, string(lua), keys, args...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" {
-		t.Fatal("private source queue initialization", err)
+	posting := ""
+	if nonempty {
+		var board string
+		if f.pg.QueryRow(ctx, "SELECT id::text FROM job_board WHERE company_id=$1::uuid AND board_slug='browser-use-careers'", f.company).Scan(&board) != nil {
+			t.Fatal("owned B0 board")
+		}
+		posting = seedExecutableColdB0InNamespace(t, f, board, previous, lua, "host-restoration")
+		claimArgs := []any{"claim_next", "lightpanda-b0", fmt.Sprint(previous), "go", "", "0", fmt.Sprint(time.Now().UnixMilli()), "600000", "0", "0", "", "", "", "64", "2.0", "", "0", "host-restoration", "", "0", "c1", 1, "0", "browser-use-careers"}
+		claim, err := f.r.Eval(ctx, string(lua), keys, claimArgs...).Slice()
+		if err != nil || len(claim) != 12 || claim[0] != "accepted" || claim[3] != posting {
+			t.Fatal("owned task claim", err)
+		}
+		if _, err := f.pg.Exec(ctx, "SELECT public.jobseek_lightpanda_b0_activate_write_fence($1::uuid,$2,$3,'go',$4,$5,$6)", posting, "lightpanda-b0", previous, int64(3), claim[7], claim[4]); err != nil {
+			t.Fatal("owned historical fence", err)
+		}
+		claimArgs[0], claimArgs[4], claimArgs[5], claimArgs[6], claimArgs[11], claimArgs[16] = "complete", claim[3], claim[6], claim[4], claim[7], claim[5]
+		payload, ok := claim[8].(string)
+		if !ok {
+			t.Fatal("owned task payload")
+		}
+		hash := sha1.Sum([]byte(payload))
+		claimArgs[12] = hex.EncodeToString(hash[:])
+		if result, err := f.r.Eval(ctx, string(lua), keys, claimArgs...).Slice(); err != nil || len(result) != 12 || result[0] != "accepted" {
+			t.Fatal("owned historical task completion", err)
+		}
+	} else {
+		args := []any{"initialize_producer", "lightpanda-b0", fmt.Sprint(previous), "go", "", "0", "", "0", "0", "0", "", "", "", "64", "2.0", "", "0", "host-restoration", "", "0", "c1", 1, "0", "browser-use-careers"}
+		if reply, err := f.r.Eval(ctx, string(lua), keys, args...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" {
+			t.Fatal("private source queue initialization", err)
+		}
 	}
 	canonical := coldExecutableCanonicalSnapshot(t, f)
 	var info HostColdPhaseContext
@@ -75,7 +113,8 @@ func TestRealHostColdRestorationJournalKeepsExactRetirementAndRecoversEffects(t 
 	if json.Unmarshal(hostPhaseTestIntent(t, info, previous, prepared, target), &intentSpec) != nil {
 		t.Fatal("fixture intent")
 	}
-	intentSpec.PreviousB0ReceiptSHA256 = strings.Repeat("7", 64)
+	priorReceipt := []byte(fmt.Sprintf("schema=jobseek.lightpanda-b0-active/v1\nstate=active\ncohort=c1\nnamespace=host-restoration\nshard_id=lightpanda-b0\nrouting_epoch=%d\nplan_digest=%s\ncompose_digest=%s\ncrawler_image_ref=ghcr.io/colophon-group/jobseek-crawler@sha256:%s\ndeploy_revision=%s\nactivated_at_epoch=1\n", previous, strings.Repeat("7", 64), strings.Repeat("6", 64), strings.Repeat("5", 64), d.Binding.SourceRevision))
+	intentSpec.PreviousB0ReceiptSHA256 = hostPhaseRetainTestInput(t, state, priorReceipt)
 	intent := retain(intentSpec)
 	r = HostColdPhaseRequest{Version: r.Version, Binding: d.Binding, PredecessorSHA256: hostPhaseResultSHA(t, target), Operation: "cold-begin", PreviousEpoch: previous, IntentSHA256: intent, TargetSHA256: target.Native.B0TargetSHA256, LuaSHA256: luaSHA}
 	begun := complete(r)
@@ -161,7 +200,26 @@ func TestRealHostColdRestorationJournalKeepsExactRetirementAndRecoversEffects(t 
 	}
 	ordinaryRetained := complete(r)
 	r.Operation, r.PredecessorSHA256, r.TargetSHA256, r.LuaSHA256 = "cold-ordinary-rollback-inspect", hostPhaseResultSHA(t, ordinaryRetained), "", ""
-	complete(r)
+	ordinaryInspection := complete(r)
+	beforeMissingProducer := fullColdExecutableRedisSnapshot(t, f)
+	completion := r
+	completion.Operation, completion.PredecessorSHA256 = "cold-b0-reactivation-plan", hostPhaseResultSHA(t, ordinaryInspection)
+	completion.TargetSHA256, completion.LuaSHA256, completion.PriorB0ReceiptSHA256 = target.Native.B0TargetSHA256, luaSHA, intentSpec.PreviousB0ReceiptSHA256
+	completion.OrdinaryRequestSHA256, completion.B0RollbackPlanSHA256 = "", ""
+	missing, err := call(completion, nil)
+	if err != nil || missing == nil || missing.Outcome != "unresolved" || missing.Native != nil {
+		t.Fatal("missing fixed producer granted reactivation", err)
+	}
+	badCompletion := completion
+	badCompletion.Operation, badCompletion.PredecessorSHA256, badCompletion.B0ReactivationPlanSHA256 = "cold-b0-reactivation-retain", hostPhaseResultSHA(t, missing), strings.Repeat("8", 64)
+	if result, err := call(badCompletion, nil); err == nil || result != nil {
+		t.Fatal("unresolved producer effect authorized successor")
+	}
+	completion.PredecessorSHA256 = hostPhaseResultSHA(t, missing)
+	retry, err := call(completion, nil)
+	if err != nil || retry == nil || retry.Outcome != "unresolved" || retry.Native != nil || !reflect.DeepEqual(beforeMissingProducer, fullColdExecutableRedisSnapshot(t, f)) {
+		t.Fatal("missing producer exact retry changed queue or granted authority", err)
+	}
 	after := fullColdExecutableRedisSnapshot(t, f)
 	allKeys := map[string]bool{}
 	for key := range before {
@@ -171,7 +229,16 @@ func TestRealHostColdRestorationJournalKeepsExactRetirementAndRecoversEffects(t 
 		allKeys[key] = true
 	}
 	for key := range allKeys {
-		if key != keys[0] && key != "lightpanda-b0:producer-owner" && before[key] != after[key] {
+		allowed := key == keys[0] || key == "lightpanda-b0:producer-owner"
+		if nonempty {
+			for _, nativeKey := range keys {
+				allowed = allowed || key == nativeKey
+			}
+			for _, legacyKey := range []string{"lightpanda-b0:legacy-guard", "scrape:" + posting, "scrapes_browser:jobs.example.test", "ready:browser:2"} {
+				allowed = allowed || key == legacyKey
+			}
+		}
+		if !allowed && before[key] != after[key] {
 			t.Fatal("restoration changed unrelated Redis value/type/expiry", key)
 		}
 	}
@@ -196,5 +263,25 @@ func TestRealHostColdRestorationJournalKeepsExactRetirementAndRecoversEffects(t 
 	if reflect.DeepEqual(before, after) {
 		t.Fatal("restoration never changed source Redis")
 	}
+	if nonempty {
+		var fences int
+		if f.pg.QueryRow(ctx, "SELECT count(*) FROM lightpanda_b0_write_fence WHERE job_posting_id=$1::uuid", posting).Scan(&fences) != nil || fences != 0 {
+			t.Fatal("exact historical SQL task fence not cleared")
+		}
+		score, err := f.r.ZScore(ctx, "scrapes_browser:jobs.example.test", posting).Result()
+		if err != nil || score != 1925089445.100001 {
+			t.Fatal("canonical recurring microsecond schedule lost", err)
+		}
+		configuration, err := f.r.HGetAll(ctx, "scrape:"+posting).Result()
+		if err != nil || len(configuration) != 6 || configuration["description_r2_hash"] != "-9223372036854775808" || configuration["scrape_interval_hours"] != "24" {
+			t.Fatal("restored legacy configuration lost SQL bigint/interval truth")
+		}
+		if members, err := f.r.ZRange(ctx, "scrapes_browser:jobs.example.test", 0, -1).Result(); err != nil || !reflect.DeepEqual(members, []string{posting}) {
+			t.Fatal("restoration lost or duplicated queued posting")
+		}
+		t.Log("actual private host journal restores nonempty historical B0 work to exact canonical recurring microsecond schedule, SQL bigint hash and interval; native queue/guard retired, unrelated Redis values and canonical SQL conserved; interrupted restore/retention and fourteen historical retries keep R without replay or R+1; synthetic prior receipt/host authority, complete reactivation/finalization/installed host lifecycle remain unproven")
+		return
+	}
+	t.Log("actual private completion journal binds canonical prior B0 receipt and restored ordinary plan at exact R; missing fixed producer retains unresolved reactivation and permits only exact retry, successor refuses and queue/canonical/epoch remain conserved; positive reactivation/finalization and full host runtime admission unproven")
 	t.Log("actual private host journal completes seven B0/ordinary restoration stages from reserved N at exact R; altered source/retirement/receipt/target/Lua/native mode refuse before effects, restoration and ordinary retention returned-effect interruption recover, all fourteen historical phases preserve R/canonical rows/complete Redis values; empty historical B0 queue and synthetic prior receipt/host authority only, nonempty transfer, SIGKILL restoration, reactivation/finalization/startup/runtime admission remain unproven")
 }

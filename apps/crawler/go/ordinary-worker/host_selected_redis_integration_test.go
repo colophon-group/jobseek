@@ -227,6 +227,7 @@ func runActualHostSelectedRedisJournal(t *testing.T, forward bool) {
 	var stopProducer func()
 	var forwardAfter map[string]string
 	var forwardPreview map[string]string
+	var forwardBeforeBootstrap map[string]string
 	interrupted := []string{}
 	assertHeld := func(scoped context.Context, pool *pgxpool.Pool, sql *queue.HostColdSQL) {
 		t.Helper()
@@ -305,7 +306,7 @@ func runActualHostSelectedRedisJournal(t *testing.T, forward bool) {
 					}
 					result, err := RunHostColdPhase(selectedCtx, pool, sha)
 					if err != nil || result == nil || result.Outcome != "completed" || result.RuntimeAdmission {
-						t.Fatal("joined retained phase", req.Operation, err)
+						t.Fatal("joined retained phase", req.Operation, err, result)
 					}
 					assertHeld(selectedCtx, pool, sql)
 					requestSHAs = append(requestSHAs, sha)
@@ -326,6 +327,10 @@ func runActualHostSelectedRedisJournal(t *testing.T, forward bool) {
 						producerProof["selected_redis_endpoint_sha256"] = info.RedisEndpointSHA256
 						producerProof["operator_client_uid"] = 0
 						producerProof["synthetic_prior_cleanup_digests"] = true
+						forwardBeforeBootstrap = redisBefore
+						producerProof["bootstrap"] = initializeHostForwardFixtureTerminal(t, selectedCtx, f, forwardSeed, reserved.Native.RoutingEpoch, lua)
+						assertHeld(selectedCtx, pool, sql)
+						redisBefore = fullColdExecutableRedisSnapshot(t, f)
 						forwardRequest := queue.ColdB0ForwardRequest{IntentSHA256: intent, SourceRevision: source, RoutingEpoch: reserved.Native.RoutingEpoch, OrdinaryPlanSHA256: reserved.Native.PlanSHA256}
 						encoded, _ := json.Marshal(forwardRequest)
 						forwardSHA := hostPhaseRetainTestInput(t, state, encoded)
@@ -487,6 +492,7 @@ func runActualHostSelectedRedisJournal(t *testing.T, forward bool) {
 		joinedProof["producer"] = producerProof
 		joinedProof["seed"] = forwardSeed
 		joinedProof["redis_before"] = redisBefore
+		joinedProof["redis_before_bootstrap"] = forwardBeforeBootstrap
 		joinedProof["redis_after"] = forwardAfter
 		joinedProof["redis_after_initial_preview"] = forwardPreview
 		joinedProof["canonical_before"] = canonicalBefore
@@ -505,7 +511,7 @@ func runActualHostSelectedRedisJournal(t *testing.T, forward bool) {
 		t.Fatal("joined fixture proof retention")
 	}
 	if forward {
-		t.Log("actual host callback and selected official Redis joined installed UID10001 native producer to eleven retained phases through B0 task transfer and ordinary publication; exact schedules/hints/task payloads and pruned work verified, canonical rows and unrelated Redis values conserved; transfer and publication effect/result interruption recovered, new SQL backend exact retry kept epoch/results/complete Redis values, producer and owned connections released; native library plus installed preflight/producer only, complete installed cold CLI/reversal/startup/runtime admission unproven")
+		t.Log("actual host callback and selected official Redis joined installed UID10001 native producer to eleven retained phases through B0 task transfer and ordinary publication; actual native bootstrap activation and retained terminal work, exact schedules/hints/task payloads and pruned work verified, canonical rows and unrelated Redis values conserved; transfer and publication effect/result interruption recovered, new SQL backend exact retry kept epoch/results/complete Redis values, producer and owned connections released; native library plus installed preflight/producer only, complete installed cold CLI/reversal/startup/runtime admission unproven")
 	} else {
 		t.Log("actual host callback joined selected Compose/image/consumer execution and official Redis PID/listener inode to native target/intent/reservation/inspection journal effects; original mutation flock and all SQL barriers held across independent commits; new backend exact retry kept endpoint/incarnation, epoch and results, canonical and complete Redis values conserved, missing/escaped scope refused and resources released; installed preflight plus native library/sleeping consumer fixture only, complete cold CLI/phase graph/producer exclusion/runtime admission unproven")
 	}
