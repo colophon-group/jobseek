@@ -82,6 +82,11 @@ Status tags:
   caching, sharing rules, spend gates, production activation, and Fluid Compute
   constraints.
 
+- [Company Reference Dependencies](company-reference-dependencies.md) `[reference]` -
+  web selection identity ownership, live consumers, and legacy dependencies.
+- [Company Reference Rollout](runbooks/company-reference-rollout.md) `[runbook]` -
+  expansion, compatibility bridge, verification, and selection FK cutover.
+
 ## Agent And Automation Workflows
 
 - [01 - Agent Workflow](01-agent-workflow.md) `[reference]` - company-request
@@ -156,3 +161,5 @@ Status tags:
 - [ADR-007 - IndexNow Observability Boundary](adr/007-indexnow-observability-boundary.md)
   `[adr]` - active IndexNow observability uses structured logs until the web
   metrics surface exists.
+- [ADR-008 - Company Reference Ownership](adr/008-company-reference-ownership.md)
+  `[adr]` - web-owned durable selection references to canonical crawler companies.

@@ -298,6 +298,8 @@ jobs:
     env:
       # This environment must expose a LOGIN role with CONNECT and SELECT only.
       DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_READONLY }}
+      # Audit runtime ACLs without granting the read-only auditor write access.
+      COMPANY_REFERENCE_RUNTIME_ROLE: postgres
     steps:
       - name: Require the read-only production connection
         run: test -n "$DATABASE_URL_UNPOOLED"
@@ -329,6 +331,12 @@ jobs:
           pnpm --filter @jobseek/web db:migrate:verify-account-issuer-relaxation --
           drift "$RUNNER_TEMP/better-auth-account-issuer-relaxation-drift.json"
 
+      - name: Check company reference lifecycle drift
+        working-directory: apps/web
+        run: >-
+          pnpm exec tsx scripts/verify-company-references.ts
+          drift "$RUNNER_TEMP/company-reference-drift.json"
+
       - name: Publish non-sensitive evidence
         if: always()
         run: |
@@ -337,7 +345,8 @@ jobs:
             echo "### Web database drift evidence"
             for evidence in \
               "$RUNNER_TEMP"/web-database-drift.json \
-              "$RUNNER_TEMP"/better-auth-account-issuer-relaxation-drift.json; do
+              "$RUNNER_TEMP"/better-auth-account-issuer-relaxation-drift.json \
+              "$RUNNER_TEMP"/company-reference-drift.json; do
               if [[ -f "$evidence" ]]; then
                 echo "#### $(basename "$evidence")"
                 echo '```json'
