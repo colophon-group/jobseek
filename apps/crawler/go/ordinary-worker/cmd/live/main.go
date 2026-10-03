@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	worker "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-worker"
@@ -69,6 +70,9 @@ func run() error {
 		}
 		return worker.Run(ctx, c)
 	default:
+		if port, ok := strings.CutPrefix(command, "--worker-health="); ok {
+			return worker.CheckWorkerHealth(ctx, port)
+		}
 		return worker.ErrStartup
 	}
 }
