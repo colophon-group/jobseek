@@ -3,8 +3,8 @@ import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import { chromium } from "playwright";
 import { expect, test } from "vitest";
-import { navigateCanary, waitForCanaryOwnerShell } from "./company-reference/canary-navigation";
-import { signInCanaryAccount } from "./company-reference/canary-lifecycle";
+import { navigateCanary, waitForCanaryOwnerShell, diagnoseCanaryOwnerReload, canaryBrowserError, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
+import { signInCanaryAccount, requireCanaryCleanup } from "./company-reference/canary-lifecycle";
 import { selectCanaryCompany, canaryCompanyRow } from "./company-reference/canary-picker";
 import { bootstrapDeploymentAccess } from "./company-reference/deployment-access";
 
@@ -171,4 +171,94 @@ test("removed-company absence waits until authenticated editable owner shell ren
     await page.setContent('<button>Account menu</button><h1>Owned fixture</h1>'); page.setDefaultTimeout(100);
     await expect(waitForCanaryOwnerShell(page, 'Owned fixture')).rejects.toMatchObject({name:'TimeoutError'});
   } finally {await browser.close();}
+});
+
+
+const diagnosticPath = "/en/watchlists/11111111-1111-4111-8111-111111111111";
+const privateTitle = "PRIVATE_TITLE_SENTINEL";
+const readinessState = { persistedTitleMatches: true, companyMembershipCount: 0, anyCompany: false, sessionStatus: 200, sessionIdentityMatches: true };
+
+test.each(["header", "title"] as const)("owner diagnostics distinguish missing %s without exposing fixture content", async missing => {
+  const browser = await chromium.launch({ headless: true }); const page = await browser.newPage();
+  const evidence: CanaryOwnerEvidence[] = []; const phases: string[] = [];
+  try {
+    page.setDefaultTimeout(150);
+    await page.setContent(`${missing === "header" ? '<a href="/en/sign-in">Log in</a>' : '<button>Account menu</button>'}<h1>${missing === "title" ? "<button>PRIVATE_OTHER_TITLE</button>" : `<button>${privateTitle}</button>`}</h1><div role="status" aria-label="Loading watchlist"></div><div role="dialog">PRIVATE_DIALOG_TEXT</div>`);
+    await expect(waitForCanaryOwnerShell(page, privateTitle, { stage: "removal_reload", expectedPath: diagnosticPath, expectedOrigin: "http://fixture.invalid", referenceCoverage: "existing_reference",
+      onPhase: value => phases.push(value), onEvidence: value => evidence.push(value), readState: async () => ({ ...readinessState, privateToken: "PRIVATE_STATE_SENTINEL" }) })).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0].readiness).toBe(missing === "header" ? "header_not_ready" : "title_not_ready");
+    expect(evidence[0].visibility.account).toBe(missing === "header" ? 0 : 1);
+    expect(evidence[0].visibility.expectedTitle).toBe(missing === "title" ? 0 : 1);
+    expect(evidence[0].visibility.dialog).toBe(1);
+    expect(evidence[0].state).toEqual(readinessState);
+    expect(evidence[0].firstUse).toBe(false);
+    expect(phases).toEqual(missing === "header" ? ["canary_removal_reload_owner_header"] : ["canary_removal_reload_owner_header", "canary_removal_reload_owner_title"]);
+    expect(JSON.stringify(evidence)).not.toMatch(/PRIVATE_|11111111|fixture.invalid|http:\/\//);
+  } finally { await browser.close(); }
+});
+
+test("modal-hidden owner DOM is distinguished from absent owner controls", async () => {
+  const browser = await chromium.launch({headless:true}); const page = await browser.newPage(); const evidence: CanaryOwnerEvidence[] = [];
+  try {
+    page.setDefaultTimeout(150);
+    await page.setContent(`<div aria-hidden="true"><button>Account menu</button><h1><button>${privateTitle}</button></h1></div><div role="dialog">Overlay</div>`);
+    await expect(waitForCanaryOwnerShell(page, privateTitle, { stage: "removal_reload", expectedPath: diagnosticPath, expectedOrigin: "http://fixture.invalid", onEvidence: value => evidence.push(value) })).rejects.toMatchObject({name:"TimeoutError"});
+    expect(evidence[0].visibility).toMatchObject({account:0,accountDom:1,expectedTitle:0,expectedTitleDom:1,dialog:1});
+  } finally { await browser.close(); }
+});
+
+test("read-only existing-reference reload captures bounded metadata and cannot qualify as first use", async () => {
+  const methods: string[] = [];
+  const server = createServer((req,res) => {
+    if(req.url === '/api/auth/get-session') { res.writeHead(401); res.end('{"privateToken":"PRIVATE_RESPONSE_SENTINEL"}'); return; }
+    if(req.method === 'POST') { res.writeHead(503); res.end('PRIVATE_ACTION_RESPONSE'); return; }
+    if(req.url === diagnosticPath) { methods.push(req.method!); res.setHeader('content-type','text/html'); res.end(`<button>Account menu</button><h1><button>${privateTitle}</button></h1><script>
+      fetch('/api/auth/get-session'); fetch(location.pathname,{method:'POST',headers:{'next-action':'PRIVATE_ACTION_SENTINEL'},body:'PRIVATE_REQUEST_BODY'});
+      setTimeout(()=>{throw new TypeError('PRIVATE_ERROR_MESSAGE');},0);
+    </script>`); return; }
+    res.end();
+  });
+  const port = await listen(server); const origin = `http://127.0.0.1:${port}`; const browser = await chromium.launch({headless:true}); const page = await browser.newPage();
+  const evidence: CanaryOwnerEvidence[] = [];
+  try {
+    const result = await diagnoseCanaryOwnerReload(page,privateTitle,{expectedPath:diagnosticPath,expectedOrigin:origin,onEvidence:value=>evidence.push(value),readState:async()=>{await page.waitForTimeout(100);return readinessState;}});
+    expect(result).toEqual({firstUse:false,referenceCoverage:'existing_reference',readOnlyReload:true});
+    expect(methods).toEqual(['GET']);
+    expect(evidence[0]).toMatchObject({readiness:'ready',route:'owned_watchlist',expectedRouteMatches:true,expectedOriginMatches:true,firstUse:false,navigation:{httpStatus:200},state:readinessState});
+    expect(evidence[0].requests).toEqual(expect.arrayContaining([expect.objectContaining({kind:'session_get',httpStatus:401}),expect.objectContaining({kind:'server_action_candidate',httpStatus:503})]));
+    expect(evidence[0].browserErrors).toContainEqual({category:'type_error',nextDigest:null});
+    expect(JSON.stringify(evidence)).not.toMatch(/PRIVATE_|11111111|127.0.0.1|http:\/\//);
+    expect(()=>requireCanaryCleanup({recovered:true,residual:1,starRestored:true,sessionClosed:true})).toThrow('CANARY_CLEANUP_INCOMPLETE');
+    expect(()=>requireCanaryCleanup({recovered:true,residual:0,starRestored:true,sessionClosed:false})).toThrow('CANARY_CLEANUP_INCOMPLETE');
+    expect(()=>requireCanaryCleanup({recovered:true,residual:0,starRestored:true,sessionClosed:true})).not.toThrow();
+  } finally {await browser.close();await close(server);}
+});
+
+test("diagnostic callback/state failures cannot replace the original readiness timeout", async () => {
+  const browser = await chromium.launch({headless:true}); const page = await browser.newPage();
+  try { page.setDefaultTimeout(100); await page.setContent('<div>Unavailable</div>');
+    await expect(waitForCanaryOwnerShell(page,privateTitle,{stage:'cleanup',expectedPath:diagnosticPath,expectedOrigin:'http://fixture.invalid',readState:async()=>{throw new Error('PRIVATE_PROBE_ERROR');},onEvidence:()=>{throw new Error('PRIVATE_CONSUMER_ERROR');}})).rejects.toMatchObject({name:'TimeoutError'});
+  } finally {await browser.close();}
+});
+
+test("browser categories/digests are fixed and never inspect messages or stacks", () => {
+  const error = {name:'TypeError',digest:'123456789',get message(){throw new Error('must_not_read');},get stack(){throw new Error('must_not_read');}};
+  expect(canaryBrowserError(error)).toEqual({category:'type_error',nextDigest:'123456789'});
+  expect(canaryBrowserError({name:'constructor',digest:'PRIVATE_DIGEST'})).toEqual({category:'unknown',nextDigest:null});
+  expect(canaryBrowserError(new Proxy({}, {get(){throw new Error('PRIVATE_GETTER');}}))).toEqual({category:'unknown',nextDigest:null});
+});
+
+
+test("passive request evidence is capped and flags truncation without changing readiness", async () => {
+  const server = createServer((req,res)=> {
+    if(req.method==='POST'){res.end('PRIVATE_RESPONSE');return;}
+    res.setHeader('content-type','text/html');res.end(`<button>Account menu</button><h1><button>${privateTitle}</button></h1><script>for(let i=0;i<12;i++)fetch(location.pathname,{method:'POST',headers:{'next-action':'PRIVATE_ACTION'},body:'PRIVATE_BODY'});</script>`);
+  });
+  const port=await listen(server);const origin=`http://127.0.0.1:${port}`;const browser=await chromium.launch({headless:true});const page=await browser.newPage();const evidence:CanaryOwnerEvidence[]=[];
+  try{
+    await diagnoseCanaryOwnerReload(page,privateTitle,{expectedPath:diagnosticPath,expectedOrigin:origin,onEvidence:value=>evidence.push(value),readState:async()=>{await page.waitForTimeout(100);return readinessState;}});
+    expect(evidence[0].requests).toHaveLength(8);expect(evidence[0].evidenceTruncated).toBe(true);expect(evidence[0].readiness).toBe('ready');
+    expect(JSON.stringify(evidence)).not.toMatch(/PRIVATE_|11111111|127.0.0.1/);
+  }finally{await browser.close();await close(server);}
 });

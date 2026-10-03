@@ -1,12 +1,13 @@
 import type { BrowserContext, Page } from "playwright";
 import type { Sql } from "postgres";
-import { navigateCanary, waitForCanaryOwnerShell } from "./canary-navigation";
+import { navigateCanary, waitForCanaryOwnerShell, type CanaryOwnerEvidence, type CanaryReadinessState } from "./canary-navigation";
 
 export type CanaryLifecycleState = {
   titles: string[];
   company: { id: string; name: string; slug: string };
   initialStarred?: boolean;
   starTouched: boolean;
+  referenceCoverage?: "first_use" | "existing_reference";
 };
 function check(condition: unknown, code: string): asserts condition {
   if (!condition) throw Object.assign(new Error(code), { code });
@@ -47,10 +48,18 @@ export async function restoreCanaryStar(page: Page, sql: Sql, userId: string, st
   state.starTouched = false;
 }
 
+/** Readiness diagnostics cannot certify a lifecycle with incomplete cleanup. */
+export function requireCanaryCleanup(proof: { recovered: boolean; residual: number | null; starRestored: boolean; sessionClosed: boolean }) {
+  check(proof.recovered && proof.residual === 0 && proof.starRestored && proof.sessionClosed, "CANARY_CLEANUP_INCOMPLETE");
+}
+
 /** One actual UI lifecycle shared by the local harness and protected staged gate. */
 export async function exerciseCanaryLifecycle(input: {
   page: Page; sql: Sql; userId: string; email: string; password: string; origin: string; watchlistId: string;
-  state: CanaryLifecycleState; onPhase?: (phase: string) => void; createAnonymousContext: () => Promise<BrowserContext>;
+  state: CanaryLifecycleState; onPhase?: (phase: string) => void;
+  onEvidence?: (evidence: CanaryOwnerEvidence) => void;
+  readReadinessState?: (page: Page, watchlistId: string, title: string) => Promise<CanaryReadinessState>;
+  createAnonymousContext: () => Promise<BrowserContext>;
 }) {
   const { page, sql, userId, email, password, origin, watchlistId, state } = input;
   input.onPhase?.("canary_edit");
@@ -102,7 +111,7 @@ export async function exerciseCanaryLifecycle(input: {
     check(copied.length === 1 && copied[0].company_id === state.company.id && !copied[0].alerts_enabled && !copied[0].share_enabled && copied[0].any_company !== "true", "CANARY_CLONE_SELECTION_MISMATCH");
     await shared.waitForURL(url => url.pathname === `/en/watchlists/${cloneId}`);
     input.onPhase?.("canary_clone_cleanup_owner_shell");
-    await waitForCanaryOwnerShell(shared, targetTitle);
+    await waitForCanaryOwnerShell(shared, targetTitle, { stage: "clone_cleanup", expectedPath: `/en/watchlists/${cloneId}`, expectedOrigin: origin, referenceCoverage: state.referenceCoverage, onPhase: input.onPhase, onEvidence: input.onEvidence, readState: input.readReadinessState ? () => input.readReadinessState!(shared!, cloneId!, targetTitle) : undefined });
     await shared.getByRole("button", { name: `Remove ${state.company.name}`, exact: true }).waitFor();
     input.onPhase?.("canary_clone_cleanup_trigger");
     await shared.getByRole("button", { name: "Delete", exact: true }).click();
@@ -137,7 +146,7 @@ export async function exerciseCanaryLifecycle(input: {
   input.onPhase?.("canary_removal_reload_navigation");
   await navigateCanary(page, page.url());
   input.onPhase?.("canary_removal_reload_owner_shell");
-  await waitForCanaryOwnerShell(page, targetTitle);
+  await waitForCanaryOwnerShell(page, targetTitle, { stage: "removal_reload", expectedPath: `/en/watchlists/${watchlistId}`, expectedOrigin: origin, referenceCoverage: state.referenceCoverage, onPhase: input.onPhase, onEvidence: input.onEvidence, readState: input.readReadinessState ? () => input.readReadinessState!(page, watchlistId, targetTitle) : undefined });
   input.onPhase?.("canary_removal_reload_absence");
   check((await page.getByRole("button", { name: `Remove ${state.company.name}`, exact: true }).count()) === 0, "CANARY_REMOVAL_RELOAD_FAILED");
   check((await sql`SELECT 1 FROM company_reference WHERE id=${state.company.id}`).length === 1, "CANARY_REMOVAL_DELETED_REFERENCE");

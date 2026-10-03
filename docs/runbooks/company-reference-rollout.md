@@ -275,3 +275,52 @@ company snapshots must remain complete and independent of all company-ID FKs.
 The final-contract audit uses reference mode only after its exact ledger proves
 0101; reference mode refuses the active legacy selection FKs. Require the actual
 Drizzle-schema PG fixture and behavior/canary evidence before retiring writers.
+
+
+## Owner-shell diagnostic follow-up (#10247)
+
+The failed BIH diagnostic committed the reference and selection, completed the
+initial persisted reload and later edit/share/clone/star operations, then timed
+out after removal while waiting for owner UI. SQL membership absence and HTTP
+2xx do not prove that the account header and exact edited title rendered. The
+failure remains a failed lifecycle; cleanup success does not convert it to a pass.
+
+The shared canary now reports separate `owner_header` and `owner_title` phases.
+Before cleanup it emits a bounded readiness record: route/origin equality (no
+URL), navigation status/time, visible and DOM-visible role counts, loading and
+modal counts, persisted-title equality, membership count/any-company mode, and
+normal session status/identity equality. Supplemental reads have a two-second
+budget and never replace the original wait failure. Existing locator budgets,
+identity/ownership checks, single-shot mutations, deletion and signout remain
+required. The final cleanup proof independently rejects residual fixtures,
+missing star restoration or an unclosed session even if owner readiness passes.
+
+Passive network evidence records only same-origin session GET and opaque
+Server Action **candidate** status/latency/pending/failure, capped at eight
+requests and eight browser errors per navigation with an explicit truncation
+flag. It cannot identify a particular Server Action as bootstrap. Browser errors
+are fixed categories; only an already available numeric Next digest may appear.
+No messages, DOM text, titles, identifiers, response bodies, headers, cookies,
+URLs, credentials or stacks enter diagnostic output. A generic external logger's
+`timeout=false` classifies transport codes and cannot rebut a Playwright timeout.
+
+An owner-governed follow-up may first create an isolated dedicated-account
+fixture through normal UI, verify paused notifications, exact owner/namespace and
+pinned deployment identity, then call the exported `diagnoseCanaryOwnerReload`
+helper with that fixture's private expected path/title/origin and bounded
+read-state/evidence callbacks. This helper performs one explicit document GET
+(with only the existing bounded 429 GET retry), waits for the unchanged owner
+conditions and reports `firstUse=false`, `existing_reference`, `readOnlyReload`.
+Re-attest public alias identity after the diagnostic. The helper sends no
+mutation; normal page bootstrap may still make its own read Server Action.
+
+BIH's canonical reference now exists. Any subsequent BIH lifecycle must label
+its `CanaryLifecycleState.referenceCoverage` as `existing_reference`; never delete
+it or another canonical identity to force novelty. Read-only reload or existing
+reference coverage cannot qualify as production promotion first-use. The
+protected runner retains its mandatory novel catalogue selection, pre-save
+absence check, committed Typesense-provenance proof and `firstUse=true` success
+contract. After diagnosis, at most one separately authorized full lifecycle may
+run on a fresh dedicated fixture, with exact cleanup. Change application behavior
+only when instrumented evidence supports a concrete defect; do not expand waits
+or replay saves/removal just to obtain green.
