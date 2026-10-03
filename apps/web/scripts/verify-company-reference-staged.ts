@@ -4,10 +4,10 @@ import { parse } from "dotenv";
 import postgres from "postgres";
 import { Client } from "typesense";
 import { chromium, type Page } from "playwright";
-import { exerciseCanaryLifecycle, restoreCanaryStar, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
+import { exerciseCanaryLifecycle, restoreCanaryStar, requireCanaryCleanup, readCanaryReadinessState, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
 import { openCanaryAccess, resolveCanaryTarget, reattestPublicCanaryIdentity, validateCanaryDeploymentIdentity, type CanaryDeploymentIdentity } from "./company-reference/canary-target";
 import { selectCanaryCompany, canaryFailureKind } from "./company-reference/canary-picker";
-import { navigateCanary, waitForCanaryOwnerShell } from "./company-reference/canary-navigation";
+import { navigateCanary, waitForCanaryOwnerShell, captureCanaryDeleteAttempt, navigateCanaryCleanup, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
 import { logExternalError } from "../src/lib/safe-external-error";
 
 let contract = "company_reference_staged_canary";
@@ -45,6 +45,8 @@ async function main() {
   let page: Page | undefined; let watchlistId: string | undefined;
   let lifecycleState: CanaryLifecycleState | undefined;
   let lifecycleProof: Awaited<ReturnType<typeof exerciseCanaryLifecycle>> | undefined;
+  const onEvidence = (evidence: CanaryOwnerEvidence) => console.log(JSON.stringify({ contract, outcome: "readiness", ...evidence }));
+  const readReadinessState = (ownerPage: Page, id: string, expectedTitle: string, readiness: CanaryOwnerEvidence["readiness"]) => readCanaryReadinessState(ownerPage, sql, userId, id, expectedTitle, readiness !== "ready");
   const title = `company-reference-canary:${randomUUID()}`;
   let failure: unknown; let failurePhase: string | undefined;
   let sessionMayExist = false;
@@ -85,7 +87,7 @@ async function main() {
     check(doc, "FIRST_USE_CATALOGUE_FIXTURE_UNAVAILABLE");
     check(/^[0-9a-f-]{36}$/i.test(doc.id) && doc.name.length <= 300 && doc.slug.length <= 100, "INVALID_CANONICAL_FIXTURE");
 
-    lifecycleState = { titles: [title], company: doc, starTouched: false };
+    lifecycleState = { titles: [title], company: doc, starTouched: false, referenceCoverage: "first_use" };
     if (expectedIdentity) {
       phase = "production_identity_before_lifecycle";
       await reattestPublicCanaryIdentity(expectedIdentity);
@@ -132,7 +134,7 @@ async function main() {
     check(dangling.length === 0, "CANARY_SELECTION_REFERENCE_MISSING");
     phase = "complete_authenticated_lifecycle";
     lifecycleProof = await exerciseCanaryLifecycle({ page, sql, userId, email, password, origin: base.origin,
-      watchlistId, state: lifecycleState, onPhase: next => { phase = next; }, createAnonymousContext: async () => {
+      watchlistId, state: lifecycleState, tailPacing: { target: target.kind }, onEvidence, readReadinessState, onPhase: next => { phase = next; }, createAnonymousContext: async () => {
         const anonymous = await browser.newContext({ baseURL: base.origin });
         try { await openCanaryAccess(anonymous, target, bypass); return anonymous; }
         catch (error) { await anonymous.close(); throw error; }
@@ -141,7 +143,7 @@ async function main() {
   finally {
     // Restore a dedicated account's exact pre-existing star state before deleting owned fixtures.
     if (page && lifecycleState) {
-      try { await restoreCanaryStar(page, sql, userId, lifecycleState); cleanupProof.starRestored = true; }
+      try { await restoreCanaryStar(page, sql, userId, lifecycleState, base.origin, next => { phase = next; }); cleanupProof.starRestored = true; }
       catch (error) { if (!failure) { failure = error; failurePhase = "star_cleanup"; } }
     }
     // Recover committed create/copy even if navigation failed before recording IDs.
@@ -161,19 +163,24 @@ async function main() {
         check(owned.length === 1 && owned[0].user_id === userId && titles.includes(owned[0].title), "CLEANUP_OWNERSHIP_MISMATCH");
         page ??= await context.newPage();
         phase = "cleanup_navigation";
-        await navigateCanary(page, `/en/watchlists/${cleanupId}`);
+        const reused = await navigateCanaryCleanup(page, { origin: base.origin, path: `/en/watchlists/${cleanupId}`, title: owned[0].title },
+          lifecycleProof?.removal === true && cleanupId === watchlistId);
+        console.log(JSON.stringify({ contract, outcome: "navigation_budget", stage: "cleanup", reused }));
         phase = "cleanup_request_session";
         const cleanupSession = await context.request.get("/api/auth/get-session", { maxRedirects: 0 });
         check(cleanupSession.status() === 200 && (await cleanupSession.json()).user?.id === userId, "CLEANUP_SESSION_IDENTITY_MISMATCH");
         phase = "cleanup_owner_shell";
-        await waitForCanaryOwnerShell(page, owned[0].title);
+        await waitForCanaryOwnerShell(page, owned[0].title, { stage: "cleanup", expectedPath: `/en/watchlists/${cleanupId}`, expectedOrigin: base.origin, referenceCoverage: lifecycleState?.referenceCoverage, onPhase: next => { phase = next; }, onEvidence, readState: readiness => readReadinessState(page!, cleanupId, owned[0].title, readiness) });
         phase = "cleanup_delete_trigger";
         await page.getByRole("button", { name: "Delete", exact: true }).click();
         phase = "cleanup_delete_confirmation";
-        await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
-        phase = "cleanup_delete_persistence";
-        await page.waitForURL(/\/en\/watchlists$/);
-        check((await sql`SELECT 1 FROM watchlist WHERE id=${cleanupId}`).length === 0, "CANARY_CLEANUP_FAILED");
+        await captureCanaryDeleteAttempt(page, { expectedPath: `/en/watchlists/${cleanupId}`, expectedOrigin: base.origin,
+          onEvidence: evidence => console.log(JSON.stringify({ contract, outcome: "action_evidence", ...evidence })) }, async () => {
+          await page!.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
+          phase = "cleanup_delete_persistence";
+          await page!.waitForURL(/\/en\/watchlists$/);
+          check((await sql`SELECT 1 FROM watchlist WHERE id=${cleanupId}`).length === 0, "CANARY_CLEANUP_FAILED");
+        });
         cleanupProof.deleted++;
       } catch (error) { if (!failure) { failure = error; failurePhase = phase; } }
     }
@@ -192,6 +199,8 @@ async function main() {
     await context.close(); await browser.close(); await sql.end({ timeout: 5 });
   }
   if (failure) { phase = failurePhase!; throw failure; }
+  phase = "cleanup_final_proof";
+  requireCanaryCleanup(cleanupProof);
   if (expectedIdentity) {
     phase = "production_identity_after_cleanup";
     await reattestPublicCanaryIdentity(expectedIdentity);

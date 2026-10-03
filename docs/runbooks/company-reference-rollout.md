@@ -139,13 +139,27 @@ operator recovery; never broaden that cap to hide duplicate imports.
 The proxy shares a 30/minute IP budget across watchlist navigation and browsing
 actions, including authenticated requests. The remote deployment waits 65 seconds
 before each staged/public lifecycle so cache smoke and the earlier canary do not
-consume its starting burst budget. A canary document GET may retry once only on
+consume its starting burst budget. Each remote lifecycle also waits a fixed 65
+seconds after anonymous clone signout and context closure, before the star/removal
+tail. The protected runner derives this pacing from its validated staged/public
+target; the local harness explicitly selects a local policy. No locator budget,
+mutation replay or rate-limit exemption is added. A canary document GET may retry once only on
 an explicit HTTP429 with integer `Retry-After` of 1–65 seconds; an invalid/excessive
 delay or second denial fails. Server Actions, form submissions and the title-query
 navigation that initiates watchlist creation are never replayed. Removal/reload
 must render an authenticated editable owner shell before an absent pill counts as
 proof. Cleanup separately proves request identity, owner shell, deletion trigger,
 confirmation and persisted absence. Sustained-hour limits still fail the gate.
+Star restoration may reuse the current company route only with exact origin/path,
+one visible Account menu, the SQL-derived star control and no visible dialog or
+login control. Main cleanup may reuse only the same successfully verified
+post-removal owner route, with the exact owned editable title and the same guards.
+Unknown, foreign, modal or incomplete states retain the original document GET.
+The initial persisted reload and post-removal reload remain actual GETs; all SQL
+ownership/persistence proofs, cleanup request-session identity and signout remain
+mandatory. The fixed `navigation_budget` cleanup record reports reuse without
+paths or identities. Owner evidence still describes the most recent actual GET;
+reuse does not invent a new navigation or erase its passive status history.
 Verify partial/unknown lookup failures leave counts/filters unchanged, and existing
 reference edit/removal works without search. Never mutate the reporter's watchlist
 as a canary. Compare persisted membership UUID/count digests before/after promotion.
@@ -275,3 +289,71 @@ company snapshots must remain complete and independent of all company-ID FKs.
 The final-contract audit uses reference mode only after its exact ledger proves
 0101; reference mode refuses the active legacy selection FKs. Require the actual
 Drizzle-schema PG fixture and behavior/canary evidence before retiring writers.
+
+
+## Owner-shell diagnostic follow-up (#10247)
+
+The failed BIH diagnostic committed the reference and selection, completed the
+initial persisted reload and later edit/share/clone/star operations, then timed
+out after removal while waiting for owner UI. SQL membership absence and HTTP
+2xx do not prove that the account header and exact edited title rendered. The
+failure remains a failed lifecycle; cleanup success does not convert it to a pass.
+
+The shared canary now reports separate `owner_header` and `owner_title` phases.
+Before cleanup it emits a bounded readiness record: route/origin equality (no
+URL), navigation status/time, visible and DOM-visible role counts, loading and
+modal counts, persisted-title equality, membership count/any-company mode, and
+normal session status/identity equality only after failed readiness (null
+on success). Successful diagnostics read SQL state without an extra auth
+request; a failed readiness probe makes at most one supplemental session GET.
+Supplemental reads have a two-second budget and never replace the original wait failure. Existing locator budgets,
+identity/ownership checks, single-shot mutations, deletion and signout remain
+required. The final cleanup proof independently rejects residual fixtures,
+missing star restoration or an unclosed session even if owner readiness passes.
+
+Passive network evidence records only same-origin session GET and opaque
+Server Action **candidate** status/latency/pending/failure, capped at eight
+requests and eight browser errors per navigation with an explicit truncation
+flag. It cannot identify a particular Server Action as bootstrap. Browser errors
+are fixed categories; only an already available numeric Next digest may appear.
+No messages, DOM text, titles, identifiers, response bodies, headers, cookies,
+URLs, credentials or stacks enter diagnostic output. A generic external logger's
+`timeout=false` classifies transport codes and cannot rebut a Playwright timeout.
+
+An owner-governed follow-up may first create an isolated dedicated-account
+fixture through normal UI, verify paused notifications, exact owner/namespace and
+pinned deployment identity, then call the exported `diagnoseCanaryOwnerReload`
+helper with that fixture's private expected path/title/origin and bounded
+read-state/evidence callbacks. This helper performs one explicit document GET
+(with only the existing bounded 429 GET retry), waits for the unchanged owner
+conditions and reports `firstUse=false`, `existing_reference`, `readOnlyReload`.
+Re-attest public alias identity after the diagnostic. The helper sends no
+mutation; normal page bootstrap may still make its own bootstrap Server Action.
+
+BIH's canonical reference now exists. Any subsequent BIH lifecycle must label
+its `CanaryLifecycleState.referenceCoverage` as `existing_reference`; never delete
+it or another canonical identity to force novelty. Read-only reload or existing
+reference coverage cannot qualify as production promotion first-use. The
+protected runner retains its mandatory novel catalogue selection, pre-save
+absence check, committed Typesense-provenance proof and `firstUse=true` success
+contract. After diagnosis, at most one separately authorized full lifecycle may
+run on a fresh dedicated fixture, with exact cleanup. Change application behavior
+only when instrumented evidence supports a concrete defect; do not expand waits
+or replay saves/removal just to obtain green.
+
+
+Cleanup confirmation now starts a separate passive capture window immediately
+before the existing single click. Its `cleanup_delete` evidence is emitted in
+that attempt's `finally`, before signout or browser/context closure, whether
+persistence succeeds or fails. It records only candidate request status/latency,
+fixed browser error categories, known deletion-failure alert/control counts and
+route/origin equality. It sends no HTTP request and replays no action. A 2xx
+candidate response does not certify a successful delete; the original route,
+SQL absence and residual-cleanup assertions still decide the outcome.
+
+Explicit navigation evidence retains at most two attempt statuses, attempt
+count and validated Retry-After seconds (1–65 only when the one permitted GET
+retry is taken). Final HTTP 200 or long elapsed time alone must not be labelled
+as a proven prior 429. Invalid/excessive Retry-After, a second 429, and non-2xx
+responses preserve their existing failures. Opaque action status evidence is
+still a candidate observation rather than an identified Server Action.
