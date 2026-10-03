@@ -1,0 +1,828 @@
+{
+  "python_source_sha256": "f7e2b77d6eace8827da8f0d36fd4806b9e8ef441dbadc0ca1110b57903c67e91",
+  "scope": "Actual pure Python _token_from_url and httpx request construction; 50 enabled production configuration variants plus token precedence/path/query boundary cases. No upstream fetch.",
+  "cases": [
+    {
+      "name": "enabled-profile-001",
+      "board_url": "https://boards.greenhouse.io/healtheconnections",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "healtheconnections",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/healtheconnections/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-002",
+      "board_url": "https://job-boards.greenhouse.io/liquidpersonnel",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "liquidpersonnel",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/liquidpersonnel/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-003",
+      "board_url": "https://boards.greenhouse.io/jetbrains",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "jetbrains",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/jetbrains/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-004",
+      "board_url": "https://job-boards.greenhouse.io/ouihelp",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "ouihelp",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/ouihelp/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-005",
+      "board_url": "https://www.ogilvy.com/work-with-us",
+      "metadata": {
+        "token": "ogilvy",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "ogilvy",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/ogilvy/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-006",
+      "board_url": "https://job-boards.greenhouse.io/carvana",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "carvana",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/carvana/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-007",
+      "board_url": "https://www.isaraerospace.com/careers",
+      "metadata": {
+        "token": "isaraerospace",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "isaraerospace",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/isaraerospace/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-008",
+      "board_url": "https://www.emnify.com/careers/openings",
+      "metadata": {
+        "token": "emnify",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "emnify",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/emnify/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-009",
+      "board_url": "https://job-boards.greenhouse.io/michelscorporation",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "michelscorporation",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/michelscorporation/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-010",
+      "board_url": "https://job-boards.greenhouse.io/constructortech",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "constructortech",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/constructortech/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-011",
+      "board_url": "https://api.greenhouse.io/v1/boards/robinhood/jobs",
+      "metadata": {
+        "token": "robinhood",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "robinhood",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/robinhood/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-012",
+      "board_url": "https://careers.vinted.com/jobs",
+      "metadata": {
+        "token": "vinteden",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "vinteden",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/vinteden/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-013",
+      "board_url": "https://boards-api.greenhouse.io/v1/boards/block/jobs",
+      "metadata": {
+        "board_token": "block",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "block",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/block/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-014",
+      "board_url": "https://job-boards.greenhouse.io/blackforestlabs",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "blackforestlabs",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/blackforestlabs/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-015",
+      "board_url": "https://job-boards.greenhouse.io/omgusphd",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "omgusphd",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/omgusphd/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-016",
+      "board_url": "https://job-boards.greenhouse.io/basejobs",
+      "metadata": {
+        "board_token": "basejobs",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "basejobs",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/basejobs/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-017",
+      "board_url": "https://toloka.ai/careers",
+      "metadata": {
+        "token": "toloka",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "toloka",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/toloka/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-018",
+      "board_url": "https://bolt.eu/en/careers/positions/",
+      "metadata": {
+        "token": "boltv2",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "boltv2",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/boltv2/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-019",
+      "board_url": "https://job-boards.greenhouse.io/housebuyersofamerica",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "housebuyersofamerica",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/housebuyersofamerica/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-020",
+      "board_url": "https://www.coupang.jobs/en/jobs/",
+      "metadata": {
+        "token": "coupang",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "coupang",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/coupang/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-021",
+      "board_url": "https://transmitsecurity.com/about/careers",
+      "metadata": {
+        "token": "transmitsecurity",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "transmitsecurity",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/transmitsecurity/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-022",
+      "board_url": "https://job-boards.greenhouse.io/centriaautism",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "centriaautism",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/centriaautism/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-023",
+      "board_url": "https://many-group.com/careers/opportunities/",
+      "metadata": {
+        "token": "manygroup",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "manygroup",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/manygroup/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-024",
+      "board_url": "https://job-boards.eu.greenhouse.io/pagonxt",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "pagonxt",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/pagonxt/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-025",
+      "board_url": "https://www.bursonglobal.com/careers",
+      "metadata": {
+        "token": "bursonglobalcareers",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "bursonglobalcareers",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/bursonglobalcareers/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-026",
+      "board_url": "https://job-boards.greenhouse.io/cdpjobs",
+      "metadata": {
+        "board_token": "cdpjobs",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "cdpjobs",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/cdpjobs/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-027",
+      "board_url": "https://job-boards.greenhouse.io/bestversionmedia",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "bestversionmedia",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/bestversionmedia/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-028",
+      "board_url": "https://www.databricks.com/company/careers",
+      "metadata": {
+        "token": "databricks",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "databricks",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/databricks/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-029",
+      "board_url": "https://deepmind.google/about/careers/",
+      "metadata": {
+        "token": "deepmind",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "deepmind",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/deepmind/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-030",
+      "board_url": "https://careers.wolt.com/en/jobs",
+      "metadata": {
+        "token": "wolt",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "wolt",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/wolt/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-031",
+      "board_url": "https://job-boards.greenhouse.io/agency",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "agency",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/agency/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-032",
+      "board_url": "https://job-boards.greenhouse.io/incode",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "incode",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/incode/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-033",
+      "board_url": "https://relai.app/career/",
+      "metadata": {
+        "token": "technology",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "technology",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/technology/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-034",
+      "board_url": "https://boards.greenhouse.io/lyft",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "lyft",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/lyft/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-035",
+      "board_url": "https://job-boards.eu.greenhouse.io/getnet",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "getnet",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/getnet/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-036",
+      "board_url": "https://boards-api.greenhouse.io/v1/boards/airbnb/jobs",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "airbnb",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/airbnb/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-037",
+      "board_url": "https://proton.me/careers",
+      "metadata": {
+        "token": "proton",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "proton",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/proton/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-038",
+      "board_url": "https://job-boards.eu.greenhouse.io/qphox",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "qphox",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/qphox/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-039",
+      "board_url": "https://flix.careers/jobs/",
+      "metadata": {
+        "token": "flix",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "flix",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/flix/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-040",
+      "board_url": "https://www.optiver.com/join-us/jobs/",
+      "metadata": {
+        "token": "optiverus",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "optiverus",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/optiverus/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-041",
+      "board_url": "https://www.valtech.com/career/jobs/",
+      "metadata": {
+        "token": "valtech",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "valtech",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/valtech/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-042",
+      "board_url": "https://job-boards.greenhouse.io/coinbase",
+      "metadata": {
+        "board_token": "coinbase",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "coinbase",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/coinbase/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-043",
+      "board_url": "https://boards.greenhouse.io/reddit",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "reddit",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/reddit/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-044",
+      "board_url": "https://stripe.com/jobs/search",
+      "metadata": {
+        "token": "stripe",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "stripe",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/stripe/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-045",
+      "board_url": "https://teams.emag.ro/jobs/",
+      "metadata": {
+        "token": "emag",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "emag",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/emag/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-046",
+      "board_url": "https://job-boards.greenhouse.io/indiecampers",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "indiecampers",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/indiecampers/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-047",
+      "board_url": "https://job-boards.greenhouse.io/svetness",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "svetness",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/svetness/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-048",
+      "board_url": "https://job-boards.greenhouse.io/veterinaryemergencygroupst",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "veterinaryemergencygroupst",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/veterinaryemergencygroupst/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-049",
+      "board_url": "https://boards.greenhouse.io/platacard",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "platacard",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/platacard/jobs?content=true"
+    },
+    {
+      "name": "enabled-profile-050",
+      "board_url": "https://www.gsacapital.com/join-us",
+      "metadata": {
+        "token": "gsacapital",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "gsacapital",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/gsacapital/jobs?content=true"
+    },
+    {
+      "name": "explicit-priority",
+      "board_url": "https://job-boards.greenhouse.io/other",
+      "metadata": {
+        "token": "fixture",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "empty-token",
+      "board_url": "https://job-boards.greenhouse.io/fixture",
+      "metadata": {
+        "token": "",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "null-token",
+      "board_url": "https://job-boards.greenhouse.io/fixture",
+      "metadata": {
+        "token": null,
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "ignored-alias",
+      "board_url": "https://job-boards.greenhouse.io/fixture",
+      "metadata": {
+        "board_token": "wrong-token",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "custom-explicit",
+      "board_url": "https://custom-company.invalid/careers",
+      "metadata": {
+        "token": "fixture",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "custom-inferred",
+      "board_url": "https://custom-company.invalid/fixture",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "api-path",
+      "board_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "bad-api-path",
+      "board_url": "https://boards-api.greenhouse.io/v2/boards/fixture/jobs",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "embedded-board",
+      "board_url": "https://boards.greenhouse.io/embed/job_board?for=fixture",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "blank-query-first",
+      "board_url": "https://boards.greenhouse.io/embed?for=&for=fixture",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "duplicate-query",
+      "board_url": "https://boards.greenhouse.io/embed?for=fixture&for=other",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "regional-query",
+      "board_url": "https://job-boards.eu.greenhouse.io/?url_token=fixture&for=other",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "regional-blank-query",
+      "board_url": "https://job-boards.eu.greenhouse.io/?url_token=&for=fixture",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "query-whitespace-precedence",
+      "board_url": "https://job-boards.eu.greenhouse.io/?url_token=%20&for=fixture",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "query-whitespace-trim",
+      "board_url": "https://boards.greenhouse.io/embed?for=%1Cfixture%1F",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "escaped-path",
+      "board_url": "https://job-boards.greenhouse.io/%66ixture",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "raw-path-whitespace",
+      "board_url": "https://job-boards.greenhouse.io/  fixture  ",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "uppercase-host",
+      "board_url": "https://JOB-BOARDS.GREENHOUSE.IO/fixture",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "legacy-eu-no-inference",
+      "board_url": "https://boards.eu.greenhouse.io/fixture",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "legacy-eu-explicit",
+      "board_url": "https://boards.eu.greenhouse.io/other",
+      "metadata": {
+        "token": "fixture",
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "embed-no-param",
+      "board_url": "https://boards.greenhouse.io/embed/job_board",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "regional-path-query",
+      "board_url": "https://job-boards.uk.greenhouse.io/fixture?url_token=other",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": true,
+      "token": "fixture",
+      "endpoint": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    },
+    {
+      "name": "semicolon-value",
+      "board_url": "https://boards.greenhouse.io/embed?for=fixture;other",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "ignored-path-embed",
+      "board_url": "https://job-boards.greenhouse.io/embed",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "ignored-path-v1",
+      "board_url": "https://job-boards.greenhouse.io/v1",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "ignored-path-api",
+      "board_url": "https://job-boards.greenhouse.io/api",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "ignored-path-js",
+      "board_url": "https://job-boards.greenhouse.io/js",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "ignored-path-css",
+      "board_url": "https://job-boards.greenhouse.io/css",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    },
+    {
+      "name": "ignored-path-assets",
+      "board_url": "https://job-boards.greenhouse.io/assets",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "accepted": false,
+      "token": null,
+      "endpoint": null
+    }
+  ]
+}

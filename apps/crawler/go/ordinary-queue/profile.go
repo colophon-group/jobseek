@@ -27,11 +27,6 @@ type GreenhouseMonitorProfile struct {
 	EffectiveConfigSHA256, SnapshotSHA256       string
 }
 
-var greenhouseBoardHosts = map[string]bool{
-	"job-boards.greenhouse.io": true, "job-boards.eu.greenhouse.io": true,
-	"boards.greenhouse.io": true, "boards.eu.greenhouse.io": true,
-	"boards-api.greenhouse.io": true,
-}
 var greenhouseBoardFields = map[string]bool{
 	"board_slug": true, "board_url": true, "crawler_type": true, "company_id": true,
 	"metadata": true, "check_interval_minutes": true, "scrape_interval_hours": true,
@@ -40,6 +35,7 @@ var greenhouseBoardFields = map[string]bool{
 }
 var greenhouseMetadataFields = map[string]bool{
 	"token": true, "scraper_type": true, "scraper_config": true,
+	"board_token":    true,
 	"suspect_streak": true, "recent_discovered_counts": true,
 	"_monitor_config_fingerprint": true, "_confirmed_drop_candidate": true,
 }
@@ -87,9 +83,10 @@ func profileInterval(raw string, unit time.Duration) (time.Duration, bool) {
 }
 
 // InspectGreenhouseMonitor validates the strict rich API profile already used
-// by the Go Greenhouse compatibility runtime. Inferred tokens, URL transforms,
-// filtering, enrichment, proxy/transport overrides and unknown fields remain
-// unselected until separately proven. It reads no queue and makes no request.
+// by the Go Greenhouse compatibility runtime. Explicit tokens take precedence;
+// otherwise the existing recognized URL forms supply the token. Filtering,
+// enrichment, proxy/transport overrides and unknown fields remain unselected.
+// It reads no queue and makes no request to the configured board URL.
 func InspectGreenhouseMonitor(boardID string, config map[string]string) (GreenhouseMonitorProfile, error) {
 	var result GreenhouseMonitorProfile
 	fail := func() (GreenhouseMonitorProfile, error) { return GreenhouseMonitorProfile{}, ErrUnsupportedProfile }
@@ -105,7 +102,7 @@ func InspectGreenhouseMonitor(boardID string, config map[string]string) (Greenho
 		return fail()
 	}
 	boardURL, err := url.Parse(config["board_url"])
-	if err != nil || boardURL.Scheme != "https" || boardURL.User != nil || !greenhouseBoardHosts[strings.ToLower(boardURL.Hostname())] || boardURL.Host != boardURL.Hostname() || boardURL.Opaque != "" {
+	if err != nil || boardURL.Scheme != "https" || boardURL.User != nil || boardURL.Hostname() == "" || boardURL.Host != boardURL.Hostname() || boardURL.Opaque != "" {
 		return fail()
 	}
 	metadata, err := profileMetadata(config["metadata"])
@@ -113,7 +110,15 @@ func InspectGreenhouseMonitor(boardID string, config map[string]string) (Greenho
 		return fail()
 	}
 	var token, scraper string
-	if json.Unmarshal(metadata["token"], &token) != nil || !greenhouseToken.MatchString(token) || json.Unmarshal(metadata["scraper_type"], &scraper) != nil || scraper != "skip" {
+	if raw, present := metadata["token"]; present && json.Unmarshal(raw, &token) != nil {
+		return fail()
+	}
+	if token == "" {
+		// Python ignores the legacy board_token field; preserve it in the
+		// configuration binding, but infer from the board URL instead.
+		token = inferredGreenhouseToken(config["board_url"], boardURL)
+	}
+	if !greenhouseToken.MatchString(token) || json.Unmarshal(metadata["scraper_type"], &scraper) != nil || scraper != "skip" {
 		return fail()
 	}
 	if raw, present := metadata["scraper_config"]; present && !bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
@@ -163,7 +168,7 @@ func stableGreenhouseConfig(config map[string]string, metadata map[string]json.R
 	}
 	stable := cloneConfig(config)
 	// These cached egress observations are learned at execution time. The
-	// native endpoint remains fixed by the explicit token; publisher/circuit
+	// native endpoint remains fixed by the resolved token; publisher/circuit
 	// attribution must derive its actual request host rather than trust caches.
 	delete(stable, "egress_host")
 	delete(stable, "scrape_egress_host")

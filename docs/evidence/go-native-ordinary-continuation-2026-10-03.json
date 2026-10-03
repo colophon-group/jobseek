@@ -1033,5 +1033,22 @@
       ],
       "projection_pttl": -1
     }
+  },
+  "greenhouse_family_candidate": {
+    "cached_unsupported": 0,
+    "canonical_unsupported": 0,
+    "changed_projection": 0,
+    "eligible_canonical_and_cached_profiles": 2570,
+    "enabled_effective_profile_records": 2570,
+    "observed_at": "2026-10-03T14:55:18.343435+00:00",
+    "routing_epoch": 149,
+    "schema": "jobseek.native-greenhouse-profile-census/v1",
+    "scope": "Actual native factory applied offline to independently captured canonical and cached configurations. Candidate capability only; fresh production staging and adoption remain required.",
+    "source_revision": "eb991eb3997e66e4f05d327405a399f26c4a4644",
+    "original_factory_admitted": 2520,
+    "newly_supported_profiles": 50,
+    "python_oracle_cases": 79,
+    "private_owned_profile_variants": 4,
+    "production_ordinary_owners": 4
   }
 }
