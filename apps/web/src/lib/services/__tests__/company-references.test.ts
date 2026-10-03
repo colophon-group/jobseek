@@ -107,12 +107,12 @@ describe("company reference bridge persistence", () => {
     return { writes, tx: { insert } as unknown as Parameters<typeof persistCompanyReferences>[0] };
   }
 
-  it("inserts the reference before its minimal legacy bridge in the caller's transaction", async () => {
+  it("uses the legacy trigger lock order in the caller's transaction", async () => {
     const { tx, writes } = transaction();
     await persistCompanyReferences(tx, [prepared]);
     expect(writes).toEqual([
-      { table: mocks.referenceTable, value: prepared },
       { table: mocks.companyTable, value: document },
+      { table: mocks.referenceTable, value: prepared },
     ]);
   });
 

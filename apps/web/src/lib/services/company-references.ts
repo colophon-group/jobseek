@@ -155,10 +155,25 @@ export async function persistCompanyReferences(tx: CompanyTransaction, reference
   // Sorted insertion avoids reversed lock order between overlapping batches.
   const sorted = [...references].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
   for (const reference of sorted) {
+    // Legacy INSERT/UPDATE holds a company row before its AFTER trigger takes
+    // the reference row. Use the same lock order during coexistence; taking
+    // reference first would deadlock against the old writer for the same UUID.
+    if (bridge) {
+      try {
+        await tx.insert(company).values({
+          id: reference.id, name: reference.name, slug: reference.slug, icon: reference.icon,
+        }).onConflictDoNothing({ target: company.id });
+      } catch (error) {
+        if (isUniqueViolation(error, "company_slug_unique") || isUniqueViolation(error, "company_slug_key")) {
+          throw new CompanyReferenceError("company_identity_conflict");
+        }
+        throw error;
+      }
+    }
     if (reference.source === "typesense") {
-      // A compatible old writer may seed a legacy row while the canonical
-      // network lookup is pending. Promote that snapshot; never overwrite a
-      // canonical snapshot another request already persisted.
+      // The compatibility trigger may seed a legacy row during preparation
+      // or immediately above. Promote that snapshot in the same transaction;
+      // never overwrite a canonical snapshot another request already persisted.
       await tx.insert(companyReference).values(reference).onConflictDoUpdate({
         target: companyReference.id,
         set: {
@@ -169,17 +184,6 @@ export async function persistCompanyReferences(tx: CompanyTransaction, reference
       });
     } else {
       await tx.insert(companyReference).values(reference).onConflictDoNothing({ target: companyReference.id });
-    }
-    if (!bridge) continue;
-    try {
-      await tx.insert(company).values({
-        id: reference.id, name: reference.name, slug: reference.slug, icon: reference.icon,
-      }).onConflictDoNothing({ target: company.id });
-    } catch (error) {
-      if (isUniqueViolation(error, "company_slug_unique") || isUniqueViolation(error, "company_slug_key")) {
-        throw new CompanyReferenceError("company_identity_conflict");
-      }
-      throw error;
     }
   }
 }
