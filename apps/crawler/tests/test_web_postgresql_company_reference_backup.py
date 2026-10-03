@@ -526,3 +526,138 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         )
         with pytest.raises(backup.BackupError, match="reference_checks"):
             backup._web_postgres_reference_phase(env={})
+
+
+@pytest.mark.parametrize(
+    ("expression", "error"),
+    [
+        *[
+            (expression, "unreviewed custom function")
+            for expression in ("default", "check", "policy", "index", "operator")
+        ],
+        *[
+            (expression, "unreviewed custom expression")
+            for expression in ("builtin_operator", "collation", "opclass")
+        ],
+        ("domain", "unreviewed custom type"),
+        ("function_signature", "trigger function differs"),
+    ],
+)
+def test_actual_custom_expression_dependency_blocks_backup_before_dump_or_upload(
+    monkeypatch, local_clusters, expression, error
+):
+    _, (source, _) = local_clusters
+
+    def psql(sql: str) -> str:
+        return command(
+            [
+                "psql",
+                "-h",
+                str(source),
+                "-U",
+                "postgres",
+                "-d",
+                "postgres",
+                "-X",
+                "-q",
+                "-t",
+                "-A",
+                "-v",
+                "ON_ERROR_STOP=1",
+            ],
+            input=sql,
+        )
+
+    psql(
+        'CREATE TABLE public."user" '
+        "(id text PRIMARY KEY DEFAULT gen_random_uuid()::text, name text); "
+        'ALTER TABLE public."user" ADD CHECK (length(name)>0); '
+        'ALTER TABLE public."user" ADD CHECK ((NULL::public."user") IS NULL); '
+        'CREATE INDEX backup_builtin_index ON public."user" (lower(name)); '
+        'CREATE POLICY backup_builtin_policy ON public."user" USING (length(name)>0); '
+        "CREATE FUNCTION public.backup_review_default() RETURNS text "
+        "LANGUAGE SQL IMMUTABLE AS $$ SELECT 'fixture'::text $$; "
+        "CREATE TYPE public.backup_excluded_status AS ENUM ('fixture'); "
+        "CREATE TABLE public.backup_excluded (id text DEFAULT public.backup_review_default(), "
+        'user_id text REFERENCES public."user"(id), status public.backup_excluded_status);'
+    )
+    monkeypatch.setattr(backup, "_web_psql", lambda sql, **_: psql(sql))
+    # Builtins are portable; a function used only by an excluded table is not
+    # part of the selected archive and must not expand its support boundary.
+    assert backup._web_postgres_dependencies(env={}, phase="legacy") == []
+    if expression == "default":
+        psql('ALTER TABLE public."user" ALTER COLUMN id SET DEFAULT public.backup_review_default()')
+    elif expression in ("check", "policy"):
+        psql(
+            "CREATE FUNCTION public.backup_review_check(text) RETURNS boolean "
+            "LANGUAGE SQL IMMUTABLE AS $$ SELECT length($1)>0 $$"
+        )
+        if expression == "check":
+            psql('ALTER TABLE public."user" ADD CHECK (public.backup_review_check(name))')
+        else:
+            psql(
+                'CREATE POLICY backup_custom_policy ON public."user" '
+                "USING (public.backup_review_check(name))"
+            )
+    elif expression == "index":
+        psql(
+            "CREATE FUNCTION public.backup_review_index(text) RETURNS text "
+            "LANGUAGE SQL IMMUTABLE AS $$ SELECT lower($1) $$"
+        )
+        psql('CREATE INDEX backup_custom_index ON public."user" (public.backup_review_index(name))')
+    elif expression == "operator":
+        psql(
+            "CREATE FUNCTION public.backup_review_operator(text,text) RETURNS boolean "
+            "LANGUAGE SQL IMMUTABLE AS $$ SELECT $1=$2 $$; "
+            "CREATE OPERATOR public.===# (FUNCTION=public.backup_review_operator, "
+            "LEFTARG=text, RIGHTARG=text); "
+            'ALTER TABLE public."user" ADD CHECK (name OPERATOR(public.===#) name)'
+        )
+    elif expression == "builtin_operator":
+        psql(
+            "CREATE OPERATOR public.===# "
+            "(FUNCTION=pg_catalog.texteq, LEFTARG=text, RIGHTARG=text); "
+            'ALTER TABLE public."user" ADD CHECK (name OPERATOR(public.===#) name)'
+        )
+    elif expression == "collation":
+        psql(
+            'CREATE COLLATION public.backup_collation FROM pg_catalog."C"; '
+            'CREATE INDEX backup_collation_index ON public."user" '
+            "(name COLLATE public.backup_collation)"
+        )
+    elif expression == "opclass":
+        psql(
+            "CREATE OPERATOR CLASS public.backup_opclass FOR TYPE text USING btree AS "
+            "OPERATOR 1 < (text,text), OPERATOR 2 <= (text,text), OPERATOR 3 = (text,text), "
+            "OPERATOR 4 >= (text,text), OPERATOR 5 > (text,text), "
+            "FUNCTION 1 pg_catalog.bttextcmp(text,text); "
+            'CREATE INDEX backup_opclass_index ON public."user" (name public.backup_opclass)'
+        )
+    elif expression == "domain":
+        psql(
+            "CREATE DOMAIN public.backup_domain AS text CHECK (length(VALUE)>0); "
+            'ALTER TABLE public."user" ADD CHECK (name::public.backup_domain IS NOT NULL)'
+        )
+    else:
+        definition = backup.WEB_POSTGRES_DEPENDENCY_SQL[
+            "public.jobseek_notifications_pause_state_changed_at"
+        ].replace("RETURNS trigger", "RETURNS text")
+        psql(
+            "SET check_function_bodies=off; "
+            + definition
+            + 'ALTER TABLE public."user" ALTER COLUMN id SET DEFAULT '
+            "public.jobseek_notifications_pause_state_changed_at()"
+        )
+
+    monkeypatch.setenv("RESTIC_REPOSITORY", "fixture-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/fixture/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "fixture-transport")
+    monkeypatch.setattr(backup, "_require_web_postgres_helper_image", lambda: None)
+    monkeypatch.setattr(backup, "_web_postgres_env", lambda: {})
+    monkeypatch.setattr(backup, "_web_postgres_reference_phase", lambda **_: "legacy")
+    monkeypatch.setattr(backup, "_validate_web_postgres_boundary", lambda **_: None)
+    commands = []
+    monkeypatch.setattr(backup, "run_checked", lambda argv, **_: commands.append(argv))
+    with pytest.raises(backup.BackupError, match=error):
+        backup.web_postgresql_backup()
+    assert commands == [], "Dependency failure must precede pg_dump and Restic upload"

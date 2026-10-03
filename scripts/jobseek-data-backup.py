@@ -1292,28 +1292,85 @@ def _web_postgres_bootstrap_sql(
 
 
 def _web_postgres_dependencies(*, env: dict[str, str], phase: str) -> list[str]:
+    # Table-filtered dumps omit standalone functions even when table defaults,
+    # checks, policies or indexes call them. Inspect only objects owned by the
+    # included relations; unrelated excluded tables cannot widen this boundary.
+    # Internal FK triggers belong to their owning constraints, rather than the
+    # included parent table on which PostgreSQL also installs an enforcement trigger.
     values = _included_tables_values_sql(phase)
     raw = _web_psql(
         f"""
-        WITH included(schema_name, table_name) AS ({values}), relations AS (
+        WITH RECURSIVE included(schema_name, table_name) AS ({values}), relations AS (
           SELECT c.oid FROM included i JOIN pg_namespace n ON n.nspname=i.schema_name
-          JOIN pg_class c ON c.relnamespace=n.oid AND c.relname=i.table_name)
+          JOIN pg_class c ON c.relnamespace=n.oid AND c.relname=i.table_name),
+        dependency_roots(classid, objid) AS (
+          SELECT 'pg_class'::regclass, oid FROM relations
+          UNION SELECT 'pg_class'::regclass, indexrelid FROM pg_index
+            WHERE indrelid IN (SELECT oid FROM relations)
+          UNION SELECT 'pg_attrdef'::regclass, oid FROM pg_attrdef
+            WHERE adrelid IN (SELECT oid FROM relations)
+          UNION SELECT 'pg_constraint'::regclass, oid FROM pg_constraint
+            WHERE conrelid IN (SELECT oid FROM relations)
+          UNION SELECT 'pg_policy'::regclass, oid FROM pg_policy
+            WHERE polrelid IN (SELECT oid FROM relations)
+          UNION SELECT 'pg_trigger'::regclass, oid FROM pg_trigger
+            WHERE tgrelid IN (SELECT oid FROM relations) AND NOT tgisinternal),
+        dependency_edges(classid, objid, refclassid, refobjid) AS (
+          SELECT classid, objid, refclassid, refobjid FROM pg_depend
+          UNION ALL SELECT 'pg_type'::regclass, contypid, 'pg_constraint'::regclass, oid
+            FROM pg_constraint WHERE contypid<>0),
+        dependency_walk(classid, objid, depth) AS (
+          SELECT classid, objid, 0 FROM dependency_roots
+          UNION SELECT edge.refclassid, edge.refobjid, walk.depth+1
+            FROM dependency_walk walk JOIN dependency_edges edge
+              ON edge.classid=walk.classid AND edge.objid=walk.objid
+            WHERE walk.depth<16),
+        function_oids(oid) AS (
+          SELECT tgfoid FROM pg_trigger
+            WHERE tgrelid IN (SELECT oid FROM relations) AND NOT tgisinternal
+          UNION SELECT objid FROM dependency_walk WHERE classid='pg_proc'::regclass)
         SELECT json_build_object(
+          'truncated', EXISTS (SELECT 1 FROM dependency_walk walk
+            JOIN dependency_edges edge ON edge.classid=walk.classid AND edge.objid=walk.objid
+            WHERE walk.depth=16 AND NOT EXISTS (SELECT 1 FROM dependency_walk visited
+              WHERE visited.classid=edge.refclassid AND visited.objid=edge.refobjid)),
           'types', (SELECT coalesce(json_agg(DISTINCT jsonb_build_object(
             'name', n.nspname || '.' || t.typname, 'kind', t.typtype,
+            'included_relation', t.typtype='c' AND t.typrelid IN (SELECT oid FROM relations),
             'labels', (SELECT json_agg(enumlabel ORDER BY enumsortorder)
               FROM pg_enum WHERE enumtypid=t.oid))), '[]'::json)
-            FROM pg_attribute a JOIN pg_type t ON t.oid=a.atttypid
-            JOIN pg_namespace n ON n.oid=t.typnamespace
-            WHERE a.attrelid IN (SELECT oid FROM relations) AND a.attnum>0
-              AND NOT a.attisdropped AND n.nspname NOT IN ('pg_catalog','information_schema')),
+            FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
+            WHERE t.oid IN (SELECT atttypid FROM pg_attribute
+              WHERE attrelid IN (SELECT oid FROM relations) AND attnum>0 AND NOT attisdropped
+              UNION SELECT objid FROM dependency_walk WHERE classid='pg_type'::regclass)
+              AND n.nspname NOT IN ('pg_catalog','information_schema')),
+          'custom_expression_objects', (SELECT coalesce(json_agg(DISTINCT object_name), '[]'::json)
+            FROM (
+              SELECT n.nspname || '.' || o.oprname AS object_name
+                FROM pg_operator o JOIN pg_namespace n ON n.oid=o.oprnamespace
+                WHERE o.oid IN (SELECT objid FROM dependency_walk
+                  WHERE classid='pg_operator'::regclass) AND n.nspname<>'pg_catalog'
+              UNION SELECT n.nspname || '.' || c.collname
+                FROM pg_collation c JOIN pg_namespace n ON n.oid=c.collnamespace
+                WHERE c.oid IN (SELECT objid FROM dependency_walk
+                  WHERE classid='pg_collation'::regclass) AND n.nspname<>'pg_catalog'
+              UNION SELECT n.nspname || '.' || c.opcname
+                FROM pg_opclass c JOIN pg_namespace n ON n.oid=c.opcnamespace
+                WHERE c.oid IN (SELECT objid FROM dependency_walk
+                  WHERE classid='pg_opclass'::regclass) AND n.nspname<>'pg_catalog'
+              UNION SELECT n.nspname || '.' || f.opfname
+                FROM pg_opfamily f JOIN pg_namespace n ON n.oid=f.opfnamespace
+                WHERE f.oid IN (SELECT objid FROM dependency_walk
+                  WHERE classid='pg_opfamily'::regclass) AND n.nspname<>'pg_catalog'
+            ) objects),
           'functions', (SELECT coalesce(json_agg(DISTINCT jsonb_build_object(
             'name', n.nspname || '.' || p.proname, 'body', p.prosrc,
             'language', l.lanname, 'security_definer', p.prosecdef,
-            'config', p.proconfig, 'arguments', p.pronargs)), '[]'::json)
-            FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid
+            'config', p.proconfig, 'arguments', p.pronargs,
+            'return_type', p.prorettype::regtype::text, 'kind', p.prokind)), '[]'::json)
+            FROM function_oids f JOIN pg_proc p ON p.oid=f.oid
             JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_language l ON l.oid=p.prolang
-            WHERE t.tgrelid IN (SELECT oid FROM relations) AND NOT t.tgisinternal))
+            WHERE n.nspname<>'pg_catalog'))
         """,
         env=env,
     )
@@ -1321,22 +1378,34 @@ def _web_postgres_dependencies(*, env: dict[str, str], phase: str) -> list[str]:
         state = json.loads(raw)
         types = state["types"]
         functions = state["functions"]
-        if not isinstance(types, list) or not isinstance(functions, list):
+        expression_objects = state["custom_expression_objects"]
+        if state.get("truncated") is not False:
+            raise BackupError("web PostgreSQL restore dependency traversal exceeded its bound")
+        if not all(isinstance(value, list) for value in (types, functions, expression_objects)):
             raise ValueError
     except (KeyError, TypeError, ValueError) as exc:
         raise BackupError("web PostgreSQL restore dependencies are not parseable") from exc
     dependencies: set[str] = set()
     for enum in types:
-        if enum != {"name": "public.notification_cadence", "kind": "e", "labels": ["weekly"]}:
+        if enum.get("included_relation") is True:
+            continue
+        if enum != {
+            "name": "public.notification_cadence",
+            "kind": "e",
+            "labels": ["weekly"],
+            "included_relation": False,
+        }:
             raise BackupError("web PostgreSQL table has an unreviewed custom type dependency")
         dependencies.add(enum["name"])
     for function in functions:
         name = function.get("name")
         if name == "public.company_reference_from_legacy" and phase == "expanded":
+            if function.get("return_type") != "trigger" or function.get("kind") != "f":
+                raise BackupError("web PostgreSQL legacy bridge function has an invalid signature")
             continue
         definition = WEB_POSTGRES_DEPENDENCY_SQL.get(name, "")
         if not definition.startswith("CREATE FUNCTION"):
-            raise BackupError("web PostgreSQL table has an unreviewed trigger function dependency")
+            raise BackupError("web PostgreSQL table has an unreviewed custom function dependency")
         dollar = re.search(r"AS (\$[a-z_]+\$)", definition)
         assert dollar
         body = definition.split(dollar.group(1))[1]
@@ -1347,9 +1416,13 @@ def _web_postgres_dependencies(*, env: dict[str, str], phase: str) -> list[str]:
             "security_definer": False,
             "config": None,
             "arguments": 0,
+            "return_type": "trigger",
+            "kind": "f",
         }:
             raise BackupError("web PostgreSQL trigger function differs from reviewed restore bytes")
         dependencies.add(name)
+    if expression_objects:
+        raise BackupError("web PostgreSQL table has an unreviewed custom expression dependency")
     return sorted(dependencies)
 
 
