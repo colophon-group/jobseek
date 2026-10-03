@@ -19,19 +19,19 @@ async function until(probe: () => Promise<boolean>, code: string) {
 }
 
 /** Bounded diagnostic reads cancel the sibling SELECT on every error path. */
-export async function readCanaryReadinessState(ownerPage: Page, sql: Sql, userId: string, id: string, expectedTitle: string): Promise<CanaryReadinessState> {
+export async function readCanaryReadinessState(ownerPage: Page, sql: Sql, userId: string, id: string, expectedTitle: string, includeSession = false): Promise<CanaryReadinessState> {
   const query = sql`SELECT (w.title=${expectedTitle}) AS title_matches,
     (SELECT count(*)::integer FROM watchlist_company wc WHERE wc.watchlist_id=w.id) AS membership_count,
     COALESCE(w.filters->>'anyCompany', 'false') AS any_company
     FROM watchlist w WHERE w.id=${id} AND w.user_id=${userId}`;
   const timer = setTimeout(() => { try { query.cancel(); } catch { /* Diagnostics cannot replace the original failure. */ } }, 1_800);
   try {
-    const [rows, response] = await Promise.all([query, ownerPage.context().request.get("/api/auth/get-session", { maxRedirects: 0, timeout: 1_800 })]);
-    const text = await response.text();
-    const session = text.length <= 65_536 ? JSON.parse(text) as { user?: { id?: unknown } } : null;
+    const [rows, response] = await Promise.all([query, includeSession ? ownerPage.context().request.get("/api/auth/get-session", { maxRedirects: 0, timeout: 1_800 }) : Promise.resolve(null)]);
+    const text = response ? await response.text() : null;
+    const session = text !== null && text.length <= 65_536 ? JSON.parse(text) as { user?: { id?: unknown } } : null;
     return { persistedTitleMatches: rows[0]?.title_matches ?? null, companyMembershipCount: rows[0]?.membership_count ?? null,
       anyCompany: rows[0]?.any_company === "true" ? true : rows[0]?.any_company === "false" ? false : null,
-      sessionStatus: response.status(), sessionIdentityMatches: session ? session.user?.id === userId : null };
+      sessionStatus: response?.status() ?? null, sessionIdentityMatches: session ? session.user?.id === userId : null };
   } catch (error) {
     // Promise.all does not cancel a SELECT when its sibling session GET fails.
     // Release the sole diagnostic connection before cleanup uses it.
@@ -80,7 +80,7 @@ export async function exerciseCanaryLifecycle(input: {
   page: Page; sql: Sql; userId: string; email: string; password: string; origin: string; watchlistId: string;
   state: CanaryLifecycleState; onPhase?: (phase: string) => void;
   onEvidence?: (evidence: CanaryOwnerEvidence) => void;
-  readReadinessState?: (page: Page, watchlistId: string, title: string) => Promise<CanaryReadinessState>;
+  readReadinessState?: (page: Page, watchlistId: string, title: string, readiness: CanaryOwnerEvidence["readiness"]) => Promise<CanaryReadinessState>;
   createAnonymousContext: () => Promise<BrowserContext>;
 }) {
   const { page, sql, userId, email, password, origin, watchlistId, state } = input;
@@ -133,7 +133,7 @@ export async function exerciseCanaryLifecycle(input: {
     check(copied.length === 1 && copied[0].company_id === state.company.id && !copied[0].alerts_enabled && !copied[0].share_enabled && copied[0].any_company !== "true", "CANARY_CLONE_SELECTION_MISMATCH");
     await shared.waitForURL(url => url.pathname === `/en/watchlists/${cloneId}`);
     input.onPhase?.("canary_clone_cleanup_owner_shell");
-    await waitForCanaryOwnerShell(shared, targetTitle, { stage: "clone_cleanup", expectedPath: `/en/watchlists/${cloneId}`, expectedOrigin: origin, referenceCoverage: state.referenceCoverage, onPhase: input.onPhase, onEvidence: input.onEvidence, readState: input.readReadinessState ? () => input.readReadinessState!(shared!, cloneId!, targetTitle) : undefined });
+    await waitForCanaryOwnerShell(shared, targetTitle, { stage: "clone_cleanup", expectedPath: `/en/watchlists/${cloneId}`, expectedOrigin: origin, referenceCoverage: state.referenceCoverage, onPhase: input.onPhase, onEvidence: input.onEvidence, readState: input.readReadinessState ? readiness => input.readReadinessState!(shared!, cloneId!, targetTitle, readiness) : undefined });
     await shared.getByRole("button", { name: `Remove ${state.company.name}`, exact: true }).waitFor();
     input.onPhase?.("canary_clone_cleanup_trigger");
     await shared.getByRole("button", { name: "Delete", exact: true }).click();
@@ -168,7 +168,7 @@ export async function exerciseCanaryLifecycle(input: {
   input.onPhase?.("canary_removal_reload_navigation");
   await navigateCanary(page, page.url());
   input.onPhase?.("canary_removal_reload_owner_shell");
-  await waitForCanaryOwnerShell(page, targetTitle, { stage: "removal_reload", expectedPath: `/en/watchlists/${watchlistId}`, expectedOrigin: origin, referenceCoverage: state.referenceCoverage, onPhase: input.onPhase, onEvidence: input.onEvidence, readState: input.readReadinessState ? () => input.readReadinessState!(page, watchlistId, targetTitle) : undefined });
+  await waitForCanaryOwnerShell(page, targetTitle, { stage: "removal_reload", expectedPath: `/en/watchlists/${watchlistId}`, expectedOrigin: origin, referenceCoverage: state.referenceCoverage, onPhase: input.onPhase, onEvidence: input.onEvidence, readState: input.readReadinessState ? readiness => input.readReadinessState!(page, watchlistId, targetTitle, readiness) : undefined });
   input.onPhase?.("canary_removal_reload_absence");
   check((await page.getByRole("button", { name: `Remove ${state.company.name}`, exact: true }).count()) === 0, "CANARY_REMOVAL_RELOAD_FAILED");
   check((await sql`SELECT 1 FROM company_reference WHERE id=${state.company.id}`).length === 1, "CANARY_REMOVAL_DELETED_REFERENCE");

@@ -59,7 +59,7 @@ export type CanaryOwnerOptions = {
   referenceCoverage?: Coverage;
   onPhase?: (phase: string) => void;
   onEvidence?: (evidence: CanaryOwnerEvidence) => void;
-  readState?: () => Promise<CanaryReadinessState>;
+  readState?: (readiness: CanaryOwnerEvidence["readiness"]) => Promise<CanaryReadinessState>;
 };
 const observations = new WeakMap<Page, Observation>();
 const boundedElapsed = (started: number) => Math.max(0, Math.min(120_000, Date.now() - started));
@@ -128,7 +128,7 @@ async function ownerEvidence(page: Page, title: string, options: CanaryOwnerOpti
   let state = { ...unknownState }; let timer: ReturnType<typeof setTimeout> | undefined;
   if (options.readState) {
     try {
-      const value = await Promise.race([options.readState(), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("diagnostic_budget")), 1_500); })]);
+      const value = await Promise.race([options.readState(readiness), new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("diagnostic_budget")), 1_500); })]);
       state = { persistedTitleMatches: typeof value.persistedTitleMatches === "boolean" ? value.persistedTitleMatches : null,
         companyMembershipCount: Number.isSafeInteger(value.companyMembershipCount) && value.companyMembershipCount! >= 0 && value.companyMembershipCount! <= 1_000 ? value.companyMembershipCount : null,
         anyCompany: typeof value.anyCompany === "boolean" ? value.anyCompany : null,

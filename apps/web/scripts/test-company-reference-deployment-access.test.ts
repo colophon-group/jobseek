@@ -273,7 +273,34 @@ test.each([false, true])("early session failure cancels pending SELECT and prese
   const sql = (() => query) as unknown as Sql;
   const sessionFailure = new Error("session_transport_failed");
   const page = { context: () => ({ request: { get: async () => { throw sessionFailure; } } }) } as unknown as Page;
-  await expect(readCanaryReadinessState(page, sql, "private-user", "private-watchlist", privateTitle)).rejects.toBe(sessionFailure);
+  await expect(readCanaryReadinessState(page, sql, "private-user", "private-watchlist", privateTitle, true)).rejects.toBe(sessionFailure);
   expect(cancelled).toBe(1);
   expect(outstanding).toBe(false);
+});
+
+
+test.each([true, false])("owner diagnostics request session only on failed readiness (ready=%s)", async ready => {
+  let sessionGets = 0; let sqlReads = 0;
+  const server = createServer((req, res) => {
+    if (req.url === "/api/auth/get-session") {
+      sessionGets++; res.setHeader("content-type", "application/json"); res.end('{"user":{"id":"PRIVATE_USER"}}'); return;
+    }
+    res.setHeader("content-type", "text/html");
+    res.end(`${ready ? "<button>Account menu</button>" : '<a href="/en/sign-in">Log in</a>'}<h1><button>${privateTitle}</button></h1>`);
+  });
+  const port = await listen(server); const origin = `http://127.0.0.1:${port}`;
+  const browser = await chromium.launch({headless:true}); const context = await browser.newContext({baseURL:origin}); const page = await context.newPage();
+  const evidence: CanaryOwnerEvidence[] = [];
+  const sql = (() => { sqlReads++; return Object.assign(Promise.resolve([{title_matches:true,membership_count:0,any_company:"false"}]), {cancel:()=>{}}); }) as unknown as Sql;
+  try {
+    page.setDefaultTimeout(200);
+    const reload = diagnoseCanaryOwnerReload(page, privateTitle, {expectedPath:diagnosticPath,expectedOrigin:origin,onEvidence:value=>evidence.push(value),
+      readState: readiness => readCanaryReadinessState(page,sql,"PRIVATE_USER","PRIVATE_WATCHLIST",privateTitle,readiness !== "ready")});
+    if (ready) await expect(reload).resolves.toMatchObject({firstUse:false});
+    else await expect(reload).rejects.toMatchObject({name:"TimeoutError"});
+    expect(sqlReads).toBe(1); expect(sessionGets).toBe(ready ? 0 : 1);
+    expect(evidence[0].state).toEqual({...readinessState,sessionStatus:ready ? null : 200,sessionIdentityMatches:ready ? null : true});
+    expect(evidence[0].readiness).toBe(ready ? "ready" : "header_not_ready");
+    expect(JSON.stringify(evidence)).not.toMatch(/PRIVATE_|11111111|127.0.0.1/);
+  } finally { await browser.close(); await close(server); }
 });

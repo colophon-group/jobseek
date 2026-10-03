@@ -289,8 +289,10 @@ The shared canary now reports separate `owner_header` and `owner_title` phases.
 Before cleanup it emits a bounded readiness record: route/origin equality (no
 URL), navigation status/time, visible and DOM-visible role counts, loading and
 modal counts, persisted-title equality, membership count/any-company mode, and
-normal session status/identity equality. Supplemental reads have a two-second
-budget and never replace the original wait failure. Existing locator budgets,
+normal session status/identity equality only after failed readiness (null
+on success). Successful diagnostics read SQL state without an extra auth
+request; a failed readiness probe makes at most one supplemental session GET.
+Supplemental reads have a two-second budget and never replace the original wait failure. Existing locator budgets,
 identity/ownership checks, single-shot mutations, deletion and signout remain
 required. The final cleanup proof independently rejects residual fixtures,
 missing star restoration or an unclosed session even if owner readiness passes.

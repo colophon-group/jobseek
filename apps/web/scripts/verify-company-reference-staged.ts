@@ -46,7 +46,7 @@ async function main() {
   let lifecycleState: CanaryLifecycleState | undefined;
   let lifecycleProof: Awaited<ReturnType<typeof exerciseCanaryLifecycle>> | undefined;
   const onEvidence = (evidence: CanaryOwnerEvidence) => console.log(JSON.stringify({ contract, outcome: "readiness", ...evidence }));
-  const readReadinessState = (ownerPage: Page, id: string, expectedTitle: string) => readCanaryReadinessState(ownerPage, sql, userId, id, expectedTitle);
+  const readReadinessState = (ownerPage: Page, id: string, expectedTitle: string, readiness: CanaryOwnerEvidence["readiness"]) => readCanaryReadinessState(ownerPage, sql, userId, id, expectedTitle, readiness !== "ready");
   const title = `company-reference-canary:${randomUUID()}`;
   let failure: unknown; let failurePhase: string | undefined;
   let sessionMayExist = false;
@@ -168,7 +168,7 @@ async function main() {
         const cleanupSession = await context.request.get("/api/auth/get-session", { maxRedirects: 0 });
         check(cleanupSession.status() === 200 && (await cleanupSession.json()).user?.id === userId, "CLEANUP_SESSION_IDENTITY_MISMATCH");
         phase = "cleanup_owner_shell";
-        await waitForCanaryOwnerShell(page, owned[0].title, { stage: "cleanup", expectedPath: `/en/watchlists/${cleanupId}`, expectedOrigin: base.origin, referenceCoverage: lifecycleState?.referenceCoverage, onPhase: next => { phase = next; }, onEvidence, readState: () => readReadinessState(page!, cleanupId, owned[0].title) });
+        await waitForCanaryOwnerShell(page, owned[0].title, { stage: "cleanup", expectedPath: `/en/watchlists/${cleanupId}`, expectedOrigin: base.origin, referenceCoverage: lifecycleState?.referenceCoverage, onPhase: next => { phase = next; }, onEvidence, readState: readiness => readReadinessState(page!, cleanupId, owned[0].title, readiness) });
         phase = "cleanup_delete_trigger";
         await page.getByRole("button", { name: "Delete", exact: true }).click();
         phase = "cleanup_delete_confirmation";
