@@ -143,6 +143,11 @@ jobs:
         working-directory: apps/web
         run: pnpm db:migrate:validate-routine
 
+      - name: Verify company reference expansion preflight
+        if: env.ROUTINE_MIGRATION_TAG == '0100_company_references'
+        working-directory: apps/web
+        run: pnpm exec tsx scripts/verify-company-references.ts preflight
+
       - name: Reauthorize and refuse stale main immediately before DDL
         env:
           REPOSITORY: ${{ github.repository }}
@@ -165,6 +170,11 @@ jobs:
       - name: Verify the exact checked-out migration head
         working-directory: apps/web
         run: pnpm db:migrate:verify-head
+
+      - name: Verify company reference expansion postflight
+        if: env.ROUTINE_MIGRATION_TAG == '0100_company_references'
+        working-directory: apps/web
+        run: pnpm exec tsx scripts/verify-company-references.ts postflight
 
       - name: Publish non-sensitive migration evidence
         if: always()

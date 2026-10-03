@@ -1877,6 +1877,28 @@ jobs:
           scripts/test-stripe-billing-pg.ts
           --database-url postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
 
+      - name: Install PostgreSQL 17 client for company-reference restore verification
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          printf 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' "$VERSION_CODENAME" \
+            | sudo tee /etc/apt/sources.list.d/jobseek-pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Execute company reference expansion and restore against PostgreSQL 17
+        working-directory: apps/web
+        env:
+          COMPANY_REFERENCE_MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
+        run: |
+          test -n "$COMPANY_REFERENCE_MIGRATION_TEST_DATABASE_URL"
+          pnpm exec vitest run src/db/__tests__/company-reference-migration.test.ts
+
   web-smoke:
     name: Web Build Smoke
     needs: changes

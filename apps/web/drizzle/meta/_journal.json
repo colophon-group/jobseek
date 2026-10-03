@@ -617,6 +617,13 @@
       "when": 1790812800000,
       "tag": "0099_product_news_consent",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1790985600000,
+      "tag": "0100_company_references",
+      "breakpoints": true
     }
   ]
 }

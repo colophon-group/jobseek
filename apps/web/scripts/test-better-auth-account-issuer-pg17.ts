@@ -155,7 +155,12 @@ async function loadLedgerFixture(): Promise<{
   const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
 
   invariant(journal.entries.length === migrations.length, "Journal and SQL migration counts differ");
-  invariant(migrations.length === 88, `Expected 88 real journal migrations, found ${migrations.length}`);
+  // Later journal entries must not change this historical 0086 -> 0087 fixture.
+  invariant(new Set(journal.entries.map(entry => entry.tag)).size === journal.entries.length,
+    "Journal migration tags must be unique");
+  invariant(journal.entries.every((entry, index) =>
+    entry.idx === index && entry.when === migrations[index]?.folderMillis),
+    "Journal entries must match SQL migration metadata");
 
   const prerequisiteIndex = journal.entries.findIndex(
     (entry) => entry.tag === prerequisiteTag,
