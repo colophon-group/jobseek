@@ -105,7 +105,6 @@ async function main() {
     await page.reload(); await page.getByText(doc.name, { exact: true }).waitFor();
     const dangling = await sql`SELECT 1 FROM watchlist_company wc LEFT JOIN company_reference r ON r.id=wc.company_id WHERE wc.watchlist_id=${watchlistId} AND r.id IS NULL`;
     check(dangling.length === 0, "CANARY_SELECTION_REFERENCE_MISSING");
-    console.log(JSON.stringify({ contract: CONTRACT, outcome: "passed", firstUse: true, realRequestIdentity: true, committedSelection: true, persistedReload: true }));
   } catch (error) { failure = error; failurePhase = phase; }
   finally {
     if (watchlistId) {
@@ -125,6 +124,7 @@ async function main() {
     await context.close(); await browser.close(); await sql.end({ timeout: 5 });
   }
   if (failure) { phase = failurePhase!; throw failure; }
+  console.log(JSON.stringify({ contract: CONTRACT, outcome: "passed", firstUse: true, realRequestIdentity: true, committedSelection: true, persistedReload: true, scopedCleanup: true }));
 }
 void main().catch(error => {
   console.error(JSON.stringify({ contract: CONTRACT, outcome: "failed", phase }));

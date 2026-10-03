@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { companyDocument, fixtureClient, resetFixture, seedUser } from "./company-reference/fixture";
 
 const runtime = vi.hoisted(() => ({ client: null as Sql | null, user: null as AsyncLocalStorage<string | null> | null,
-  companies: new Map<string, Record<string, unknown>>(), requests: 0, outage: false }));
+  companies: new Map<string, Record<string, unknown>>(), requests: 0, outage: false, beforeSearch: null as (() => Promise<void>) | null }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/server", () => ({ after: () => {} }));
 vi.mock("next/cache", () => ({ revalidatePath: () => {}, updateTag: () => {}, cacheLife: () => {}, cacheTag: () => {} }));
@@ -32,6 +32,7 @@ vi.mock("@/lib/search/typesense-client", () => ({ getSearchClient: () => ({ coll
   search: async (params: { filter_by?: string }) => {
     runtime.requests++;
     if (runtime.outage) throw Object.assign(new Error("fixture unavailable"), { httpStatus: 503 });
+    await runtime.beforeSearch?.();
     const hits = [...runtime.companies.values()].filter((doc) => !params.filter_by || params.filter_by.includes(String(doc.id)) || params.filter_by.includes(String(doc.slug))).map(document => ({ document }));
     return { found: hits.length, hits };
   },
@@ -64,7 +65,7 @@ beforeAll(() => { runtime.user = new AsyncLocalStorage(); sql = runtime.client!;
 });
 beforeEach(async () => {
   await resetFixture(sql); owner = (await seedUser(sql)).id; stranger = (await seedUser(sql)).id;
-  runtime.companies.clear(); runtime.requests = 0; runtime.outage = false;
+  runtime.companies.clear(); runtime.requests = 0; runtime.outage = false; runtime.beforeSearch = null;
 });
 afterAll(async () => { await sql?.end({ timeout: 5 }); });
 
@@ -74,7 +75,7 @@ describe("company selection persistence against real PostgreSQL", () => {
     const id = await create([doc.id]);
     expect(await membership(id)).toEqual([doc.id]);
     expect((await sql`SELECT name, slug, source, verified_at FROM company_reference WHERE id=${doc.id}`)[0]).toMatchObject({ name: doc.name, slug: doc.slug, source: "typesense" });
-    expect((await sql`SELECT verified_at FROM company_reference WHERE id=${doc.id}`)[0].verified_at).toBeInstanceOf(Date);
+    expect((await sql`SELECT verified_at IS NOT NULL AS verified FROM company_reference WHERE id=${doc.id}`)[0].verified).toBe(true);
     const detail = await watchlists.getOwnedWatchlistById(id, owner);
     expect(detail?.companies).toEqual([{ id: doc.id, name: doc.name, slug: doc.slug, icon: null }]);
     expect(await as(owner, () => watchlists.shareWatchlist(id))).toHaveProperty("ok", true);
@@ -137,6 +138,41 @@ describe("company selection persistence against real PostgreSQL", () => {
     expect(results[2]).toMatchObject({ starred: true });
     expect(await sql`SELECT id FROM company_reference WHERE id=${fresh.id}`).toHaveLength(1);
     expect(await sql`SELECT id FROM company WHERE id=${fresh.id}`).toHaveLength(1);
+  });
+
+  it("promotes a legacy seed inserted during provider lookup to the verified canonical snapshot", async () => {
+    const fresh = document(); await absent(fresh.id);
+    runtime.beforeSearch = async () => {
+      runtime.beforeSearch = null;
+      await sql`INSERT INTO company (id, name, slug) VALUES (${fresh.id}, 'Legacy race display', ${fresh.slug})`;
+    };
+    const id = await create([fresh.id]);
+    expect(await membership(id)).toEqual([fresh.id]);
+    const [reference] = await sql`SELECT name, source, verified_at IS NOT NULL AS verified FROM company_reference WHERE id=${fresh.id}`;
+    expect(reference).toMatchObject({ name: fresh.name, source: "typesense" });
+    expect(reference.verified).toBe(true);
+  });
+
+  it("preserves a canonical snapshot committed by a concurrent first-use request", async () => {
+    const fresh = document(); await absent(fresh.id);
+    runtime.beforeSearch = async () => {
+      runtime.beforeSearch = null;
+      await sql`INSERT INTO company_reference (id, name, slug, source, verified_at)
+        VALUES (${fresh.id}, 'Already verified concurrently', ${fresh.slug}, 'typesense', now())`;
+    };
+    await create([fresh.id]);
+    expect((await sql`SELECT name, source FROM company_reference WHERE id=${fresh.id}`)[0])
+      .toMatchObject({ name: "Already verified concurrently", source: "typesense" });
+  });
+
+  it("serializes the final membership slot without persisting the rejected reference", async () => {
+    const documents = Array.from({ length: 249 }, () => document());
+    const id = await create(documents.map(doc => doc.id));
+    const one = document(); const two = document();
+    const results = await Promise.all([one, two].map(doc => as(owner, () => watchlists.addCompanyToWatchlist(id, doc.id))));
+    expect(results.filter(result => result.ok)).toHaveLength(1);
+    expect(await membership(id)).toHaveLength(250);
+    expect(await sql`SELECT id FROM company_reference WHERE id IN (${one.id}, ${two.id})`).toHaveLength(1);
   });
 
   it("keeps the account capacity check atomic without orphaning new references", async () => {

@@ -9,6 +9,8 @@ import { companyDocument, fixtureClient, fixtureDatabaseUrl, resetFixture, seedU
 import { logExternalError } from "../src/lib/safe-external-error";
 import { startTypesenseFixture } from "./company-reference/typesense-fixture";
 
+let browserPhase = "fixture";
+
 async function freePort(): Promise<number> {
   const server = createServer(); server.listen(0, "127.0.0.1"); await once(server, "listening");
   const port = (server.address() as { port: number }).port; await new Promise<void>(resolve => server.close(() => resolve())); return port;
@@ -48,21 +50,25 @@ async function main() {
       NEXT_PUBLIC_TYPESENSE_HOST: "127.0.0.1", NEXT_PUBLIC_TYPESENSE_PORT: String(search.port), NEXT_PUBLIC_TYPESENSE_PROTOCOL: "http", NEXT_PUBLIC_TYPESENSE_SEARCH_KEY: "fixture-read-key",
       // A refused loopback endpoint exercises existing cache/limiter outage fallback without cloud credentials.
       UPSTASH_REDIS_REST_URL: "http://127.0.0.1:1", UPSTASH_REDIS_REST_TOKEN: "fixture-only", };
+    browserPhase = "app_startup";
     child = spawn("pnpm", ["exec", "next", "dev", "--hostname", "127.0.0.1", "--port", String(appPort)], { env, stdio: ["ignore", "pipe", "pipe"] });
     // Do not dump auth-bearing app logs. Retain only a bounded diagnostic tail and redact on failure.
     let logs = ""; const append = (chunk: Buffer) => { logs = (logs + chunk.toString()).slice(-6000); };
     child.stdout?.on("data", append); child.stderr?.on("data", append);
     await waitForApp(baseUrl, child);
     const context = await browser.newContext({ baseURL: baseUrl });
+    browserPhase = "sign_in";
     const signedIn = await context.request.post("/api/auth/sign-in/email", { data: { email: user.email, password }, headers: { origin: baseUrl } });
     assert.equal(signedIn.status(), 200, "Real fixture sign-in must succeed");
     const session = await context.request.get("/api/auth/get-session");
     assert.equal((await session.json()).user.id, user.id, "Request-derived session must match dedicated fixture identity");
     const page = await context.newPage(); page.setDefaultTimeout(45_000);
+    browserPhase = "create_watchlist";
     await page.goto("/en/watchlists");
     await page.getByRole("button", { name: /Create.*watchlist|New watchlist/i }).first().click();
     await page.waitForURL(/\/en\/watchlists\/[0-9a-f-]{36}/);
     const watchlistId = page.url().split("/").pop()!;
+    browserPhase = "select_company";
     await page.getByRole("button", { name: "Any company", exact: true }).click();
     await page.getByRole("button", { name: "Company", exact: true }).click();
     const dialog = page.getByRole("dialog");
@@ -75,11 +81,13 @@ async function main() {
     while (Date.now() < deadline && !(await sql`SELECT 1 FROM watchlist_company WHERE watchlist_id=${watchlistId} AND company_id=${doc.id}`).length) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
+    browserPhase = "persisted_sql";
     const persisted = await sql`SELECT w.user_id, w.alerts_enabled, r.name, r.source, r.verified_at FROM watchlist w
       JOIN watchlist_company wc ON wc.watchlist_id=w.id JOIN company_reference r ON r.id=wc.company_id
       WHERE w.id=${watchlistId} AND wc.company_id=${doc.id}`;
     assert.equal(persisted.length, 1, "Picker save must commit a materialized reference");
     assert.equal(persisted[0].user_id, user.id); assert.equal(persisted[0].source, "typesense"); assert.equal(persisted[0].alerts_enabled, false);
+    browserPhase = "reload";
     await page.reload(); await page.getByText(doc.name, { exact: true }).waitFor();
     assert.ok(search.requests.some(request => request.pathname.includes("/company/")), "Production Typesense SDK must query company fixture");
     console.log(JSON.stringify({ contract: "company_reference_authenticated_browser", outcome: "passed", absentLegacyBefore: true, absentReferenceBefore: true,
@@ -91,5 +99,6 @@ async function main() {
 }
 void main().catch((error: unknown) => {
   // Avoid printing request/session/provider material. Detailed failures remain reproducible locally.
+  console.error(JSON.stringify({ contract: "company_reference_authenticated_browser", outcome: "failed", phase: browserPhase }));
   logExternalError("error", { service: "external_http", operation: "company_reference_browser_contract" }, error); process.exitCode = 1;
 });
