@@ -30,6 +30,7 @@ async def capture(
     candidate=None,
     config="fixture",
     streak=0,
+    blast_floor=None,
 ):
     metadata = {
         "recent_discovered_counts": list(history),
@@ -37,6 +38,8 @@ async def capture(
         "_monitor_config_fingerprint": config,
         "_confirmed_drop_candidate": candidate,
     }
+    if blast_floor is not None:
+        metadata["blast_radius_floor"] = blast_floor
     conn = AsyncMock()
     conn.fetchrow.return_value = {"active": active, "missing": missing}
     conn.fetch.return_value = [object()] * missing
@@ -118,6 +121,10 @@ async def main():
             "max-missing-refused", history=[10] * 3, active=6000, missing=5001, candidate=prior
         ),
         await capture("passing-clears-candidate", candidate=prior, streak=2),
+        await capture("configured-nine-tenths-passes", active=10, missing=8, blast_floor=0.9),
+        await capture("configured-nine-tenths-boundary", active=10, missing=9, blast_floor=0.9),
+        await capture("configured-nine-tenths-blocks", active=10, missing=10, blast_floor=0.9),
+        await capture("configured-zero-survives", active=10, missing=1, blast_floor=0.0),
     ]
     target = Path(__file__).with_name("python_lifecycle.json")
     target.write_text(json.dumps(cases, ensure_ascii=False, indent=2) + "\n")

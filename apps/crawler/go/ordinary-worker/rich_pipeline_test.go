@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"testing"
 
-	greenhouse "github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
 
@@ -16,7 +15,7 @@ type pipelinePreparer struct {
 	cause      error
 }
 
-func (p *pipelinePreparer) Prepare(ctx context.Context, _ greenhouse.Job) (*queue.GreenhouseRichContent, error) {
+func (p *pipelinePreparer) Prepare(ctx context.Context, _ RichMonitorJob) (*queue.GreenhouseRichContent, error) {
 	p.at++
 	if p.at == p.failAt {
 		return nil, p.cause
@@ -55,7 +54,7 @@ func (s *pipelineSink) FinishSuccess(_ context.Context, summary queue.Greenhouse
 	return &queue.GreenhouseCycleResult{Status: "succeeded"}, nil
 }
 func pipelineInventory(n int) GreenhouseInventory {
-	result := GreenhouseInventory{Discovered: n, Jobs: make([]greenhouse.Job, n), DropReasons: map[string]int{}}
+	result := GreenhouseInventory{Discovered: n, Jobs: make([]RichMonitorJob, n), DropReasons: map[string]int{}}
 	for i := range result.Jobs {
 		result.Jobs[i].URL = fmt.Sprintf("https://example.com/jobs/%d", i)
 	}

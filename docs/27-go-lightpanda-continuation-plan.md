@@ -13,19 +13,25 @@ freshness and queue conservation on real jobs, and compare whole-service resourc
 and cost. Add a fixture or abstraction only for a specific changed production
 contract or observed failure. Plans and synthetic evidence are supporting work.
 
-The first four `greenhouse.token-skip/v1` owners are active in production at
-epoch 149 on v0.13.905. Their natural executions committed 513 posting touches,
-and canonical next deadlines match Redis. The immediate deliverable is the
-remaining Greenhouse family: the native profile factory now admits all 2,570
-separately captured canonical and cached configurations in local verification.
-Deploy the approved implementation, retire the old owner through its supported
-driver, establish a fresh B0 epoch and adopt the larger cohort. Fresh staging
-must recheck current configurations. Keep every enabled board scheduled.
+All 2,570 enabled Greenhouse boards are now owned by the Go ordinary worker
+on v0.13.910, source `c7b1dcf2c4d25a2677aaf70073928a9e940fd441`, at epoch 151.
+[Deployment 37137484149](https://github.com/colophon-group/jobseek/actions/runs/37137484149)
+completed promotion, and the installed supported activation driver restored the
+complete stack. All eight HTTP readiness endpoints passed. The 20:40 UTC readback
+verified all 2,570 SQL and Redis members and deadline agreement for 51 completed
+current-epoch receipts. Sequential metrics recorded 50 successes, 1,461 posting
+touches and zero claim, transport, execution or cancellation errors. New posting,
+description/enrichment and disappearance transitions still need natural evidence.
 See the [latest checkpoint](30-native-ordinary-worker-checkpoint-2026-10-03.md).
-Then migrate remaining provider/browser profiles and mandatory Python consumers,
-prove full-service behavior and resources, exercise reversal and observe its
-rollback window before removing Python and legacy browser assets. The full
-delivery goal remains active until production migration and retirement finish.
+
+Continue with Ashby and Lever through the existing rich worker and queue
+contracts, then every remaining provider/browser profile and mandatory Python
+runtime consumer. Keep every enabled board scheduled. Prove full-service output,
+publisher policy, freshness, queue conservation and resources, exercise supported
+reversal and observe its rollback window before removing production Python and
+legacy browser assets. The full delivery goal remains active until that retirement
+is complete. Avoid additional frameworks or fixture expansion unless a changed
+production contract or an observed failure requires them.
 
 ## Earlier registry delivery — 2026-10-03
 

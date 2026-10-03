@@ -310,6 +310,18 @@ func lifecycleInteger(value any) (int64, error) {
 }
 
 func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string]any, discovered int, complete bool) (int, string, error) {
+	blastFloor := 0.5
+	if raw := md["blast_radius_floor"]; raw != nil {
+		value, ok := raw.(json.Number)
+		if !ok {
+			return 0, "", ErrConfiguration
+		}
+		var err error
+		blastFloor, err = value.Float64()
+		if err != nil || math.IsNaN(blastFloor) || math.IsInf(blastFloor, 0) || blastFloor < 0 || blastFloor > 1 {
+			return 0, "", ErrConfiguration
+		}
+	}
 	history := []any{}
 	if value := md["recent_discovered_counts"]; value != nil {
 		var ok bool
@@ -351,7 +363,7 @@ func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string
 		if err := tx.QueryRow(ctx, lifecycleQuery("count"), c.claim.task.ID, c.startedAt).Scan(&active, &missing); err != nil {
 			return 0, "", err
 		}
-		if skip == "" && active > 0 && float64(missing)/float64(active) > 0.5 {
+		if skip == "" && active > 0 && float64(missing)/float64(active) > blastFloor {
 			skip = "blast_radius"
 		}
 	}

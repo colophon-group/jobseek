@@ -38,7 +38,7 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 	if a == nil || !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || claim.recovered != nil {
 		return nil, ErrConfiguration
 	}
-	profile, err := InspectGreenhouseMonitor(claim.task.ID, claim.task.Config)
+	profile, err := InspectRichMonitor(claim.task.ID, claim.task.Config)
 	if err != nil {
 		return nil, err
 	}

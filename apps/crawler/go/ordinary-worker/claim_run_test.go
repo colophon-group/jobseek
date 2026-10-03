@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	greenhouse "github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor"
 	"github.com/redis/go-redis/v9"
 	"net"
 	"net/http"
@@ -364,7 +363,7 @@ type reserveDuringPreparation struct {
 	seen  int
 }
 
-func (p *reserveDuringPreparation) Prepare(ctx context.Context, job greenhouse.Job) (*queue.GreenhouseRichContent, error) {
+func (p *reserveDuringPreparation) Prepare(ctx context.Context, job RichMonitorJob) (*queue.GreenhouseRichContent, error) {
 	p.seen++
 	if p.seen == 751 {
 		if _, err := p.f.pg.Exec(ctx, "UPDATE job_board SET tdm_reserved=true WHERE id=$1::uuid", p.f.board); err != nil {

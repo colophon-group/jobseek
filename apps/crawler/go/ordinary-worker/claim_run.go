@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
@@ -15,7 +16,7 @@ type ClaimRunError struct {
 	cause       error
 }
 
-func (e *ClaimRunError) Error() string { return "ordinary Greenhouse " + e.Phase + ": " + e.Kind }
+func (e *ClaimRunError) Error() string { return "ordinary rich monitor " + e.Phase + ": " + e.Kind }
 func (e *ClaimRunError) Unwrap() error { return e.cause }
 
 func claimRunError(phase string, err error) error {
@@ -61,7 +62,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if task.Kind != queue.Monitor || task.Worker != queue.Simple {
 		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
 	}
-	profile, err := queue.InspectGreenhouseMonitor(task.ID, task.Config)
+	profile, err := queue.InspectRichMonitor(task.ID, task.Config)
 	if err != nil {
 		return result, claimRunError("startup", err)
 	}
@@ -159,11 +160,11 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	defer func() { result.HTTP = observation.Snapshot() }()
 	result.DiscoveryStarted = true
 	started := time.Now()
-	discovery, fetchErr := DiscoverGreenhouse(ctx, http.client, profile.Token)
+	discovery, fetchErr := DiscoverRichMonitor(ctx, http.client, profile)
 	result.DiscoveryDuration = time.Since(started)
 	result.DiscoveryError = fetchErr != nil
 	result.DiscoveryCancelled = ctx.Err() != nil
-	result.Discovered = len(discovery.Inventory.Jobs)
+	result.Discovered = len(discovery.Jobs)
 	if ctx.Err() != nil {
 		cycle.InvalidateInventory()
 		return result, claimRunError("fetch", ctx.Err())
@@ -172,12 +173,12 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		// These private fields come only from this completed sealed-client fetch.
 		// The initial endpoint must still match the exact claim token. Redirect
 		// headers, partial reads and caller-synthesized observations are excluded.
-		if response.endpoint != profile.Endpoint {
+		if response.endpoint != profile.Endpoint && !(profile.Provider == "lever" && strings.HasPrefix(response.endpoint, strings.TrimSuffix(profile.Endpoint, "skip=0")+"skip=")) {
 			cycle.InvalidateInventory()
 			return result, claimRunError("response", queue.ErrConfiguration)
 		}
 		if response.reserved {
-			terminal, err := cycle.FinishReservationResource(ctx, response.endpoint, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL()})
+			terminal, err := cycle.FinishReservationResource(ctx, profile.Endpoint, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL()})
 			if err != nil {
 				return result, claimRunError("reservation", err)
 			}
@@ -195,7 +196,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if fetchErr != nil {
 		return failure("fetch", fetchErr)
 	}
-	inventory, err := NormalizeGreenhouseInventory(ctx, task.Config["board_url"], discovery.Inventory)
+	inventory, err := NormalizeRichInventory(ctx, task.Config["board_url"], discovery.Jobs, discovery.Truncated)
 	if err != nil {
 		return failure("inventory", err)
 	}

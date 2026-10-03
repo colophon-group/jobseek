@@ -256,9 +256,10 @@ func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (Ru
 
 // BuildIdentity contains only public immutable executable identities.
 type BuildIdentity struct {
-	SourceRevision string `json:"source_revision"`
-	CASHA256       string `json:"ca_sha256"`
-	Profile        string `json:"profile"`
+	SourceRevision string    `json:"source_revision"`
+	CASHA256       string    `json:"ca_sha256"`
+	Profile        string    `json:"profile"`
+	Profiles       [3]string `json:"profiles"`
 }
 
 func Identity(linked string) (BuildIdentity, error) {
@@ -266,5 +267,5 @@ func Identity(linked string) (BuildIdentity, error) {
 	if err != nil {
 		return BuildIdentity{}, err
 	}
-	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1"}, nil
+	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [3]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1"}}, nil
 }

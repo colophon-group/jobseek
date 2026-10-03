@@ -57,3 +57,11 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-d
 replace github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail => ../jsonld-detail
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy => ../publisher-policy
+
+require github.com/colophon-group/jobseek/apps/crawler/go/ashby-monitor v0.0.0
+
+require github.com/colophon-group/jobseek/apps/crawler/go/lever-monitor v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/ashby-monitor => ../ashby-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/lever-monitor => ../lever-monitor

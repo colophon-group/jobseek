@@ -77,7 +77,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	if !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || len(batch) < 1 || len(batch) > 500 {
 		return nil, ErrConfiguration
 	}
-	profile, err := InspectGreenhouseMonitor(claim.task.ID, claim.task.Config)
+	profile, err := InspectRichMonitor(claim.task.ID, claim.task.Config)
 	if err != nil {
 		return nil, err
 	}

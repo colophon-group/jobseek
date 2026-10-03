@@ -63,7 +63,7 @@ func (a *Authority) observeGreenhouseMonitorState(ctx context.Context, tx pgx.Tx
 		"scrape_interval_hours": scrape, "throttle_key": throttle, "domain": throttle,
 		"monitor_needs_browser": flag(monitorBrowser), "scraper_needs_browser": flag(scraperBrowser),
 	}
-	profile, err := InspectGreenhouseMonitor(boardID, canonical)
+	profile, err := InspectRichMonitor(boardID, canonical)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, nil, err
 	}
@@ -71,7 +71,7 @@ func (a *Authority) observeGreenhouseMonitorState(ctx context.Context, tx pgx.Tx
 	if err != nil {
 		return GreenhouseMonitorProfile{}, nil, ErrObservation
 	}
-	projected, err := InspectGreenhouseMonitor(boardID, cached)
+	projected, err := InspectRichMonitor(boardID, cached)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, nil, err
 	}

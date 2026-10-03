@@ -103,11 +103,11 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 	previous := ""
 	for _, member := range doc.Members {
 		key := string(member.Kind) + "|" + member.BoardID
-		if key <= previous || member.Kind != Monitor || member.Worker != Simple || member.Profile != greenhouseOwnershipProfile {
+		if key <= previous || member.Kind != Monitor || member.Worker != Simple {
 			return nil, ErrAuthorityLost
 		}
-		profile, err := InspectGreenhouseMonitor(member.BoardID, member.Config)
-		if err != nil || profile.CompanyID != member.CompanyID || profile.Domain != member.Domain || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
+		profile, err := InspectRichMonitor(member.BoardID, member.Config)
+		if err != nil || profile.Profile != member.Profile || profile.CompanyID != member.CompanyID || profile.Domain != member.Domain || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
 			return nil, ErrAuthorityLost
 		}
 		previous = key
@@ -144,7 +144,7 @@ func (a *Authority) StageGreenhouseOwnership(ctx context.Context, revision strin
 			if err != nil {
 				return err
 			}
-			metadata, err := profileMetadata(cached["metadata"])
+			metadata, err := richProfileMetadata(cached)
 			if err != nil {
 				return err
 			}
@@ -152,7 +152,7 @@ func (a *Authority) StageGreenhouseOwnership(ctx context.Context, revision strin
 			if err != nil {
 				return err
 			}
-			doc.Members = append(doc.Members, ownershipMember{id, profile.CompanyID, profile.Domain, Monitor, Simple, greenhouseOwnershipProfile, profile.EffectiveConfigSHA256, stable})
+			doc.Members = append(doc.Members, ownershipMember{id, profile.CompanyID, profile.Domain, Monitor, Simple, profile.Profile, profile.EffectiveConfigSHA256, stable})
 		}
 		body, err := json.Marshal(doc)
 		if err != nil {

@@ -5,6 +5,59 @@ including retirement of production Python, Playwright and Chromium after
 replacement coverage and supported reversal are established. Useful isolated
 offline Python tools may remain. Preserve every enabled board.
 
+## Deployed Greenhouse family — 20:40 UTC
+
+All 2,570 enabled Greenhouse canonical/cache profiles passed fresh admission and
+are active Go owners on v0.13.910, source
+`c7b1dcf2c4d25a2677aaf70073928a9e940fd441`, at routing epoch 151.
+[Deployment 37137484149](https://github.com/colophon-group/jobseek/actions/runs/37137484149)
+completed promotion. The ordinary plan is
+`4478835d261551535a125980ddd4c6df53feff3b8fdee78bcd479cfd5d5b3b93`;
+its Redis projection is persistent. Installed activation succeeded and restored
+all ten services with their restart policies; all eight HTTP endpoints passed.
+
+All-member readback verified 2,570 canonical boards and atomic Redis states.
+For 51 completed current-epoch receipts, native, canonical and Redis deadlines
+agree. Sequential metrics recorded 50 successful monitors, 1,461 posting touches,
+2,216,516 response bytes and zero claim, transport, execution or cancellation
+errors. Four retained epoch-149 receipts are historical evidence. No new/relisted/
+gone transition was observed yet; natural enrichment/description generation,
+fleet freshness, resources and expanded-cohort reversal remain outstanding.
+
+The supported rollout exposed an inactive stopped old-image ordinary container
+and 44 expired tokenless legacy Redis leases. The exact stopped container was
+removed with no volume removal; the installed maintenance wrapper ran the existing
+reaper once under read-only SQL barriers. It requeued 42 simple and two browser
+leases, with zero dead letters or missing configurations and no SQL ownership or
+B0 mutations. The unchanged installed activation driver then succeeded. These
+are concrete workflow compatibility fixes to carry into the next release, not
+reasons to add another recovery framework.
+
+The next unpublished slice wires the existing Ashby/Lever parsers into the same
+native discovery, enrichment, persistence and settlement contracts. Their saved
+census contains 935 Ashby and 195 Lever boards. Two require separate detail
+scraping. This slice must preserve explicit tokens containing dots/spaces,
+URL inference, EU routing, pagination and configured disappearance floors before
+fresh production staging. No Ashby or Lever native adoption is claimed.
+
+At the later production readback, all 2,570 member states still passed. There
+were 192 completed current-epoch receipts with matching native/canonical/Redis
+deadlines, 192 successful monitors, 10,822 touches and one natural disappearance
+transition. Error counters remained zero and all eight HTTP endpoints passed.
+This extends the earlier proof; it still lacks a natural new-description sample.
+
+The Ashby/Lever candidate now admits 1,128 of the 1,130 separately captured
+canonical/cache records: 934 Ashby skip profiles and 194 Lever skip profiles.
+The other two require detail scraping. Sixteen frozen actual Python requests
+cover token precedence, dots/spaces and EU routing. Real native PostgreSQL/Redis
+pipeline tests cover verified HTTP, enrichment, employment/location fields,
+description byte storage and pending upload, lifecycle and matching queue
+deadlines. Later Lever page failure and publisher reservation both settle with
+no partial inserts/delistings; policy evidence retains the actual later page.
+These are candidate checks, not production Ashby/Lever ownership.
+
+The observations below are historical and superseded by this deployed family.
+
 ## First native ordinary owner — 14:45 UTC
 
 The supported exact adoption succeeded after database-clock lease expiry.
@@ -101,11 +154,9 @@ obligations; they do not claim migrated native ownership.
 
 ## Delivery order
 
-1. Publish and deploy the expanded Greenhouse factory after its required checks.
-   Use supported old-owner retirement and B0 rollback, immutable deployment,
-   fresh B0 activation and current canonical/cache staging to adopt the enabled
-   Greenhouse family. Verify natural native commits, new descriptions/enrichment,
+1. Continue natural Greenhouse proof for new descriptions/enrichment, lifecycle,
    deadlines, queue conservation, publisher policy and supported retirement.
+   The complete enabled Greenhouse family is already deployed and active.
 2. Expand ordinary ownership through the existing worker and queue contracts.
    Start with remaining enabled Greenhouse profiles, then reuse the existing
    Go Ashby and Lever parsers. Add only the profile-specific metadata, detail
