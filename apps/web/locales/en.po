@@ -311,6 +311,12 @@ msgstr "A job title only tells you so much. Tell Narrowed what matters to you. I
 msgid "marketing.tracker.stepsTitle"
 msgstr "A place for each next step"
 
+#. Company selection save failed because a selected company cannot be verified
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.unavailable"
+msgstr "A selected company is no longer available. Remove it or choose another company."
+
 #. Public marketing page: alerts_proofBody
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
@@ -1198,6 +1204,12 @@ msgstr "Company"
 msgid "marketing.alerts.link"
 msgstr "Company job alerts"
 
+#. Company selection save failed because the catalogue is temporarily unavailable
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.lookupUnavailable"
+msgstr "Company lookup is temporarily unavailable. Please try again."
+
 #. Label for the company name or careers-page URL request field
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/companies/request/company-request-page-form.tsx
@@ -1209,6 +1221,12 @@ msgstr "Company name or careers-page URL"
 #: app/[lang]/(app)/company/[slug]/not-found.tsx
 msgid "company.notFound.title"
 msgstr "Company not found"
+
+#. Label for a retained company selection whose display data is unavailable
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-pill.tsx
+msgid "companies.selection.unavailableLabel"
+msgstr "Company unavailable"
 
 #. WebApplication JSON-LD description for Job Seek.
 #. js-lingui-explicit-id
@@ -1378,10 +1396,6 @@ msgid "watchlists.actions.cloneFailed"
 msgstr "Could not clone this watchlist."
 
 #. Error shown when a new watchlist cannot be created
-#. Error shown when a new watchlist cannot be created
-#. Error shown when a new watchlist cannot be created
-#. Error shown when a new watchlist cannot be created
-#. Error shown when a new watchlist cannot be created
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.createFailed"
@@ -1416,7 +1430,7 @@ msgstr "Could not remove these matching criteria. Try again."
 
 #. Error shown when an edit to an owned watchlist cannot be saved
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
+#: src/lib/company-reference-error-message.ts
 msgid "watchlists.updateFailed"
 msgstr "Could not save your changes."
 
@@ -3195,6 +3209,12 @@ msgstr "Maximum of 10 watchlists reached"
 msgid "watchlists.pending.limitDiscarded"
 msgstr "Maximum of 10 watchlists reached. Extra saved watchlists were discarded."
 
+#. Company selection save failed because the watchlist company limit was exceeded
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.limitReached"
+msgstr "Maximum of 250 companies per watchlist reached."
+
 #. Aria label for the region containing the MCP install one-liner
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -4461,10 +4481,9 @@ msgstr "Remove"
 
 #. Aria label for the X button that removes a company pill; {name} is the company name
 #. js-lingui-explicit-id
-#. placeholder {0}: company.name
 #: src/components/watchlist/company-pill.tsx
 msgid "watchlists.companyPill.remove"
-msgstr "Remove {0}"
+msgstr "Remove {name}"
 
 #. Aria label for remove-filter X button on a filter pill; {name} is the filter value
 #. Aria label for remove-filter X button on a filter pill; {name} is the filter value
@@ -5989,6 +6008,12 @@ msgstr "We could not stop your billing. Please retry account deletion shortly or
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.unavailable.body"
 msgstr "We could not verify how many jobs are in this search. Try again in a moment."
+
+#. Company selection save failed because canonical identity conflicts with a retained reference
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.identityConflict"
+msgstr "We could not verify this company. Please try again or choose another company."
 
 #. Error shown when a session watchlist cannot load
 #. js-lingui-explicit-id

@@ -12,6 +12,7 @@ import { invalidateSessionCache } from "@/lib/sessionCache";
 import { LOGGED_IN_COOKIE } from "@/lib/client-cookies";
 import { sql } from "drizzle-orm";
 import { usernameFromEmail, withRandomSuffix, isReservedUsername } from "@/lib/username";
+import { trustedAuthOrigins } from "@/lib/auth-trusted-origins";
 import { productNewsSignupChoice } from "@/lib/product-news/policy";
 
 // Max age for the `logged_in` hint cookie. Tracks Better Auth's default
@@ -27,7 +28,7 @@ function localeFromRequest(request?: Request): Locale {
 }
 
 export const auth = betterAuth({
-  trustedOrigins: (process.env.TRUSTED_ORIGINS ?? "").split(",").filter(Boolean),
+  trustedOrigins: trustedAuthOrigins(process.env),
   database: drizzleAdapter(db, { provider: "pg" }),
   emailAndPassword: {
     enabled: true,

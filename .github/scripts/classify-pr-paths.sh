@@ -85,6 +85,19 @@ is_go_http_pilot_path() {
     "$file" == apps/crawler/src/shared/tdm.py ]]
 }
 
+# Independent of `code`: company registry-only PRs still change selectable identity.
+is_company_reference_path() {
+  local file="$1"
+  case "$file" in
+    apps/web/* | apps/crawler/src/* | apps/crawler/go/typesense-exporter/* | \
+      apps/crawler/data/companies.csv | .github/* | scripts/company-reference-ci.test.mjs | \
+      packages/mcp-server/* | package.json | pnpm-lock.yaml | pnpm-workspace.yaml | patches/*)
+      return 0 ;;
+  esac
+  return 1
+}
+
+company_reference=false
 code=false
 crawler_code=false
 go_http_pilot=false
@@ -108,6 +121,10 @@ while IFS= read -r file; do
 
   if is_crawler_code_path "$file"; then
     crawler_code=true
+  fi
+
+  if is_company_reference_path "$file"; then
+    company_reference=true
   fi
 
   if is_go_http_pilot_path "$file"; then
@@ -135,6 +152,7 @@ if [[ -z "$base_ref" || "$base_ref" == "null" ]]; then
   exit 1
 fi
 
+emit "company_reference" "$company_reference"
 emit "code" "$code"
 emit "crawler_code" "$crawler_code"
 emit "go_http_pilot" "$go_http_pilot"

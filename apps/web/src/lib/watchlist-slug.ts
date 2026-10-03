@@ -3,6 +3,7 @@ import "server-only";
 import { eq, and, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { watchlist } from "@/db/schema";
+import { isUniqueViolation } from "@/lib/db-conflict";
 
 export function slugifyTitle(title: string): string {
   return title
@@ -52,24 +53,13 @@ export const WATCHLIST_SLUG_UNIQUE_CONSTRAINT = "idx_wl_user_slug";
 /**
  * Detect Postgres `unique_violation` (SQLSTATE 23505) errors that hit
  * the `(user_id, slug)` index. postgres.js surfaces `code` and
- * `constraint_name` on the thrown Error; drizzle and Vercel's runtime
- * pass these through verbatim. We check both: `code === "23505"` alone
+ * `constraint_name` on the thrown Error; Drizzle wraps it in `cause`.
+ * We check both: `code === "23505"` alone
  * is too broad (would absorb conflicts on unrelated indices); requiring
  * the constraint name keeps the retry narrow.
  */
 export function isWatchlistSlugUniqueViolation(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
-  const e = err as { code?: unknown; constraint_name?: unknown };
-  if (e.code !== "23505") return false;
-  // Some drivers / proxies might omit constraint_name. If absent, fall
-  // back to a substring match against the message (postgres prints the
-  // constraint name verbatim in the human-readable message).
-  if (typeof e.constraint_name === "string") {
-    return e.constraint_name === WATCHLIST_SLUG_UNIQUE_CONSTRAINT;
-  }
-  const message = (err as { message?: unknown }).message;
-  return typeof message === "string"
-    && message.includes(WATCHLIST_SLUG_UNIQUE_CONSTRAINT);
+  return isUniqueViolation(err, WATCHLIST_SLUG_UNIQUE_CONSTRAINT);
 }
 
 /**

@@ -5,11 +5,11 @@ const mocks = vi.hoisted(() => ({
   getSharedWatchlistById: vi.fn(),
   getWatchlistActivityPreviewsForDrafts: vi.fn(),
   getViewerJobLanguages: vi.fn(),
-  select: vi.fn(),
+  readCompanyReferences: vi.fn(),
 }));
 
-vi.mock("@/db", () => ({
-  db: { select: mocks.select },
+vi.mock("@/lib/services/company-reference-read", () => ({
+  readCompanyReferences: mocks.readCompanyReferences,
 }));
 vi.mock("@/lib/actions/preferences", () => ({
   getViewerJobLanguages: mocks.getViewerJobLanguages,
@@ -35,6 +35,7 @@ describe("getSessionWatchlistPageData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getViewerJobLanguages.mockResolvedValue(["en"]);
+    mocks.readCompanyReferences.mockResolvedValue([]);
     mocks.buildWatchlistPageData.mockResolvedValue(pageData);
     mocks.getWatchlistActivityPreviewsForDrafts.mockResolvedValue({
       [sessionWatchlistId]: {
@@ -59,7 +60,7 @@ describe("getSessionWatchlistPageData", () => {
       intent: { kind: "create", draft },
     })).resolves.toEqual({ data: pageData, draft });
 
-    expect(mocks.select).not.toHaveBeenCalled();
+    expect(mocks.readCompanyReferences).toHaveBeenCalledWith([]);
     expect(mocks.buildWatchlistPageData).toHaveBeenCalledWith({
       detail: {
         id: sessionWatchlistId,
@@ -74,6 +75,20 @@ describe("getSessionWatchlistPageData", () => {
       jobLanguages: ["en"],
       publicSnapshot: false,
     });
+  });
+
+  it("preserves an unresolved selected company in the draft and matching scope", async () => {
+    const id = "33333333-3333-4333-8333-333333333333";
+    const retained = { id, name: "Company unavailable", slug: "", icon: null, unavailable: true };
+    mocks.readCompanyReferences.mockResolvedValue([retained]);
+    await getSessionWatchlistPageData({
+      sessionWatchlistId, locale: "en", intent: { kind: "create", draft: {
+        title: "Restricted", companyIds: [id], filters: {}, isPublic: false,
+      } },
+    });
+    expect(mocks.buildWatchlistPageData).toHaveBeenCalledWith(expect.objectContaining({
+      detail: expect.objectContaining({ companies: [retained], filters: {} }),
+    }));
   });
 
   it("materializes a shared clone as the same editable local draft shape", async () => {

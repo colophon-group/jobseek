@@ -40,7 +40,9 @@
     "test:watch": "pnpm proxy-matchers:update && vitest",
     "test:isr": "vitest run --config vitest.isr.config.ts",
     "test:jev-live": "tsx scripts/test-jev-ai-filter-live.ts",
-    "typecheck": "next typegen && tsc"
+    "typecheck": "next typegen && tsc",
+    "test:company-reference": "vitest run --config vitest.company-reference.config.ts",
+    "test:company-reference:browser": "pnpm compile && tsx scripts/test-company-reference-browser.ts"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.8.13",

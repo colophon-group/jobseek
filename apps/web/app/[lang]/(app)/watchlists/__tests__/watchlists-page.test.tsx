@@ -57,7 +57,7 @@ vi.mock("@/components/ui/Button", () => ({
 }));
 
 import { WatchlistsPage } from "../watchlists-page";
-import { stagePendingWatchlist } from "@/lib/pending-watchlist";
+import { stagePendingWatchlist, readPendingWatchlists } from "@/lib/pending-watchlist";
 
 const FIRST_ID = "11111111-1111-4111-8111-111111111111";
 const SECOND_ID = "22222222-2222-4222-8222-222222222222";
@@ -268,6 +268,21 @@ describe("WatchlistsPage private overview", () => {
     expect(mocks.refresh).toHaveBeenCalled();
     expect(mocks.replace).not.toHaveBeenCalled();
     expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("retains pending company identities and explains lookup failure during import", async () => {
+    stagePendingWatchlist({ kind: "create", draft: {
+      title: "Retryable company", companyIds: [SECOND_ID], filters: {}, isPublic: false,
+    } });
+    mocks.createWatchlist.mockResolvedValueOnce({ error: "company_lookup_unavailable" });
+    render(<WatchlistsPage {...baseProps} />);
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Company lookup is temporarily unavailable. Please try again.",
+    );
+    expect(readPendingWatchlists()[0].intent).toMatchObject({
+      kind: "create", draft: { companyIds: [SECOND_ID] },
+    });
+    expect(mocks.replace).not.toHaveBeenCalled();
   });
 
   it("clones a staged shared watchlist after authentication", async () => {

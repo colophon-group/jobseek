@@ -1,5 +1,7 @@
 "use client";
 
+import { useCompanyReferenceErrorMessage } from "@/lib/company-reference-error-message";
+
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { AlertTriangle, Check, Loader2, Building2, Copy, Pencil, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -50,7 +52,7 @@ import type { WatchlistPageData } from "@/lib/services/watchlist-page-data";
 // `WatchlistFilters.workMode`).
 const WORK_MODE_VALUES = new Set<WorkMode>(["onsite", "hybrid", "remote"]);
 
-type Company = { id: string; name: string; slug: string; icon: string | null };
+type Company = { id: string; name: string; slug: string; icon: string | null; unavailable?: boolean };
 type TaxonomyItem = { id: number; slug: string; name: string };
 type WatchlistChanges = {
   title?: string;
@@ -70,7 +72,8 @@ function useWatchlistPersistence(
   return useCallback(async (changes: WatchlistChanges): Promise<boolean> => {
     if (!sessionWatchlistId) {
       const result = await updateWatchlist({ watchlistId, ...changes });
-      return !("error" in result);
+      if ("error" in result) throw { code: result.error };
+      return true;
     }
 
     const entry = readPendingWatchlists().find(
@@ -498,11 +501,7 @@ export function WatchlistViewPage({
     };
   }, []);
 
-  const updateErrorMessage = useCallback(() => t({
-    id: "watchlists.updateFailed",
-    comment: "Error shown when an edit to an owned watchlist cannot be saved",
-    message: "Could not save your changes.",
-  }), [t]);
+  const updateErrorMessage = useCompanyReferenceErrorMessage();
 
   useEffect(() => {
     if (editingTitle) titleInputRef.current?.focus();
@@ -525,9 +524,9 @@ export function WatchlistViewPage({
       }
       persistedTitleRef.current = trimmed;
       setTitle(trimmed);
-    } catch {
+    } catch (error) {
       setTitle(persistedTitleRef.current);
-      setMutationError(updateErrorMessage());
+      setMutationError(updateErrorMessage(error));
     } finally {
       titleSaveInFlightRef.current = false;
       setSavingTitle(false);
@@ -550,18 +549,40 @@ export function WatchlistViewPage({
     companyMutationInFlightRef.current = true;
     setMutationError("");
     setCompanies(nextCompanies);
-    try {
-      const persisted = await persistWatchlistChanges({
-        companyIds: nextCompanies.map((candidate) => candidate.id),
-      });
-      if (!persisted) throw new Error("company_update_failed");
-    } catch {
-      setCompanies(previousCompanies);
-      setMutationError(updateErrorMessage());
-    } finally {
-      if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
-      companyMutationInFlightRef.current = false;
-    }
+    // A company selection is meaningful only with its current scope. Flush
+    // older queued filters first and commit the latest mode with membership;
+    // a reload after this save must not revive a debounced any-company mode.
+    clearTimeout(saveFiltersTimeout.current);
+    const pendingFilters = pendingFiltersRef.current;
+    pendingFiltersRef.current = null;
+    const scopeFilters = buildFilters();
+    // Reserve the shared queue now so later filter edits cannot overtake a
+    // slow first-use company lookup and then be overwritten by this snapshot.
+    const companySave = filterSaveChainRef.current.then(async () => {
+      try {
+        const persisted = await persistWatchlistChanges({
+          companyIds: nextCompanies.map((candidate) => candidate.id),
+          filters: scopeFilters,
+        });
+        if (!persisted) throw new Error("company_update_failed");
+      } catch (error) {
+        setCompanies(previousCompanies);
+        setMutationError(updateErrorMessage(error));
+        if (pendingFilters) {
+          // Restore the superseded filter save before any newer queued edits.
+          try {
+            await persistWatchlistChanges({ filters: pendingFilters.filters });
+          } catch {
+            // The company failure is already reported; retain the newer queue.
+          }
+        }
+      } finally {
+        if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
+        companyMutationInFlightRef.current = false;
+      }
+    });
+    filterSaveChainRef.current = companySave;
+    await companySave;
   }
 
   function handleToggleCompany(company: Company) {
@@ -645,9 +666,9 @@ export function WatchlistViewPage({
           throw new Error("watchlist_write_failed");
         }
         if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
-      } catch {
+      } catch (error) {
         if (reportError && mountedRef.current) {
-          setMutationError(updateErrorMessage());
+          setMutationError(updateErrorMessage(error));
         }
       }
     });
@@ -724,7 +745,7 @@ export function WatchlistViewPage({
       salaryMax: "salMax" in overrides ? overrides.salMax : salaryMax,
       experienceMin: "expMin" in overrides ? overrides.expMin : experienceMin,
       experienceMax: "expMax" in overrides ? overrides.expMax : experienceMax,
-      anyCompany: ac || undefined,
+      anyCompany: ac,
     };
   }
 

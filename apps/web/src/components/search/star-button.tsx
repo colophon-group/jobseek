@@ -1,5 +1,7 @@
 "use client";
 
+import { useCompanyReferenceErrorMessage } from "@/lib/company-reference-error-message";
+import { useId } from "react";
 import { useLingui } from "@lingui/react/macro";
 import { Star } from "lucide-react";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -10,8 +12,11 @@ export function StarButton({ companyId }: { companyId: string }) {
   const { t } = useLingui();
   const { isLoggedIn, isPending } = useSession();
   const lp = useLocalePath();
-  const { isStarred, toggle, isToggling } = useStarredCompanies();
+  const { isStarred, toggle, isToggling, getError } = useStarredCompanies();
 
+  const errorMessage = useCompanyReferenceErrorMessage();
+  const errorId = useId();
+  const error = getError(companyId);
   const starred = isStarred(companyId);
   const toggling = isToggling(companyId);
 
@@ -32,11 +37,14 @@ export function StarButton({ companyId }: { companyId: string }) {
   }
 
   return (
+    <span className="relative ml-auto inline-flex">
     <button
       onClick={handleClick}
       disabled={toggling}
       aria-label={label}
-      className="ml-auto cursor-pointer p-1 transition-colors disabled:cursor-default disabled:opacity-50"
+      aria-describedby={error ? errorId : undefined}
+      title={error ? errorMessage(error) : undefined}
+      className="cursor-pointer p-1 transition-colors disabled:cursor-default disabled:opacity-50"
     >
       <Star
         size={18}
@@ -44,5 +52,7 @@ export function StarButton({ companyId }: { companyId: string }) {
         className={starred ? "fill-accent text-accent" : "text-muted hover:text-accent"}
       />
     </button>
+    {error && <span id={errorId} role="alert" className="absolute right-0 top-full z-30 mt-1 w-56 rounded-md border border-border-soft bg-surface p-2 text-xs text-danger shadow-lg">{errorMessage(error)}</span>}
+    </span>
   );
 }
