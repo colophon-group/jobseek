@@ -109,6 +109,11 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 DEPLOY_DIR="/home/deploy"
+ORDINARY_GO_RECEIPT="$DEPLOY_DIR/.ordinary-go-owner-v1"
+if [[ -e "$ORDINARY_GO_RECEIPT" || -L "$ORDINARY_GO_RECEIPT" ]]; then
+  echo "ERROR: native ordinary ownership is active or pending; use its supported cold retirement before deploy" >&2
+  exit 1
+fi
 LIGHTPANDA_B0_ACTIVE_RECEIPT="$DEPLOY_DIR/.lightpanda-b0-active-v1"
 if [[ -e "$LIGHTPANDA_B0_ACTIVE_RECEIPT" || -L "$LIGHTPANDA_B0_ACTIVE_RECEIPT" ]]; then
   echo "ERROR: Go Lightpanda B0 is active; ordinary crawler deploy is held until the explicit cold rollback removes ${LIGHTPANDA_B0_ACTIVE_RECEIPT}" >&2
@@ -161,6 +166,7 @@ DEPLOY_SPEC_FILES=(
   scripts/postgresql-operational-preflight.py
   scripts/lightpanda-claimant-credentials.py
   scripts/lightpanda-b0-cutover.sh
+  scripts/ordinary-go-cutover.sh
   scripts/verify-crawler-release-bridge.py
 )
 if [[ "$INCOMING_DIR" == "$DEPLOY_DIR" ]]; then

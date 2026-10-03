@@ -158,6 +158,10 @@ class Settings(BaseSettings):
     # consume its certificates and route identity.  Populated credentials never
     # imply activation; the entry point requires the exact mode "enabled".
     lightpanda_b0_claimant_mode: str = "off"
+    ordinary_ownership_plan_sha256: str = ""
+    ordinary_ownership_projection_sha1: str = ""
+    ordinary_ownership_source_revision: str = ""
+    ordinary_ownership_routing_epoch: str = ""
     lightpanda_b0_service_host: str = ""
     lightpanda_b0_ca_certificate: str = ""
     lightpanda_b0_client_certificate: str = ""

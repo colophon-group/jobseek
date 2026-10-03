@@ -50,6 +50,10 @@ flock -n 9 || {
   echo "ERROR: crawler mutation lock is held by deploy or maintenance" >&2
   exit 1
 }
+if [[ -e "$DEPLOY_DIR/.ordinary-go-owner-v1" || -L "$DEPLOY_DIR/.ordinary-go-owner-v1" ]]; then
+  echo "ERROR: retire the native ordinary owner before changing the B0 incarnation" >&2
+  exit 1
+fi
 
 cd "$DEPLOY_DIR"
 set -a
