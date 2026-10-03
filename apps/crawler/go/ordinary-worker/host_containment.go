@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"path/filepath"
 	"runtime"
-	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	release "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue/releaseevidence"
@@ -93,7 +92,11 @@ func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockP
 	if ctx == nil || ctx.Err() != nil || !planPattern.MatchString(c.intentSHA) || !cleanHostPath(p.directory) || !planPattern.MatchString(p.expected) || !sourcePattern.MatchString(p.source) || observe == nil || contain == nil || driveCold != nil && !withSQL {
 		return nil, errHostPreflight
 	}
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	budget, lifecycle, err := hostContainmentBudget(ctx, withSQL && driveCold != nil)
+	if err != nil {
+		return nil, errHostPreflight
+	}
+	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	lock, releaseLock, err := acquireHostPhaseLock(ctx, lockPath)
 	if err != nil {
@@ -313,7 +316,11 @@ func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockP
 	}
 	var result *HostContainmentResult
 	binding := queue.HostColdSQLBinding{SourceRevision: p.source, RequestSHA256: p.expected, ContainmentIntentSHA256: hostDigest(intentBytes)}
-	err = queue.WithHostColdSQL(ctx, pool, binding, func(sqlCtx context.Context, sql *queue.HostColdSQL) error {
+	withSQLScope := queue.WithHostColdSQL
+	if lifecycle {
+		withSQLScope = queue.WithHostColdSQLLifecycle
+	}
+	err = withSQLScope(ctx, pool, binding, func(sqlCtx context.Context, sql *queue.HostColdSQL) error {
 		if guard() != nil {
 			return errHostPreflight
 		}

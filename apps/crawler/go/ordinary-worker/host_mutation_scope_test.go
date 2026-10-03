@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func assertHostScopeFlock(t *testing.T, path string, held bool) {
@@ -114,5 +115,45 @@ func TestHostMutationScopeFailureReleasesLockWithoutSuppressingFailure(t *testin
 	assertHostScopeFlock(t, path, false)
 	if CheckHostMutationScope(context.Background()) == nil || withHostMutationScope(nil, path, func(context.Context) error { return nil }) == nil || withHostMutationScope(context.Background(), path, nil) == nil {
 		t.Fatal("missing explicit scope admitted")
+	}
+}
+
+func TestHostMutationScopeCompleteGraphBudgetRequiresLiveOriginalLock(t *testing.T) {
+	for _, graph := range []bool{false, true} {
+		budget, full, err := hostContainmentBudget(context.Background(), graph)
+		if err != nil || budget != 5*time.Minute || full {
+			t.Fatal("unscoped callback extended deadline")
+		}
+	}
+	if _, _, err := hostContainmentBudget(context.WithValue(context.Background(), hostMutationScopeKey{}, "foreign"), true); err == nil {
+		t.Fatal("foreign scope selected full graph budget")
+	}
+	parent, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	want, _ := parent.Deadline()
+	var escaped context.Context
+	path := filepath.Join(hostPrivateDirectory(t), "mutation.lock")
+	if err := withHostMutationScope(parent, path, func(ctx context.Context) error {
+		escaped = ctx
+		deadline, ok := ctx.Deadline()
+		if !ok || !deadline.Equal(want) {
+			t.Fatal("outer scope extended caller deadline")
+		}
+		for _, graph := range []bool{false, true} {
+			budget, full, err := hostContainmentBudget(ctx, graph)
+			expected := 5 * time.Minute
+			if graph {
+				expected = 30 * time.Minute
+			}
+			if err != nil || budget != expected || full != graph {
+				t.Fatal("live graph budget", budget, full, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := hostContainmentBudget(escaped, true); err == nil {
+		t.Fatal("escaped lock selected full graph budget")
 	}
 }

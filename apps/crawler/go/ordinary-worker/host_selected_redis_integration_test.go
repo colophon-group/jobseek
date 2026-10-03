@@ -287,6 +287,12 @@ func runActualHostSelectedRedisJournal(t *testing.T, forward bool) {
 					assertHeld(selectedCtx, pool, sql)
 					call := func(req HostColdPhaseRequest) *HostColdPhaseResult {
 						t.Helper()
+						started := time.Now()
+						deadline, ok := selectedCtx.Deadline()
+						if !ok || time.Until(deadline) <= 0 {
+							t.Fatal("joined cold graph has no live bounded deadline")
+						}
+						t.Logf("joined cold stage begin operation=%s remaining_ms=%d", req.Operation, time.Until(deadline).Milliseconds())
 						req.Version = "jobseek.crawler-host-cold-request/v2"
 						req.Binding = info.Binding
 						req.RedisEndpointSHA256 = info.RedisEndpointSHA256
@@ -307,6 +313,7 @@ func runActualHostSelectedRedisJournal(t *testing.T, forward bool) {
 							interrupted = append(interrupted, req.Operation)
 						}
 						result, err := RunHostColdPhase(selectedCtx, pool, sha)
+						t.Logf("joined cold stage returned operation=%s elapsed_ms=%d remaining_ms=%d context_error=%v", req.Operation, time.Since(started).Milliseconds(), time.Until(deadline).Milliseconds(), selectedCtx.Err())
 						if err != nil || result == nil || result.Outcome != "completed" || result.RuntimeAdmission {
 							t.Fatal("joined retained phase", req.Operation, err, result)
 						}

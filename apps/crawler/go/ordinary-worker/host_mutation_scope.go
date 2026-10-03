@@ -83,6 +83,25 @@ func CheckHostMutationScope(ctx context.Context) error {
 	return s.check(ctx, s.lock.path)
 }
 
+// Only a live original outer lock may select the complete cold graph budget.
+// Standalone preflight/containment/quiescence retain their five-minute ceiling.
+// The outer context supplies the cumulative deadline across sequential scopes.
+func hostContainmentBudget(ctx context.Context, coldGraph bool) (time.Duration, bool, error) {
+	if ctx == nil || ctx.Err() != nil {
+		return 0, false, errHostPreflight
+	}
+	if ctx.Value(hostMutationScopeKey{}) == nil {
+		return 5 * time.Minute, false, nil
+	}
+	if CheckHostMutationScope(ctx) != nil {
+		return 0, false, errHostPreflight
+	}
+	if coldGraph {
+		return 30 * time.Minute, true, nil
+	}
+	return 5 * time.Minute, false, nil
+}
+
 // A phase borrows the exact original descriptor without duplicating, reopening
 // or unlocking it. Only one phase can borrow a scope at a time. Independent
 // callers retain the existing acquire/close behavior.

@@ -1,0 +1,194 @@
+{
+  "schema": "jobseek.migration.host-cold-lifecycle-checkpoint/v1",
+  "date": "2026-10-03",
+  "parent": "d27b29d9245b4428fd562e92af906b2390d213be",
+  "runtime_version": "0.13.904",
+  "contracts": [
+    "only a live original opaque outer host flock selects the complete graph lifecycle in the coordinator; nested/foreign/expired scopes do not fall back",
+    "fixed 30-minute complete graph SQL and coordinator ceilings inherit the earlier cumulative outer/caller deadline",
+    "standalone preflight/containment/quiescence and default SQL session retain five-minute ceilings",
+    "native operations retain 30-second limit; SQL statements retain 10 seconds and idle transactions 15 seconds; metadata query five seconds",
+    "same private SQL backend holds all three checked exclusive barriers across independently durable commits; no serialized receipt or arbitrary caller budget grants authority",
+    "original host lock, immutable release/resource guards, live leases and exact journal links remain checked; complete restoration/startup/readiness and runtime admission not proven"
+  ],
+  "validation": {
+    "actual_private_SQL_default_and_lifecycle_deadlines_barriers_cancellation_escape_and_release": true,
+    "live_original_lock_budget_selection_and_earlier_outer_deadline": true,
+    "full_required_queue_race_suite_seconds": 76.461,
+    "full_required_worker_race_suite_seconds": 51.546,
+    "native_and_both_Linux_integration_vet_format_tidy": true,
+    "repository_passed": 94,
+    "repository_optional_skips": 3,
+    "logs_sha256": {
+      "ordinary-host-lifecycle-budget-tests.log": "889a582da9441d602e6b67dc749c94299af9e5cbd1883f07e49365dbfed43a38",
+      "ordinary-host-lifecycle-full-queue-tests.log": "f55afabc2440af090ec3bb96c570528249d22fb5c7a2708cd4fa4414ac01f4df",
+      "ordinary-host-lifecycle-full-worker-tests.log": "23197c07337fbd8216aa376b72619e227827dd268fe077d37766e0ab0f9f91e0",
+      "ordinary-host-lifecycle-repository-tests.log": "e3808e2373137d4c7e142244e3d2f384ffcc817063a03673cce2072deb29081a",
+      "ordinary-host-lifecycle-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "preceding_installed": {
+    "source": "2fa8567e12e374bf241ee62620fbfa7401f53206",
+    "run": 37097363346,
+    "conclusion": "failure",
+    "AMD64": "cold nested trimpath compilation killed at 90.28 seconds; corrected in d27 with compile five minutes / metadata query five seconds",
+    "ARM64": "forward planning returns a completed result; retention then refuses at 302.13 seconds",
+    "five_minute_deadline_diagnosis_is_inference": true,
+    "direct_original_context_error_not_retained": true,
+    "new_stage_diagnostics": "each operation logs remaining bounded deadline, elapsed milliseconds and actual context error",
+    "raw_initial_four_phase_proof_independently_verified_architectures": [
+      "arm64"
+    ],
+    "raw_partial_summary_sha256": "bead3b2aa48fa6dfd6c4ce0b028ea9dd23486d44e25b8b17e850ac43f3b20e5a",
+    "full_installed_or_positive_forward_proof": false
+  },
+  "preceding_whole_B0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "2fa8567e12e374bf241ee62620fbfa7401f53206",
+    "tested_merge_checkout": "5ec3659d634ea7d49b412c6afdad430f7b5e2bb4",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "2fa8567e12e374bf241ee62620fbfa7401f53206"
+    ],
+    "run": 37097321947,
+    "report_sha256": "94dbcbd76f336c979793d1635dd59d5427506defea702c2c182769a98b6dd4c3",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      5.4001471644917505,
+      13.554041995444361
+    ],
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        7.2670951632331535,
+        7.552308351112317,
+        5.4001471644917505,
+        13.494944922263212,
+        12.995645680629005,
+        12.606282027546222,
+        13.554041995444361,
+        13.325371378079582
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 7.2670951632331535,
+          "elapsed_ratio": 1.8708500372993726,
+          "p99_ratio": 0.535510651191051,
+          "peak_rss_ratio": 0.2574412465058495,
+          "cpu_seconds_candidate": 1.711694,
+          "cpu_seconds_control": 2.479945,
+          "lifetime_cpu_seconds_candidate": 3.989975,
+          "lifetime_cpu_seconds_control": 6.102157
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 7.552308351112317,
+          "elapsed_ratio": 1.9063494285843325,
+          "p99_ratio": 0.5227832891477308,
+          "peak_rss_ratio": 0.2524194378667765,
+          "cpu_seconds_candidate": 1.667807,
+          "cpu_seconds_control": 2.531358,
+          "lifetime_cpu_seconds_candidate": 3.895185,
+          "lifetime_cpu_seconds_control": 6.111817
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.4001471644917505,
+          "elapsed_ratio": 1.4134721702577748,
+          "p99_ratio": 0.7119699551962648,
+          "peak_rss_ratio": 0.26174697229585736,
+          "cpu_seconds_candidate": 1.663874,
+          "cpu_seconds_control": 2.399198,
+          "lifetime_cpu_seconds_candidate": 3.930041,
+          "lifetime_cpu_seconds_control": 5.821427
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 13.494944922263212,
+          "elapsed_ratio": 1.5629628616145204,
+          "p99_ratio": 0.640816217676256,
+          "peak_rss_ratio": 0.11581839500775071,
+          "cpu_seconds_candidate": 2.380311,
+          "cpu_seconds_control": 5.901986,
+          "lifetime_cpu_seconds_candidate": 4.65638,
+          "lifetime_cpu_seconds_control": 10.458163
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 12.995645680629005,
+          "elapsed_ratio": 1.5614889632464455,
+          "p99_ratio": 0.6355826759412195,
+          "peak_rss_ratio": 0.12015478119520935,
+          "cpu_seconds_candidate": 2.340186,
+          "cpu_seconds_control": 5.931113,
+          "lifetime_cpu_seconds_candidate": 4.6285359999999995,
+          "lifetime_cpu_seconds_control": 10.464759
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 12.606282027546222,
+          "elapsed_ratio": 1.5357719096007103,
+          "p99_ratio": 0.6495009745224127,
+          "peak_rss_ratio": 0.12182592030266072,
+          "cpu_seconds_candidate": 2.407736,
+          "cpu_seconds_control": 5.761263,
+          "lifetime_cpu_seconds_candidate": 4.687057,
+          "lifetime_cpu_seconds_control": 10.192545
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 13.554041995444361,
+          "elapsed_ratio": 1.5299718089140975,
+          "p99_ratio": 0.6538815287740706,
+          "peak_rss_ratio": 0.11287937645673041,
+          "cpu_seconds_candidate": 2.30817,
+          "cpu_seconds_control": 5.650455,
+          "lifetime_cpu_seconds_candidate": 4.551876,
+          "lifetime_cpu_seconds_control": 10.104181
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 13.325371378079582,
+          "elapsed_ratio": 1.5362636678511874,
+          "p99_ratio": 0.6471310758694231,
+          "peak_rss_ratio": 0.11528861930094964,
+          "cpu_seconds_candidate": 2.288215,
+          "cpu_seconds_control": 5.694355,
+          "lifetime_cpu_seconds_candidate": 4.550959,
+          "lifetime_cpu_seconds_control": 10.135867
+        }
+      ]
+    },
+    "images": {
+      "browser": "sha256:d0b5ded4ca35dfccd8d507b1b45709c78fe74cf3bf10f967f62cc511b53c0845",
+      "candidate": "sha256:bb0bf1eca484265e1ff067248a2755e4b1e0b445910b7b1d1fe4a5186b7eb82b",
+      "renderer": "sha256:f86e78e788e94cc9a5e59337703c972f50c43d88134eee1cf95ca3412b8bb705"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "5ec3659d634ea7d49b412c6afdad430f7b5e2bb4",
+      "postflight_clean": true,
+      "postflight_head": "5ec3659d634ea7d49b412c6afdad430f7b5e2bb4"
+    },
+    "production_changed": false,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "new_exact_source_installed_verification_required": true,
+  "full_goal_status": "active",
+  "production_changed": false,
+  "full_runtime_admission": false,
+  "remaining": [
+    "positive exact-source AMD64/ARM64 installed eleven-phase forward/outer-lifecycle proof",
+    "positive full 31-phase nonempty candidate-N reversal/restoration/reactivation/finalization with real crashes",
+    "authenticated intentional host resource/release changes and complete restoration, SQL release and full-stack startup/readiness under original host flock",
+    "all enabled profiles/consumers and canonical/output/database/publisher/freshness/queue conservation; comparable whole-service cost",
+    "exact required gates, supported cutover/cold reversal and rollback window before production Python/Playwright/Chromium retirement; preserve useful isolated offline Python tooling"
+  ]
+}

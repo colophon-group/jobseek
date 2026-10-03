@@ -245,3 +245,56 @@ func TestHostColdSQLReleasesPartialBarrierSetAndFailureSession(t *testing.T) {
 	}
 	hostSQLAssertReleased(t, p)
 }
+
+func TestHostColdSQLLifecycleBudgetPreservesCheckedSessionAndCallerDeadline(t *testing.T) {
+	pool := hostSQLFixture(t)
+	for _, lifecycle := range []bool{false, true} {
+		begin := WithHostColdSQL
+		budget := 5 * time.Minute
+		if lifecycle {
+			begin = WithHostColdSQLLifecycle
+			budget = 30 * time.Minute
+		}
+		if err := begin(context.Background(), pool, hostSQLBindingFixture(), func(ctx context.Context, s *HostColdSQL) error {
+			deadline, ok := ctx.Deadline()
+			if !ok || time.Until(deadline) > budget || time.Until(deadline) < budget-10*time.Second || s.Check(ctx) != nil {
+				t.Fatal("bounded checked session deadline", lifecycle)
+			}
+			for _, key := range hostSQLBarriers {
+				var entered bool
+				if pool.QueryRow(ctx, "SELECT pg_try_advisory_xact_lock_shared($1)", key).Scan(&entered) != nil || entered {
+					t.Fatal("writer entered lifecycle session")
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		hostSQLAssertReleased(t, pool)
+	}
+	parent, cancel := context.WithTimeout(context.Background(), time.Second)
+	want, _ := parent.Deadline()
+	var escaped context.Context
+	var scope *HostColdSQL
+	err := WithHostColdSQLLifecycle(parent, pool, hostSQLBindingFixture(), func(ctx context.Context, s *HostColdSQL) error {
+		escaped, scope = ctx, s
+		deadline, ok := ctx.Deadline()
+		if !ok || !deadline.Equal(want) || s.Check(ctx) != nil {
+			t.Fatal("lifecycle extended caller deadline")
+		}
+		cancel()
+		if s.Check(ctx) == nil {
+			t.Fatal("cancelled lifecycle retained authority")
+		}
+		return nil
+	})
+	cancel()
+	if err == nil || scope == nil || scope.Check(escaped) == nil {
+		t.Fatal("cancelled/escaped lifecycle admitted")
+	}
+	hostSQLAssertReleased(t, pool)
+	if withHostColdSQL(context.Background(), pool, hostSQLBindingFixture(), time.Hour, func(context.Context, *HostColdSQL) error { t.Fatal("caller budget ran"); return nil }) == nil {
+		t.Fatal("unbounded custom budget admitted")
+	}
+	t.Log("actual private SQL lifecycle retains same checked exclusive session with fixed 30-minute ceiling, standalone 5-minute ceiling and earlier caller deadline; cancellation/escape refuses and connection/barriers release; no host/runtime admission")
+}

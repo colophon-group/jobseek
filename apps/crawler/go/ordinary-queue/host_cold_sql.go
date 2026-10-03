@@ -46,10 +46,26 @@ var hostSQLBarriers = []int64{OrdinaryLeaseBarrier, routingEpochBarrier, hostCDC
 // intent-before-nontransactional-effects contract. A returned receipt is only a
 // past observation; the session scope ends when the callback returns.
 func WithHostColdSQL(ctx context.Context, pool *pgxpool.Pool, binding HostColdSQLBinding, fn func(context.Context, *HostColdSQL) error) error {
+	return withHostColdSQL(ctx, pool, binding, 5*time.Minute, fn)
+}
+
+// WithHostColdSQLLifecycle retains the same checked SQL session for a complete
+// host cold phase graph. The caller must keep its original host mutation lock
+// and resource guards live. This fixed thirty-minute ceiling inherits any
+// earlier caller deadline; it grants SQL exclusion only, never host admission.
+// Individual cold transactions retain their statement and idle timeouts.
+func WithHostColdSQLLifecycle(ctx context.Context, pool *pgxpool.Pool, binding HostColdSQLBinding, fn func(context.Context, *HostColdSQL) error) error {
+	return withHostColdSQL(ctx, pool, binding, 30*time.Minute, fn)
+}
+
+func withHostColdSQL(ctx context.Context, pool *pgxpool.Pool, binding HostColdSQLBinding, budget time.Duration, fn func(context.Context, *HostColdSQL) error) error {
 	if ctx == nil || ctx.Err() != nil || pool == nil || fn == nil || !ownershipRevision.MatchString(binding.SourceRevision) || !ownershipSHA256.MatchString(binding.RequestSHA256) || !ownershipSHA256.MatchString(binding.ContainmentIntentSHA256) || ctx.Value(hostColdSQLKey{}) != nil {
 		return ErrConfiguration
 	}
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	if budget != 5*time.Minute && budget != 30*time.Minute {
+		return ErrConfiguration
+	}
+	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	owned, err := pool.Acquire(ctx)
 	if err != nil {

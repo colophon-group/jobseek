@@ -1,5 +1,42 @@
 # Native ordinary worker authority checkpoint
 
+The complete cold graph now has a fixed thirty-minute coordinator/SQL lifecycle
+only when the coordinator holds the live original opaque outer host flock.
+Standalone calls retain five minutes. Earlier caller and cumulative outer
+deadlines still apply; native operations retain thirty seconds, SQL statements
+ten seconds and idle transactions fifteen seconds. The same SQL backend, three
+exclusive barriers, live-lease refusal, immutable host/resource guards and exact
+journal checks remain required. No runtime admission is granted by this budget.
+
+Actual private SQL tests verify both ceilings, earlier deadline inheritance,
+writer exclusion, cancellation/escape refusal and connection/barrier release.
+The full required queue/worker race suites pass in 76.461/51.546 seconds, native
+and both Linux integration vets/format/tidy pass, and 94 repository tests pass
+(three optional skips). Each installed stage now logs its elapsed time, remaining
+deadline and actual context error.
+
+Preserved installed run `37097363346` at `2fa8567e1` is terminal failure. AMD64
+hits the nested trimpath compile limit; the compile/metadata budgets are fixed
+in the preceding local commit. ARM64 passes forward planning, then refuses at
+retention after 302.13 seconds. This matches the old five-minute ceiling; the
+original log has no direct context-error observation, so that diagnosis remains
+an inference pending the instrumented run. Its raw initial four-phase proof is
+independently verified on ARM64 only; full producer/forward admission remains
+false. Whole-B0 run `37097321947` is independently recomputed successful for all
+16 arms/eight pairs (density 5.4001–13.5540), a generated startup workload rather
+than full-service cost/profile proof. See [lifecycle checkpoint](evidence/go-ordinary-native-host-cold-lifecycle-2026-10-03.json).
+
+Next publish the retained outer-lock/lifecycle slices and verify fresh exact-source
+installed forward proof on both architectures. Then complete the positive
+31-phase nonempty reversal/restoration/reactivation/finalization graph and real
+crash recovery, authenticate expected host changes, and verify complete
+restoration, SQL release and full-stack startup/readiness under the original
+flock. Every enabled profile/consumer, canonical outputs, database/publisher/
+freshness/queue conservation, comparable whole-service cost, exact gates,
+supported cutover/cold reversal and rollback window remain required before
+runtime Python/Playwright/Chromium retirement. Goal active; PR #10210 draft;
+production unchanged. Earlier entries retain their source scopes.
+
 The coordinator now has a fixed-path opaque outer host mutation scope that
 retains the original verified flock descriptor across sequential cold phases,
 SQL release and later restoration/readiness work. Phases borrow that exact
