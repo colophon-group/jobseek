@@ -43,7 +43,7 @@ type authorityFixture struct {
 	company   string
 }
 
-func realAuthority(t *testing.T, kind Kind, worker WorkerType) authorityFixture {
+func realAuthority(t *testing.T, kind Kind, worker WorkerType, ids ...string) authorityFixture {
 	t.Helper()
 	dsn := os.Getenv("JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL")
 	if dsn == "" {
@@ -68,7 +68,7 @@ func realAuthority(t *testing.T, kind Kind, worker WorkerType) authorityFixture 
 	}
 	t.Cleanup(pool.Close)
 	c := privateRedis(t)
-	task, _ := seedTask(t, c, kind, worker)
+	task, _ := seedTask(t, c, kind, worker, ids...)
 	company := ordinaryID(t)
 	ctx := context.Background()
 	if _, err := pool.Exec(ctx, "INSERT INTO company(id,slug,name) VALUES($1::uuid,$2,'Ordinary authority fixture')", company, "ordinary-"+company); err != nil {

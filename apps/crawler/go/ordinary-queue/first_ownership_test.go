@@ -20,24 +20,41 @@ import (
 )
 
 func firstOwnershipFixture(t *testing.T) firstOwnerFixture {
+	return firstOwnershipFixtureHistory(t, false)
+}
+
+func firstOwnershipFixtureHistory(t *testing.T, retainHistory bool) firstOwnerFixture {
 	t.Helper()
-	f := greenhouseAuthorityFixture(t)
+	ids := []string{}
+	if retainHistory {
+		ids = append(ids, ordinaryID(t))
+	}
+	f := greenhouseAuthorityFixture(t, ids...)
 	ctx := context.Background()
 	// This test explicitly owns an isolated loopback *_ordinary_worker_test
 	// database. First adoption must see no previously served native plan; old
 	// sequential fixtures deliberately retain such history in that database.
-	if _, err := f.observer.Exec(ctx, "TRUNCATE public.ordinary_worker_ownership_plan CASCADE"); err != nil {
-		t.Fatal("private first-owner history reset", err)
+	if !retainHistory {
+		if _, err := f.observer.Exec(ctx, "TRUNCATE public.ordinary_worker_ownership_plan CASCADE"); err != nil {
+			t.Fatal("private first-owner history reset", err)
+		}
 	}
 	id := ordinaryID(t)
-	_, err := f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,
+	b0Company := f.company
+	if retainHistory {
+		if err := f.observer.QueryRow(ctx, "SELECT id::text,company_id::text FROM job_board WHERE board_slug='browser-use-careers'").Scan(&id, &b0Company); err != nil {
+			t.Fatal("retained canonical B0 board", err)
+		}
+	} else {
+		_, err := f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,
  throttle_key,monitor_needs_browser,scraper_needs_browser)
  VALUES($1::uuid,$2::uuid,'browser-use-careers','https://jobs.example.test/careers','api_sniffer','{}',60,24,'',false,true)`, id, f.company)
-	if err != nil {
-		t.Fatal("private canonical B0 board", err)
+		if err != nil {
+			t.Fatal("private canonical B0 board", err)
+		}
+		t.Cleanup(func() { _, _ = f.observer.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", id) })
 	}
-	t.Cleanup(func() { _, _ = f.observer.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", id) })
-	config := map[string]string{"board_slug": "browser-use-careers", "board_url": "https://jobs.example.test/careers", "crawler_type": "api_sniffer", "company_id": f.company, "metadata": "{}", "check_interval_minutes": "60", "scrape_interval_hours": "24", "throttle_key": "", "domain": "jobs.example.test", "monitor_needs_browser": "0", "scraper_needs_browser": "1"}
+	config := map[string]string{"board_slug": "browser-use-careers", "board_url": "https://jobs.example.test/careers", "crawler_type": "api_sniffer", "company_id": b0Company, "metadata": "{}", "check_interval_minutes": "60", "scrape_interval_hours": "24", "throttle_key": "", "domain": "jobs.example.test", "monitor_needs_browser": "0", "scraper_needs_browser": "1"}
 	if err := f.client.redis.HSet(ctx, "board:"+id, config).Err(); err != nil {
 		t.Fatal(err)
 	}
@@ -140,6 +157,71 @@ func TestRealFirstOwnershipActivationRetirementPreservesSchedulesAndB0(t *testin
 	// Python's unbound queue path can claim the exact preserved schedule again.
 	if task, err := p.f.client.Claim(context.Background(), Simple); err != nil || task == nil || task.ID != p.f.task.ID {
 		t.Fatal("legacy schedule unavailable after retirement", err)
+	}
+}
+
+func TestRealFirstOwnershipFreshEpochRetainsRetiredOwnerAndInterruptedReceipt(t *testing.T) {
+	p := firstOwnershipFixture(t)
+	ctx := context.Background()
+	if _, err := applyFirstFixture(t, p, false); err != nil {
+		t.Fatal(err)
+	}
+	old, err := OpenOwnedAuthority(ctx, p.f.dsn, p.f.client, p.f.epoch, p.plan.digest, p.plan.SourceRevision())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer old.Close()
+	claim, err := old.Claim(ctx, Simple)
+	if err != nil || claim == nil {
+		t.Fatal("old owner did not claim", err)
+	}
+	var receiptBefore string
+	if err := p.f.observer.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", p.f.task.ID).Scan(&receiptBefore); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := applyFirstFixture(t, p, true); err != nil {
+		t.Fatal("supported old-owner retirement failed", err)
+	}
+	// A separate isolated Redis/B0 fixture initializes a genuinely fresh
+	// serving epoch through production Lua; SQL retains the prior owner and
+	// interrupted receipt. This tests admission, not full host B0 reversal.
+	next := firstOwnershipFixtureHistory(t, true)
+	if next.f.epoch <= p.f.epoch {
+		t.Fatal("fixture did not allocate a fresh epoch")
+	}
+	before, canonical := snapshot(t, next.f.client), coldCanonicalSnapshot(t, p.f)
+	if result, err := applyFirstFixture(t, next, false); err != nil || result.State != "active" {
+		t.Fatal("fresh owner refused retired history", err)
+	}
+	after := snapshot(t, next.f.client)
+	delete(after, ownershipProjectionKey)
+	if !reflect.DeepEqual(before, after) || firstFixtureState(t, p) != "retired" || coldCanonicalSnapshot(t, p.f) != canonical {
+		t.Fatal("fresh adoption changed old authority, schedules, B0 or canonical rows")
+	}
+	var receiptAfter string
+	if err := p.f.observer.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", p.f.task.ID).Scan(&receiptAfter); err != nil || receiptAfter != receiptBefore {
+		t.Fatal("fresh adoption rewrote the interrupted historical receipt", err)
+	}
+	if _, err := old.Write(ctx, claim, true, func(context.Context, pgx.Tx) error {
+		t.Fatal("retired old attempt reached its writer")
+		return nil
+	}); !errors.Is(err, ErrAuthorityLost) {
+		t.Fatal("retired old attempt retained authority at the fresh epoch", err)
+	}
+}
+
+func TestRealFirstOwnershipFreshEpochRefusesAnotherActiveOwner(t *testing.T) {
+	p := firstOwnershipFixture(t)
+	if _, err := applyFirstFixture(t, p, false); err != nil {
+		t.Fatal(err)
+	}
+	next := firstOwnershipFixtureHistory(t, true)
+	before, canonical := snapshot(t, next.f.client), coldCanonicalSnapshot(t, next.f)
+	if _, err := applyFirstFixture(t, next, false); !errors.Is(err, ErrAuthorityLost) {
+		t.Fatal("fresh epoch bypassed an unretired active owner", err)
+	}
+	if !reflect.DeepEqual(before, snapshot(t, next.f.client)) || canonical != coldCanonicalSnapshot(t, next.f) || firstFixtureState(t, next) != "staged" {
+		t.Fatal("refusal changed the candidate or serving B0")
 	}
 }
 
