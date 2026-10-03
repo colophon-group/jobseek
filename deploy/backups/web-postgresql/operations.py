@@ -44,9 +44,7 @@ RESTORE_IMAGE = (
 )
 HELPER_IMAGE_LEASE = "jobseek-web-postgresql-backup-image-lease"
 HELPER_IMAGE_LEASE_LABEL = "jobseek.backup.helper-image"
-HELPER_IMAGE_LEASE_TMPFS = {
-    "/var/lib/postgresql/data": "rw,noexec,nosuid,nodev,size=65536"
-}
+HELPER_IMAGE_LEASE_TMPFS = {"/var/lib/postgresql/data": "rw,noexec,nosuid,nodev,size=65536"}
 BACKUP_FAILURE_ERROR_LIMIT = 512
 BACKUP_FAILURE_DIAGNOSTIC_LIMIT = 768
 _BACKUP_FAILURE_URI = re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^\s'\"<>]+")
@@ -80,6 +78,9 @@ ARTIFACT_MODES = {
     "timer": 0o644,
 }
 BACKUP_FIELDS = (
+    "company_reference_phase",
+    "company_reference_rows",
+    "company_reference_digest",
     "archive_bytes",
     "archive_sha256",
     "attempt_at",
@@ -94,6 +95,9 @@ BACKUP_FIELDS = (
     "table_count",
 )
 RESTORE_FIELDS = (
+    "company_reference_phase",
+    "company_reference_rows",
+    "company_reference_digest",
     "archive_sha256",
     "deploy_sha",
     "duration_seconds",
@@ -810,6 +814,49 @@ def validate_fresh_backup(status: dict[str, Any], *, started: int | None = None)
         or row_count < 0
     ):
         raise OperationError("fresh web PostgreSQL backup evidence is incomplete")
+    validate_company_reference_evidence(status)
+
+
+def validate_company_reference_evidence(status: dict[str, Any]) -> None:
+    # Existing pre-expansion status packets have no phase marker. New packets
+    # must describe the exact phase and reference fingerprint, even when empty.
+    if status.get("company_reference_phase") is None:
+        if status.get("table_count") != 17 or any(
+            status.get(key) is not None
+            for key in ("company_reference_rows", "company_reference_digest")
+        ):
+            raise OperationError(
+                "historical company-reference evidence must have the legacy boundary"
+            )
+        return
+    phase = status.get("company_reference_phase")
+    rows = status.get("company_reference_rows")
+    digest = status.get("company_reference_digest")
+    if (
+        phase not in ("legacy", "expanded", "reference")
+        or isinstance(rows, bool)
+        or not isinstance(rows, int)
+        or rows < 0
+        or status.get("table_count") != (17 if phase == "legacy" else 18)
+        or (phase == "legacy" and (rows != 0 or digest != "legacy"))
+        or (phase != "legacy" and not re.fullmatch(r"[0-9a-f]{32}", str(digest)))
+    ):
+        raise OperationError("company-reference backup/restore evidence is invalid")
+
+
+def company_reference_evidence_matches(backup: dict[str, Any], restore: dict[str, Any]) -> bool:
+    validate_company_reference_evidence(backup)
+    validate_company_reference_evidence(restore)
+    defaults = {
+        "company_reference_phase": "legacy",
+        "company_reference_rows": 0,
+        "company_reference_digest": "legacy",
+    }
+    return all(
+        (backup.get(key) if backup.get(key) is not None else default)
+        == (restore.get(key) if restore.get(key) is not None else default)
+        for key, default in defaults.items()
+    )
 
 
 def write_backup_evidence(
@@ -916,6 +963,7 @@ def run_restore_locked(expected: ExpectedIdentity, *, deployment_lock_fd: int) -
         or restore_status.get("archive_sha256") != backup.get("archive_sha256")
         or restore_status.get("table_count") != backup.get("table_count")
         or restore_status.get("row_count") != backup.get("row_count")
+        or not company_reference_evidence_matches(backup, restore_status)
         or restore_status.get("deploy_sha") != expected.deploy_sha
         or restore_status.get("retirement_migration_sha256")
         != expected.artifact_sha256["retirement_migration"]
@@ -963,6 +1011,7 @@ def validate_activation_evidence(expected: ExpectedIdentity) -> dict[str, Any]:
         or restore.get("archive_sha256") != archive_sha256
         or restore.get("table_count") != backup.get("table_count")
         or restore.get("row_count") != backup.get("row_count")
+        or not company_reference_evidence_matches(backup, restore)
     ):
         raise OperationError("bound backup and restore evidence describe different archives")
     return {
