@@ -22,8 +22,8 @@ for index = 1, boards do
     end
 end
 local offset = 23 + boards
-local operation, body = ARGV[offset + 1], ARGV[offset + 2]
-if #ARGV ~= offset + 2 or not body or #body < 1
+local operation, body, retirement = ARGV[offset + 1], ARGV[offset + 2], ARGV[offset + 3]
+if #ARGV ~= offset + 3 or not body or #body < 1 or not retirement
     or (operation ~= "publish" and operation ~= "retire"
         and operation ~= "inspect-active" and operation ~= "inspect-retired") then
     return redis.error_reply("first ordinary ownership rejected")
@@ -43,9 +43,24 @@ local ok, plan = pcall(cjson.decode, body)
 if not ok or type(plan) ~= "table" or type(plan.members) ~= "table" then
     return redis.error_reply("first ordinary ownership rejected")
 end
+local changes, domains
+if operation == "retire" and retirement ~= "[]" then
+    changes, domains = prepare_first_retirement(plan, retirement, exists)
+    if changes == nil then return redis.error_reply("first ordinary ownership rejected") end
+elseif retirement ~= "[]" then
+    return redis.error_reply("first ordinary ownership rejected")
+end
+if not retirement_type("inflight_tokens:simple", "hash") then
+    return redis.error_reply("first ordinary ownership rejected")
+end
 for _, member in ipairs(plan.members) do
-    if operation ~= "inspect-active"
+    local task = "monitor|" .. member.domain .. "|" .. member.board_id
+    if operation ~= "inspect-active" and changes == nil
         and redis.call("ZSCORE", KEYS[10], "monitor|" .. member.domain .. "|" .. member.board_id) then
+        return redis.error_reply("first ordinary ownership rejected")
+    end
+    if operation ~= "inspect-active" and changes == nil
+        and redis.call("HEXISTS", "inflight_tokens:simple", task) == 1 then
         return redis.error_reply("first ordinary ownership rejected")
     end
 end
@@ -55,7 +70,8 @@ end
 if operation == "inspect-retired" and exists then
     return redis.error_reply("first ordinary ownership rejected")
 end
--- All type/value/lease checks precede the only ordinary projection effect.
+-- All type/value/lease checks precede owned restoration and projection effects.
+if changes ~= nil then apply_first_retirement(changes, domains) end
 if operation == "publish" and not exists then redis.call("SET", KEYS[8], body) end
 if operation == "retire" and exists then redis.call("DEL", KEYS[8]) end
 return "accepted"

@@ -827,8 +827,10 @@ jobs:
           trap 'docker rm -f "$container" >/dev/null' EXIT
           docker cp "$container:/usr/local/bin/go-ordinary-worker" "$JOBSEEK_ORDINARY_IMAGE_BINARY"
           docker cp "$container:/app/data" "$JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY"
+          export JOBSEEK_ORDINARY_HOST_IMAGE_ID="$(docker image inspect -f '{{.Id}}' jobseek-crawler-slim-ci:pr)"
           cd apps/crawler/go/ordinary-worker
           go test -race -count=1 -run 'TestRealNativeExecutable|TestRealFirstOwnershipExecutable' ./...
+          go test -race -count=1 -run '^TestRealFirstOwnershipHostContainersCutoverAndRecovery$' ./...
 
       - name: Prove fresh producer volume initialization and client connectivity
         env:

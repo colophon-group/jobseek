@@ -20,8 +20,8 @@ under the shared mutation lock and a complete cold writer window. Deliver the
 executable cutover, opt-in Compose service, native healthcheck and supported
 retirement before expanding profile coverage. Preserve the larger draft branches
 and unfinished recovery fixture; they are not prerequisites for first adoption.
-The goal tool cannot replace an unfinished goal or edit its objective; this
-section records the revised delivery priorities without falsely completing it.
+The full delivery goal remains active until production migration and retirement
+are complete.
 
 ## Current delivery and next work — 2026-10-03
 
@@ -72,9 +72,20 @@ and browser workers remain Python. Deliver in this order:
    startup dependency. Those fixtures now pass with the affected pipeline/queue
    suite (170 tests). Exact active retries preserve interrupted leases and repeat
    no SAVE, allowing the unchanged complete native stack to recover normally.
-   Rerun required CI at the updated head, then prove complete host cutover/reversal. Interrupted
-   claims still leave active SQL fences: retirement deliberately refuses these,
-   and supported recovery must be completed before production activation.
+   Required CI, installed-image parity and ARM64 B0 lane measurement subsequently
+   passed at `3955c1ee57d1473f5d4c334aaef48b2ca83d67c2`. Cold retirement now
+   restores interrupted owned monitors from PostgreSQL deadlines, revokes their
+   Redis tokens and preserves completed receipts, canonical rows and the B0
+   incarnation. Real PostgreSQL/Redis race tests cover claim-before-SQL, stale
+   attempts, disabled members, commit-before-ACK, reaping, SAVE failure/retry and
+   refusal before any effect. Both full native queue and worker suites pass
+   locally. The installed-image CI job now also exercises the original host
+   driver with actual containers and the native process, including failed
+   readiness containment and complete recovery. Its legacy/B0 health services
+   are fixtures; production coverage, freshness and resource claims still need
+   real production observations. Wait for those updated-head checks, then
+   deliver the default-off service and use the supported production cold
+   cutover. No production ordinary owner has been selected yet.
    Foundation PR #10207 and worker PR #10210 remain preserved drafts; their joint
    transition framework and unwired completion fixture are not prerequisites.
 2. Connect already implemented Go provider/enrichment routes to native

@@ -30,15 +30,21 @@ func (a *Authority) ObserveGreenhouseMonitor(ctx context.Context, boardID string
 }
 
 func (a *Authority) observeGreenhouseMonitor(ctx context.Context, tx pgx.Tx, boardID string) (GreenhouseMonitorProfile, map[string]string, error) {
+	return a.observeGreenhouseMonitorState(ctx, tx, boardID, false)
+}
+
+// Cold retirement may close an otherwise unchanged disabled member. This
+// observation never admits it to a claim or changes its canonical deadline.
+func (a *Authority) observeGreenhouseMonitorState(ctx context.Context, tx pgx.Tx, boardID string, retiring bool) (GreenhouseMonitorProfile, map[string]string, error) {
 	var slug, boardURL, kind, company, metadata, check, scrape, throttle string
 	var monitorBrowser, scraperBrowser bool
 	err := tx.QueryRow(ctx, `SELECT board_slug,board_url,crawler_type,company_id::text,
    COALESCE(metadata,'{}'::jsonb)::text,check_interval_minutes::text,
    scrape_interval_hours::text,COALESCE(throttle_key,''),
    monitor_needs_browser,scraper_needs_browser
-   FROM public.job_board WHERE id=$1::uuid AND is_enabled
-   AND board_status IN ('active','suspect','quarantined','gone_pending','gone')
-   FOR SHARE`, boardID).Scan(&slug, &boardURL, &kind, &company, &metadata, &check, &scrape, &throttle, &monitorBrowser, &scraperBrowser)
+   FROM public.job_board WHERE id=$1::uuid AND (is_enabled OR $2)
+   AND (board_status IN ('active','suspect','quarantined','gone_pending','gone') OR $2)
+   FOR SHARE`, boardID, retiring).Scan(&slug, &boardURL, &kind, &company, &metadata, &check, &scrape, &throttle, &monitorBrowser, &scraperBrowser)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return GreenhouseMonitorProfile{}, nil, ErrUnsupportedProfile
 	}

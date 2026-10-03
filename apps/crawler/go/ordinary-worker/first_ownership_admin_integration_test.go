@@ -9,11 +9,13 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
 
-func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
+func firstExecutableOwnershipFixture(t *testing.T) (nativePipelineFixture, nativeExecutableFixture, *queue.OwnershipPlan) {
+	t.Helper()
 	f := privatePipelineFixture(t)
 	ctx := context.Background()
 	e := newNativeExecutableFixture(t, f, f.dsn)
@@ -52,6 +54,12 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 	if err != nil || len(result) != 12 || result[0] != "accepted" {
 		t.Fatal("real B0 initialization", err)
 	}
+	return f, e, plan
+}
+
+func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
+	f, e, plan := firstExecutableOwnershipFixture(t)
+	ctx := context.Background()
 	r := FirstOwnershipRequest{Version: "jobseek.ordinary.first-owner-request/v1", Operation: "activate", SourceRevision: plan.SourceRevision(), RoutingEpoch: plan.Epoch(), PlanSHA256: plan.SHA256(), ProjectionSHA1: plan.ProjectionSHA1(), CrawlerImageRef: "ghcr.io/colophon-group/jobseek-crawler@sha256:" + strings.Repeat("d", 64), B0ReceiptSHA256: strings.Repeat("e", 64), B0Cohort: "c1", Namespace: "production-b0", ShardID: "lightpanda-b0", ColdHostSHA256: strings.Repeat("f", 64)}
 	path := filepath.Join(e.directory, "first-owner.json")
 	call := func(accepted bool) {
@@ -97,8 +105,35 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 		t.Fatal(err)
 	}
 	call(true)
+	// The installed command must retire a claimed monitor whose process never
+	// reached ACK. No worker restart or origin fetch is part of this recovery.
+	native, err := queue.OpenOwnedAuthority(ctx, f.dsn, f.client, plan.Epoch(), plan.SHA256(), plan.SourceRevision())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer native.Close()
+	claim, err := native.Claim(ctx, queue.Simple)
+	if err != nil || claim == nil || claim.Descriptor().ID != f.board {
+		t.Fatal("installed admin interrupted-claim fixture", err)
+	}
+	var due time.Time
+	var before string
+	if err := f.pg.QueryRow(ctx, "SELECT next_check_at FROM job_board WHERE id=$1::uuid", f.board).Scan(&due); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.pg.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", f.board).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
 	r.Operation = "retire"
 	call(true)
+	var after string
+	if err := f.pg.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", f.board).Scan(&after); err != nil || after != before {
+		t.Fatal("installed retirement rewrote the interrupted receipt", err)
+	}
+	score, err := f.r.ZScore(ctx, "monitors_simple:greenhouse", f.board).Result()
+	if err != nil || score != float64(due.UnixNano())/1e9 || f.r.ZCard(ctx, "inflight:simple").Val() != 0 || f.r.HLen(ctx, "inflight_tokens:simple").Val() != 0 {
+		t.Fatal("installed retirement did not restore the canonical monitor", err)
+	}
 	if f.r.Exists(ctx, "ordinary:ownership:active").Val() != 0 {
 		t.Fatal("retired executable left an owner")
 	}

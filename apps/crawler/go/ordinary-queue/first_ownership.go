@@ -48,8 +48,9 @@ func ActivateFirstOwnershipInHostScope(ctx context.Context, pool *pgxpool.Pool, 
 }
 
 // RetireFirstOwnershipInHostScope closes that same first owner at the unchanged
-// B0 epoch. No owned inflight work or active SQL fence may remain. It preserves
-// schedules, completed receipts, canonical rows and every B0 key. Projection
+// B0 epoch. In the original cold host/SQL scope it restores interrupted owned
+// monitors from canonical deadlines, preserving retained attempt receipts,
+// canonical rows and every B0 key. Projection
 // removal and SAVE precede SQL retirement. A never-activated staged candidate
 // remains staged and inert after cancellation; its retained identity is useful
 // for diagnosis. A completed retirement observes only and repeats no SAVE.
@@ -93,8 +94,23 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 		// A completed exact activation retry observes the same existing owner;
 		// its interrupted attempts must remain available to normal reaping and
 		// recovery when the host restarts that complete, unchanged stack.
-		if attempts && (retire || state != "active") {
+		if attempts && state == "staged" {
 			return ErrAuthorityLost
+		}
+		if attempts {
+			ids := make([]string, 0, plan.MemberCount())
+			for _, member := range plan.document.Members {
+				ids = append(ids, member.BoardID)
+			}
+			var foreign bool
+			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence
+ WHERE state='active' AND NOT (task_kind='monitor' AND task_id=board_id
+ AND routing_epoch=$1 AND board_id=ANY($2::uuid[])))`, epoch, ids).Scan(&foreign); err != nil {
+				return err
+			}
+			if foreign {
+				return ErrAuthorityLost
+			}
 		}
 		if !retire {
 			authority := &Authority{queue: client}
@@ -113,10 +129,10 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 	return plan, state, err
 }
 
-func firstOwnershipProjection(ctx context.Context, client *Client, epoch int64, plan *OwnershipPlan, target *ColdB0Target, operation string) error {
+func firstOwnershipProjection(ctx context.Context, client *Client, epoch int64, plan *OwnershipPlan, target *ColdB0Target, operation, retirement string) error {
 	keys := append(target.keys(), ownershipProjectionKey, coldPublicationKey, "inflight:simple")
-	args := append(target.auditArguments(epoch), operation, plan.body)
-	script := "local function audited_b0()\n" + target.lua + "\nend\n" + firstOwnershipLua
+	args := append(target.auditArguments(epoch), operation, plan.body, retirement)
+	script := "local function audited_b0()\n" + target.lua + "\nend\n" + firstRetirementLua + firstOwnershipLua
 	result, err := client.redis.Eval(ctx, script, keys, args...).Text()
 	if err != nil {
 		var refused redis.Error
@@ -178,13 +194,20 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 		operation = "inspect-retired"
 	}
 	completed := (!retire && state == "active") || (retire && state == "retired")
+	retirement := "[]"
+	if retire && state == "active" {
+		retirement, err = firstRetirementMembers(ctx, pool, client, plan)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if !completed {
 		operation = "publish"
 		if retire {
 			operation = "retire"
 		}
 	}
-	if err := firstOwnershipProjection(ctx, client, epoch, plan, target, operation); err != nil {
+	if err := firstOwnershipProjection(ctx, client, epoch, plan, target, operation, retirement); err != nil {
 		return nil, err
 	}
 	if !completed {
@@ -204,7 +227,7 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 		if retire {
 			inspect = "inspect-retired"
 		}
-		if err := firstOwnershipProjection(ctx, client, epoch, plan, target, inspect); err != nil {
+		if err := firstOwnershipProjection(ctx, client, epoch, plan, target, inspect, "[]"); err != nil {
 			return nil, err
 		}
 		if (!retire && state == "staged") || (retire && state == "active") {

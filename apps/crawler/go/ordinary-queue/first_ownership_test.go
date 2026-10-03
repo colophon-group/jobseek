@@ -192,8 +192,8 @@ func TestRealFirstOwnershipNativeClaimCommitAndRetirement(t *testing.T) {
 	if err != nil || claim == nil || claim.Descriptor().ID != p.f.task.ID || !claim.OwnershipBound() {
 		t.Fatal("activated owner cannot claim its scheduled member", err)
 	}
-	if _, err := applyFirstFixture(t, p, true); !errors.Is(err, ErrAuthorityLost) {
-		t.Fatal("retirement crossed an active native attempt", err)
+	if _, err := RetireFirstOwnershipInHostScope(ctx, p.f.observer, p.f.client, p.f.epoch, p.plan.digest, p.plan.SourceRevision(), p.target); !errors.Is(err, ErrAuthorityLost) {
+		t.Fatal("unscoped retirement crossed an active native attempt", err)
 	}
 	// A failed full-stack startup retains its pending identity. Repeating
 	// activation observes the already selected owner without touching a live
