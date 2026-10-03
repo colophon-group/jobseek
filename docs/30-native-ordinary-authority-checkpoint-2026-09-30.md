@@ -2246,3 +2246,18 @@ restoration because Git interpreted its tree path relative to the module.
 `--full-tree` corrects that listing; all 599 source files are observed from the
 module locally and every strict source/tree/byte check remains required. Fresh
 actual legacy-image execution is still required. Production remains unchanged.
+
+### Joined fixture first execution, 2026-10-03
+
+Installed run `37086577331` at `db0a5ac46c0a47cd914e0a644d45ae7b7ba1c563`
+failed on both architectures before invoking the joined test. Linux
+`protected_regular` rejected util-linux flock's `O_CREAT|O_RDWR` open of the
+runner-owned existing mutation inode in sticky `/run/lock`, including as root.
+No joined proof artifact was produced; positive joined execution remains open.
+The disposable harness now opens that existing inode read-only without following
+links, bounds exclusive acquisition to five seconds, verifies the named inode,
+and changes ownership through the held file descriptor. Production owner and
+mutation-lock predicates remain unchanged. Full CI, Linux contracts and both
+historical-image restoration runs for `db0a5ac46` completed successfully; their
+raw Linux and restoration evidence was independently verified. Full migration
+and runtime admission remain open.

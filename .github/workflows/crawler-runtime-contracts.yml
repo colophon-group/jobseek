@@ -445,8 +445,33 @@ jobs:
           # same lock, so the strict root coordinator owner predicate holds.
           test -f /run/lock/jobseek-crawler-mutation.lock
           test ! -L /run/lock/jobseek-crawler-mutation.lock
-          sudo flock --exclusive --timeout 5 /run/lock/jobseek-crawler-mutation.lock \
-            chown --no-dereference root:root /run/lock/jobseek-crawler-mutation.lock
+          # util-linux flock opens with O_CREAT|O_RDWR. Linux protected_regular
+          # refuses that open for an existing runner-owned file in /run/lock's
+          # sticky directory, including as root. Open the exact existing inode
+          # read-only without following links; fchown only after its flock.
+          sudo python3 - <<'PY'
+          import fcntl, os, stat, time
+          path = '/run/lock/jobseek-crawler-mutation.lock'
+          fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+          try:
+              opened = os.fstat(fd)
+              assert stat.S_ISREG(opened.st_mode) and opened.st_nlink == 1
+              assert opened.st_mode & 0o022 == 0
+              deadline = time.monotonic() + 5
+              while True:
+                  try:
+                      fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                      break
+                  except BlockingIOError:
+                      if time.monotonic() >= deadline:
+                          raise TimeoutError('owned fixture mutation lock busy')
+                      time.sleep(0.025)
+              named = os.lstat(path)
+              assert (opened.st_dev, opened.st_ino) == (named.st_dev, named.st_ino)
+              os.fchown(fd, 0, 0)
+          finally:
+              os.close(fd)
+          PY
           sudo env PATH=/usr/bin:/bin GITHUB_ACTIONS=true \
             JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_SELECTED_REDIS=1 \
             JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \

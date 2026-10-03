@@ -401,5 +401,16 @@
     "Native library journal path plus installed preflight; complete installed cold CLI/full phase graph/producer exclusion unproven",
     "Synthetic startup admission reports do not establish full-profile/full-service resource or attributable cost parity",
     "Production migration admission, supported cutover/cold reversal/rollback window and runtime Python retirement incomplete"
-  ]
+  ],
+  "joined_fixture_first_execution": {
+    "source": "db0a5ac46c0a47cd914e0a644d45ae7b7ba1c563",
+    "run": 37086577331,
+    "status": "failed before test invocation on both architectures",
+    "reason": "util-linux flock opens O_CREAT|O_RDWR; Linux protected_regular rejected reopening runner-owned existing inode in sticky /run/lock, including as root",
+    "failed_log_sha256": "838a6ccf18d93dcfb495aa876a3e70d0fdeb28540d0b8ed7bcf5f1d0df9e8e79",
+    "proof_artifact_available": false,
+    "repair": "disposable harness opens existing inode O_RDONLY|O_CLOEXEC|O_NOFOLLOW, bounds LOCK_EX|LOCK_NB acquisition to five seconds, verifies named inode and fchowns held fd; production predicate unchanged",
+    "positive_joined_journal_verified": false,
+    "production_changed": false
+  }
 }
