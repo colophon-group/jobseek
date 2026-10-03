@@ -14,6 +14,7 @@ BEGIN
     RAISE EXCEPTION 'Company reference seed refused: % malformed legacy rows; repair reviewed metadata before retry', malformed;
   END IF;
 END $$;
+
 --> statement-breakpoint
 CREATE TABLE public.company_reference (
   id uuid PRIMARY KEY NOT NULL,
@@ -62,4 +63,15 @@ BEGIN
     EXECUTE format('REVOKE ALL ON TABLE public.company_reference FROM %I', browser_role);
     EXECUTE format('REVOKE ALL ON FUNCTION public.company_reference_from_legacy() FROM %I', browser_role);
   END LOOP;
+END $$;
+--> statement-breakpoint
+-- Preserve the existing protected migration auditor's read-only role contract.
+-- Do not create or elevate a role, grant browser access, or enable RLS bypass.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'jobseek_migration_auditor') THEN
+    GRANT SELECT ON TABLE public.company_reference TO jobseek_migration_auditor;
+    CREATE POLICY company_reference_migration_auditor_select ON public.company_reference
+      FOR SELECT TO jobseek_migration_auditor USING (true);
+  END IF;
 END $$;

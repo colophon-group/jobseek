@@ -179,6 +179,19 @@ describe("production migration safety", () => {
     expect(verifier).toContain('route === "/en/sign-in"');
   });
 
+  it("requires real PostgreSQL reference expansion and scheduled read-only drift verification", () => {
+    const ci = readRepo(".github/workflows/ci.yml");
+    const workflow = readRepo(".github/workflows/web-database-migrations.yml");
+    const fixture = readWeb("src/db/__tests__/company-reference-migration.test.ts");
+    expect(ci).toContain("COMPANY_REFERENCE_MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture");
+    expect(ci).toContain("pnpm exec vitest run src/db/__tests__/company-reference-migration.test.ts");
+    expect(fixture).toContain("process.env.COMPANY_REFERENCE_MIGRATION_TEST_DATABASE_URL");
+    expect(workflow).toContain("COMPANY_REFERENCE_RUNTIME_ROLE: postgres");
+    expect(workflow).toContain("scripts/verify-company-references.ts");
+    expect(workflow).toContain('drift "$RUNNER_TEMP/company-reference-drift.json"');
+    expect(workflow).toContain("secrets.DATABASE_URL_READONLY");
+  });
+
   it("applies routine migrations through a separately protected exact-target path", () => {
     const workflow = readRepo(
       ".github/workflows/apply-web-routine-migration.yml",

@@ -11,7 +11,7 @@ Run the exact checked-out migration test against a disposable localhost database
 whose name ends in `_fixture`:
 
 ```sh
-COMPANY_REFERENCE_TEST_DATABASE_URL='<disposable-direct-postgres-url>' \
+COMPANY_REFERENCE_MIGRATION_TEST_DATABASE_URL='<disposable-direct-postgres-url>' \
   pnpm exec vitest run src/db/__tests__/company-reference-migration.test.ts
 ```
 
@@ -83,13 +83,20 @@ read-only aggregate drift checks after application deployment and catalogue
 publication changes:
 
 ```sh
-pnpm exec tsx scripts/verify-company-references.ts drift /secure/drift.json
+COMPANY_REFERENCE_RUNTIME_ROLE=postgres \
+  pnpm exec tsx scripts/verify-company-references.ts drift /secure/drift.json
 ```
 
 `drift` permits later ledger entries only when the exact expansion/prerequisite
 identities still exist uniquely; the expansion-phase catalogue contract must still
-match. Wire this verifier to protected operational scheduling after rollout; no
-credentials belong in an agent scheduler or public issue. A future FK contract
+match. The existing daily protected `Web Database Migrations` drift job runs this audit
+as `jobseek_migration_auditor`, using `DATABASE_URL_READONLY` and an explicit
+audited runtime role (`postgres`). Expansion grants that existing auditor only
+SELECT and a narrowly scoped RLS SELECT policy; it creates no role, elevates no
+attributes and grants no write privileges. The verifier checks the exact policy,
+role safety/default read-only setting and SELECT-only table ACL. Runtime role
+ACLs are inspected independently from the auditor identity. No credentials belong
+in an agent scheduler or public issue. A future FK contract
 migration must update phase-aware drift verification in the same PR.
 
 ## Contract and rollback

@@ -41,7 +41,15 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMode) {
+export function validateCompanyReferenceRuntimeRole(role: string): string {
+  if (!/^[a-z_][a-z0-9_]{0,62}$/.test(role) || ["anon", "authenticated", "jobseek_migration_auditor"].includes(role)) {
+    throw new Error("Invalid audited company reference runtime role");
+  }
+  return role;
+}
+
+export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMode, runtimeRole?: string) {
+  if (runtimeRole !== undefined) validateCompanyReferenceRuntimeRole(runtimeRole);
   return sql.begin(async tx => {
     await tx`SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY`;
     await tx`SET LOCAL statement_timeout = '60s'`;
@@ -130,20 +138,37 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
         LEFT JOIN public.company_reference r ON r.id=s.company_id WHERE r.id IS NULL)::integer AS "missingSelections"`;
     assert(coverage?.missingLegacy === 0 && coverage.mismatchedSeed === 0 && coverage.missingSelections === 0, "Reference/selection coverage drift");
     const runtime = await tx<{ allowed: boolean }[]>`
-      SELECT has_table_privilege(current_user, 'public.company_reference', 'SELECT')
-        AND has_table_privilege(current_user, 'public.company_reference', 'INSERT')
-        AND has_table_privilege(current_user, 'public.company_reference', 'UPDATE')
-        AND has_table_privilege(current_user, 'public.company', 'INSERT')
+      SELECT has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company_reference', 'SELECT')
+        AND has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company_reference', 'INSERT')
+        AND has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company_reference', 'UPDATE')
+        AND has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company', 'INSERT')
         AND (r.rolsuper OR r.rolbypassrls OR c.relowner=r.oid)
         AND (NOT legacy.relrowsecurity OR r.rolsuper OR r.rolbypassrls OR legacy.relowner=r.oid) AS allowed
-      FROM pg_roles r, pg_class c, pg_class legacy WHERE r.rolname=current_user
+      FROM pg_roles r, pg_class c, pg_class legacy WHERE r.rolname=coalesce(${runtimeRole ?? null}, current_user::text)
         AND c.oid='public.company_reference'::regclass AND legacy.oid='public.company'::regclass`;
-    assert(runtime[0]?.allowed, "Connected runtime role cannot read/write company references through RLS");
+    assert(runtime[0]?.allowed, "Audited runtime role cannot read/write company references through RLS");
     const browser = await tx<{ role: string; allowed: boolean }[]>`
       SELECT rolname AS role, has_table_privilege(rolname, 'public.company_reference', 'SELECT,INSERT,UPDATE,DELETE') AS allowed
       FROM pg_roles WHERE rolname IN ('anon','authenticated')`;
     assert(browser.every(role => !role.allowed), "Browser role has company-reference table access");
+    const auditor = await tx<{ select: boolean; writes: boolean; elevated: boolean; readOnlyDefault: boolean; directSelectOnly: boolean }[]>`
+      SELECT has_table_privilege(r.oid, c.oid, 'SELECT') AS select,
+        has_table_privilege(r.oid, c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN') AS writes,
+        (r.rolsuper OR r.rolcreatedb OR r.rolcreaterole OR r.rolreplication OR r.rolbypassrls) AS elevated,
+        coalesce('default_transaction_read_only=on'=ANY(r.rolconfig), false) AS "readOnlyDefault",
+        (SELECT count(*)=1 AND bool_and(a.privilege_type='SELECT' AND NOT a.is_grantable)
+          FROM aclexplode(coalesce(c.relacl, acldefault('r',c.relowner))) a WHERE a.grantee=r.oid) AS "directSelectOnly"
+      FROM pg_roles r, pg_class c WHERE r.rolname='jobseek_migration_auditor' AND c.oid='public.company_reference'::regclass`;
+    assert(auditor.every(a => a.select && !a.writes && !a.elevated && a.readOnlyDefault && a.directSelectOnly), "Migration auditor role/grant contract differs");
+    const policies = await tx<{ name: string; command: string; permissive: boolean; roles: string[]; using: string | null; check: string | null }[]>`
+      SELECT p.polname AS name, p.polcmd::text AS command, p.polpermissive AS permissive,
+        ARRAY(SELECT rolname FROM pg_roles WHERE oid=ANY(p.polroles) ORDER BY rolname) AS roles,
+        pg_get_expr(p.polqual,p.polrelid,true) AS using, pg_get_expr(p.polwithcheck,p.polrelid,true) AS check
+      FROM pg_policy p WHERE p.polrelid='public.company_reference'::regclass ORDER BY p.polname`;
+    assert(policies.length === auditor.length && policies.every(p => p.name==='company_reference_migration_auditor_select'
+      && p.command==='r' && p.permissive && JSON.stringify(p.roles)===JSON.stringify(['jobseek_migration_auditor'])
+      && p.using==='true' && p.check===null), "Migration auditor exact SELECT policy differs");
     return { mode, phase, status: "passed", migration: referenceMigrationIdentity, ledgerHead: ledger[0], relation, columns, checks, constraints, indexes,
-      coverage, nonrenderable, runtime, browser, selectionForeignKeys, compatibilityFunction: "exact", compatibilityTrigger: "exact" };
+      coverage, nonrenderable, runtime, browser, auditor, policies, selectionForeignKeys, compatibilityFunction: "exact", compatibilityTrigger: "exact" };
   });
 }

@@ -7,12 +7,12 @@ import { getTableConfig, PgTimestamp } from "drizzle-orm/pg-core";
 import postgres, { type Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { companyReference } from "../schema";
-import { auditCompanyReferences, normalizeReferenceCheck, referenceMigrationIdentity, referencePrerequisiteIdentity } from "../../../scripts/company-reference-contract";
+import { auditCompanyReferences, normalizeReferenceCheck, referenceMigrationIdentity, referencePrerequisiteIdentity, validateCompanyReferenceRuntimeRole } from "../../../scripts/company-reference-contract";
 const migration = readFileSync("drizzle/0100_company_references.sql", "utf8");
 const id = "11111111-1111-4111-8111-111111111111";
 const second = "22222222-2222-4222-8222-222222222222";
 const third = "33333333-3333-4333-8333-333333333333";
-const url = process.env.COMPANY_REFERENCE_TEST_DATABASE_URL;
+const url = process.env.COMPANY_REFERENCE_MIGRATION_TEST_DATABASE_URL;
 let sql: Sql;
 async function apply() {
   await sql.begin(async tx => {
@@ -29,7 +29,9 @@ async function fixture(malformed = false) {
     CREATE TABLE followed_company (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id text NOT NULL, company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
     CREATE TABLE saved_job (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid NOT NULL, company_name text NOT NULL, company_slug text NOT NULL);
     DO $$ BEGIN CREATE ROLE anon; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-    DO $$ BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
+    DO $$ BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    DO $$ BEGIN CREATE ROLE jobseek_migration_auditor LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    ALTER ROLE jobseek_migration_auditor SET default_transaction_read_only = on;`);
   await sql`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES (${referencePrerequisiteIdentity.hash}, ${referencePrerequisiteIdentity.createdAt})`;
   await sql`INSERT INTO company (id,name,slug,icon,created_at,updated_at) VALUES (${id}, ${malformed ? " " : "First"}, 'first', 'https://example.test/icon.png', '2026-01-01 12:00:00', '2026-02-01 12:00:00')`;
   await sql`INSERT INTO watchlist_company (watchlist_id, company_id) VALUES (${third}, ${id})`;
@@ -44,6 +46,9 @@ beforeAll(() => {
 });
 afterAll(async () => { if (sql) await sql.end(); });
 describe("company reference schema", () => {
+  it.each(["anon", "authenticated", "jobseek_migration_auditor", "postgres;DROP", " Postgres ", "role-unsafe", "UPPER", "x".repeat(64)])("rejects an unsafe audited runtime role %s", role => {
+    expect(() => validateCompanyReferenceRuntimeRole(role)).toThrow("Invalid audited");
+  });
   it("uses canonical UUID without defaults, mutable nonunique slugs, timezone timestamps", () => {
     const columns = getTableColumns(companyReference);
     expect(columns.id.hasDefault).toBe(false); expect(columns.id.primary).toBe(true);
@@ -134,7 +139,7 @@ describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {
   it("verifies an already-expanded backup restored into the disposable fixture", async () => {
     await fixture(); await apply();
     const parsed = new URL(url!);
-    const { stdout: dump } = await promisify(execFile)("pg_dump", ["--schema=public", "--schema=drizzle", "--no-owner", "--no-privileges", "--inserts"], {
+    const { stdout: dump } = await promisify(execFile)("pg_dump", ["--schema=public", "--schema=drizzle", "--no-owner", "--inserts"], {
       env: { ...process.env, PGHOST: parsed.hostname, PGPORT: parsed.port || "5432", PGDATABASE: parsed.pathname.slice(1),
         PGUSER: decodeURIComponent(parsed.username), PGPASSWORD: decodeURIComponent(parsed.password) }, maxBuffer: 10 * 1024 * 1024,
     });
@@ -167,6 +172,27 @@ describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {
       await sql.unsafe("GRANT INSERT ON company TO company_reference_runtime_fixture");
       expect(await auditCompanyReferences(restricted, "postflight")).toMatchObject({ status: "passed" });
     } finally { await restricted.end(); }
+  });
+  it("permits the actual read-only auditor to verify runtime ACLs without write privileges", async () => {
+    await fixture(); await apply();
+    await sql.unsafe(`DO $$ BEGIN CREATE ROLE company_reference_runtime_fixture BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+      GRANT USAGE ON SCHEMA public, drizzle TO jobseek_migration_auditor;
+      GRANT SELECT ON company, watchlist_company, followed_company, drizzle.__drizzle_migrations TO jobseek_migration_auditor;
+      GRANT SELECT,INSERT,UPDATE ON company_reference TO company_reference_runtime_fixture;
+      GRANT INSERT ON company TO company_reference_runtime_fixture;`);
+    const auditorUrl = new URL(url!); auditorUrl.username="jobseek_migration_auditor"; auditorUrl.password="";
+    const auditor = postgres(auditorUrl.href, { max: 1, prepare: false, onnotice: () => {} });
+    try {
+      expect((await auditor`SHOW default_transaction_read_only`)[0]!.default_transaction_read_only).toBe("on");
+      expect(await auditCompanyReferences(auditor, "drift", "company_reference_runtime_fixture")).toMatchObject({ status: "passed" });
+      await expect(auditor.begin(async tx => {
+        await tx`SET TRANSACTION READ WRITE`;
+        await tx`INSERT INTO company_reference (id,name,slug,source) VALUES (${second},'Forbidden','forbidden','legacy_seed')`;
+      })).rejects.toMatchObject({ code: "42501" });
+      expect((await auditor`SELECT count(*)::integer AS count FROM company_reference`)[0]!.count).toBe(1);
+      await sql.unsafe("ALTER POLICY company_reference_migration_auditor_select ON company_reference USING (false)");
+      await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("exact SELECT policy");
+    } finally { await auditor.end(); }
   });
   it("detects disabled triggers, weakened checks, browser grants and wrong ledger", async () => {
     await fixture(); await apply();
