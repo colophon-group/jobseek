@@ -953,7 +953,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "redis", specifier = ">=8.1.0" },
-    { name = "selectolax", specifier = ">=0.4.11" },
+    { name = "selectolax", specifier = ">=0.4.11,<1" },
     { name = "structlog", specifier = ">=26.1.0" },
     { name = "typesense", specifier = ">=0.21" },
     { name = "tzdata", specifier = ">=2026.3" },
