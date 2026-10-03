@@ -7,6 +7,8 @@ import { chromium, type Page } from "playwright";
 import { hashPassword } from "better-auth/crypto";
 import { companyDocument, fixtureClient, fixtureDatabaseUrl, resetFixture, seedUser } from "./company-reference/fixture";
 import { exerciseCanaryLifecycle, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
+import { selectCanaryCompany, canaryCompanyRow } from "./company-reference/canary-picker";
+import { navigateCanary, waitForCanaryOwnerShell } from "./company-reference/canary-navigation";
 import { logExternalError } from "../src/lib/safe-external-error";
 import { startTypesenseFixture } from "./company-reference/typesense-fixture";
 
@@ -67,17 +69,13 @@ async function main() {
     assert.equal((await session.json()).user.id, user.id, "Request-derived session must match dedicated fixture identity");
     page = await context.newPage(); page.setDefaultTimeout(45_000);
     browserPhase = "create_watchlist";
-    await page.goto("/en/watchlists");
+    await navigateCanary(page, "/en/watchlists");
     await page.getByRole("button", { name: "Create", exact: true }).click();
     await page.waitForURL(/\/en\/watchlists\/[0-9a-f-]{36}/);
     const watchlistId = page.url().split("/").pop()!;
     browserPhase = "select_company";
-    await page.getByRole("button", { name: "Any company", exact: true }).click();
-    await page.getByRole("button", { name: "Company", exact: true }).click();
+    await selectCanaryCompany(page, doc.name, next => { browserPhase = next; });
     const dialog = page.getByRole("dialog");
-    await dialog.getByPlaceholder("Search companies...").fill(doc.name);
-    await dialog.getByRole("button", { name: new RegExp(doc.name) }).click();
-    await dialog.getByRole("button", { name: "Close", exact: true }).click();
     await page.getByText(doc.name, { exact: true }).waitFor();
     // UI optimistic state alone is insufficient: wait for the actual owner-scoped committed row.
     const deadline = Date.now() + 15_000;
@@ -92,12 +90,12 @@ async function main() {
     assert.equal(persisted[0].any_company, "false", "Company membership and scope must commit atomically before quick reload");
     assert.equal(persisted[0].user_id, user.id); assert.equal(persisted[0].source, "typesense"); assert.equal(persisted[0].alerts_enabled, false);
     browserPhase = "reload";
-    await page.reload(); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
+    await navigateCanary(page, page.url()); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     assert.ok(search.requests.some(request => request.pathname.includes("/company/")), "Production Typesense SDK must query company fixture");
     browserPhase = "later_scope_during_provider_lookup";
     await page.getByRole("button", { name: "Company", exact: true }).click();
     await dialog.getByPlaceholder("Search companies...").fill(delayedDoc.name);
-    await dialog.getByRole("button", { name: new RegExp(delayedDoc.name) }).click();
+    await canaryCompanyRow(page, delayedDoc.name).click();
     await dialog.getByRole("button", { name: "Close", exact: true }).click();
     // This later edit must stay later than the in-flight membership request,
     // whose provider lookup intentionally takes longer than the filter debounce.
@@ -113,7 +111,7 @@ async function main() {
     }
     assert.ok(coherent, "Later scope edit must remain persisted after slower provider-backed membership save");
     assert.ok(search.requests.some(request => request.filter?.includes(delayedDoc.id) && request.delayMs === 2000), "Real production SDK must cross the delayed provider boundary");
-    await page.reload();
+    await navigateCanary(page, page.url());
     assert.equal(await page.getByRole("button", { name: "Company", exact: true }).isDisabled(), true);
     assert.equal(await page.getByRole("button", { name: `Remove ${delayedDoc.name}`, exact: true }).count(), 0);
     assert.equal((await sql`SELECT 1 FROM watchlist_company WHERE watchlist_id=${watchlistId} AND company_id=${delayedDoc.id}`).length, 1);
@@ -127,7 +125,9 @@ async function main() {
     const state: CanaryLifecycleState = { titles: [owned.title], company: doc, starTouched: false };
     const lifecycle = await exerciseCanaryLifecycle({ page, sql, userId: user.id, email: user.email, password,
       origin: baseUrl, watchlistId, state, onPhase: next => { browserPhase = next; }, createAnonymousContext: () => browser.newContext({ baseURL: baseUrl }) });
-    browserPhase = "scoped_cleanup";
+    browserPhase = "cleanup_owner_shell";
+    await waitForCanaryOwnerShell(page, state.titles[state.titles.length - 1]);
+    browserPhase = "cleanup_delete_trigger";
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
     await page.waitForURL(/\/en\/watchlists$/);
