@@ -2540,3 +2540,48 @@ async def test_enabled_scrape_enqueue_fails_closed_without_go_authority(
     with pytest.raises(ProducerClientError, match="unavailable"):
         await rq.enqueue_scrape("jobs.example.com", "posting-go", 123, {}, browser=True)
     assert not await mock_redis.exists("scrape:posting-go")
+
+
+@pytest.mark.parametrize("browser", [False, True])
+async def test_legacy_worker_cannot_settle_tokenized_attempt(mock_redis, browser):
+    """Python's unchanged call ABI must preserve a future native attempt."""
+    domain = "tokenized-attempt.invalid"
+    task_id = "native-attempt"
+    worker = "browser" if browser else "simple"
+    member = f"scrape|{domain}|{task_id}"
+    deadline = time.time() + 60
+    config = {"domain": domain, "source_url": "https://tokenized-attempt.invalid/job"}
+    await mock_redis.hset(f"scrape:{task_id}", mapping=config)
+    await mock_redis.zadd(f"inflight:{worker}", {member: deadline})
+    await mock_redis.hset(f"inflight_tokens:{worker}", member, "a" * 32)
+
+    assert await rq.heartbeat_task(domain, task_id, "scrape", browser=browser) == 0
+    await rq.reschedule_task(domain, task_id, "scrape", deadline + 3600, browser=browser)
+    assert await rq.complete_task(domain, task_id, "scrape", browser=browser) == 0
+
+    assert await mock_redis.zscore(f"inflight:{worker}", member) == deadline
+    assert await mock_redis.hget(f"inflight_tokens:{worker}", member) == "a" * 32
+    assert await mock_redis.hgetall(f"scrape:{task_id}") == config
+    assert await mock_redis.zcard(f"scrapes_{worker}:{domain}") == 0
+    assert await mock_redis.hlen(f"inflight_strikes:{worker}") == 0
+
+
+@pytest.mark.parametrize("browser", [False, True])
+async def test_legacy_direct_reaper_leaves_native_attempt_for_pg_barrier(mock_redis, browser):
+    """Only the guarded Go sweep may end native database write authority."""
+    worker = "browser" if browser else "simple"
+    domain = "native-reaper.invalid"
+    native = f"monitor|{domain}|native"
+    legacy = f"monitor|{domain}|legacy"
+    for task in ("native", "legacy"):
+        await mock_redis.hset(f"board:{task}", mapping={"domain": domain})
+    await mock_redis.zadd(f"inflight:{worker}", {native: 0, legacy: 0})
+    await mock_redis.hset(f"inflight_tokens:{worker}", native, "a" * 32)
+
+    result = await rq.reap_expired(browser=browser)
+
+    assert result == {"reenqueued": 1, "dead_lettered": 0, "missing_config": 0}
+    assert await mock_redis.zscore(f"inflight:{worker}", native) == 0
+    assert await mock_redis.hget(f"inflight_tokens:{worker}", native) == "a" * 32
+    assert await mock_redis.zscore(f"monitors_{worker}:{domain}", "native") is None
+    assert await mock_redis.zscore(f"inflight:{worker}", legacy) is None

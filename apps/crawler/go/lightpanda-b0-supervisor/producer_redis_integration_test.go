@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -790,5 +792,111 @@ func TestRealRedisPersistenceVerify(t *testing.T) {
 	}
 	if err := queue.audit(ctx); err != nil {
 		t.Fatalf("persisted queue conservation failed: %v", err)
+	}
+}
+
+func TestRealRedisOperatorTransferPreservesFractionalFutureScores(t *testing.T) {
+	client, queue, owner := integrationRedisQueue(t)
+	ctx := context.Background()
+	base := float64(time.Now().Unix() + 45)
+	plan := map[string]any{}
+	originals := map[string]float64{}
+	for index := 0; index < 512; index++ {
+		score := base + float64(index*37+1)/1000000
+		if index == 0 {
+			score = 1790804934.0051439
+		}
+		readyMS := int64(math.Ceil(score * 1000))
+		task := integrationTask(t, fmt.Sprintf("fractional-transfer-%d", index), 1, readyMS)
+		key := integrationSeedLegacy(t, client, task, false, score)
+		original, err := client.ZScore(ctx, key, task.Envelope.TaskID).Result()
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := queue.activateLegacy(ctx, &task, readyMS, integrationLegacyConfig(task), "", true, false, owner)
+		if err != nil || !result.accepted() {
+			rawScore, _ := client.Eval(ctx, `return redis.call("ZSCORE",KEYS[1],ARGV[1])`, []string{key}, task.Envelope.TaskID).Result()
+			t.Fatalf("fractional transfer %d rejected: fixture_score=%v due_ms=%d %#v %v", index, rawScore, readyMS, result, err)
+		}
+		guard, err := client.HGet(ctx, legacyGuardKey, task.Envelope.TaskID).Result()
+		if err != nil {
+			t.Fatal(err)
+		}
+		parts := strings.Split(guard, "|")
+		if len(parts) != 7 {
+			t.Fatal("guard shape changed")
+		}
+		retained, err := strconv.ParseFloat(parts[6], 64)
+		if err != nil || retained != original {
+			t.Fatal("transfer changed original fractional rollback deadline")
+		}
+		originals[task.Envelope.TaskID] = original
+		plan[task.Envelope.TaskID] = map[string]any{
+			"action": "schedule", "domain": task.Envelope.Domain, "worker_type": "browser", "first_time": false, "score": parts[6],
+			"config": map[string]any{"domain": task.Envelope.Domain, "board_id": task.Envelope.BoardID, "source_url": task.Envelope.SourceURL, "description_r2_hash": "", "scrape_step": "0", "scrape_interval_hours": "24"},
+		}
+		if _, err := client.ZScore(ctx, key, task.Envelope.TaskID).Result(); err == nil {
+			t.Fatal("transfer retained legacy membership")
+		}
+	}
+	if err := queue.audit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	_, scheduled, dropped := integrationRollbackPlan(t, queue, owner, plan)
+	if scheduled != 512 || dropped != 0 {
+		t.Fatal("fractional rollback counts changed")
+	}
+	for id, want := range originals {
+		got, err := client.ZScore(ctx, "scrapes_browser:jobs.example.com", id).Result()
+		if err != nil || got != want {
+			t.Fatal("rollback changed original source deadline")
+		}
+	}
+	if client.HLen(ctx, legacyGuardKey).Val() != 0 {
+		t.Fatal("rollback retained transfer guards")
+	}
+}
+
+func TestRealRedisScientificGuardRejectsMalformedBeforeMutation(t *testing.T) {
+	for _, score := range []string{"NaN", "Inf", "-1e9", "+1e9", "0x1p3", "1e999", "1e-999", "1e", "1e+", "1e2e3", " 1e9", "1e9 ", "1.2e+10", strings.Repeat("1", 33)} {
+		t.Run(score, func(t *testing.T) {
+			client, queue, owner := integrationRedisQueue(t)
+			ctx := context.Background()
+			task := integrationTask(t, "invalid-scientific-guard", 1, 123000)
+			integrationActivate(t, queue, owner, task, 123000, false)
+			guard, err := client.HGet(ctx, legacyGuardKey, task.Envelope.TaskID).Result()
+			if err != nil {
+				t.Fatal(err)
+			}
+			parts := strings.Split(guard, "|")
+			parts[6] = score
+			if err := client.HSet(ctx, legacyGuardKey, task.Envelope.TaskID, strings.Join(parts, "|")).Err(); err != nil {
+				t.Fatal(err)
+			}
+			before, err := client.HGetAll(ctx, queue.keys[1]).Result()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := queue.audit(ctx); err == nil {
+				t.Fatal("invalid scientific guard passed actual Redis audit")
+			}
+			plan := map[string]any{task.Envelope.TaskID: map[string]any{
+				"action": "schedule", "domain": task.Envelope.Domain, "worker_type": "browser", "first_time": false, "score": score,
+				"config": map[string]any{"domain": task.Envelope.Domain, "board_id": task.Envelope.BoardID, "source_url": task.Envelope.SourceURL, "description_r2_hash": "", "scrape_step": "0", "scrape_interval_hours": "24"},
+			}}
+			body, err := canonicalJSON(plan, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			argv := []any{"rollback_legacy", owner.Route.ShardID, "7", owner.Route.EngineOwner, "", "0", "", "0", "0", "0", "", "", "", "64", "0", strings.Repeat("a", 64), "0", owner.Namespace, string(body), "1", owner.Cohort, "1", strings.Repeat("b", 64), owner.BoardSlugs[0]}
+			raw, err := queue.script.Run(ctx, client, queue.keys, argv...).Slice()
+			if err != nil || len(raw) != 12 || fmt.Sprint(raw[0]) != "not_current" {
+				t.Fatal("invalid guard rollback was not rejected")
+			}
+			after, err := client.HGetAll(ctx, queue.keys[1]).Result()
+			if err != nil || !reflect.DeepEqual(before, after) || client.ZScore(ctx, queue.keys[2], task.Envelope.TaskID).Val() != 123000 {
+				t.Fatal("rejected rollback mutated ready record")
+			}
+		})
 	}
 }

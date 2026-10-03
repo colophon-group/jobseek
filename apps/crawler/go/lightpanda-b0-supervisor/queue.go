@@ -32,7 +32,7 @@ const (
 	producerOwnerKey         = "lightpanda-b0:producer-owner"
 	legacyGuardKey           = "lightpanda-b0:legacy-guard"
 	producerOwnerV1          = "jobseek.lightpanda.producer-owner/v1"
-	expectedLuaSHA256        = "60bc7169651d3e8cc7abfcff6dec799170fa298539904a78b7f865534a3a2803"
+	expectedLuaSHA256        = "7c3b67b6b9eefdcf0dc9ae01f62a4d45f6ce0f67f8fa551dfd484dd4ce6fb59b"
 )
 
 var (
@@ -167,6 +167,43 @@ func queueRedisDiagnostic(err error) string {
 	return "transport_error"
 }
 
+// Activation diagnostics accept only protocol-owned enums. Never log Redis
+// reply values, envelopes, legacy configuration or backend error text.
+func activationQueueDiagnostic(stage string, result transition, contractErr error) string {
+	if !contains(set("reply_shape", "reply_type", "reply_number", "reply_decision", "reply_contract", "transition_rejected"), stage) {
+		stage = "invalid_reply"
+	}
+	diagnostic := "stage=" + stage
+	if stage == "transition_rejected" {
+		if reasons, ok := allowedReasons["activate_legacy"][result.Decision]; ok && contains(reasons, result.Reason) {
+			return diagnostic + " decision=" + result.Decision + " reason=" + result.Reason
+		}
+		return diagnostic + " reason=invalid_reply"
+	}
+	if stage == "reply_contract" && contractErr != nil {
+		rule := "invalid_reply"
+		switch contractErr.Error() {
+		case "invalid producer activation echo":
+			rule = "activation_echo"
+		case "invalid producer activation counts":
+			rule = "activation_counts"
+		case "invalid server time":
+			rule = "server_time"
+		case "unexpected decision":
+			rule = "decision"
+		case "unexpected reason":
+			rule = "reason"
+		}
+		return diagnostic + " rule=" + rule
+	}
+	return diagnostic
+}
+func logActivationQueueDiagnostic(operation, stage string, result transition, contractErr error) {
+	if operation == "activate_legacy" {
+		log.Printf("Lightpanda B0 activation rejected: %s", activationQueueDiagnostic(stage, result, contractErr))
+	}
+}
+
 type b0Queue struct {
 	client       *redis.Client
 	script       *redis.Script
@@ -242,6 +279,7 @@ func (q *b0Queue) callWithProducer(ctx context.Context, operation string, task *
 	}
 	raw, ok := result.([]any)
 	if !ok || len(raw) != 12 {
+		logActivationQueueDiagnostic(operation, "reply_shape", transition{}, nil)
 		q.metrics.incQueue(operation, "transport_error")
 		return transition{}, queueAuthority("corruption", operation)
 	}
@@ -253,6 +291,7 @@ func (q *b0Queue) callWithProducer(ctx context.Context, operation string, task *
 		case []byte:
 			values[index] = string(typed)
 		default:
+			logActivationQueueDiagnostic(operation, "reply_type", transition{}, nil)
 			q.metrics.incQueue(operation, "transport_error")
 			return transition{}, queueAuthority("corruption", operation)
 		}
@@ -264,16 +303,19 @@ func (q *b0Queue) callWithProducer(ctx context.Context, operation string, task *
 		}
 		value, parseErr := strconv.ParseInt(values[index], 10, 64)
 		if parseErr != nil || value < 0 || value > maxInteger || strconv.FormatInt(value, 10) != values[index] {
+			logActivationQueueDiagnostic(operation, "reply_number", transition{}, nil)
 			q.metrics.incQueue(operation, "transport_error")
 			return transition{}, queueAuthority("corruption", operation)
 		}
 		*target = value
 	}
 	if parsed.Decision != "accepted" && parsed.Decision != "fenced" && parsed.Decision != "not_current" {
+		logActivationQueueDiagnostic(operation, "reply_decision", transition{}, nil)
 		q.metrics.incQueue(operation, "transport_error")
 		return transition{}, queueAuthority("corruption", operation)
 	}
 	if err := validateTransitionReply(operation, parsed, values, q.route, task, claimToken, leaseTTL, readyAtMS, expectedLeaseUntilMS); err != nil {
+		logActivationQueueDiagnostic(operation, "reply_contract", parsed, err)
 		q.metrics.incQueue(operation, "transport_error")
 		return transition{}, queueAuthority("corruption", operation)
 	}
@@ -488,6 +530,7 @@ func (q *b0Queue) activateLegacy(ctx context.Context, task *queueTask, readyAtMS
 		if err == nil && result.Decision == "not_current" && contains(set("state_mismatch", "task_already_exists"), result.Reason) {
 			return result, queueConflictError{Reason: result.Reason}
 		}
+		logActivationQueueDiagnostic("activate_legacy", "transition_rejected", result, err)
 		return result, transitionError("activate_legacy", result, err)
 	}
 	return result, nil

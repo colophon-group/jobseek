@@ -2022,3 +2022,88 @@ async def test_atomic_transfer_preserves_score_and_rejects_score_race(
         guard = await redis.hget("lightpanda-b0:legacy-guard", task.task_id)
         assert float(guard.rsplit("|", 1)[1]) == score
         assert not await redis.hexists(f"scrape:{task.task_id}", "__operator_source_score")
+
+
+@pytest.mark.parametrize(
+    "score", ["1.7908049340051439e+9", "1.7908049340051439E+9", "1e-9", "0e+9"]
+)
+async def test_scientific_redis_guard_survives_audit_and_cold_rollback(
+    redis: Any, score: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    task = _task(ready_at_ms=123_000)
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    await _initialize_producer(queue, task.route)
+    await _seed_legacy_ready(redis, task)
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
+    stored = await queue.inspect(task.task_id, task.route)
+    assert stored is not None
+    raw = await redis.hget("lightpanda-b0:legacy-guard", task.task_id)
+    await redis.hset(
+        "lightpanda-b0:legacy-guard", task.task_id, raw.rsplit("|", 1)[0] + "|" + score
+    )
+    assert await activation._bound_legacy_guard(redis, task.task_id, stored) == (
+        "recurring_browser",
+        score,
+    )
+    assert (await queue.audit_conservation(task.route)).accepted
+    result = await queue.rollback_legacy(
+        task.route,
+        cohort="c1",
+        rollback_plan_digest=ROLLBACK_DIGEST,
+        source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+        plan={task.task_id: await _rollback_schedule_for_bound_guard(redis, task)},
+    )
+    assert result.accepted
+    assert await redis.zscore(f"scrapes_browser:{task.domain}", task.task_id) == float(score)
+    assert not await redis.hexists("lightpanda-b0:legacy-guard", task.task_id)
+
+
+@pytest.mark.parametrize(
+    "score",
+    [
+        "NaN",
+        "Inf",
+        "-1e9",
+        "+1e9",
+        "0x1p3",
+        "1e999",
+        "1e-999",
+        "1e",
+        "1e+",
+        "1e2e3",
+        " 1e9",
+        "1e9 ",
+        "1.2e+10",
+        "1" * 33,
+    ],
+)
+async def test_invalid_scientific_guard_fails_before_rollback_mutation(
+    redis: Any, score: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(activation.settings, "lightpanda_b0_queue_namespace", "production-b0")
+    task = _task(ready_at_ms=123_000)
+    queue = LightpandaB0Queue(redis, namespace="production-b0")
+    await _initialize_producer(queue, task.route)
+    await _seed_legacy_ready(redis, task)
+    assert (await _activate_legacy(queue, task, legacy_config=_legacy_config(task))).accepted
+    stored = await queue.inspect(task.task_id, task.route)
+    assert stored is not None
+    raw = await redis.hget("lightpanda-b0:legacy-guard", task.task_id)
+    await redis.hset(
+        "lightpanda-b0:legacy-guard", task.task_id, raw.rsplit("|", 1)[0] + "|" + score
+    )
+    before = await redis.hgetall(queue._keys.records)
+    with pytest.raises(activation.ActivationError, match="invalid legacy transfer guard"):
+        await activation._bound_legacy_guard(redis, task.task_id, stored)
+    assert not (await queue.audit_conservation(task.route)).accepted
+    with pytest.raises(ValueError, match="rollback score"):
+        await queue.rollback_legacy(
+            task.route,
+            cohort="c1",
+            rollback_plan_digest=ROLLBACK_DIGEST,
+            source_receipt_sha256=SOURCE_RECEIPT_SHA256,
+            plan={task.task_id: await _rollback_schedule_for_bound_guard(redis, task)},
+        )
+    assert await redis.hgetall(queue._keys.records) == before
+    assert await redis.zscore(queue._keys.ready, task.task_id) == 123_000

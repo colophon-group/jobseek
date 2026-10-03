@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"log"
 	"math"
 	"os"
 	"sort"
@@ -472,6 +473,22 @@ func (p *b0Producer) enqueue(ctx context.Context, request producerRequest) (prep
 	return p.activatePrepared(ctx, request, prepared, false)
 }
 
+func producerActivationDiagnostic(stage string, err error) string {
+	class, lost := authorityErrorClass(err)
+	if !lost {
+		return ""
+	}
+	if !contains(set("prepare", "mutation_preflight", "transition"), stage) {
+		stage = "unknown"
+	}
+	return "stage=" + stage + " authority=" + class
+}
+func logProducerActivationDiagnostic(stage string, err error) {
+	if diagnostic := producerActivationDiagnostic(stage, err); diagnostic != "" {
+		log.Printf("Lightpanda B0 producer activation failed: %s", diagnostic)
+	}
+}
+
 func (p *b0Producer) activate(ctx context.Context, request producerRequest) (preparedTask, transition, error) {
 	if !hex256.MatchString(request.ExpectedDigest) || request.Operation != "activate" || !request.OperatorTransfer || request.Cohort != "" {
 		return preparedTask{}, transition{}, errors.New("invalid producer activation digest")
@@ -488,14 +505,18 @@ func (p *b0Producer) activate(ctx context.Context, request producerRequest) (pre
 		if err == nil {
 			err = errProducerDigestMismatch
 		}
+		logProducerActivationDiagnostic("prepare", err)
 		return preparedTask{}, transition{}, err
 	}
 	releaseAuthority, err := p.acquireMutationAuthority(ctx)
 	if err != nil {
+		logProducerActivationDiagnostic("mutation_preflight", err)
 		return preparedTask{}, transition{}, producerQueueAuthority(err)
 	}
 	defer releaseAuthority()
-	return p.activatePrepared(ctx, request, prepared, true)
+	prepared, result, err := p.activatePrepared(ctx, request, prepared, true)
+	logProducerActivationDiagnostic("transition", err)
+	return prepared, result, err
 }
 
 func (p *b0Producer) activatePrepared(ctx context.Context, request producerRequest, prepared preparedTask, operatorTransfer bool) (preparedTask, transition, error) {

@@ -45,7 +45,7 @@ func newInstalledRedisQueue(t *testing.T, request Request) *installedRedisQueue 
 	}
 	rawLua, err := os.ReadFile("../../src/lua/lightpanda_b0_queue.lua")
 	digest := sha256.Sum256(rawLua)
-	if err != nil || hex.EncodeToString(digest[:]) != "60bc7169651d3e8cc7abfcff6dec799170fa298539904a78b7f865534a3a2803" {
+	if err != nil || hex.EncodeToString(digest[:]) != "7c3b67b6b9eefdcf0dc9ae01f62a4d45f6ce0f67f8fa551dfd484dd4ce6fb59b" {
 		t.Fatal("reviewed queue Lua identity changed")
 	}
 	namespace := "installed-" + fixtureID(t)

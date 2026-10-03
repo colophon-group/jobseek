@@ -13,6 +13,7 @@
 --           to the dead-letter ZSET instead of being re-enqueued)
 -- ARGV[5] = retry_score (float — score to write back to the per-domain
 --           ZSET; typically ``now`` for "retry ASAP")
+-- ARGV[6] = "guarded" only while holding the PG ordinary lease barrier
 --
 -- Returns: {reenqueued, dead_lettered, missing_config}
 --   - reenqueued: int — entries successfully re-enqueued
@@ -33,6 +34,11 @@ local retry_score = tonumber(ARGV[5]) or now
 local b0_guard_key = "lightpanda-b0:legacy-guard"
 local scrape_rotation_key = "ready:rotation:" .. wtype
 local monitor_repair_key = "monitor_repair_due:" .. wtype
+local token_key = "inflight_tokens:" .. wtype
+local token_type = redis.call("TYPE", token_key)["ok"]
+if token_type ~= "none" and token_type ~= "hash" then
+    return redis.error_reply("ordinary claim token index is corrupt")
+end
 
 -- Fail before touching any expired member. Redis does not roll back writes
 -- made earlier in a script when a later command raises WRONGTYPE.
@@ -67,6 +73,12 @@ local dead_lettered = 0
 local missing_config = 0
 
 for _, member in ipairs(expired) do
+    -- Legacy direct reapers leave tokenized attempts to the guarded Go reaper.
+    -- They may still recover ordinary tokenless work in the same batch.
+    if ARGV[6] == "guarded" or redis.call("HEXISTS", token_key, member) == 0 then
+    -- Revoke this expired generation on every path (retry/deadletter/orphan/
+    -- guard/malformed). New claims create a distinct token in the same queues.
+    redis.call("HDEL", token_key, member)
     -- Parse "task_type|domain|task_id" — note task_id may itself
     -- contain '|' so we split on the FIRST two delimiters only.
     local first_sep = string.find(member, "|", 1, true)
@@ -233,6 +245,7 @@ for _, member in ipairs(expired) do
         redis.call("ZREM", inflight_key, member)
         redis.call("HDEL", strikes_key, member)
         redis.call("HDEL", monitor_repair_key, member)
+    end
     end
 end
 

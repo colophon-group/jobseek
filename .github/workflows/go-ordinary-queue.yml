@@ -1,0 +1,111 @@
+name: Go ordinary queue contracts
+
+on:
+  pull_request:
+    paths:
+      - "apps/crawler/go/ordinary-queue/**"
+      - "apps/crawler/src/lua/claim_work.lua"
+      - "apps/crawler/src/lua/heartbeat_task.lua"
+      - "apps/crawler/src/lua/complete_task.lua"
+      - "apps/crawler/src/lua/reschedule_task.lua"
+      - "apps/crawler/src/lua/reap_expired.lua"
+      - "apps/crawler/go/typesense-exporter/**"
+      - "apps/crawler/src/migrations/**"
+      - "apps/crawler/Dockerfile"
+      - "apps/crawler/uv.lock"
+      - ".github/workflows/go-ordinary-queue.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-ordinary-queue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Ordinary queue private PostgreSQL/Redis (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_ordinary_worker_test
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_ordinary_worker_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: apps/crawler/go/ordinary-queue
+    env:
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
+      LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+      JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/ordinary-queue/go.mod
+          cache-dependency-path: apps/crawler/go/ordinary-queue/go.sum
+
+      - name: Install fixture Redis on the disposable runner
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends redis-server
+          redis-server --version
+
+      - name: Apply and reverse the actual isolated database migration
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv sync --frozen --group dev
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
+          uv run --frozen alembic -c src/migrations/alembic.ini downgrade 0034
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
+
+      - name: Verify real database authority and private queue transitions
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout=90s ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
+      - name: Verify the production Go reaper participates in database retirement
+        working-directory: apps/crawler/go/typesense-exporter
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout=90s -run '^TestLeaseReaper' ./...
+          go vet ./...
+          go mod tidy -diff

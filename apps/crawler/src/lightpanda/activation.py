@@ -44,7 +44,7 @@ _ROLLBACK_TOMBSTONE_SCHEMA = "jobseek.lightpanda.producer-rollback/v1"
 _LEGACY_GUARD_KEY = "lightpanda-b0:legacy-guard"
 _SAFE_PRODUCER_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_DECIMAL_SECONDS = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$")
+_DECIMAL_SECONDS = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?$")
 _ROUTING_EPOCH_ADVISORY_LOCK_ID = 7_544_422_533_504_811_009
 
 _ROLLBACK_SETTLE_MAX_SECONDS = 75.0
@@ -198,6 +198,7 @@ async def _bound_legacy_guard(redis: Redis, task_id: str, stored: StoredTask) ->
         or parts[3] != stored.task.board_id
         or parts[4] != stored.task.domain
         or parts[5] not in kinds
+        or len(parts[6]) > 32
         or _DECIMAL_SECONDS.fullmatch(parts[6]) is None
     ):
         raise ActivationError("existing B0 record has an invalid legacy transfer guard")
@@ -205,8 +206,10 @@ async def _bound_legacy_guard(redis: Redis, task_id: str, stored: StoredTask) ->
         score = Decimal(parts[6])
     except ArithmeticError as exc:
         raise ActivationError("existing B0 record has an invalid legacy transfer guard") from exc
-    if not score.is_finite() or not Decimal(0) <= score <= (
-        Decimal(9_999_999_999_999) / Decimal(1_000)
+    if (
+        (score != 0 and float(score) == 0)
+        or not score.is_finite()
+        or not Decimal(0) <= score <= (Decimal(9_999_999_999_999) / Decimal(1_000))
     ):
         raise ActivationError("existing B0 record has an invalid legacy transfer guard")
     return parts[5], parts[6]
@@ -838,9 +841,12 @@ async def apply_activation_plan(
         or headroom != capacity - occupancy
     ):
         raise ActivationError("post-activation producer capacity attestation changed")
+    unqueued = plan.document["unqueued_posting_ids"]
+    if not isinstance(unqueued, list):
+        raise ActivationError("activation unqueued plan shape is invalid")
     return {
         "selected": plan.count,
-        "unqueued": len(plan.document["unqueued_posting_ids"]),
+        "unqueued": len(unqueued),
         "activated": activated,
         "already_activated": plan.count - activated,
         "digest": plan.digest,

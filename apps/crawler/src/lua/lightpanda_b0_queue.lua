@@ -170,13 +170,17 @@ local function valid_sha(value, length)
 end
 
 local function decimal_seconds(text, maximum)
-    if type(text) ~= "string" or #text == 0 then return nil end
-    if string.match(text, "^[0-9]+$") == nil
-        and string.match(text, "^[0-9]+%.[0-9]+$") == nil then
+    if type(text) ~= "string" or #text == 0 or #text > 32 then return nil end
+    -- ZSCORE can return a fractional Unix deadline in scientific notation.
+    -- Preserve its exact text in the rollback guard; do not round the score.
+    local mantissa = string.match(text, "^([^eE]+)[eE][%+%-]?[0-9]+$") or text
+    if string.match(mantissa, "^[0-9]+$") == nil
+        and string.match(mantissa, "^[0-9]+%.[0-9]+$") == nil then
         return nil
     end
     local value = tonumber(text)
     if not value or value ~= value or value < 0 or value > maximum then return nil end
+    if value == 0 and string.find(mantissa, "[1-9]") ~= nil then return nil end
     return value
 end
 

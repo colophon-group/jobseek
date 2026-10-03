@@ -1233,13 +1233,18 @@ def _canonical_rollback_plan(plan: Mapping[str, Mapping[str, object]]) -> str:
         config = raw["config"]
         if worker_type not in {"simple", "browser"} or not isinstance(first_time, bool):
             raise ValueError("rollback schedule class is invalid")
-        if not isinstance(score, str) or not re.fullmatch(r"0|[1-9][0-9]*(?:\.[0-9]+)?", score):
+        if (
+            not isinstance(score, str)
+            or len(score) > 32
+            or not re.fullmatch(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", score)
+        ):
             raise ValueError("rollback score is not canonical seconds")
         try:
             parsed_score = Decimal(score)
         except InvalidOperation as exc:
             raise ValueError("rollback score is invalid") from exc
-        if not Decimal(0) <= parsed_score <= Decimal(MAX_INTEGER) / 1000:
+        underflow = parsed_score != 0 and float(parsed_score) == 0
+        if underflow or not 0 <= parsed_score <= Decimal(MAX_INTEGER) / 1000:
             raise ValueError("rollback score is outside the queue bound")
         if not isinstance(config, Mapping) or set(config) != config_fields:
             raise ValueError("rollback scrape config fields are invalid")
